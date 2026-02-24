@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
+import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -14,6 +15,12 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const fullName = user.user_metadata?.full_name || "Member";
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("membership_code")
+    .eq("id", user.id)
+    .single();
 
   // Read role and status from middleware-injected headers
   const headersList = await headers();
@@ -85,6 +92,11 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </Link>
+
+            {/* Referral Link */}
+            {profile?.membership_code && (
+              <CopyReferralLink membershipCode={profile.membership_code} />
+            )}
 
             {/* Upcoming RSVP */}
             <div className="rounded-2xl border border-card-border bg-card p-5">

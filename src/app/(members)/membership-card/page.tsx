@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MembershipCardView from "@/components/membership/MembershipCardView";
+import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MobileNav from "@/components/layout/MobileNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -20,8 +21,13 @@ export default async function MembershipCardPage() {
 
   const fullName = user.user_metadata?.full_name || "Member";
 
-  // TODO: fetch membership_code from profiles table
-  const membershipCode = "RSN-DEMO1234";
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("membership_code, status")
+    .eq("id", user.id)
+    .single();
+
+  const membershipCode = profile?.membership_code || "RSN-UNKNOWN";
 
   return (
     <div className="min-h-dvh pb-24">
@@ -35,6 +41,12 @@ export default async function MembershipCardPage() {
           membershipCode={membershipCode}
           memberSince={user.created_at}
         />
+
+        {profile?.status === "approved" && membershipCode !== "RSN-UNKNOWN" && (
+          <div className="mt-6">
+            <CopyReferralLink membershipCode={membershipCode} />
+          </div>
+        )}
 
         <div className="mt-6 rounded-2xl border border-card-border bg-card p-5">
           <h2 className="mb-2 font-semibold">How to use your card</h2>
