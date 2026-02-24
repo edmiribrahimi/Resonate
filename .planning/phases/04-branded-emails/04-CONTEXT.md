@@ -15,7 +15,7 @@ Brand all transactional emails with the Resonate identity. Three emails in scope
 
 ### Delivery Infrastructure
 - Registration confirmation email: customize via Supabase Dashboard email templates (Supabase Auth sends this automatically)
-- Approval/rejection notification emails: send via Supabase Edge Function triggered by the approve/reject server actions
+- Approval/rejection notification emails: send directly from the existing approve/reject server actions using Resend (already installed). No Edge Function needed — simpler approach confirmed after research.
 - All three emails get the branded treatment — no emails left as plain default
 - Custom sender domain (e.g. noreply@resonate.app) is desired but not yet configured — document the DNS/DKIM setup steps as a prerequisite the user must complete, but don't block implementation on it
 
@@ -25,8 +25,7 @@ Brand all transactional emails with the Resonate identity. Three emails in scope
 - Approval/rejection email trigger timing: immediate on admin action vs batched
 - What info to include in each email (member name, next steps, links)
 - Whether to use React Email for template authoring or inline HTML
-- Edge Function implementation details (HTTP trigger, auth, error handling)
-- How to pass the approved/rejected member's email to the Edge Function
+- Email sending implementation details (fire-and-forget vs awaited, error handling)
 
 </decisions>
 
@@ -35,7 +34,7 @@ Brand all transactional emails with the Resonate identity. Three emails in scope
 
 - The Resonate logo (white on transparent) is at `public/images/logo-white.png` — can be hosted/referenced in emails
 - The site uses Orbitron font and a dark theme — email design should feel consistent with the site aesthetic
-- The existing Resend integration (`src/app/api/newsletter/route.ts`) is for the newsletter only — this phase uses Supabase's email infrastructure instead
+- The existing Resend integration (`src/app/api/newsletter/route.ts`) is for the newsletter only — this phase reuses Resend for approval/rejection emails too
 
 </specifics>
 
