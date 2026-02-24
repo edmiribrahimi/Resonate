@@ -30,7 +30,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Brand foundation: Orbitron font, logo asset, homepage redesign
+- [x] 01-01-PLAN.md -- Brand foundation: Orbitron font, logo asset, homepage redesign
 - [ ] 01-02-PLAN.md -- English migration: route renames, full translation, redirects
 - [ ] 01-03-PLAN.md -- Bug fixes: auth-aware event page, password validation
 
@@ -107,7 +107,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. UI Foundation & English Migration | 0/3 | Planned | - |
+| 1. UI Foundation & English Migration | 1/3 | In progress | - |
 | 2. Schema & RBAC Foundation | 0/? | Not started | - |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
