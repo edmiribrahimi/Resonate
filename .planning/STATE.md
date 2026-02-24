@@ -6,33 +6,34 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Executing Phase 1 -- English migration complete, continuing with bug fixes.
+**Current Focus:** Phase 1 complete. Ready to plan/execute Phase 2.
 
 ## Current Position
 
-**Phase:** 1 of 7 -- UI Foundation & English Migration
-**Plan:** 3 of 3 (next: 01-03-PLAN.md)
-**Status:** In progress
+**Phase:** 1 of 7 -- UI Foundation & English Migration (COMPLETE)
+**Plan:** 3 of 3 (all plans complete)
+**Status:** Phase 1 complete
 
 ```
-[Phase Progress]  █████████████░░░░░░░  2/3 plans in phase 1
+[Phase Progress]  ████████████████████  3/3 plans in phase 1
 
-[Overall]         ░░░░░░░░░░░░░░░░░░░░  0/7 phases complete
+[Overall]         ██░░░░░░░░░░░░░░░░░░  1/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 2 |
+| Plans completed | 3 |
 | Plans failed | 0 |
-| Requirements done | 4/45 |
-| Phases complete | 0/7 |
+| Requirements done | 6/45 |
+| Phases complete | 1/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 01-01 (Brand Foundation) | 89s | 2 | 4 |
 | 01-02 (English Migration) | 340s | 2 | 14 |
+| 01-03 (Bug Fixes) | 106s | 2 | 2 |
 
 ## Accumulated Context
 
@@ -48,6 +49,8 @@
 | Orbitron for ALL text site-wide | Phase 1 | Geometric display font fits electronic music aesthetic; platform has short-form content where Orbitron stays readable at 14px+ |
 | Graceful event query fallback | Phase 1 | Homepage renders cleanly even without DB connection or upcoming events via try/catch |
 | Component function names renamed to English | Phase 1 | Renamed EventiPage, PresenzePage, etc. to English equivalents for codebase consistency |
+| Auth check via getUser() on public page | Phase 1 | Uses supabase.auth.getUser() which reads cookies (not DB), keeping event page fast despite being dynamic |
+| Real-time inline password validation | Phase 1 | Per-rule checkmark feedback in 2x2 grid rather than strength meter bar -- more informative and friendlier |
 
 ### Research Notes
 
@@ -65,15 +68,17 @@ None currently.
 
 - [x] Plan Phase 1 via `/gsd:plan-phase 1`
 - [x] Execute Plan 01-02 (English migration)
-- [ ] Execute Plan 01-03 (Bug fixes)
+- [x] Execute Plan 01-03 (Bug fixes)
+- [ ] Plan Phase 2
+- [ ] Execute Phase 2
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T20:25:51Z
-**Stopped at:** Completed 01-02-PLAN.md (English Migration)
-**What happened:** Executed Plan 01-02: Renamed 4 Italian route directories to English (eventi->events, registrati->register, presenze->attendance, galleria->gallery), configured permanent redirects in next.config.ts, updated middleware for /attendance, translated all 12 page/component files from Italian to English with en-US date formatting. Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 01-03 (Bug fixes)
+**Last session:** 2026-02-24T20:30:23Z
+**Stopped at:** Completed 01-03-PLAN.md (Bug Fixes) -- Phase 1 fully complete
+**What happened:** Executed Plan 01-03: Made event detail page auth-aware by replacing hardcoded isMember=false with real Supabase getUser() check. Added real-time password strength validation to registration form with 4 rules (8+ chars, uppercase, number, special char) and inline per-rule feedback. Build passes. 2 tasks, 2 commits.
+**Next step:** Plan Phase 2 via `/gsd:plan-phase 2`
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T20:25:51Z*
+*Last updated: 2026-02-24T20:30:23Z*

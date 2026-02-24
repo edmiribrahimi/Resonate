@@ -7,7 +7,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: UI Foundation & English Migration** - Translate site to English, apply brand identity, fix UI bugs
+- [x] **Phase 1: UI Foundation & English Migration** - Translate site to English, apply brand identity, fix UI bugs
 - [ ] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
 - [ ] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
 - [ ] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
@@ -32,7 +32,7 @@
 Plans:
 - [x] 01-01-PLAN.md -- Brand foundation: Orbitron font, logo asset, homepage redesign
 - [x] 01-02-PLAN.md -- English migration: route renames, full translation, redirects
-- [ ] 01-03-PLAN.md -- Bug fixes: auth-aware event page, password validation
+- [x] 01-03-PLAN.md -- Bug fixes: auth-aware event page, password validation
 
 ### Phase 2: Schema & RBAC Foundation
 **Goal**: The platform enforces role-based access for master, organizer, and member roles
@@ -107,7 +107,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. UI Foundation & English Migration | 2/3 | In progress | - |
+| 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
 | 2. Schema & RBAC Foundation | 0/? | Not started | - |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
