@@ -1,7 +1,7 @@
 # Requirements: Resonate
 
 **Defined:** 2026-02-24
-**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
+**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community -- the gating mechanism (referral + approval) is what makes the community valuable.
 
 ## v1 Requirements
 
@@ -9,8 +9,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### UI & Branding
 
-- [ ] **UIBR-01**: Entire site translated to English — all visible text, labels, error messages, placeholders
-- [ ] **UIBR-02**: All URL routes migrated to English (e.g. /eventi → /events, /registrati → /register, /presenze → /attendance, /galleria → /gallery) with redirects from old Italian paths
+- [ ] **UIBR-01**: Entire site translated to English -- all visible text, labels, error messages, placeholders
+- [ ] **UIBR-02**: All URL routes migrated to English (e.g. /eventi -> /events, /registrati -> /register, /presenze -> /attendance, /galleria -> /gallery) with redirects from old Italian paths
 - [ ] **UIBR-03**: Orbitron font (Google Fonts) applied as the primary font site-wide
 - [ ] **UIBR-04**: Homepage displays Resonate logo image instead of text heading "Resonate Music events community"
 - [ ] **UIBR-05**: Logged-in users no longer see "diventa membro per confermare la tua presenza" on event pages
@@ -109,7 +109,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Automated event recommendations | Small community, manual discovery preferred. |
 | Complex analytics dashboard | Overkill. Basic sales visibility per event is enough. |
 | Transferable / resellable tickets | Prevents scalping, maintains trust-based community. |
-| Public event pages / SEO | Private community — events only visible to authenticated users. |
+| Public event pages / SEO | Private community -- events only visible to authenticated users. |
 | User-generated events | Only organizers and master create events. Curated calendar. |
 | Complex refund automation | Manual refunds via SumUp dashboard. Platform shows "contact organizer". |
 | Waitlist system | Word-of-mouth handles this for small community events. |
@@ -120,57 +120,57 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UIBR-01 | TBD | Pending |
-| UIBR-02 | TBD | Pending |
-| UIBR-03 | TBD | Pending |
-| UIBR-04 | TBD | Pending |
-| UIBR-05 | TBD | Pending |
-| UIBR-06 | TBD | Pending |
-| UIBR-07 | TBD | Pending |
-| UIBR-08 | TBD | Pending |
-| ROLE-01 | TBD | Pending |
-| ROLE-02 | TBD | Pending |
-| ROLE-03 | TBD | Pending |
-| ROLE-04 | TBD | Pending |
-| ROLE-05 | TBD | Pending |
-| ROLE-06 | TBD | Pending |
-| ROLE-07 | TBD | Pending |
-| REFR-01 | TBD | Pending |
-| REFR-02 | TBD | Pending |
-| REFR-03 | TBD | Pending |
-| REFR-04 | TBD | Pending |
-| REFR-05 | TBD | Pending |
-| REFR-06 | TBD | Pending |
-| APPR-01 | TBD | Pending |
-| APPR-02 | TBD | Pending |
-| APPR-03 | TBD | Pending |
-| APPR-04 | TBD | Pending |
-| EVNT-01 | TBD | Pending |
-| EVNT-02 | TBD | Pending |
-| EVNT-03 | TBD | Pending |
-| EVNT-04 | TBD | Pending |
-| EVNT-05 | TBD | Pending |
-| EVNT-06 | TBD | Pending |
-| EVNT-07 | TBD | Pending |
-| TICK-01 | TBD | Pending |
-| TICK-02 | TBD | Pending |
-| TICK-03 | TBD | Pending |
-| TICK-04 | TBD | Pending |
-| TICK-05 | TBD | Pending |
-| TICK-06 | TBD | Pending |
-| TICK-07 | TBD | Pending |
-| MDIA-01 | TBD | Pending |
-| MDIA-02 | TBD | Pending |
-| MDIA-03 | TBD | Pending |
-| MDIA-04 | TBD | Pending |
-| MDIA-05 | TBD | Pending |
-| MDIA-06 | TBD | Pending |
+| UIBR-01 | Phase 1 | Pending |
+| UIBR-02 | Phase 1 | Pending |
+| UIBR-03 | Phase 1 | Pending |
+| UIBR-04 | Phase 1 | Pending |
+| UIBR-05 | Phase 1 | Pending |
+| UIBR-06 | Phase 4 | Pending |
+| UIBR-07 | Phase 4 | Pending |
+| UIBR-08 | Phase 1 | Pending |
+| ROLE-01 | Phase 2 | Pending |
+| ROLE-02 | Phase 2 | Pending |
+| ROLE-03 | Phase 2 | Pending |
+| ROLE-04 | Phase 2 | Pending |
+| ROLE-05 | Phase 2 | Pending |
+| ROLE-06 | Phase 2 | Pending |
+| ROLE-07 | Phase 2 | Pending |
+| REFR-01 | Phase 3 | Pending |
+| REFR-02 | Phase 3 | Pending |
+| REFR-03 | Phase 3 | Pending |
+| REFR-04 | Phase 3 | Pending |
+| REFR-05 | Phase 3 | Pending |
+| REFR-06 | Phase 3 | Pending |
+| APPR-01 | Phase 3 | Pending |
+| APPR-02 | Phase 3 | Pending |
+| APPR-03 | Phase 3 | Pending |
+| APPR-04 | Phase 4 | Pending |
+| EVNT-01 | Phase 5 | Pending |
+| EVNT-02 | Phase 5 | Pending |
+| EVNT-03 | Phase 5 | Pending |
+| EVNT-04 | Phase 5 | Pending |
+| EVNT-05 | Phase 5 | Pending |
+| EVNT-06 | Phase 5 | Pending |
+| EVNT-07 | Phase 5 | Pending |
+| TICK-01 | Phase 6 | Pending |
+| TICK-02 | Phase 6 | Pending |
+| TICK-03 | Phase 6 | Pending |
+| TICK-04 | Phase 6 | Pending |
+| TICK-05 | Phase 6 | Pending |
+| TICK-06 | Phase 6 | Pending |
+| TICK-07 | Phase 6 | Pending |
+| MDIA-01 | Phase 7 | Pending |
+| MDIA-02 | Phase 7 | Pending |
+| MDIA-03 | Phase 7 | Pending |
+| MDIA-04 | Phase 7 | Pending |
+| MDIA-05 | Phase 7 | Pending |
+| MDIA-06 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 43 total
-- Mapped to phases: 0
-- Unmapped: 43 ⚠️
+- v1 requirements: 45 total
+- Mapped to phases: 45
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 after initial definition*
+*Last updated: 2026-02-24 after roadmap creation*
