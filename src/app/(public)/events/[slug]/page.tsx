@@ -1,8 +1,8 @@
 import Link from "next/link";
 import MobileNav from "@/components/layout/MobileNav";
+import { createClient } from "@/lib/supabase/server";
 
 // TODO: fetch from Supabase based on slug
-// TODO: check auth status for secret location logic
 
 export default async function EventDetailPage({
   params,
@@ -10,6 +10,11 @@ export default async function EventDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  // Check auth status -- reads cookies only, no DB call, fast
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const isMember = !!user;
 
   // Mock data - will be replaced with Supabase query
   const event = {
@@ -25,7 +30,6 @@ export default async function EventDetailPage({
     capacity: 150,
   };
 
-  const isMember = false; // TODO: check auth
   const hasRSVP = false; // TODO: check RSVP status
 
   return (
