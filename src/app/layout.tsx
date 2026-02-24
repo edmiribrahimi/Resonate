@@ -1,5 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Orbitron } from "next/font/google";
 import "./globals.css";
+
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-orbitron",
+});
 
 export const metadata: Metadata = {
   title: "Resonate",
@@ -26,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it">
+    <html lang="en" className={orbitron.variable}>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
