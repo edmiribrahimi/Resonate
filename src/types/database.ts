@@ -1,8 +1,13 @@
+export type UserRole = "master" | "organizer" | "member";
+export type UserStatus = "pending" | "approved" | "rejected";
+
 export interface Profile {
   id: string;
   email: string;
   full_name: string;
   membership_code: string;
+  role: UserRole;
+  status: UserStatus;
   created_at: string;
   updated_at: string;
 }
