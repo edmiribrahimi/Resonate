@@ -12,7 +12,7 @@
 
 **Phase:** 3 of 7 -- Referral & Approval System
 **Plan:** 3 of 3
-**Status:** Phase complete
+**Status:** Milestone complete
 
 ```
 [Phase Progress]  ████████████████████  3/3 plans in phase 3

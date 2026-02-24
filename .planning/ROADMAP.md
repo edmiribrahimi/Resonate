@@ -119,7 +119,7 @@ Plans:
 |-------|---------------|--------|-----------|
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
 | 2. Schema & RBAC Foundation | 3/3 | Complete    | 2026-02-24 |
-| 3. Referral & Approval System | 3/3 | Complete | 2026-02-24 |
+| 3. Referral & Approval System | 3/3 | Complete    | 2026-02-24 |
 | 4. Branded Emails | 0/? | Not started | - |
 | 5. Event Management | 0/? | Not started | - |
 | 6. Ticketing & Payments | 0/? | Not started | - |
