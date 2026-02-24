@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/eventi/:path*", destination: "/events/:path*", permanent: true },
+      { source: "/registrati", destination: "/register", permanent: true },
+      { source: "/presenze", destination: "/attendance", permanent: true },
+      { source: "/galleria", destination: "/gallery", permanent: true },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);
