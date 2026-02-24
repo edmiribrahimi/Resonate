@@ -27,7 +27,12 @@
   3. The Orbitron font renders as the primary typeface on every page
   4. The homepage shows the Resonate logo image instead of a text heading
   5. A logged-in member viewing an event page sees no "diventa membro" prompt
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md -- Brand foundation: Orbitron font, logo asset, homepage redesign
+- [ ] 01-02-PLAN.md -- English migration: route renames, full translation, redirects
+- [ ] 01-03-PLAN.md -- Bug fixes: auth-aware event page, password validation
 
 ### Phase 2: Schema & RBAC Foundation
 **Goal**: The platform enforces role-based access for master, organizer, and member roles
@@ -102,7 +107,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. UI Foundation & English Migration | 0/? | Not started | - |
+| 1. UI Foundation & English Migration | 0/3 | Planned | - |
 | 2. Schema & RBAC Foundation | 0/? | Not started | - |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
