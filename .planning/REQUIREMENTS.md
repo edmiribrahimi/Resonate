@@ -23,9 +23,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **ROLE-01**: Profile schema migrated from `is_admin` boolean to `role` enum field with values: master, organizer, member
 - [x] **ROLE-02**: Profile schema includes `status` field with values: pending, approved, rejected
 - [x] **ROLE-03**: All existing RLS policies updated to use role-based checks instead of `is_admin`
-- [ ] **ROLE-04**: Middleware enforces route access based on role (master/organizer access admin routes, approved members access member routes, pending members see browse-only)
+- [x] **ROLE-04**: Middleware enforces route access based on role (master/organizer access admin routes, approved members access member routes, pending members see browse-only)
 - [ ] **ROLE-05**: Master user can assign and revoke Organizer role for any member
-- [ ] **ROLE-06**: Each role sees only relevant navigation items and page actions
+- [x] **ROLE-06**: Each role sees only relevant navigation items and page actions
 - [x] **ROLE-07**: Dedicated master admin account can be created during initial setup
 
 ### Referral & Approval
@@ -131,9 +131,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROLE-01 | Phase 2 | Complete |
 | ROLE-02 | Phase 2 | Complete |
 | ROLE-03 | Phase 2 | Complete |
-| ROLE-04 | Phase 2 | Pending |
+| ROLE-04 | Phase 2 | Complete |
 | ROLE-05 | Phase 2 | Pending |
-| ROLE-06 | Phase 2 | Pending |
+| ROLE-06 | Phase 2 | Complete |
 | ROLE-07 | Phase 2 | Complete |
 | REFR-01 | Phase 3 | Pending |
 | REFR-02 | Phase 3 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24T21:32:16Z after 02-01 completion*
+*Last updated: 2026-02-24T21:39:32Z after 02-02 completion*

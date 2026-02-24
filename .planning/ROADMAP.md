@@ -48,7 +48,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md -- Schema migration: role/status columns, RLS rewrite, master email detection
-- [ ] 02-02-PLAN.md -- Middleware RBAC: route enforcement, role-aware navigation, pending dashboard
+- [x] 02-02-PLAN.md -- Middleware RBAC: route enforcement, role-aware navigation, pending dashboard
 - [ ] 02-03-PLAN.md -- Admin member management: master role actions, organizer member view
 
 ### Phase 3: Referral & Approval System
@@ -113,7 +113,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
-| 2. Schema & RBAC Foundation | 1/3 | In progress | - |
+| 2. Schema & RBAC Foundation | 2/3 | In progress | - |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
 | 5. Event Management | 0/? | Not started | - |

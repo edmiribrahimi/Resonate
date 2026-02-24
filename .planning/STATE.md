@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Executing Phase 2 -- Schema & RBAC Foundation. Plan 02-01 complete.
+**Current Focus:** Executing Phase 2 -- Schema & RBAC Foundation. Plan 02-02 complete, 02-03 next.
 
 ## Current Position
 
 **Phase:** 2 of 7 -- Schema & RBAC Foundation
-**Plan:** 2 of 3
+**Plan:** 3 of 3
 **Status:** In progress
 
 ```
-[Phase Progress]  ██████░░░░░░░░░░░░░░  1/3 plans in phase 2
+[Phase Progress]  █████████████░░░░░░░  2/3 plans in phase 2
 
 [Overall]         ██░░░░░░░░░░░░░░░░░░  1/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 4 |
+| Plans completed | 5 |
 | Plans failed | 0 |
-| Requirements done | 10/45 |
+| Requirements done | 12/45 |
 | Phases complete | 1/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -35,6 +35,7 @@
 | 01-02 (English Migration) | 340s | 2 | 14 |
 | 01-03 (Bug Fixes) | 106s | 2 | 2 |
 | 02-01 (Schema Migration) | 203s | 2 | 5 |
+| 02-02 (Middleware RBAC) | 255s | 2 | 12 |
 
 ## Accumulated Context
 
@@ -55,6 +56,9 @@
 | CHECK constraints over PostgreSQL ENUMs | Phase 2 | Easier to extend in production (no ACCESS EXCLUSIVE lock), simpler ALTER operations |
 | Service role client for master promotion | Phase 2 | User's session cannot modify own role via RLS; service role bypasses RLS entirely |
 | Application-layer master detection | Phase 2 | PostgreSQL triggers cannot read Next.js env vars; auth callback is simpler |
+| Inline route checks in middleware | Phase 2 | Edge runtime minimizes imports; route checks inlined as string comparisons rather than imported from roles.ts |
+| Cookie preservation via pendingCookies array | Phase 2 | Creating new NextResponse for header injection loses Supabase cookies; tracking and re-applying prevents auth loss |
+| Newsletter page server/client split | Phase 2 | Client components cannot use headers(); extracted form to client component so page can be server component |
 
 ### Research Notes
 
@@ -74,15 +78,15 @@ None currently.
 - [x] Execute Plan 01-02 (English migration)
 - [x] Execute Plan 01-03 (Bug fixes)
 - [x] Plan Phase 2
-- [ ] Execute Phase 2 (02-01 complete, 02-02 next)
+- [ ] Execute Phase 2 (02-01 complete, 02-02 complete, 02-03 next)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T21:32:16Z
-**Stopped at:** Completed 02-01-PLAN.md (Schema Migration)
-**What happened:** Executed Plan 02-01: Created RBAC migration SQL (role/status columns with CHECK constraints, 4 security definer helpers, 13 old policies dropped, 15 new policies created). Updated TypeScript types with UserRole/UserStatus. Added master email detection in auth callback using service role client. Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 02-02 (Middleware RBAC)
+**Last session:** 2026-02-24T21:39:32Z
+**Stopped at:** Completed 02-02-PLAN.md (Middleware RBAC)
+**What happened:** Executed Plan 02-02: Created RBAC constants module (roles.ts) with getVisibleNavItems function. Rewrote middleware with profile query, header injection (x-user-role/x-user-status), cookie preservation, and route protection matrix. Updated MobileNav to accept role/status props with shield and users icons. Dashboard shows pending state for non-approved members. Event detail page hides RSVP for pending/rejected. Updated all 8 pages with MobileNav to pass role/status props. Refactored newsletter page to server/client split. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 02-03 (Admin Members Page)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T21:32:16Z*
+*Last updated: 2026-02-24T21:39:32Z*
