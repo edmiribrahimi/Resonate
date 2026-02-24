@@ -6,28 +6,28 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Executing Phase 2 -- Schema & RBAC Foundation. Plan 02-02 complete, 02-03 next.
+**Current Focus:** Phase 2 complete. Ready to plan Phase 3 -- Referral & Approval System.
 
 ## Current Position
 
 **Phase:** 2 of 7 -- Schema & RBAC Foundation
 **Plan:** 3 of 3
-**Status:** In progress
+**Status:** Phase complete
 
 ```
-[Phase Progress]  █████████████░░░░░░░  2/3 plans in phase 2
+[Phase Progress]  ████████████████████  3/3 plans in phase 2
 
-[Overall]         ██░░░░░░░░░░░░░░░░░░  1/7 phases complete
+[Overall]         ██████░░░░░░░░░░░░░░  2/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 5 |
+| Plans completed | 6 |
 | Plans failed | 0 |
-| Requirements done | 12/45 |
-| Phases complete | 1/7 |
+| Requirements done | 13/45 |
+| Phases complete | 2/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -36,6 +36,7 @@
 | 01-03 (Bug Fixes) | 106s | 2 | 2 |
 | 02-01 (Schema Migration) | 203s | 2 | 5 |
 | 02-02 (Middleware RBAC) | 255s | 2 | 12 |
+| 02-03 (Admin Members) | 161s | 2 | 4 |
 
 ## Accumulated Context
 
@@ -59,6 +60,9 @@
 | Inline route checks in middleware | Phase 2 | Edge runtime minimizes imports; route checks inlined as string comparisons rather than imported from roles.ts |
 | Cookie preservation via pendingCookies array | Phase 2 | Creating new NextResponse for header injection loses Supabase cookies; tracking and re-applying prevents auth loss |
 | Newsletter page server/client split | Phase 2 | Client components cannot use headers(); extracted form to client component so page can be server component |
+| Shared MemberTable with showActions prop | Phase 2 | Avoids code duplication between admin and organizer member pages; single source of truth |
+| Placeholder columns for Referred By and Events | Phase 2 | referred_by field added in Phase 3; event count requires attendances join from Phase 5 |
+| Combined demote + deactivate in deactivateMember | Phase 2 | Prevents rejected-but-still-organizer state by resetting role to member in same update |
 
 ### Research Notes
 
@@ -78,15 +82,16 @@ None currently.
 - [x] Execute Plan 01-02 (English migration)
 - [x] Execute Plan 01-03 (Bug fixes)
 - [x] Plan Phase 2
-- [ ] Execute Phase 2 (02-01 complete, 02-02 complete, 02-03 next)
+- [x] Execute Phase 2 (02-01, 02-02, 02-03 all complete)
+- [ ] Plan Phase 3 via `/gsd:plan-phase 3`
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T21:39:32Z
-**Stopped at:** Completed 02-02-PLAN.md (Middleware RBAC)
-**What happened:** Executed Plan 02-02: Created RBAC constants module (roles.ts) with getVisibleNavItems function. Rewrote middleware with profile query, header injection (x-user-role/x-user-status), cookie preservation, and route protection matrix. Updated MobileNav to accept role/status props with shield and users icons. Dashboard shows pending state for non-approved members. Event detail page hides RSVP for pending/rejected. Updated all 8 pages with MobileNav to pass role/status props. Refactored newsletter page to server/client split. Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 02-03 (Admin Members Page)
+**Last session:** 2026-02-24T21:42:42Z
+**Stopped at:** Completed 02-03-PLAN.md (Admin Members Page) -- Phase 2 complete
+**What happened:** Executed Plan 02-03: Created Server Actions (updateMemberRole, deactivateMember, reactivateMember) with master-only auth verification. Built admin members page at /admin/members with full member table, role/status badges, action buttons with loading states, and responsive table/card layout. Created shared MemberTable client component with client-side filtering (search, role, status dropdowns). Built organizer read-only member list at /organizer/members reusing MemberTable with showActions=false. Build passes. 2 tasks, 2 commits.
+**Next step:** Plan Phase 3 (Referral & Approval System)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T21:39:32Z*
+*Last updated: 2026-02-24T21:42:42Z*

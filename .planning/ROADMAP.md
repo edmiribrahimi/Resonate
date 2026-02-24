@@ -8,7 +8,7 @@
 ## Phases
 
 - [x] **Phase 1: UI Foundation & English Migration** - Translate site to English, apply brand identity, fix UI bugs
-- [ ] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
+- [x] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
 - [ ] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
 - [ ] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
 - [ ] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
@@ -49,7 +49,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md -- Schema migration: role/status columns, RLS rewrite, master email detection
 - [x] 02-02-PLAN.md -- Middleware RBAC: route enforcement, role-aware navigation, pending dashboard
-- [ ] 02-03-PLAN.md -- Admin member management: master role actions, organizer member view
+- [x] 02-03-PLAN.md -- Admin member management: master role actions, organizer member view
 
 ### Phase 3: Referral & Approval System
 **Goal**: New members join through referral (instant access) or application (pending approval), creating the trust-gated community
@@ -113,7 +113,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
-| 2. Schema & RBAC Foundation | 2/3 | In progress | - |
+| 2. Schema & RBAC Foundation | 3/3 | Complete | 2026-02-24 |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
 | 5. Event Management | 0/? | Not started | - |
