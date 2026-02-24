@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,7 +21,10 @@ const passwordRules = [
   { key: "hasSpecial" as const, label: "One special character (!@#$...)" },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref") || "";
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +47,7 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: fullName,
+          referral_code: referralCode || undefined,
         },
       },
     });
@@ -139,5 +144,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
