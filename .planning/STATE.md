@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 1 complete. Ready to plan/execute Phase 2.
+**Current Focus:** Executing Phase 2 -- Schema & RBAC Foundation. Plan 02-01 complete.
 
 ## Current Position
 
-**Phase:** 1 of 7 -- UI Foundation & English Migration (COMPLETE)
-**Plan:** 3 of 3 (all plans complete)
-**Status:** Milestone complete
+**Phase:** 2 of 7 -- Schema & RBAC Foundation
+**Plan:** 2 of 3
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  3/3 plans in phase 1
+[Phase Progress]  ██████░░░░░░░░░░░░░░  1/3 plans in phase 2
 
 [Overall]         ██░░░░░░░░░░░░░░░░░░  1/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 3 |
+| Plans completed | 4 |
 | Plans failed | 0 |
-| Requirements done | 6/45 |
+| Requirements done | 10/45 |
 | Phases complete | 1/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -34,6 +34,7 @@
 | 01-01 (Brand Foundation) | 89s | 2 | 4 |
 | 01-02 (English Migration) | 340s | 2 | 14 |
 | 01-03 (Bug Fixes) | 106s | 2 | 2 |
+| 02-01 (Schema Migration) | 203s | 2 | 5 |
 
 ## Accumulated Context
 
@@ -51,6 +52,9 @@
 | Component function names renamed to English | Phase 1 | Renamed EventiPage, PresenzePage, etc. to English equivalents for codebase consistency |
 | Auth check via getUser() on public page | Phase 1 | Uses supabase.auth.getUser() which reads cookies (not DB), keeping event page fast despite being dynamic |
 | Real-time inline password validation | Phase 1 | Per-rule checkmark feedback in 2x2 grid rather than strength meter bar -- more informative and friendlier |
+| CHECK constraints over PostgreSQL ENUMs | Phase 2 | Easier to extend in production (no ACCESS EXCLUSIVE lock), simpler ALTER operations |
+| Service role client for master promotion | Phase 2 | User's session cannot modify own role via RLS; service role bypasses RLS entirely |
+| Application-layer master detection | Phase 2 | PostgreSQL triggers cannot read Next.js env vars; auth callback is simpler |
 
 ### Research Notes
 
@@ -69,16 +73,16 @@ None currently.
 - [x] Plan Phase 1 via `/gsd:plan-phase 1`
 - [x] Execute Plan 01-02 (English migration)
 - [x] Execute Plan 01-03 (Bug fixes)
-- [ ] Plan Phase 2
-- [ ] Execute Phase 2
+- [x] Plan Phase 2
+- [ ] Execute Phase 2 (02-01 complete, 02-02 next)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T21:05:25.012Z
-**Stopped at:** Phase 2 context gathered
-**What happened:** Executed Plan 01-03: Made event detail page auth-aware by replacing hardcoded isMember=false with real Supabase getUser() check. Added real-time password strength validation to registration form with 4 rules (8+ chars, uppercase, number, special char) and inline per-rule feedback. Build passes. 2 tasks, 2 commits.
-**Next step:** Plan Phase 2 via `/gsd:plan-phase 2`
+**Last session:** 2026-02-24T21:32:16Z
+**Stopped at:** Completed 02-01-PLAN.md (Schema Migration)
+**What happened:** Executed Plan 02-01: Created RBAC migration SQL (role/status columns with CHECK constraints, 4 security definer helpers, 13 old policies dropped, 15 new policies created). Updated TypeScript types with UserRole/UserStatus. Added master email detection in auth callback using service role client. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 02-02 (Middleware RBAC)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T20:30:23Z*
+*Last updated: 2026-02-24T21:32:16Z*
