@@ -58,6 +58,7 @@ create table public.profiles (
   membership_code text unique not null,
   role text not null default 'member' check (role in ('master', 'organizer', 'member')),
   status text not null default 'approved' check (status in ('pending', 'approved', 'rejected')),
+  referred_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -85,26 +86,51 @@ create policy profiles_update_own on public.profiles
 create policy profiles_update_master on public.profiles
   for update using ((select public.is_master()));
 
--- Auto-create profile on signup
+-- Auto-create profile on signup with referral logic
+-- NOTE: DDL column default is 'approved' but this trigger body explicitly sets
+-- status. If this trigger fails to set status, the column default kicks in as
+-- a safe fallback.
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   new_code text;
   chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  ref_code text;
+  referrer_id uuid;
+  new_status text;
 begin
+  -- Generate membership code (RSN- prefix + 8 random chars)
   new_code := 'RSN-';
   for i in 1..8 loop
     new_code := new_code || substr(chars, floor(random() * length(chars) + 1)::int, 1);
   end loop;
 
-  insert into public.profiles (id, email, full_name, membership_code, role, status)
+  -- Read referral code from signup metadata
+  ref_code := new.raw_user_meta_data->>'referral_code';
+
+  -- Resolve referrer: must be an approved member with matching membership_code
+  if ref_code is not null and ref_code <> '' then
+    select id into referrer_id
+    from public.profiles
+    where membership_code = ref_code and status = 'approved';
+  end if;
+
+  -- Set status based on referral validity
+  if referrer_id is not null then
+    new_status := 'approved';
+  else
+    new_status := 'pending';
+  end if;
+
+  insert into public.profiles (id, email, full_name, membership_code, role, status, referred_by)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
     new_code,
     'member',
-    'approved'
+    new_status,
+    referrer_id
   );
   return new;
 end;

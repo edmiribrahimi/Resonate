@@ -8,6 +8,7 @@ export interface Profile {
   membership_code: string;
   role: UserRole;
   status: UserStatus;
+  referred_by: string | null;
   created_at: string;
   updated_at: string;
 }
