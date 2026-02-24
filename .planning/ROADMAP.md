@@ -44,7 +44,7 @@ Plans:
   3. The master user can assign or revoke the organizer role for any member
   4. Each role sees only its relevant navigation items and page actions (master sees everything, organizer sees event management, member sees browse/RSVP/profile)
   5. Unauthenticated or unauthorized requests to protected routes are blocked by middleware
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md -- Schema migration: role/status columns, RLS rewrite, master email detection
@@ -113,7 +113,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
-| 2. Schema & RBAC Foundation | 3/3 | Complete | 2026-02-24 |
+| 2. Schema & RBAC Foundation | 3/3 | Complete    | 2026-02-24 |
 | 3. Referral & Approval System | 0/? | Not started | - |
 | 4. Branded Emails | 0/? | Not started | - |
 | 5. Event Management | 0/? | Not started | - |
