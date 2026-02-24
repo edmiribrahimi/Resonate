@@ -31,7 +31,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Referral & Approval
 
 - [x] **REFR-01**: Each approved member has a unique referral link (e.g. /join?ref=RSN-XXXXXXXX using membership_code)
-- [ ] **REFR-02**: Members can view and copy their referral link from their profile/dashboard
+- [x] **REFR-02**: Members can view and copy their referral link from their profile/dashboard
 - [x] **REFR-03**: Registration form accepts referral code from URL parameter
 - [x] **REFR-04**: Users who register via valid referral link are automatically set to status "approved"
 - [x] **REFR-05**: Users who register without referral link are set to status "pending"
@@ -136,7 +136,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROLE-06 | Phase 2 | Complete |
 | ROLE-07 | Phase 2 | Complete |
 | REFR-01 | Phase 3 | Complete |
-| REFR-02 | Phase 3 | Pending |
+| REFR-02 | Phase 3 | Complete |
 | REFR-03 | Phase 3 | Complete |
 | REFR-04 | Phase 3 | Complete |
 | REFR-05 | Phase 3 | Complete |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24T21:42:42Z after 02-03 completion*
+*Last updated: 2026-02-24T23:21:26Z after 03-02 completion*
