@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
+import type { UserRole, UserStatus } from "@/types/database";
 
 // TODO: fetch from Supabase
 const mockEvents = {
@@ -29,7 +31,12 @@ const mockEvents = {
   ],
 };
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  // Read role and status from middleware-injected headers
+  const headersList = await headers();
+  const role = (headersList.get("x-user-role") as UserRole) || null;
+  const status = (headersList.get("x-user-status") as UserStatus) || null;
+
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
@@ -54,7 +61,7 @@ export default function EventsPage() {
                 </p>
                 <h3 className="mb-2 text-xl font-semibold">{event.title}</h3>
                 <p className="text-sm text-muted">
-                  {event.location_secret ? "📍 Secret Location" : `📍 ${event.location}`}
+                  {event.location_secret ? "&#128205; Secret Location" : `&#128205; ${event.location}`}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {event.lineup.map((artist) => (
@@ -88,14 +95,14 @@ export default function EventsPage() {
                   })}
                 </p>
                 <h3 className="mb-2 text-xl font-semibold">{event.title}</h3>
-                <p className="text-sm text-muted">📍 {event.location}</p>
+                <p className="text-sm text-muted">&#128205; {event.location}</p>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
-      <MobileNav />
+      <MobileNav role={role} status={status} />
     </div>
   );
 }

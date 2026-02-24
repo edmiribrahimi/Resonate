@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MembershipCardView from "@/components/membership/MembershipCardView";
 import MobileNav from "@/components/layout/MobileNav";
+import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function MembershipCardPage() {
   const supabase = await createClient();
@@ -10,6 +12,11 @@ export default async function MembershipCardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  // Read role and status from middleware-injected headers
+  const headersList = await headers();
+  const role = (headersList.get("x-user-role") as UserRole) || null;
+  const status = (headersList.get("x-user-status") as UserStatus) || null;
 
   const fullName = user.user_metadata?.full_name || "Member";
 
@@ -45,7 +52,7 @@ export default async function MembershipCardPage() {
         </div>
       </div>
 
-      <MobileNav />
+      <MobileNav role={role} status={status} />
     </div>
   );
 }

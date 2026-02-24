@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
+import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function Home() {
   let nextEvent: { slug: string; title: string; date: string } | null = null;
@@ -21,6 +23,11 @@ export default async function Home() {
   } catch {
     // No upcoming events or query failed -- gracefully show no event preview
   }
+
+  // Read role and status from middleware-injected headers
+  const headersList = await headers();
+  const role = (headersList.get("x-user-role") as UserRole) || null;
+  const status = (headersList.get("x-user-status") as UserStatus) || null;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -71,7 +78,7 @@ export default async function Home() {
         </div>
       </main>
 
-      <MobileNav />
+      <MobileNav role={role} status={status} />
     </div>
   );
 }
