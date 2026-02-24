@@ -4,6 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+function validatePassword(password: string) {
+  return {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  };
+}
+
+const passwordRules = [
+  { key: "minLength" as const, label: "8+ characters" },
+  { key: "hasUppercase" as const, label: "One uppercase letter" },
+  { key: "hasNumber" as const, label: "One number" },
+  { key: "hasSpecial" as const, label: "One special character (!@#$...)" },
+];
+
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -11,6 +27,9 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const rules = validatePassword(password);
+  const isPasswordValid = Object.values(rules).every(Boolean);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,22 +94,38 @@ export default function RegisterPage() {
             required
             className="h-12 rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="h-12 rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-          />
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              className="h-12 w-full rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+            />
+            {password.length > 0 && (
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                {passwordRules.map(({ key, label }) => (
+                  <p
+                    key={key}
+                    className={`text-xs ${
+                      rules[key] ? "text-green-500" : "text-muted"
+                    }`}
+                  >
+                    {rules[key] ? "\u2713" : "\u2022"} {label}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
 
           {error && <p className="text-sm text-accent">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
-            className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+            disabled={!isPasswordValid || loading}
+            className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Signing up..." : "Sign Up"}
           </button>
