@@ -9,8 +9,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### UI & Branding
 
-- [ ] **UIBR-01**: Entire site translated to English -- all visible text, labels, error messages, placeholders
-- [ ] **UIBR-02**: All URL routes migrated to English (e.g. /eventi -> /events, /registrati -> /register, /presenze -> /attendance, /galleria -> /gallery) with redirects from old Italian paths
+- [x] **UIBR-01**: Entire site translated to English -- all visible text, labels, error messages, placeholders
+- [x] **UIBR-02**: All URL routes migrated to English (e.g. /eventi -> /events, /registrati -> /register, /presenze -> /attendance, /galleria -> /gallery) with redirects from old Italian paths
 - [x] **UIBR-03**: Orbitron font (Google Fonts) applied as the primary font site-wide
 - [x] **UIBR-04**: Homepage displays Resonate logo image instead of text heading "Resonate Music events community"
 - [ ] **UIBR-05**: Logged-in users no longer see "diventa membro per confermare la tua presenza" on event pages
@@ -120,8 +120,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UIBR-01 | Phase 1 | Pending |
-| UIBR-02 | Phase 1 | Pending |
+| UIBR-01 | Phase 1 | Complete |
+| UIBR-02 | Phase 1 | Complete |
 | UIBR-03 | Phase 1 | Complete |
 | UIBR-04 | Phase 1 | Complete |
 | UIBR-05 | Phase 1 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24 after roadmap creation*
+*Last updated: 2026-02-24T20:25:51Z after 01-02 completion*
