@@ -24,7 +24,7 @@ export default function NewsletterPage() {
       if (!res.ok) throw new Error();
       setSuccess(true);
     } catch {
-      setError("Qualcosa è andato storto. Riprova.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -35,20 +35,20 @@ export default function NewsletterPage() {
       {success ? (
         <div className="text-center">
           <p className="text-5xl mb-4">✓</p>
-          <h1 className="text-2xl font-bold mb-2">Iscritto!</h1>
-          <p className="text-muted">Riceverai le novità sui prossimi eventi.</p>
+          <h1 className="text-2xl font-bold mb-2">Subscribed!</h1>
+          <p className="text-muted">You&apos;ll receive updates about upcoming events.</p>
         </div>
       ) : (
         <div className="w-full max-w-sm">
           <h1 className="mb-2 text-3xl font-bold tracking-tight">Newsletter</h1>
           <p className="mb-8 text-muted">
-            Ricevi aggiornamenti sui prossimi eventi direttamente nella tua inbox.
+            Get updates about upcoming events right in your inbox.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input
               type="email"
-              placeholder="La tua email"
+              placeholder="Your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -62,7 +62,7 @@ export default function NewsletterPage() {
               disabled={loading}
               className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
-              {loading ? "Iscrizione..." : "Iscriviti"}
+              {loading ? "Subscribing..." : "Subscribe"}
             </button>
           </form>
         </div>

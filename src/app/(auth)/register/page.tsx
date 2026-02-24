@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function RegistratiPage() {
+export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,10 +42,9 @@ export default function RegistratiPage() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <div className="mb-4 text-5xl">✉️</div>
-        <h1 className="mb-2 text-2xl font-bold">Controlla la tua email</h1>
+        <h1 className="mb-2 text-2xl font-bold">Check your email</h1>
         <p className="max-w-xs text-muted">
-          Ti abbiamo inviato un link di conferma. Clicca il link per attivare il
-          tuo account.
+          We sent you a confirmation link. Click it to activate your account.
         </p>
       </div>
     );
@@ -54,15 +53,15 @@ export default function RegistratiPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight">Diventa membro</h1>
+        <h1 className="mb-2 text-3xl font-bold tracking-tight">Become a Member</h1>
         <p className="mb-8 text-muted">
-          Unisciti alla community Resonate
+          Join the Resonate community
         </p>
 
         <form onSubmit={handleSignup} className="flex flex-col gap-4">
           <input
             type="text"
-            placeholder="Nome completo"
+            placeholder="Full name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
@@ -78,7 +77,7 @@ export default function RegistratiPage() {
           />
           <input
             type="password"
-            placeholder="Password (min 6 caratteri)"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -93,14 +92,14 @@ export default function RegistratiPage() {
             disabled={loading}
             className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
-            {loading ? "Registrazione..." : "Registrati"}
+            {loading ? "Signing up..." : "Sign Up"}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Hai già un account?{" "}
+          Already have an account?{" "}
           <Link href="/login" className="text-accent hover:text-accent-hover">
-            Accedi
+            Sign In
           </Link>
         </p>
       </div>

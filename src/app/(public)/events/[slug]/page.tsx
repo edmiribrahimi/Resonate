@@ -45,7 +45,7 @@ export default async function EventDetailPage({
           </div>
         )}
         <Link
-          href="/eventi"
+          href="/events"
           className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm"
         >
           ←
@@ -55,7 +55,7 @@ export default async function EventDetailPage({
       <div className="px-6 pt-6">
         {/* Date & Time */}
         <p className="mb-2 text-sm font-medium text-accent">
-          {new Date(event.date).toLocaleDateString("it-IT", {
+          {new Date(event.date).toLocaleDateString("en-US", {
             weekday: "long",
             day: "numeric",
             month: "long",
@@ -74,17 +74,17 @@ export default async function EventDetailPage({
               <div>
                 <p className="text-sm text-muted">📍 Secret Location</p>
                 <p className="mt-1 text-sm text-foreground">
-                  Riceverai l&apos;indirizzo 24h prima dell&apos;evento
+                  You&apos;ll receive the address 24h before the event
                 </p>
               </div>
             ) : (
               <div>
                 <p className="text-sm text-muted">📍 Secret Location</p>
                 <Link
-                  href="/registrati"
+                  href="/register"
                   className="mt-2 inline-block text-sm font-medium text-accent hover:text-accent-hover"
                 >
-                  Diventa membro per ricevere l&apos;indirizzo →
+                  Become a member to get the address →
                 </Link>
               </div>
             )
@@ -123,14 +123,14 @@ export default async function EventDetailPage({
                   : "bg-accent text-white hover:bg-accent-hover"
               }`}
             >
-              {hasRSVP ? "✓ Ci sarò" : "Ci sarò"}
+              {hasRSVP ? "✓ I'm going" : "I'm going"}
             </button>
           ) : (
             <Link
-              href="/registrati"
+              href="/register"
               className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-colors hover:bg-accent-hover"
             >
-              Diventa membro per confermare la presenza
+              Sign up to confirm attendance
             </Link>
           )}
         </div>

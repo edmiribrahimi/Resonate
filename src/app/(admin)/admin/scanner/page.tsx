@@ -47,14 +47,14 @@ export default function ScannerPage() {
 
       if (data.valid) {
         setStatus("success");
-        setMessage(`✓ ${data.member_name} — Presenza registrata`);
+        setMessage(`✓ ${data.member_name} — Attendance recorded`);
       } else {
         setStatus("error");
-        setMessage("✗ Membership non valida");
+        setMessage("✗ Invalid membership");
       }
     } catch {
       setStatus("error");
-      setMessage("Errore di connessione");
+      setMessage("Connection error");
     }
   };
 
@@ -66,7 +66,7 @@ export default function ScannerPage() {
 
   return (
     <div className="min-h-dvh bg-background p-6">
-      <h1 className="mb-6 text-2xl font-bold">Scanner QR</h1>
+      <h1 className="mb-6 text-2xl font-bold">QR Scanner</h1>
 
       {!result ? (
         <div ref={scannerRef}>
@@ -83,14 +83,14 @@ export default function ScannerPage() {
                 : "border-card-border bg-card"
             }`}
           >
-            <p className="text-xl font-semibold">{message || "Verifica in corso..."}</p>
+            <p className="text-xl font-semibold">{message || "Verifying..."}</p>
           </div>
 
           <button
             onClick={resetScanner}
             className="w-full rounded-full bg-accent py-3 font-medium text-white hover:bg-accent-hover"
           >
-            Scansiona un altro QR
+            Scan another QR
           </button>
         </div>
       )}

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 
-export default async function PresenzePage() {
+export default async function AttendancePage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,9 +16,9 @@ export default async function PresenzePage() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Le tue presenze</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Your Attendance</h1>
         <p className="mt-1 text-muted">
-          {attendances.length} {attendances.length === 1 ? "evento" : "eventi"} frequentati
+          {attendances.length} {attendances.length === 1 ? "event" : "events"} attended
         </p>
       </header>
 
@@ -27,7 +27,7 @@ export default async function PresenzePage() {
           <div className="rounded-2xl border border-card-border bg-card p-8 text-center">
             <p className="text-4xl mb-3">🎵</p>
             <p className="text-muted">
-              Nessuna presenza registrata ancora. Vieni al prossimo evento!
+              No attendance recorded yet. Come to the next event!
             </p>
           </div>
         ) : (
@@ -43,7 +43,7 @@ export default async function PresenzePage() {
                 <div>
                   <p className="font-medium">{att.event_title}</p>
                   <p className="text-sm text-muted">
-                    {new Date(att.date).toLocaleDateString("it-IT", {
+                    {new Date(att.date).toLocaleDateString("en-US", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",

@@ -29,11 +29,11 @@ const mockEvents = {
   ],
 };
 
-export default function EventiPage() {
+export default function EventsPage() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Eventi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Events</h1>
       </header>
 
       <section className="px-6 mb-8">
@@ -42,10 +42,10 @@ export default function EventiPage() {
         </h2>
         <div className="flex flex-col gap-4">
           {mockEvents.upcoming.map((event) => (
-            <Link key={event.slug} href={`/eventi/${event.slug}`}>
+            <Link key={event.slug} href={`/events/${event.slug}`}>
               <div className="rounded-2xl border border-card-border bg-card p-5 transition-colors hover:border-accent/50">
                 <p className="mb-1 text-sm text-muted">
-                  {new Date(event.date).toLocaleDateString("it-IT", {
+                  {new Date(event.date).toLocaleDateString("en-US", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
@@ -78,10 +78,10 @@ export default function EventiPage() {
         </h2>
         <div className="flex flex-col gap-4">
           {mockEvents.past.map((event) => (
-            <Link key={event.slug} href={`/eventi/${event.slug}`}>
+            <Link key={event.slug} href={`/events/${event.slug}`}>
               <div className="rounded-2xl border border-card-border bg-card/50 p-5 opacity-70 transition-colors hover:opacity-100">
                 <p className="mb-1 text-sm text-muted">
-                  {new Date(event.date).toLocaleDateString("it-IT", {
+                  {new Date(event.date).toLocaleDateString("en-US", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",

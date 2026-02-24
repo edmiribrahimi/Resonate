@@ -22,7 +22,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError("Email o password non corretti");
+      setError("Incorrect email or password");
       setLoading(false);
       return;
     }
@@ -33,9 +33,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight">Accedi</h1>
+        <h1 className="mb-2 text-3xl font-bold tracking-tight">Sign In</h1>
         <p className="mb-8 text-muted">
-          Accedi alla tua area membri
+          Access your member area
         </p>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -63,14 +63,14 @@ export default function LoginPage() {
             disabled={loading}
             className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
-            {loading ? "Accesso..." : "Accedi"}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Non hai un account?{" "}
-          <Link href="/registrati" className="text-accent hover:text-accent-hover">
-            Registrati
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-accent hover:text-accent-hover">
+            Sign Up
           </Link>
         </p>
       </div>

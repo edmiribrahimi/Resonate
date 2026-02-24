@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Home", icon: "home" },
-  { href: "/eventi", label: "Eventi", icon: "calendar" },
-  { href: "/galleria", label: "Galleria", icon: "image" },
-  { href: "/dashboard", label: "Area Membri", icon: "user" },
+  { href: "/events", label: "Events", icon: "calendar" },
+  { href: "/gallery", label: "Gallery", icon: "image" },
+  { href: "/dashboard", label: "Members", icon: "user" },
 ];
 
 const icons: Record<string, React.ReactNode> = {

@@ -29,8 +29,8 @@ export default function MembershipCardView({
         </p>
         <h2 className="mt-2 text-2xl font-bold">{fullName}</h2>
         <p className="mt-1 text-sm text-muted">
-          Membro dal{" "}
-          {new Date(memberSince).toLocaleDateString("it-IT", {
+          Member since{" "}
+          {new Date(memberSince).toLocaleDateString("en-US", {
             month: "long",
             year: "numeric",
           })}

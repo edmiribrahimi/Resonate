@@ -11,7 +11,7 @@ export default async function MembershipCardPage() {
 
   if (!user) redirect("/login");
 
-  const fullName = user.user_metadata?.full_name || "Membro";
+  const fullName = user.user_metadata?.full_name || "Member";
 
   // TODO: fetch membership_code from profiles table
   const membershipCode = "RSN-DEMO1234";
@@ -30,17 +30,17 @@ export default async function MembershipCardPage() {
         />
 
         <div className="mt-6 rounded-2xl border border-card-border bg-card p-5">
-          <h2 className="mb-2 font-semibold">Come usare la card</h2>
+          <h2 className="mb-2 font-semibold">How to use your card</h2>
           <ol className="list-inside list-decimal text-sm text-muted leading-relaxed">
-            <li>Mostra il QR code all&apos;ingresso dell&apos;evento</li>
-            <li>Lo staff scannerizzerà il codice</li>
-            <li>La tua presenza verrà registrata automaticamente</li>
+            <li>Show the QR code at the event entrance</li>
+            <li>Staff will scan the code</li>
+            <li>Your attendance will be recorded automatically</li>
           </ol>
         </div>
 
         <div className="mt-4">
           <button className="w-full rounded-full border border-card-border py-3 text-sm font-medium transition-colors hover:bg-card">
-            Aggiungi a Apple/Google Wallet
+            Add to Apple/Google Wallet
           </button>
         </div>
       </div>
