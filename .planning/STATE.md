@@ -6,28 +6,28 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 3 in progress -- Referral & Approval System.
+**Current Focus:** Phase 3 complete -- Referral & Approval System. Ready for Phase 4.
 
 ## Current Position
 
 **Phase:** 3 of 7 -- Referral & Approval System
-**Plan:** 2 of 3
-**Status:** In progress
+**Plan:** 3 of 3
+**Status:** Phase complete
 
 ```
-[Phase Progress]  █████████████░░░░░░░  2/3 plans in phase 3
+[Phase Progress]  ████████████████████  3/3 plans in phase 3
 
-[Overall]         ██████░░░░░░░░░░░░░░  2/7 phases complete
+[Overall]         █████████░░░░░░░░░░░  3/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 8 |
+| Plans completed | 9 |
 | Plans failed | 0 |
-| Requirements done | 19/45 |
-| Phases complete | 2/7 |
+| Requirements done | 22/45 |
+| Phases complete | 3/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -39,6 +39,7 @@
 | 02-03 (Admin Members) | 161s | 2 | 4 |
 | 03-01 (Referral Data Foundation) | 128s | 2 | 4 |
 | 03-02 (Referral Link Display) | 95s | 1 | 3 |
+| 03-03 (Approval Queue & Admin UI) | 220s | 2 | 4 |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@
 | Inline Suspense in register page | Phase 3 | Simplest approach for single page needing useSearchParams -- no parent layout change needed |
 | Shared CopyReferralLink component | Phase 3 | Extracted to src/components/membership/ for reuse on dashboard and membership card pages |
 | Dual guard on membership card referral link | Phase 3 | Check profile.status === approved AND membershipCode !== RSN-UNKNOWN for defense in depth |
+| Service-role client for approve/reject | Phase 3 | Organizers lack RLS write on profiles; service-role bypasses for approve/reject operations |
+| callerRole prop on MemberTable | Phase 3 | Single component renders different action sets for master vs organizer, avoids duplication |
+| Client-side referral count computation | Phase 3 | referralCounts Map built from loaded data; no extra DB query needed |
 
 ### Research Notes
 
@@ -93,14 +97,15 @@ None currently.
 - [x] Plan Phase 3 via `/gsd:plan-phase 3`
 - [x] Execute Plan 03-01 (Referral Data Foundation)
 - [x] Execute Plan 03-02 (Referral Link Display)
+- [x] Execute Plan 03-03 (Approval Queue & Admin UI)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T23:21:26Z
-**Stopped at:** Completed 03-02-PLAN.md
-**What happened:** Executed Plan 03-02: Created CopyReferralLink client component with clipboard copy + fallback. Dashboard now fetches membership_code from profiles and shows referral link card for approved members. Membership card page replaces hardcoded RSN-DEMO1234 with real DB-fetched membership_code and shows referral link for approved members. Build passes. 1 task, 1 commit.
-**Next step:** Execute Plan 03-03
+**Last session:** 2026-02-24T23:23:41Z
+**Stopped at:** Completed 03-03-PLAN.md (Phase 3 complete)
+**What happened:** Executed Plan 03-03: Added server actions for single/bulk approve/reject with verifyAdminOrOrganizer supporting both master and organizer roles. Service-role client bypasses RLS for profile updates. Enhanced MemberTable with status tabs (All/Pending/Approved/Rejected with badge count), bulk selection checkboxes with approve/reject toolbar, and expandable detail rows showing referral data and attendance. Removed placeholder columns, moved to expandable rows. Admin page queries referral data via self-join. Organizer page now has showActions=true with callerRole="organizer". Build passes. 2 tasks, 2 commits.
+**Next step:** Plan Phase 4 via /gsd:plan-phase 4
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T23:21:26Z*
+*Last updated: 2026-02-24T23:23:41Z*

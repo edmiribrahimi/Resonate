@@ -9,7 +9,7 @@
 
 - [x] **Phase 1: UI Foundation & English Migration** - Translate site to English, apply brand identity, fix UI bugs
 - [x] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
-- [ ] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
+- [x] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
 - [ ] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
 - [ ] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
 - [ ] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
@@ -61,7 +61,12 @@ Plans:
   3. A user who registers without a referral link is set to "pending" status and can only browse events (no RSVP, no ticket purchase, no media upload)
   4. Master users and organizers see a pending members list and can approve or reject each one
   5. The referral relationship (who invited whom) is stored and visible in admin views
-**Plans**: TBD
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 03-01-PLAN.md -- Referral data foundation: referred_by column, referral-aware trigger, registration ?ref capture
+- [x] 03-02-PLAN.md -- Referral link display: CopyReferralLink component on dashboard and membership card
+- [x] 03-03-PLAN.md -- Approval queue & admin UI: status tabs, bulk approve/reject, expandable detail rows, organizer support
 
 ### Phase 4: Branded Emails
 **Goal**: All transactional emails reflect the Resonate brand identity
@@ -114,7 +119,7 @@ Plans:
 |-------|---------------|--------|-----------|
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
 | 2. Schema & RBAC Foundation | 3/3 | Complete    | 2026-02-24 |
-| 3. Referral & Approval System | 2/3 | In progress | - |
+| 3. Referral & Approval System | 3/3 | Complete | 2026-02-24 |
 | 4. Branded Emails | 0/? | Not started | - |
 | 5. Event Management | 0/? | Not started | - |
 | 6. Ticketing & Payments | 0/? | Not started | - |

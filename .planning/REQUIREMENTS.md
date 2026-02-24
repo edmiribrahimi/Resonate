@@ -36,9 +36,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **REFR-04**: Users who register via valid referral link are automatically set to status "approved"
 - [x] **REFR-05**: Users who register without referral link are set to status "pending"
 - [x] **REFR-06**: Referral relationship tracked in profile (referred_by field)
-- [ ] **APPR-01**: Pending members can browse published events but cannot RSVP, buy tickets, or upload media
-- [ ] **APPR-02**: Master user and Organizers see a list of pending members awaiting approval
-- [ ] **APPR-03**: Master user and Organizers can approve or reject pending members
+- [x] **APPR-01**: Pending members can browse published events but cannot RSVP, buy tickets, or upload media
+- [x] **APPR-02**: Master user and Organizers see a list of pending members awaiting approval
+- [x] **APPR-03**: Master user and Organizers can approve or reject pending members
 - [ ] **APPR-04**: Member receives email notification when their account is approved
 
 ### Event Management
@@ -141,9 +141,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REFR-04 | Phase 3 | Complete |
 | REFR-05 | Phase 3 | Complete |
 | REFR-06 | Phase 3 | Complete |
-| APPR-01 | Phase 3 | Pending |
-| APPR-02 | Phase 3 | Pending |
-| APPR-03 | Phase 3 | Pending |
+| APPR-01 | Phase 3 | Complete |
+| APPR-02 | Phase 3 | Complete |
+| APPR-03 | Phase 3 | Complete |
 | APPR-04 | Phase 4 | Pending |
 | EVNT-01 | Phase 5 | Pending |
 | EVNT-02 | Phase 5 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24T23:21:26Z after 03-02 completion*
+*Last updated: 2026-02-24T23:23:41Z after 03-03 completion*
