@@ -1,0 +1,91 @@
+<!-- Resonate Registration Confirmation - Paste into Supabase Dashboard > Authentication > Email Templates > Confirm Signup -->
+<!-- Replace YOUR_DOMAIN with your production domain (e.g., resonate.app) -->
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
+  <title>Confirm your email to join Resonate</title>
+</head>
+<body style="background-color: #0a0a0a; margin: 0; padding: 0; font-family: 'Arial', sans-serif;">
+  <!--[if mso]>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a;"><tr><td>
+  <![endif]-->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a0a;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; width: 100%;">
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding-bottom: 32px;">
+              <img
+                src="https://YOUR_DOMAIN/images/logo-white.png"
+                alt="Resonate"
+                width="180"
+                style="display: block; border: 0; outline: none; text-decoration: none;"
+              />
+            </td>
+          </tr>
+
+          <!-- Content Card -->
+          <tr>
+            <td style="background-color: #141414; border: 1px solid #262626; border-radius: 12px; padding: 32px;">
+
+              <h1 style="color: #ededed; font-size: 24px; font-weight: bold; font-family: 'Arial', sans-serif; margin: 0 0 16px 0;">
+                Welcome to Resonate
+              </h1>
+
+              <p style="color: #a1a1aa; font-size: 16px; line-height: 1.5; font-family: 'Arial', sans-serif; margin: 0 0 24px 0;">
+                Thanks for signing up. Confirm your email address to get started.
+              </p>
+
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="50%" fillcolor="#e5484d">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Confirm Email</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <a
+                href="{{ .ConfirmationURL }}"
+                target="_blank"
+                style="display: inline-block; background-color: #e5484d; color: #ffffff; font-size: 16px; font-weight: bold; font-family: 'Arial', sans-serif; text-decoration: none; padding: 12px 32px; border-radius: 9999px; mso-padding-alt: 0;"
+              >
+                Confirm Email
+              </a>
+              <!--<![endif]-->
+
+              <p style="color: #a1a1aa; font-size: 13px; line-height: 1.5; font-family: 'Arial', sans-serif; margin: 24px 0 0 0;">
+                If you didn't create an account, you can safely ignore this email.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top: 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="border-top: 1px solid #262626; padding-top: 16px;" align="center">
+                    <p style="color: #a1a1aa; font-size: 12px; font-family: 'Arial', sans-serif; margin: 0; line-height: 1.5;">
+                      Resonate Music Events Community
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+  <!--[if mso]>
+  </td></tr></table>
+  <![endif]-->
+</body>
+</html>
