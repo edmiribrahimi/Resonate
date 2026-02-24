@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 2 complete. Ready to plan Phase 3 -- Referral & Approval System.
+**Current Focus:** Phase 3 in progress -- Referral & Approval System.
 
 ## Current Position
 
-**Phase:** 2 of 7 -- Schema & RBAC Foundation
-**Plan:** 3 of 3
-**Status:** Milestone complete
+**Phase:** 3 of 7 -- Referral & Approval System
+**Plan:** 1 of 3
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  3/3 plans in phase 2
+[Phase Progress]  ███████░░░░░░░░░░░░░  1/3 plans in phase 3
 
 [Overall]         ██████░░░░░░░░░░░░░░  2/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 6 |
+| Plans completed | 7 |
 | Plans failed | 0 |
-| Requirements done | 13/45 |
+| Requirements done | 18/45 |
 | Phases complete | 2/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -37,6 +37,7 @@
 | 02-01 (Schema Migration) | 203s | 2 | 5 |
 | 02-02 (Middleware RBAC) | 255s | 2 | 12 |
 | 02-03 (Admin Members) | 161s | 2 | 4 |
+| 03-01 (Referral Data Foundation) | 128s | 2 | 4 |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@
 | Shared MemberTable with showActions prop | Phase 2 | Avoids code duplication between admin and organizer member pages; single source of truth |
 | Placeholder columns for Referred By and Events | Phase 2 | referred_by field added in Phase 3; event count requires attendances join from Phase 5 |
 | Combined demote + deactivate in deactivateMember | Phase 2 | Prevents rejected-but-still-organizer state by resetting role to member in same update |
+| Reuse membership_code as referral code | Phase 3 | No separate referral code or table needed -- membership_code (RSN-XXXXXXXX) already unique per member |
+| referral_code omitted when empty | Phase 3 | Pass undefined instead of empty string so trigger avoids unnecessary membership_code lookup |
+| Inline Suspense in register page | Phase 3 | Simplest approach for single page needing useSearchParams -- no parent layout change needed |
 
 ### Research Notes
 
@@ -83,15 +87,16 @@ None currently.
 - [x] Execute Plan 01-03 (Bug fixes)
 - [x] Plan Phase 2
 - [x] Execute Phase 2 (02-01, 02-02, 02-03 all complete)
-- [ ] Plan Phase 3 via `/gsd:plan-phase 3`
+- [x] Plan Phase 3 via `/gsd:plan-phase 3`
+- [x] Execute Plan 03-01 (Referral Data Foundation)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T22:11:30.610Z
-**Stopped at:** Phase 3 context gathered
-**What happened:** Executed Plan 02-03: Created Server Actions (updateMemberRole, deactivateMember, reactivateMember) with master-only auth verification. Built admin members page at /admin/members with full member table, role/status badges, action buttons with loading states, and responsive table/card layout. Created shared MemberTable client component with client-side filtering (search, role, status dropdowns). Built organizer read-only member list at /organizer/members reusing MemberTable with showActions=false. Build passes. 2 tasks, 2 commits.
-**Next step:** Plan Phase 3 (Referral & Approval System)
+**Last session:** 2026-02-24T23:16:42Z
+**Stopped at:** Completed 03-01-PLAN.md
+**What happened:** Executed Plan 03-01: Created migration adding referred_by UUID FK column to profiles. Updated handle_new_user trigger with referral logic -- reads referral_code from auth metadata, resolves referrer by membership_code + approved status, sets status=approved for valid referrals or pending otherwise. Updated registration page to capture ?ref URL parameter via useSearchParams and pass referral_code through signUp metadata. Wrapped in Suspense boundary. Column default for status remains 'approved' per user decision. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 03-02
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T21:42:42Z*
+*Last updated: 2026-02-24T23:16:42Z*

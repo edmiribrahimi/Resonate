@@ -30,12 +30,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Referral & Approval
 
-- [ ] **REFR-01**: Each approved member has a unique referral link (e.g. /join?ref=RSN-XXXXXXXX using membership_code)
+- [x] **REFR-01**: Each approved member has a unique referral link (e.g. /join?ref=RSN-XXXXXXXX using membership_code)
 - [ ] **REFR-02**: Members can view and copy their referral link from their profile/dashboard
-- [ ] **REFR-03**: Registration form accepts referral code from URL parameter
-- [ ] **REFR-04**: Users who register via valid referral link are automatically set to status "approved"
-- [ ] **REFR-05**: Users who register without referral link are set to status "pending"
-- [ ] **REFR-06**: Referral relationship tracked in profile (referred_by field)
+- [x] **REFR-03**: Registration form accepts referral code from URL parameter
+- [x] **REFR-04**: Users who register via valid referral link are automatically set to status "approved"
+- [x] **REFR-05**: Users who register without referral link are set to status "pending"
+- [x] **REFR-06**: Referral relationship tracked in profile (referred_by field)
 - [ ] **APPR-01**: Pending members can browse published events but cannot RSVP, buy tickets, or upload media
 - [ ] **APPR-02**: Master user and Organizers see a list of pending members awaiting approval
 - [ ] **APPR-03**: Master user and Organizers can approve or reject pending members
@@ -135,12 +135,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROLE-05 | Phase 2 | Complete |
 | ROLE-06 | Phase 2 | Complete |
 | ROLE-07 | Phase 2 | Complete |
-| REFR-01 | Phase 3 | Pending |
+| REFR-01 | Phase 3 | Complete |
 | REFR-02 | Phase 3 | Pending |
-| REFR-03 | Phase 3 | Pending |
-| REFR-04 | Phase 3 | Pending |
-| REFR-05 | Phase 3 | Pending |
-| REFR-06 | Phase 3 | Pending |
+| REFR-03 | Phase 3 | Complete |
+| REFR-04 | Phase 3 | Complete |
+| REFR-05 | Phase 3 | Complete |
+| REFR-06 | Phase 3 | Complete |
 | APPR-01 | Phase 3 | Pending |
 | APPR-02 | Phase 3 | Pending |
 | APPR-03 | Phase 3 | Pending |
