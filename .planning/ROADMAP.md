@@ -13,7 +13,7 @@
 - [x] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
 - [x] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
 - [x] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
-- [ ] **Phase 7: Event Media** - Member photo/video uploads for attended events, gallery integration
+- [x] **Phase 7: Event Media** - Member photo/video uploads for attended events, gallery integration
 
 ## Phase Details
 
@@ -130,8 +130,8 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md -- Data foundation: schema migration (uploaded_by, status, file_size columns), storage bucket, RLS policies, media server actions
-- [ ] 07-02-PLAN.md -- Upload UI and event gallery: MediaUpload (drag-drop, preview, progress), MediaGrid, Lightbox, event detail page integration
-- [ ] 07-03-PLAN.md -- Moderation and profile media: organizer/admin review pages, approve/reject workflow, dashboard "My Media" section
+- [x] 07-02-PLAN.md -- Upload UI and event gallery: MediaUpload (drag-drop, preview, progress), MediaGrid, Lightbox, event detail page integration
+- [x] 07-03-PLAN.md -- Moderation and profile media: organizer/admin review pages, approve/reject workflow, dashboard "My Media" section
 
 ## Progress
 
@@ -143,7 +143,7 @@ Plans:
 | 4. Branded Emails | 2/2 | Complete    | 2026-02-25 |
 | 5. Event Management | 3/3 | Complete | 2026-02-25 |
 | 6. Ticketing & Payments | 4/4 | Complete | 2026-02-25 |
-| 7. Event Media | 1/3 | In progress | - |
+| 7. Event Media | 3/3 | Complete | 2026-02-25 |
 
 ## Coverage
 

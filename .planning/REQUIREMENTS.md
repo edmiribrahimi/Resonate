@@ -63,11 +63,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Event Media
 
-- [ ] **MDIA-01**: Approved members can upload photos for events they attended (verified against attendance record)
-- [ ] **MDIA-02**: Approved members can upload videos for events they attended
-- [ ] **MDIA-03**: Uploaded media appears on the event detail page in a gallery section
+- [x] **MDIA-01**: Approved members can upload photos for events they attended (verified against attendance record)
+- [x] **MDIA-02**: Approved members can upload videos for events they attended
+- [x] **MDIA-03**: Uploaded media appears on the event detail page in a gallery section
 - [ ] **MDIA-04**: Uploaded media appears on the member's profile page, tagged by event
-- [ ] **MDIA-05**: File validation enforced (photos: JPEG/PNG/WebP up to 10MB, videos: MP4/MOV up to 100MB)
+- [x] **MDIA-05**: File validation enforced (photos: JPEG/PNG/WebP up to 10MB, videos: MP4/MOV up to 100MB)
 - [ ] **MDIA-06**: Only members who were checked in at an event (attendance record exists) can upload media for that event
 
 ## v2 Requirements
@@ -159,11 +159,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TICK-05 | Phase 6 | Complete |
 | TICK-06 | Phase 6 | Complete |
 | TICK-07 | Phase 6 | Complete |
-| MDIA-01 | Phase 7 | Pending |
-| MDIA-02 | Phase 7 | Pending |
-| MDIA-03 | Phase 7 | Pending |
+| MDIA-01 | Phase 7 | Complete |
+| MDIA-02 | Phase 7 | Complete |
+| MDIA-03 | Phase 7 | Complete |
 | MDIA-04 | Phase 7 | Pending |
-| MDIA-05 | Phase 7 | Pending |
+| MDIA-05 | Phase 7 | Complete |
 | MDIA-06 | Phase 7 | Pending |
 
 **Coverage:**
