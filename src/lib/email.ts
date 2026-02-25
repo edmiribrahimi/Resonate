@@ -1,9 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM_ADDRESS =
-  process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
+// Lazy initialization to avoid build-time errors when env vars are missing
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 export async function sendEmail({
   to,
@@ -20,8 +24,10 @@ export async function sendEmail({
     content_type: string;
   }>;
 }) {
-  const { data, error } = await resend.emails.send({
-    from: FROM_ADDRESS,
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
+  const { data, error } = await getResend().emails.send({
+    from: fromAddress,
     to: [to],
     subject,
     html,

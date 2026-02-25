@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
+import { createCheckout } from "@/lib/sumup";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
@@ -342,4 +343,107 @@ export async function unpublishEvent(eventId: string) {
 
   revalidateEventPaths(event?.slug);
   return { success: true };
+}
+
+/**
+ * Initiate a ticket purchase via SumUp hosted checkout.
+ * Only approved members can purchase tickets (TICK-07).
+ */
+export async function purchaseTicket(eventId: string, tierId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  // Verify user is approved (TICK-07 guard)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    throw new Error("Profile not found");
+  }
+
+  if (profile.status !== "approved") {
+    throw new Error(
+      "Your account must be approved before you can purchase tickets"
+    );
+  }
+
+  // Check user doesn't already have a ticket for this event
+  const { data: existingTicket } = await supabase
+    .from("tickets")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingTicket) {
+    throw new Error("You already have a ticket for this event");
+  }
+
+  // Fetch tier details
+  const { data: tier, error: tierError } = await supabase
+    .from("ticket_tiers")
+    .select("name, price")
+    .eq("id", tierId)
+    .single();
+
+  if (tierError || !tier) {
+    throw new Error("Ticket tier not found");
+  }
+
+  // Fetch event details
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("title, slug")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error("Event not found");
+  }
+
+  // Generate unique checkout reference
+  const checkoutReference = crypto.randomUUID();
+
+  // Build URLs
+  const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}?payment=success&ref=${checkoutReference}`;
+  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
+
+  // Create SumUp checkout
+  const response = await createCheckout({
+    amount: tier.price,
+    currency: "EUR",
+    description: `${event.title} - ${tier.name}`,
+    checkoutReference,
+    redirectUrl,
+    returnUrl,
+  });
+
+  // Create pending purchase record using service-role client (bypass RLS)
+  const serviceClient = getServiceClient();
+  const { error: insertError } = await serviceClient
+    .from("pending_purchases")
+    .insert({
+      event_id: eventId,
+      tier_id: tierId,
+      user_id: user.id,
+      sumup_checkout_id: response.id,
+      status: "pending",
+    });
+
+  if (insertError) {
+    console.error("Failed to create pending purchase:", insertError);
+    throw new Error("Failed to initiate purchase");
+  }
+
+  return { success: true, checkoutUrl: response.hosted_checkout_url };
 }
