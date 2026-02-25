@@ -12,7 +12,7 @@
 
 **Phase:** 5 of 7 -- Event Management (complete)
 **Plan:** 3 of 3
-**Status:** Phase complete
+**Status:** Milestone complete
 
 ```
 [Phase Progress]  ████████████████████  3/3 plans in phase 5
