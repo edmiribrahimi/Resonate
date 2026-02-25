@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 6 in progress -- Ticketing & Payments. Plan 1 of 4 done (data foundation).
+**Current Focus:** Phase 6 in progress -- Ticketing & Payments. Plan 2 of 4 done (tier management).
 
 ## Current Position
 
 **Phase:** 6 of 7 -- Ticketing & Payments
-**Plan:** 1 of 4
+**Plan:** 2 of 4
 **Status:** In progress
 
 ```
-[Phase Progress]  █████░░░░░░░░░░░░░░░  1/4 plans in phase 6
+[Phase Progress]  ██████████░░░░░░░░░░  2/4 plans in phase 6
 
 [Overall]         ██████████████░░░░░░  5/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 16 |
+| Plans completed | 17 |
 | Plans failed | 0 |
-| Requirements done | 32/45 |
+| Requirements done | 33/45 |
 | Phases complete | 5/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -46,6 +46,7 @@
 | 05-02 (Organizer/Admin Event UI) | 192s | 2 | 7 |
 | 05-03 (Public Event Pages) | 140s | 2 | 3 |
 | 06-01 (Ticketing Data Foundation) | 102s | 2 | 5 |
+| 06-02 (Ticket Tier Management) | 172s | 2 | 5 |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@
 | window.confirm() for delete confirmation | Phase 5 | Simple, native, accessible; no need for custom modal for a single confirmation prompt |
 | SELECT FOR UPDATE row-level locking in reserve_ticket | Phase 6 | Atomic oversell prevention -- DB-level locking is more reliable than application-layer mutex |
 | Extended sendEmail with optional attachments via spread | Phase 6 | Backward compatible -- existing callers unaffected; enables CID inline images for QR codes |
+| Separate AddTierForm and TierCard client components | Phase 6 | Clean server/client boundary; page.tsx stays server component for data fetching |
+| Delete button hidden (not disabled) when tier has sales | Phase 6 | Cleaner UX -- no confusing disabled button; action simply not available |
 
 ### Research Notes
 
@@ -127,14 +130,15 @@ None currently.
 - [x] Execute Plan 05-03 (Public Event Pages)
 - [x] Execute Plan 05-02 (Organizer/Admin Event Management UI)
 - [x] Execute Plan 06-01 (Ticketing Data Foundation)
+- [x] Execute Plan 06-02 (Ticket Tier Management)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T12:55:30Z
-**Stopped at:** Completed 06-01-PLAN.md
-**What happened:** Executed Plan 06-01: Created ticketing database migration (ticket_tiers, tickets, pending_purchases tables), RLS policies, atomic reserve_ticket function with FOR UPDATE locking, SumUp API client (createCheckout/getCheckout), TypeScript types, and extended sendEmail with optional attachments. Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 06-02 (Ticket Tier Management)
+**Last session:** 2026-02-25T13:01:07Z
+**Stopped at:** Completed 06-02-PLAN.md
+**What happened:** Executed Plan 06-02: Created tier CRUD server actions (createTier/updateTier/deleteTier with ownership verification), tier management page at /organizer/events/[id]/tickets, AddTierForm and TierCard client components, and "Manage Tickets" link in EventList. TypeScript passes clean. 2 tasks, 2 commits.
+**Next step:** Execute Plan 06-03 (Purchase Flow & Webhook)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T12:55:30Z*
+*Last updated: 2026-02-25T13:01:07Z*

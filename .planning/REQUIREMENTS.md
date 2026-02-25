@@ -53,7 +53,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Ticketing & Payments
 
-- [ ] **TICK-01**: Organizer can define multiple ticket tiers per event (e.g. Early Bird, Regular, VIP) with name, price, and quantity
+- [x] **TICK-01**: Organizer can define multiple ticket tiers per event (e.g. Early Bird, Regular, VIP) with name, price, and quantity
 - [ ] **TICK-02**: Approved members can purchase tickets via SumUp hosted checkout
 - [ ] **TICK-03**: Payment confirmation creates a ticket record with unique QR code
 - [ ] **TICK-04**: Member receives ticket confirmation with QR code (for door entry, separate from membership QR)
@@ -152,7 +152,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVNT-05 | Phase 5 | Complete |
 | EVNT-06 | Phase 5 | Complete |
 | EVNT-07 | Phase 5 | Complete |
-| TICK-01 | Phase 6 | Pending |
+| TICK-01 | Phase 6 | Complete |
 | TICK-02 | Phase 6 | Pending |
 | TICK-03 | Phase 6 | Pending |
 | TICK-04 | Phase 6 | Pending |
