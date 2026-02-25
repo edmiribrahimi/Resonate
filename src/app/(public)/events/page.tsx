@@ -1,35 +1,18 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
+import { createClient } from "@/lib/supabase/server";
 import type { UserRole, UserStatus } from "@/types/database";
+import EventTabs from "./EventTabs";
 
-// TODO: fetch from Supabase
-const mockEvents = {
-  upcoming: [
-    {
-      slug: "event-1",
-      title: "Resonate Vol. 1",
-      date: "2026-03-15",
-      time: "23:00",
-      location: null,
-      location_secret: true,
-      lineup: ["Artist A", "Artist B", "Artist C"],
-      cover_image: null,
-    },
-  ],
-  past: [
-    {
-      slug: "event-0",
-      title: "Resonate Opening",
-      date: "2026-02-01",
-      time: "22:00",
-      location: "Warehouse District",
-      location_secret: false,
-      lineup: ["Artist X", "Artist Y"],
-      cover_image: null,
-    },
-  ],
-};
+interface EventCard {
+  slug: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string | null;
+  location_secret: boolean;
+  capacity: number | null;
+}
 
 export default async function EventsPage() {
   // Read role and status from middleware-injected headers
@@ -37,70 +20,43 @@ export default async function EventsPage() {
   const role = (headersList.get("x-user-role") as UserRole) || null;
   const status = (headersList.get("x-user-status") as UserStatus) || null;
 
+  let upcoming: EventCard[] = [];
+  let past: EventCard[] = [];
+
+  try {
+    const supabase = await createClient();
+    const today = new Date().toISOString().split("T")[0];
+
+    const [upcomingResult, pastResult] = await Promise.all([
+      supabase
+        .from("events")
+        .select("slug, title, date, time, location, location_secret, capacity")
+        .eq("is_published", true)
+        .gte("date", today)
+        .order("date", { ascending: true }),
+      supabase
+        .from("events")
+        .select("slug, title, date, time, location, location_secret, capacity")
+        .eq("is_published", true)
+        .lt("date", today)
+        .order("date", { ascending: false }),
+    ]);
+
+    upcoming = (upcomingResult.data as EventCard[]) || [];
+    past = (pastResult.data as EventCard[]) || [];
+  } catch {
+    // Graceful fallback: render empty state if DB unavailable
+    upcoming = [];
+    past = [];
+  }
+
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <h1 className="text-3xl font-bold tracking-tight">Events</h1>
       </header>
 
-      <section className="px-6 mb-8">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-accent">
-          Upcoming
-        </h2>
-        <div className="flex flex-col gap-4">
-          {mockEvents.upcoming.map((event) => (
-            <Link key={event.slug} href={`/events/${event.slug}`}>
-              <div className="rounded-2xl border border-card-border bg-card p-5 transition-colors hover:border-accent/50">
-                <p className="mb-1 text-sm text-muted">
-                  {new Date(event.date).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}{" "}
-                  · {event.time}
-                </p>
-                <h3 className="mb-2 text-xl font-semibold">{event.title}</h3>
-                <p className="text-sm text-muted">
-                  {event.location_secret ? "&#128205; Secret Location" : `&#128205; ${event.location}`}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {event.lineup.map((artist) => (
-                    <span
-                      key={artist}
-                      className="rounded-full bg-background px-3 py-1 text-xs text-muted"
-                    >
-                      {artist}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted">
-          Past Events
-        </h2>
-        <div className="flex flex-col gap-4">
-          {mockEvents.past.map((event) => (
-            <Link key={event.slug} href={`/events/${event.slug}`}>
-              <div className="rounded-2xl border border-card-border bg-card/50 p-5 opacity-70 transition-colors hover:opacity-100">
-                <p className="mb-1 text-sm text-muted">
-                  {new Date(event.date).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </p>
-                <h3 className="mb-2 text-xl font-semibold">{event.title}</h3>
-                <p className="text-sm text-muted">&#128205; {event.location}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <EventTabs upcoming={upcoming} past={past} />
 
       <MobileNav role={role} status={status} />
     </div>
