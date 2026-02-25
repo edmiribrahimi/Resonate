@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
 import TierSelection from "./TierSelection";
-import type { Event, UserRole, UserStatus } from "@/types/database";
+import MediaGallerySection from "./MediaGallerySection";
+import type { Event, UserRole, UserStatus, EventMedia } from "@/types/database";
 
 export default async function EventDetailPage({
   params,
@@ -94,6 +95,25 @@ export default async function EventDetailPage({
       .maybeSingle();
     userTicket = ticket;
   }
+
+  // Fetch approved media for this event
+  const { data: approvedMedia } = await supabase
+    .from("event_media")
+    .select("id, url, type, uploaded_by, created_at")
+    .eq("event_id", event.id)
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
+
+  const mediaItems: { id: string; url: string; type: "photo" | "video"; uploaded_by?: string }[] =
+    (approvedMedia ?? []).map((m: { id: string; url: string; type: string; uploaded_by: string }) => ({
+      id: m.id,
+      url: m.url,
+      type: m.type as "photo" | "video",
+      uploaded_by: m.uploaded_by,
+    }));
+
+  // Check if current user can upload (has ticket + is approved)
+  const canUpload = isAuthenticated && isApproved && !!userTicket;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -297,6 +317,18 @@ export default async function EventDetailPage({
             </Link>
           </div>
         )}
+
+        {/* Event Gallery */}
+        <div className="mb-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
+            Gallery
+          </h2>
+          <MediaGallerySection
+            media={mediaItems}
+            canUpload={canUpload}
+            eventId={event.id}
+          />
+        </div>
       </div>
 
       <MobileNav role={role} status={status} />
