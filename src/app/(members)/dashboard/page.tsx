@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MyMediaSection from "@/components/media/MyMediaSection";
+import LogoutButton from "@/components/auth/LogoutButton";
+import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -279,6 +281,9 @@ export default async function DashboardPage() {
             </div>
           </>
         )}
+
+        <ResetPasswordButton />
+        <LogoutButton />
       </div>
 
       <MobileNav role={role} status={status} />

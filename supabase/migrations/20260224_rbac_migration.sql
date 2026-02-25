@@ -25,7 +25,37 @@ ALTER TABLE public.profiles
 UPDATE public.profiles SET role = 'organizer' WHERE is_admin = true;
 
 -- ============================================================
--- Step 3: Drop the old is_admin column
+-- Step 3: Drop old RLS policies that reference is_admin
+-- ============================================================
+-- Must drop these BEFORE dropping is_admin column (dependency order)
+
+-- Profiles
+DROP POLICY IF EXISTS "Public profiles are viewable by owner" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+
+-- Events
+DROP POLICY IF EXISTS "Published events are viewable by all" ON public.events;
+DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
+
+-- RSVPs
+DROP POLICY IF EXISTS "Users can view own RSVPs" ON public.rsvps;
+DROP POLICY IF EXISTS "Users can create own RSVPs" ON public.rsvps;
+DROP POLICY IF EXISTS "Users can delete own RSVPs" ON public.rsvps;
+DROP POLICY IF EXISTS "Admins can view all RSVPs" ON public.rsvps;
+
+-- Attendances
+DROP POLICY IF EXISTS "Users can view own attendances" ON public.attendances;
+DROP POLICY IF EXISTS "Admins can manage attendances" ON public.attendances;
+
+-- Event Media
+DROP POLICY IF EXISTS "Event media viewable by all" ON public.event_media;
+DROP POLICY IF EXISTS "Admins can manage media" ON public.event_media;
+
+-- Newsletter Subscribers
+DROP POLICY IF EXISTS "Admins can view subscribers" ON public.newsletter_subscribers;
+
+-- ============================================================
+-- Step 4: Drop the old is_admin column
 -- ============================================================
 
 ALTER TABLE public.profiles DROP COLUMN is_admin;
@@ -103,35 +133,6 @@ BEGIN
   RETURN user_role = 'master' OR user_role = 'organizer';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
-
--- ============================================================
--- Step 6: Drop ALL old RLS policies
--- ============================================================
-
--- Profiles
-DROP POLICY IF EXISTS "Public profiles are viewable by owner" ON public.profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-
--- Events
-DROP POLICY IF EXISTS "Published events are viewable by all" ON public.events;
-DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
-
--- RSVPs
-DROP POLICY IF EXISTS "Users can view own RSVPs" ON public.rsvps;
-DROP POLICY IF EXISTS "Users can create own RSVPs" ON public.rsvps;
-DROP POLICY IF EXISTS "Users can delete own RSVPs" ON public.rsvps;
-DROP POLICY IF EXISTS "Admins can view all RSVPs" ON public.rsvps;
-
--- Attendances
-DROP POLICY IF EXISTS "Users can view own attendances" ON public.attendances;
-DROP POLICY IF EXISTS "Admins can manage attendances" ON public.attendances;
-
--- Event Media
-DROP POLICY IF EXISTS "Event media viewable by all" ON public.event_media;
-DROP POLICY IF EXISTS "Admins can manage media" ON public.event_media;
-
--- Newsletter Subscribers
-DROP POLICY IF EXISTS "Admins can view subscribers" ON public.newsletter_subscribers;
 
 -- ============================================================
 -- Step 7: Create new role-based RLS policies

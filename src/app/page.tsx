@@ -1,11 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function Home() {
+  // Read role and status from middleware-injected headers
+  const headersList = await headers();
+  const role = (headersList.get("x-user-role") as UserRole) || null;
+  const status = (headersList.get("x-user-status") as UserStatus) || null;
+
+  // Logged-in users go straight to dashboard
+  if (role) redirect("/dashboard");
+
   let nextEvent: { slug: string; title: string; date: string } | null = null;
 
   try {
@@ -24,11 +33,6 @@ export default async function Home() {
     // No upcoming events or query failed -- gracefully show no event preview
   }
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-
   return (
     <div className="flex min-h-dvh flex-col">
       <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
@@ -40,10 +44,6 @@ export default async function Home() {
           priority
           className="mb-4"
         />
-
-        <p className="mb-8 text-sm uppercase tracking-widest text-muted">
-          motion music hub
-        </p>
 
         {nextEvent && (
           <Link
@@ -74,6 +74,12 @@ export default async function Home() {
             className="flex h-12 items-center justify-center rounded-full border border-card-border font-medium transition-colors hover:bg-card"
           >
             Join
+          </Link>
+          <Link
+            href="/login"
+            className="text-center text-sm text-muted transition-colors hover:text-foreground"
+          >
+            Already a member? <span className="text-accent">Sign In</span>
           </Link>
         </div>
       </main>

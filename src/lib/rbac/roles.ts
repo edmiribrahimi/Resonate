@@ -100,6 +100,11 @@ export function getVisibleNavItems(
   const isApproved = status === "approved";
 
   return NAV_ITEMS.filter((item) => {
+    // Hide Home for logged-in users (redirects to dashboard anyway)
+    if (item.href === "/" && isAuthenticated) {
+      return false;
+    }
+
     // Check authentication requirement
     if (item.requireAuth && !isAuthenticated) {
       return false;
