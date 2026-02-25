@@ -12,7 +12,7 @@
 
 **Phase:** 6 of 7 -- Ticketing & Payments
 **Plan:** 4 of 4
-**Status:** Phase complete
+**Status:** Milestone complete
 
 ```
 [Phase Progress]  ████████████████████  4/4 plans in phase 6
