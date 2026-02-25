@@ -6,28 +6,28 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 5 in progress -- Event Management. Plan 01 complete (data foundation).
+**Current Focus:** Phase 5 complete -- Event Management. All 3 plans done (data foundation, organizer UI, public pages).
 
 ## Current Position
 
-**Phase:** 5 of 7 -- Event Management (in progress)
-**Plan:** 1 of 3
-**Status:** In progress
+**Phase:** 5 of 7 -- Event Management (complete)
+**Plan:** 3 of 3
+**Status:** Phase complete
 
 ```
-[Phase Progress]  ███████░░░░░░░░░░░░░  1/3 plans in phase 5
+[Phase Progress]  ████████████████████  3/3 plans in phase 5
 
-[Overall]         ███████████░░░░░░░░░  4/7 phases complete
+[Overall]         ██████████████░░░░░░  5/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 12 |
+| Plans completed | 14 |
 | Plans failed | 0 |
-| Requirements done | 27/45 |
-| Phases complete | 4/7 |
+| Requirements done | 31/45 |
+| Phases complete | 5/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -43,6 +43,7 @@
 | 04-01 (Email Infrastructure) | 115s | 2 | 6 |
 | 04-02 (Approval/Rejection Emails) | 107s | 2 | 3 |
 | 05-01 (Event Data Foundation) | 148s | 2 | 5 |
+| 05-03 (Public Event Pages) | 140s | 2 | 3 |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@
 | ON DELETE SET NULL for created_by | Phase 5 | Events should be preserved even if the creating user is deleted; orphaned events managed by master |
 | Slug uniqueness via timestamp base36 suffix | Phase 5 | Low-volume event creation makes collision rare; base36 timestamp is short and unique enough |
 | Validation: title 3-100, description 10-5000 | Phase 5 | Balances minimum quality (no empty entries) with practical limits for event content |
+| Separate EventTabs client component | Phase 5 | Tab interactivity requires "use client" but data fetching stays in server component for performance |
+| Capacity as number on list, spots left on detail | Phase 5 | List view shows raw capacity for quick scanning; detail page shows computed spots left for actionability |
+| Lock emoji for secret location in list view | Phase 5 | Distinct from pin emoji for regular locations; communicates exclusivity at a glance |
 
 ### Research Notes
 
@@ -113,14 +117,15 @@ None currently.
 - [x] Execute Plan 04-01 (Email Infrastructure & Registration Confirmation)
 - [x] Execute Plan 04-02 (Approval/Rejection Email Templates)
 - [x] Execute Plan 05-01 (Event Data Foundation)
+- [x] Execute Plan 05-03 (Public Event Pages)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T11:49:45Z
-**Stopped at:** Completed 05-01-PLAN.md
-**What happened:** Executed Plan 05-01: Created Phase 5 migration (created_by column, 5 granular RLS policies replacing events_all_admin, event-images storage bucket with 4 policies). Updated schema.sql and TypeScript Event interface. Created slugify utility. Built 5 event CRUD server actions (create/update/delete/publish/unpublish) with ownership verification, master bypass, validation. Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 05-02 (Organizer/Admin Event Management UI)
+**Last session:** 2026-02-25T11:55:29Z
+**Stopped at:** Completed 05-03-PLAN.md
+**What happened:** Executed Plan 05-03: Replaced mock event data in both public event pages with real Supabase queries. Events list page has Upcoming/Past tab UI with compact cards (EventTabs client component). Event detail page shows capacity as "X spots left" / "Sold out", secret location with CTA, lineup as styled chips, medium cover image via Next.js Image, proper 404. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 05-02 (Organizer/Admin Event Management UI) or plan Phase 6
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T11:49:45Z*
+*Last updated: 2026-02-25T11:55:29Z*

@@ -45,10 +45,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **EVNT-01**: Organizer can create events with: title, description, date, time, location, secret location toggle, lineup, cover image, capacity
 - [x] **EVNT-02**: Organizer can edit their own events
-- [ ] **EVNT-03**: Events page displays real data from Supabase (replacing current mock data)
-- [ ] **EVNT-04**: Events page shows upcoming events and past events archive
-- [ ] **EVNT-05**: Event detail page shows remaining capacity ("X spots left") or "Sold out" status
-- [ ] **EVNT-06**: Secret location is hidden until member has purchased a ticket for the event
+- [x] **EVNT-03**: Events page displays real data from Supabase (replacing current mock data)
+- [x] **EVNT-04**: Events page shows upcoming events and past events archive
+- [x] **EVNT-05**: Event detail page shows remaining capacity ("X spots left") or "Sold out" status
+- [x] **EVNT-06**: Secret location is hidden until member has purchased a ticket for the event
 - [x] **EVNT-07**: Events generate URL-friendly slugs automatically from title
 
 ### Ticketing & Payments
@@ -147,10 +147,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | APPR-04 | Phase 4 | Complete |
 | EVNT-01 | Phase 5 | Complete |
 | EVNT-02 | Phase 5 | Complete |
-| EVNT-03 | Phase 5 | Pending |
-| EVNT-04 | Phase 5 | Pending |
-| EVNT-05 | Phase 5 | Pending |
-| EVNT-06 | Phase 5 | Pending |
+| EVNT-03 | Phase 5 | Complete |
+| EVNT-04 | Phase 5 | Complete |
+| EVNT-05 | Phase 5 | Complete |
+| EVNT-06 | Phase 5 | Complete |
 | EVNT-07 | Phase 5 | Complete |
 | TICK-01 | Phase 6 | Pending |
 | TICK-02 | Phase 6 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-25T11:49:45Z after 05-01 completion*
+*Last updated: 2026-02-25T11:55:29Z after 05-03 completion*

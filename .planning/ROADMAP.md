@@ -96,8 +96,8 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md -- Data foundation: migration (created_by, RLS, storage), TypeScript types, slugify utility, event CRUD server actions
-- [ ] 05-02-PLAN.md -- Organizer/admin event management UI: TagInput, EventForm, organizer events pages, admin events page
-- [ ] 05-03-PLAN.md -- Public event pages: replace mock data with real queries, tab UI, capacity display, secret location CTA
+- [x] 05-02-PLAN.md -- Organizer/admin event management UI: TagInput, EventForm, organizer events pages, admin events page
+- [x] 05-03-PLAN.md -- Public event pages: replace mock data with real queries, tab UI, capacity display, secret location CTA
 
 ### Phase 6: Ticketing & Payments
 **Goal**: Members can purchase tickets through SumUp and organizers can track sales
@@ -130,7 +130,7 @@ Plans:
 | 2. Schema & RBAC Foundation | 3/3 | Complete    | 2026-02-24 |
 | 3. Referral & Approval System | 3/3 | Complete    | 2026-02-24 |
 | 4. Branded Emails | 2/2 | Complete    | 2026-02-25 |
-| 5. Event Management | 1/3 | In progress | - |
+| 5. Event Management | 3/3 | Complete | 2026-02-25 |
 | 6. Ticketing & Payments | 0/? | Not started | - |
 | 7. Event Media | 0/? | Not started | - |
 
