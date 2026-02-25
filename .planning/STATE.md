@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 4 complete -- Branded Emails. All plans done.
+**Current Focus:** Phase 5 in progress -- Event Management. Plan 01 complete (data foundation).
 
 ## Current Position
 
-**Phase:** 4 of 7 -- Branded Emails (complete)
-**Plan:** 2 of 2
-**Status:** Milestone complete
+**Phase:** 5 of 7 -- Event Management (in progress)
+**Plan:** 1 of 3
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  2/2 plans in phase 4
+[Phase Progress]  ███████░░░░░░░░░░░░░  1/3 plans in phase 5
 
 [Overall]         ███████████░░░░░░░░░  4/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 11 |
+| Plans completed | 12 |
 | Plans failed | 0 |
-| Requirements done | 25/45 |
+| Requirements done | 27/45 |
 | Phases complete | 4/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -42,6 +42,7 @@
 | 03-03 (Approval Queue & Admin UI) | 220s | 2 | 4 |
 | 04-01 (Email Infrastructure) | 115s | 2 | 6 |
 | 04-02 (Approval/Rejection Emails) | 107s | 2 | 3 |
+| 05-01 (Event Data Foundation) | 148s | 2 | 5 |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@
 | Fire-and-forget email delivery | Phase 4 | DB update is the critical operation; email is best-effort notification that never blocks admin actions |
 | Sequential bulk email via IIFE | Phase 4 | For-of loop respects Resend rate limits; IIFE pattern runs in background without blocking response |
 | Pre-fetch member data before status update | Phase 4 | Query email/name before update to ensure data availability regardless of timing |
+| ON DELETE SET NULL for created_by | Phase 5 | Events should be preserved even if the creating user is deleted; orphaned events managed by master |
+| Slug uniqueness via timestamp base36 suffix | Phase 5 | Low-volume event creation makes collision rare; base36 timestamp is short and unique enough |
+| Validation: title 3-100, description 10-5000 | Phase 5 | Balances minimum quality (no empty entries) with practical limits for event content |
 
 ### Research Notes
 
@@ -108,14 +112,15 @@ None currently.
 - [x] Execute Plan 03-03 (Approval Queue & Admin UI)
 - [x] Execute Plan 04-01 (Email Infrastructure & Registration Confirmation)
 - [x] Execute Plan 04-02 (Approval/Rejection Email Templates)
+- [x] Execute Plan 05-01 (Event Data Foundation)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T00:02:43Z
-**Stopped at:** Completed 04-02-PLAN.md (Phase 4 complete)
-**What happened:** Executed Plan 04-02: Created MemberApprovedEmail template ("You're In" heading, "Open Resonate" CTA button) and MemberRejectedEmail template (respectful "unable to approve" messaging, no CTA). Integrated fire-and-forget email sending into approveMember, rejectMember, bulkApproveMember, bulkRejectMember server actions. Sequential bulk sending for Resend rate limits. Build passes. 2 tasks, 2 commits.
-**Next step:** Plan Phase 5 (Event Management)
+**Last session:** 2026-02-25T11:49:45Z
+**Stopped at:** Completed 05-01-PLAN.md
+**What happened:** Executed Plan 05-01: Created Phase 5 migration (created_by column, 5 granular RLS policies replacing events_all_admin, event-images storage bucket with 4 policies). Updated schema.sql and TypeScript Event interface. Created slugify utility. Built 5 event CRUD server actions (create/update/delete/publish/unpublish) with ownership verification, master bypass, validation. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 05-02 (Organizer/Admin Event Management UI)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T00:02:43Z*
+*Last updated: 2026-02-25T11:49:45Z*
