@@ -126,7 +126,12 @@ Plans:
   2. A member who was NOT checked in at an event cannot upload media for it
   3. Uploaded media appears in a gallery section on the event detail page
   4. Uploaded media also appears on the uploading member's profile page, tagged by event
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md -- Data foundation: schema migration (uploaded_by, status, file_size columns), storage bucket, RLS policies, media server actions
+- [ ] 07-02-PLAN.md -- Upload UI and event gallery: MediaUpload (drag-drop, preview, progress), MediaGrid, Lightbox, event detail page integration
+- [ ] 07-03-PLAN.md -- Moderation and profile media: organizer/admin review pages, approve/reject workflow, dashboard "My Media" section
 
 ## Progress
 
@@ -138,7 +143,7 @@ Plans:
 | 4. Branded Emails | 2/2 | Complete    | 2026-02-25 |
 | 5. Event Management | 3/3 | Complete | 2026-02-25 |
 | 6. Ticketing & Payments | 4/4 | Complete | 2026-02-25 |
-| 7. Event Media | 0/? | Not started | - |
+| 7. Event Media | 0/3 | Not started | - |
 
 ## Coverage
 
