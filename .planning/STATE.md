@@ -12,7 +12,7 @@
 
 **Phase:** 7 of 7 -- Event Media
 **Plan:** 3 of 3
-**Status:** Complete
+**Status:** Milestone complete
 
 ```
 [Phase Progress]  ████████████████████  3/3 plans in phase 7
