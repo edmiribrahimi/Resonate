@@ -54,12 +54,12 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Ticketing & Payments
 
 - [x] **TICK-01**: Organizer can define multiple ticket tiers per event (e.g. Early Bird, Regular, VIP) with name, price, and quantity
-- [ ] **TICK-02**: Approved members can purchase tickets via SumUp hosted checkout
-- [ ] **TICK-03**: Payment confirmation creates a ticket record with unique QR code
-- [ ] **TICK-04**: Member receives ticket confirmation with QR code (for door entry, separate from membership QR)
+- [x] **TICK-02**: Approved members can purchase tickets via SumUp hosted checkout
+- [x] **TICK-03**: Payment confirmation creates a ticket record with unique QR code
+- [x] **TICK-04**: Member receives ticket confirmation with QR code (for door entry, separate from membership QR)
 - [ ] **TICK-05**: Organizer can view ticket sales dashboard: tier breakdown, revenue total, buyer list
 - [x] **TICK-06**: Ticket purchase decrements available quantity; prevents overselling via database constraints
-- [ ] **TICK-07**: Pending members cannot purchase tickets (browse-only)
+- [x] **TICK-07**: Pending members cannot purchase tickets (browse-only)
 
 ### Event Media
 
@@ -153,12 +153,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVNT-06 | Phase 5 | Complete |
 | EVNT-07 | Phase 5 | Complete |
 | TICK-01 | Phase 6 | Complete |
-| TICK-02 | Phase 6 | Pending |
-| TICK-03 | Phase 6 | Pending |
-| TICK-04 | Phase 6 | Pending |
+| TICK-02 | Phase 6 | Complete |
+| TICK-03 | Phase 6 | Complete |
+| TICK-04 | Phase 6 | Complete |
 | TICK-05 | Phase 6 | Pending |
 | TICK-06 | Phase 6 | Complete |
-| TICK-07 | Phase 6 | Pending |
+| TICK-07 | Phase 6 | Complete |
 | MDIA-01 | Phase 7 | Pending |
 | MDIA-02 | Phase 7 | Pending |
 | MDIA-03 | Phase 7 | Pending |

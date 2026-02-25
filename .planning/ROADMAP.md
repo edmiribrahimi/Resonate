@@ -114,7 +114,7 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md -- Data foundation: ticketing tables, RLS policies, reserve_ticket RPC, TypeScript types, SumUp client, email extension
 - [x] 06-02-PLAN.md -- Ticket tier management: CRUD server actions, organizer tier management page, event list integration
-- [ ] 06-03-PLAN.md -- Purchase flow: SumUp checkout, webhook handler, QR generation, confirmation page/email, secret location reveal, pending guard
+- [x] 06-03-PLAN.md -- Purchase flow: SumUp checkout, webhook handler, QR generation, confirmation page/email, secret location reveal, pending guard
 - [ ] 06-04-PLAN.md -- Sales dashboard and My Tickets: organizer/admin sales pages, shared SalesDashboard component, dashboard tickets section
 
 ### Phase 7: Event Media
