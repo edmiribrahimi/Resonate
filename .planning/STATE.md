@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 5 complete -- Event Management. All 3 plans done (data foundation, organizer UI, public pages).
+**Current Focus:** Phase 6 in progress -- Ticketing & Payments. Plan 1 of 4 done (data foundation).
 
 ## Current Position
 
-**Phase:** 5 of 7 -- Event Management (complete)
-**Plan:** 3 of 3
-**Status:** Milestone complete
+**Phase:** 6 of 7 -- Ticketing & Payments
+**Plan:** 1 of 4
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  3/3 plans in phase 5
+[Phase Progress]  █████░░░░░░░░░░░░░░░  1/4 plans in phase 6
 
 [Overall]         ██████████████░░░░░░  5/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 15 |
+| Plans completed | 16 |
 | Plans failed | 0 |
-| Requirements done | 31/45 |
+| Requirements done | 32/45 |
 | Phases complete | 5/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -45,6 +45,7 @@
 | 05-01 (Event Data Foundation) | 148s | 2 | 5 |
 | 05-02 (Organizer/Admin Event UI) | 192s | 2 | 7 |
 | 05-03 (Public Event Pages) | 140s | 2 | 3 |
+| 06-01 (Ticketing Data Foundation) | 102s | 2 | 5 |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@
 | Shared EventList client component | Phase 5 | Both organizer and admin pages need identical interactive list behavior; single component avoids duplication |
 | Bound server action for edit page | Phase 5 | Closure over eventId in server component is cleaner than hidden form fields; leverages Next.js server action closures |
 | window.confirm() for delete confirmation | Phase 5 | Simple, native, accessible; no need for custom modal for a single confirmation prompt |
+| SELECT FOR UPDATE row-level locking in reserve_ticket | Phase 6 | Atomic oversell prevention -- DB-level locking is more reliable than application-layer mutex |
+| Extended sendEmail with optional attachments via spread | Phase 6 | Backward compatible -- existing callers unaffected; enables CID inline images for QR codes |
 
 ### Research Notes
 
@@ -123,14 +126,15 @@ None currently.
 - [x] Execute Plan 05-01 (Event Data Foundation)
 - [x] Execute Plan 05-03 (Public Event Pages)
 - [x] Execute Plan 05-02 (Organizer/Admin Event Management UI)
+- [x] Execute Plan 06-01 (Ticketing Data Foundation)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T11:56:19Z
-**Stopped at:** Completed 05-02-PLAN.md
-**What happened:** Executed Plan 05-02: Built TagInput chip component, shared EventForm with client-side Supabase Storage image upload, organizer event CRUD pages (list/create/edit), and admin event management page with creator attribution. Shared EventList client component for interactive actions. Build passes. 2 tasks, 2 commits. Phase 5 now fully complete (all 3 plans done).
-**Next step:** Plan Phase 6 (Ticketing & Payments) via `/gsd:plan-phase 6`
+**Last session:** 2026-02-25T12:55:30Z
+**Stopped at:** Completed 06-01-PLAN.md
+**What happened:** Executed Plan 06-01: Created ticketing database migration (ticket_tiers, tickets, pending_purchases tables), RLS policies, atomic reserve_ticket function with FOR UPDATE locking, SumUp API client (createCheckout/getCheckout), TypeScript types, and extended sendEmail with optional attachments. Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 06-02 (Ticket Tier Management)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T11:56:19Z*
+*Last updated: 2026-02-25T12:55:30Z*

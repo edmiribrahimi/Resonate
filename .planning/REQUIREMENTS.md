@@ -58,7 +58,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TICK-03**: Payment confirmation creates a ticket record with unique QR code
 - [ ] **TICK-04**: Member receives ticket confirmation with QR code (for door entry, separate from membership QR)
 - [ ] **TICK-05**: Organizer can view ticket sales dashboard: tier breakdown, revenue total, buyer list
-- [ ] **TICK-06**: Ticket purchase decrements available quantity; prevents overselling via database constraints
+- [x] **TICK-06**: Ticket purchase decrements available quantity; prevents overselling via database constraints
 - [ ] **TICK-07**: Pending members cannot purchase tickets (browse-only)
 
 ### Event Media
@@ -157,7 +157,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TICK-03 | Phase 6 | Pending |
 | TICK-04 | Phase 6 | Pending |
 | TICK-05 | Phase 6 | Pending |
-| TICK-06 | Phase 6 | Pending |
+| TICK-06 | Phase 6 | Complete |
 | TICK-07 | Phase 6 | Pending |
 | MDIA-01 | Phase 7 | Pending |
 | MDIA-02 | Phase 7 | Pending |

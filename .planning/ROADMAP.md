@@ -112,7 +112,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- Data foundation: ticketing tables, RLS policies, reserve_ticket RPC, TypeScript types, SumUp client, email extension
+- [x] 06-01-PLAN.md -- Data foundation: ticketing tables, RLS policies, reserve_ticket RPC, TypeScript types, SumUp client, email extension
 - [ ] 06-02-PLAN.md -- Ticket tier management: CRUD server actions, organizer tier management page, event list integration
 - [ ] 06-03-PLAN.md -- Purchase flow: SumUp checkout, webhook handler, QR generation, confirmation page/email, secret location reveal, pending guard
 - [ ] 06-04-PLAN.md -- Sales dashboard and My Tickets: organizer/admin sales pages, shared SalesDashboard component, dashboard tickets section
@@ -137,7 +137,7 @@ Plans:
 | 3. Referral & Approval System | 3/3 | Complete    | 2026-02-24 |
 | 4. Branded Emails | 2/2 | Complete    | 2026-02-25 |
 | 5. Event Management | 3/3 | Complete | 2026-02-25 |
-| 6. Ticketing & Payments | 0/4 | Planned | - |
+| 6. Ticketing & Payments | 1/4 | In progress | - |
 | 7. Event Media | 0/? | Not started | - |
 
 ## Coverage
