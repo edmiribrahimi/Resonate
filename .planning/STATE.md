@@ -12,7 +12,7 @@
 
 **Phase:** 4 of 7 -- Branded Emails (complete)
 **Plan:** 2 of 2
-**Status:** Phase complete
+**Status:** Milestone complete
 
 ```
 [Phase Progress]  ████████████████████  2/2 plans in phase 4
