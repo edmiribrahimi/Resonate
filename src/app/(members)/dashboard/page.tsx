@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
+import MyMediaSection from "@/components/media/MyMediaSection";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -31,6 +32,45 @@ export default async function DashboardPage() {
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
+
+  // Fetch user's media grouped by event
+  const { data: myMedia } = await supabase
+    .from("event_media")
+    .select("id, url, type, status, file_size, created_at, event_id, events(id, title, date, slug)")
+    .eq("uploaded_by", user.id)
+    .order("created_at", { ascending: false });
+
+  // Group media by event
+  const mediaGroupMap = new Map<string, {
+    eventId: string;
+    eventTitle: string;
+    eventDate: string;
+    eventSlug: string;
+    items: { id: string; url: string; type: "photo" | "video"; status: "pending" | "approved" | "rejected"; file_size: number | null; created_at: string }[];
+  }>();
+  (myMedia ?? []).forEach((m) => {
+    const evt = Array.isArray(m.events) ? m.events[0] : m.events;
+    const eventData = evt as { id: string; title: string; date: string; slug: string } | null;
+    const eid = eventData?.id ?? m.event_id;
+    if (!mediaGroupMap.has(eid)) {
+      mediaGroupMap.set(eid, {
+        eventId: eid,
+        eventTitle: eventData?.title ?? "Event",
+        eventDate: eventData?.date ?? "",
+        eventSlug: eventData?.slug ?? "",
+        items: [],
+      });
+    }
+    mediaGroupMap.get(eid)!.items.push({
+      id: m.id,
+      url: m.url,
+      type: m.type as "photo" | "video",
+      status: m.status as "pending" | "approved" | "rejected",
+      file_size: m.file_size,
+      created_at: m.created_at,
+    });
+  });
+  const mediaGroups = Array.from(mediaGroupMap.values());
 
   // Separate upcoming vs past tickets
   const now = new Date().toISOString().split("T")[0];
@@ -215,6 +255,9 @@ export default async function DashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* My Media */}
+            <MyMediaSection groups={mediaGroups} />
 
             {/* Referral Link */}
             {profile?.membership_code && (
