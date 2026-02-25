@@ -63,3 +63,37 @@ export interface NewsletterSubscriber {
   subscribed_at: string;
   unsubscribed_at: string | null;
 }
+
+export interface TicketTier {
+  id: string;
+  event_id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Ticket {
+  id: string;
+  event_id: string;
+  tier_id: string;
+  user_id: string;
+  sumup_checkout_id: string | null;
+  sumup_transaction_code: string | null;
+  amount_paid: number;
+  created_at: string;
+}
+
+export interface PendingPurchase {
+  id: string;
+  event_id: string;
+  tier_id: string;
+  user_id: string;
+  sumup_checkout_id: string;
+  status: "pending" | "completed" | "failed" | "expired";
+  ticket_id: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}

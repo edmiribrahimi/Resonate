@@ -9,16 +9,23 @@ export async function sendEmail({
   to,
   subject,
   html,
+  attachments,
 }: {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    content: string;
+    filename: string;
+    content_type: string;
+  }>;
 }) {
   const { data, error } = await resend.emails.send({
     from: FROM_ADDRESS,
     to: [to],
     subject,
     html,
+    ...(attachments ? { attachments } : {}),
   });
 
   if (error) {
