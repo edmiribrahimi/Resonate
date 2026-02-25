@@ -50,9 +50,12 @@ export interface Attendance {
 export interface EventMedia {
   id: string;
   event_id: string;
+  uploaded_by: string;
   url: string;
   type: "photo" | "video";
   caption: string | null;
+  status: "pending" | "approved" | "rejected";
+  file_size: number | null;
   order: number;
   created_at: string;
 }
