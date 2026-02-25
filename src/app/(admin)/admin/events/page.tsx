@@ -1,20 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import EventList from "@/components/events/EventList";
+import AdminNav from "@/components/admin/AdminNav";
 import type { UserRole, UserStatus } from "@/types/database";
-
-// Extract creator name from Supabase join result
-// The join may return a single object or an array depending on FK detection
-function extractCreatorName(creator: unknown): string | null {
-  if (!creator) return null;
-  if (Array.isArray(creator)) {
-    const first = creator[0] as { full_name?: string } | undefined;
-    return first?.full_name || null;
-  }
-  return (creator as { full_name?: string }).full_name || null;
-}
 
 export default async function AdminEventsPage() {
   const headersList = await headers();
@@ -29,9 +20,7 @@ export default async function AdminEventsPage() {
   const supabase = await createClient();
   const { data: rawEvents, error } = await supabase
     .from("events")
-    .select(
-      "id, title, date, is_published, capacity, created_by, creator:profiles!created_by(full_name)"
-    )
+    .select("id, title, date, is_published, capacity, created_by")
     .order("date", { ascending: false });
 
   if (error) {
@@ -54,7 +43,6 @@ export default async function AdminEventsPage() {
     );
   }
 
-  // Flatten the creator join data
   const events = (rawEvents ?? []).map((e) => ({
     id: e.id,
     title: e.title,
@@ -62,19 +50,24 @@ export default async function AdminEventsPage() {
     is_published: e.is_published,
     capacity: e.capacity,
     created_by: e.created_by,
-    creator_name: extractCreatorName(e.creator),
   }));
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Event Management
-        </h1>
+      <header className="flex items-center justify-between px-6 pt-12 pb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
+        <Link
+          href="/admin/events/new"
+          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+        >
+          Create Event
+        </Link>
       </header>
 
+      <AdminNav />
+
       <div className="px-6">
-        <EventList events={events} showCreator={true} basePath="/admin/events" />
+        <EventList events={events} basePath="/admin/events" />
       </div>
 
       <MobileNav role={role} status={status} />

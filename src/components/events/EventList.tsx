@@ -164,14 +164,14 @@ export default function EventList({
           {/* Actions */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <Link
-              href={`/organizer/events/${event.id}/edit`}
+              href={`${basePath}/${event.id}/edit`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Edit
             </Link>
 
             <Link
-              href={`/organizer/events/${event.id}/tickets`}
+              href={`${basePath}/${event.id}/tickets`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Manage Tickets

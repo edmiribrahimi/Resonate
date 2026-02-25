@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import MemberTable from "@/components/admin/MemberTable";
+import AdminNav from "@/components/admin/AdminNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 // Extract referrer name from Supabase join result
@@ -74,10 +75,10 @@ export default async function AdminMembersPage() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Member Management
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
+
+      <AdminNav />
 
       <div className="px-6">
         <MemberTable

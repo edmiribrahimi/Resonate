@@ -170,7 +170,7 @@ export default async function EventDetailPage({
         </p>
 
         {/* Capacity -- subtle secondary text */}
-        {event.capacity !== null && spotsLeft !== null && (
+        {event.capacity !== null && spotsLeft !== null && event.date >= new Date().toISOString().split("T")[0] && (
           <p
             className={`mb-2 text-sm ${
               spotsLeft <= 0
@@ -295,8 +295,8 @@ export default async function EventDetailPage({
             </div>
           )}
 
-        {/* RSVP fallback for events without tiers */}
-        {isAuthenticated && isApproved && !hasTiers && (
+        {/* RSVP fallback for events without tiers (only for upcoming events) */}
+        {isAuthenticated && isApproved && !hasTiers && event.date >= new Date().toISOString().split("T")[0] && (
           <div className="mb-6">
             <button
               className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover"
