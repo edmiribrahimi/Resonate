@@ -6,25 +6,25 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 6 complete -- Ticketing & Payments. All 4/4 plans done. Ready for Phase 7.
+**Current Focus:** Phase 7 in progress -- Event Media. 1/3 plans done.
 
 ## Current Position
 
-**Phase:** 6 of 7 -- Ticketing & Payments
-**Plan:** 4 of 4
-**Status:** Milestone complete
+**Phase:** 7 of 7 -- Event Media
+**Plan:** 1 of 3
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  4/4 plans in phase 6
+[Phase Progress]  ███████░░░░░░░░░░░░░  1/3 plans in phase 7
 
-[Overall]         ████████████████░░░░  6/7 phases complete
+[Overall]         ████████████████████  6.3/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 19 |
+| Plans completed | 20 |
 | Plans failed | 0 |
 | Requirements done | 39/45 |
 | Phases complete | 6/7 |
@@ -49,6 +49,7 @@
 | 06-02 (Ticket Tier Management) | 172s | 2 | 5 |
 | 06-03 (Purchase Flow & Webhook) | 304s | 2 | 7 |
 | 06-04 (Sales Dashboard & My Tickets) | 176s | 2 | 6 |
+| 07-01 (Media Data Foundation) | 60s | 2 | 3 |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@
 | QR code transparent background with light foreground | Phase 6 | Dark theme consistency; QR renders cleanly on dark card backgrounds |
 | basePath prop on EventList scoped to Sales link only | Phase 6 | Edit and Manage Tickets routes only exist under /organizer; applying basePath to all links would create dead links in admin context |
 | Upcoming tickets sorted before past with reduced opacity | Phase 6 | Visual distinction between actionable upcoming events and historical past tickets on member dashboard |
+| Ticket ownership as attendance gate | Phase 7 | Query tickets table for (event_id, user_id) match rather than separate attendance/check-in table |
+| Separate event-media bucket from event-images | Phase 7 | Member uploads (100MB limit for videos) separate from organizer cover images |
+| Granular RLS replacing broad event_media policies | Phase 7 | 7 fine-grained policies for select/insert/delete/update by role instead of 2 overly-broad ones |
 
 ### Research Notes
 
@@ -140,14 +144,15 @@ None currently.
 - [x] Execute Plan 06-02 (Ticket Tier Management)
 - [x] Execute Plan 06-03 (Purchase Flow & Webhook)
 - [x] Execute Plan 06-04 (Sales Dashboard & My Tickets)
+- [x] Execute Plan 07-01 (Media Data Foundation)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T13:09:38Z
-**Stopped at:** Completed 06-04-PLAN.md
-**What happened:** Executed Plan 06-04: Shared SalesDashboard component with tier breakdown/revenue/buyer list, organizer and admin sales pages, EventList Sales link with basePath, member dashboard My Tickets section with upcoming/past sorting. 2 tasks, 2 commits. Phase 6 now complete (4/4 plans).
-**Next step:** Plan Phase 7 (Event Media)
+**Last session:** 2026-02-25T13:49:00Z
+**Stopped at:** Completed 07-01-PLAN.md
+**What happened:** Executed Plan 07-01: Media data foundation -- migration adds uploaded_by/status/file_size columns, granular RLS policies, event-media storage bucket. Server actions for upload validation, media registration, moderation, and deletion. 2 tasks, 2 commits.
+**Next step:** Execute Plan 07-02 (Upload UI and Event Gallery)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T13:09:38Z*
+*Last updated: 2026-02-25T13:49:00Z*
