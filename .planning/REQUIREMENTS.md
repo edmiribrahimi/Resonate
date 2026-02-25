@@ -14,7 +14,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **UIBR-03**: Orbitron font (Google Fonts) applied as the primary font site-wide
 - [x] **UIBR-04**: Homepage displays Resonate logo image instead of text heading "Resonate Music events community"
 - [x] **UIBR-05**: Logged-in users no longer see "diventa membro per confermare la tua presenza" on event pages
-- [ ] **UIBR-06**: Registration confirmation email includes Resonate branding (logo, name, styled template)
+- [x] **UIBR-06**: Registration confirmation email includes Resonate branding (logo, name, styled template)
 - [ ] **UIBR-07**: Approval notification email includes Resonate branding when member is approved/rejected
 - [x] **UIBR-08**: Stronger password requirements enforced at registration (minimum 8 characters, at least one uppercase, one number, one special character)
 
@@ -125,7 +125,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UIBR-03 | Phase 1 | Complete |
 | UIBR-04 | Phase 1 | Complete |
 | UIBR-05 | Phase 1 | Complete |
-| UIBR-06 | Phase 4 | Pending |
+| UIBR-06 | Phase 4 | Complete |
 | UIBR-07 | Phase 4 | Pending |
 | UIBR-08 | Phase 1 | Complete |
 | ROLE-01 | Phase 2 | Complete |

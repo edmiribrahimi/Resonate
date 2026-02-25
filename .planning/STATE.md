@@ -6,16 +6,16 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 3 complete -- Referral & Approval System. Ready for Phase 4.
+**Current Focus:** Phase 4 in progress -- Branded Emails. Plan 04-01 complete.
 
 ## Current Position
 
-**Phase:** 3 of 7 -- Referral & Approval System
-**Plan:** 3 of 3
-**Status:** Milestone complete
+**Phase:** 4 of 7 -- Branded Emails
+**Plan:** 1 of 2
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  3/3 plans in phase 3
+[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 4
 
 [Overall]         █████████░░░░░░░░░░░  3/7 phases complete
 ```
@@ -24,9 +24,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 9 |
+| Plans completed | 10 |
 | Plans failed | 0 |
-| Requirements done | 22/45 |
+| Requirements done | 23/45 |
 | Phases complete | 3/7 |
 
 | Plan | Duration | Tasks | Files |
@@ -40,6 +40,7 @@
 | 03-01 (Referral Data Foundation) | 128s | 2 | 4 |
 | 03-02 (Referral Link Display) | 95s | 1 | 3 |
 | 03-03 (Approval Queue & Admin UI) | 220s | 2 | 4 |
+| 04-01 (Email Infrastructure) | 115s | 2 | 6 |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@
 | Service-role client for approve/reject | Phase 3 | Organizers lack RLS write on profiles; service-role bypasses for approve/reject operations |
 | callerRole prop on MemberTable | Phase 3 | Single component renders different action sets for master vs organizer, avoids duplication |
 | Client-side referral count computation | Phase 3 | referralCounts Map built from loaded data; no extra DB query needed |
+| NEXT_PUBLIC_APP_URL for email logo URL | Phase 4 | Dynamic resolution with resonate.app fallback; works in dev and production |
+| Outlook VML fallback in static HTML template | Phase 4 | Rounded button renders correctly in Outlook's Word-based HTML engine |
+| Dual template format (React + static HTML) | Phase 4 | React Email component for programmatic use; static HTML for Supabase Dashboard paste |
 
 ### Research Notes
 
@@ -81,7 +85,7 @@
 - Only 2 new npm packages needed: `@react-email/components` and `nanoid`
 - SumUp API endpoints need verification against live docs before Phase 6
 - Supabase Storage already partially configured (image remote patterns in next.config.ts)
-- Supabase Auth email customization approach (Dashboard vs. full Resend replacement) needs investigation in Phase 4
+- Supabase Auth email customization: Dashboard HTML template editor for registration confirmation; Resend from server actions for approval/rejection (resolved in Phase 4)
 
 ### Blockers
 
@@ -98,14 +102,15 @@ None currently.
 - [x] Execute Plan 03-01 (Referral Data Foundation)
 - [x] Execute Plan 03-02 (Referral Link Display)
 - [x] Execute Plan 03-03 (Approval Queue & Admin UI)
+- [x] Execute Plan 04-01 (Email Infrastructure & Registration Confirmation)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T23:37:21.945Z
-**Stopped at:** Phase 4 context gathered
-**What happened:** Executed Plan 03-03: Added server actions for single/bulk approve/reject with verifyAdminOrOrganizer supporting both master and organizer roles. Service-role client bypasses RLS for profile updates. Enhanced MemberTable with status tabs (All/Pending/Approved/Rejected with badge count), bulk selection checkboxes with approve/reject toolbar, and expandable detail rows showing referral data and attendance. Removed placeholder columns, moved to expandable rows. Admin page queries referral data via self-join. Organizer page now has showActions=true with callerRole="organizer". Build passes. 2 tasks, 2 commits.
-**Next step:** Plan Phase 4 via /gsd:plan-phase 4
+**Last session:** 2026-02-24T23:57:38Z
+**Stopped at:** Completed 04-01-PLAN.md
+**What happened:** Executed Plan 04-01: Installed @react-email/components and @react-email/render. Created shared EmailLayout component with Resonate branding (dark theme, card layout, logo, footer). Created sendEmail utility wrapping Resend SDK. Built registration confirmation email as React Email component and pre-rendered HTML for Supabase Dashboard with Go template variables ({{ .ConfirmationURL }}). Build passes. 2 tasks, 2 commits.
+**Next step:** Execute Plan 04-02 (Approval/Rejection Email Templates)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T23:23:41Z*
+*Last updated: 2026-02-24T23:57:38Z*
