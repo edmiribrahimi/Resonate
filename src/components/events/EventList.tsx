@@ -184,6 +184,13 @@ export default function EventList({
               Sales
             </Link>
 
+            <Link
+              href={`${basePath}/${event.id}/media`}
+              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
+            >
+              Media
+            </Link>
+
             {event.is_published ? (
               <button
                 type="button"
