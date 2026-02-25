@@ -4,14 +4,21 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
+import TierSelection from "./TierSelection";
 import type { Event, UserRole, UserStatus } from "@/types/database";
 
 export default async function EventDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
+
+  // Payment result from SumUp redirect
+  const paymentResult = query.payment as string | undefined;
 
   // Check auth status -- reads cookies only, no DB call, fast
   const supabase = await createClient();
@@ -38,9 +45,37 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  // Fetch RSVP count for capacity display
+  // Fetch ticket tiers for this event
+  const { data: tiers } = await supabase
+    .from("ticket_tiers")
+    .select("id, name, price, quantity")
+    .eq("event_id", event.id)
+    .order("price", { ascending: true });
+
+  const hasTiers = tiers && tiers.length > 0;
+
+  // For each tier, get sold count and compute available
+  const tiersWithAvailability = await Promise.all(
+    (tiers ?? []).map(async (tier) => {
+      const { count } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("tier_id", tier.id);
+      const sold = count ?? 0;
+      return { ...tier, sold, available: tier.quantity - sold };
+    })
+  );
+
+  // Calculate capacity from ticket sales when tiers exist
   let spotsLeft: number | null = null;
-  if (event.capacity) {
+  if (hasTiers && event.capacity) {
+    const totalTicketsSold = tiersWithAvailability.reduce(
+      (sum, t) => sum + t.sold,
+      0
+    );
+    spotsLeft = event.capacity - totalTicketsSold;
+  } else if (!hasTiers && event.capacity) {
+    // Fallback to RSVP count for events without tiers
     const { count: rsvpCount } = await supabase
       .from("rsvps")
       .select("*", { count: "exact", head: true })
@@ -48,10 +83,36 @@ export default async function EventDetailPage({
     spotsLeft = event.capacity - (rsvpCount || 0);
   }
 
-  const hasRSVP = false; // TODO: check user's RSVP status
+  // Fetch user's ticket for this event (if authenticated)
+  let userTicket: { id: string; tier_id: string } | null = null;
+  if (isAuthenticated && user) {
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("id, tier_id")
+      .eq("event_id", event.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    userTicket = ticket;
+  }
 
   return (
     <div className="min-h-dvh pb-24">
+      {/* Payment result banners */}
+      {paymentResult === "success" && (
+        <div className="mx-6 mt-6 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+          <p className="text-sm font-medium text-green-400">
+            Payment received! Your ticket is being processed.
+          </p>
+        </div>
+      )}
+      {paymentResult === "cancelled" && (
+        <div className="mx-6 mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <p className="text-sm font-medium text-yellow-400">
+            Payment was cancelled. You can try again.
+          </p>
+        </div>
+      )}
+
       {/* Cover */}
       <div className="relative px-6 pt-6">
         <Link
@@ -109,7 +170,16 @@ export default async function EventDetailPage({
         {/* Location */}
         <div className="mb-6 rounded-xl border border-card-border bg-card p-4">
           {event.location_secret ? (
-            isAuthenticated ? (
+            userTicket ? (
+              <div>
+                <p className="text-sm text-muted">
+                  &#128205; Location
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {event.location}
+                </p>
+              </div>
+            ) : isAuthenticated ? (
               <div>
                 <p className="text-sm text-muted">
                   &#128274; Secret Location
@@ -162,20 +232,61 @@ export default async function EventDetailPage({
           </div>
         )}
 
-        {/* RSVP - hidden for pending/rejected members */}
-        {isAuthenticated && isApproved && (
+        {/* Already has ticket */}
+        {isAuthenticated && userTicket && (
+          <div className="mb-6">
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
+              <p className="text-sm font-medium text-green-400 mb-3">
+                You have a ticket for this event
+              </p>
+              <Link
+                href={`/tickets/${userTicket.id}`}
+                className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+              >
+                View Your Ticket
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Tier selection and buy button -- approved members only, without existing ticket */}
+        {isAuthenticated &&
+          isApproved &&
+          !userTicket &&
+          hasTiers && (
+            <div className="mb-6">
+              <TierSelection
+                eventId={event.id}
+                tiers={tiersWithAvailability}
+              />
+            </div>
+          )}
+
+        {/* Pending member guard (TICK-07) */}
+        {isAuthenticated &&
+          !isApproved &&
+          status === "pending" &&
+          hasTiers && (
+            <div className="mb-6">
+              <p className="text-sm text-muted text-center">
+                Your account is pending approval. You&apos;ll be able to
+                purchase tickets once approved.
+              </p>
+            </div>
+          )}
+
+        {/* RSVP fallback for events without tiers */}
+        {isAuthenticated && isApproved && !hasTiers && (
           <div className="mb-6">
             <button
-              className={`w-full rounded-full py-3 font-medium transition-colors ${
-                hasRSVP
-                  ? "border border-accent bg-transparent text-accent"
-                  : "bg-accent text-white hover:bg-accent-hover"
-              }`}
+              className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover"
             >
-              {hasRSVP ? "\u2713 I'm going" : "I'm going"}
+              I&apos;m going
             </button>
           </div>
         )}
+
+        {/* Unauthenticated CTA */}
         {!isAuthenticated && (
           <div className="mb-6">
             <Link
