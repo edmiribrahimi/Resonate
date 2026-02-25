@@ -27,6 +27,7 @@ export interface Event {
   is_published: boolean;
   early_access_until: string | null;
   capacity: number | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

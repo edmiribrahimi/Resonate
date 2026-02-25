@@ -158,26 +158,38 @@ create table public.events (
   is_published boolean default false,
   early_access_until timestamptz,
   capacity integer,
+  created_by uuid references auth.users on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table public.events enable row level security;
 
--- Published events visible to all, early access events visible to authenticated users
+-- Published events visible to anyone (including anon)
 create policy events_select_published on public.events
-  for select using (
-    is_published = true
-    and (
-      early_access_until is null
-      or early_access_until <= now()
-      or auth.uid() is not null
-    )
+  for select using (is_published = true);
+
+-- Organizers and master can view all events (including unpublished, for management)
+create policy events_select_admin on public.events
+  for select using ((select public.is_admin_or_organizer()));
+
+-- Organizers and master can create events
+create policy events_insert_admin on public.events
+  for insert with check ((select public.is_admin_or_organizer()));
+
+-- Organizers can update their own events; master can update any
+create policy events_update_own on public.events
+  for update using (
+    auth.uid() = created_by
+    or (select public.is_master())
   );
 
--- Organizers and master can manage all events
-create policy events_all_admin on public.events
-  for all using ((select public.is_admin_or_organizer()));
+-- Organizers can delete their own events; master can delete any
+create policy events_delete_own on public.events
+  for delete using (
+    auth.uid() = created_by
+    or (select public.is_master())
+  );
 
 -- ============================================================
 -- RSVPs
@@ -275,3 +287,46 @@ alter table public.newsletter_subscribers enable row level security;
 -- Admin/organizer can view subscribers
 create policy newsletter_select_admin on public.newsletter_subscribers
   for select using ((select public.is_admin_or_organizer()));
+
+-- ============================================================
+-- Storage: Event Images Bucket
+-- ============================================================
+
+-- NOTE: Bucket creation may need to be done via Supabase Dashboard
+-- if storage.buckets is not accessible via SQL.
+-- Create bucket: name = "event-images", public = true
+insert into storage.buckets (id, name, public)
+  values ('event-images', 'event-images', true)
+  on conflict do nothing;
+
+-- Organizers can upload event images
+create policy "Organizers can upload event images"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'event-images'
+    and (select public.is_admin_or_organizer())
+  );
+
+-- Anyone can view event images (public bucket)
+create policy "Anyone can view event images"
+  on storage.objects for select
+  using (bucket_id = 'event-images');
+
+-- Organizers can update event images
+create policy "Organizers can update event images"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'event-images'
+    and (select public.is_admin_or_organizer())
+  );
+
+-- Organizers can delete event images
+create policy "Organizers can delete event images"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'event-images'
+    and (select public.is_admin_or_organizer())
+  );
