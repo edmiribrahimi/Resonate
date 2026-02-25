@@ -6,28 +6,28 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 4 in progress -- Branded Emails. Plan 04-01 complete.
+**Current Focus:** Phase 4 complete -- Branded Emails. All plans done.
 
 ## Current Position
 
-**Phase:** 4 of 7 -- Branded Emails
-**Plan:** 1 of 2
-**Status:** In progress
+**Phase:** 4 of 7 -- Branded Emails (complete)
+**Plan:** 2 of 2
+**Status:** Phase complete
 
 ```
-[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 4
+[Phase Progress]  ████████████████████  2/2 plans in phase 4
 
-[Overall]         █████████░░░░░░░░░░░  3/7 phases complete
+[Overall]         ███████████░░░░░░░░░  4/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 10 |
+| Plans completed | 11 |
 | Plans failed | 0 |
-| Requirements done | 23/45 |
-| Phases complete | 3/7 |
+| Requirements done | 25/45 |
+| Phases complete | 4/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -41,6 +41,7 @@
 | 03-02 (Referral Link Display) | 95s | 1 | 3 |
 | 03-03 (Approval Queue & Admin UI) | 220s | 2 | 4 |
 | 04-01 (Email Infrastructure) | 115s | 2 | 6 |
+| 04-02 (Approval/Rejection Emails) | 107s | 2 | 3 |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@
 | NEXT_PUBLIC_APP_URL for email logo URL | Phase 4 | Dynamic resolution with resonate.app fallback; works in dev and production |
 | Outlook VML fallback in static HTML template | Phase 4 | Rounded button renders correctly in Outlook's Word-based HTML engine |
 | Dual template format (React + static HTML) | Phase 4 | React Email component for programmatic use; static HTML for Supabase Dashboard paste |
+| Fire-and-forget email delivery | Phase 4 | DB update is the critical operation; email is best-effort notification that never blocks admin actions |
+| Sequential bulk email via IIFE | Phase 4 | For-of loop respects Resend rate limits; IIFE pattern runs in background without blocking response |
+| Pre-fetch member data before status update | Phase 4 | Query email/name before update to ensure data availability regardless of timing |
 
 ### Research Notes
 
@@ -103,14 +107,15 @@ None currently.
 - [x] Execute Plan 03-02 (Referral Link Display)
 - [x] Execute Plan 03-03 (Approval Queue & Admin UI)
 - [x] Execute Plan 04-01 (Email Infrastructure & Registration Confirmation)
+- [x] Execute Plan 04-02 (Approval/Rejection Email Templates)
 
 ## Session Continuity
 
-**Last session:** 2026-02-24T23:57:38Z
-**Stopped at:** Completed 04-01-PLAN.md
-**What happened:** Executed Plan 04-01: Installed @react-email/components and @react-email/render. Created shared EmailLayout component with Resonate branding (dark theme, card layout, logo, footer). Created sendEmail utility wrapping Resend SDK. Built registration confirmation email as React Email component and pre-rendered HTML for Supabase Dashboard with Go template variables ({{ .ConfirmationURL }}). Build passes. 2 tasks, 2 commits.
-**Next step:** Execute Plan 04-02 (Approval/Rejection Email Templates)
+**Last session:** 2026-02-25T00:02:43Z
+**Stopped at:** Completed 04-02-PLAN.md (Phase 4 complete)
+**What happened:** Executed Plan 04-02: Created MemberApprovedEmail template ("You're In" heading, "Open Resonate" CTA button) and MemberRejectedEmail template (respectful "unable to approve" messaging, no CTA). Integrated fire-and-forget email sending into approveMember, rejectMember, bulkApproveMember, bulkRejectMember server actions. Sequential bulk sending for Resend rate limits. Build passes. 2 tasks, 2 commits.
+**Next step:** Plan Phase 5 (Event Management)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-24T23:57:38Z*
+*Last updated: 2026-02-25T00:02:43Z*

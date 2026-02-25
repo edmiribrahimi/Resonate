@@ -10,7 +10,7 @@
 - [x] **Phase 1: UI Foundation & English Migration** - Translate site to English, apply brand identity, fix UI bugs
 - [x] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
 - [x] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
-- [ ] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
+- [x] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
 - [ ] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
 - [ ] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
 - [ ] **Phase 7: Event Media** - Member photo/video uploads for attended events, gallery integration
@@ -76,7 +76,11 @@ Plans:
   1. The registration confirmation email displays the Resonate logo, brand colors, and styled layout
   2. When a pending member is approved, they receive a branded email notifying them of their new access
   3. When a pending member is rejected, they receive a branded email with appropriate messaging
-**Plans**: TBD
+**Plans**: 2/2 plans complete
+
+Plans:
+- [x] 04-01-PLAN.md -- Email infrastructure: React Email packages, shared EmailLayout, sendEmail utility, registration confirmation template
+- [x] 04-02-PLAN.md -- Approval/rejection emails: branded templates, fire-and-forget integration into server actions
 
 ### Phase 5: Event Management
 **Goal**: Organizers can create and manage real events, and members browse a live event calendar
@@ -120,7 +124,7 @@ Plans:
 | 1. UI Foundation & English Migration | 3/3 | Complete | 2026-02-24 |
 | 2. Schema & RBAC Foundation | 3/3 | Complete    | 2026-02-24 |
 | 3. Referral & Approval System | 3/3 | Complete    | 2026-02-24 |
-| 4. Branded Emails | 0/? | Not started | - |
+| 4. Branded Emails | 2/2 | Complete | 2026-02-25 |
 | 5. Event Management | 0/? | Not started | - |
 | 6. Ticketing & Payments | 0/? | Not started | - |
 | 7. Event Media | 0/? | Not started | - |

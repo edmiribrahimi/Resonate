@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **UIBR-04**: Homepage displays Resonate logo image instead of text heading "Resonate Music events community"
 - [x] **UIBR-05**: Logged-in users no longer see "diventa membro per confermare la tua presenza" on event pages
 - [x] **UIBR-06**: Registration confirmation email includes Resonate branding (logo, name, styled template)
-- [ ] **UIBR-07**: Approval notification email includes Resonate branding when member is approved/rejected
+- [x] **UIBR-07**: Approval notification email includes Resonate branding when member is approved/rejected
 - [x] **UIBR-08**: Stronger password requirements enforced at registration (minimum 8 characters, at least one uppercase, one number, one special character)
 
 ### Roles & Permissions
@@ -39,7 +39,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **APPR-01**: Pending members can browse published events but cannot RSVP, buy tickets, or upload media
 - [x] **APPR-02**: Master user and Organizers see a list of pending members awaiting approval
 - [x] **APPR-03**: Master user and Organizers can approve or reject pending members
-- [ ] **APPR-04**: Member receives email notification when their account is approved
+- [x] **APPR-04**: Member receives email notification when their account is approved
 
 ### Event Management
 
@@ -126,7 +126,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UIBR-04 | Phase 1 | Complete |
 | UIBR-05 | Phase 1 | Complete |
 | UIBR-06 | Phase 4 | Complete |
-| UIBR-07 | Phase 4 | Pending |
+| UIBR-07 | Phase 4 | Complete |
 | UIBR-08 | Phase 1 | Complete |
 | ROLE-01 | Phase 2 | Complete |
 | ROLE-02 | Phase 2 | Complete |
@@ -144,7 +144,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | APPR-01 | Phase 3 | Complete |
 | APPR-02 | Phase 3 | Complete |
 | APPR-03 | Phase 3 | Complete |
-| APPR-04 | Phase 4 | Pending |
+| APPR-04 | Phase 4 | Complete |
 | EVNT-01 | Phase 5 | Pending |
 | EVNT-02 | Phase 5 | Pending |
 | EVNT-03 | Phase 5 | Pending |
@@ -173,4 +173,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-24*
-*Last updated: 2026-02-24T23:23:41Z after 03-03 completion*
+*Last updated: 2026-02-25T00:02:43Z after 04-02 completion*
