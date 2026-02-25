@@ -330,3 +330,152 @@ create policy "Organizers can delete event images"
     bucket_id = 'event-images'
     and (select public.is_admin_or_organizer())
   );
+
+-- ============================================================
+-- Ticketing & Payments
+-- ============================================================
+
+-- Ticket tiers: defined per event by organizers
+create table public.ticket_tiers (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events on delete cascade,
+  name text not null,
+  price numeric(10,2) not null check (price >= 0),
+  quantity integer not null check (quantity > 0),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Tickets: one per member per event
+create table public.tickets (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events on delete cascade,
+  tier_id uuid not null references public.ticket_tiers on delete restrict,
+  user_id uuid not null references auth.users on delete cascade,
+  sumup_checkout_id text unique,
+  sumup_transaction_code text,
+  amount_paid numeric(10,2) not null,
+  created_at timestamptz default now(),
+  unique (event_id, user_id)
+);
+
+-- Pending purchases: tracks checkout initiation before SumUp confirmation
+create table public.pending_purchases (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events on delete cascade,
+  tier_id uuid not null references public.ticket_tiers on delete restrict,
+  user_id uuid not null references auth.users on delete cascade,
+  sumup_checkout_id text unique not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'completed', 'failed', 'expired')),
+  ticket_id uuid references public.tickets,
+  error_message text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Indexes
+create index idx_tickets_event_id on public.tickets (event_id);
+create index idx_tickets_user_id on public.tickets (user_id);
+create index idx_tickets_tier_id on public.tickets (tier_id);
+create index idx_ticket_tiers_event_id on public.ticket_tiers (event_id);
+create index idx_pending_purchases_checkout on public.pending_purchases (sumup_checkout_id);
+
+-- RLS
+alter table public.ticket_tiers enable row level security;
+alter table public.tickets enable row level security;
+alter table public.pending_purchases enable row level security;
+
+-- Ticket tiers: anyone authenticated can read (for purchase UI)
+create policy ticket_tiers_select on public.ticket_tiers
+  for select to authenticated using (true);
+
+create policy ticket_tiers_insert on public.ticket_tiers
+  for insert to authenticated
+  with check ((select public.is_admin_or_organizer()));
+
+create policy ticket_tiers_update on public.ticket_tiers
+  for update to authenticated
+  using ((select public.is_admin_or_organizer()));
+
+create policy ticket_tiers_delete on public.ticket_tiers
+  for delete to authenticated
+  using ((select public.is_admin_or_organizer()));
+
+-- Tickets: members can read their own
+create policy tickets_select_own on public.tickets
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+-- Tickets: organizers/master can read all (for sales dashboard)
+create policy tickets_select_admin on public.tickets
+  for select to authenticated
+  using ((select public.is_admin_or_organizer()));
+
+-- Pending purchases: users can see their own
+create policy pending_select_own on public.pending_purchases
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+-- Atomic ticket reservation function (prevents overselling via FOR UPDATE lock)
+create or replace function public.reserve_ticket(
+  p_tier_id uuid,
+  p_user_id uuid,
+  p_event_id uuid,
+  p_sumup_checkout_id text,
+  p_sumup_transaction_code text,
+  p_amount_paid numeric
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_ticket_id uuid;
+  v_sold_count integer;
+  v_quantity integer;
+  v_existing_ticket uuid;
+begin
+  -- Check if user already has a ticket for this event
+  select id into v_existing_ticket
+  from public.tickets
+  where event_id = p_event_id and user_id = p_user_id;
+
+  if v_existing_ticket is not null then
+    raise exception 'User already has a ticket for this event';
+  end if;
+
+  -- Lock the tier row to prevent concurrent modifications
+  select quantity into v_quantity
+  from public.ticket_tiers
+  where id = p_tier_id
+  for update;
+
+  if not found then
+    raise exception 'Ticket tier not found';
+  end if;
+
+  -- Count existing tickets for this tier
+  select count(*) into v_sold_count
+  from public.tickets
+  where tier_id = p_tier_id;
+
+  -- Check availability
+  if v_sold_count >= v_quantity then
+    raise exception 'Tier sold out';
+  end if;
+
+  -- Insert ticket
+  insert into public.tickets (
+    event_id, tier_id, user_id,
+    sumup_checkout_id, sumup_transaction_code, amount_paid
+  )
+  values (
+    p_event_id, p_tier_id, p_user_id,
+    p_sumup_checkout_id, p_sumup_transaction_code, p_amount_paid
+  )
+  returning id into v_ticket_id;
+
+  return v_ticket_id;
+end;
+$$;
