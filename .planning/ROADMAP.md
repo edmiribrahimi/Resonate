@@ -11,7 +11,7 @@
 - [x] **Phase 2: Schema & RBAC Foundation** - Migrate to role-based access control with master/organizer/member roles
 - [x] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
 - [x] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
-- [ ] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
+- [x] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
 - [ ] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
 - [ ] **Phase 7: Event Media** - Member photo/video uploads for attended events, gallery integration
 
