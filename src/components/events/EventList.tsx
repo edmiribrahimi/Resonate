@@ -21,11 +21,13 @@ interface EventItem {
 interface EventListProps {
   events: EventItem[];
   showCreator?: boolean;
+  basePath?: string;
 }
 
 export default function EventList({
   events,
   showCreator = false,
+  basePath = "/organizer/events",
 }: EventListProps) {
   const [isPending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -173,6 +175,13 @@ export default function EventList({
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Manage Tickets
+            </Link>
+
+            <Link
+              href={`${basePath}/${event.id}/sales`}
+              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
+            >
+              Sales
             </Link>
 
             {event.is_published ? (

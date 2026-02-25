@@ -74,7 +74,7 @@ export default async function AdminEventsPage() {
       </header>
 
       <div className="px-6">
-        <EventList events={events} showCreator={true} />
+        <EventList events={events} showCreator={true} basePath="/admin/events" />
       </div>
 
       <MobileNav role={role} status={status} />
