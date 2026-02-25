@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,27 @@ export default async function DashboardPage() {
     .select("membership_code")
     .eq("id", user.id)
     .single();
+
+  // Fetch user's tickets with event and tier data
+  const { data: tickets } = await supabase
+    .from("tickets")
+    .select(
+      "id, amount_paid, created_at, events(title, date, time, slug, cover_image), ticket_tiers(name)"
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  // Separate upcoming vs past tickets
+  const now = new Date().toISOString().split("T")[0];
+  const upcomingTickets = (tickets ?? []).filter((t) => {
+    const evt = Array.isArray(t.events) ? t.events[0] : t.events;
+    return evt && (evt as { date: string }).date >= now;
+  });
+  const pastTickets = (tickets ?? []).filter((t) => {
+    const evt = Array.isArray(t.events) ? t.events[0] : t.events;
+    return evt && (evt as { date: string }).date < now;
+  });
+  const sortedTickets = [...upcomingTickets, ...pastTickets];
 
   // Read role and status from middleware-injected headers
   const headersList = await headers();
@@ -92,6 +114,107 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </Link>
+
+            {/* My Tickets */}
+            <div>
+              <p className="mb-3 text-sm text-muted">My Tickets</p>
+              {sortedTickets.length === 0 ? (
+                <div className="rounded-2xl border border-card-border bg-card p-5">
+                  <p className="text-sm text-muted/60">No tickets yet</p>
+                  <Link
+                    href="/events"
+                    className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent-hover"
+                  >
+                    Discover events &rarr;
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sortedTickets.map((ticket) => {
+                    const evt = Array.isArray(ticket.events)
+                      ? ticket.events[0]
+                      : ticket.events;
+                    const tier = Array.isArray(ticket.ticket_tiers)
+                      ? ticket.ticket_tiers[0]
+                      : ticket.ticket_tiers;
+                    const eventData = evt as {
+                      title: string;
+                      date: string;
+                      time: string;
+                      slug: string;
+                      cover_image: string | null;
+                    } | null;
+                    const tierData = tier as { name: string } | null;
+                    const isUpcoming = eventData
+                      ? eventData.date >= now
+                      : false;
+
+                    return (
+                      <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
+                        <div
+                          className={`rounded-2xl border border-card-border bg-card p-4 transition-colors hover:border-accent/50 ${
+                            !isUpcoming ? "opacity-60" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Cover image or gradient placeholder */}
+                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                              {eventData?.cover_image ? (
+                                <Image
+                                  src={eventData.cover_image}
+                                  alt={eventData.title ?? ""}
+                                  width={48}
+                                  height={48}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
+                              )}
+                            </div>
+
+                            {/* Ticket info */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                  {eventData?.title ?? "Event"}
+                                </p>
+                                {isUpcoming && (
+                                  <span className="shrink-0 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-medium text-green-400">
+                                    Upcoming
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {tierData?.name && (
+                                  <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-medium text-accent">
+                                    {tierData.name}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted">
+                                  {eventData
+                                    ? new Date(
+                                        eventData.date + "T00:00:00"
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                      })
+                                    : ""}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Chevron */}
+                            <span className="shrink-0 text-muted">
+                              &#8250;
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Referral Link */}
             {profile?.membership_code && (
