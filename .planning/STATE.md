@@ -6,28 +6,28 @@
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 6 in progress -- Ticketing & Payments. Plan 3 of 4 done (purchase flow & webhook).
+**Current Focus:** Phase 6 complete -- Ticketing & Payments. All 4/4 plans done. Ready for Phase 7.
 
 ## Current Position
 
 **Phase:** 6 of 7 -- Ticketing & Payments
-**Plan:** 3 of 4
-**Status:** In progress
+**Plan:** 4 of 4
+**Status:** Phase complete
 
 ```
-[Phase Progress]  ███████████████░░░░░  3/4 plans in phase 6
+[Phase Progress]  ████████████████████  4/4 plans in phase 6
 
-[Overall]         ██████████████░░░░░░  5/7 phases complete
+[Overall]         ████████████████░░░░  6/7 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 18 |
+| Plans completed | 19 |
 | Plans failed | 0 |
-| Requirements done | 38/45 |
-| Phases complete | 5/7 |
+| Requirements done | 39/45 |
+| Phases complete | 6/7 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -48,6 +48,7 @@
 | 06-01 (Ticketing Data Foundation) | 102s | 2 | 5 |
 | 06-02 (Ticket Tier Management) | 172s | 2 | 5 |
 | 06-03 (Purchase Flow & Webhook) | 304s | 2 | 7 |
+| 06-04 (Sales Dashboard & My Tickets) | 176s | 2 | 6 |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@
 | Lazy Resend initialization in email.ts | Phase 6 | Prevents build-time errors when env vars unavailable during page data collection |
 | Co-located TierSelection client component | Phase 6 | Interactive tier selection with server action call; co-located with event detail page |
 | QR code transparent background with light foreground | Phase 6 | Dark theme consistency; QR renders cleanly on dark card backgrounds |
+| basePath prop on EventList scoped to Sales link only | Phase 6 | Edit and Manage Tickets routes only exist under /organizer; applying basePath to all links would create dead links in admin context |
+| Upcoming tickets sorted before past with reduced opacity | Phase 6 | Visual distinction between actionable upcoming events and historical past tickets on member dashboard |
 
 ### Research Notes
 
@@ -136,14 +139,15 @@ None currently.
 - [x] Execute Plan 06-01 (Ticketing Data Foundation)
 - [x] Execute Plan 06-02 (Ticket Tier Management)
 - [x] Execute Plan 06-03 (Purchase Flow & Webhook)
+- [x] Execute Plan 06-04 (Sales Dashboard & My Tickets)
 
 ## Session Continuity
 
-**Last session:** 2026-02-25T13:03:19Z
-**Stopped at:** Completed 06-03-PLAN.md
-**What happened:** Executed Plan 06-03: Full ticket purchase flow -- purchaseTicket server action with TICK-07 guard, SumUp webhook handler with reserve_ticket RPC, confirmation email with CID QR code, TierSelection client component, event detail page integration (secret location reveal, pending member guard, payment banners), branded ticket confirmation page at /tickets/[id]. Auto-fixed lazy Resend init. 2 tasks, 2 commits.
-**Next step:** Execute Plan 06-04 (Organizer Sales Dashboard)
+**Last session:** 2026-02-25T13:09:38Z
+**Stopped at:** Completed 06-04-PLAN.md
+**What happened:** Executed Plan 06-04: Shared SalesDashboard component with tier breakdown/revenue/buyer list, organizer and admin sales pages, EventList Sales link with basePath, member dashboard My Tickets section with upcoming/past sorting. 2 tasks, 2 commits. Phase 6 now complete (4/4 plans).
+**Next step:** Plan Phase 7 (Event Media)
 
 ---
 *State initialized: 2026-02-24*
-*Last updated: 2026-02-25T13:03:19Z*
+*Last updated: 2026-02-25T13:09:38Z*

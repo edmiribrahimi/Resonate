@@ -12,7 +12,7 @@
 - [x] **Phase 3: Referral & Approval System** - Referral links, auto-approval, pending member flow, admin approval UI
 - [x] **Phase 4: Branded Emails** - Resonate-branded confirmation and notification emails via React Email + Resend
 - [x] **Phase 5: Event Management** - Replace mock data with real Supabase events, organizer CRUD, event display features
-- [ ] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
+- [x] **Phase 6: Ticketing & Payments** - Ticket tiers, SumUp checkout, payment confirmation, organizer sales view
 - [ ] **Phase 7: Event Media** - Member photo/video uploads for attended events, gallery integration
 
 ## Phase Details
@@ -115,7 +115,7 @@ Plans:
 - [x] 06-01-PLAN.md -- Data foundation: ticketing tables, RLS policies, reserve_ticket RPC, TypeScript types, SumUp client, email extension
 - [x] 06-02-PLAN.md -- Ticket tier management: CRUD server actions, organizer tier management page, event list integration
 - [x] 06-03-PLAN.md -- Purchase flow: SumUp checkout, webhook handler, QR generation, confirmation page/email, secret location reveal, pending guard
-- [ ] 06-04-PLAN.md -- Sales dashboard and My Tickets: organizer/admin sales pages, shared SalesDashboard component, dashboard tickets section
+- [x] 06-04-PLAN.md -- Sales dashboard and My Tickets: organizer/admin sales pages, shared SalesDashboard component, dashboard tickets section
 
 ### Phase 7: Event Media
 **Goal**: Members can share photos and videos from events they attended, building the community gallery
@@ -137,7 +137,7 @@ Plans:
 | 3. Referral & Approval System | 3/3 | Complete    | 2026-02-24 |
 | 4. Branded Emails | 2/2 | Complete    | 2026-02-25 |
 | 5. Event Management | 3/3 | Complete | 2026-02-25 |
-| 6. Ticketing & Payments | 1/4 | In progress | - |
+| 6. Ticketing & Payments | 4/4 | Complete | 2026-02-25 |
 | 7. Event Media | 0/? | Not started | - |
 
 ## Coverage
