@@ -15,12 +15,13 @@ export default function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <div className="mb-6 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+    <>
       <style>{`
-        .admin-tabs { -ms-overflow-style: none; scrollbar-width: none; }
-        .admin-tabs::-webkit-scrollbar { display: none; }
+        .admin-nav-scroll { -ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .admin-nav-scroll::-webkit-scrollbar { display: none; }
       `}</style>
-      <div className="admin-tabs flex gap-2 px-6 overflow-x-auto" style={{ minWidth: "max-content" }}>
+      <div className="admin-nav-scroll mb-6 overflow-x-auto">
+        <div className="flex gap-2 px-6" style={{ width: "max-content" }}>
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           return (
@@ -37,7 +38,8 @@ export default function AdminNav() {
             </Link>
           );
         })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
