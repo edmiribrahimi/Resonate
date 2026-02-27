@@ -63,7 +63,7 @@ export default function RsvpButton({
         type="button"
         onClick={handleToggle}
         disabled={isPending}
-        className={`w-full rounded-full py-3 font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full rounded-full py-3 font-medium text-white transition-all active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed ${
           hasRsvp
             ? "bg-red-500/80 hover:bg-red-500"
             : "bg-accent hover:bg-accent-hover"

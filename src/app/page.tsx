@@ -29,19 +29,19 @@ export default async function Home() {
         <div className="flex w-full max-w-xs flex-col gap-3">
           <Link
             href="/events"
-            className="flex h-12 items-center justify-center rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover"
+            className="flex h-12 items-center justify-center rounded-full bg-accent font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
           >
             Discover Events
           </Link>
           <Link
             href="/register"
-            className="flex h-12 items-center justify-center rounded-full border border-card-border font-medium transition-colors hover:bg-card"
+            className="flex h-12 items-center justify-center rounded-full border border-card-border font-medium transition-all hover:bg-card active:scale-95 active:opacity-80"
           >
             Join
           </Link>
           <Link
             href="/login"
-            className="text-center text-sm text-muted transition-colors hover:text-foreground"
+            className="text-center text-sm text-muted transition-all hover:text-foreground active:scale-95 active:opacity-80"
           >
             Already a member? <span className="text-accent">Sign In</span>
           </Link>

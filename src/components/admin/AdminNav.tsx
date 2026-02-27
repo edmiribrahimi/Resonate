@@ -28,7 +28,7 @@ export default function AdminNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all active:scale-95 active:opacity-80 ${
                 isActive
                   ? "bg-accent text-white"
                   : "bg-card border border-card-border text-muted hover:text-foreground"

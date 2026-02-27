@@ -60,7 +60,7 @@ export default async function VenuePage({
       <div className="px-6 pt-6">
         <Link
           href="/events"
-          className="mb-6 inline-flex items-center text-sm text-muted hover:text-foreground transition-colors"
+          className="mb-6 inline-flex items-center text-sm text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80"
         >
           &larr; Back to events
         </Link>
@@ -103,7 +103,7 @@ export default async function VenuePage({
               href={venue.google_maps_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block rounded-full bg-accent/20 px-4 py-2 text-sm text-accent font-medium hover:bg-accent/30 transition-colors"
+              className="mt-2 inline-block rounded-full bg-accent/20 px-4 py-2 text-sm text-accent font-medium hover:bg-accent/30 transition-all active:scale-95 active:opacity-80"
             >
               Open in Google Maps
             </a>
@@ -118,7 +118,7 @@ export default async function VenuePage({
                   href={link.url!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full bg-card border border-card-border px-4 py-2 text-sm text-muted hover:text-foreground transition-colors"
+                  className="rounded-full bg-card border border-card-border px-4 py-2 text-sm text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80"
                 >
                   {link.label}
                 </a>
@@ -145,7 +145,7 @@ export default async function VenuePage({
                 <Link
                   key={event.id}
                   href={`/events/${event.slug}`}
-                  className="flex items-center gap-4 rounded-xl border border-card-border bg-card p-3 hover:bg-card/80 transition-colors"
+                  className="flex items-center gap-4 rounded-xl border border-card-border bg-card p-3 hover:bg-card/80 transition-all active:scale-[0.98] active:opacity-80"
                 >
                   {event.cover_image ? (
                     <Image

@@ -57,7 +57,7 @@ export default function MobileNav({ role, status }: MobileNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 px-3 py-2 text-xs transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 text-xs transition-all active:scale-95 active:opacity-80 ${
                 isActive ? "text-accent" : "text-muted"
               }`}
             >

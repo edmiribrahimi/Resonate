@@ -226,7 +226,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
               type="button"
               disabled={isDisabled || isPending}
               onClick={() => setSelectedTierId(tier.id)}
-              className={`w-full rounded-xl border p-4 text-left transition-colors ${
+              className={`w-full rounded-xl border p-4 text-left transition-all active:scale-[0.98] active:opacity-80 ${
                 isDisabled
                   ? "border-card-border bg-card/50 opacity-50 cursor-not-allowed"
                   : isSelected
@@ -263,7 +263,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         type="button"
         disabled={!selectedTierId || isPending}
         onClick={handlePurchase}
-        className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-accent py-3 font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
       </button>

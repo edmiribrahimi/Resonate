@@ -9,6 +9,7 @@ import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
 import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
+import ShareButton from "./ShareButton";
 import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
@@ -385,7 +386,7 @@ export default async function EventDetailPage({
       <div className="relative px-6 pt-6">
         <Link
           href="/events"
-          className="absolute left-10 top-10 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm"
+          className="absolute left-10 top-10 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm active:scale-95 active:opacity-80 transition-transform"
         >
           &larr;
         </Link>
@@ -411,10 +412,13 @@ export default async function EventDetailPage({
           {dateRangeDisplay}
         </p>
 
-        {/* Title */}
-        <h1 className="mb-4 text-3xl font-bold tracking-tight">
-          {event.title}
-        </h1>
+        {/* Title + Share */}
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {event.title}
+          </h1>
+          <ShareButton title={event.title} description={event.description} />
+        </div>
 
         {/* Description */}
         {event.description && (
@@ -452,7 +456,7 @@ export default async function EventDetailPage({
                     <Link
                       key={artist}
                       href={`/artists/${slug}`}
-                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium hover:bg-accent/30 transition-colors"
+                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium hover:bg-accent/30 transition-colors active:scale-95 active:opacity-80"
                     >
                       {artist}
                     </Link>
@@ -480,7 +484,7 @@ export default async function EventDetailPage({
                 </p>
                 <Link
                   href={`/tickets/${masterTicketId}`}
-                  className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                  className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80"
                 >
                   View Your Event Pass
                 </Link>
@@ -541,7 +545,7 @@ export default async function EventDetailPage({
                   <div className="mt-1">
                     {venueVisible ? (
                       party.venue ? (
-                        <Link href={`/venues/${party.venue.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover">
+                        <Link href={`/venues/${party.venue.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover active:scale-95 active:opacity-80 transition-transform">
                           <MapPinIcon /> {party.venue.name}
                         </Link>
                       ) : party.venue_text ? (
@@ -576,7 +580,7 @@ export default async function EventDetailPage({
                       <Link
                         key={artist}
                         href={`/artists/${slug}`}
-                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium hover:bg-accent/30 transition-colors"
+                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium hover:bg-accent/30 transition-colors active:scale-95 active:opacity-80"
                       >
                         {artist}
                       </Link>
@@ -613,7 +617,7 @@ export default async function EventDetailPage({
                   </p>
                   <Link
                     href={`/tickets/${party.userTicket.id}`}
-                    className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                    className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80"
                   >
                     View Your Ticket
                   </Link>

@@ -24,7 +24,7 @@ export default function MediaGrid({ items, onItemClick, actions }: MediaGridProp
         <button
           key={item.id}
           type="button"
-          className="relative aspect-square overflow-hidden rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent"
+          className="relative aspect-square overflow-hidden rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent active:scale-95 active:opacity-80 transition-transform"
           onClick={() => onItemClick?.(item)}
         >
           {item.type === "photo" ? (

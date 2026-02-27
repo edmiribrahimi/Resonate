@@ -45,7 +45,7 @@ export default function CopyReferralLink({
         />
         <button
           onClick={handleCopy}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
         >
           {copied ? "Copied!" : "Copy"}
         </button>

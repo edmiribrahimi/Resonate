@@ -177,13 +177,13 @@ export default async function DashboardPage() {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
               <Link href="/membership-card">
-                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4 transition-colors hover:border-accent/50 h-full">
+                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
                   <span className="text-2xl">&#127915;</span>
                   <p className="mt-2 text-sm font-semibold">Membership Card</p>
                 </div>
               </Link>
               <Link href="/attendance">
-                <div className="rounded-2xl border border-card-border bg-card p-4 transition-colors hover:border-accent/50 h-full">
+                <div className="rounded-2xl border border-card-border bg-card p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
                   <span className="text-2xl">&#128202;</span>
                   <p className="mt-2 text-sm font-semibold">Event History</p>
                 </div>
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
                     return (
                       <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
                         <div
-                          className={`rounded-2xl border border-card-border bg-card p-4 transition-colors hover:border-accent/50 ${
+                          className={`rounded-2xl border border-card-border bg-card p-4 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                             !isUpcoming ? "opacity-60" : ""
                           }`}
                         >

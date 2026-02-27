@@ -139,7 +139,7 @@ export default function MyMediaSection({ groups }: MyMediaSectionProps) {
                     onClick={() =>
                       item.type === "photo" && setLightboxUrl(item.url)
                     }
-                    className="block w-full aspect-square rounded-lg overflow-hidden bg-background"
+                    className="block w-full aspect-square rounded-lg overflow-hidden bg-background active:scale-95 active:opacity-80 transition-transform"
                   >
                     {item.type === "photo" ? (
                       <Image
@@ -166,7 +166,7 @@ export default function MyMediaSection({ groups }: MyMediaSectionProps) {
                     type="button"
                     onClick={() => handleDelete(item.id)}
                     disabled={isPending && pendingDelete === item.id}
-                    className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-xs text-red-400 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-xs text-red-400 opacity-0 group-hover:opacity-100 transition-all active:scale-95 disabled:opacity-50"
                     title="Delete"
                   >
                     {pendingDelete === item.id ? "..." : "&#10005;"}
@@ -189,7 +189,7 @@ export default function MyMediaSection({ groups }: MyMediaSectionProps) {
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            className="absolute top-6 right-6 text-2xl text-white/80 hover:text-white"
+            className="absolute top-6 right-6 text-2xl text-white/80 hover:text-white active:scale-95 active:opacity-80 transition-transform"
           >
             &#10005;
           </button>

@@ -42,7 +42,7 @@ export default function RefundRequestButton({ ticketId }: RefundRequestButtonPro
       <button
         type="button"
         onClick={() => setShowDialog(true)}
-        className="w-full rounded-full border border-card-border py-2.5 text-sm font-medium text-muted transition-colors hover:border-red-500/50 hover:text-red-400"
+        className="w-full rounded-full border border-card-border py-2.5 text-sm font-medium text-muted transition-all hover:border-red-500/50 hover:text-red-400 active:scale-95 active:opacity-80"
       >
         Request Refund
       </button>
@@ -69,7 +69,7 @@ export default function RefundRequestButton({ ticketId }: RefundRequestButtonPro
                 type="button"
                 onClick={() => setShowDialog(false)}
                 disabled={isPending}
-                className="flex-1 rounded-full border border-card-border py-2.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className="flex-1 rounded-full border border-card-border py-2.5 text-sm font-medium text-muted transition-all hover:text-foreground active:scale-95 active:opacity-80"
               >
                 Cancel
               </button>
@@ -77,7 +77,7 @@ export default function RefundRequestButton({ ticketId }: RefundRequestButtonPro
                 type="button"
                 onClick={handleSubmit}
                 disabled={isPending}
-                className="flex-1 rounded-full bg-red-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="flex-1 rounded-full bg-red-500 py-2.5 text-sm font-medium text-white transition-all hover:bg-red-600 active:scale-95 active:opacity-80 disabled:opacity-50"
               >
                 {isPending ? "Submitting..." : "Submit Request"}
               </button>

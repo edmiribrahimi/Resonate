@@ -39,7 +39,7 @@ export default function ChangeEmailButton() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full rounded-2xl border border-card-border bg-card p-5 text-left text-sm font-medium text-muted transition-colors hover:border-accent/50 hover:text-foreground"
+        className="w-full rounded-2xl border border-card-border bg-card p-5 text-left text-sm font-medium text-muted transition-all hover:border-accent/50 hover:text-foreground active:scale-[0.98] active:opacity-80"
       >
         Change Email
       </button>
@@ -63,13 +63,13 @@ export default function ChangeEmailButton() {
         <button
           onClick={handleChange}
           disabled={status === "loading" || !newEmail.trim()}
-          className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95 active:opacity-80 disabled:opacity-50"
         >
           {status === "loading" ? "Sending..." : "Confirm"}
         </button>
         <button
           onClick={() => { setOpen(false); setNewEmail(""); setStatus("idle"); setErrorMsg(""); }}
-          className="rounded-full border border-card-border px-5 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+          className="rounded-full border border-card-border px-5 py-2 text-sm font-medium text-muted transition-all hover:text-foreground active:scale-95 active:opacity-80"
         >
           Cancel
         </button>

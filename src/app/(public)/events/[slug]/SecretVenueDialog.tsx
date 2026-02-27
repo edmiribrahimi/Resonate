@@ -24,7 +24,7 @@ export default function SecretVenueDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover transition-all active:scale-95 active:opacity-80"
       >
         <LockClosedIcon /> Secret Venue
       </button>
@@ -74,13 +74,13 @@ export default function SecretVenueDialog({
               <div className="mt-5 flex gap-3">
                 <Link
                   href="/register"
-                  className="flex-1 rounded-full bg-accent py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                  className="flex-1 rounded-full bg-accent py-2.5 text-center text-sm font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
                 >
                   Sign up
                 </Link>
                 <Link
                   href="/login"
-                  className="flex-1 rounded-full border border-card-border py-2.5 text-center text-sm font-medium text-foreground hover:bg-background transition-colors"
+                  className="flex-1 rounded-full border border-card-border py-2.5 text-center text-sm font-medium text-foreground hover:bg-background transition-all active:scale-95 active:opacity-80"
                 >
                   Sign in
                 </Link>
@@ -90,7 +90,7 @@ export default function SecretVenueDialog({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className={`${!isAuthenticated ? "mt-3" : "mt-5"} w-full rounded-full bg-card border border-card-border py-2.5 text-sm font-medium text-muted hover:text-foreground transition-colors`}
+              className={`${!isAuthenticated ? "mt-3" : "mt-5"} w-full rounded-full bg-card border border-card-border py-2.5 text-sm font-medium text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80`}
             >
               Close
             </button>

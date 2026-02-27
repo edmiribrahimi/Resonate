@@ -61,7 +61,7 @@ function EventList({ events, isPast }: { events: EventCard[]; isPast: boolean })
       {events.map((event) => (
         <Link key={event.slug} href={`/events/${event.slug}`}>
           <div
-            className={`rounded-2xl border border-card-border p-5 transition-colors hover:border-accent/50 ${
+            className={`rounded-2xl border border-card-border p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
               isPast
                 ? "bg-card/50 opacity-70 hover:opacity-100"
                 : "bg-card"
@@ -192,7 +192,7 @@ export default function EventTabs({ upcoming, past }: EventTabsProps) {
       <div className="flex gap-6 px-6 mb-6 border-b border-card-border">
         <button
           onClick={() => switchTab("upcoming")}
-          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-colors ${
+          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-all active:scale-95 active:opacity-80 ${
             activeTab === "upcoming"
               ? "text-accent border-b-2 border-accent"
               : "text-muted"
@@ -202,7 +202,7 @@ export default function EventTabs({ upcoming, past }: EventTabsProps) {
         </button>
         <button
           onClick={() => switchTab("past")}
-          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-colors ${
+          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-all active:scale-95 active:opacity-80 ${
             activeTab === "past"
               ? "text-accent border-b-2 border-accent"
               : "text-muted"

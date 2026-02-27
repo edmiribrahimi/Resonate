@@ -58,7 +58,7 @@ export default async function MembershipCardPage() {
         </div>
 
         <div className="mt-4">
-          <button className="w-full rounded-full border border-card-border py-3 text-sm font-medium transition-colors hover:bg-card">
+          <button className="w-full rounded-full border border-card-border py-3 text-sm font-medium transition-all hover:bg-card active:scale-95 active:opacity-80">
             Add to Apple/Google Wallet
           </button>
         </div>

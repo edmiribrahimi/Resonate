@@ -129,7 +129,7 @@ export default function MediaReviewGrid({ items }: MediaReviewGridProps) {
                   type="button"
                   onClick={() => handleAction(item.id, "approved")}
                   disabled={isPending && pendingAction === `approved-${item.id}`}
-                  className="flex-1 rounded-full bg-green-500/20 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                  className="flex-1 rounded-full bg-green-500/20 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/30 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
                 >
                   {pendingAction === `approved-${item.id}` ? "..." : "Approve"}
                 </button>
@@ -137,7 +137,7 @@ export default function MediaReviewGrid({ items }: MediaReviewGridProps) {
                   type="button"
                   onClick={() => handleAction(item.id, "rejected")}
                   disabled={isPending && pendingAction === `rejected-${item.id}`}
-                  className="flex-1 rounded-full bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                  className="flex-1 rounded-full bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/30 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
                 >
                   {pendingAction === `rejected-${item.id}` ? "..." : "Reject"}
                 </button>

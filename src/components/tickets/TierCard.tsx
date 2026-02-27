@@ -169,7 +169,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
             >
               {isPending ? "Saving..." : "Save"}
             </button>
@@ -179,7 +179,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                 setIsEditing(false);
                 setError(null);
               }}
-              className="rounded-full border border-card-border px-4 py-1.5 text-xs font-medium text-muted hover:bg-card-border/30 transition-colors"
+              className="rounded-full border border-card-border px-4 py-1.5 text-xs font-medium text-muted hover:bg-card-border/30 transition-all active:scale-95 active:opacity-80"
             >
               Cancel
             </button>
@@ -229,7 +229,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
+              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-all active:scale-95 active:opacity-80"
             >
               Edit
             </button>
@@ -239,7 +239,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                 type="button"
                 onClick={handleDelete}
                 disabled={isPending}
-                className="rounded-full border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                className="rounded-full border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
               >
                 {isPending ? "..." : "Delete"}
               </button>
