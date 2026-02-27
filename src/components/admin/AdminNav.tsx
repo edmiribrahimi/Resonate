@@ -15,23 +15,25 @@ export default function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <div className="px-6 mb-6" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-      {tabs.map((tab) => {
-        const isActive = pathname.startsWith(tab.href);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              isActive
-                ? "bg-accent text-white"
-                : "bg-card border border-card-border text-muted hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
+    <div className="px-6 mb-6">
+      <div className="flex flex-row flex-wrap gap-2">
+        {tabs.map((tab) => {
+          const isActive = pathname.startsWith(tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`inline-block rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-accent text-white"
+                  : "bg-card border border-card-border text-muted hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
