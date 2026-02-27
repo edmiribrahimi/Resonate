@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,6 +37,16 @@ export async function GET(request: Request) {
             .update({ status: "approved" })
             .eq("id", user.id)
             .eq("status", "pending");
+        }
+      }
+
+        // Auto-subscribe to newsletter (fire-and-forget)
+        if (user.email && process.env.RESEND_API_KEY && process.env.RESEND_AUDIENCE_ID) {
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          resend.contacts.create({
+            email: user.email,
+            audienceId: process.env.RESEND_AUDIENCE_ID,
+          }).catch(() => {});
         }
       }
 
