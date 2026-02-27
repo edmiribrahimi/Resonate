@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { refundTransaction } from "@/lib/sumup";
+import { sendEmail } from "@/lib/email";
+import { RefundApprovedEmail } from "@/emails/refund-approved";
+import { RefundRejectedEmail } from "@/emails/refund-rejected";
+import { render } from "@react-email/render";
 
 function getServiceClient() {
   return createSupabaseClient(
@@ -102,7 +106,7 @@ export async function approveRefund(refundId: string) {
   // Fetch refund with ticket data
   const { data: refund, error: refundError } = await serviceClient
     .from("ticket_refunds")
-    .select("id, ticket_id, amount, status")
+    .select("id, ticket_id, amount, status, requested_by")
     .eq("id", refundId)
     .single();
 
@@ -162,6 +166,40 @@ export async function approveRefund(refundId: string) {
     .delete()
     .eq("id", ticket.id);
 
+  // Fire-and-forget: send refund approved email
+  (async () => {
+    try {
+      const { data: requesterProfile } = await serviceClient
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", refund.requested_by)
+        .single();
+
+      const { data: eventData } = await serviceClient
+        .from("events")
+        .select("title")
+        .eq("id", ticket.event_id)
+        .single();
+
+      if (requesterProfile && eventData) {
+        const html = await render(
+          RefundApprovedEmail({
+            memberName: requesterProfile.full_name || "Member",
+            eventTitle: eventData.title,
+            amount: refund.amount,
+          })
+        );
+        await sendEmail({
+          to: requesterProfile.email,
+          subject: `Refund approved for ${eventData.title}`,
+          html,
+        });
+      }
+    } catch (emailError) {
+      console.error("Refund approved email failed (non-blocking)", emailError);
+    }
+  })();
+
   revalidatePath("/events");
   revalidatePath("/organizer/events");
   return { success: true };
@@ -197,7 +235,7 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
   // Verify refund exists and is pending
   const { data: refund } = await serviceClient
     .from("ticket_refunds")
-    .select("status")
+    .select("id, status, requested_by, ticket_id")
     .eq("id", refundId)
     .single();
 
@@ -214,6 +252,48 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
       processed_at: new Date().toISOString(),
     })
     .eq("id", refundId);
+
+  // Fire-and-forget: send refund rejected email
+  (async () => {
+    try {
+      const { data: ticket } = await serviceClient
+        .from("tickets")
+        .select("event_id")
+        .eq("id", refund.ticket_id)
+        .single();
+
+      const { data: requesterProfile } = await serviceClient
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", refund.requested_by)
+        .single();
+
+      if (ticket && requesterProfile) {
+        const { data: eventData } = await serviceClient
+          .from("events")
+          .select("title")
+          .eq("id", ticket.event_id)
+          .single();
+
+        if (eventData) {
+          const html = await render(
+            RefundRejectedEmail({
+              memberName: requesterProfile.full_name || "Member",
+              eventTitle: eventData.title,
+              adminNote: adminNote?.trim() || undefined,
+            })
+          );
+          await sendEmail({
+            to: requesterProfile.email,
+            subject: `Refund update for ${eventData.title}`,
+            html,
+          });
+        }
+      }
+    } catch (emailError) {
+      console.error("Refund rejected email failed (non-blocking)", emailError);
+    }
+  })();
 
   revalidatePath("/events");
   revalidatePath("/organizer/events");

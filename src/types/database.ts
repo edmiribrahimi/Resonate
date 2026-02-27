@@ -56,6 +56,9 @@ export interface RSVP {
   event_id: string;
   party_id: string;
   user_id: string;
+  reminder_sent: boolean;
+  checked_in: boolean;
+  checked_in_at: string | null;
   created_at: string;
 }
 
@@ -110,6 +113,10 @@ export interface Ticket {
   sumup_checkout_id: string | null;
   sumup_transaction_code: string | null;
   amount_paid: number;
+  reminder_sent: boolean;
+  checked_in: boolean;
+  checked_in_at: string | null;
+  checked_in_by: string | null;
   created_at: string;
 }
 

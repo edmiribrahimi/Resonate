@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// UUID pattern: 8-4-4-4-12 hex chars
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Ticket token: uuid.64-hex-chars (HMAC signature)
+const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/i;
+// Membership QR: URL containing code=RSN-
+const MEMBERSHIP_PATTERN = /code=RSN-/i;
+
 export default function ScannerPage() {
   const [result, setResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -42,15 +49,52 @@ export default function ScannerPage() {
 
   const handleVerify = async (code: string) => {
     try {
-      const res = await fetch(`/api/membership/verify?code=${encodeURIComponent(code)}`);
-      const data = await res.json();
+      if (TICKET_TOKEN_PATTERN.test(code)) {
+        // Ticket QR code - check in via POST
+        const res = await fetch("/api/tickets/checkin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: code }),
+        });
+        const data = await res.json();
 
-      if (data.valid) {
-        setStatus("success");
-        setMessage(`✓ ${data.member_name} — Attendance recorded`);
+        if (data.valid) {
+          setStatus("success");
+          const details = [data.member_name, data.party_title || data.event_title]
+            .filter(Boolean)
+            .join(" — ");
+          setMessage(`✓ Check-in OK — ${details}`);
+        } else if (data.status === "already_checked_in") {
+          setStatus("error");
+          setMessage(`✗ Already checked in — ${data.member_name}`);
+        } else if (data.status === "not_found") {
+          setStatus("error");
+          setMessage("✗ Ticket not found");
+        } else if (data.status === "invalid_signature") {
+          setStatus("error");
+          setMessage("✗ Invalid ticket signature");
+        } else {
+          setStatus("error");
+          setMessage("✗ Check-in failed");
+        }
+      } else if (MEMBERSHIP_PATTERN.test(code) || UUID_PATTERN.test(code)) {
+        // Membership QR code - verify via GET (existing behavior)
+        const url = MEMBERSHIP_PATTERN.test(code)
+          ? code
+          : `/api/membership/verify?code=${encodeURIComponent(code)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.valid) {
+          setStatus("success");
+          setMessage(`✓ ${data.member_name} — Attendance recorded`);
+        } else {
+          setStatus("error");
+          setMessage("✗ Invalid membership");
+        }
       } else {
         setStatus("error");
-        setMessage("✗ Invalid membership");
+        setMessage("✗ QR code not recognized");
       }
     } catch {
       setStatus("error");

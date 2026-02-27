@@ -6,6 +6,7 @@ import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
 import { render } from "@react-email/render";
 import QRCode from "qrcode";
 import { formatTime } from "@/utils/formatTime";
+import { generateTicketToken } from "@/utils/qr";
 
 function getServiceClient() {
   return createClient(
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
         const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL}/tickets/${ticketId}`;
 
         // Generate QR code buffer
-        const qrBuffer = await QRCode.toBuffer(ticketId, {
+        const qrBuffer = await QRCode.toBuffer(generateTicketToken(ticketId), {
           width: 280,
           margin: 2,
           errorCorrectionLevel: "H",

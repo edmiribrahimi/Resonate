@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/email";
+import { RsvpConfirmationEmail } from "@/emails/rsvp-confirmation";
+import { render } from "@react-email/render";
+import { formatTime } from "@/utils/formatTime";
 
 /**
  * RSVP to a free_rsvp party.
@@ -60,6 +64,59 @@ export async function rsvpToParty(partyId: string, eventId: string) {
   if (error) {
     throw new Error(`Failed to RSVP: ${error.message}`);
   }
+
+  // Fire-and-forget: send RSVP confirmation email
+  (async () => {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", user.id)
+        .single();
+
+      const { data: event } = await supabase
+        .from("events")
+        .select("title, slug")
+        .eq("id", eventId)
+        .single();
+
+      const { data: partyData } = await supabase
+        .from("event_parties")
+        .select("title, date, time")
+        .eq("id", partyId)
+        .single();
+
+      if (profile && event && partyData) {
+        const formattedDate = new Date(
+          partyData.date + "T00:00:00"
+        ).toLocaleDateString("en-US", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+
+        const html = await render(
+          RsvpConfirmationEmail({
+            memberName: profile.full_name || "Member",
+            eventTitle: event.title,
+            partyTitle: partyData.title,
+            eventDate: formattedDate,
+            eventTime: formatTime(partyData.time),
+            eventUrl: `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}`,
+          })
+        );
+
+        await sendEmail({
+          to: profile.email,
+          subject: `You're in for ${event.title}`,
+          html,
+        });
+      }
+    } catch (emailError) {
+      console.error("RSVP confirmation email failed (non-blocking)", emailError);
+    }
+  })();
 
   revalidatePath("/events");
   return { success: true };

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { formatTime } from "@/utils/formatTime";
+import { generateTicketToken } from "@/utils/qr";
 import RefundRequestButton from "./RefundRequestButton";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -78,7 +79,7 @@ export default async function TicketPage({
     .maybeSingle();
 
   // Generate QR code data URL server-side
-  const qrDataUrl = await QRCode.toDataURL(ticket.id, {
+  const qrDataUrl = await QRCode.toDataURL(generateTicketToken(ticket.id), {
     width: 280,
     margin: 2,
     errorCorrectionLevel: "H",
