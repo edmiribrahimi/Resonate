@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
 import { render } from "@react-email/render";
 import QRCode from "qrcode";
+import { formatTime } from "@/utils/formatTime";
 
 function getServiceClient() {
   return createClient(
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
         p_tier_id: purchase.tier_id,
         p_user_id: purchase.user_id,
         p_event_id: purchase.event_id,
+        p_party_id: purchase.party_id,
         p_sumup_checkout_id: checkout.id,
         p_sumup_transaction_code: transactionCode,
         p_amount_paid: checkout.amount,
@@ -103,9 +105,20 @@ export async function POST(request: Request) {
       // Fetch event details
       const { data: event } = await supabase
         .from("events")
-        .select("title, date, time, slug")
+        .select("title, date, slug")
         .eq("id", purchase.event_id)
         .single();
+
+      // Fetch party details (may be null for master ticket)
+      let party: { title: string; time: string } | null = null;
+      if (purchase.party_id) {
+        const { data: partyData } = await supabase
+          .from("event_parties")
+          .select("title, time")
+          .eq("id", purchase.party_id)
+          .single();
+        party = partyData;
+      }
 
       // Fetch tier name
       const { data: tier } = await supabase
@@ -134,14 +147,17 @@ export async function POST(request: Request) {
           year: "numeric",
         });
 
+        const eventTime = party ? formatTime(party.time) : "";
+
         // Render email HTML
         const html = await render(
           TicketConfirmationEmail({
             memberName: profile.full_name || "Member",
             eventTitle: event.title,
             eventDate: formattedDate,
-            eventTime: event.time,
+            eventTime,
             tierName: tier.name,
+            partyTitle: party?.title ?? (purchase.party_id ? undefined : "Event Pass"),
             ticketUrl,
           })
         );

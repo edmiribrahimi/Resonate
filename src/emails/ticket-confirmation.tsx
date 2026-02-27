@@ -8,6 +8,7 @@ interface TicketConfirmationEmailProps {
   eventDate: string;
   eventTime: string;
   tierName: string;
+  partyTitle?: string;
   ticketUrl: string;
 }
 
@@ -17,6 +18,7 @@ export function TicketConfirmationEmail({
   eventDate,
   eventTime,
   tierName,
+  partyTitle,
   ticketUrl,
 }: TicketConfirmationEmailProps) {
   return (
@@ -55,7 +57,7 @@ export function TicketConfirmationEmail({
           fontFamily: "'Arial', sans-serif",
         }}
       >
-        {tierName}
+        {partyTitle ? `${partyTitle} - ${tierName}` : tierName}
       </Text>
 
       <Text

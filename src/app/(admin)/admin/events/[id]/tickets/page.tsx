@@ -34,6 +34,15 @@ export default async function AdminTicketTiersPage({ params }: PageProps) {
     redirect("/admin/events");
   }
 
+  // Fetch paid parties for this event
+  const { data: parties } = await supabase
+    .from("event_parties")
+    .select("id, title, date, access_type")
+    .eq("event_id", eventId)
+    .eq("access_type", "paid")
+    .order("sort_order", { ascending: true });
+
+  // Fetch all tiers and group by party
   const { data: tiers } = await supabase
     .from("ticket_tiers")
     .select("*")
@@ -50,6 +59,27 @@ export default async function AdminTicketTiersPage({ params }: PageProps) {
     })
   );
 
+  // Separate event-level tiers and party-specific tiers
+  const eventLevelTiers = tiersWithSold.filter((t) => !t.party_id);
+  const tiersByParty = new Map<string, typeof tiersWithSold>();
+  for (const tier of tiersWithSold) {
+    if (tier.party_id) {
+      const partyId = tier.party_id as string;
+      if (!tiersByParty.has(partyId)) {
+        tiersByParty.set(partyId, []);
+      }
+      tiersByParty.get(partyId)!.push(tier);
+    }
+  }
+
+  function formatPartyDate(dateStr: string): string {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  }
+
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
@@ -63,19 +93,59 @@ export default async function AdminTicketTiersPage({ params }: PageProps) {
         <p className="text-sm text-muted mt-1">{event.title}</p>
       </header>
 
-      <div className="px-6 space-y-6">
-        <AddTierForm eventId={eventId} />
+      <div className="px-6 space-y-8">
+        {/* Event Pass Tiers */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">
+            Event Pass Tiers
+          </h2>
 
-        {tiersWithSold.length === 0 ? (
+          <AddTierForm eventId={eventId} partyId={null} />
+
+          {eventLevelTiers.length === 0 ? (
+            <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+              <p className="text-muted text-sm">No event-level tiers yet. Add one to offer an all-access pass.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {eventLevelTiers.map((tier) => (
+                <TierCard key={tier.id} tier={tier} eventId={eventId} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Party-specific tiers */}
+        {(parties ?? []).length === 0 ? (
           <div className="rounded-2xl border border-card-border bg-card p-8 text-center">
-            <p className="text-muted">No tiers yet. Add your first ticket tier above.</p>
+            <p className="text-muted">No paid sub-events for this event. Change a sub-event&apos;s access type to &quot;Paid&quot; to add ticket tiers.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {tiersWithSold.map((tier) => (
-              <TierCard key={tier.id} tier={tier} eventId={eventId} />
-            ))}
-          </div>
+          (parties ?? []).map((party: { id: string; title: string; date: string }) => {
+            const partyTiers = tiersByParty.get(party.id) ?? [];
+
+            return (
+              <div key={party.id} className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {party.title} &middot; {formatPartyDate(party.date)}
+                </h2>
+
+                <AddTierForm eventId={eventId} partyId={party.id} />
+
+                {partyTiers.length === 0 ? (
+                  <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+                    <p className="text-muted text-sm">No tiers yet for this sub-event.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {partyTiers.map((tier) => (
+                      <TierCard key={tier.id} tier={tier} eventId={eventId} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 

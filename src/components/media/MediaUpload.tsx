@@ -8,8 +8,8 @@ import { validateMediaUpload, registerMedia } from "@/app/(public)/events/[slug]
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime"];
 const ALL_ALLOWED_TYPES = [...ALLOWED_PHOTO_TYPES, ...ALLOWED_VIDEO_TYPES];
-const MAX_PHOTO_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_PHOTO_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 
 const ACCEPT_STRING = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
 
@@ -220,10 +220,10 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
           <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 18h16" />
         </svg>
         <p className="text-sm text-muted">
-          Drag &amp; drop photos or videos, or <span className="text-accent font-medium">browse</span>
+          Upload photos or videos
         </p>
         <p className="mt-1 text-xs text-muted/70">
-          JPEG, PNG, WebP up to 10MB -- MP4, MOV up to 100MB
+          Photos up to 50MB -- Videos up to 500MB
         </p>
         <input
           ref={fileInputRef}

@@ -12,7 +12,7 @@ BEGIN;
 -- member keeps their account but the referral link becomes NULL.
 
 ALTER TABLE public.profiles
-  ADD COLUMN referred_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Step 2: Update handle_new_user trigger with referral logic

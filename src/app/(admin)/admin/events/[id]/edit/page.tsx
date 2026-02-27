@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
 import { updateEvent } from "@/app/(organizer)/organizer/events/actions";
-import type { UserRole, UserStatus } from "@/types/database";
+import type { UserRole, UserStatus, AccessType } from "@/types/database";
 
 interface EditEventPageProps {
   params: Promise<{ id: string }>;
@@ -26,7 +26,7 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
   const { data: event, error } = await supabase
     .from("events")
     .select(
-      "id, title, description, date, time, location, location_secret, lineup, cover_image, capacity, is_published, created_by"
+      "id, title, description, date, venue_secret, lineup, cover_image, is_published, created_by"
     )
     .eq("id", eventId)
     .single();
@@ -34,6 +34,13 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
   if (error || !event) {
     notFound();
   }
+
+  // Fetch parties for this event (with venue join)
+  const { data: parties } = await supabase
+    .from("event_parties")
+    .select("id, title, description, date, time, end_time, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venues(name)")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true });
 
   async function boundUpdateEvent(
     formData: FormData
@@ -74,13 +81,32 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
             title: event.title,
             description: event.description,
             date: event.date,
-            time: event.time,
-            location: event.location,
-            location_secret: event.location_secret,
+            venue_secret: event.venue_secret,
             lineup: event.lineup ?? [],
             cover_image: event.cover_image,
-            capacity: event.capacity,
             is_published: event.is_published,
+            parties: (parties ?? []).map((p: Record<string, unknown>) => {
+              const venues = p.venues as { name: string } | { name: string }[] | null;
+              const venueName = venues ? (Array.isArray(venues) ? venues[0]?.name : venues.name) : null;
+              return {
+                id: p.id as string,
+                title: p.title as string,
+                description: p.description as string | null,
+                date: p.date as string,
+                time: p.time as string,
+                end_time: p.end_time as string | null,
+                venue_text: p.venue_text as string | null,
+                venue_id: p.venue_id as string | null,
+                venue_name: venueName,
+                lineup: (p.lineup as string[]) ?? [],
+                venue_secret: (p.venue_secret as boolean) ?? false,
+                venue_secret_hint: (p.venue_secret_hint as string | null) ?? null,
+                venue_reveal_hours: (p.venue_reveal_hours as number | null) ?? null,
+                access_type: p.access_type as AccessType,
+                capacity: p.capacity as number | null,
+                sort_order: p.sort_order as number,
+              };
+            }),
           }}
           action={boundUpdateEvent}
           submitLabel="Save Changes"

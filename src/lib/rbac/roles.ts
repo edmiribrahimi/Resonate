@@ -58,7 +58,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/dashboard",
-    label: "Members",
+    label: "Account",
     icon: "user",
     roles: null,
     requireApproved: false,

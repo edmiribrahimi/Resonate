@@ -4,9 +4,108 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
+import RsvpButton from "./RsvpButton";
+import PendingIntentHandler from "./PendingIntentHandler";
+import SecretVenueDialog from "./SecretVenueDialog";
 import MediaGallerySection from "./MediaGallerySection";
-import type { Event, UserRole, UserStatus, EventMedia } from "@/types/database";
+import { formatTime } from "@/utils/formatTime";
+import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
+import type { UserRole, UserStatus, AccessType } from "@/types/database";
+
+interface PartyVenue {
+  id: string;
+  name: string;
+  slug: string;
+  address: string | null;
+}
+
+interface PartyWithTiers {
+  id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  time: string;
+  end_time: string | null;
+  venue_text: string | null;
+  venue: PartyVenue | null;
+  lineup: string[];
+  venue_secret: boolean;
+  venue_secret_hint: string | null;
+  venue_reveal_hours: number | null;
+  access_type: AccessType;
+  capacity: number | null;
+  sort_order: number;
+  tiers: {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number | null;
+    sold: number;
+    available: number | null;
+    show_remaining?: boolean;
+    starts_at?: string | null;
+    expires_at?: string | null;
+  }[];
+  userTicket: { id: string; tier_id: string } | null;
+  userRsvp: { id: string } | null;
+  spotsLeft: number | null;
+}
+
+function isVenueVisible(opts: {
+  partyDate: string;
+  partyTime: string;
+  venueSecret: boolean;
+  hasTicketForParty: boolean;
+  hasMasterTicket: boolean;
+  isApproved: boolean;
+  isOrganizer: boolean;
+  isMasterRole: boolean;
+  venueRevealHours: number | null;
+  venueSecretHint: string | null;
+}): { visible: boolean; hint: string | null } {
+  if (!opts.venueSecret) return { visible: true, hint: null };
+  if (opts.isMasterRole || opts.isOrganizer) return { visible: true, hint: null };
+  if (opts.hasTicketForParty || opts.hasMasterTicket) return { visible: true, hint: null };
+  const partyStart = new Date(`${opts.partyDate}T${opts.partyTime}`);
+  const now = new Date();
+  // Past event → visible for approved members
+  if (now > partyStart && opts.isApproved) return { visible: true, hint: null };
+  // Approved member → visible X hours before
+  if (opts.isApproved) {
+    const hours = opts.venueRevealHours ?? 24;
+    const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
+    if (hoursUntil <= hours) return { visible: true, hint: null };
+  }
+  return { visible: false, hint: opts.venueSecretHint };
+}
+
+function formatDateRange(dates: string[]): string {
+  if (dates.length === 0) return "";
+  const sorted = [...new Set(dates)].sort();
+  if (sorted.length === 1) {
+    return new Date(sorted[0] + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+  const start = new Date(sorted[0] + "T00:00:00");
+  const end = new Date(sorted[sorted.length - 1] + "T00:00:00");
+  const startStr = start.toLocaleDateString("en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  const endStr = end.toLocaleDateString("en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return `${startStr} - ${endStr}`;
+}
 
 export default async function EventDetailPage({
   params,
@@ -21,7 +120,7 @@ export default async function EventDetailPage({
   // Payment result from SumUp redirect
   const paymentResult = query.payment as string | undefined;
 
-  // Check auth status -- reads cookies only, no DB call, fast
+  // Check auth status
   const supabase = await createClient();
   const {
     data: { user },
@@ -33,67 +132,182 @@ export default async function EventDetailPage({
   const role = (headersList.get("x-user-role") as UserRole) || null;
   const status = (headersList.get("x-user-status") as UserStatus) || null;
   const isApproved = status === "approved";
+  const isMasterRole = role === "master";
 
-  // Fetch event by slug
-  const { data: event } = await supabase
+  // Fetch event by slug — admin/organizer can see drafts too
+  const canSeeDrafts = isMasterRole || role === "organizer";
+  const eventQuery = supabase
     .from("events")
-    .select("*")
-    .eq("slug", slug)
-    .eq("is_published", true)
-    .single<Event>();
+    .select("id, slug, title, description, date, venue_secret, lineup, cover_image, is_published, early_access_until, created_by")
+    .eq("slug", slug);
+
+  if (!canSeeDrafts) {
+    eventQuery.eq("is_published", true);
+  }
+
+  const { data: event } = await eventQuery.single();
 
   if (!event) {
     notFound();
   }
 
-  // Fetch ticket tiers for this event
-  const { data: tiers } = await supabase
-    .from("ticket_tiers")
-    .select("id, name, price, quantity")
+  const isOrganizer = !!user && event.created_by === user.id;
+
+  // Service client for counting tickets (anon users can't read tickets via RLS)
+  const serviceClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Fetch parties for this event (with venue join)
+  const { data: rawParties } = await supabase
+    .from("event_parties")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, access_type, capacity, sort_order, venues(id, name, slug, address)")
     .eq("event_id", event.id)
-    .order("price", { ascending: true });
+    .order("sort_order", { ascending: true });
 
-  const hasTiers = tiers && tiers.length > 0;
+  // Check if user has a master ticket (event-level, party_id IS NULL)
+  let hasMasterTicket = false;
+  let masterTicketId: string | null = null;
+  if (isAuthenticated && user) {
+    const { data: masterTk } = await supabase
+      .from("tickets")
+      .select("id")
+      .eq("event_id", event.id)
+      .is("party_id", null)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (masterTk) {
+      hasMasterTicket = true;
+      masterTicketId = masterTk.id;
+    }
+  }
 
-  // For each tier, get sold count and compute available
-  const tiersWithAvailability = await Promise.all(
-    (tiers ?? []).map(async (tier) => {
-      const { count } = await supabase
-        .from("tickets")
-        .select("*", { count: "exact", head: true })
-        .eq("tier_id", tier.id);
-      const sold = count ?? 0;
-      return { ...tier, sold, available: tier.quantity - sold };
+  const parties: PartyWithTiers[] = await Promise.all(
+    (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venues: PartyVenue | PartyVenue[] | null; access_type: string; capacity: number | null; sort_order: number };
+      const venueData = party.venues;
+      const venue: PartyVenue | null = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
+
+      // Fetch tiers for paid parties (party-specific)
+      let tiers: PartyWithTiers["tiers"] = [];
+      if (party.access_type === "paid") {
+        const { data: rawTiers } = await supabase
+          .from("ticket_tiers")
+          .select("*")
+          .eq("party_id", party.id)
+          .order("price", { ascending: true });
+
+        tiers = await Promise.all(
+          (rawTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+            const { count } = await serviceClient
+              .from("tickets")
+              .select("*", { count: "exact", head: true })
+              .eq("tier_id", tier.id);
+            const sold = count ?? 0;
+            return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null };
+          })
+        );
+      }
+
+      // Check if user has ticket/rsvp for this party
+      let userTicket: { id: string; tier_id: string } | null = null;
+      let userRsvp: { id: string } | null = null;
+
+      if (isAuthenticated && user) {
+        if (party.access_type === "paid") {
+          const { data: ticket } = await supabase
+            .from("tickets")
+            .select("id, tier_id")
+            .eq("party_id", party.id)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          userTicket = ticket;
+        }
+
+        if (party.access_type === "free_rsvp") {
+          const { data: rsvp } = await supabase
+            .from("rsvps")
+            .select("id")
+            .eq("party_id", party.id)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          userRsvp = rsvp;
+        }
+      }
+
+      // Calculate spots left
+      let spotsLeft: number | null = null;
+      if (party.capacity) {
+        if (party.access_type === "paid" && tiers.length > 0) {
+          const totalSold = tiers.reduce((sum, t) => sum + t.sold, 0);
+          spotsLeft = party.capacity - totalSold;
+        } else if (party.access_type === "free_rsvp") {
+          const { count: rsvpCount } = await serviceClient
+            .from("rsvps")
+            .select("*", { count: "exact", head: true })
+            .eq("party_id", party.id);
+          spotsLeft = party.capacity - (rsvpCount || 0);
+        }
+      }
+
+      return {
+        id: party.id,
+        title: party.title,
+        description: party.description,
+        date: party.date,
+        time: party.time,
+        end_time: party.end_time,
+        venue_text: party.venue_text,
+        venue,
+        lineup: party.lineup ?? [],
+        venue_secret: party.venue_secret ?? false,
+        venue_secret_hint: party.venue_secret_hint ?? null,
+        venue_reveal_hours: party.venue_reveal_hours ?? null,
+        access_type: party.access_type as AccessType,
+        capacity: party.capacity,
+        sort_order: party.sort_order,
+        tiers,
+        userTicket,
+        userRsvp,
+        spotsLeft,
+      };
     })
   );
 
-  // Calculate capacity from ticket sales when tiers exist
-  let spotsLeft: number | null = null;
-  if (hasTiers && event.capacity) {
-    const totalTicketsSold = tiersWithAvailability.reduce(
-      (sum, t) => sum + t.sold,
-      0
+  // Fetch event-level tiers (party_id IS NULL)
+  let eventTiers: { id: string; name: string; price: number; quantity: number | null; sold: number; available: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }[] = [];
+  {
+    const { data: rawEventTiers } = await supabase
+      .from("ticket_tiers")
+      .select("*")
+      .eq("event_id", event.id)
+      .is("party_id", null)
+      .order("price", { ascending: true });
+
+    eventTiers = await Promise.all(
+      (rawEventTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+        const { count } = await serviceClient
+          .from("tickets")
+          .select("*", { count: "exact", head: true })
+          .eq("tier_id", tier.id);
+        const sold = count ?? 0;
+        return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null };
+      })
     );
-    spotsLeft = event.capacity - totalTicketsSold;
-  } else if (!hasTiers && event.capacity) {
-    // Fallback to RSVP count for events without tiers
-    const { count: rsvpCount } = await supabase
-      .from("rsvps")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", event.id);
-    spotsLeft = event.capacity - (rsvpCount || 0);
   }
 
-  // Fetch user's ticket for this event (if authenticated)
-  let userTicket: { id: string; tier_id: string } | null = null;
+  // Check if user has attended this event (scanned at entry)
+  let hasAttended = false;
   if (isAuthenticated && user) {
-    const { data: ticket } = await supabase
-      .from("tickets")
-      .select("id, tier_id")
+    const { data: attendance } = await supabase
+      .from("attendance")
+      .select("id")
       .eq("event_id", event.id)
       .eq("user_id", user.id)
+      .limit(1)
       .maybeSingle();
-    userTicket = ticket;
+    hasAttended = !!attendance;
   }
 
   // Fetch approved media for this event
@@ -112,8 +326,40 @@ export default async function EventDetailPage({
       uploaded_by: m.uploaded_by,
     }));
 
-  // Check if current user can upload (has ticket + is approved)
-  const canUpload = isAuthenticated && isApproved && !!userTicket;
+  // Fetch artist profiles for lineup names (event-level + party-level)
+  const allLineupNames = new Set<string>();
+  if (event.lineup) {
+    for (const name of event.lineup) allLineupNames.add(name);
+  }
+  for (const p of parties) {
+    for (const name of p.lineup) allLineupNames.add(name);
+  }
+  const artistSlugs = new Map<string, string>();
+  if (allLineupNames.size > 0) {
+    const { data: artists } = await supabase
+      .from("artists")
+      .select("name, slug")
+      .in("name", [...allLineupNames]);
+
+    if (artists) {
+      for (const a of artists) {
+        artistSlugs.set(a.name, a.slug);
+      }
+    }
+  }
+
+  const canUpload = isAuthenticated && ((isApproved && hasAttended) || isOrganizer || isMasterRole);
+  const partyDates = parties.map((p) => p.date);
+  const dateRangeDisplay = formatDateRange(partyDates);
+  const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
+
+  function formatPartyDate(dateStr: string): string {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  }
 
   return (
     <div className="min-h-dvh pb-24">
@@ -132,6 +378,8 @@ export default async function EventDetailPage({
           </p>
         </div>
       )}
+
+      {isAuthenticated && <PendingIntentHandler eventSlug={slug} />}
 
       {/* Cover */}
       <div className="relative px-6 pt-6">
@@ -152,79 +400,21 @@ export default async function EventDetailPage({
           />
         ) : (
           <div className="flex h-48 items-center justify-center rounded-2xl bg-card text-muted">
-            <span className="text-5xl">&#127925;</span>
+            <MusicalNoteIcon className="h-12 w-12" />
           </div>
         )}
       </div>
 
       <div className="px-6 pt-6">
-        {/* Date & Time */}
+        {/* Date range */}
         <p className="mb-1 text-sm font-medium text-accent">
-          {new Date(event.date + "T00:00:00").toLocaleDateString("en-US", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}{" "}
-          &middot; {event.time}
+          {dateRangeDisplay}
         </p>
-
-        {/* Capacity -- subtle secondary text */}
-        {event.capacity !== null && spotsLeft !== null && event.date >= new Date().toISOString().split("T")[0] && (
-          <p
-            className={`mb-2 text-sm ${
-              spotsLeft <= 0
-                ? "text-red-400 font-medium"
-                : "text-muted"
-            }`}
-          >
-            {spotsLeft <= 0 ? "Sold out" : `${spotsLeft} spots left`}
-          </p>
-        )}
 
         {/* Title */}
         <h1 className="mb-4 text-3xl font-bold tracking-tight">
           {event.title}
         </h1>
-
-        {/* Location */}
-        <div className="mb-6 rounded-xl border border-card-border bg-card p-4">
-          {event.location_secret ? (
-            userTicket ? (
-              <div>
-                <p className="text-sm text-muted">
-                  &#128205; Location
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {event.location}
-                </p>
-              </div>
-            ) : isAuthenticated ? (
-              <div>
-                <p className="text-sm text-muted">
-                  &#128274; Secret Location
-                </p>
-                <p className="mt-2 text-sm font-medium text-accent">
-                  Buy a ticket to reveal the address
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm text-muted">
-                  &#128274; Secret Location
-                </p>
-                <Link
-                  href="/register"
-                  className="mt-2 inline-block text-sm font-medium text-accent hover:text-accent-hover"
-                >
-                  Sign up to become a member &rarr;
-                </Link>
-              </div>
-            )
-          ) : (
-            <p className="text-sm">&#128205; {event.location}</p>
-          )}
-        </div>
 
         {/* Description */}
         {event.description && (
@@ -233,90 +423,266 @@ export default async function EventDetailPage({
           </p>
         )}
 
-        {/* Lineup */}
-        {event.lineup && event.lineup.length > 0 && (
-          <div className="mb-6">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-              Lineup
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {event.lineup.map((artist) => (
-                <span
-                  key={artist}
-                  className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium"
+        {/* Lineup (event-level only — party lineups are shown inside each party card) */}
+        {(() => {
+          const allPartyLineupNames = new Set(parties.flatMap((p) => p.lineup));
+          const eventLineup = (event.lineup ?? []) as string[];
+          const eventOnlyLineup = eventLineup.filter(
+            (name) => !allPartyLineupNames.has(name)
+          );
+          // Show event-level lineup if it has unique names, or if no parties have lineups and event has lineup
+          const lineupToShow: string[] =
+            eventOnlyLineup.length > 0
+              ? eventOnlyLineup
+              : !allPartyLineupNames.size && eventLineup.length
+                ? eventLineup
+                : [];
+          if (lineupToShow.length === 0) return null;
+          const unique = [...new Set(lineupToShow)].sort();
+
+          return (
+            <div className="mb-6">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
+                Lineup
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {unique.map((artist: string) => {
+                  const slug = artistSlugs.get(artist);
+                  return slug ? (
+                    <Link
+                      key={artist}
+                      href={`/artists/${slug}`}
+                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium hover:bg-accent/30 transition-colors"
+                    >
+                      {artist}
+                    </Link>
+                  ) : (
+                    <span
+                      key={artist}
+                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium"
+                    >
+                      {artist}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Event Pass section (event-level tiers) */}
+        {eventTiers.length > 0 && (
+          <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-4">
+            {hasMasterTicket ? (
+              <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
+                <p className="text-sm font-medium text-green-400 mb-3">
+                  You have an Event Pass
+                </p>
+                <Link
+                  href={`/tickets/${masterTicketId}`}
+                  className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
                 >
-                  {artist}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Already has ticket */}
-        {isAuthenticated && userTicket && (
-          <div className="mb-6">
-            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
-              <p className="text-sm font-medium text-green-400 mb-3">
-                You have a ticket for this event
-              </p>
-              <Link
-                href={`/tickets/${userTicket.id}`}
-                className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-              >
-                View Your Ticket
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Tier selection and buy button -- approved members only, without existing ticket */}
-        {isAuthenticated &&
-          isApproved &&
-          !userTicket &&
-          hasTiers && (
-            <div className="mb-6">
-              <TierSelection
-                eventId={event.id}
-                tiers={tiersWithAvailability}
-              />
-            </div>
-          )}
-
-        {/* Pending member guard (TICK-07) */}
-        {isAuthenticated &&
-          !isApproved &&
-          status === "pending" &&
-          hasTiers && (
-            <div className="mb-6">
+                  View Your Event Pass
+                </Link>
+              </div>
+            ) : isUpcoming && isAuthenticated && !isApproved && status === "pending" ? (
               <p className="text-sm text-muted text-center">
                 Your account is pending approval. You&apos;ll be able to
-                purchase tickets once approved.
+                purchase an Event Pass once approved.
               </p>
+            ) : isUpcoming && (!isAuthenticated || isApproved) ? (
+              <TierSelection
+                partyId={null}
+                tiers={eventTiers}
+                label="Event Pass"
+                isAuthenticated={isAuthenticated}
+                eventSlug={slug}
+              />
+            ) : null}
+          </div>
+        )}
+
+        {/* Party sections */}
+        {parties.map((party) => {
+          const hasTicketForParty = !!party.userTicket;
+          const { visible: venueVisible, hint: venueHint } = isVenueVisible({
+            partyDate: party.date,
+            partyTime: party.time,
+            venueSecret: party.venue_secret,
+            hasTicketForParty,
+            hasMasterTicket,
+            isApproved,
+            isOrganizer,
+            isMasterRole,
+            venueRevealHours: party.venue_reveal_hours,
+            venueSecretHint: party.venue_secret_hint,
+          });
+
+          return (
+            <div
+              key={party.id}
+              className="mb-6 rounded-xl border border-card-border bg-card p-4"
+            >
+              {/* Party header */}
+              <div className="mb-3">
+                <p className="text-foreground font-medium">{party.title}</p>
+                <div className="flex items-center gap-3 mt-1 text-sm text-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarIcon /> {formatPartyDate(party.date)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ClockIcon /> {formatTime(party.time)}
+                    {party.end_time && ` - ${formatTime(party.end_time)}`}
+                  </span>
+                </div>
+
+                {/* Venue display with secret logic */}
+                {(party.venue || party.venue_text || party.venue_secret) && (
+                  <div className="mt-1">
+                    {venueVisible ? (
+                      party.venue ? (
+                        <Link href={`/venues/${party.venue.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover">
+                          <MapPinIcon /> {party.venue.name}
+                        </Link>
+                      ) : party.venue_text ? (
+                        <p className="inline-flex items-center gap-1 text-sm text-muted">
+                          <MapPinIcon /> {party.venue_text}
+                        </p>
+                      ) : null
+                    ) : party.venue_secret ? (
+                      <SecretVenueDialog
+                        hint={venueHint}
+                        isAuthenticated={isAuthenticated}
+                        isApproved={isApproved}
+                        revealHours={party.venue_reveal_hours}
+                      />
+                    ) : null}
+                  </div>
+                )}
+
+                {party.description && (
+                  <p className="mt-2 text-sm text-muted whitespace-pre-line">
+                    {party.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Party lineup (inside the card) */}
+              {party.lineup.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {[...party.lineup].sort().map((artist) => {
+                    const slug = artistSlugs.get(artist);
+                    return slug ? (
+                      <Link
+                        key={artist}
+                        href={`/artists/${slug}`}
+                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium hover:bg-accent/30 transition-colors"
+                      >
+                        {artist}
+                      </Link>
+                    ) : (
+                      <span
+                        key={artist}
+                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium"
+                      >
+                        {artist}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Capacity — hidden for past parties */}
+              {isUpcoming && party.capacity !== null && party.spotsLeft !== null && (
+                <p
+                  className={`mb-3 text-sm ${
+                    party.spotsLeft <= 0
+                      ? "text-red-400 font-medium"
+                      : "text-muted"
+                  }`}
+                >
+                  {party.spotsLeft <= 0 ? "Sold out" : `${party.spotsLeft} spots left`}
+                </p>
+              )}
+
+              {/* Already has ticket for this party */}
+              {isAuthenticated && party.userTicket && (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
+                  <p className="text-sm font-medium text-green-400 mb-3">
+                    You have a ticket for this
+                  </p>
+                  <Link
+                    href={`/tickets/${party.userTicket.id}`}
+                    className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                  >
+                    View Your Ticket
+                  </Link>
+                </div>
+              )}
+
+              {/* Master ticket holder sees "covered" badge */}
+              {isAuthenticated && hasMasterTicket && !party.userTicket && (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-green-400">
+                    Covered by your Event Pass
+                  </p>
+                </div>
+              )}
+
+              {/* Paid party: tier selection (upcoming only) */}
+              {isUpcoming &&
+                !party.userTicket &&
+                !hasMasterTicket &&
+                party.access_type === "paid" &&
+                party.tiers.length > 0 &&
+                (!isAuthenticated || isApproved) &&
+                (
+                  <TierSelection
+                    partyId={party.id}
+                    tiers={party.tiers}
+                    isAuthenticated={isAuthenticated}
+                    eventSlug={slug}
+                  />
+                )}
+
+              {/* Free RSVP party: RSVP button (upcoming only) */}
+              {isUpcoming &&
+                party.access_type === "free_rsvp" &&
+                (!isAuthenticated || isApproved) &&
+                (
+                  <RsvpButton
+                    partyId={party.id}
+                    eventId={event.id}
+                    hasRsvp={!!party.userRsvp}
+                    isAuthenticated={isAuthenticated}
+                    eventSlug={slug}
+                  />
+                )}
+
+              {/* Free public party: badge (upcoming only) */}
+              {isUpcoming && party.access_type === "free_public" && (
+                <div className="rounded-xl bg-green-500/10 border border-green-500/30 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-green-400">
+                    Free Entry
+                  </p>
+                </div>
+              )}
+
+              {/* Pending member guard (upcoming only) */}
+              {isUpcoming &&
+                isAuthenticated &&
+                !isApproved &&
+                status === "pending" &&
+                party.access_type === "paid" &&
+                party.tiers.length > 0 && (
+                  <p className="text-sm text-muted text-center">
+                    Your account is pending approval. You&apos;ll be able to
+                    purchase tickets once approved.
+                  </p>
+                )}
             </div>
-          )}
-
-        {/* RSVP fallback for events without tiers (only for upcoming events) */}
-        {isAuthenticated && isApproved && !hasTiers && event.date >= new Date().toISOString().split("T")[0] && (
-          <div className="mb-6">
-            <button
-              className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              I&apos;m going
-            </button>
-          </div>
-        )}
-
-        {/* Unauthenticated CTA */}
-        {!isAuthenticated && (
-          <div className="mb-6">
-            <Link
-              href="/register"
-              className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              Sign up to confirm attendance
-            </Link>
-          </div>
-        )}
+          );
+        })}
 
         {/* Event Gallery */}
         <div className="mb-6">

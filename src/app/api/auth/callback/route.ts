@@ -12,25 +12,30 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Check if user should be promoted to master
-      const masterEmail = process.env.MASTER_EMAIL;
-      if (masterEmail) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      const serviceClient = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
 
-        if (user && user.email === masterEmail) {
-          // Use service role client for master promotion to bypass RLS
-          // (user's own session cannot modify their role via profiles_update_own policy)
-          const serviceClient = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
+      if (user) {
+        // Check if user should be promoted to master
+        const masterEmail = process.env.MASTER_EMAIL;
+        if (masterEmail && user.email === masterEmail) {
           await serviceClient
             .from("profiles")
             .update({ role: "master", status: "approved" })
             .eq("id", user.id);
+        } else {
+          // Auto-approve all new members on email confirmation
+          await serviceClient
+            .from("profiles")
+            .update({ status: "approved" })
+            .eq("id", user.id)
+            .eq("status", "pending");
         }
       }
 

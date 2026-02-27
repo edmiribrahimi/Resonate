@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const nextUrl = searchParams.get("next") || "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +30,7 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    window.location.href = nextUrl || "/dashboard";
   };
 
   return (
@@ -69,11 +72,19 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-accent hover:text-accent-hover">
+          <Link href={`/register${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""}`} className="text-accent hover:text-accent-hover">
             Sign Up
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -13,7 +13,6 @@ interface EventItem {
   title: string;
   date: string;
   is_published: boolean;
-  capacity: number | null;
   created_by: string | null;
   creator_name?: string | null;
 }
@@ -151,9 +150,6 @@ export default function EventList({
               </div>
               <div className="flex items-center gap-3 text-xs text-muted">
                 <span>{formatDate(event.date)}</span>
-                {event.capacity && (
-                  <span>Capacity: {event.capacity}</span>
-                )}
                 {showCreator && event.creator_name && (
                   <span>By: {event.creator_name}</span>
                 )}

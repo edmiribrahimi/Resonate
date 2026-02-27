@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/admin/members", label: "Members" },
   { href: "/admin/events", label: "Events" },
+  { href: "/admin/artists", label: "Artists" },
+  { href: "/admin/venues", label: "Venues" },
 ];
 
 export default function AdminNav() {

@@ -24,6 +24,7 @@ const passwordRules = [
 function RegisterForm() {
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("ref") || "";
+  const nextUrl = searchParams.get("next") || "";
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,10 +42,12 @@ function RegisterForm() {
     setError(null);
 
     const supabase = createClient();
+    const redirectTo = `${window.location.origin}/api/auth/callback${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""}`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectTo,
         data: {
           full_name: fullName,
           referral_code: referralCode || undefined,
@@ -138,7 +141,7 @@ function RegisterForm() {
 
         <p className="mt-6 text-center text-sm text-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-accent hover:text-accent-hover">
+          <Link href={`/login${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""}`} className="text-accent hover:text-accent-hover">
             Sign In
           </Link>
         </p>

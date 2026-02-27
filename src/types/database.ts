@@ -1,5 +1,6 @@
 export type UserRole = "master" | "organizer" | "member";
 export type UserStatus = "pending" | "approved" | "rejected";
+export type AccessType = "free_public" | "free_rsvp" | "paid";
 
 export interface Profile {
   id: string;
@@ -19,15 +20,33 @@ export interface Event {
   title: string;
   description: string;
   date: string;
-  time: string;
-  location: string | null;
-  location_secret: boolean;
+  venue_secret: boolean;
   lineup: string[];
   cover_image: string | null;
   is_published: boolean;
   early_access_until: string | null;
-  capacity: number | null;
   created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventParty {
+  id: string;
+  event_id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  time: string;
+  end_time: string | null;
+  venue_text: string | null;
+  access_type: AccessType;
+  capacity: number | null;
+  venue_id: string | null;
+  lineup: string[];
+  venue_secret: boolean;
+  venue_secret_hint: string | null;
+  venue_reveal_hours: number | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +54,7 @@ export interface Event {
 export interface RSVP {
   id: string;
   event_id: string;
+  party_id: string;
   user_id: string;
   created_at: string;
 }
@@ -70,9 +90,13 @@ export interface NewsletterSubscriber {
 export interface TicketTier {
   id: string;
   event_id: string;
+  party_id: string | null;
   name: string;
   price: number;
-  quantity: number;
+  quantity: number | null;
+  show_remaining: boolean;
+  starts_at: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -80,6 +104,7 @@ export interface TicketTier {
 export interface Ticket {
   id: string;
   event_id: string;
+  party_id: string | null;
   tier_id: string;
   user_id: string;
   sumup_checkout_id: string | null;
@@ -88,9 +113,55 @@ export interface Ticket {
   created_at: string;
 }
 
+export interface Artist {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  photo_url: string | null;
+  instagram_url: string | null;
+  soundcloud_url: string | null;
+  spotify_url: string | null;
+  website_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  address: string | null;
+  google_maps_url: string | null;
+  photo_url: string | null;
+  instagram_url: string | null;
+  website_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketRefund {
+  id: string;
+  ticket_id: string;
+  requested_by: string;
+  processed_by: string | null;
+  reason: string | null;
+  admin_note: string | null;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  sumup_status: "pending" | "completed" | "failed" | null;
+  type: "user_request" | "admin_initiated";
+  created_at: string;
+  processed_at: string | null;
+}
+
 export interface PendingPurchase {
   id: string;
   event_id: string;
+  party_id: string | null;
   tier_id: string;
   user_id: string;
   sumup_checkout_id: string;

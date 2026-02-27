@@ -5,9 +5,10 @@ import { createTier } from "@/app/(organizer)/organizer/events/[id]/tickets/acti
 
 interface AddTierFormProps {
   eventId: string;
+  partyId: string | null;
 }
 
-export default function AddTierForm({ eventId }: AddTierFormProps) {
+export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,7 @@ export default function AddTierForm({ eventId }: AddTierFormProps) {
 
     startTransition(async () => {
       try {
-        const result = await createTier(eventId, formData);
+        const result = await createTier(eventId, partyId, formData);
         if (result.success) {
           form.reset();
         }
@@ -33,7 +34,7 @@ export default function AddTierForm({ eventId }: AddTierFormProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4">
+    <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
       <h2 className="text-sm font-semibold text-foreground mb-3">
         Add Tier
       </h2>
@@ -87,16 +88,58 @@ export default function AddTierForm({ eventId }: AddTierFormProps) {
               htmlFor="tier-quantity"
               className="block text-xs text-muted mb-1"
             >
-              Quantity
+              Quantity (empty = unlimited)
             </label>
             <input
               id="tier-quantity"
               name="quantity"
               type="number"
-              required
               min={1}
-              placeholder="100"
+              placeholder="Unlimited"
               className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            name="show_remaining"
+            type="checkbox"
+            defaultChecked
+            value="true"
+            className="rounded border-card-border bg-background text-accent focus:ring-accent"
+          />
+          <span className="text-xs text-muted">Show remaining tickets to users</span>
+          <input type="hidden" name="show_remaining" value="false" />
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor="tier-starts"
+              className="block text-xs text-muted mb-1"
+            >
+              Starts at (optional)
+            </label>
+            <input
+              id="tier-starts"
+              name="starts_at"
+              type="datetime-local"
+              className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="tier-expires"
+              className="block text-xs text-muted mb-1"
+            >
+              Expires at (optional)
+            </label>
+            <input
+              id="tier-expires"
+              name="expires_at"
+              type="datetime-local"
+              className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
         </div>

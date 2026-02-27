@@ -22,10 +22,10 @@ export async function validateMediaUpload(eventId: string) {
     throw new Error("Not authenticated");
   }
 
-  // Check user profile status is approved
+  // Check user profile
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("status")
+    .select("role, status")
     .eq("id", user.id)
     .single();
 
@@ -33,20 +33,25 @@ export async function validateMediaUpload(eventId: string) {
     throw new Error("Profile not found");
   }
 
-  if (profile.status !== "approved") {
-    throw new Error("Not approved");
-  }
+  const isOrgOrMaster = profile.role === "organizer" || profile.role === "master";
 
-  // Check ticket ownership (= attendance gate per CONTEXT.md)
-  const { data: ticket } = await supabase
-    .from("tickets")
-    .select("id")
-    .eq("event_id", eventId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Organizers and masters can always upload; members need approved + ticket
+  if (!isOrgOrMaster) {
+    if (profile.status !== "approved") {
+      throw new Error("Not approved");
+    }
 
-  if (!ticket) {
-    throw new Error("No ticket for this event");
+    // Check attendance (scanned at entry — ticket or member card)
+    const { data: attendance } = await supabase
+      .from("attendance")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!attendance) {
+      throw new Error("You must have attended this event to upload media");
+    }
   }
 
   return { userId: user.id, canUpload: true };

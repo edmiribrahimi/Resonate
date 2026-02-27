@@ -10,8 +10,11 @@ interface TierWithSold {
   id: string;
   name: string;
   price: number;
-  quantity: number;
+  quantity: number | null;
   sold: number;
+  show_remaining: boolean;
+  starts_at: string | null;
+  expires_at: string | null;
 }
 
 interface TierCardProps {
@@ -74,7 +77,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4">
+    <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
           <p className="text-sm text-red-400">{error}</p>
@@ -112,15 +115,52 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
             </div>
             <div>
               <label className="block text-xs text-muted mb-1">
-                Quantity
+                Quantity (empty = unlimited)
               </label>
               <input
                 name="quantity"
                 type="number"
-                required
                 min={1}
-                defaultValue={tier.quantity}
-                className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                defaultValue={tier.quantity ?? ""}
+                placeholder="Unlimited"
+                className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              name="show_remaining"
+              type="checkbox"
+              defaultChecked={tier.show_remaining}
+              value="true"
+              className="rounded border-card-border bg-background text-accent focus:ring-accent"
+            />
+            <span className="text-xs text-muted">Show remaining tickets to users</span>
+            <input type="hidden" name="show_remaining" value="false" />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted mb-1">
+                Starts at (optional)
+              </label>
+              <input
+                name="starts_at"
+                type="datetime-local"
+                defaultValue={tier.starts_at ? new Date(tier.starts_at).toISOString().slice(0, 16) : ""}
+                className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-muted mb-1">
+                Expires at (optional)
+              </label>
+              <input
+                name="expires_at"
+                type="datetime-local"
+                defaultValue={tier.expires_at ? new Date(tier.expires_at).toISOString().slice(0, 16) : ""}
+                className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
           </div>
@@ -149,14 +189,38 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
         <>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                {tier.name}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {tier.name}
+                </h3>
+                {tier.starts_at && new Date(tier.starts_at) > new Date() && (
+                  <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400 uppercase">
+                    Coming soon
+                  </span>
+                )}
+                {tier.expires_at && new Date(tier.expires_at) < new Date() && (
+                  <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold text-red-400 uppercase">
+                    Expired
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted">
                 <span>{formatPrice(tier.price)}</span>
                 <span>
-                  {tier.sold}/{tier.quantity} sold
+                  {tier.quantity !== null
+                    ? `${tier.sold}/${tier.quantity} sold`
+                    : `${tier.sold} sold`}
                 </span>
+                {tier.starts_at && new Date(tier.starts_at) > new Date() && (
+                  <span>
+                    Starts {new Date(tier.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+                {tier.expires_at && new Date(tier.expires_at) >= new Date() && (
+                  <span>
+                    Expires {new Date(tier.expires_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
               </div>
             </div>
           </div>

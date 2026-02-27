@@ -3,7 +3,6 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
-import { createClient } from "@/lib/supabase/server";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function Home() {
@@ -14,24 +13,6 @@ export default async function Home() {
 
   // Logged-in users go straight to dashboard
   if (role) redirect("/dashboard");
-
-  let nextEvent: { slug: string; title: string; date: string } | null = null;
-
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("events")
-      .select("slug, title, date")
-      .gte("date", new Date().toISOString().split("T")[0])
-      .eq("is_published", true)
-      .order("date", { ascending: true })
-      .limit(1)
-      .single();
-
-    nextEvent = data;
-  } catch {
-    // No upcoming events or query failed -- gracefully show no event preview
-  }
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -44,23 +25,6 @@ export default async function Home() {
           priority
           className="mb-4"
         />
-
-        {nextEvent && (
-          <Link
-            href={`/events/${nextEvent.slug}`}
-            className="mb-8 block w-full max-w-xs rounded-lg border border-card-border p-4 transition-colors hover:bg-card"
-          >
-            <span className="block font-semibold">{nextEvent.title}</span>
-            <span className="block text-sm text-muted">
-              {new Date(nextEvent.date).toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </Link>
-        )}
 
         <div className="flex w-full max-w-xs flex-col gap-3">
           <Link

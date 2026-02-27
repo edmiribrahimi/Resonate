@@ -8,6 +8,7 @@ import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
+import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -22,18 +23,39 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("membership_code")
+    .select("membership_code, role, created_at")
     .eq("id", user.id)
     .single();
 
-  // Fetch user's tickets with event and tier data
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select(
-      "id, amount_paid, created_at, events(title, date, time, slug, cover_image), ticket_tiers(name)"
-    )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const userEmail = user.email ?? "";
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
+  const roleLabel =
+    profile?.role === "master"
+      ? "Admin"
+      : profile?.role === "organizer"
+        ? "Organizer"
+        : "Member";
+
+  // Fetch user's tickets (only for regular members — admin/organizer don't buy tickets)
+  const isMemberRole = !profile?.role || profile.role === "member";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let tickets: any[] | null = null;
+  if (isMemberRole) {
+    const { data } = await supabase
+      .from("tickets")
+      .select(
+        "id, amount_paid, created_at, party_id, events(title, date, slug, cover_image), ticket_tiers(name), event_parties(title, date, time)"
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    tickets = data;
+  }
 
   // Fetch user's media grouped by event
   const { data: myMedia } = await supabase
@@ -96,8 +118,19 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
-        <p className="text-sm text-muted">Hey,</p>
-        <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-muted">Hey,</p>
+            <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
+          </div>
+          <span className="mt-2 shrink-0 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent">
+            {roleLabel}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
+        {memberSince && (
+          <p className="text-xs text-muted/60">Member since {memberSince}</p>
+        )}
       </header>
 
       <div className="flex flex-col gap-4 px-6">
@@ -128,38 +161,39 @@ export default async function DashboardPage() {
                 Discover events →
               </Link>
             </div>
+
+            {/* Settings */}
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">Settings</p>
+              <div className="flex flex-col gap-2">
+                <ChangeEmailButton />
+                <ResetPasswordButton />
+                <LogoutButton />
+              </div>
+            </div>
           </>
         ) : (
           <>
-            {/* Membership Card */}
-            <Link href="/membership-card">
-              <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-5 transition-colors hover:border-accent/50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted">Membership Card</p>
-                    <p className="mt-1 text-lg font-semibold">View your card</p>
-                  </div>
-                  <span className="text-3xl">&#127915;</span>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-3">
+              <Link href="/membership-card">
+                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4 transition-colors hover:border-accent/50 h-full">
+                  <span className="text-2xl">&#127915;</span>
+                  <p className="mt-2 text-sm font-semibold">Membership Card</p>
                 </div>
-              </div>
-            </Link>
-
-            {/* Attendance */}
-            <Link href="/attendance">
-              <div className="rounded-2xl border border-card-border bg-card p-5 transition-colors hover:border-accent/50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted">Your attendance</p>
-                    <p className="mt-1 text-lg font-semibold">Event history</p>
-                  </div>
-                  <span className="text-3xl">&#128202;</span>
+              </Link>
+              <Link href="/attendance">
+                <div className="rounded-2xl border border-card-border bg-card p-4 transition-colors hover:border-accent/50 h-full">
+                  <span className="text-2xl">&#128202;</span>
+                  <p className="mt-2 text-sm font-semibold">Event History</p>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            </div>
 
-            {/* My Tickets */}
+            {/* My Tickets — only for regular members */}
+            {isMemberRole && (
             <div>
-              <p className="mb-3 text-sm text-muted">My Tickets</p>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">My Tickets</p>
               {sortedTickets.length === 0 ? (
                 <div className="rounded-2xl border border-card-border bg-card p-5">
                   <p className="text-sm text-muted/60">No tickets yet</p>
@@ -182,7 +216,6 @@ export default async function DashboardPage() {
                     const eventData = evt as {
                       title: string;
                       date: string;
-                      time: string;
                       slug: string;
                       cover_image: string | null;
                     } | null;
@@ -199,7 +232,6 @@ export default async function DashboardPage() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            {/* Cover image or gradient placeholder */}
                             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
                               {eventData?.cover_image ? (
                                 <Image
@@ -213,8 +245,6 @@ export default async function DashboardPage() {
                                 <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
                               )}
                             </div>
-
-                            {/* Ticket info */}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
                                 <p className="text-sm font-semibold text-foreground truncate">
@@ -244,11 +274,7 @@ export default async function DashboardPage() {
                                 </span>
                               </div>
                             </div>
-
-                            {/* Chevron */}
-                            <span className="shrink-0 text-muted">
-                              &#8250;
-                            </span>
+                            <span className="shrink-0 text-muted">&#8250;</span>
                           </div>
                         </div>
                       </Link>
@@ -257,33 +283,25 @@ export default async function DashboardPage() {
                 </div>
               )}
             </div>
-
-            {/* My Media */}
-            <MyMediaSection groups={mediaGroups} />
-
-            {/* Referral Link */}
-            {profile?.membership_code && (
-              <CopyReferralLink membershipCode={profile.membership_code} />
             )}
 
-            {/* Upcoming RSVP */}
-            <div className="rounded-2xl border border-card-border bg-card p-5">
-              <p className="mb-3 text-sm text-muted">
-                Upcoming confirmed events
-              </p>
-              <p className="text-sm text-muted/60">No confirmed events</p>
-              <Link
-                href="/events"
-                className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent-hover"
-              >
-                Discover events →
-              </Link>
+            {/* My Media — only show if user has uploads */}
+            {mediaGroups.length > 0 && <MyMediaSection groups={mediaGroups} />}
+
+            {/* Settings */}
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">Settings</p>
+              <div className="flex flex-col gap-2">
+                {profile?.membership_code && (
+                  <CopyReferralLink membershipCode={profile.membership_code} />
+                )}
+                <ChangeEmailButton />
+                <ResetPasswordButton />
+                <LogoutButton />
+              </div>
             </div>
           </>
         )}
-
-        <ResetPasswordButton />
-        <LogoutButton />
       </div>
 
       <MobileNav role={role} status={status} />

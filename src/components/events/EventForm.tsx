@@ -1,9 +1,74 @@
 "use client";
 
-import { useState, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useState, useRef, useCallback, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import TagInput from "@/components/events/TagInput";
+import AutocompleteTagInput from "@/components/events/AutocompleteTagInput";
+import AutocompleteInput, { type AutocompleteOption } from "@/components/ui/AutocompleteInput";
+import CreateArtistModal from "@/components/artists/CreateArtistModal";
+import VenueProfilePrompt from "@/components/venues/VenueProfilePrompt";
+import CreateVenueModal from "@/components/venues/CreateVenueModal";
+import { searchArtists } from "@/app/(organizer)/organizer/artists/actions";
+import { searchVenues, checkVenueExists } from "@/app/(organizer)/organizer/venues/actions";
+import type { AccessType } from "@/types/database";
+
+interface SubEventFormState {
+  id?: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  end_time: string;
+  venue_text: string;
+  venue_id: string | null;
+  venue_name: string;
+  lineup: string[];
+  venue_secret: boolean;
+  venue_secret_hint: string;
+  venue_reveal_hours: string;
+  access_type: AccessType;
+  capacity: string;
+  sort_order: number;
+}
+
+function defaultSubEvent(sortOrder: number): SubEventFormState {
+  return {
+    title: "",
+    description: "",
+    date: "",
+    time: "",
+    end_time: "",
+    venue_text: "",
+    venue_id: null,
+    venue_name: "",
+    lineup: [],
+    venue_secret: false,
+    venue_secret_hint: "",
+    venue_reveal_hours: "",
+    access_type: "paid",
+    capacity: "",
+    sort_order: sortOrder,
+  };
+}
+
+export interface PartyInitialData {
+  id?: string;
+  title: string;
+  description: string | null;
+  date: string;
+  time: string;
+  end_time: string | null;
+  venue_text: string | null;
+  venue_id: string | null;
+  venue_name: string | null;
+  lineup: string[];
+  venue_secret: boolean;
+  venue_secret_hint: string | null;
+  venue_reveal_hours: number | null;
+  access_type: AccessType;
+  capacity: number | null;
+  sort_order: number;
+}
 
 interface EventFormProps {
   initialData?: {
@@ -11,13 +76,11 @@ interface EventFormProps {
     title: string;
     description: string;
     date: string;
-    time: string;
-    location: string | null;
-    location_secret: boolean;
+    venue_secret: boolean;
     lineup: string[];
     cover_image: string | null;
-    capacity: number | null;
     is_published: boolean;
+    parties: PartyInitialData[];
   };
   action: (
     formData: FormData
@@ -27,6 +90,33 @@ interface EventFormProps {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const ACCESS_TYPE_LABELS: Record<AccessType, string> = {
+  free_public: "Free (Open to all)",
+  free_rsvp: "Free (RSVP required)",
+  paid: "Paid (Tickets)",
+};
+
+function subEventFromInitial(p: PartyInitialData): SubEventFormState {
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description ?? "",
+    date: p.date,
+    time: p.time,
+    end_time: p.end_time ?? "",
+    venue_text: p.venue_text ?? "",
+    venue_id: p.venue_id ?? null,
+    venue_name: p.venue_name ?? "",
+    lineup: p.lineup ?? [],
+    venue_secret: p.venue_secret ?? false,
+    venue_secret_hint: p.venue_secret_hint ?? "",
+    venue_reveal_hours: p.venue_reveal_hours?.toString() ?? "",
+    access_type: p.access_type,
+    capacity: p.capacity?.toString() ?? "",
+    sort_order: p.sort_order,
+  };
+}
 
 export default function EventForm({
   initialData,
@@ -40,16 +130,116 @@ export default function EventForm({
   const [description, setDescription] = useState(
     initialData?.description ?? ""
   );
-  const [date, setDate] = useState(initialData?.date ?? "");
-  const [time, setTime] = useState(initialData?.time ?? "");
-  const [location, setLocation] = useState(initialData?.location ?? "");
-  const [locationSecret, setLocationSecret] = useState(
-    initialData?.location_secret ?? false
+  const [venueSecret, setVenueSecret] = useState(
+    initialData?.venue_secret ?? false
+  );
+  const [mainVenueSecretHint, setMainVenueSecretHint] = useState(
+    initialData?.parties?.[0]?.venue_secret_hint ?? ""
+  );
+  const [mainVenueRevealHours, setMainVenueRevealHours] = useState(
+    initialData?.parties?.[0]?.venue_reveal_hours?.toString() ?? ""
   );
   const [lineup, setLineup] = useState<string[]>(initialData?.lineup ?? []);
-  const [capacity, setCapacity] = useState(
-    initialData?.capacity?.toString() ?? ""
+
+  // Artist modal state
+  const [pendingArtistName, setPendingArtistName] = useState<string | null>(null);
+  const [showArtistModal, setShowArtistModal] = useState(false);
+
+  // Venue profile prompt state
+  const [pendingVenueIndex, setPendingVenueIndex] = useState<number | null>(null);
+  const [pendingVenueName, setPendingVenueName] = useState<string | null>(null);
+  const [showVenueModal, setShowVenueModal] = useState(false);
+  const [skippedVenues, setSkippedVenues] = useState<Set<string>>(new Set());
+
+  // Autocomplete search wrappers
+  const searchArtistsWrapped = useCallback(
+    async (query: string) => {
+      const results = await searchArtists(query);
+      return results.map((a) => ({ id: a.id, name: a.name, slug: a.slug }));
+    },
+    []
   );
+
+  const searchVenuesWrapped = useCallback(
+    async (query: string) => {
+      const results = await searchVenues(query);
+      return results.map((v) => ({ id: v.id, name: v.name, detail: v.address }));
+    },
+    []
+  );
+
+  function handleCreateNewArtist(name: string) {
+    setPendingArtistName(name);
+    setShowArtistModal(true);
+  }
+
+  async function handleVenueNameBlur(index: number, venueName: string) {
+    const trimmed = venueName.trim();
+    if (!trimmed) return;
+    if (skippedVenues.has(trimmed.toLowerCase())) return;
+
+    try {
+      const result = await checkVenueExists(trimmed);
+      if (index === -1) {
+        if (result.exists && result.id) {
+          setMainVenueId(result.id);
+          setMainVenueName(trimmed);
+        } else {
+          setPendingVenueIndex(-1);
+          setPendingVenueName(trimmed);
+        }
+      } else if (result.exists && result.id) {
+        setSubEvents((prev) =>
+          prev.map((se, i) =>
+            i === index ? { ...se, venue_id: result.id, venue_name: trimmed } : se
+          )
+        );
+      } else {
+        setPendingVenueIndex(index);
+        setPendingVenueName(trimmed);
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  // Main event fields (used when no sub-events)
+  const [date, setDate] = useState(initialData?.date ?? "");
+  const [mainTime, setMainTime] = useState(
+    initialData?.parties?.length === 0 || !initialData?.parties ? "" : ""
+  );
+  const [mainEndTime, setMainEndTime] = useState("");
+  const [mainVenueName, setMainVenueName] = useState("");
+  const [mainVenueId, setMainVenueId] = useState<string | null>(null);
+  const [mainVenueText, setMainVenueText] = useState("");
+  const [mainAccessType, setMainAccessType] = useState<AccessType>("paid");
+  const [mainCapacity, setMainCapacity] = useState("");
+
+  // Sub-events state
+  const initialSubEvents = initialData?.parties?.length
+    ? initialData.parties.map(subEventFromInitial)
+    : [];
+
+  const [subEvents, setSubEvents] = useState<SubEventFormState[]>(initialSubEvents);
+
+  function addSubEvent() {
+    // Transition: clear event-level lineup/venueSecret when adding first sub-event
+    if (subEvents.length === 0) {
+      setLineup([]);
+      setVenueSecret(false);
+    }
+    setSubEvents((prev) => [...prev, defaultSubEvent(prev.length)]);
+  }
+
+  function removeSubEvent(index: number) {
+    setSubEvents((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateSubEvent(index: number, field: keyof SubEventFormState, value: string) {
+    setSubEvents((prev) =>
+      prev.map((se, i) => (i === index ? { ...se, [field]: value } : se))
+    );
+  }
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -68,7 +258,6 @@ export default function EventForm({
     setImageError(null);
 
     if (!file) {
-      // If editing and user clears, keep existing preview
       if (!initialData?.cover_image) {
         setImageFile(null);
         setImagePreview(null);
@@ -89,7 +278,6 @@ export default function EventForm({
     }
 
     setImageFile(file);
-    // Create preview URL
     const url = URL.createObjectURL(file);
     setImagePreview(url);
   }
@@ -135,26 +323,76 @@ export default function EventForm({
     setIsSubmitting(true);
 
     try {
-      // Upload image if a new file was selected
       let coverImageUrl = initialData?.cover_image ?? null;
       if (imageFile) {
         coverImageUrl = await uploadImage(imageFile);
       } else if (!imagePreview) {
-        // User explicitly cleared the image
         coverImageUrl = null;
       }
 
-      // Build FormData
+      let partiesPayload: Record<string, unknown>[];
+      let eventLineup: string[];
+      let eventVenueSecret: boolean;
+
+      if (subEvents.length > 0) {
+        partiesPayload = subEvents.map((se, index) => ({
+          id: se.id || undefined,
+          title: se.title || title,
+          description: se.description || undefined,
+          date: se.date,
+          time: se.time,
+          end_time: se.end_time || undefined,
+          venue_text: se.venue_text || undefined,
+          venue_id: se.venue_id || undefined,
+          lineup: se.lineup,
+          venue_secret: se.venue_secret,
+          venue_secret_hint: se.venue_secret ? (se.venue_secret_hint || undefined) : undefined,
+          venue_reveal_hours: se.venue_secret && se.venue_reveal_hours ? parseInt(se.venue_reveal_hours, 10) : undefined,
+          access_type: se.access_type,
+          capacity: se.capacity ? parseInt(se.capacity, 10) : null,
+          sort_order: index,
+        }));
+        // Aggregated values for event level
+        const allLineup = new Set<string>();
+        let anySecret = false;
+        for (const se of subEvents) {
+          for (const a of se.lineup) allLineup.add(a);
+          if (se.venue_secret) anySecret = true;
+        }
+        eventLineup = [...allLineup];
+        eventVenueSecret = anySecret;
+      } else if (mainTime) {
+        partiesPayload = [{
+          title: title,
+          date: date,
+          time: mainTime,
+          end_time: mainEndTime || undefined,
+          venue_text: mainVenueText || undefined,
+          venue_id: mainVenueId || undefined,
+          lineup: lineup,
+          venue_secret: venueSecret,
+          venue_secret_hint: venueSecret ? (mainVenueSecretHint || undefined) : undefined,
+          venue_reveal_hours: venueSecret && mainVenueRevealHours ? parseInt(mainVenueRevealHours, 10) : undefined,
+          access_type: mainAccessType,
+          capacity: mainCapacity ? parseInt(mainCapacity, 10) : null,
+          sort_order: 0,
+        }];
+        eventLineup = lineup;
+        eventVenueSecret = venueSecret;
+      } else {
+        partiesPayload = [];
+        eventLineup = lineup;
+        eventVenueSecret = venueSecret;
+      }
+
       const formData = new FormData();
       formData.set("title", title);
       formData.set("description", description);
       formData.set("date", date);
-      formData.set("time", time);
-      formData.set("location", location);
-      formData.set("location_secret", locationSecret ? "true" : "false");
-      formData.set("lineup", JSON.stringify(lineup));
+      formData.set("venue_secret", eventVenueSecret ? "true" : "false");
+      formData.set("lineup", JSON.stringify(eventLineup));
       formData.set("cover_image", coverImageUrl ?? "");
-      formData.set("capacity", capacity);
+      formData.set("parties", JSON.stringify(partiesPayload));
 
       const result = await action(formData);
 
@@ -172,7 +410,377 @@ export default function EventForm({
     }
   }
 
+  function renderVenueSecretToggle(
+    value: boolean,
+    onToggle: () => void,
+    label?: string
+  ) {
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            {label ?? "Secret Venue"}
+          </p>
+          {value && (
+            <p className="text-xs text-muted mt-0.5">
+              Venue will be hidden until members purchase a ticket or a configurable time before event
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={value}
+          onClick={onToggle}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
+            value ? "bg-accent" : "bg-card-border"
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+              value ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+    );
+  }
+
+  function renderSubEventSection(
+    subEvent: SubEventFormState,
+    index: number
+  ) {
+    const idPrefix = `sub-${index}`;
+    return (
+      <div key={index} className="space-y-4 rounded-xl border border-card-border bg-card/50 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">
+            Sub-Event {index + 1}
+          </h3>
+          <button
+            type="button"
+            onClick={() => removeSubEvent(index)}
+            className="rounded-full border border-red-500/30 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+
+        {/* Title */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-title`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Title <span className="text-red-400">*</span>
+          </label>
+          <input
+            id={`${idPrefix}-title`}
+            type="text"
+            value={subEvent.title}
+            onChange={(e) => updateSubEvent(index, "title", e.target.value)}
+            placeholder="Sub-event name"
+            maxLength={100}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+          />
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-description`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Description
+          </label>
+          <textarea
+            id={`${idPrefix}-description`}
+            value={subEvent.description}
+            onChange={(e) => updateSubEvent(index, "description", e.target.value)}
+            placeholder="Optional description..."
+            rows={2}
+            maxLength={2000}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y"
+          />
+        </div>
+
+        {/* Date */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-date`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Date <span className="text-red-400">*</span>
+          </label>
+          <input
+            id={`${idPrefix}-date`}
+            type="date"
+            value={subEvent.date}
+            onChange={(e) => updateSubEvent(index, "date", e.target.value)}
+            required
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+          />
+        </div>
+
+        {/* Time row */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label
+              htmlFor={`${idPrefix}-time`}
+              className="block text-sm font-medium text-foreground"
+            >
+              Start Time <span className="text-red-400">*</span>
+            </label>
+            <input
+              id={`${idPrefix}-time`}
+              type="time"
+              value={subEvent.time}
+              onChange={(e) => updateSubEvent(index, "time", e.target.value)}
+              required
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              htmlFor={`${idPrefix}-end-time`}
+              className="block text-sm font-medium text-foreground"
+            >
+              End Time
+            </label>
+            <input
+              id={`${idPrefix}-end-time`}
+              type="time"
+              value={subEvent.end_time}
+              onChange={(e) => updateSubEvent(index, "end_time", e.target.value)}
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+        </div>
+
+        {/* Venue with autocomplete */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-venue`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Venue
+          </label>
+          <AutocompleteInput
+            id={`${idPrefix}-venue`}
+            value={subEvent.venue_name}
+            onChange={(val) => {
+              setSubEvents((prev) =>
+                prev.map((se, i) =>
+                  i === index ? { ...se, venue_name: val, venue_id: null } : se
+                )
+              );
+            }}
+            onSelect={(option: AutocompleteOption) => {
+              setSubEvents((prev) =>
+                prev.map((se, i) =>
+                  i === index ? { ...se, venue_name: option.name, venue_id: option.id } : se
+                )
+              );
+            }}
+            onCreateNew={(name) => {
+              setPendingVenueIndex(index);
+              setPendingVenueName(name);
+              setShowVenueModal(true);
+            }}
+            search={searchVenuesWrapped}
+            placeholder="Search venue..."
+            selectedId={subEvent.venue_id}
+            createLabel="Create new venue"
+          />
+          {pendingVenueIndex === index && pendingVenueName && !showVenueModal && (
+            <VenueProfilePrompt
+              name={pendingVenueName}
+              onCreateClick={() => setShowVenueModal(true)}
+              onSkip={() => {
+                setSkippedVenues((prev) => new Set(prev).add(pendingVenueName.toLowerCase()));
+                setPendingVenueIndex(null);
+                setPendingVenueName(null);
+              }}
+            />
+          )}
+        </div>
+
+        {/* Venue Secret toggle */}
+        {renderVenueSecretToggle(
+          subEvent.venue_secret,
+          () => {
+            setSubEvents((prev) =>
+              prev.map((se, i) =>
+                i === index ? { ...se, venue_secret: !se.venue_secret } : se
+              )
+            );
+          }
+        )}
+
+        {/* Venue secret hint & reveal hours */}
+        {subEvent.venue_secret && (
+          <div className="space-y-3 pl-2 border-l-2 border-accent/20">
+            <div className="space-y-2">
+              <label
+                htmlFor={`${idPrefix}-venue-hint`}
+                className="block text-sm font-medium text-foreground"
+              >
+                Venue Hint
+              </label>
+              <input
+                id={`${idPrefix}-venue-hint`}
+                type="text"
+                value={subEvent.venue_secret_hint}
+                onChange={(e) => updateSubEvent(index, "venue_secret_hint", e.target.value)}
+                placeholder="e.g. 'Near Trastevere...'"
+                maxLength={500}
+                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+              />
+              <p className="text-xs text-muted">Shown to users who can&apos;t see the venue yet</p>
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor={`${idPrefix}-reveal-hours`}
+                className="block text-sm font-medium text-foreground"
+              >
+                Reveal Hours Before Event
+              </label>
+              <input
+                id={`${idPrefix}-reveal-hours`}
+                type="number"
+                value={subEvent.venue_reveal_hours}
+                onChange={(e) => updateSubEvent(index, "venue_reveal_hours", e.target.value)}
+                placeholder="24 (default)"
+                min={1}
+                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+              />
+              <p className="text-xs text-muted">Approved members see the venue this many hours before the event</p>
+            </div>
+          </div>
+        )}
+
+        {/* Lineup with autocomplete */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            Lineup
+          </label>
+          <p className="text-xs text-muted">Press Enter to add artist</p>
+          <AutocompleteTagInput
+            value={subEvent.lineup}
+            onChange={(newLineup) => {
+              setSubEvents((prev) =>
+                prev.map((se, i) => (i === index ? { ...se, lineup: newLineup } : se))
+              );
+            }}
+            search={searchArtistsWrapped}
+            onCreateNew={handleCreateNewArtist}
+            placeholder="Artist name"
+          />
+        </div>
+
+        {/* Access Type */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-access-type`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Access Type
+          </label>
+          <select
+            id={`${idPrefix}-access-type`}
+            value={subEvent.access_type}
+            onChange={(e) =>
+              updateSubEvent(index, "access_type", e.target.value)
+            }
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+          >
+            {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+
+        {/* Capacity */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-capacity`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Capacity
+          </label>
+          <input
+            id={`${idPrefix}-capacity`}
+            type="number"
+            value={subEvent.capacity}
+            onChange={(e) => updateSubEvent(index, "capacity", e.target.value)}
+            placeholder="Leave empty for unlimited"
+            min={1}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Aggregated read-only view when sub-events exist
+  function renderAggregatedView() {
+    if (subEvents.length === 0) return null;
+
+    const allLineup = new Set<string>();
+    const venuesBySubEvent: { title: string; venueName: string; venueSecret: boolean }[] = [];
+    for (const se of subEvents) {
+      for (const a of se.lineup) allLineup.add(a);
+      if (se.venue_name || se.venue_id) {
+        venuesBySubEvent.push({
+          title: se.title || `Sub-Event ${se.sort_order + 1}`,
+          venueName: se.venue_name,
+          venueSecret: se.venue_secret,
+        });
+      }
+    }
+
+    if (allLineup.size === 0 && venuesBySubEvent.length === 0) return null;
+
+    return (
+      <div className="rounded-xl border border-card-border bg-card/30 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">
+          Aggregated View (read-only)
+        </h3>
+        {allLineup.size > 0 && (
+          <div>
+            <p className="text-xs text-muted mb-1">Lineup (all sub-events)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[...allLineup].sort().map((a) => (
+                <span key={a} className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent">
+                  {a}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {venuesBySubEvent.length > 0 && (
+          <div>
+            <p className="text-xs text-muted mb-1">Venues</p>
+            <div className="space-y-1">
+              {venuesBySubEvent.map((v, i) => (
+                <p key={i} className="text-xs text-foreground">
+                  <span className="text-muted">{v.title}:</span>{" "}
+                  {v.venueSecret ? "Secret Venue" : v.venueName}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
@@ -220,101 +828,142 @@ export default function EventForm({
         />
       </div>
 
-      {/* Date and Time row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label
-            htmlFor="event-date"
-            className="block text-sm font-medium text-foreground"
-          >
-            Date <span className="text-red-400">*</span>
-          </label>
-          <input
-            id="event-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-          />
-        </div>
-        <div className="space-y-2">
-          <label
-            htmlFor="event-time"
-            className="block text-sm font-medium text-foreground"
-          >
-            Time <span className="text-red-400">*</span>
-          </label>
-          <input
-            id="event-time"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            required
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-          />
-        </div>
-      </div>
+      {/* Event details (shown when no sub-events) */}
+      {subEvents.length === 0 && (
+        <div className="space-y-4 rounded-xl border border-card-border bg-card/50 p-4">
+          <h3 className="text-sm font-semibold text-foreground">Event Details</h3>
 
-      {/* Location */}
-      <div className="space-y-2">
-        <label
-          htmlFor="event-location"
-          className="block text-sm font-medium text-foreground"
-        >
-          Location
-        </label>
-        <input
-          id="event-location"
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Venue address"
-          className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-        />
-      </div>
+          {/* Date */}
+          <div className="space-y-2">
+            <label htmlFor="event-date" className="block text-sm font-medium text-foreground">
+              Date <span className="text-red-400">*</span>
+            </label>
+            <input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
+          </div>
 
-      {/* Secret Location toggle */}
-      <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            Secret Location
-          </p>
-          {locationSecret && (
-            <p className="text-xs text-muted mt-0.5">
-              Location will be hidden until members purchase a ticket
-            </p>
+          {/* Time row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="main-time" className="block text-sm font-medium text-foreground">Start Time</label>
+              <input id="main-time" type="time" value={mainTime} onChange={(e) => setMainTime(e.target.value)}
+                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="main-end-time" className="block text-sm font-medium text-foreground">End Time</label>
+              <input id="main-end-time" type="time" value={mainEndTime} onChange={(e) => setMainEndTime(e.target.value)}
+                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
+            </div>
+          </div>
+
+          {/* Venue with autocomplete */}
+          <div className="space-y-2">
+            <label htmlFor="main-venue" className="block text-sm font-medium text-foreground">Venue</label>
+            <AutocompleteInput
+              id="main-venue"
+              value={mainVenueName}
+              onChange={(val) => { setMainVenueName(val); setMainVenueId(null); }}
+              onSelect={(option: AutocompleteOption) => {
+                setMainVenueName(option.name);
+                setMainVenueId(option.id);
+              }}
+              onCreateNew={(name) => {
+                setPendingVenueIndex(-1);
+                setPendingVenueName(name);
+                setShowVenueModal(true);
+              }}
+              search={searchVenuesWrapped}
+              placeholder="Search venue..."
+              selectedId={mainVenueId}
+              createLabel="Create new venue"
+            />
+            {pendingVenueIndex === -1 && pendingVenueName && !showVenueModal && (
+              <VenueProfilePrompt name={pendingVenueName} onCreateClick={() => setShowVenueModal(true)}
+                onSkip={() => { setSkippedVenues((prev) => new Set(prev).add(pendingVenueName.toLowerCase())); setPendingVenueIndex(null); setPendingVenueName(null); }} />
+            )}
+          </div>
+
+          {/* Secret Venue toggle */}
+          {renderVenueSecretToggle(
+            venueSecret,
+            () => setVenueSecret(!venueSecret)
           )}
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={locationSecret}
-          onClick={() => setLocationSecret(!locationSecret)}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
-            locationSecret ? "bg-accent" : "bg-card-border"
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              locationSecret ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
-      </div>
 
-      {/* Lineup */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-foreground">
-          Lineup
-        </label>
-        <p className="text-xs text-muted">Press Enter to add artist</p>
-        <TagInput
-          value={lineup}
-          onChange={setLineup}
-          placeholder="Artist name"
-        />
-      </div>
+          {/* Venue secret hint & reveal hours */}
+          {venueSecret && (
+            <div className="space-y-3 pl-2 border-l-2 border-accent/20">
+              <div className="space-y-2">
+                <label htmlFor="main-venue-hint" className="block text-sm font-medium text-foreground">
+                  Venue Hint
+                </label>
+                <input
+                  id="main-venue-hint"
+                  type="text"
+                  value={mainVenueSecretHint}
+                  onChange={(e) => setMainVenueSecretHint(e.target.value)}
+                  placeholder="e.g. 'Near Trastevere...'"
+                  maxLength={500}
+                  className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+                />
+                <p className="text-xs text-muted">Shown to users who can&apos;t see the venue yet</p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="main-reveal-hours" className="block text-sm font-medium text-foreground">
+                  Reveal Hours Before Event
+                </label>
+                <input
+                  id="main-reveal-hours"
+                  type="number"
+                  value={mainVenueRevealHours}
+                  onChange={(e) => setMainVenueRevealHours(e.target.value)}
+                  placeholder="24"
+                  min={1}
+                  className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+                />
+                <p className="text-xs text-muted">Approved members see the venue this many hours before</p>
+              </div>
+            </div>
+          )}
+
+          {/* Access Type */}
+          <div className="space-y-2">
+            <label htmlFor="main-access-type" className="block text-sm font-medium text-foreground">Access Type</label>
+            <select id="main-access-type" value={mainAccessType} onChange={(e) => setMainAccessType(e.target.value as AccessType)}
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50">
+              {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Capacity */}
+          <div className="space-y-2">
+            <label htmlFor="main-capacity" className="block text-sm font-medium text-foreground">Capacity</label>
+            <input id="main-capacity" type="number" value={mainCapacity} onChange={(e) => setMainCapacity(e.target.value)}
+              placeholder="Leave empty for unlimited" min={1}
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50" />
+          </div>
+        </div>
+      )}
+
+      {/* Secret venue toggle and hint/reveal fields are now inside the Event Details card, right after the venue field */}
+
+      {/* Lineup - only shown when no sub-events */}
+      {subEvents.length === 0 && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            Lineup
+          </label>
+          <p className="text-xs text-muted">Press Enter to add artist</p>
+          <AutocompleteTagInput
+            value={lineup}
+            onChange={setLineup}
+            search={searchArtistsWrapped}
+            onCreateNew={handleCreateNewArtist}
+            placeholder="Artist name"
+          />
+        </div>
+      )}
 
       {/* Cover Image */}
       <div className="space-y-2">
@@ -362,23 +1011,24 @@ export default function EventForm({
         )}
       </div>
 
-      {/* Capacity */}
-      <div className="space-y-2">
-        <label
-          htmlFor="event-capacity"
-          className="block text-sm font-medium text-foreground"
-        >
-          Capacity
-        </label>
-        <input
-          id="event-capacity"
-          type="number"
-          value={capacity}
-          onChange={(e) => setCapacity(e.target.value)}
-          placeholder="Leave empty for unlimited"
-          min={1}
-          className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-        />
+      {/* Aggregated view when sub-events exist */}
+      {renderAggregatedView()}
+
+      {/* Sub-Events */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Sub-Events</h2>
+          <button
+            type="button"
+            onClick={addSubEvent}
+            className="rounded-full border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 transition-colors"
+          >
+            + Add Sub-Event
+          </button>
+        </div>
+        {subEvents.map((subEvent, index) =>
+          renderSubEventSection(subEvent, index)
+        )}
       </div>
 
       {/* Submit */}
@@ -390,5 +1040,44 @@ export default function EventForm({
         {isSubmitting ? "Saving..." : submitLabel}
       </button>
     </form>
+
+    {/* Modals rendered outside <form> to avoid nested form hydration error */}
+    <CreateArtistModal
+      name={pendingArtistName ?? ""}
+      open={showArtistModal}
+      onClose={() => {
+        setShowArtistModal(false);
+        setPendingArtistName(null);
+      }}
+      onCreated={() => {
+        setShowArtistModal(false);
+        setPendingArtistName(null);
+      }}
+    />
+    <CreateVenueModal
+      name={pendingVenueName ?? ""}
+      open={showVenueModal}
+      onClose={() => {
+        setShowVenueModal(false);
+        setPendingVenueIndex(null);
+        setPendingVenueName(null);
+      }}
+      onCreated={(id) => {
+        if (pendingVenueIndex === -1) {
+          setMainVenueId(id);
+          setMainVenueName(pendingVenueName ?? mainVenueName);
+        } else if (pendingVenueIndex !== null) {
+          setSubEvents((prev) =>
+            prev.map((se, i) =>
+              i === pendingVenueIndex ? { ...se, venue_id: id, venue_name: pendingVenueName ?? se.venue_name } : se
+            )
+          );
+        }
+        setShowVenueModal(false);
+        setPendingVenueIndex(null);
+        setPendingVenueName(null);
+      }}
+    />
+    </>
   );
 }

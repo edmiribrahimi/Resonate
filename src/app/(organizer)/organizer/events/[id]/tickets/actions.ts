@@ -80,7 +80,7 @@ async function verifyEventOwnership(
 /**
  * Create a new ticket tier for an event.
  */
-export async function createTier(eventId: string, formData: FormData) {
+export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
   const supabase = await createClient();
   const { user, isMaster } = await verifyOrganizer(supabase);
 
@@ -98,20 +98,32 @@ export async function createTier(eventId: string, formData: FormData) {
     throw new Error("Price must be a number >= 0");
   }
 
-  const quantityRaw = formData.get("quantity") as string;
-  const quantity = parseInt(quantityRaw, 10);
-  if (isNaN(quantity) || quantity < 1) {
+  const quantityRaw = (formData.get("quantity") as string)?.trim() || null;
+  const quantity = quantityRaw ? parseInt(quantityRaw, 10) : null;
+  if (quantity !== null && (isNaN(quantity) || quantity < 1)) {
     throw new Error("Quantity must be a positive integer");
   }
+
+  const showRemaining = formData.get("show_remaining") !== "false";
+
+  const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
+  const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
+
+  const expiresAtRaw = (formData.get("expires_at") as string)?.trim() || null;
+  const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = isMaster ? getServiceClient() : supabase;
 
   const { error } = await client.from("ticket_tiers").insert({
     event_id: eventId,
+    party_id: partyId || null,
     name,
     price,
     quantity,
+    show_remaining: showRemaining,
+    starts_at,
+    expires_at,
   });
 
   if (error) {
@@ -150,18 +162,26 @@ export async function updateTier(
     throw new Error("Price must be a number >= 0");
   }
 
-  const quantityRaw = formData.get("quantity") as string;
-  const quantity = parseInt(quantityRaw, 10);
-  if (isNaN(quantity) || quantity < 1) {
+  const quantityRaw = (formData.get("quantity") as string)?.trim() || null;
+  const quantity = quantityRaw ? parseInt(quantityRaw, 10) : null;
+  if (quantity !== null && (isNaN(quantity) || quantity < 1)) {
     throw new Error("Quantity must be a positive integer");
   }
+
+  const showRemaining = formData.get("show_remaining") !== "false";
+
+  const startsAtRaw = (formData.get("starts_at") as string)?.trim() || null;
+  const starts_at = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
+
+  const expiresAtRaw = (formData.get("expires_at") as string)?.trim() || null;
+  const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   // Use service-role client for master (bypasses RLS ownership check)
   const client = isMaster ? getServiceClient() : supabase;
 
   const { error } = await client
     .from("ticket_tiers")
-    .update({ name, price, quantity })
+    .update({ name, price, quantity, show_remaining: showRemaining, starts_at, expires_at })
     .eq("id", tierId);
 
   if (error) {

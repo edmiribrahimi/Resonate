@@ -110,7 +110,8 @@ export async function updateMemberRole(
     throw new Error("Cannot change own role");
   }
 
-  const { error } = await supabase
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
     .from("profiles")
     .update({ role: newRole })
     .eq("id", memberId);
@@ -131,7 +132,8 @@ export async function deactivateMember(memberId: string) {
     throw new Error("Cannot deactivate yourself");
   }
 
-  const { error } = await supabase
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
     .from("profiles")
     .update({ status: "rejected", role: "member" })
     .eq("id", memberId);
@@ -148,7 +150,8 @@ export async function reactivateMember(memberId: string) {
   const supabase = await createClient();
   await verifyMaster(supabase);
 
-  const { error } = await supabase
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
     .from("profiles")
     .update({ status: "approved" })
     .eq("id", memberId);

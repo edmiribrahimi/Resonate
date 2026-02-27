@@ -20,7 +20,7 @@ export default async function AdminEventsPage() {
   const supabase = await createClient();
   const { data: rawEvents, error } = await supabase
     .from("events")
-    .select("id, title, date, is_published, capacity, created_by")
+    .select("id, title, date, is_published, created_by")
     .order("date", { ascending: false });
 
   if (error) {
@@ -48,7 +48,6 @@ export default async function AdminEventsPage() {
     title: e.title,
     date: e.date,
     is_published: e.is_published,
-    capacity: e.capacity,
     created_by: e.created_by,
   }));
 

@@ -4,7 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
+import { formatTime } from "@/utils/formatTime";
+import RefundRequestButton from "./RefundRequestButton";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function TicketPage({
@@ -28,11 +31,11 @@ export default async function TicketPage({
   const role = (headersList.get("x-user-role") as UserRole) || null;
   const status = (headersList.get("x-user-status") as UserStatus) || null;
 
-  // Fetch ticket with joins -- user_id check ensures members can only view their own tickets
+  // Fetch ticket with joins including party data
   const { data: ticket } = await supabase
     .from("tickets")
     .select(
-      "*, ticket_tiers(name), events(title, date, time, location, location_secret, cover_image, slug)"
+      "*, ticket_tiers(name), events(title, date, venue_secret, cover_image, slug), event_parties(title, date, time, end_time, venue_text)"
     )
     .eq("id", ticketId)
     .eq("user_id", user.id)
@@ -46,13 +49,33 @@ export default async function TicketPage({
   const event = ticket.events as {
     title: string;
     date: string;
-    time: string;
-    location: string | null;
-    location_secret: boolean;
+    venue_secret: boolean;
     cover_image: string | null;
     slug: string;
   };
   const tier = ticket.ticket_tiers as { name: string };
+  const party = ticket.event_parties as {
+    title: string;
+    date: string;
+    time: string;
+    end_time: string | null;
+    venue_text: string | null;
+  } | null;
+
+  const isMasterTicket = !ticket.party_id;
+
+  // Fetch refund status for this ticket
+  const serviceClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data: refund } = await serviceClient
+    .from("ticket_refunds")
+    .select("id, status, reason, admin_note, created_at")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // Generate QR code data URL server-side
   const qrDataUrl = await QRCode.toDataURL(ticket.id, {
@@ -66,14 +89,19 @@ export default async function TicketPage({
   });
 
   // Format date
+  const displayDate = party?.date ?? event.date;
   const formattedDate = new Date(
-    event.date + "T00:00:00"
+    displayDate + "T00:00:00"
   ).toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  const displayTime = party?.time ?? "";
+  const displayEndTime = party?.end_time ?? null;
+  const displayVenue = party?.venue_text ?? null;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -116,6 +144,17 @@ export default async function TicketPage({
               {event.title}
             </h2>
 
+            {/* Master ticket or party title */}
+            {isMasterTicket ? (
+              <p className="mb-1 text-sm font-medium text-accent">
+                Event Pass
+              </p>
+            ) : party ? (
+              <p className="mb-1 text-sm font-medium text-accent">
+                {party.title}
+              </p>
+            ) : null}
+
             {/* Tier */}
             <p className="mb-3 text-sm text-muted">{tier.name}</p>
 
@@ -124,16 +163,21 @@ export default async function TicketPage({
               <span>&#128197;</span>
               <span>{formattedDate}</span>
             </div>
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted">
-              <span>&#128336;</span>
-              <span>{event.time}</span>
-            </div>
+            {displayTime && (
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted">
+                <span>&#128336;</span>
+                <span>
+                  {formatTime(displayTime)}
+                  {displayEndTime && ` - ${formatTime(displayEndTime)}`}
+                </span>
+              </div>
+            )}
 
-            {/* Location -- ticket holder always sees it */}
-            {event.location && (
+            {/* Venue -- ticket holder always sees it */}
+            {displayVenue && (
               <div className="mb-4 flex items-center gap-2 text-sm text-muted">
                 <span>&#128205;</span>
-                <span>{event.location}</span>
+                <span>{displayVenue}</span>
               </div>
             )}
 
@@ -154,6 +198,40 @@ export default async function TicketPage({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Refund section */}
+        <div className="mt-6 w-full max-w-sm">
+          {refund?.status === "pending" && (
+            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center">
+              <p className="text-sm font-medium text-yellow-400">
+                Refund request pending
+              </p>
+              {refund.reason && (
+                <p className="mt-1 text-xs text-muted">Reason: {refund.reason}</p>
+              )}
+            </div>
+          )}
+          {refund?.status === "approved" && (
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
+              <p className="text-sm font-medium text-green-400">
+                Refund approved
+              </p>
+            </div>
+          )}
+          {refund?.status === "rejected" && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+              <p className="text-sm font-medium text-red-400">
+                Refund rejected
+              </p>
+              {refund.admin_note && (
+                <p className="mt-1 text-xs text-muted">{refund.admin_note}</p>
+              )}
+            </div>
+          )}
+          {!refund && (
+            <RefundRequestButton ticketId={ticketId} />
+          )}
         </div>
 
         {/* Back link */}
