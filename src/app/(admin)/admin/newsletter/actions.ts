@@ -2,15 +2,8 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Resend } from "resend";
+import { getResend } from "@/lib/email";
 import type { UserRole } from "@/types/database";
-
-function getResend() {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not configured");
-  }
-  return new Resend(process.env.RESEND_API_KEY);
-}
 
 function getAudienceId() {
   if (!process.env.RESEND_AUDIENCE_ID) {

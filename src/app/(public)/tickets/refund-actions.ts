@@ -2,19 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction } from "@/lib/sumup";
 import { sendEmail } from "@/lib/email";
 import { RefundApprovedEmail } from "@/emails/refund-approved";
 import { RefundRejectedEmail } from "@/emails/refund-rejected";
 import { render } from "@react-email/render";
-
-function getServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 /**
  * User requests a refund for their ticket.

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { RsvpConfirmationEmail } from "@/emails/rsvp-confirmation";
 import { render } from "@react-email/render";
-import { formatTime } from "@/utils/formatTime";
+import { formatTime, formatEventDate } from "@/utils/formatTime";
 
 /**
  * RSVP to a free_rsvp party.
@@ -87,14 +87,7 @@ export async function rsvpToParty(partyId: string, eventId: string) {
         .single();
 
       if (profile && event && partyData) {
-        const formattedDate = new Date(
-          partyData.date + "T00:00:00"
-        ).toLocaleDateString("en-US", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        });
+        const formattedDate = formatEventDate(partyData.date);
 
         const html = await render(
           RsvpConfirmationEmail({

@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { getServiceClient } from "@/lib/supabase/service";
+import { getResend } from "@/lib/email";
 import { EventReminderEmail } from "@/emails/event-reminder";
 import { render } from "@react-email/render";
-import { formatTime } from "@/utils/formatTime";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { formatTime, formatEventDate } from "@/utils/formatTime";
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -20,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = getServiceClient();
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = getResend();
   const fromAddress =
     process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
 
@@ -95,14 +88,7 @@ export async function GET(request: Request) {
 
     if (emailMap.size === 0) continue;
 
-    const formattedDate = new Date(
-      party.date + "T00:00:00"
-    ).toLocaleDateString("en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const formattedDate = formatEventDate(party.date);
 
     const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}`;
 

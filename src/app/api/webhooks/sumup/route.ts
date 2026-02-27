@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { getCheckout } from "@/lib/sumup";
 import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
 import { render } from "@react-email/render";
 import QRCode from "qrcode";
-import { formatTime } from "@/utils/formatTime";
+import { formatTime, formatEventDate } from "@/utils/formatTime";
 import { generateTicketToken } from "@/utils/qr";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(request: Request) {
   try {
@@ -139,14 +132,7 @@ export async function POST(request: Request) {
         });
 
         // Format date for email
-        const formattedDate = new Date(
-          event.date + "T00:00:00"
-        ).toLocaleDateString("en-US", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        });
+        const formattedDate = formatEventDate(event.date);
 
         const eventTime = party ? formatTime(party.time) : "";
 
