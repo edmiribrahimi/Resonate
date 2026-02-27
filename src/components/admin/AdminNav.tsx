@@ -15,15 +15,19 @@ export default function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <div className="px-6 mb-6">
-      <div className="flex flex-row flex-wrap gap-2">
+    <div className="mb-6 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+      <style>{`
+        .admin-tabs { -ms-overflow-style: none; scrollbar-width: none; }
+        .admin-tabs::-webkit-scrollbar { display: none; }
+      `}</style>
+      <div className="admin-tabs flex gap-2 px-6 overflow-x-auto" style={{ minWidth: "max-content" }}>
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`inline-block rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-accent text-white"
                   : "bg-card border border-card-border text-muted hover:text-foreground"
