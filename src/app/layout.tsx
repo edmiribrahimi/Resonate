@@ -8,6 +8,7 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://resonatemotion.com"),
   title: "Resonate",
   description: "motion music hub",
   manifest: "/manifest.json",
