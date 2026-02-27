@@ -38,7 +38,7 @@ export async function GET(request: Request) {
             .eq("id", user.id)
             .eq("status", "pending");
         }
-      }
+        }
 
         // Auto-subscribe to newsletter (fire-and-forget)
         if (user.email && process.env.RESEND_API_KEY && process.env.RESEND_AUDIENCE_ID) {
