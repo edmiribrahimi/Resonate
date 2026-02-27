@@ -1,7 +1,7 @@
 {
   "name": "Resonate",
   "short_name": "Resonate",
-  "description": "Music events community",
+  "description": "motion music hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
