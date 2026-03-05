@@ -566,6 +566,7 @@ export default async function EventDetailPage({
                         isAuthenticated={isAuthenticated}
                         isApproved={isApproved}
                         revealHours={party.venue_reveal_hours}
+                        revealOnPurchase={party.venue_reveal_on_purchase}
                       />
                     ) : null}
                   </div>

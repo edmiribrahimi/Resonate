@@ -4,11 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { formatTime } from "@/utils/formatTime";
 import { generateTicketToken } from "@/utils/qr";
-import RefundRequestButton from "./RefundRequestButton";
+import { isAppleWalletConfigured } from "@/lib/apple-wallet";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function TicketPage({
@@ -65,19 +64,6 @@ export default async function TicketPage({
 
   const isMasterTicket = !ticket.party_id;
 
-  // Fetch refund status for this ticket
-  const serviceClient = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  const { data: refund } = await serviceClient
-    .from("ticket_refunds")
-    .select("id, status, reason, admin_note, created_at")
-    .eq("ticket_id", ticketId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   // Generate QR code data URL server-side
   const qrDataUrl = await QRCode.toDataURL(generateTicketToken(ticket.id), {
     width: 280,
@@ -103,6 +89,7 @@ export default async function TicketPage({
   const displayTime = party?.time ?? "";
   const displayEndTime = party?.end_time ?? null;
   const displayVenue = party?.venue_text ?? null;
+  const walletEnabled = isAppleWalletConfigured();
 
   return (
     <div className="min-h-dvh pb-24">
@@ -201,39 +188,20 @@ export default async function TicketPage({
           </div>
         </div>
 
-        {/* Refund section */}
-        <div className="mt-6 w-full max-w-sm">
-          {refund?.status === "pending" && (
-            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center">
-              <p className="text-sm font-medium text-yellow-400">
-                Refund request pending
-              </p>
-              {refund.reason && (
-                <p className="mt-1 text-xs text-muted">Reason: {refund.reason}</p>
-              )}
-            </div>
-          )}
-          {refund?.status === "approved" && (
-            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
-              <p className="text-sm font-medium text-green-400">
-                Refund approved
-              </p>
-            </div>
-          )}
-          {refund?.status === "rejected" && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
-              <p className="text-sm font-medium text-red-400">
-                Refund rejected
-              </p>
-              {refund.admin_note && (
-                <p className="mt-1 text-xs text-muted">{refund.admin_note}</p>
-              )}
-            </div>
-          )}
-          {!refund && (
-            <RefundRequestButton ticketId={ticketId} />
-          )}
-        </div>
+        {/* Add to Wallet */}
+        {walletEnabled && (
+          <div className="mt-4 w-full max-w-sm">
+            <a
+              href={`/api/tickets/${ticketId}/wallet`}
+              className="flex items-center justify-center gap-2 w-full rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90 active:scale-95 active:opacity-80"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.5 6.5h-17A1.5 1.5 0 002 8v10a1.5 1.5 0 001.5 1.5h17A1.5 1.5 0 0022 18V8a1.5 1.5 0 00-1.5-1.5zM5 5a1 1 0 011-1h12a1 1 0 011 1v.5H5V5zm14.5 13h-15a.5.5 0 01-.5-.5V11h16v6.5a.5.5 0 01-.5.5z"/>
+              </svg>
+              Add to Apple Wallet
+            </a>
+          </div>
+        )}
 
         {/* Back link */}
         <Link

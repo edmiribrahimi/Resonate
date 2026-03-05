@@ -17,6 +17,7 @@
     "@types/qrcode": "^1.5.6",
     "html5-qrcode": "^2.3.8",
     "next": "16.1.6",
+    "passkit-generator": "^3.5.7",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",

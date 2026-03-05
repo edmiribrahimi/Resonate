@@ -9,6 +9,7 @@ interface SecretVenueDialogProps {
   isAuthenticated: boolean;
   isApproved: boolean;
   revealHours: number | null;
+  revealOnPurchase: boolean;
 }
 
 export default function SecretVenueDialog({
@@ -16,6 +17,7 @@ export default function SecretVenueDialog({
   isAuthenticated,
   isApproved,
   revealHours,
+  revealOnPurchase,
 }: SecretVenueDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -58,9 +60,11 @@ export default function SecretVenueDialog({
                   <p>Your account needs to be approved first.</p>
                 ) : (
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Buy a ticket to unlock immediately</li>
+                    {revealOnPurchase && (
+                      <li>Buy a ticket to unlock immediately</li>
+                    )}
                     <li>
-                      Or wait for the reveal{" "}
+                      {revealOnPurchase ? "Or wait" : "Wait"} for the reveal{" "}
                       {revealHours
                         ? `${revealHours} hours before the event`
                         : "closer to the event"}
