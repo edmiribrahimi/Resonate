@@ -51,9 +51,9 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
         if (intent.type === "purchase") {
           const result = await purchaseTicket(intent.partyId, intent.tierId);
           localStorage.removeItem("resonate_intent");
-          if (result.success && result.checkoutUrl) {
-            window.location.href = result.checkoutUrl;
-            return;
+          if (result.success && result.checkoutId) {
+            // TODO(08-02): open checkout modal with card widget instead of redirect
+            console.log("Checkout created:", result.checkoutId);
           }
         } else if (intent.type === "rsvp") {
           await rsvpToParty(intent.partyId, intent.eventId);

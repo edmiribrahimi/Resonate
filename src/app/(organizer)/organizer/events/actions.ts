@@ -691,17 +691,15 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
   // Generate unique checkout reference
   const checkoutReference = crypto.randomUUID();
 
-  // Build URLs
-  const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}?payment=success&ref=${checkoutReference}`;
+  // Build webhook URL (return_url triggers SumUp webhook after payment)
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
-  // Create SumUp checkout
+  // Create SumUp checkout (card widget mode -- no hosted redirect)
   const response = await createCheckout({
     amount: tier.price,
     currency: "EUR",
     description: `${event.title} - ${tier.name}`,
     checkoutReference,
-    redirectUrl,
     returnUrl,
   });
 
@@ -723,5 +721,5 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
     throw new Error("Failed to initiate purchase");
   }
 
-  return { success: true, checkoutUrl: response.hosted_checkout_url };
+  return { success: true, checkoutId: response.id };
 }

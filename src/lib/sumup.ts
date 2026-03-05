@@ -5,7 +5,6 @@ export async function createCheckout(params: {
   currency: string;
   description: string;
   checkoutReference: string;
-  redirectUrl: string;
   returnUrl: string;
 }) {
   const response = await fetch(`${SUMUP_API_BASE}/checkouts`, {
@@ -20,9 +19,7 @@ export async function createCheckout(params: {
       merchant_code: process.env.SUMUP_MERCHANT_CODE,
       checkout_reference: params.checkoutReference,
       description: params.description,
-      redirect_url: params.redirectUrl,
       return_url: params.returnUrl,
-      hosted_checkout: { enabled: true },
     }),
   });
 
@@ -35,7 +32,6 @@ export async function createCheckout(params: {
 
   return response.json() as Promise<{
     id: string;
-    hosted_checkout_url: string;
     status: string;
     checkout_reference: string;
   }>;

@@ -184,8 +184,9 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     startTransition(async () => {
       try {
         const result = await purchaseTicket(partyId, selectedTierId);
-        if (result.success && result.checkoutUrl) {
-          window.location.href = result.checkoutUrl;
+        if (result.success && result.checkoutId) {
+          // TODO(08-02): open checkout modal with card widget instead of redirect
+          console.log("Checkout created:", result.checkoutId);
         }
       } catch (err) {
         setError(
