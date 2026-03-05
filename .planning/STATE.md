@@ -10,14 +10,14 @@
 
 ## Current Position
 
-**Phase:** 8 of 11 -- SumUp Embedded Checkout (complete)
-**Plan:** 2/2 complete (08-01 done, 08-02 done)
-**Status:** Phase 8 complete, ready for Phase 9
+**Phase:** 9 of 11 -- Drink Menu & Purchase
+**Plan:** 1/2 complete (09-01 done)
+**Status:** Executing Phase 9
 
 ```
-[Phase Progress]  ████████████████████  2/2 plans in phase 8
+[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 9
 
-[Overall]         █████░░░░░░░░░░░░░░░  1/4 phases complete
+[Overall]         ███████░░░░░░░░░░░░░  1/4 phases complete
 ```
 
 ## Decisions
@@ -26,12 +26,14 @@
 - Placed SumUp SDK script in root layout (not per-page) for site-wide availability
 - Named export import for SumUpCardWidget in modal (matching actual module export)
 - Removed searchParams from page.tsx since query was only used for dead payment result banners
+- Webhook uses fallback pattern: check pending_purchases first, then drink_orders
+- drink_tokens admin SELECT policy added for bar-side redemption
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 2 |
+| Plans completed | 3 |
 | Plans failed | 0 |
 | Requirements done | 4/18 |
 | Phases complete | 1/4 |
@@ -40,13 +42,14 @@
 |------|----------|-------|-------|
 | 08-01 | 152s | 2 | 6 |
 | 08-02 | 131s | 2 | 4 |
+| 09-01 | 137s | 4 | 4 |
 
 ## Session Continuity
 
 **Last session:** 2026-03-06
-**Stopped at:** Phase 9 planned and verified
-**What happened:** Created 2 plans for Phase 9 (Drink Menu & Purchase). Plan 09-01: DB migration + types + server actions + webhook extension (Wave 1). Plan 09-02: organizer drinks page + DrinkMenu component + event page integration (Wave 2). Verification PASSED (0 blocker). Also added Phase 11 (Public Drink Menu) to roadmap.
-**Next step:** `/gsd:execute-phase 9` to build the drink ordering system
+**Stopped at:** Completed 09-01-PLAN.md
+**What happened:** Executed Plan 09-01: created drink_items/drink_orders/drink_tokens tables with RLS + fulfill_drink_order function, added TypeScript types, 5 server actions for drink CRUD + purchase, extended webhook for drink payments. All 4 tasks done, tsc clean.
+**Next step:** Execute Plan 09-02 (organizer drinks page + DrinkMenu component + event page integration)
 
 ---
 *State initialized: 2026-03-05*
