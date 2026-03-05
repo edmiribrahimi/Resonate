@@ -8,25 +8,26 @@ Resonate (re:sonate — motion music hub) is a private, invitation-driven music 
 
 Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
 
+## Current State
+
+**Shipped:** v1.0 (2026-03-05) — [milestone archive](.planning/milestones/v1.0-ROADMAP.md)
+
+All 45 v1 requirements implemented across 7 phases. Platform is live with:
+- English-only UI with Orbitron font and Resonate branding
+- Role-based access (master/organizer/member) with middleware enforcement
+- Referral system with auto-approve, purchase-based auto-approval for pending members
+- Event management with multi-party events, secret venue logic, cover images
+- SumUp ticketing with atomic reservation, QR codes, sales dashboard
+- Media uploads with moderation workflow and gallery display
+- Branded transactional emails via React Email + Resend
+
 ## Requirements
 
-### Validated
+### v1 (Complete)
 
-<!-- Shipped and confirmed valuable. Inferred from existing codebase. -->
+All 45 requirements shipped. See [v1.0-REQUIREMENTS.md](.planning/milestones/v1.0-REQUIREMENTS.md) for full list.
 
-- ✓ User can sign up with email and password — existing (`/registrati`)
-- ✓ User can log in with email and password — existing (`/login`)
-- ✓ User session persists across browser refresh — existing (Supabase cookie middleware)
-- ✓ User receives membership card with QR code — existing (`/membership-card`)
-- ✓ Admin can scan QR codes to verify members — existing (`/admin/scanner`)
-- ✓ User can browse published events — existing (`/eventi`, mock data)
-- ✓ User can view event details — existing (`/eventi/[slug]`)
-- ✓ User can RSVP to events — existing (RSVP model)
-- ✓ User can subscribe to newsletter — existing (`/newsletter` + Resend)
-- ✓ PWA support for mobile-first experience — existing (next-pwa + manifest)
-- ✓ User can view gallery — existing (`/galleria`)
-
-### Active
+### v2 Candidates
 
 <!-- Current scope. Building toward these. -->
 
