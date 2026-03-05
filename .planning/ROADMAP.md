@@ -13,7 +13,7 @@
 
 ### Phases
 
-- [ ] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
+- [x] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
 - [ ] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [ ] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
 
@@ -24,7 +24,7 @@
 **Plans:** 2 plans
 Plans:
 - [x] 08-01-PLAN.md -- Backend card-widget checkout + reusable SumUpCardWidget component
-- [ ] 08-02-PLAN.md -- Frontend integration: checkout modal in TierSelection and PendingIntentHandler
+- [x] 08-02-PLAN.md -- Frontend integration: checkout modal in TierSelection and PendingIntentHandler
 **Success Criteria**:
   1. Member clicks "Buy Ticket" and completes payment without leaving the page
   2. SumUp embedded widget renders inline on the event detail page
@@ -56,7 +56,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 8. SumUp Embedded Checkout | 1/2 | In Progress | -- |
+| 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 0/? | Not started | -- |
 | 10. Drink Redemption | 0/? | Not started | -- |
 
