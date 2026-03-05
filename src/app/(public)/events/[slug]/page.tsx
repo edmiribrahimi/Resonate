@@ -35,6 +35,7 @@ interface PartyWithTiers {
   venue_secret: boolean;
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
+  venue_reveal_on_purchase: boolean;
   access_type: AccessType;
   capacity: number | null;
   sort_order: number;
@@ -65,16 +66,20 @@ function isVenueVisible(opts: {
   isMasterRole: boolean;
   venueRevealHours: number | null;
   venueSecretHint: string | null;
+  venueRevealOnPurchase: boolean;
 }): { visible: boolean; hint: string | null } {
   if (!opts.venueSecret) return { visible: true, hint: null };
   if (opts.isMasterRole || opts.isOrganizer) return { visible: true, hint: null };
-  if (opts.hasTicketForParty || opts.hasMasterTicket) return { visible: true, hint: null };
+  // Ticket holders see venue immediately only if venue_reveal_on_purchase is true
+  if (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) {
+    return { visible: true, hint: null };
+  }
   const partyStart = new Date(`${opts.partyDate}T${opts.partyTime}`);
   const now = new Date();
   // Past event → visible for approved members
   if (now > partyStart && opts.isApproved) return { visible: true, hint: null };
-  // Approved member → visible X hours before
-  if (opts.isApproved) {
+  // Approved member with ticket/rsvp → visible X hours before
+  if (opts.isApproved && (opts.hasTicketForParty || opts.hasMasterTicket)) {
     const hours = opts.venueRevealHours ?? 24;
     const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
     if (hoursUntil <= hours) return { visible: true, hint: null };
@@ -163,7 +168,7 @@ export default async function EventDetailPage({
   // Fetch parties for this event (with venue join)
   const { data: rawParties } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, access_type, capacity, sort_order, venues(id, name, slug, address)")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, access_type, capacity, sort_order, venues(id, name, slug, address)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -186,7 +191,7 @@ export default async function EventDetailPage({
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venues: PartyVenue | PartyVenue[] | null; access_type: string; capacity: number | null; sort_order: number };
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venues: PartyVenue | PartyVenue[] | null; access_type: string; capacity: number | null; sort_order: number };
       const venueData = party.venues;
       const venue: PartyVenue | null = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
 
@@ -265,6 +270,7 @@ export default async function EventDetailPage({
         venue_secret: party.venue_secret ?? false,
         venue_secret_hint: party.venue_secret_hint ?? null,
         venue_reveal_hours: party.venue_reveal_hours ?? null,
+        venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
         access_type: party.access_type as AccessType,
         capacity: party.capacity,
         sort_order: party.sort_order,
@@ -520,6 +526,7 @@ export default async function EventDetailPage({
             isMasterRole,
             venueRevealHours: party.venue_reveal_hours,
             venueSecretHint: party.venue_secret_hint,
+            venueRevealOnPurchase: party.venue_reveal_on_purchase,
           });
 
           return (

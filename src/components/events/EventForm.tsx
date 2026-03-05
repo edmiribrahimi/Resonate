@@ -26,6 +26,7 @@ interface SubEventFormState {
   venue_secret: boolean;
   venue_secret_hint: string;
   venue_reveal_hours: string;
+  venue_reveal_on_purchase: boolean;
   access_type: AccessType;
   capacity: string;
   sort_order: number;
@@ -45,6 +46,7 @@ function defaultSubEvent(sortOrder: number): SubEventFormState {
     venue_secret: false,
     venue_secret_hint: "",
     venue_reveal_hours: "",
+    venue_reveal_on_purchase: true,
     access_type: "paid",
     capacity: "",
     sort_order: sortOrder,
@@ -65,6 +67,7 @@ export interface PartyInitialData {
   venue_secret: boolean;
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
+  venue_reveal_on_purchase: boolean;
   access_type: AccessType;
   capacity: number | null;
   sort_order: number;
@@ -112,6 +115,7 @@ function subEventFromInitial(p: PartyInitialData): SubEventFormState {
     venue_secret: p.venue_secret ?? false,
     venue_secret_hint: p.venue_secret_hint ?? "",
     venue_reveal_hours: p.venue_reveal_hours?.toString() ?? "",
+    venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity?.toString() ?? "",
     sort_order: p.sort_order,
@@ -138,6 +142,9 @@ export default function EventForm({
   );
   const [mainVenueRevealHours, setMainVenueRevealHours] = useState(
     initialData?.parties?.[0]?.venue_reveal_hours?.toString() ?? ""
+  );
+  const [mainVenueRevealOnPurchase, setMainVenueRevealOnPurchase] = useState(
+    initialData?.parties?.[0]?.venue_reveal_on_purchase ?? true
   );
   const [lineup, setLineup] = useState<string[]>(initialData?.lineup ?? []);
 
@@ -203,20 +210,36 @@ export default function EventForm({
     }
   }
 
+  // Determine if the single party represents the main event (not a sub-event)
+  const singleParty = initialData?.parties?.length === 1 ? initialData.parties[0] : null;
+  const isMainEventParty = singleParty !== null;
+
   // Main event fields (used when no sub-events)
   const [date, setDate] = useState(initialData?.date ?? "");
   const [mainTime, setMainTime] = useState(
-    initialData?.parties?.length === 0 || !initialData?.parties ? "" : ""
+    isMainEventParty ? singleParty.time : ""
   );
-  const [mainEndTime, setMainEndTime] = useState("");
-  const [mainVenueName, setMainVenueName] = useState("");
-  const [mainVenueId, setMainVenueId] = useState<string | null>(null);
-  const [mainVenueText, setMainVenueText] = useState("");
-  const [mainAccessType, setMainAccessType] = useState<AccessType>("paid");
-  const [mainCapacity, setMainCapacity] = useState("");
+  const [mainEndTime, setMainEndTime] = useState(
+    isMainEventParty ? (singleParty.end_time ?? "") : ""
+  );
+  const [mainVenueName, setMainVenueName] = useState(
+    isMainEventParty ? (singleParty.venue_name ?? "") : ""
+  );
+  const [mainVenueId, setMainVenueId] = useState<string | null>(
+    isMainEventParty ? (singleParty.venue_id ?? null) : null
+  );
+  const [mainVenueText, setMainVenueText] = useState(
+    isMainEventParty ? (singleParty.venue_text ?? "") : ""
+  );
+  const [mainAccessType, setMainAccessType] = useState<AccessType>(
+    isMainEventParty ? singleParty.access_type : "paid"
+  );
+  const [mainCapacity, setMainCapacity] = useState(
+    isMainEventParty && singleParty.capacity ? singleParty.capacity.toString() : ""
+  );
 
-  // Sub-events state
-  const initialSubEvents = initialData?.parties?.length
+  // Sub-events state: 1 party = main event, 2+ parties = sub-events
+  const initialSubEvents = initialData?.parties && initialData.parties.length > 1
     ? initialData.parties.map(subEventFromInitial)
     : [];
 
@@ -348,6 +371,7 @@ export default function EventForm({
           venue_secret: se.venue_secret,
           venue_secret_hint: se.venue_secret ? (se.venue_secret_hint || undefined) : undefined,
           venue_reveal_hours: se.venue_secret && se.venue_reveal_hours ? parseInt(se.venue_reveal_hours, 10) : undefined,
+          venue_reveal_on_purchase: se.venue_secret ? se.venue_reveal_on_purchase : true,
           access_type: se.access_type,
           capacity: se.capacity ? parseInt(se.capacity, 10) : null,
           sort_order: index,
@@ -362,7 +386,10 @@ export default function EventForm({
         eventLineup = [...allLineup];
         eventVenueSecret = anySecret;
       } else if (mainTime) {
+        // Preserve the existing party id when editing a single-party event
+        const existingPartyId = isMainEventParty ? singleParty.id : undefined;
         partiesPayload = [{
+          id: existingPartyId,
           title: title,
           date: date,
           time: mainTime,
@@ -373,6 +400,7 @@ export default function EventForm({
           venue_secret: venueSecret,
           venue_secret_hint: venueSecret ? (mainVenueSecretHint || undefined) : undefined,
           venue_reveal_hours: venueSecret && mainVenueRevealHours ? parseInt(mainVenueRevealHours, 10) : undefined,
+          venue_reveal_on_purchase: venueSecret ? mainVenueRevealOnPurchase : true,
           access_type: mainAccessType,
           capacity: mainCapacity ? parseInt(mainCapacity, 10) : null,
           sort_order: 0,
@@ -654,7 +682,42 @@ export default function EventForm({
                 min={1}
                 className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
               />
-              <p className="text-xs text-muted">Approved members see the venue this many hours before the event</p>
+              <p className="text-xs text-muted">Approved members see the venue this many hours before the event. An email will be sent when the venue is revealed.</p>
+            </div>
+
+            {/* Reveal on Purchase toggle */}
+            <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Reveal on Ticket Purchase
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  {subEvent.venue_reveal_on_purchase
+                    ? "Ticket holders see the venue immediately"
+                    : "Ticket holders see the venue only when the reveal timer triggers"}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={subEvent.venue_reveal_on_purchase}
+                onClick={() => {
+                  setSubEvents((prev) =>
+                    prev.map((se, i) =>
+                      i === index ? { ...se, venue_reveal_on_purchase: !se.venue_reveal_on_purchase } : se
+                    )
+                  );
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
+                  subEvent.venue_reveal_on_purchase ? "bg-accent" : "bg-card-border"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    subEvent.venue_reveal_on_purchase ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
           </div>
         )}
@@ -920,7 +983,36 @@ export default function EventForm({
                   min={1}
                   className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
                 />
-                <p className="text-xs text-muted">Approved members see the venue this many hours before</p>
+                <p className="text-xs text-muted">Approved members see the venue this many hours before. An email will be sent when the venue is revealed.</p>
+              </div>
+
+              {/* Reveal on Purchase toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Reveal on Ticket Purchase
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {mainVenueRevealOnPurchase
+                      ? "Ticket holders see the venue immediately"
+                      : "Ticket holders see the venue only when the reveal timer triggers"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={mainVenueRevealOnPurchase}
+                  onClick={() => setMainVenueRevealOnPurchase(!mainVenueRevealOnPurchase)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
+                    mainVenueRevealOnPurchase ? "bg-accent" : "bg-card-border"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      mainVenueRevealOnPurchase ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           )}

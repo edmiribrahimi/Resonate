@@ -89,6 +89,7 @@ interface PartyInput {
   venue_secret?: boolean;
   venue_secret_hint?: string;
   venue_reveal_hours?: number | null;
+  venue_reveal_on_purchase?: boolean;
   access_type: AccessType;
   capacity?: number | null;
   sort_order: number;
@@ -189,6 +190,10 @@ function validateEventData(formData: FormData) {
       }
       party.venue_reveal_hours = hours;
     }
+    // Ensure venue_reveal_on_purchase is boolean
+    if (party.venue_reveal_on_purchase !== undefined) {
+      party.venue_reveal_on_purchase = !!party.venue_reveal_on_purchase;
+    }
   }
 
   // Date: derive from sub-events if any, otherwise require explicit date from form
@@ -282,6 +287,7 @@ export async function createEvent(formData: FormData) {
     venue_secret: p.venue_secret ?? false,
     venue_secret_hint: p.venue_secret_hint?.trim() || null,
     venue_reveal_hours: p.venue_reveal_hours ?? null,
+    venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity ?? null,
     sort_order: p.sort_order,
@@ -380,6 +386,7 @@ export async function updateEvent(eventId: string, formData: FormData) {
           venue_secret: party.venue_secret ?? false,
           venue_secret_hint: party.venue_secret_hint?.trim() || null,
           venue_reveal_hours: party.venue_reveal_hours ?? null,
+          venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
           access_type: party.access_type,
           capacity: party.capacity ?? null,
           sort_order: party.sort_order,
@@ -400,6 +407,7 @@ export async function updateEvent(eventId: string, formData: FormData) {
         venue_secret: party.venue_secret ?? false,
         venue_secret_hint: party.venue_secret_hint?.trim() || null,
         venue_reveal_hours: party.venue_reveal_hours ?? null,
+        venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
         access_type: party.access_type,
         capacity: party.capacity ?? null,
         sort_order: party.sort_order,
