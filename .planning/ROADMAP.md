@@ -21,6 +21,10 @@
 **Goal**: All payments happen inside the app without redirect
 **Depends on**: v1.0 (existing SumUp integration)
 **Requirements**: SUMP-01, SUMP-02, SUMP-03
+**Plans:** 2 plans
+Plans:
+- [ ] 08-01-PLAN.md -- Backend card-widget checkout + reusable SumUpCardWidget component
+- [ ] 08-02-PLAN.md -- Frontend integration: checkout modal in TierSelection and PendingIntentHandler
 **Success Criteria**:
   1. Member clicks "Buy Ticket" and completes payment without leaving the page
   2. SumUp embedded widget renders inline on the event detail page
@@ -52,7 +56,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 8. SumUp Embedded Checkout | 0/? | Not started | -- |
+| 8. SumUp Embedded Checkout | 0/2 | Planned | -- |
 | 9. Drink Menu & Purchase | 0/? | Not started | -- |
 | 10. Drink Redemption | 0/? | Not started | -- |
 
