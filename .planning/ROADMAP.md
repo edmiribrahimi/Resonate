@@ -8,14 +8,15 @@
 
 **Created:** 2026-03-05
 **Depth:** Focused
-**Phases:** 3
-**Total v1.1 Requirements:** 14
+**Phases:** 4
+**Total v1.1 Requirements:** 18
 
 ### Phases
 
 - [x] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
 - [ ] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [ ] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
+- [ ] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
 
 ### Phase 8: SumUp Embedded Checkout
 **Goal**: All payments happen inside the app without redirect
@@ -35,6 +36,10 @@ Plans:
 **Goal**: Members can browse and buy drinks for events they attend
 **Depends on**: Phase 8 (embedded checkout)
 **Requirements**: DRNK-01, DRNK-02, DRNK-03, DRNK-04, DRNK-05, DRNK-06
+**Plans:** 2 plans
+Plans:
+- [ ] 09-01-PLAN.md -- Database schema, types, server actions (CRUD + purchase), webhook extension
+- [ ] 09-02-PLAN.md -- Organizer drink menu page, DrinkMenu component, event page integration
 **Success Criteria**:
   1. Organizer/admin can add drink items (name + price) to an event
   2. Event detail page shows a "Drinks" section with available items
@@ -52,6 +57,16 @@ Plans:
   4. Redeemed tokens show "Already redeemed" and cannot be reused
   5. Tokens are cryptographically signed (same pattern as event ticket QR)
 
+### Phase 11: Public Drink Menu
+**Goal**: Anyone at the event can scan a QR, see the drink menu, and buy drinks without logging in
+**Depends on**: Phase 9 (drink menu data), Phase 10 (drink tokens)
+**Requirements**: PMENU-01, PMENU-02, PMENU-03, PMENU-04
+**Success Criteria**:
+  1. `/events/[slug]/menu` is publicly accessible without authentication
+  2. Page shows event name, date, and drink list with prices
+  3. Guest can select drinks and pay via embedded SumUp checkout (no login required)
+  4. After payment, drink token is shown directly on the page (stored in localStorage for retrieval)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -59,6 +74,7 @@ Plans:
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 0/? | Not started | -- |
 | 10. Drink Redemption | 0/? | Not started | -- |
+| 11. Public Drink Menu | 0/? | Not started | -- |
 
 ## Coverage
 
@@ -68,8 +84,9 @@ Plans:
 | Drink Menu | DRNK-01, DRNK-02, DRNK-03 | Phase 9 |
 | Drink Purchase | DRNK-04, DRNK-05, DRNK-06 | Phase 9 |
 | Drink Redemption | DRNK-07, DRNK-08, DRNK-09, DRNK-10, DRNK-11 | Phase 10 |
+| Public Menu | PMENU-01, PMENU-02, PMENU-03, PMENU-04 | Phase 11 |
 
-**Mapped: 14/14** -- all v1.1 requirements covered.
+**Mapped: 18/18** -- all v1.1 requirements covered.
 
 ## Dependency Graph
 
@@ -81,6 +98,9 @@ Phase 9 (Drink Menu & Purchase)
   |
   v
 Phase 10 (Drink Redemption)
+  |
+  v
+Phase 11 (Public Drink Menu)
 ```
 
 ---

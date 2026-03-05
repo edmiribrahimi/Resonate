@@ -10,14 +10,14 @@
 
 ## Current Position
 
-**Phase:** 8 of 10 -- SumUp Embedded Checkout
+**Phase:** 8 of 11 -- SumUp Embedded Checkout (complete)
 **Plan:** 2/2 complete (08-01 done, 08-02 done)
-**Status:** Phase 8 complete
+**Status:** Phase 8 complete, ready for Phase 9
 
 ```
 [Phase Progress]  ████████████████████  2/2 plans in phase 8
 
-[Overall]         ██████░░░░░░░░░░░░░░  1/3 phases complete
+[Overall]         █████░░░░░░░░░░░░░░░  1/4 phases complete
 ```
 
 ## Decisions
@@ -33,8 +33,8 @@
 |--------|-------|
 | Plans completed | 2 |
 | Plans failed | 0 |
-| Requirements done | 4/14 |
-| Phases complete | 1/3 |
+| Requirements done | 4/18 |
+| Phases complete | 1/4 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -44,9 +44,9 @@
 ## Session Continuity
 
 **Last session:** 2026-03-06
-**Stopped at:** Completed 08-02-PLAN.md (Phase 8 complete)
-**What happened:** Executed Plan 08-02: created SumUpCheckoutModal component with loading/ready/success/error state machine, integrated into TierSelection and PendingIntentHandler (replacing TODO/console.log with modal open), removed dead hosted checkout payment banners from page.tsx.
-**Next step:** Execute Phase 9 (drink ordering system) or Phase 10
+**Stopped at:** Phase 9 planned and verified
+**What happened:** Created 2 plans for Phase 9 (Drink Menu & Purchase). Plan 09-01: DB migration + types + server actions + webhook extension (Wave 1). Plan 09-02: organizer drinks page + DrinkMenu component + event page integration (Wave 2). Verification PASSED (0 blocker). Also added Phase 11 (Public Drink Menu) to roadmap.
+**Next step:** `/gsd:execute-phase 9` to build the drink ordering system
 
 ---
 *State initialized: 2026-03-05*
