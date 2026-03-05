@@ -495,12 +495,7 @@ export default async function EventDetailPage({
                   View Your Event Pass
                 </Link>
               </div>
-            ) : isUpcoming && isAuthenticated && !isApproved && status === "pending" ? (
-              <p className="text-sm text-muted text-center">
-                Your account is pending approval. You&apos;ll be able to
-                purchase an Event Pass once approved.
-              </p>
-            ) : isUpcoming && (!isAuthenticated || isApproved) ? (
+            ) : isUpcoming && (!isAuthenticated || isApproved || status === "pending") ? (
               <TierSelection
                 partyId={null}
                 tiers={eventTiers}
@@ -647,7 +642,7 @@ export default async function EventDetailPage({
                 !hasMasterTicket &&
                 party.access_type === "paid" &&
                 party.tiers.length > 0 &&
-                (!isAuthenticated || isApproved) &&
+                (!isAuthenticated || isApproved || status === "pending") &&
                 (
                   <TierSelection
                     partyId={party.id}
@@ -680,18 +675,6 @@ export default async function EventDetailPage({
                 </div>
               )}
 
-              {/* Pending member guard (upcoming only) */}
-              {isUpcoming &&
-                isAuthenticated &&
-                !isApproved &&
-                status === "pending" &&
-                party.access_type === "paid" &&
-                party.tiers.length > 0 && (
-                  <p className="text-sm text-muted text-center">
-                    Your account is pending approval. You&apos;ll be able to
-                    purchase tickets once approved.
-                  </p>
-                )}
             </div>
           );
         })}

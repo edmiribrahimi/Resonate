@@ -535,7 +535,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
     throw new Error("Not authenticated");
   }
 
-  // Verify user is approved (TICK-07 guard)
+  // Verify user has a profile (pending users CAN purchase — approval happens on successful payment)
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("status")
@@ -546,9 +546,9 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
     throw new Error("Profile not found");
   }
 
-  if (profile.status !== "approved") {
+  if (profile.status === "rejected") {
     throw new Error(
-      "Your account must be approved before you can purchase tickets"
+      "Your account has been rejected and cannot purchase tickets"
     );
   }
 

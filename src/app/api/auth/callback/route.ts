@@ -30,13 +30,6 @@ export async function GET(request: Request) {
             .from("profiles")
             .update({ role: "master", status: "approved" })
             .eq("id", user.id);
-        } else {
-          // Auto-approve all new members on email confirmation
-          await serviceClient
-            .from("profiles")
-            .update({ status: "approved" })
-            .eq("id", user.id)
-            .eq("status", "pending");
         }
 
         // Auto-subscribe to newsletter (fire-and-forget)

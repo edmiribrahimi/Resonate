@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getCheckout } from "@/lib/sumup";
 import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
+import { MemberApprovedEmail } from "@/emails/member-approved";
 import { render } from "@react-email/render";
 import QRCode from "qrcode";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
@@ -86,6 +87,23 @@ export async function POST(request: Request) {
         ticket_id: ticketId,
       })
       .eq("id", purchase.id);
+
+    // Auto-approve pending members on successful ticket purchase
+    const { data: updatedProfile } = await supabase
+      .from("profiles")
+      .update({ status: "approved" })
+      .eq("id", purchase.user_id)
+      .eq("status", "pending")
+      .select("email, full_name")
+      .single();
+
+    if (updatedProfile) {
+      // Fire-and-forget: send approval email
+      const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/login`;
+      render(MemberApprovedEmail({ memberName: updatedProfile.full_name || "Member", loginUrl }))
+        .then((html) => sendEmail({ to: updatedProfile.email, subject: "Welcome to Resonate - You're Approved!", html }))
+        .catch((err) => console.error("Webhook: approval email failed (non-blocking)", err));
+    }
 
     // Fire-and-forget: send confirmation email with QR code
     try {
