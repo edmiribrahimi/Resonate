@@ -9,7 +9,7 @@
 
 - [ ] **SUMP-01**: All payments (event tickets + drinks) use SumUp embedded widget instead of hosted checkout redirect
 - [ ] **SUMP-02**: Payment completes without leaving the app -- member stays on the same page throughout checkout
-- [ ] **SUMP-03**: Existing ticket purchase webhook flow continues to work with embedded checkout
+- [x] **SUMP-03**: Existing ticket purchase webhook flow continues to work with embedded checkout
 
 ### Drink Menu Management
 
@@ -47,7 +47,7 @@
 |-------------|-------|--------|
 | SUMP-01 | TBD | Pending |
 | SUMP-02 | TBD | Pending |
-| SUMP-03 | TBD | Pending |
+| SUMP-03 | Phase 8 (08-01) | Complete |
 | DRNK-01 | TBD | Pending |
 | DRNK-02 | TBD | Pending |
 | DRNK-03 | TBD | Pending |

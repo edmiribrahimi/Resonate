@@ -23,7 +23,7 @@
 **Requirements**: SUMP-01, SUMP-02, SUMP-03
 **Plans:** 2 plans
 Plans:
-- [ ] 08-01-PLAN.md -- Backend card-widget checkout + reusable SumUpCardWidget component
+- [x] 08-01-PLAN.md -- Backend card-widget checkout + reusable SumUpCardWidget component
 - [ ] 08-02-PLAN.md -- Frontend integration: checkout modal in TierSelection and PendingIntentHandler
 **Success Criteria**:
   1. Member clicks "Buy Ticket" and completes payment without leaving the page
@@ -56,7 +56,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 8. SumUp Embedded Checkout | 0/2 | Planned | -- |
+| 8. SumUp Embedded Checkout | 1/2 | In Progress | -- |
 | 9. Drink Menu & Purchase | 0/? | Not started | -- |
 | 10. Drink Redemption | 0/? | Not started | -- |
 
