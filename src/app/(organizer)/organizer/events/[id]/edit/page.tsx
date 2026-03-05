@@ -120,6 +120,13 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
           action={boundUpdateEvent}
           submitLabel="Save Changes"
         />
+
+        <Link
+          href={`/organizer/events/${eventId}/drinks`}
+          className="inline-flex items-center gap-2 rounded-xl border border-card-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:border-accent/50 transition-colors mt-4"
+        >
+          Manage Drink Menu
+        </Link>
       </div>
 
       <MobileNav role={role} status={status} />

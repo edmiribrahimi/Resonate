@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
+import DrinkMenu from "./DrinkMenu";
 import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
@@ -326,6 +327,14 @@ export default async function EventDetailPage({
       type: m.type as "photo" | "video",
       uploaded_by: m.uploaded_by,
     }));
+
+  // Fetch available drink items for this event
+  const { data: drinkItems } = await supabase
+    .from("drink_items")
+    .select("*")
+    .eq("event_id", event.id)
+    .eq("is_available", true)
+    .order("sort_order");
 
   // Fetch artist profiles for lineup names (event-level + party-level)
   const allLineupNames = new Set<string>();
@@ -656,6 +665,13 @@ export default async function EventDetailPage({
             </div>
           );
         })}
+
+        {/* Drinks section — authenticated users only */}
+        {isAuthenticated && drinkItems && drinkItems.length > 0 && (
+          <div className="mb-6">
+            <DrinkMenu eventId={event.id} drinks={drinkItems as import("@/types/database").DrinkItem[]} />
+          </div>
+        )}
 
         {/* Event Gallery */}
         <div className="mb-6">
