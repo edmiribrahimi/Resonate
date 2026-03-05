@@ -10,14 +10,14 @@
 
 ## Current Position
 
-**Phase:** 9 of 11 -- Drink Menu & Purchase
-**Plan:** 1/2 complete (09-01 done)
-**Status:** Executing Phase 9
+**Phase:** 9 of 11 -- Drink Menu & Purchase (COMPLETE)
+**Plan:** 2/2 complete (09-01, 09-02 done)
+**Status:** Phase 9 complete
 
 ```
-[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 9
+[Phase Progress]  ████████████████████  2/2 plans in phase 9
 
-[Overall]         ███████░░░░░░░░░░░░░  1/4 phases complete
+[Overall]         ██████████░░░░░░░░░░  2/4 phases complete
 ```
 
 ## Decisions
@@ -28,29 +28,32 @@
 - Removed searchParams from page.tsx since query was only used for dead payment result banners
 - Webhook uses fallback pattern: check pending_purchases first, then drink_orders
 - drink_tokens admin SELECT policy added for bar-side redemption
+- Separated DrinkMenuManager into its own file for cleaner server/client boundary
+- DrinkMenu quantity selector uses +/- buttons with min 0 max 10 range
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 3 |
+| Plans completed | 4 |
 | Plans failed | 0 |
 | Requirements done | 4/18 |
-| Phases complete | 1/4 |
+| Phases complete | 2/4 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 08-01 | 152s | 2 | 6 |
 | 08-02 | 131s | 2 | 4 |
 | 09-01 | 137s | 4 | 4 |
+| 09-02 | 156s | 2 | 5 |
 
 ## Session Continuity
 
 **Last session:** 2026-03-06
-**Stopped at:** Completed 09-01-PLAN.md
-**What happened:** Executed Plan 09-01: created drink_items/drink_orders/drink_tokens tables with RLS + fulfill_drink_order function, added TypeScript types, 5 server actions for drink CRUD + purchase, extended webhook for drink payments. All 4 tasks done, tsc clean.
-**Next step:** Execute Plan 09-02 (organizer drinks page + DrinkMenu component + event page integration)
+**Stopped at:** Completed 09-02-PLAN.md
+**What happened:** Executed Plan 09-02: created organizer drink menu management page (add/toggle/remove), DrinkMenu component with quantity selectors and SumUp checkout integration, integrated drinks section into event detail page for authenticated users. All 2 tasks done, tsc clean.
+**Next step:** Execute Phase 10 plans
 
 ---
 *State initialized: 2026-03-05*
-*Last updated: 2026-03-06T00:14:00Z*
+*Last updated: 2026-03-06T00:00:00Z*
