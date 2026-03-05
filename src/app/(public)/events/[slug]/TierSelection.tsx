@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
+import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 interface Tier {
   id: string;
@@ -152,6 +153,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
@@ -185,8 +187,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       try {
         const result = await purchaseTicket(partyId, selectedTierId);
         if (result.success && result.checkoutId) {
-          // TODO(08-02): open checkout modal with card widget instead of redirect
-          console.log("Checkout created:", result.checkoutId);
+          setCheckoutId(result.checkoutId);
         }
       } catch (err) {
         setError(
@@ -268,6 +269,17 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       >
         {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
       </button>
+
+      {checkoutId && (
+        <SumUpCheckoutModal
+          checkoutId={checkoutId}
+          onClose={() => setCheckoutId(null)}
+          onPaymentComplete={() => {
+            setCheckoutId(null);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -115,16 +115,10 @@ function formatDateRange(dates: string[]): string {
 
 export default async function EventDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const { slug } = await params;
-  const query = await searchParams;
-
-  // Payment result from SumUp redirect
-  const paymentResult = query.payment as string | undefined;
 
   // Check auth status
   const supabase = await createClient();
@@ -370,22 +364,6 @@ export default async function EventDetailPage({
 
   return (
     <div className="min-h-dvh pb-24">
-      {/* Payment result banners */}
-      {paymentResult === "success" && (
-        <div className="mx-6 mt-6 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
-          <p className="text-sm font-medium text-green-400">
-            Payment received! Your ticket is being processed.
-          </p>
-        </div>
-      )}
-      {paymentResult === "cancelled" && (
-        <div className="mx-6 mt-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-          <p className="text-sm font-medium text-yellow-400">
-            Payment was cancelled. You can try again.
-          </p>
-        </div>
-      )}
-
       {isAuthenticated && <PendingIntentHandler eventSlug={slug} />}
 
       {/* Cover */}

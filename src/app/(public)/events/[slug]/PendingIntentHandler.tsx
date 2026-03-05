@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
 import { rsvpToParty } from "./rsvp-actions";
+import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 interface PendingIntentHandlerProps {
   eventSlug: string;
@@ -27,6 +28,7 @@ type Intent = PurchaseIntent | RsvpIntent;
 export default function PendingIntentHandler({ eventSlug }: PendingIntentHandlerProps) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -52,8 +54,9 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
           const result = await purchaseTicket(intent.partyId, intent.tierId);
           localStorage.removeItem("resonate_intent");
           if (result.success && result.checkoutId) {
-            // TODO(08-02): open checkout modal with card widget instead of redirect
-            console.log("Checkout created:", result.checkoutId);
+            setCheckoutId(result.checkoutId);
+            setProcessing(false);
+            return;
           }
         } else if (intent.type === "rsvp") {
           await rsvpToParty(intent.partyId, intent.eventId);
@@ -68,7 +71,7 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
     });
   }, [eventSlug, startTransition]);
 
-  if (!processing && !isPending && !error) return null;
+  if (!processing && !isPending && !error && !checkoutId) return null;
 
   return (
     <div className="mx-6 mt-6">
@@ -83,6 +86,16 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
           <p className="text-sm text-red-400">{error}</p>
         </div>
+      )}
+      {checkoutId && (
+        <SumUpCheckoutModal
+          checkoutId={checkoutId}
+          onClose={() => setCheckoutId(null)}
+          onPaymentComplete={() => {
+            setCheckoutId(null);
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );
