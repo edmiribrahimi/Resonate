@@ -178,3 +178,47 @@ export interface PendingPurchase {
   created_at: string;
   updated_at: string;
 }
+
+export interface DrinkItem {
+  id: string;
+  event_id: string;
+  name: string;
+  price: number;
+  sort_order: number;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DrinkOrder {
+  id: string;
+  event_id: string;
+  user_id: string | null;
+  sumup_checkout_id: string;
+  total_amount: number;
+  status: "pending" | "completed" | "failed" | "expired";
+  items: DrinkOrderItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DrinkOrderItem {
+  drink_item_id: string;
+  drink_name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface DrinkToken {
+  id: string;
+  order_id: string;
+  event_id: string;
+  user_id: string | null;
+  drink_item_id: string | null;
+  drink_name: string;
+  price: number;
+  token: string;
+  status: "purchased" | "redeemed";
+  redeemed_at: string | null;
+  created_at: string;
+}

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
 import { createCheckout } from "@/lib/sumup";
-import type { AccessType } from "@/types/database";
+import type { AccessType, DrinkItem } from "@/types/database";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
@@ -719,6 +719,225 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
   if (insertError) {
     console.error("Failed to create pending purchase:", insertError);
     throw new Error("Failed to initiate purchase");
+  }
+
+  return { success: true, checkoutId: response.id };
+}
+
+// =============================================================
+// Drink Menu CRUD & Purchase
+// =============================================================
+
+/**
+ * Fetch drink items for an event, ordered by sort_order.
+ */
+export async function getDrinkItems(eventId: string): Promise<DrinkItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("drink_items")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch drink items: ${error.message}`);
+  }
+
+  return data as DrinkItem[];
+}
+
+/**
+ * Add a drink item to an event's menu.
+ */
+export async function addDrinkItem(
+  eventId: string,
+  name: string,
+  price: number
+): Promise<DrinkItem> {
+  const supabase = await createClient();
+  await verifyOrganizer(supabase);
+
+  // Get next sort_order
+  const { data: existing } = await supabase
+    .from("drink_items")
+    .select("sort_order")
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 0;
+
+  const { data, error } = await supabase
+    .from("drink_items")
+    .insert({
+      event_id: eventId,
+      name: name.trim(),
+      price,
+      sort_order: nextOrder,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to add drink item: ${error.message}`);
+  }
+
+  revalidatePath("/organizer/events");
+  return data as DrinkItem;
+}
+
+/**
+ * Update a drink item.
+ */
+export async function updateDrinkItem(
+  itemId: string,
+  data: { name?: string; price?: number; is_available?: boolean }
+): Promise<void> {
+  const supabase = await createClient();
+  await verifyOrganizer(supabase);
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (data.name !== undefined) updates.name = data.name.trim();
+  if (data.price !== undefined) updates.price = data.price;
+  if (data.is_available !== undefined) updates.is_available = data.is_available;
+
+  const { error } = await supabase
+    .from("drink_items")
+    .update(updates)
+    .eq("id", itemId);
+
+  if (error) {
+    throw new Error(`Failed to update drink item: ${error.message}`);
+  }
+
+  revalidatePath("/organizer/events");
+}
+
+/**
+ * Remove a drink item.
+ */
+export async function removeDrinkItem(itemId: string): Promise<void> {
+  const supabase = await createClient();
+  await verifyOrganizer(supabase);
+
+  const { error } = await supabase
+    .from("drink_items")
+    .delete()
+    .eq("id", itemId);
+
+  if (error) {
+    throw new Error(`Failed to remove drink item: ${error.message}`);
+  }
+
+  revalidatePath("/organizer/events");
+}
+
+/**
+ * Initiate a drink purchase via SumUp checkout.
+ * Creates a drink_orders row and returns the checkout ID for card widget.
+ */
+export async function purchaseDrinks(
+  eventId: string,
+  items: { drinkItemId: string; quantity: number }[]
+): Promise<{ success: boolean; checkoutId: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  if (!items || items.length === 0) {
+    throw new Error("No items selected");
+  }
+
+  // Fetch drink items by IDs
+  const drinkItemIds = items.map((i) => i.drinkItemId);
+  const { data: drinkItems, error: fetchError } = await supabase
+    .from("drink_items")
+    .select("*")
+    .in("id", drinkItemIds)
+    .eq("event_id", eventId);
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch drink items: ${fetchError.message}`);
+  }
+
+  if (!drinkItems || drinkItems.length !== drinkItemIds.length) {
+    throw new Error("One or more drink items not found or do not belong to this event");
+  }
+
+  // Validate availability
+  const drinkMap = new Map(drinkItems.map((d) => [d.id, d]));
+  for (const item of items) {
+    const drink = drinkMap.get(item.drinkItemId);
+    if (!drink) {
+      throw new Error(`Drink item not found: ${item.drinkItemId}`);
+    }
+    if (!drink.is_available) {
+      throw new Error(`Drink "${drink.name}" is not currently available`);
+    }
+    if (item.quantity < 1) {
+      throw new Error("Quantity must be at least 1");
+    }
+  }
+
+  // Calculate total and build items snapshot
+  let totalAmount = 0;
+  const itemsSnapshot = items.map((item) => {
+    const drink = drinkMap.get(item.drinkItemId)!;
+    const lineTotal = drink.price * item.quantity;
+    totalAmount += lineTotal;
+    return {
+      drink_item_id: drink.id,
+      drink_name: drink.name,
+      price: drink.price,
+      quantity: item.quantity,
+    };
+  });
+
+  // Fetch event title for checkout description
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("title")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error("Event not found");
+  }
+
+  // Create SumUp checkout
+  const checkoutReference = crypto.randomUUID();
+  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
+
+  const response = await createCheckout({
+    amount: totalAmount,
+    currency: "EUR",
+    description: `${event.title} - Drinks`,
+    checkoutReference,
+    returnUrl,
+  });
+
+  // Create drink order using service client (bypass RLS)
+  const serviceClient = getServiceClient();
+  const { error: insertError } = await serviceClient
+    .from("drink_orders")
+    .insert({
+      event_id: eventId,
+      user_id: user.id,
+      sumup_checkout_id: response.id,
+      total_amount: totalAmount,
+      status: "pending",
+      items: itemsSnapshot,
+    });
+
+  if (insertError) {
+    console.error("Failed to create drink order:", insertError);
+    throw new Error("Failed to initiate drink purchase");
   }
 
   return { success: true, checkoutId: response.id };
