@@ -67,7 +67,7 @@ Plans:
 **Depends on:** Phase 13
 **Plans:** 1 plan
 Plans:
-- [ ] 17-01-PLAN.md -- Add redirect_url to createCheckout, update all call sites, Google Pay Card Widget config, create /payment/callback page
+- [x] 17-01-PLAN.md -- Add redirect_url to createCheckout, update all call sites, Google Pay Card Widget config, create /payment/callback page
 **Success criteria:**
 - Checkout creation includes `redirect_url` for APM redirect flows
 - Satispay and MyBank available as payment options (Card Widget handles UI)

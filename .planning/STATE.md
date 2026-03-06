@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
 status: in_progress
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-06T16:44:07Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-06T16:45:15Z"
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 14 of 18 -- Admin Finance Dashboard (COMPLETE)
-**Plan:** 2/2 (all plans complete)
-**Status:** Phase 14 complete. Admin finance dashboard fully functional with pagination, filters, and transaction detail.
+**Phase:** 17 of 18 -- Alternative Payment Methods (COMPLETE)
+**Plan:** 1/1 (all plans complete)
+**Status:** Phase 17 complete. APM support enabled with redirect_url in checkout creation, Google Pay Card Widget config, and /payment/callback page.
 
 ```
-[Phase Progress]  ####################  2/2 plans in phase 14
+[Phase Progress]  ####################  1/1 plans in phase 17
 
-[Overall]         ##########__________  3/6 plans complete (across all phases)
+[Overall]         #############_______  4/6 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -56,23 +56,26 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 7. **[Phase 14]** CursorEntry interface with { cursor, param } for back-navigation fidelity instead of string[]
 8. **[Phase 14]** Initial useEffect kept with [] deps; fetchTransactions callback only used by pagination/filter buttons
 9. **[Phase 14]** Detail cache cleared on filter apply to avoid stale data across different result sets
+10. **[Phase 17]** Optional redirectUrl in createCheckout -- backward compatible, undefined harmless in SDK call
+11. **[Phase 17]** Google Pay config conditional on env var -- avoids errors before dashboard setup
+12. **[Phase 17]** Callback page polls 5x at 2s intervals for PENDING to handle webhook race condition
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 3 |
+| Plans completed | 4 |
 | Plans failed | 0 |
-| Requirements done | 9/26 |
-| Phases complete | 2/6 |
+| Requirements done | 14/26 |
+| Phases complete | 3/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T16:44:07Z
-**Stopped at:** Completed 14-02-PLAN.md
-**What happened:** Executed Phase 14 Plan 02 -- Pagination, Filters, and Transaction Detail View. Added cursor-based prev/next pagination with stack navigation, date range and status filters with Apply button, and click-to-expand transaction detail rows with lazy-loaded fee/card/status info. All 2 tasks completed, build passed. Requirements FIN-03, FIN-04, FIN-05 satisfied. Phase 14 now complete (2/2 plans).
-**Next step:** Execute Phase 15 (Refunds), Phase 16 (Payouts), or Phase 17 (APMs) -- these can run in parallel.
+**Last session:** 2026-03-06T16:45:15Z
+**Stopped at:** Completed 17-01-PLAN.md
+**What happened:** Executed Phase 17 Plan 01 -- Alternative Payment Methods. Added optional redirectUrl to createCheckout(), updated all 3 call sites (purchaseTicket, purchaseDrinks, purchaseDrinksGuest) with redirect URLs, added googlePay config to Card Widget, created /payment/callback page with polling UI. All 2 tasks completed, build passed. Requirements APM-01 through APM-05 satisfied. Phase 17 now complete (1/1 plans).
+**Next step:** Execute Phase 15 (Refunds), Phase 16 (Payouts), or Phase 18 (Tokenization) -- Phase 18 depends on Phase 17 (now complete).
 
 ---
 *State initialized: 2026-03-06*
-*Last updated: 2026-03-06T16:44:07Z*
+*Last updated: 2026-03-06T16:45:15Z*

@@ -36,11 +36,11 @@
 
 ### Alternative Payment Methods
 
-- [ ] **APM-01**: Satispay enabled as payment option (available in Italy, no custom integration -- Card Widget handles it)
-- [ ] **APM-02**: MyBank enabled as payment option (available in Italy, redirect-based flow)
-- [ ] **APM-03**: Apple Pay enabled via Card Widget with domain verification completed
-- [ ] **APM-04**: Google Pay enabled via Card Widget with domain onboarding completed
-- [ ] **APM-05**: Checkout creation includes `redirect_url` parameter for APM redirect flows
+- [x] **APM-01**: Satispay enabled as payment option (available in Italy, no custom integration -- Card Widget handles it)
+- [x] **APM-02**: MyBank enabled as payment option (available in Italy, redirect-based flow)
+- [x] **APM-03**: Apple Pay enabled via Card Widget with domain verification completed
+- [x] **APM-04**: Google Pay enabled via Card Widget with domain onboarding completed
+- [x] **APM-05**: Checkout creation includes `redirect_url` parameter for APM redirect flows
 
 ### Card Tokenization
 
@@ -81,11 +81,11 @@
 | PAY-01 | Phase 16 | Pending |
 | PAY-02 | Phase 16 | Pending |
 | PAY-03 | Phase 16 | Pending |
-| APM-01 | Phase 17 | Pending |
-| APM-02 | Phase 17 | Pending |
-| APM-03 | Phase 17 | Pending |
-| APM-04 | Phase 17 | Pending |
-| APM-05 | Phase 17 | Pending |
+| APM-01 | Phase 17 | Complete |
+| APM-02 | Phase 17 | Complete |
+| APM-03 | Phase 17 | Complete |
+| APM-04 | Phase 17 | Complete |
+| APM-05 | Phase 17 | Complete |
 | TOK-01 | Phase 18 | Pending |
 | TOK-02 | Phase 18 | Pending |
 | TOK-03 | Phase 18 | Pending |
