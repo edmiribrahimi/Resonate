@@ -14,7 +14,7 @@
 ### Phases
 
 - [x] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
-- [ ] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
+- [x] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [ ] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
 - [ ] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
 
@@ -38,8 +38,8 @@ Plans:
 **Requirements**: DRNK-01, DRNK-02, DRNK-03, DRNK-04, DRNK-05, DRNK-06
 **Plans:** 2 plans
 Plans:
-- [ ] 09-01-PLAN.md -- Database schema, types, server actions (CRUD + purchase), webhook extension
-- [ ] 09-02-PLAN.md -- Organizer drink menu page, DrinkMenu component, event page integration
+- [x] 09-01-PLAN.md -- Database schema, types, server actions (CRUD + purchase), webhook extension
+- [x] 09-02-PLAN.md -- Organizer drink menu page, DrinkMenu component, event page integration
 **Success Criteria**:
   1. Organizer/admin can add drink items (name + price) to an event
   2. Event detail page shows a "Drinks" section with available items
@@ -50,6 +50,10 @@ Plans:
 **Goal**: Drinks are redeemed at the bar with anti-fraud protection
 **Depends on**: Phase 9 (drink orders exist)
 **Requirements**: DRNK-07, DRNK-08, DRNK-09, DRNK-10, DRNK-11
+**Plans:** 2 plans
+Plans:
+- [ ] 10-01-PLAN.md -- Backend: DB redemption function, webhook HMAC signing, redeemDrinkToken server action
+- [ ] 10-02-PLAN.md -- Frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration
 **Success Criteria**:
   1. Member sees their purchased drink tickets on event page and dashboard
   2. Tapping "Redeem" triggers a confirmation dialog with 3-second countdown
@@ -72,8 +76,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
-| 9. Drink Menu & Purchase | 0/? | Not started | -- |
-| 10. Drink Redemption | 0/? | Not started | -- |
+| 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
+| 10. Drink Redemption | 0/2 | Planned | -- |
 | 11. Public Drink Menu | 0/? | Not started | -- |
 
 ## Coverage
