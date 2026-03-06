@@ -22,6 +22,7 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function updateQuantity(drinkId: string, delta: number) {
@@ -48,9 +49,10 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
 
     startTransition(async () => {
       try {
-        const result = await purchaseDrinks(eventId, partyId, items);
+        const result = await purchaseDrinks(eventId, partyId, items, saveCard);
         if (result.success && result.checkoutId) {
           setCheckoutId(result.checkoutId);
+          setSaveCard(false);
         }
       } catch (err) {
         setError(
@@ -129,6 +131,15 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
               {formatPrice(totalPrice)}
             </span>
           </div>
+          <label className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              className="h-4 w-4 rounded border-card-border accent-accent"
+            />
+            <span className="text-sm text-foreground">Save card for future payments</span>
+          </label>
           <button
             type="button"
             onClick={handleOrder}

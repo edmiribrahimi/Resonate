@@ -154,6 +154,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(false);
   const [, setTick] = useState(0);
 
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
@@ -185,9 +186,10 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
 
     startTransition(async () => {
       try {
-        const result = await purchaseTicket(partyId, selectedTierId);
+        const result = await purchaseTicket(partyId, selectedTierId, saveCard);
         if (result.success && result.checkoutId) {
           setCheckoutId(result.checkoutId);
+          setSaveCard(false);
         }
       } catch (err) {
         setError(
@@ -260,6 +262,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           );
         })}
       </div>
+
+      {isAuthenticated && (
+        <label className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 p-3 mb-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={saveCard}
+            onChange={(e) => setSaveCard(e.target.checked)}
+            className="h-4 w-4 rounded border-card-border accent-accent"
+          />
+          <span className="text-sm text-foreground">Save card for future payments</span>
+        </label>
+      )}
 
       <button
         type="button"
