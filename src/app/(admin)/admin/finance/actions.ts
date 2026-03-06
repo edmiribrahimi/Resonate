@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { sumup, refundTransaction } from "@/lib/sumup";
+import { sumup, refundTransaction, getCheckout } from "@/lib/sumup";
+import { getServiceClient } from "@/lib/supabase/service";
 import type { UserRole } from "@/types/database";
 
 async function requireMaster() {
@@ -86,4 +87,101 @@ export async function refundTransactionAction(
   await requireMaster();
   await refundTransaction(transactionCode, amount);
   return { success: true };
+}
+
+export interface TicketSearchResult {
+  memberName: string;
+  memberEmail: string;
+  eventTitle: string;
+  tierLabel: string;
+  amount: number;
+  currency: string;
+  purchaseDate: string;
+  transactionCode: string | null;
+  checkoutId: string;
+  status: string;
+}
+
+export async function searchTicketsByMember(
+  query: string
+): Promise<TicketSearchResult[]> {
+  await requireMaster();
+
+  if (!query || query.trim().length < 2) return [];
+
+  const supabase = getServiceClient();
+
+  // 1. Search profiles by name (ILIKE for case-insensitive partial match)
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .ilike("full_name", `%${query.trim()}%`)
+    .limit(10);
+
+  if (!profiles || profiles.length === 0) return [];
+
+  const userIds = profiles.map((p) => p.id);
+
+  // 2. Find completed ticket purchases for these users
+  const { data: purchases } = await supabase
+    .from("pending_purchases")
+    .select(`
+      id,
+      user_id,
+      sumup_checkout_id,
+      status,
+      created_at,
+      tier:ticket_tiers(label, price),
+      event:events(title)
+    `)
+    .in("user_id", userIds)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (!purchases || purchases.length === 0) return [];
+
+  // 3. For each purchase, get the SumUp transaction code via checkout
+  const results: TicketSearchResult[] = [];
+
+  for (const purchase of purchases) {
+    const profile = profiles.find((p) => p.id === purchase.user_id);
+    if (!profile) continue;
+
+    // Type-safe access to joined data
+    const tier = purchase.tier as unknown as { label: string; price: number } | null;
+    const event = purchase.event as unknown as { title: string } | null;
+
+    let transactionCode: string | null = null;
+    let amount = tier?.price ?? 0;
+    let currency = "EUR";
+    let purchaseStatus = "COMPLETED";
+
+    try {
+      const checkout = await getCheckout(purchase.sumup_checkout_id);
+      if (checkout.transactions && checkout.transactions.length > 0) {
+        transactionCode = checkout.transactions[0].transaction_code;
+        purchaseStatus = checkout.transactions[0].status;
+      }
+      amount = checkout.amount ?? amount;
+      currency = checkout.currency ?? currency;
+    } catch {
+      // SumUp error -- still show the result but without transaction code (no refund possible)
+    }
+
+    results.push({
+      memberName: profile.full_name,
+      memberEmail: profile.email,
+      eventTitle: event?.title ?? "Unknown Event",
+      tierLabel: tier?.label ?? "Ticket",
+      amount,
+      currency,
+      purchaseDate: purchase.created_at,
+      transactionCode,
+      checkoutId: purchase.sumup_checkout_id,
+      status: purchaseStatus,
+    });
+  }
+
+  return results;
 }
