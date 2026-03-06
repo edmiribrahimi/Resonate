@@ -10,6 +10,7 @@ export interface Profile {
   role: UserRole;
   status: UserStatus;
   referred_by: string | null;
+  sumup_customer_id: string | null;
   created_at: string;
   updated_at: string;
 }
