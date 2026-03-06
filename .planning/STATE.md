@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: "**Created:** 2026-03-05"
-status: planning
-stopped_at: Added Phase 12 (Drink Order Webhook Fixes)
-last_updated: "2026-03-06T02:45:00.000Z"
+status: complete
+stopped_at: Completed Phase 12 (Drink Order Webhook Fixes)
+last_updated: "2026-03-06T02:06:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 12 of 12 -- Drink Order Webhook Fixes (PLANNED)
-**Plan:** 0/0 (needs planning)
-**Status:** Ready to plan
+**Phase:** 12 of 12 -- Drink Order Webhook Fixes (COMPLETE)
+**Plan:** 1/1
+**Status:** Milestone complete
 
 ```
-[Phase Progress]  ░░░░░░░░░░░░░░░░░░░░  0/0 plans in phase 12
+[Phase Progress]  ████████████████████  1/1 plans in phase 12
 
-[Overall]         ████████████████░░░░  4/5 phases complete
+[Overall]         ████████████████████  5/5 phases complete
 ```
 
 ## Decisions
@@ -56,15 +56,17 @@ progress:
 - GuestDrinkMenu communicates with GuestTokenDisplay via CustomEvent to avoid prop drilling through server component
 - GuestRedeemConfirmationModal inlined in GuestTokenDisplay to keep guest redeem action isolated from authenticated flow
 - localStorage stores array of order IDs per event, URL param contains only latest order ID
+- No error_message column added to drink_orders (table lacks it unlike pending_purchases) -- just set status to failed
+- DROP old 2-param function before CREATE new 1-param (PostgreSQL treats different param lists as overloads)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 8 |
+| Plans completed | 9 |
 | Plans failed | 0 |
 | Requirements done | 18/18 |
-| Phases complete | 4/5 |
+| Phases complete | 5/5 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -76,13 +78,14 @@ progress:
 | 10-02 | 122s | 2 | 6 |
 | 11-01 | 97s | 2 | 3 |
 | 11-02 | 221s | 3 | 6 |
+| 12-01 | 60s | 1 | 2 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T02:45:00Z
-**Stopped at:** Added Phase 12 (Drink Order Webhook Fixes)
-**What happened:** Completed Phase 11 execution (all plans). Ran milestone audit -- 18/18 requirements, 5/5 integration points PASS. Identified 2 minor tech debt issues: webhook missing error handling for fulfill_drink_order RPC, unused p_transaction_code parameter. Added Phase 12 to address these.
-**Next step:** Plan and execute Phase 12 (Drink Order Webhook Fixes)
+**Last session:** 2026-03-06T02:06:00Z
+**Stopped at:** Completed 12-01-PLAN.md
+**What happened:** Executed Phase 12 Plan 1 -- added error handling for fulfill_drink_order RPC in webhook (marks drink_orders as "failed" on error), removed unused p_transaction_code parameter via DROP+CREATE migration. All 5 phases and 9 plans complete. v1.1 milestone finished.
+**Next step:** Milestone v1.1 complete. All 18 requirements covered, all phases executed.
 
 ---
 *State initialized: 2026-03-05*

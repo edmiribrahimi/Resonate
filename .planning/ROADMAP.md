@@ -17,7 +17,7 @@
 - [x] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [x] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
 - [x] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
-- [ ] **Phase 12: Drink Order Webhook Fixes** - Error handling for fulfill_drink_order RPC in webhook, remove unused p_transaction_code parameter
+- [x] **Phase 12: Drink Order Webhook Fixes** - Error handling for fulfill_drink_order RPC in webhook, remove unused p_transaction_code parameter
 
 ### Phase 8: SumUp Embedded Checkout
 **Goal**: All payments happen inside the app without redirect
@@ -82,7 +82,7 @@ Plans:
 **Requirements**: None (tech debt fix, no new user-facing requirements)
 **Plans:** 1 plan
 Plans:
-- [ ] 12-01-PLAN.md -- Migration (remove unused RPC param) + webhook error handling for drink orders
+- [x] 12-01-PLAN.md -- Migration (remove unused RPC param) + webhook error handling for drink orders
 **Success Criteria**:
   1. Webhook handles `fulfill_drink_order` RPC errors by updating `drink_orders.status` to `"failed"` (matching ticket purchase error handling pattern)
   2. Unused `p_transaction_code` parameter removed from `fulfill_drink_order` RPC signature
@@ -95,7 +95,7 @@ Plans:
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
 | 10. Drink Redemption | 2/2 | Complete    | 2026-03-06 |
 | 11. Public Drink Menu | 2/2 | Complete | 2026-03-06 |
-| 12. Drink Order Webhook Fixes | 0/1 | Planned | -- |
+| 12. Drink Order Webhook Fixes | 1/1 | Complete | 2026-03-06 |
 
 ## Coverage
 
