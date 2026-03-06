@@ -52,7 +52,7 @@ Plans:
 **Requirements**: DRNK-07, DRNK-08, DRNK-09, DRNK-10, DRNK-11
 **Plans:** 2 plans
 Plans:
-- [ ] 10-01-PLAN.md -- Backend: DB redemption function, webhook HMAC signing, redeemDrinkToken server action
+- [x] 10-01-PLAN.md -- Backend: DB redemption function, webhook HMAC signing, redeemDrinkToken server action
 - [ ] 10-02-PLAN.md -- Frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration
 **Success Criteria**:
   1. Member sees their purchased drink tickets on event page and dashboard
@@ -77,7 +77,7 @@ Plans:
 |-------|---------------|--------|-----------|
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
-| 10. Drink Redemption | 0/2 | Planned | -- |
+| 10. Drink Redemption | 1/2 | In Progress | -- |
 | 11. Public Drink Menu | 0/? | Not started | -- |
 
 ## Coverage
