@@ -15,7 +15,7 @@
 
 - [x] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
 - [x] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
-- [ ] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
+- [x] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
 - [ ] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
 
 ### Phase 8: SumUp Embedded Checkout
@@ -53,7 +53,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 10-01-PLAN.md -- Backend: DB redemption function, webhook HMAC signing, redeemDrinkToken server action
-- [ ] 10-02-PLAN.md -- Frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration
+- [x] 10-02-PLAN.md -- Frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration
 **Success Criteria**:
   1. Member sees their purchased drink tickets on event page and dashboard
   2. Tapping "Redeem" triggers a confirmation dialog with 3-second countdown
@@ -77,7 +77,7 @@ Plans:
 |-------|---------------|--------|-----------|
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
-| 10. Drink Redemption | 1/2 | In Progress | -- |
+| 10. Drink Redemption | 2/2 | Complete | 2026-03-06 |
 | 11. Public Drink Menu | 0/? | Not started | -- |
 
 ## Coverage

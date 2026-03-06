@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: "**Created:** 2026-03-05"
 status: in_progress
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-06T00:32:50.000Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-06T00:38:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 10 of 11 -- Drink Redemption (IN PROGRESS)
-**Plan:** 1/2 complete (10-01 done)
-**Status:** Plan 10-01 complete, 10-02 next
+**Phase:** 10 of 11 -- Drink Redemption (COMPLETE)
+**Plan:** 2/2 complete (10-01, 10-02 done)
+**Status:** Phase 10 complete, Phase 11 next
 
 ```
-[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 10
+[Phase Progress]  ████████████████████  2/2 plans in phase 10
 
-[Overall]         ██████████░░░░░░░░░░  2/4 phases complete
+[Overall]         ███████████████░░░░░  3/4 phases complete
 ```
 
 ## Decisions
@@ -46,15 +46,18 @@ progress:
 - DrinkMenu quantity selector uses +/- buttons with min 0 max 10 range
 - Token signing happens in webhook handler after fulfill_drink_order (not in PG function) because HMAC uses Node.js crypto
 - redeemDrinkToken verifies ownership via authenticated supabase client before calling service-role RPC
+- Both event page and dashboard use same DrinkTokenCard with full redeem capability (per locked user decision)
+- Dashboard groups tokens by event with 48h visibility window for recently-redeemed tokens
+- Circular countdown uses conic-gradient with 16ms interval (~60fps) for smooth animation
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 5 |
+| Plans completed | 6 |
 | Plans failed | 0 |
-| Requirements done | 7/18 |
-| Phases complete | 2/4 |
+| Requirements done | 11/18 |
+| Phases complete | 3/4 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -63,14 +66,15 @@ progress:
 | 09-01 | 137s | 4 | 4 |
 | 09-02 | 156s | 2 | 5 |
 | 10-01 | 94s | 2 | 3 |
+| 10-02 | 122s | 2 | 6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T00:32:50.000Z
-**Stopped at:** Completed 10-01-PLAN.md
-**What happened:** Executed Plan 10-01: added redeem_drink_token SECURITY DEFINER function with FOR UPDATE row lock, HMAC signing of drink tokens in webhook after fulfillment, redeemDrinkToken server action with signature verification and ownership check. All 2 tasks done, tsc clean.
-**Next step:** Execute Plan 10-02 (frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration)
+**Last session:** 2026-03-06T00:38:00.000Z
+**Stopped at:** Completed 10-02-PLAN.md
+**What happened:** Executed Plan 10-02: DrinkTokenCard with purchased/redeemed states, RedeemConfirmationModal with 3-phase flow (circular countdown, server confirm, SERVED animation), MyDrinks on event page, DashboardDrinkTokens on dashboard. Both locations use same card with full redeem capability. All 2 tasks done, tsc clean.
+**Next step:** Plan Phase 11 (Public Drink Menu)
 
 ---
 *State initialized: 2026-03-05*
-*Last updated: 2026-03-06T00:00:00Z*
+*Last updated: 2026-03-06T00:38:00Z*

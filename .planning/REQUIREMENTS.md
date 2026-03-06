@@ -25,10 +25,10 @@
 
 ### Drink Redemption
 
-- [ ] **DRNK-07**: Member can view their purchased drink tickets on the event page and dashboard
-- [ ] **DRNK-08**: Tapping "Redeem" on a drink ticket shows a confirmation dialog with 3-second countdown before the confirm button activates
-- [ ] **DRNK-09**: After confirmation, the drink ticket shows a full-screen "SERVED" animation and the token is marked `redeemed` in DB
-- [ ] **DRNK-10**: A redeemed drink ticket cannot be redeemed again -- shows "Already redeemed" state
+- [x] **DRNK-07**: Member can view their purchased drink tickets on the event page and dashboard
+- [x] **DRNK-08**: Tapping "Redeem" on a drink ticket shows a confirmation dialog with 3-second countdown before the confirm button activates
+- [x] **DRNK-09**: After confirmation, the drink ticket shows a full-screen "SERVED" animation and the token is marked `redeemed` in DB
+- [x] **DRNK-10**: A redeemed drink ticket cannot be redeemed again -- shows "Already redeemed" state
 - [x] **DRNK-11**: Drink ticket tokens are cryptographically signed to prevent forgery (same pattern as event ticket QR)
 
 ## Out of Scope
@@ -54,10 +54,10 @@
 | DRNK-04 | TBD | Pending |
 | DRNK-05 | TBD | Pending |
 | DRNK-06 | TBD | Pending |
-| DRNK-07 | TBD | Pending |
-| DRNK-08 | TBD | Pending |
-| DRNK-09 | Phase 10 (10-01, 10-02) | In Progress |
-| DRNK-10 | Phase 10 (10-01, 10-02) | In Progress |
+| DRNK-07 | Phase 10 (10-02) | Complete |
+| DRNK-08 | Phase 10 (10-02) | Complete |
+| DRNK-09 | Phase 10 (10-01, 10-02) | Complete |
+| DRNK-10 | Phase 10 (10-01, 10-02) | Complete |
 | DRNK-11 | Phase 10 (10-01) | Complete |
 
 **Coverage:** 14 requirements (3 SumUp + 11 Drinks)
