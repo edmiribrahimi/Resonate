@@ -62,15 +62,18 @@ Plans:
 - Handles payout types: PAYOUT, CHARGE_BACK_DEDUCTION, REFUND_DEDUCTION
 
 ### Phase 17: Alternative Payment Methods
-**Goal:** Enable Satispay, MyBank, Apple Pay, and Google Pay as payment options alongside card payments.
+**Goal:** Enable Satispay, MyBank, Apple Pay, and Google Pay as payment options alongside card payments via the SumUp Card Widget.
 **Requirements:** APM-01, APM-02, APM-03, APM-04, APM-05
 **Depends on:** Phase 13
+**Plans:** 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Add redirect_url to createCheckout, update all call sites, Google Pay Card Widget config, create /payment/callback page
 **Success criteria:**
 - Checkout creation includes `redirect_url` for APM redirect flows
 - Satispay and MyBank available as payment options (Card Widget handles UI)
 - Apple Pay configured with domain verification via SumUp Dashboard
-- Google Pay configured with domain onboarding via SumUp Dashboard
-- Payment Widget shows available APMs based on `listAvailablePaymentMethods()`
+- Google Pay configured with domain onboarding + Card Widget `googlePay` config
+- `/payment/callback` page handles APM redirect-back with status polling
 
 ### Phase 18: Card Tokenization
 **Goal:** Members can save their card for faster repeat payments. SumUp Customers API links Resonate profiles to saved payment instruments.
