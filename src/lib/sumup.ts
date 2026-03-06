@@ -1,4 +1,12 @@
-const SUMUP_API_BASE = "https://api.sumup.com/v0.1";
+import SumUp, { APIError } from "@sumup/sdk";
+
+// SDK singleton -- reused across all calls, do NOT instantiate per-request
+const sumup = new SumUp({
+  apiKey: process.env.SUMUP_API_KEY!,
+});
+
+// Export singleton for direct SDK access in future phases (14-18)
+export { sumup };
 
 export async function createCheckout(params: {
   amount: number;
@@ -7,87 +15,64 @@ export async function createCheckout(params: {
   checkoutReference: string;
   returnUrl: string;
 }) {
-  const response = await fetch(`${SUMUP_API_BASE}/checkouts`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.SUMUP_API_KEY}`,
-    },
-    body: JSON.stringify({
+  try {
+    const checkout = await sumup.checkouts.create({
       amount: params.amount,
-      currency: params.currency,
-      merchant_code: process.env.SUMUP_MERCHANT_CODE,
+      currency: params.currency as "EUR",
+      merchant_code: process.env.SUMUP_MERCHANT_CODE!,
       checkout_reference: params.checkoutReference,
       description: params.description,
       return_url: params.returnUrl,
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      `SumUp checkout creation failed: ${JSON.stringify(error)}`
-    );
-  }
-
-  return response.json() as Promise<{
-    id: string;
-    status: string;
-    checkout_reference: string;
-  }>;
-}
-
-export async function refundTransaction(transactionCode: string, amount?: number) {
-  const body: Record<string, unknown> = {};
-  if (amount !== undefined) {
-    body.amount = amount;
-  }
-
-  const response = await fetch(
-    `${SUMUP_API_BASE}/me/refund/${transactionCode}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.SUMUP_API_KEY}`,
-      },
-      body: JSON.stringify(body),
+    return checkout as { id: string; status: string; checkout_reference: string };
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw new Error(
+        `SumUp checkout creation failed: ${JSON.stringify(error.error)}`
+      );
     }
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`SumUp refund failed: ${error}`);
+    throw error;
   }
-
-  // 204 No Content = success
-  return { success: true };
 }
 
 export async function getCheckout(checkoutId: string) {
-  const response = await fetch(
-    `${SUMUP_API_BASE}/checkouts/${checkoutId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.SUMUP_API_KEY}`,
-      },
-    }
-  );
+  try {
+    const checkout = await sumup.checkouts.get(checkoutId);
 
-  if (!response.ok) {
-    throw new Error(`SumUp checkout retrieval failed: ${response.status}`);
-  }
-
-  return response.json() as Promise<{
-    id: string;
-    status: "PENDING" | "PAID" | "FAILED" | "EXPIRED";
-    checkout_reference: string;
-    amount: number;
-    currency: string;
-    transactions: Array<{
+    return checkout as {
       id: string;
-      transaction_code: string;
-      status: string;
-    }>;
-  }>;
+      status: "PENDING" | "PAID" | "FAILED" | "EXPIRED";
+      checkout_reference: string;
+      amount: number;
+      currency: string;
+      transactions: Array<{
+        id: string;
+        transaction_code: string;
+        status: string;
+      }>;
+    };
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw new Error(`SumUp checkout retrieval failed: ${error.status}`);
+    }
+    throw error;
+  }
+}
+
+export async function refundTransaction(transactionCode: string, amount?: number) {
+  try {
+    await sumup.transactions.refund(
+      transactionCode,
+      amount !== undefined ? { amount } : undefined
+    );
+
+    // Server returns 204 No Content -- return same shape as before
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw new Error(`SumUp refund failed: ${JSON.stringify(error.error)}`);
+    }
+    throw error;
+  }
 }
