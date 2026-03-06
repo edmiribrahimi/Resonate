@@ -87,23 +87,3 @@ export async function refundTransactionAction(
   await refundTransaction(transactionCode, amount);
   return { success: true };
 }
-
-export async function listPayouts(params: {
-  start_date: string;
-  end_date: string;
-  limit?: number;
-  order?: "desc" | "asc";
-}) {
-  await requireMaster();
-
-  const merchantCode = process.env.SUMUP_MERCHANT_CODE!;
-  const result = await sumup.payouts.list(merchantCode, {
-    start_date: params.start_date,
-    end_date: params.end_date,
-    format: "json",
-    limit: params.limit ?? 100,
-    order: params.order ?? "desc",
-  });
-
-  return Array.isArray(result) ? result : [];
-}

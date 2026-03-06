@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useCallback } from "react";
-import { purchaseTicket, purchaseTicketWithSavedCard } from "@/app/(organizer)/organizer/events/actions";
+import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 interface Tier {
@@ -24,7 +24,6 @@ interface TierSelectionProps {
   label?: string;
   isAuthenticated?: boolean;
   eventSlug?: string;
-  savedCards?: { token: string; last4: string; cardType: string }[];
 }
 
 function formatPrice(price: number) {
@@ -150,14 +149,11 @@ function CountdownDisplay({ targetDate }: { targetDate: Date }) {
   );
 }
 
-export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug, savedCards }: TierSelectionProps) {
+export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug }: TierSelectionProps) {
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
-  const [saveCard, setSaveCard] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"card_widget" | "saved_card">("card_widget");
-  const [selectedCardToken, setSelectedCardToken] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
@@ -189,22 +185,9 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
 
     startTransition(async () => {
       try {
-        if (paymentMethod === "saved_card" && selectedCardToken) {
-          const result = await purchaseTicketWithSavedCard(partyId, selectedTierId, selectedCardToken);
-          if (result.status === "redirect" && result.redirectUrl) {
-            window.location.href = result.redirectUrl;
-          } else if (result.status === "paid") {
-            window.location.reload();
-          } else {
-            // pending -- navigate to callback page
-            window.location.href = `/payment/callback?ref=${result.checkoutId}&slug=${eventSlug ?? ""}&ctx=ticket`;
-          }
-        } else {
-          const result = await purchaseTicket(partyId, selectedTierId, saveCard);
-          if (result.success && result.checkoutId) {
-            setCheckoutId(result.checkoutId);
-            setSaveCard(false);
-          }
+        const result = await purchaseTicket(partyId, selectedTierId);
+        if (result.success && result.checkoutId) {
+          setCheckoutId(result.checkoutId);
         }
       } catch (err) {
         setError(
@@ -277,57 +260,6 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           );
         })}
       </div>
-
-      {savedCards && savedCards.length > 0 && (
-        <div className="mb-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">Payment Method</p>
-          {savedCards.map((card) => (
-            <button
-              key={card.token}
-              type="button"
-              onClick={() => {
-                setPaymentMethod("saved_card");
-                setSelectedCardToken(card.token);
-              }}
-              className={`w-full rounded-xl border p-3 text-left transition-all ${
-                paymentMethod === "saved_card" && selectedCardToken === card.token
-                  ? "border-accent bg-accent/10"
-                  : "border-card-border bg-card hover:border-accent/50"
-              }`}
-            >
-              <span className="text-sm font-medium text-foreground">
-                {card.cardType} **** {card.last4}
-              </span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              setPaymentMethod("card_widget");
-              setSelectedCardToken(null);
-            }}
-            className={`w-full rounded-xl border p-3 text-left transition-all ${
-              paymentMethod === "card_widget"
-                ? "border-accent bg-accent/10"
-                : "border-card-border bg-card hover:border-accent/50"
-            }`}
-          >
-            <span className="text-sm font-medium text-foreground">New card</span>
-          </button>
-        </div>
-      )}
-
-      {isAuthenticated && paymentMethod === "card_widget" && (
-        <label className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 p-3 mb-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={saveCard}
-            onChange={(e) => setSaveCard(e.target.checked)}
-            className="h-4 w-4 rounded border-card-border accent-accent"
-          />
-          <span className="text-sm text-foreground">Save card for future payments</span>
-        </label>
-      )}
 
       <button
         type="button"

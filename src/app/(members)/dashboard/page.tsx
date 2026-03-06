@@ -10,8 +10,6 @@ import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import DashboardDrinkTokens from "./DashboardDrinkTokens";
-import SavedCardsSection from "./SavedCardsSection";
-import { listSavedCards } from "@/lib/sumup";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -26,7 +24,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("membership_code, role, created_at, sumup_customer_id")
+    .select("membership_code, role, created_at")
     .eq("id", user.id)
     .single();
 
@@ -161,16 +159,6 @@ export default async function DashboardPage() {
   const status = (headersList.get("x-user-status") as UserStatus) || null;
 
   const isPendingOrRejected = status === "pending" || status === "rejected";
-
-  // Fetch saved cards for members with a SumUp customer ID
-  let savedCards: { token: string; last4: string; cardType: string }[] = [];
-  if (isMemberRole && profile?.sumup_customer_id) {
-    try {
-      savedCards = await listSavedCards(profile.sumup_customer_id);
-    } catch {
-      // SumUp error -- ignore, show empty
-    }
-  }
 
   return (
     <div className="min-h-dvh pb-24">
@@ -349,9 +337,6 @@ export default async function DashboardPage() {
 
             {/* My Media — only show if user has uploads */}
             {mediaGroups.length > 0 && <MyMediaSection groups={mediaGroups} />}
-
-            {/* Saved Cards */}
-            {isMemberRole && <SavedCardsSection initialCards={savedCards} />}
 
             {/* Settings */}
             <div>

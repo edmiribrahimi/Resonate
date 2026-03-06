@@ -3,7 +3,6 @@
 import { useState, useEffect, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { purchaseDrinksGuest } from "./actions";
-import { purchaseDrinksWithSavedCard } from "@/app/(organizer)/organizer/events/actions";
 import type { DrinkItem } from "@/types/database";
 import SumUpCheckoutModal from "../SumUpCheckoutModal";
 import { GuestWarningModal } from "./GuestLoginBanner";
@@ -38,7 +37,6 @@ interface GuestDrinkMenuProps {
   partyId: string;
   drinks: DrinkItem[];
   isAuthenticated?: boolean;
-  savedCards?: { token: string; last4: string; cardType: string }[];
 }
 
 export default function GuestDrinkMenu({
@@ -46,7 +44,6 @@ export default function GuestDrinkMenu({
   partyId,
   drinks,
   isAuthenticated = false,
-  savedCards,
 }: GuestDrinkMenuProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
@@ -54,8 +51,6 @@ export default function GuestDrinkMenu({
   const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [paymentMethod, setPaymentMethod] = useState<"card_widget" | "saved_card">("card_widget");
-  const [selectedCardToken, setSelectedCardToken] = useState<string | null>(null);
 
   const pathname = usePathname();
   const slug = pathname.split("/")[2] || "";
@@ -123,34 +118,6 @@ export default function GuestDrinkMenu({
     });
   }
 
-  function handleSavedCardCheckout() {
-    if (!selectedCardToken) return;
-    const items = drinks
-      .filter((d) => (quantities[d.id] ?? 0) > 0)
-      .map((d) => ({ drinkItemId: d.id, quantity: quantities[d.id] }));
-
-    if (items.length === 0) return;
-
-    startTransition(async () => {
-      try {
-        const result = await purchaseDrinksWithSavedCard(eventId, partyId, items, selectedCardToken);
-        if (result.status === "redirect" && result.redirectUrl) {
-          window.location.href = result.redirectUrl;
-        } else if (result.status === "paid") {
-          setQuantities({});
-          window.location.reload();
-        } else {
-          // pending -- navigate to callback page
-          window.location.href = `/payment/callback?ref=${result.checkoutId}&slug=${slug}&ctx=drink&party=${partyId}`;
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to process saved card payment"
-        );
-      }
-    });
-  }
-
   function handleOrder() {
     setError(null);
     const items = drinks
@@ -159,9 +126,7 @@ export default function GuestDrinkMenu({
 
     if (items.length === 0) return;
 
-    if (isAuthenticated && paymentMethod === "saved_card" && selectedCardToken) {
-      handleSavedCardCheckout();
-    } else if (isAuthenticated) {
+    if (isAuthenticated) {
       // Authenticated users skip the warning and go straight to checkout
       startCheckout();
     } else {
@@ -285,45 +250,6 @@ export default function GuestDrinkMenu({
               {formatPrice(totalPrice)}
             </span>
           </div>
-
-          {savedCards && savedCards.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted">Payment Method</p>
-              {savedCards.map((card) => (
-                <button
-                  key={card.token}
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod("saved_card");
-                    setSelectedCardToken(card.token);
-                  }}
-                  className={`w-full rounded-xl border p-3 text-left transition-all ${
-                    paymentMethod === "saved_card" && selectedCardToken === card.token
-                      ? "border-accent bg-accent/10"
-                      : "border-card-border bg-card hover:border-accent/50"
-                  }`}
-                >
-                  <span className="text-sm font-medium text-foreground">
-                    {card.cardType} **** {card.last4}
-                  </span>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod("card_widget");
-                  setSelectedCardToken(null);
-                }}
-                className={`w-full rounded-xl border p-3 text-left transition-all ${
-                  paymentMethod === "card_widget"
-                    ? "border-accent bg-accent/10"
-                    : "border-card-border bg-card hover:border-accent/50"
-                }`}
-              >
-                <span className="text-sm font-medium text-foreground">New card</span>
-              </button>
-            </div>
-          )}
 
           <button
             type="button"

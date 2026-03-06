@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import AdminNav from "@/components/admin/AdminNav";
 import TransactionList from "@/components/admin/TransactionList";
-import FinanceSubNav from "@/components/admin/FinanceSubNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminFinancePage() {
@@ -24,7 +23,6 @@ export default async function AdminFinancePage() {
       <AdminNav role={role} />
 
       <div className="px-6">
-        <FinanceSubNav />
         <TransactionList />
       </div>
 
