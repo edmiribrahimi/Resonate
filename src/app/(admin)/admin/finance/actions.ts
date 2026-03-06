@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { sumup } from "@/lib/sumup";
+import { sumup, refundTransaction } from "@/lib/sumup";
 import type { UserRole } from "@/types/database";
 
 async function requireMaster() {
@@ -77,4 +77,33 @@ export async function getTransactionDetail(transactionCode: string) {
   });
 
   return detail;
+}
+
+export async function refundTransactionAction(
+  transactionCode: string,
+  amount?: number
+): Promise<{ success: true }> {
+  await requireMaster();
+  await refundTransaction(transactionCode, amount);
+  return { success: true };
+}
+
+export async function listPayouts(params: {
+  start_date: string;
+  end_date: string;
+  limit?: number;
+  order?: "desc" | "asc";
+}) {
+  await requireMaster();
+
+  const merchantCode = process.env.SUMUP_MERCHANT_CODE!;
+  const result = await sumup.payouts.list(merchantCode, {
+    start_date: params.start_date,
+    end_date: params.end_date,
+    format: "json",
+    limit: params.limit ?? 100,
+    order: params.order ?? "desc",
+  });
+
+  return Array.isArray(result) ? result : [];
 }
