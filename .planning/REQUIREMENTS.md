@@ -7,9 +7,9 @@
 
 ### SumUp SDK Migration
 
-- [ ] **SDK-01**: Replace custom `src/lib/sumup.ts` with official `@sumup/sdk` package as the single SumUp client
-- [ ] **SDK-02**: All existing checkout and refund operations work unchanged after migration (createCheckout, getCheckout, refundTransaction)
-- [ ] **SDK-03**: `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE` documented in `.env.local.example`
+- [x] **SDK-01**: Replace custom `src/lib/sumup.ts` with official `@sumup/sdk` package as the single SumUp client
+- [x] **SDK-02**: All existing checkout and refund operations work unchanged after migration (createCheckout, getCheckout, refundTransaction)
+- [x] **SDK-03**: `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE` documented in `.env.local.example`
 
 ### Admin Finance Section
 
@@ -64,9 +64,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SDK-01 | Phase 13 | Pending |
-| SDK-02 | Phase 13 | Pending |
-| SDK-03 | Phase 13 | Pending |
+| SDK-01 | Phase 13 | Complete |
+| SDK-02 | Phase 13 | Complete |
+| SDK-03 | Phase 13 | Complete |
 | FIN-01 | Phase 14 | Pending |
 | FIN-02 | Phase 14 | Pending |
 | FIN-03 | Phase 14 | Pending |
