@@ -6,6 +6,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
 import DrinkMenuManager from "./DrinkMenuManager";
+import EventQRCode from "@/app/(public)/events/[slug]/menu/EventQRCode";
 
 interface DrinksPageProps {
   params: Promise<{ id: string }>;
@@ -27,7 +28,7 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
   const supabase = await createClient();
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, title, created_by")
+    .select("id, title, slug, created_by")
     .eq("id", eventId)
     .single();
 
@@ -41,6 +42,8 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
   }
 
   const items = await getDrinkItems(eventId);
+
+  const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}/menu`;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -74,6 +77,11 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
           eventTitle={event.title}
           initialItems={items}
         />
+
+        {/* Menu QR Code */}
+        <div className="mt-8">
+          <EventQRCode url={menuUrl} eventTitle={event.title} />
+        </div>
       </div>
 
       <MobileNav role={role} status={status} />
