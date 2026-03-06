@@ -30,9 +30,9 @@
 
 ### Payout Reports
 
-- [ ] **PAY-01**: `/admin/finance/payouts` page shows list of SumUp payouts (bank transfers received)
-- [ ] **PAY-02**: Payout list supports date range filter with start/end date pickers
-- [ ] **PAY-03**: Each payout shows amount, date, status, and type (payout, chargeback deduction, refund deduction)
+- [x] **PAY-01**: `/admin/finance/payouts` page shows list of SumUp payouts (bank transfers received)
+- [x] **PAY-02**: Payout list supports date range filter with start/end date pickers
+- [x] **PAY-03**: Each payout shows amount, date, status, and type (payout, chargeback deduction, refund deduction)
 
 ### Alternative Payment Methods
 
@@ -78,9 +78,9 @@
 | REF-03 | Phase 15 | Pending |
 | REF-04 | Phase 15 | Pending |
 | REF-05 | Phase 15 | Pending |
-| PAY-01 | Phase 16 | Pending |
-| PAY-02 | Phase 16 | Pending |
-| PAY-03 | Phase 16 | Pending |
+| PAY-01 | Phase 16 | Complete |
+| PAY-02 | Phase 16 | Complete |
+| PAY-03 | Phase 16 | Complete |
 | APM-01 | Phase 17 | Complete |
 | APM-02 | Phase 17 | Complete |
 | APM-03 | Phase 17 | Complete |

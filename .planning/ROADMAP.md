@@ -60,7 +60,7 @@ Plans:
 **Depends on:** Phase 13
 **Plans:** 1 plan
 Plans:
-- [ ] 16-01-PLAN.md -- FinanceSubNav component, listPayouts server action, payouts page with date range filter and payout table
+- [x] 16-01-PLAN.md -- FinanceSubNav component, listPayouts server action, payouts page with date range filter and payout table
 **Success criteria:**
 - `/admin/finance/payouts` sub-page with FinanceSubNav for Transactions/Payouts navigation
 - Payout list with amount, date, fee, status, type columns
@@ -85,6 +85,11 @@ Plans:
 **Goal:** Members can save their card for faster repeat payments. SumUp Customers API links Resonate profiles to saved payment instruments.
 **Requirements:** TOK-01, TOK-02, TOK-03, TOK-04
 **Depends on:** Phase 13, Phase 17
+**Plans:** 3 plans
+Plans:
+- [ ] 18-01-PLAN.md -- Supabase migration + SumUp customer helpers + customer creation/linking
+- [ ] 18-02-PLAN.md -- Tokenization checkout flow (checkbox, purpose param, webhook extension)
+- [ ] 18-03-PLAN.md -- Pay with saved card + profile settings for card management
 **Success criteria:**
 - SumUp customer created and linked to Resonate profile (stored `sumup_customer_id`)
 - "Save card for future payments" checkbox during checkout creates tokenization checkout

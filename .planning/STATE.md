@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
 status: in_progress
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-03-06T16:45:15Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-03-06T17:14:40Z"
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 4
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 17 of 18 -- Alternative Payment Methods (COMPLETE)
+**Phase:** 16 of 18 -- Payout Reports (COMPLETE)
 **Plan:** 1/1 (all plans complete)
-**Status:** Phase 17 complete. APM support enabled with redirect_url in checkout creation, Google Pay Card Widget config, and /payment/callback page.
+**Status:** Phase 16 complete. Payout reports at /admin/finance/payouts with FinanceSubNav, date range filter, and PayoutList with colored badges for all 5 payout types.
 
 ```
-[Phase Progress]  ####################  1/1 plans in phase 17
+[Phase Progress]  ####################  1/1 plans in phase 16
 
-[Overall]         #############_______  4/6 plans complete (across all phases)
+[Overall]         ################____  5/6 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -59,23 +59,26 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 10. **[Phase 17]** Optional redirectUrl in createCheckout -- backward compatible, undefined harmless in SDK call
 11. **[Phase 17]** Google Pay config conditional on env var -- avoids errors before dashboard setup
 12. **[Phase 17]** Callback page polls 5x at 2s intervals for PENDING to handle webhook race condition
+13. **[Phase 16]** FinanceSubNav uses exact match for Transactions tab, startsWith for Payouts to prevent both being active
+14. **[Phase 16]** Initial useEffect with [] deps pattern for PayoutList (same as TransactionList) for predictable mount behavior
+15. **[Phase 16]** Default 30-day date range calculated inline at component level, no separate utility
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 4 |
+| Plans completed | 5 |
 | Plans failed | 0 |
-| Requirements done | 14/26 |
-| Phases complete | 3/6 |
+| Requirements done | 17/26 |
+| Phases complete | 4/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T16:45:15Z
-**Stopped at:** Completed 17-01-PLAN.md
-**What happened:** Executed Phase 17 Plan 01 -- Alternative Payment Methods. Added optional redirectUrl to createCheckout(), updated all 3 call sites (purchaseTicket, purchaseDrinks, purchaseDrinksGuest) with redirect URLs, added googlePay config to Card Widget, created /payment/callback page with polling UI. All 2 tasks completed, build passed. Requirements APM-01 through APM-05 satisfied. Phase 17 now complete (1/1 plans).
-**Next step:** Execute Phase 15 (Refunds), Phase 16 (Payouts), or Phase 18 (Tokenization) -- Phase 18 depends on Phase 17 (now complete).
+**Last session:** 2026-03-06T17:14:40Z
+**Stopped at:** Completed 16-01-PLAN.md
+**What happened:** Executed Phase 16 Plan 01 -- Payout Reports. Created FinanceSubNav component with Transactions/Payouts tabs, added to existing finance page. Added listPayouts server action calling sumup.payouts.list(). Created /admin/finance/payouts page and PayoutList client component with date range filter (default 30 days), desktop table + mobile cards, colored badges for 5 payout types. All 2 tasks completed. Requirements PAY-01 through PAY-03 satisfied. Phase 16 now complete (1/1 plans). Note: pre-existing build failure from Phase 15 (TransactionList importing uncommitted RefundDialog) -- not caused by Phase 16 changes.
+**Next step:** Execute Phase 15 (Refunds) or Phase 18 (Tokenization) -- remaining phases in v1.2 milestone.
 
 ---
 *State initialized: 2026-03-06*
-*Last updated: 2026-03-06T16:45:15Z*
+*Last updated: 2026-03-06T17:14:40Z*
