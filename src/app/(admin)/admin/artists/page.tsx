@@ -28,7 +28,7 @@ export default async function AdminArtistsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <AdminNav />
+      <AdminNav role={role} />
 
       <div className="px-6">
         {!artists || artists.length === 0 ? (

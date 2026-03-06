@@ -29,7 +29,7 @@ export default async function AdminNewsletterPage() {
       <div className="px-6 pt-10">
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Admin</h1>
       </div>
-      <AdminNav />
+      <AdminNav role={role} />
 
       <div className="px-6">
         {configError ? (

@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { UserRole } from "@/types/database";
+
+interface AdminNavProps {
+  role?: UserRole | null;
+}
 
 const tabs = [
   { href: "/admin/members", label: "Members" },
@@ -11,8 +16,13 @@ const tabs = [
   { href: "/admin/newsletter", label: "Newsletter" },
 ];
 
-export default function AdminNav() {
+export default function AdminNav({ role }: AdminNavProps = {}) {
   const pathname = usePathname();
+
+  const allTabs =
+    role === "master"
+      ? [...tabs, { href: "/admin/finance", label: "Finance" }]
+      : tabs;
 
   return (
     <>
@@ -22,7 +32,7 @@ export default function AdminNav() {
       `}</style>
       <div className="admin-nav-scroll mb-6 overflow-x-auto">
         <div className="flex gap-2 px-6" style={{ width: "max-content" }}>
-        {tabs.map((tab) => {
+        {allTabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           return (
             <Link

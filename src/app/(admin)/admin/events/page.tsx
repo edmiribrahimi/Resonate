@@ -63,7 +63,7 @@ export default async function AdminEventsPage() {
         </Link>
       </header>
 
-      <AdminNav />
+      <AdminNav role={role} />
 
       <div className="px-6">
         <EventList events={events} basePath="/admin/events" />
