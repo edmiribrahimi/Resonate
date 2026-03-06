@@ -10,6 +10,8 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
+**Building:** v1.2 -- SumUp API deep integration (admin finance dashboard, refunds, payout reports)
+
 **Shipped:** v1.1 (2026-03-06) — [milestone archive](.planning/milestones/v1.1-ROADMAP.md)
 
 All 18 v1.1 requirements implemented across 5 phases. New capabilities:
@@ -43,47 +45,15 @@ All 45 requirements shipped. See [v1.0-REQUIREMENTS.md](.planning/milestones/v1.
 
 All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.1-REQUIREMENTS.md) for full list.
 
-### Next Candidates
+### v1.2 (In Progress)
 
-<!-- Current scope. Building toward these. -->
+17 requirements across 4 phases. See [REQUIREMENTS.md](.planning/REQUIREMENTS.md) for full list.
 
-**Bug Fixes & Polish:**
-- [ ] Entire site translated to English (text + URL routes)
-- [ ] Logged-in users no longer see "diventa membro" prompt on event pages
-- [ ] Stronger password requirements for registration
-- [ ] Confirmation emails branded with Resonate identity
-- [ ] Homepage displays Resonate logo instead of text heading
-- [ ] Orbitron font applied site-wide
-
-**Roles & Permissions:**
-- [ ] Master user role (dedicated admin account) with full platform control
-- [ ] Organizer role — can create and edit events
-- [ ] Members have standard access (browse, RSVP, buy tickets, upload media, invite friends)
-
-**Event Management:**
-- [ ] Organizers can create events with details (title, date, time, location, lineup, cover image, capacity)
-- [ ] Organizers can edit their own events
-- [ ] Events support multiple ticket tiers (e.g. Early Bird, Regular, VIP) with different prices
-
-**Ticket Payments:**
-- [ ] SumUp payment integration for ticket purchases
-- [ ] Members can buy tickets for events through the platform
-- [ ] Organizers can see ticket sales for their events
-
-**Referral System:**
-- [ ] Each member has a unique referral link
-- [ ] Referred members are auto-approved on registration (no approval needed)
-- [ ] Referral tracked — who invited whom
-
-**Approval Flow:**
-- [ ] Non-referred members enter "pending approval" state on registration
-- [ ] Pending members can browse events but cannot RSVP or buy tickets
-- [ ] Master user or Organizer can approve/reject pending members
-
-**Event Media:**
-- [ ] Members can upload photos and videos for events they attended
-- [ ] Media appears on the event detail page (gallery section)
-- [ ] Media also appears on the member's profile, tagged by event
+**SumUp API Deep Integration:**
+- [ ] Multi-version API client (v0.1, v1.0, v1.1, v2.1) with TypeScript types
+- [ ] Admin finance dashboard with transaction list, filters, and detail view
+- [ ] In-app refund management (full and partial) with confirmation flow
+- [ ] Payout reports with date range filtering
 
 ### Out of Scope
 
@@ -92,7 +62,7 @@ All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.
 - Multi-language support — English only
 - Native mobile app — PWA covers mobile experience
 - Automated event recommendations — keep discovery manual
-- Complex analytics dashboard — basic ticket sales visibility is enough
+- Complex analytics dashboard — admin finance dashboard covers SumUp data; no custom analytics engine
 
 ## Context
 
@@ -129,4 +99,4 @@ All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.
 | Media on both event page and member profile | Maximum visibility for community content | — Pending |
 
 ---
-*Last updated: 2026-02-24 after initialization*
+*Last updated: 2026-03-06 after v1.2 milestone initialization*
