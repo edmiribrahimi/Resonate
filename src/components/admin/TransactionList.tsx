@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import RefundDialog from "@/components/admin/RefundDialog";
 import {
   listTransactions,
   getTransactionDetail,
@@ -35,7 +36,13 @@ interface CursorEntry {
   param?: "oldest_ref" | "newest_ref";
 }
 
-function StatusBadge({ status }: { status?: string }) {
+function StatusBadge({ status, refundedAmount }: { status?: string; refundedAmount?: number }) {
+  // Show "Partially Refunded" when some amount was refunded but status is still SUCCESSFUL
+  const displayStatus =
+    status === "SUCCESSFUL" && (refundedAmount ?? 0) > 0
+      ? "PARTIALLY REFUNDED"
+      : status;
+
   const colors: Record<string, string> = {
     SUCCESSFUL: "bg-green-500/20 text-green-400 border-green-500/30",
     FAILED: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -43,16 +50,17 @@ function StatusBadge({ status }: { status?: string }) {
     CANCELLED: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
     REFUNDED: "bg-blue-500/20 text-blue-400 border-blue-500/30",
     CHARGE_BACK: "bg-red-500/20 text-red-400 border-red-500/30",
+    "PARTIALLY REFUNDED": "bg-orange-500/20 text-orange-400 border-orange-500/30",
   };
 
   const colorClass =
-    colors[status ?? ""] ?? "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
+    colors[displayStatus ?? ""] ?? "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
 
   return (
     <span
       className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
     >
-      {status?.replace("_", " ") ?? "UNKNOWN"}
+      {displayStatus?.replace("_", " ") ?? "UNKNOWN"}
     </span>
   );
 }
@@ -87,9 +95,13 @@ function LoadingSkeleton() {
 function TransactionDetailInline({
   detail,
   isLoading,
+  txn,
+  onRefundClick,
 }: {
   detail: any;
   isLoading: boolean;
+  txn: TransactionItem;
+  onRefundClick: () => void;
 }) {
   if (isLoading) {
     return (
@@ -125,42 +137,62 @@ function TransactionDetailInline({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 px-2 py-3 sm:grid-cols-3">
-      <div>
-        <p className="text-xs font-medium text-muted">Fee</p>
-        <p className="mt-0.5 text-sm">
-          {detail.fee_amount != null
-            ? `EUR ${detail.fee_amount.toFixed(2)}`
-            : "--"}
-        </p>
-      </div>
-      <div>
-        <p className="text-xs font-medium text-muted">Card</p>
-        <p className="mt-0.5 text-sm">
-          {detail.card?.type ?? "--"}
-          {detail.card?.last_4_digits
-            ? ` **** ${detail.card.last_4_digits}`
-            : ""}
-        </p>
-      </div>
-      <div>
-        <p className="text-xs font-medium text-muted">Status Detail</p>
-        <p className="mt-0.5 text-sm">{detail.simple_status ?? "--"}</p>
-      </div>
-      {detail.tip_amount != null && detail.tip_amount > 0 && (
+    <div>
+      <div className="grid grid-cols-1 gap-4 px-2 py-3 sm:grid-cols-3">
         <div>
-          <p className="text-xs font-medium text-muted">Tip</p>
+          <p className="text-xs font-medium text-muted">Fee</p>
           <p className="mt-0.5 text-sm">
-            EUR {detail.tip_amount.toFixed(2)}
+            {detail.fee_amount != null
+              ? `EUR ${detail.fee_amount.toFixed(2)}`
+              : "--"}
           </p>
         </div>
-      )}
-      {detail.entry_mode && (
         <div>
-          <p className="text-xs font-medium text-muted">Entry Mode</p>
-          <p className="mt-0.5 text-sm">{detail.entry_mode}</p>
+          <p className="text-xs font-medium text-muted">Card</p>
+          <p className="mt-0.5 text-sm">
+            {detail.card?.type ?? "--"}
+            {detail.card?.last_4_digits
+              ? ` **** ${detail.card.last_4_digits}`
+              : ""}
+          </p>
         </div>
-      )}
+        <div>
+          <p className="text-xs font-medium text-muted">Status Detail</p>
+          <p className="mt-0.5 text-sm">{detail.simple_status ?? "--"}</p>
+        </div>
+        {detail.tip_amount != null && detail.tip_amount > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted">Tip</p>
+            <p className="mt-0.5 text-sm">
+              EUR {detail.tip_amount.toFixed(2)}
+            </p>
+          </div>
+        )}
+        {detail.entry_mode && (
+          <div>
+            <p className="text-xs font-medium text-muted">Entry Mode</p>
+            <p className="mt-0.5 text-sm">{detail.entry_mode}</p>
+          </div>
+        )}
+      </div>
+      {/* Refund button -- only for eligible transactions */}
+      {!detail?._error && !isLoading && detail && (() => {
+        const isEligible =
+          txn.status === "SUCCESSFUL" &&
+          (txn.refunded_amount ?? 0) < (txn.amount ?? 0);
+        if (!isEligible) return null;
+        return (
+          <div className="mt-3 border-t border-card-border/30 pt-3">
+            <button
+              type="button"
+              onClick={onRefundClick}
+              className="rounded-full border border-red-500/30 px-4 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+            >
+              Refund
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -191,6 +223,35 @@ export default function TransactionList() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detailCache, setDetailCache] = useState<Record<string, any>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
+
+  // Refund dialog state
+  const [refundTarget, setRefundTarget] = useState<TransactionItem | null>(null);
+
+  const handleRefundComplete = useCallback(
+    (txnCode: string, refundedAmount: number, isFullRefund: boolean) => {
+      // Optimistic update: adjust transactions list
+      setTransactions((prev) =>
+        prev.map((txn) =>
+          txn.transaction_code === txnCode
+            ? {
+                ...txn,
+                status: isFullRefund ? "REFUNDED" : txn.status,
+                refunded_amount: (txn.refunded_amount ?? 0) + refundedAmount,
+              }
+            : txn
+        )
+      );
+      // Invalidate detail cache so next expand re-fetches fresh data
+      setDetailCache((prev) => {
+        const next = { ...prev };
+        delete next[txnCode];
+        return next;
+      });
+      // Close the dialog
+      setRefundTarget(null);
+    },
+    []
+  );
 
   const fetchTransactions = useCallback(
     async (
@@ -414,6 +475,7 @@ export default function TransactionList() {
                         detailCache={detailCache}
                         detailLoading={detailLoading}
                         onToggleExpand={() => toggleExpanded(txnCode)}
+                        onRefundClick={() => setRefundTarget(txn)}
                       />
                     );
                   })}
@@ -451,7 +513,7 @@ export default function TransactionList() {
                             {formatAmount(txn.amount, txn.currency)}
                           </p>
                           <div className="mt-1">
-                            <StatusBadge status={txn.status} />
+                            <StatusBadge status={txn.status} refundedAmount={txn.refunded_amount} />
                           </div>
                         </div>
                         <svg
@@ -473,6 +535,8 @@ export default function TransactionList() {
                       <TransactionDetailInline
                         detail={detailCache[txnCode]}
                         isLoading={detailLoading === txnCode}
+                        txn={txn}
+                        onRefundClick={() => setRefundTarget(txn)}
                       />
                     </div>
                   )}
@@ -505,6 +569,20 @@ export default function TransactionList() {
           )}
         </>
       )}
+
+      {refundTarget && refundTarget.transaction_code && (
+        <RefundDialog
+          transactionCode={refundTarget.transaction_code}
+          transactionAmount={refundTarget.amount ?? 0}
+          refundedAmount={refundTarget.refunded_amount ?? 0}
+          feeAmount={detailCache[refundTarget.transaction_code]?.fee_amount ?? 0}
+          currency={refundTarget.currency ?? "EUR"}
+          onClose={() => setRefundTarget(null)}
+          onRefundComplete={(amount, isFullRefund) =>
+            handleRefundComplete(refundTarget.transaction_code!, amount, isFullRefund)
+          }
+        />
+      )}
     </>
   );
 }
@@ -517,6 +595,7 @@ function DesktopTransactionRow({
   detailCache,
   detailLoading,
   onToggleExpand,
+  onRefundClick,
 }: {
   txn: TransactionItem;
   txnCode: string;
@@ -524,6 +603,7 @@ function DesktopTransactionRow({
   detailCache: Record<string, any>;
   detailLoading: string | null;
   onToggleExpand: () => void;
+  onRefundClick: () => void;
 }) {
   return (
     <>
@@ -558,7 +638,7 @@ function DesktopTransactionRow({
           {formatAmount(txn.amount, txn.currency)}
         </td>
         <td className="px-4 py-3">
-          <StatusBadge status={txn.status} />
+          <StatusBadge status={txn.status} refundedAmount={txn.refunded_amount} />
         </td>
       </tr>
       {isExpanded && (
@@ -567,6 +647,8 @@ function DesktopTransactionRow({
             <TransactionDetailInline
               detail={detailCache[txnCode]}
               isLoading={detailLoading === txnCode}
+              txn={txn}
+              onRefundClick={onRefundClick}
             />
           </td>
         </tr>
