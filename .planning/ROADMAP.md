@@ -14,6 +14,9 @@
 ### Phase 13: SumUp SDK Migration
 **Goal:** Replace custom `src/lib/sumup.ts` with official `@sumup/sdk` package. All existing checkout/refund operations work unchanged.
 **Requirements:** SDK-01, SDK-02, SDK-03
+**Plans:** 1 plan
+Plans:
+- [ ] 13-01-PLAN.md -- Install @sumup/sdk, rewrite sumup.ts with SDK wrappers, document env vars
 **Success criteria:**
 - `@sumup/sdk` installed, SumUp client singleton created
 - `createCheckout()`, `getCheckout()`, `refundTransaction()` reimplemented via SDK
