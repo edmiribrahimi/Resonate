@@ -67,7 +67,7 @@ Plans:
 **Requirements**: PMENU-01, PMENU-02, PMENU-03, PMENU-04
 **Plans:** 2 plans
 Plans:
-- [ ] 11-01-PLAN.md -- Backend: RLS migration for anon read, guest server actions, token retrieval API
+- [x] 11-01-PLAN.md -- Backend: RLS migration for anon read, guest server actions, token retrieval API
 - [ ] 11-02-PLAN.md -- Frontend: public menu page, guest ordering, token display, login banner, QR code
 **Success Criteria**:
   1. `/events/[slug]/menu` is publicly accessible without authentication
@@ -82,7 +82,7 @@ Plans:
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
 | 10. Drink Redemption | 2/2 | Complete    | 2026-03-06 |
-| 11. Public Drink Menu | 0/2 | Planned | -- |
+| 11. Public Drink Menu | 1/2 | In Progress | -- |
 
 ## Coverage
 

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: "**Created:** 2026-03-05"
-status: planning
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-03-06T00:42:57.672Z"
+status: executing
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-06T01:30:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # State: Resonate
@@ -24,12 +24,12 @@ progress:
 
 ## Current Position
 
-**Phase:** 10 of 11 -- Drink Redemption (COMPLETE)
-**Plan:** 2/2 complete (10-01, 10-02 done)
-**Status:** Ready to plan
+**Phase:** 11 of 11 -- Public Drink Menu (IN PROGRESS)
+**Plan:** 1/2 complete (11-01 done)
+**Status:** Executing
 
 ```
-[Phase Progress]  ████████████████████  2/2 plans in phase 10
+[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 11
 
 [Overall]         ███████████████░░░░░  3/4 phases complete
 ```
@@ -49,14 +49,17 @@ progress:
 - Both event page and dashboard use same DrinkTokenCard with full redeem capability (per locked user decision)
 - Dashboard groups tokens by event with 48h visibility window for recently-redeemed tokens
 - Circular countdown uses conic-gradient with 16ms interval (~60fps) for smooth animation
+- Guest server actions use getServiceClient() from @/lib/supabase/service for all DB ops (service-role bypasses RLS)
+- Guest token API route uses UUID as capability token, secured by user_id null guard
+- redeemDrinkTokenGuest guards user_id === null to prevent misuse on authenticated tokens
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 6 |
+| Plans completed | 7 |
 | Plans failed | 0 |
-| Requirements done | 11/18 |
+| Requirements done | 14/18 |
 | Phases complete | 3/4 |
 
 | Plan | Duration | Tasks | Files |
@@ -67,14 +70,15 @@ progress:
 | 09-02 | 156s | 2 | 5 |
 | 10-01 | 94s | 2 | 3 |
 | 10-02 | 122s | 2 | 6 |
+| 11-01 | 97s | 2 | 3 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T00:38:00.000Z
-**Stopped at:** Completed 10-02-PLAN.md
-**What happened:** Executed Plan 10-02: DrinkTokenCard with purchased/redeemed states, RedeemConfirmationModal with 3-phase flow (circular countdown, server confirm, SERVED animation), MyDrinks on event page, DashboardDrinkTokens on dashboard. Both locations use same card with full redeem capability. All 2 tasks done, tsc clean.
-**Next step:** Plan Phase 11 (Public Drink Menu)
+**Last session:** 2026-03-06T01:28:37Z
+**Stopped at:** Completed 11-01-PLAN.md
+**What happened:** Executed Plan 11-01: RLS migration (drink_items anon read), purchaseDrinksGuest and redeemDrinkTokenGuest server actions with service-role client, GET /api/drinks/tokens route with UUID capability and user_id null guard. All 2 tasks done, tsc clean.
+**Next step:** Execute Plan 11-02 (Frontend: public menu page, guest ordering, token display, login banner, QR code)
 
 ---
 *State initialized: 2026-03-05*
-*Last updated: 2026-03-06T00:38:00Z*
+*Last updated: 2026-03-06T01:30:00Z*
