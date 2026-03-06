@@ -10,9 +10,20 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
-**Shipped:** v1.0 (2026-03-05) — [milestone archive](.planning/milestones/v1.0-ROADMAP.md)
+**Shipped:** v1.1 (2026-03-06) — [milestone archive](.planning/milestones/v1.1-ROADMAP.md)
 
-All 45 v1 requirements implemented across 7 phases. Platform is live with:
+All 18 v1.1 requirements implemented across 5 phases. New capabilities:
+- SumUp embedded checkout (in-app card widget, no redirect)
+- Per-event drink menu with CRUD management
+- Drink purchase via embedded checkout with individual HMAC-signed tokens
+- Drink redemption with 3-second countdown anti-tap + SERVED animation
+- Public drink menu page (`/events/[slug]/menu`) for anonymous guests via QR
+- Guest token persistence via localStorage + URL param fallback
+
+<details>
+<summary>v1.0 (2026-03-05)</summary>
+
+All 45 v1 requirements across 7 phases — [archive](.planning/milestones/v1.0-ROADMAP.md):
 - English-only UI with Orbitron font and Resonate branding
 - Role-based access (master/organizer/member) with middleware enforcement
 - Referral system with auto-approve, purchase-based auto-approval for pending members
@@ -20,14 +31,19 @@ All 45 v1 requirements implemented across 7 phases. Platform is live with:
 - SumUp ticketing with atomic reservation, QR codes, sales dashboard
 - Media uploads with moderation workflow and gallery display
 - Branded transactional emails via React Email + Resend
+</details>
 
 ## Requirements
 
-### v1 (Complete)
+### v1.0 (Complete)
 
 All 45 requirements shipped. See [v1.0-REQUIREMENTS.md](.planning/milestones/v1.0-REQUIREMENTS.md) for full list.
 
-### v2 Candidates
+### v1.1 (Complete)
+
+All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.1-REQUIREMENTS.md) for full list.
+
+### Next Candidates
 
 <!-- Current scope. Building toward these. -->
 
