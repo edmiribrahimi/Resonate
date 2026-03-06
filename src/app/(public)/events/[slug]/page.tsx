@@ -8,6 +8,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
 import DrinkMenu from "./DrinkMenu";
+import MyDrinks from "./MyDrinks";
 import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
@@ -335,6 +336,18 @@ export default async function EventDetailPage({
     .eq("event_id", event.id)
     .eq("is_available", true)
     .order("sort_order");
+
+  // Fetch user's drink tokens for this event
+  let userDrinkTokens: import("@/types/database").DrinkToken[] | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("drink_tokens")
+      .select("id, drink_name, price, token, status, redeemed_at")
+      .eq("event_id", event.id)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    userDrinkTokens = data as import("@/types/database").DrinkToken[] | null;
+  }
 
   // Fetch artist profiles for lineup names (event-level + party-level)
   const allLineupNames = new Set<string>();
@@ -670,6 +683,13 @@ export default async function EventDetailPage({
         {isAuthenticated && drinkItems && drinkItems.length > 0 && (
           <div className="mb-6">
             <DrinkMenu eventId={event.id} drinks={drinkItems as import("@/types/database").DrinkItem[]} />
+          </div>
+        )}
+
+        {/* My Drinks — user's purchased drink tokens */}
+        {userDrinkTokens && userDrinkTokens.length > 0 && (
+          <div className="mb-6">
+            <MyDrinks tokens={userDrinkTokens} />
           </div>
         )}
 

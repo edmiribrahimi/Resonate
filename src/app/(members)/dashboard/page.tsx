@@ -9,6 +9,7 @@ import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
+import DashboardDrinkTokens from "./DashboardDrinkTokens";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -55,6 +56,50 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     tickets = data;
+  }
+
+  // Fetch user's drink tokens grouped by event
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let drinkTokenGroups: { eventTitle: string; eventSlug: string; eventDate: string; tokens: any[] }[] = [];
+  if (isMemberRole) {
+    const { data: allTokens } = await supabase
+      .from("drink_tokens")
+      .select("id, drink_name, price, token, status, redeemed_at, event_id, events(title, slug, date)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+
+    // Group by event, show events with unredeemed tokens first
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const groupMap = new Map<string, { eventTitle: string; eventSlug: string; eventDate: string; tokens: any[] }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (allTokens ?? []).forEach((t: any) => {
+      const evt = Array.isArray(t.events) ? t.events[0] : t.events;
+      const eid = t.event_id;
+      if (!groupMap.has(eid)) {
+        groupMap.set(eid, {
+          eventTitle: evt?.title ?? "Event",
+          eventSlug: evt?.slug ?? "",
+          eventDate: evt?.date ?? "",
+          tokens: [],
+        });
+      }
+      groupMap.get(eid)!.tokens.push(t);
+    });
+    drinkTokenGroups = Array.from(groupMap.values())
+      .filter(g => g.tokens.some((t: { status: string }) => t.status === "purchased") ||
+        g.tokens.some((t: { redeemed_at: string | null }) => {
+          if (!t.redeemed_at) return false;
+          const redeemed = new Date(t.redeemed_at);
+          const nowDate = new Date();
+          return (nowDate.getTime() - redeemed.getTime()) < 48 * 60 * 60 * 1000;
+        }))
+      .sort((a, b) => {
+        const aHasUnredeemed = a.tokens.some((t: { status: string }) => t.status === "purchased");
+        const bHasUnredeemed = b.tokens.some((t: { status: string }) => t.status === "purchased");
+        if (aHasUnredeemed && !bHasUnredeemed) return -1;
+        if (!aHasUnredeemed && bHasUnredeemed) return 1;
+        return 0;
+      });
   }
 
   // Fetch user's media grouped by event
@@ -283,6 +328,11 @@ export default async function DashboardPage() {
                 </div>
               )}
             </div>
+            )}
+
+            {/* My Drinks — drink tokens with full redeem capability */}
+            {isMemberRole && drinkTokenGroups.length > 0 && (
+              <DashboardDrinkTokens groups={drinkTokenGroups} />
             )}
 
             {/* My Media — only show if user has uploads */}
