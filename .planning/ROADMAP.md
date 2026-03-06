@@ -50,7 +50,7 @@ Plans:
 **Goal**: Drinks are redeemed at the bar with anti-fraud protection
 **Depends on**: Phase 9 (drink orders exist)
 **Requirements**: DRNK-07, DRNK-08, DRNK-09, DRNK-10, DRNK-11
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 10-01-PLAN.md -- Backend: DB redemption function, webhook HMAC signing, redeemDrinkToken server action
 - [x] 10-02-PLAN.md -- Frontend: DrinkTokenCard, RedeemConfirmationModal, event page + dashboard integration
@@ -77,7 +77,7 @@ Plans:
 |-------|---------------|--------|-----------|
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
-| 10. Drink Redemption | 2/2 | Complete | 2026-03-06 |
+| 10. Drink Redemption | 2/2 | Complete    | 2026-03-06 |
 | 11. Public Drink Menu | 0/? | Not started | -- |
 
 ## Coverage
