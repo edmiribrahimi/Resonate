@@ -34,7 +34,7 @@
 ### Public Drink Menu
 
 - [x] **PMENU-01**: `/events/[slug]/menu` is publicly accessible without authentication and shows event name, date, and drink list with prices
-- [ ] **PMENU-02**: Guest can select drinks and pay via embedded SumUp checkout (no login required)
+- [x] **PMENU-02**: Guest can select drinks and pay via embedded SumUp checkout (no login required)
 - [x] **PMENU-03**: Guest drink purchases create orders with null user_id and return orderId for localStorage persistence
 - [x] **PMENU-04**: Guest can retrieve their drink tokens by order_id via API route (service-role, user_id null guard)
 
@@ -67,7 +67,7 @@
 | DRNK-10 | Phase 10 (10-01, 10-02) | Complete |
 | DRNK-11 | Phase 10 (10-01) | Complete |
 | PMENU-01 | Phase 11 (11-01) | Complete |
-| PMENU-02 | Phase 11 (11-02) | Pending |
+| PMENU-02 | Phase 11 (11-02) | Complete |
 | PMENU-03 | Phase 11 (11-01) | Complete |
 | PMENU-04 | Phase 11 (11-01) | Complete |
 

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: "**Created:** 2026-03-05"
-status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-06T01:30:00.000Z"
+status: complete
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-03-06T01:38:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 11 of 11 -- Public Drink Menu (IN PROGRESS)
-**Plan:** 1/2 complete (11-01 done)
-**Status:** Executing
+**Phase:** 11 of 11 -- Public Drink Menu (COMPLETE)
+**Plan:** 2/2 complete (all done)
+**Status:** Complete
 
 ```
-[Phase Progress]  ██████████░░░░░░░░░░  1/2 plans in phase 11
+[Phase Progress]  ████████████████████  2/2 plans in phase 11
 
-[Overall]         ███████████████░░░░░  3/4 phases complete
+[Overall]         ████████████████████  4/4 phases complete
 ```
 
 ## Decisions
@@ -52,15 +52,19 @@ progress:
 - Guest server actions use getServiceClient() from @/lib/supabase/service for all DB ops (service-role bypasses RLS)
 - Guest token API route uses UUID as capability token, secured by user_id null guard
 - redeemDrinkTokenGuest guards user_id === null to prevent misuse on authenticated tokens
+- QR code uses dual rendering (SVG for display, Canvas for PNG download) with qrcode.react
+- GuestDrinkMenu communicates with GuestTokenDisplay via CustomEvent to avoid prop drilling through server component
+- GuestRedeemConfirmationModal inlined in GuestTokenDisplay to keep guest redeem action isolated from authenticated flow
+- localStorage stores array of order IDs per event, URL param contains only latest order ID
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 7 |
+| Plans completed | 8 |
 | Plans failed | 0 |
-| Requirements done | 14/18 |
-| Phases complete | 3/4 |
+| Requirements done | 18/18 |
+| Phases complete | 4/4 |
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
@@ -71,14 +75,15 @@ progress:
 | 10-01 | 94s | 2 | 3 |
 | 10-02 | 122s | 2 | 6 |
 | 11-01 | 97s | 2 | 3 |
+| 11-02 | 221s | 3 | 6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T01:28:37Z
-**Stopped at:** Completed 11-01-PLAN.md
-**What happened:** Executed Plan 11-01: RLS migration (drink_items anon read), purchaseDrinksGuest and redeemDrinkTokenGuest server actions with service-role client, GET /api/drinks/tokens route with UUID capability and user_id null guard. All 2 tasks done, tsc clean.
-**Next step:** Execute Plan 11-02 (Frontend: public menu page, guest ordering, token display, login banner, QR code)
+**Last session:** 2026-03-06T01:38:00Z
+**Stopped at:** Completed 11-02-PLAN.md
+**What happened:** Executed Plan 11-02: Public menu page server component, EventQRCode with PNG download, GuestLoginBanner + GuestWarningModal, GuestDrinkMenu with pre-checkout warning and localStorage persistence, GuestTokenDisplay with polling + inline GuestRedeemConfirmationModal, QR code on organizer drinks page. All 3 tasks done, tsc clean. Phase 11 and milestone v1.1 complete.
+**Next step:** All phases and plans for v1.1 milestone are complete
 
 ---
 *State initialized: 2026-03-05*
-*Last updated: 2026-03-06T01:30:00Z*
+*Last updated: 2026-03-06T01:38:00Z*

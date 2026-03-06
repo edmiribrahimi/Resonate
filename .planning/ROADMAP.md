@@ -16,7 +16,7 @@
 - [x] **Phase 8: SumUp Embedded Checkout** - Replace hosted checkout redirect with embedded widget for in-app payments
 - [x] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [x] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
-- [ ] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
+- [x] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
 
 ### Phase 8: SumUp Embedded Checkout
 **Goal**: All payments happen inside the app without redirect
@@ -68,7 +68,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 11-01-PLAN.md -- Backend: RLS migration for anon read, guest server actions, token retrieval API
-- [ ] 11-02-PLAN.md -- Frontend: public menu page, guest ordering, token display, login banner, QR code
+- [x] 11-02-PLAN.md -- Frontend: public menu page, guest ordering, token display, login banner, QR code
 **Success Criteria**:
   1. `/events/[slug]/menu` is publicly accessible without authentication
   2. Page shows event name, date, and drink list with prices
@@ -82,7 +82,7 @@ Plans:
 | 8. SumUp Embedded Checkout | 2/2 | Complete | 2026-03-06 |
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
 | 10. Drink Redemption | 2/2 | Complete    | 2026-03-06 |
-| 11. Public Drink Menu | 1/2 | In Progress | -- |
+| 11. Public Drink Menu | 2/2 | Complete | 2026-03-06 |
 
 ## Coverage
 
