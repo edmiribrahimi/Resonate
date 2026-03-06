@@ -7,18 +7,19 @@
 
 ## Current Milestone: v1.2 -- SumUp API Deep Integration
 
-**Goal:** Admin finance dashboard with real-time SumUp transaction data, in-app refund management, and payout reports. Transforms SumUp from "payment pipe" to "financial visibility layer."
+**Goal:** Full SumUp platform integration: official SDK, admin finance dashboard, refunds, payouts, alternative payment methods (Satispay, MyBank, Apple/Google Pay), and card tokenization for returning customers.
 
-**Requirements:** 17 (3 API + 6 Finance + 5 Refund + 3 Payout)
+**Requirements:** 26 (3 SDK + 6 Finance + 5 Refund + 3 Payout + 5 APM + 4 Tokenization)
 
-### Phase 13: SumUp API Client Enhancement
-**Goal:** Refactor SumUp client to support multi-version API calls and define TypeScript types for all new endpoints.
-**Requirements:** API-01, API-02, API-03
+### Phase 13: SumUp SDK Migration
+**Goal:** Replace custom `src/lib/sumup.ts` with official `@sumup/sdk` package. All existing checkout/refund operations work unchanged.
+**Requirements:** SDK-01, SDK-02, SDK-03
 **Success criteria:**
-- `src/lib/sumup.ts` uses versionless base URL with per-call version prefixes
-- Functions: `listTransactions()`, `getTransaction()`, `refundTransaction()` (existing), `listPayouts()`
-- TypeScript interfaces for all API response shapes
+- `@sumup/sdk` installed, SumUp client singleton created
+- `createCheckout()`, `getCheckout()`, `refundTransaction()` reimplemented via SDK
+- All call sites updated (webhook handler, ticket/drink purchase, refund)
 - `.env.local.example` updated with `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE`
+- Existing payment flows pass manual smoke test
 
 ### Phase 14: Admin Finance Dashboard
 **Goal:** New admin section with transaction list, cursor-based pagination, filters, and transaction detail view.
@@ -40,7 +41,7 @@
 - "Refund" button on successful, non-refunded transactions
 - Confirmation dialog with full/partial toggle and custom amount input
 - Warning about non-refundable SumUp fees
-- Server action calls SumUp refund API
+- Server action calls `sumup.transactions.refund()`
 - Optimistic UI update after successful refund
 
 ### Phase 16: Payout Reports
@@ -52,6 +53,28 @@
 - Payout list with amount, date, status, type columns
 - Date range picker for filtering
 - Handles payout types: PAYOUT, CHARGE_BACK_DEDUCTION, REFUND_DEDUCTION
+
+### Phase 17: Alternative Payment Methods
+**Goal:** Enable Satispay, MyBank, Apple Pay, and Google Pay as payment options alongside card payments.
+**Requirements:** APM-01, APM-02, APM-03, APM-04, APM-05
+**Depends on:** Phase 13
+**Success criteria:**
+- Checkout creation includes `redirect_url` for APM redirect flows
+- Satispay and MyBank available as payment options (Card Widget handles UI)
+- Apple Pay configured with domain verification via SumUp Dashboard
+- Google Pay configured with domain onboarding via SumUp Dashboard
+- Payment Widget shows available APMs based on `listAvailablePaymentMethods()`
+
+### Phase 18: Card Tokenization
+**Goal:** Members can save their card for faster repeat payments. SumUp Customers API links Resonate profiles to saved payment instruments.
+**Requirements:** TOK-01, TOK-02, TOK-03, TOK-04
+**Depends on:** Phase 13, Phase 17
+**Success criteria:**
+- SumUp customer created and linked to Resonate profile (stored `sumup_customer_id`)
+- "Save card for future payments" checkbox during checkout creates tokenization checkout
+- Returning member sees "Pay with saved card" option using stored token
+- Member can view and delete saved cards from profile settings
+- Card Widget `purpose: "SETUP_RECURRING_PAYMENT"` flow works end-to-end
 
 ---
 *Roadmap updated: 2026-03-06*

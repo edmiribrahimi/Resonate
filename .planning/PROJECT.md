@@ -47,13 +47,15 @@ All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.
 
 ### v1.2 (In Progress)
 
-17 requirements across 4 phases. See [REQUIREMENTS.md](.planning/REQUIREMENTS.md) for full list.
+26 requirements across 6 phases. See [REQUIREMENTS.md](.planning/REQUIREMENTS.md) for full list.
 
-**SumUp API Deep Integration:**
-- [ ] Multi-version API client (v0.1, v1.0, v1.1, v2.1) with TypeScript types
+**SumUp Full Platform Integration:**
+- [ ] Official `@sumup/sdk` migration (replace custom client)
 - [ ] Admin finance dashboard with transaction list, filters, and detail view
 - [ ] In-app refund management (full and partial) with confirmation flow
 - [ ] Payout reports with date range filtering
+- [ ] Alternative payment methods: Satispay, MyBank, Apple Pay, Google Pay
+- [ ] Card tokenization for faster repeat payments
 
 ### Out of Scope
 

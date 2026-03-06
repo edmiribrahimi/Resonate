@@ -5,11 +5,11 @@
 
 ## v1.2 Requirements
 
-### SumUp API Client Enhancement
+### SumUp SDK Migration
 
-- [ ] **API-01**: SumUp client supports multiple API versions (v0.1, v1.0, v1.1, v2.1) from a single base URL without version prefix
-- [ ] **API-02**: TypeScript types defined for all SumUp API responses (transactions, payouts, receipts)
-- [ ] **API-03**: `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE` documented in `.env.local.example`
+- [ ] **SDK-01**: Replace custom `src/lib/sumup.ts` with official `@sumup/sdk` package as the single SumUp client
+- [ ] **SDK-02**: All existing checkout and refund operations work unchanged after migration (createCheckout, getCheckout, refundTransaction)
+- [ ] **SDK-03**: `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE` documented in `.env.local.example`
 
 ### Admin Finance Section
 
@@ -34,24 +34,39 @@
 - [ ] **PAY-02**: Payout list supports date range filter with start/end date pickers
 - [ ] **PAY-03**: Each payout shows amount, date, status, and type (payout, chargeback deduction, refund deduction)
 
+### Alternative Payment Methods
+
+- [ ] **APM-01**: Satispay enabled as payment option (available in Italy, no custom integration -- Card Widget handles it)
+- [ ] **APM-02**: MyBank enabled as payment option (available in Italy, redirect-based flow)
+- [ ] **APM-03**: Apple Pay enabled via Card Widget with domain verification completed
+- [ ] **APM-04**: Google Pay enabled via Card Widget with domain onboarding completed
+- [ ] **APM-05**: Checkout creation includes `redirect_url` parameter for APM redirect flows
+
+### Card Tokenization
+
+- [ ] **TOK-01**: Resonate member profile linked to SumUp customer (created on first purchase or opt-in)
+- [ ] **TOK-02**: Member can save their card during checkout via `purpose: "SETUP_RECURRING_PAYMENT"` flow
+- [ ] **TOK-03**: Returning member sees "Pay with saved card" option that charges their stored payment instrument
+- [ ] **TOK-04**: Member can view and delete saved cards from their profile/settings
+
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Card tokenization / saved cards | Future milestone -- requires customer management |
 | Receipt data in confirmation emails | Medium priority -- keep scope focused |
-| Checkout cleanup cron job | Medium priority -- SumUp manages expiration internally |
+| Checkout cleanup cron job | SumUp manages expiration internally |
 | CSV export of transactions | Can be added later if needed |
-| Google Pay / Apple Pay | Requires merchant registration with Google/Apple |
 | OAuth 2.0 flow | API key sufficient for single-merchant use case |
+| Recurring/subscription payments | Card tokenization covers one-tap, not auto-billing |
+| In-person terminal payments | Resonate is online-only |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | Phase 13 | Pending |
-| API-02 | Phase 13 | Pending |
-| API-03 | Phase 13 | Pending |
+| SDK-01 | Phase 13 | Pending |
+| SDK-02 | Phase 13 | Pending |
+| SDK-03 | Phase 13 | Pending |
 | FIN-01 | Phase 14 | Pending |
 | FIN-02 | Phase 14 | Pending |
 | FIN-03 | Phase 14 | Pending |
@@ -66,8 +81,17 @@
 | PAY-01 | Phase 16 | Pending |
 | PAY-02 | Phase 16 | Pending |
 | PAY-03 | Phase 16 | Pending |
+| APM-01 | Phase 17 | Pending |
+| APM-02 | Phase 17 | Pending |
+| APM-03 | Phase 17 | Pending |
+| APM-04 | Phase 17 | Pending |
+| APM-05 | Phase 17 | Pending |
+| TOK-01 | Phase 18 | Pending |
+| TOK-02 | Phase 18 | Pending |
+| TOK-03 | Phase 18 | Pending |
+| TOK-04 | Phase 18 | Pending |
 
-**Coverage:** 17 requirements (3 API + 6 Finance + 5 Refund + 3 Payout)
+**Coverage:** 26 requirements (3 SDK + 6 Finance + 5 Refund + 3 Payout + 5 APM + 4 Tokenization)
 
 ---
 *Requirements defined: 2026-03-06*

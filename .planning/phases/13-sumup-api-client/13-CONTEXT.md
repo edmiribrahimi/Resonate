@@ -1,25 +1,34 @@
-# Phase 13: SumUp API Client Enhancement
+# Phase 13: SumUp SDK Migration
 
 ## Goal
-Refactor the SumUp client library to support multi-version API calls (v0.1, v1.0, v1.1, v2.1) and add TypeScript types for all new endpoints needed in v1.2.
+Replace the custom `src/lib/sumup.ts` client with the official `@sumup/sdk` package (v0.1.1). All existing payment flows must continue working unchanged.
 
 ## Requirements
-- **API-01**: Multi-version API support from single base URL
-- **API-02**: TypeScript types for transactions, payouts, receipts
-- **API-03**: Environment variables documented in `.env.local.example`
+- **SDK-01**: Replace custom client with `@sumup/sdk`
+- **SDK-02**: Existing checkout and refund operations work unchanged
+- **SDK-03**: Environment variables documented in `.env.local.example`
 
 ## Key Files
-- `src/lib/sumup.ts` -- existing SumUp client (currently hardcoded to v0.1)
+- `src/lib/sumup.ts` -- current custom client (3 functions: createCheckout, getCheckout, refundTransaction)
+- `src/app/api/webhooks/sumup/route.ts` -- webhook handler (calls getCheckout)
+- All files that import from `@/lib/sumup` (ticket/drink purchase actions, refund)
+
+## SDK Details
+- Package: `@sumup/sdk` v0.1.1 (published 2026-03-04, zero dependencies)
+- Resources: `checkouts`, `transactions`, `payouts`, `customers`, `receipts`, `merchants`
+- Auth: `new SumUp({ apiKey: process.env.SUMUP_API_KEY })`
+- Multi-version handled internally by SDK (v0.1 checkouts, v2.1 transactions, v1.0 payouts)
 
 ## Research
 - See `.planning/research/v1.2-sumup-api.md` for complete API endpoint catalog
-- Transactions API uses v2.1, Payouts uses v1.0, Receipts uses v1.1, Checkouts/Refunds stay on v0.1
+- SDK type definitions inspected -- full TypeScript coverage for all resources
 
 ## Dependencies
 - None (first phase)
 
 ## Success Criteria
-- `listTransactions()`, `getTransaction()`, `listPayouts()` functions added
-- All response types defined as TypeScript interfaces
-- Existing checkout/refund functions continue to work unchanged
+- `@sumup/sdk` installed and SumUp client singleton exported
+- `createCheckout()`, `getCheckout()`, `refundTransaction()` reimplemented via SDK methods
+- All import sites updated
 - `.env.local.example` includes `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE`
+- Existing payment flows work unchanged
