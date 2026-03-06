@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
 import { createCheckout } from "@/lib/sumup";
+import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 
 // Service-role client for operations where RLS blocks legitimate access
@@ -941,4 +942,64 @@ export async function purchaseDrinks(
   }
 
   return { success: true, checkoutId: response.id };
+}
+
+// =============================================================
+// Drink Token Redemption
+// =============================================================
+
+/**
+ * Redeem a drink token. Verifies HMAC signature, ownership, and status
+ * before calling the redeem_drink_token SECURITY DEFINER function.
+ */
+export async function redeemDrinkToken(
+  signedToken: string
+): Promise<{ success: true }> {
+  // 1. Verify HMAC signature
+  const tokenId = verifyTicketToken(signedToken);
+  if (!tokenId) {
+    throw new Error("Invalid token signature");
+  }
+
+  // 2. Verify user is authenticated
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  // 3. Verify ownership and current status
+  const { data: token, error: tokenError } = await supabase
+    .from("drink_tokens")
+    .select("id, user_id, status")
+    .eq("id", tokenId)
+    .single();
+
+  if (tokenError || !token) {
+    throw new Error("Token not found");
+  }
+
+  if (token.user_id !== user.id) {
+    throw new Error("Not your token");
+  }
+
+  if (token.status === "redeemed") {
+    throw new Error("Already redeemed");
+  }
+
+  // 4. Redeem via SECURITY DEFINER function
+  const serviceClient = getServiceClient();
+  const { error: rpcError } = await serviceClient.rpc("redeem_drink_token", {
+    p_token_id: tokenId,
+  });
+
+  if (rpcError) {
+    throw new Error("Redemption failed");
+  }
+
+  return { success: true };
 }

@@ -203,6 +203,22 @@ export async function POST(request: Request) {
         p_transaction_code: transactionCode,
       });
 
+      // Sign drink tokens with HMAC (same pattern as ticket QR codes)
+      const { data: newTokens } = await supabase
+        .from("drink_tokens")
+        .select("id")
+        .eq("order_id", drinkOrder.id);
+
+      if (newTokens) {
+        for (const t of newTokens) {
+          const signedToken = generateTicketToken(t.id);
+          await supabase
+            .from("drink_tokens")
+            .update({ token: signedToken })
+            .eq("id", t.id);
+        }
+      }
+
       return NextResponse.json({ received: true });
     }
 
