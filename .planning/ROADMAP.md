@@ -46,7 +46,7 @@ Plans:
 **Depends on:** Phase 14
 **Plans:** 1 plan
 Plans:
-- [ ] 15-01-PLAN.md -- Server action, refund button, RefundDialog with full/partial toggle, fee warning, optimistic UI update
+- [x] 15-01-PLAN.md -- Server action, refund button, RefundDialog with full/partial toggle, fee warning, optimistic UI update
 **Success criteria:**
 - "Refund" button on successful, non-refunded transactions
 - Confirmation dialog with full/partial toggle and custom amount input

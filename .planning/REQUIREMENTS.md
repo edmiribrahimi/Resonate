@@ -22,11 +22,11 @@
 
 ### Refund Management
 
-- [ ] **REF-01**: Transaction detail view includes a "Refund" button (only for successful, non-refunded transactions)
-- [ ] **REF-02**: Refund confirmation dialog shows transaction amount and allows choosing full or partial refund
-- [ ] **REF-03**: Partial refund allows entering a custom amount (validated <= original amount)
-- [ ] **REF-04**: After successful refund, transaction status updates in the list without page reload
-- [ ] **REF-05**: Refund dialog shows warning that SumUp fees are not refundable
+- [x] **REF-01**: Transaction detail view includes a "Refund" button (only for successful, non-refunded transactions)
+- [x] **REF-02**: Refund confirmation dialog shows transaction amount and allows choosing full or partial refund
+- [x] **REF-03**: Partial refund allows entering a custom amount (validated <= original amount)
+- [x] **REF-04**: After successful refund, transaction status updates in the list without page reload
+- [x] **REF-05**: Refund dialog shows warning that SumUp fees are not refundable
 
 ### Payout Reports
 
@@ -73,11 +73,11 @@
 | FIN-04 | Phase 14 | Complete |
 | FIN-05 | Phase 14 | Complete |
 | FIN-06 | Phase 14 | Complete |
-| REF-01 | Phase 15 | Pending |
-| REF-02 | Phase 15 | Pending |
-| REF-03 | Phase 15 | Pending |
-| REF-04 | Phase 15 | Pending |
-| REF-05 | Phase 15 | Pending |
+| REF-01 | Phase 15 | Complete |
+| REF-02 | Phase 15 | Complete |
+| REF-03 | Phase 15 | Complete |
+| REF-04 | Phase 15 | Complete |
+| REF-05 | Phase 15 | Complete |
 | PAY-01 | Phase 16 | Complete |
 | PAY-02 | Phase 16 | Complete |
 | PAY-03 | Phase 16 | Complete |

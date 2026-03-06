@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
 status: in_progress
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-03-06T17:14:40Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-06T17:15:35Z"
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 6
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 16 of 18 -- Payout Reports (COMPLETE)
+**Phase:** 15 of 18 -- Refund Management (COMPLETE)
 **Plan:** 1/1 (all plans complete)
-**Status:** Phase 16 complete. Payout reports at /admin/finance/payouts with FinanceSubNav, date range filter, and PayoutList with colored badges for all 5 payout types.
+**Status:** Phase 15 complete. Refund management with RefundDialog, refund button on eligible transactions, full/partial toggle, fee warning, optimistic UI update.
 
 ```
-[Phase Progress]  ####################  1/1 plans in phase 16
+[Phase Progress]  ####################  1/1 plans in phase 15
 
-[Overall]         ################____  5/6 plans complete (across all phases)
+[Overall]         #############_______  6/9 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -62,23 +62,27 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 13. **[Phase 16]** FinanceSubNav uses exact match for Transactions tab, startsWith for Payouts to prevent both being active
 14. **[Phase 16]** Initial useEffect with [] deps pattern for PayoutList (same as TransactionList) for predictable mount behavior
 15. **[Phase 16]** Default 30-day date range calculated inline at component level, no separate utility
+16. **[Phase 15]** Refund button inside TransactionDetailInline -- detail already loaded, fee_amount available for dialog
+17. **[Phase 15]** StatusBadge enhanced with refundedAmount prop for PARTIALLY REFUNDED display
+18. **[Phase 15]** handleRefundComplete invalidates detailCache instead of optimistic detail update for fresh SumUp data
+19. **[Phase 15]** Single commit for both tasks since RefundDialog import makes them interdependent
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 5 |
+| Plans completed | 6 |
 | Plans failed | 0 |
-| Requirements done | 17/26 |
-| Phases complete | 4/6 |
+| Requirements done | 22/26 |
+| Phases complete | 5/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T17:14:40Z
-**Stopped at:** Completed 16-01-PLAN.md
-**What happened:** Executed Phase 16 Plan 01 -- Payout Reports. Created FinanceSubNav component with Transactions/Payouts tabs, added to existing finance page. Added listPayouts server action calling sumup.payouts.list(). Created /admin/finance/payouts page and PayoutList client component with date range filter (default 30 days), desktop table + mobile cards, colored badges for 5 payout types. All 2 tasks completed. Requirements PAY-01 through PAY-03 satisfied. Phase 16 now complete (1/1 plans). Note: pre-existing build failure from Phase 15 (TransactionList importing uncommitted RefundDialog) -- not caused by Phase 16 changes.
-**Next step:** Execute Phase 15 (Refunds) or Phase 18 (Tokenization) -- remaining phases in v1.2 milestone.
+**Last session:** 2026-03-06T17:15:35Z
+**Stopped at:** Completed 15-01-PLAN.md
+**What happened:** Executed Phase 15 Plan 01 -- Refund Management. Created RefundDialog component with full/partial toggle, amount validation, fee warning, and confirmation flow. Updated TransactionList with refund button on eligible transactions, PARTIALLY REFUNDED badge in StatusBadge, handleRefundComplete for optimistic updates, and RefundDialog rendering. refundTransactionAction was already present in actions.ts from Phase 16 commit. Both tasks completed, TypeScript and build pass. Requirements REF-01 through REF-05 satisfied. Phase 15 now complete (1/1 plans).
+**Next step:** Execute Phase 18 (Card Tokenization) -- the only remaining phase in v1.2 milestone (3 plans).
 
 ---
 *State initialized: 2026-03-06*
-*Last updated: 2026-03-06T17:14:40Z*
+*Last updated: 2026-03-06T17:15:35Z*
