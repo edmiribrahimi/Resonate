@@ -46,8 +46,8 @@
 
 - [x] **TOK-01**: Resonate member profile linked to SumUp customer (created on first purchase or opt-in)
 - [x] **TOK-02**: Member can save their card during checkout via `purpose: "SETUP_RECURRING_PAYMENT"` flow
-- [ ] **TOK-03**: Returning member sees "Pay with saved card" option that charges their stored payment instrument
-- [ ] **TOK-04**: Member can view and delete saved cards from their profile/settings
+- [x] **TOK-03**: Returning member sees "Pay with saved card" option that charges their stored payment instrument
+- [x] **TOK-04**: Member can view and delete saved cards from their profile/settings
 
 ## Out of Scope
 
@@ -88,8 +88,8 @@
 | APM-05 | Phase 17 | Complete |
 | TOK-01 | Phase 18 | Complete |
 | TOK-02 | Phase 18 | Complete |
-| TOK-03 | Phase 18 | Pending |
-| TOK-04 | Phase 18 | Pending |
+| TOK-03 | Phase 18 | Complete |
+| TOK-04 | Phase 18 | Complete |
 
 **Coverage:** 26 requirements (3 SDK + 6 Finance + 5 Refund + 3 Payout + 5 APM + 4 Tokenization)
 

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
-status: in_progress
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-03-06T17:28:00Z"
+status: complete
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-03-06T17:38:00Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 18 of 18 -- Card Tokenization (IN PROGRESS)
-**Plan:** 2/3
-**Status:** Plan 02 complete. Save-card checkbox in ticket/drink checkout flows, conditional tokenization checkout with SumUp customer creation, graceful webhook handling.
+**Phase:** 18 of 18 -- Card Tokenization (COMPLETE)
+**Plan:** 3/3
+**Status:** All plans complete. SumUp customer linking, tokenization checkout, saved card payment, and card management all implemented.
 
 ```
-[Phase Progress]  ##############______  2/3 plans in phase 18
+[Phase Progress]  ####################  3/3 plans in phase 18
 
-[Overall]         ################____  8/9 plans complete (across all phases)
+[Overall]         ####################  9/9 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -73,22 +73,26 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 24. **[Phase 18]** Tokenization combined with real purchase (single checkout with purpose + amount) rather than separate flows
 25. **[Phase 18]** Save-card checkbox in TierSelection/DrinkMenu (before checkout creation), not in modal -- decision made at checkout creation time
 26. **[Phase 18]** SumUpCheckoutModal left unchanged -- Card Widget auto-handles tokenization consent UI when purpose is set
+27. **[Phase 18]** GuestDrinkMenu updated instead of DrinkMenu.tsx -- DrinkMenu is dead code, GuestDrinkMenu is the actual component used in the drink menu page
+28. **[Phase 18]** WithSavedCard server actions kept separate from original purchase actions -- clean separation between Card Widget flow and server-side token flow
+29. **[Phase 18]** Saved cards fetched in server components and passed as props -- avoids client-side API calls, keeps SumUp API key server-side only
+30. **[Phase 18]** SavedCardsSection returns null when no cards -- self-hiding component, no conditional rendering needed in parent
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 8 |
+| Plans completed | 9 |
 | Plans failed | 0 |
-| Requirements done | 25/26 |
-| Phases complete | 5/6 |
+| Requirements done | 26/26 |
+| Phases complete | 6/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T17:28:00Z
-**Stopped at:** Completed 18-02-PLAN.md
-**What happened:** Executed Phase 18 Plan 02 -- Tokenization Checkout Flow. Added saveCard parameter to purchaseTicket and purchaseDrinks server actions. When saveCard=true, creates SumUp customer (lazy) and tokenization checkout with purpose SETUP_RECURRING_PAYMENT. Added save-card checkbox to TierSelection (authenticated only) and DrinkMenu. Extended webhook to handle tokenization checkouts without error logs. GuestDrinkMenu and SumUpCheckoutModal unchanged. Requirements TOK-01 and TOK-02 satisfied.
-**Next step:** Execute Phase 18 Plan 03 (Pay with Saved Card + Card Management) -- saved card payment option and profile settings for card CRUD.
+**Last session:** 2026-03-06T17:38:00Z
+**Stopped at:** Completed 18-03-PLAN.md
+**What happened:** Executed Phase 18 Plan 03 -- Pay with Saved Card + Card Management. Created dashboard server actions (getSavedCards, deleteSavedCard, payWithSavedCard). Added purchaseTicketWithSavedCard and purchaseDrinksWithSavedCard to organizer actions. Added payment method selector UI to TierSelection and GuestDrinkMenu. Created SavedCardsSection client component in dashboard. Fetched saved cards in server components (event page, menu page, dashboard). Requirements TOK-03 and TOK-04 satisfied. Milestone v1.2 complete -- all 26 requirements done, 9/9 plans executed, 6/6 phases complete.
+**Next step:** Milestone v1.2 complete. All phases and plans executed successfully.
 
 ---
 *State initialized: 2026-03-06*
