@@ -31,7 +31,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 14-01-PLAN.md -- Finance tab in AdminNav, finance page shell, server actions, transaction table
-- [ ] 14-02-PLAN.md -- Cursor-based pagination, date/status filters, click-to-expand detail view
+- [x] 14-02-PLAN.md -- Cursor-based pagination, date/status filters, click-to-expand detail view
 **Success criteria:**
 - "Finance" tab in AdminNav, `/admin/finance` route
 - Transaction list with amount, date, status, description columns

@@ -15,9 +15,9 @@
 
 - [x] **FIN-01**: New "Finance" tab in admin navigation accessible only to master role
 - [x] **FIN-02**: `/admin/finance` page shows a list of all SumUp transactions (tickets + drinks) with amount, date, status, and description
-- [ ] **FIN-03**: Transaction list supports cursor-based pagination (prev/next navigation)
-- [ ] **FIN-04**: Transaction list supports filtering by date range and status (successful, refunded, failed, chargeback)
-- [ ] **FIN-05**: Clicking a transaction shows detail view with fee amount, card type, last 4 digits, and payment method
+- [x] **FIN-03**: Transaction list supports cursor-based pagination (prev/next navigation)
+- [x] **FIN-04**: Transaction list supports filtering by date range and status (successful, refunded, failed, chargeback)
+- [x] **FIN-05**: Clicking a transaction shows detail view with fee amount, card type, last 4 digits, and payment method
 - [x] **FIN-06**: Transactions are filtered by `payment_type=ECOM` to show only online payments
 
 ### Refund Management
@@ -69,9 +69,9 @@
 | SDK-03 | Phase 13 | Complete |
 | FIN-01 | Phase 14 | Complete |
 | FIN-02 | Phase 14 | Complete |
-| FIN-03 | Phase 14 | Pending |
-| FIN-04 | Phase 14 | Pending |
-| FIN-05 | Phase 14 | Pending |
+| FIN-03 | Phase 14 | Complete |
+| FIN-04 | Phase 14 | Complete |
+| FIN-05 | Phase 14 | Complete |
 | FIN-06 | Phase 14 | Complete |
 | REF-01 | Phase 15 | Pending |
 | REF-02 | Phase 15 | Pending |
