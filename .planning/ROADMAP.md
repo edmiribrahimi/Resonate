@@ -52,14 +52,17 @@ Plans:
 - Optimistic UI update after successful refund
 
 ### Phase 16: Payout Reports
-**Goal:** Admin can view SumUp payout (bank transfer) history with date range filtering.
+**Goal:** Admin can view SumUp payout (bank transfer) history with date range filtering and payout type breakdown.
 **Requirements:** PAY-01, PAY-02, PAY-03
 **Depends on:** Phase 13
+**Plans:** 1 plan
+Plans:
+- [ ] 16-01-PLAN.md -- FinanceSubNav component, listPayouts server action, payouts page with date range filter and payout table
 **Success criteria:**
-- `/admin/finance/payouts` sub-page (tab or link from finance dashboard)
-- Payout list with amount, date, status, type columns
-- Date range picker for filtering
-- Handles payout types: PAYOUT, CHARGE_BACK_DEDUCTION, REFUND_DEDUCTION
+- `/admin/finance/payouts` sub-page with FinanceSubNav for Transactions/Payouts navigation
+- Payout list with amount, date, fee, status, type columns
+- Date range picker with default last 30 days
+- Handles all 5 payout types: PAYOUT, CHARGE_BACK_DEDUCTION, REFUND_DEDUCTION, DD_RETURN_DEDUCTION, BALANCE_DEDUCTION
 
 ### Phase 17: Alternative Payment Methods
 **Goal:** Enable Satispay, MyBank, Apple Pay, and Google Pay as payment options alongside card payments via the SumUp Card Widget.
