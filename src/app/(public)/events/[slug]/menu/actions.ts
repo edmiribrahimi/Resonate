@@ -83,12 +83,27 @@ export async function purchaseDrinksGuest(
   const checkoutReference = crypto.randomUUID();
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
+  // Fetch event slug for redirect URL
+  const { data: eventForSlug } = await serviceClient
+    .from("events")
+    .select("slug")
+    .eq("id", eventId)
+    .single();
+
+  // Build redirect URL for APM flows
+  const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
+  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("slug", eventForSlug?.slug ?? "");
+  redirectUrl.searchParams.set("ctx", "drink");
+  redirectUrl.searchParams.set("party", partyId);
+
   const response = await createCheckout({
     amount: totalAmount,
     currency: "EUR",
     description,
     checkoutReference,
     returnUrl,
+    redirectUrl: redirectUrl.toString(),
   });
 
   // Create drink order with user_id: null (guest purchase)

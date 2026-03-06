@@ -14,6 +14,7 @@ export async function createCheckout(params: {
   description: string;
   checkoutReference: string;
   returnUrl: string;
+  redirectUrl?: string;
 }) {
   try {
     const checkout = await sumup.checkouts.create({
@@ -23,6 +24,7 @@ export async function createCheckout(params: {
       checkout_reference: params.checkoutReference,
       description: params.description,
       return_url: params.returnUrl,
+      redirect_url: params.redirectUrl,
     });
 
     return checkout as { id: string; status: string; checkout_reference: string };

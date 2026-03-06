@@ -19,6 +19,10 @@ interface SumUpCardConfig {
   currency?: string;
   country?: string;
   nonce?: string;
+  googlePay?: {
+    merchantId: string;
+    merchantName: string;
+  };
   onResponse?: (
     type: SumUpResponseType,
     body: Record<string, unknown>
@@ -90,11 +94,19 @@ export function SumUpCardWidget({
       instanceRef.current = null;
     }
 
+    const googlePayMerchantId = process.env.NEXT_PUBLIC_GOOGLE_PAY_MERCHANT_ID;
+
     instanceRef.current = window.SumUpCard.mount({
       id: "sumup-card",
       checkoutId,
       locale,
       showFooter: false,
+      ...(googlePayMerchantId && {
+        googlePay: {
+          merchantId: googlePayMerchantId,
+          merchantName: "Resonate",
+        },
+      }),
       onLoad: () => {
         onLoadRef.current?.();
       },

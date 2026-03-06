@@ -695,6 +695,12 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
   // Build webhook URL (return_url triggers SumUp webhook after payment)
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
+  // Build redirect URL for APM flows (Satispay, MyBank, Apple Pay, Google Pay)
+  const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
+  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("slug", event.slug);
+  redirectUrl.searchParams.set("ctx", "ticket");
+
   // Create SumUp checkout (card widget mode -- no hosted redirect)
   const response = await createCheckout({
     amount: tier.price,
@@ -702,6 +708,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
     description: `${event.title} - ${tier.name}`,
     checkoutReference,
     returnUrl,
+    redirectUrl: redirectUrl.toString(),
   });
 
   // Create pending purchase record using service-role client (bypass RLS)
@@ -930,12 +937,27 @@ export async function purchaseDrinks(
   const checkoutReference = crypto.randomUUID();
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
+  // Fetch event slug for redirect URL
+  const { data: eventForSlug } = await supabase
+    .from("events")
+    .select("slug")
+    .eq("id", eventId)
+    .single();
+
+  // Build redirect URL for APM flows
+  const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
+  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("slug", eventForSlug?.slug ?? "");
+  redirectUrl.searchParams.set("ctx", "drink");
+  redirectUrl.searchParams.set("party", partyId);
+
   const response = await createCheckout({
     amount: totalAmount,
     currency: "EUR",
     description,
     checkoutReference,
     returnUrl,
+    redirectUrl: redirectUrl.toString(),
   });
 
   // Create drink order using service client (bypass RLS)
