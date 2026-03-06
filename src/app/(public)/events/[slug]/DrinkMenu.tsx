@@ -14,10 +14,11 @@ function formatPrice(price: number) {
 
 interface DrinkMenuProps {
   eventId: string;
+  partyId: string;
   drinks: DrinkItem[];
 }
 
-export default function DrinkMenu({ eventId, drinks }: DrinkMenuProps) {
+export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export default function DrinkMenu({ eventId, drinks }: DrinkMenuProps) {
 
     startTransition(async () => {
       try {
-        const result = await purchaseDrinks(eventId, items);
+        const result = await purchaseDrinks(eventId, partyId, items);
         if (result.success && result.checkoutId) {
           setCheckoutId(result.checkoutId);
         }

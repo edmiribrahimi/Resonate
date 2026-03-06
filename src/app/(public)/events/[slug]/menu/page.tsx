@@ -2,11 +2,12 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
 import type { UserRole, DrinkItem } from "@/types/database";
-import GuestDrinkMenu from "./GuestDrinkMenu";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 import GuestLoginBanner from "./GuestLoginBanner";
 import EventQRCode from "./EventQRCode";
+import PartyDrinkMenu from "./PartyDrinkMenu";
 
 export async function generateMetadata({
   params,
@@ -36,6 +37,14 @@ export default async function MenuPage({
   // Service client for public data (no RLS restriction)
   const serviceClient = getServiceClient();
 
+  // Check auth for QR code / management visibility
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const headersList = await headers();
+  const role = headersList.get("x-user-role") as UserRole | null;
+
   // Fetch event by slug (must be published)
   const { data: event } = await serviceClient
     .from("events")
@@ -48,22 +57,44 @@ export default async function MenuPage({
     notFound();
   }
 
-  // Fetch available drinks
-  const { data: drinks } = await serviceClient
-    .from("drink_items")
-    .select("*")
-    .eq("event_id", event.id)
-    .eq("is_available", true)
-    .order("sort_order");
+  // Determine if the user can manage drinks
+  const canManage = role === "master" || role === "organizer";
 
-  // Check auth for QR code visibility
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const headersList = await headers();
-  const role = headersList.get("x-user-role") as UserRole | null;
-  const isOrganizerOrAdmin = role === "master" || role === "organizer";
+  // Fetch parties for this event
+  const { data: parties } = await serviceClient
+    .from("event_parties")
+    .select("id, title")
+    .eq("event_id", event.id)
+    .order("sort_order", { ascending: true });
+
+  const partyList = (parties ?? []) as { id: string; title: string }[];
+
+  // Fetch drinks per party
+  const drinksByParty = await Promise.all(
+    partyList.map(async (party) => {
+      if (canManage) {
+        const allItems = await getDrinkItems(event.id, party.id);
+        return {
+          partyId: party.id,
+          allItems,
+          availableItems: allItems.filter((d: DrinkItem) => d.is_available),
+        };
+      } else {
+        const { data: drinks } = await serviceClient
+          .from("drink_items")
+          .select("*")
+          .eq("event_id", event.id)
+          .eq("party_id", party.id)
+          .eq("is_available", true)
+          .order("sort_order");
+        return {
+          partyId: party.id,
+          allItems: [] as DrinkItem[],
+          availableItems: (drinks ?? []) as DrinkItem[],
+        };
+      }
+    })
+  );
 
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
@@ -100,7 +131,7 @@ export default async function MenuPage({
         <p className="mt-1 text-sm text-muted">{formattedDate}</p>
 
         {/* QR Code (organizer/admin only) */}
-        {isOrganizerOrAdmin && (
+        {canManage && (
           <div className="mt-6">
             <EventQRCode url={menuUrl} eventTitle={event.title} />
           </div>
@@ -113,14 +144,16 @@ export default async function MenuPage({
           </div>
         )}
 
-        {/* Drink menu (always shown if drinks exist) */}
-        {drinks && drinks.length > 0 ? (
-          <div className="mt-6">
-            <GuestDrinkMenu
-              eventId={event.id}
-              drinks={drinks as DrinkItem[]}
-            />
-          </div>
+        {/* Party drink menu with selector */}
+        {partyList.length > 0 ? (
+          <PartyDrinkMenu
+            eventId={event.id}
+            eventTitle={event.title}
+            parties={partyList}
+            drinksByParty={drinksByParty}
+            canManage={canManage}
+            isAuthenticated={!!user}
+          />
         ) : (
           <div className="mt-6 rounded-xl border border-card-border bg-card p-6 text-center">
             <p className="text-sm text-muted">

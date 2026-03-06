@@ -11,6 +11,7 @@ import { verifyTicketToken } from "@/utils/qr";
  */
 export async function purchaseDrinksGuest(
   eventId: string,
+  partyId: string,
   items: { drinkItemId: string; quantity: number }[]
 ): Promise<{ success: boolean; checkoutId: string; orderId: string }> {
   if (!items || items.length === 0) {
@@ -66,16 +67,17 @@ export async function purchaseDrinksGuest(
     };
   });
 
-  // Fetch event title for checkout description
-  const { data: event, error: eventError } = await serviceClient
-    .from("events")
+  // Fetch party name for checkout description
+  const { data: party } = await serviceClient
+    .from("event_parties")
     .select("title")
-    .eq("id", eventId)
+    .eq("id", partyId)
     .single();
 
-  if (eventError || !event) {
-    throw new Error("Event not found");
-  }
+  const itemsList = itemsSnapshot
+    .map((i) => `${i.quantity}x ${i.drink_name}`)
+    .join(", ");
+  const description = party ? `${party.title} - ${itemsList}` : itemsList;
 
   // Create SumUp checkout
   const checkoutReference = crypto.randomUUID();
@@ -84,7 +86,7 @@ export async function purchaseDrinksGuest(
   const response = await createCheckout({
     amount: totalAmount,
     currency: "EUR",
-    description: `${event.title} - Drinks`,
+    description,
     checkoutReference,
     returnUrl,
   });
@@ -94,6 +96,7 @@ export async function purchaseDrinksGuest(
     .from("drink_orders")
     .insert({
       event_id: eventId,
+      party_id: partyId,
       user_id: null,
       sumup_checkout_id: response.id,
       total_amount: totalAmount,

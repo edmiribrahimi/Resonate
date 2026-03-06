@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useEffect, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { purchaseDrinksGuest } from "./actions";
 import type { DrinkItem } from "@/types/database";
 import SumUpCheckoutModal from "../SumUpCheckoutModal";
@@ -15,6 +15,7 @@ function formatPrice(price: number) {
 }
 
 const STORAGE_KEY_PREFIX = "resonate_drink_tokens";
+const CART_STORAGE_KEY = "resonate_drink_cart";
 
 function storeGuestOrder(eventId: string, orderId: string): void {
   try {
@@ -33,25 +34,55 @@ function storeGuestOrder(eventId: string, orderId: string): void {
 
 interface GuestDrinkMenuProps {
   eventId: string;
+  partyId: string;
   drinks: DrinkItem[];
+  isAuthenticated?: boolean;
 }
 
 export default function GuestDrinkMenu({
   eventId,
+  partyId,
   drinks,
+  isAuthenticated = false,
 }: GuestDrinkMenuProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(
-    null
-  );
   const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const pathname = usePathname();
   const slug = pathname.split("/")[2] || "";
+  const router = useRouter();
+
+  // Restore cart from localStorage after login redirect and auto-checkout
+  const [autoCheckout, setAutoCheckout] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`${CART_STORAGE_KEY}_${eventId}`);
+      if (saved) {
+        const savedQuantities = JSON.parse(saved) as Record<string, number>;
+        localStorage.removeItem(`${CART_STORAGE_KEY}_${eventId}`);
+        const hasItems = Object.values(savedQuantities).some((q) => q > 0);
+        if (hasItems) {
+          setQuantities(savedQuantities);
+          setAutoCheckout(true);
+        }
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [eventId]);
+
+  // Trigger checkout once quantities are set from restored cart
+  useEffect(() => {
+    if (autoCheckout && Object.values(quantities).some((q) => q > 0)) {
+      setAutoCheckout(false);
+      startCheckout();
+    }
+  }, [autoCheckout]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function updateQuantity(drinkId: string, delta: number) {
     setQuantities((prev) => {
@@ -67,21 +98,17 @@ export default function GuestDrinkMenu({
     0
   );
 
-  function handleOrder() {
-    setError(null);
+  function startCheckout() {
     const items = drinks
       .filter((d) => (quantities[d.id] ?? 0) > 0)
       .map((d) => ({ drinkItemId: d.id, quantity: quantities[d.id] }));
 
-    if (items.length === 0) return;
-
     startTransition(async () => {
       try {
-        const result = await purchaseDrinksGuest(eventId, items);
+        const result = await purchaseDrinksGuest(eventId, partyId, items);
         if (result.success && result.checkoutId) {
           setOrderId(result.orderId);
-          setPendingCheckoutId(result.checkoutId);
-          setShowWarning(true);
+          setCheckoutId(result.checkoutId);
         }
       } catch (err) {
         setError(
@@ -91,18 +118,46 @@ export default function GuestDrinkMenu({
     });
   }
 
+  function handleOrder() {
+    setError(null);
+    const items = drinks
+      .filter((d) => (quantities[d.id] ?? 0) > 0)
+      .map((d) => ({ drinkItemId: d.id, quantity: quantities[d.id] }));
+
+    if (items.length === 0) return;
+
+    if (isAuthenticated) {
+      // Authenticated users skip the warning and go straight to checkout
+      startCheckout();
+    } else {
+      // Show warning before creating checkout for guests
+      setShowWarning(true);
+    }
+  }
+
   function handleWarningContinue() {
     setShowWarning(false);
-    if (pendingCheckoutId) {
-      setCheckoutId(pendingCheckoutId);
-      setPendingCheckoutId(null);
+    startCheckout();
+  }
+
+  function handleWarningLogin() {
+    // Save cart to localStorage before redirecting to login
+    try {
+      const nonZero = Object.fromEntries(
+        Object.entries(quantities).filter(([, q]) => q > 0)
+      );
+      localStorage.setItem(
+        `${CART_STORAGE_KEY}_${eventId}`,
+        JSON.stringify(nonZero)
+      );
+    } catch {
+      /* localStorage unavailable */
     }
+    router.push(`/login?redirect=/events/${slug}/menu`);
   }
 
   function handleWarningClose() {
     setShowWarning(false);
-    setPendingCheckoutId(null);
-    setOrderId(null);
   }
 
   function handlePaymentComplete() {
@@ -211,6 +266,7 @@ export default function GuestDrinkMenu({
         <GuestWarningModal
           onContinue={handleWarningContinue}
           onClose={handleWarningClose}
+          onLogin={handleWarningLogin}
           slug={slug}
         />
       )}

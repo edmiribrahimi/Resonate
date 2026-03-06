@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
-import DrinkMenu from "./DrinkMenu";
+
 import MyDrinks from "./MyDrinks";
 import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
@@ -679,10 +679,16 @@ export default async function EventDetailPage({
           );
         })}
 
-        {/* Drinks section — authenticated users only */}
+        {/* Drinks — link to dedicated menu page */}
         {isAuthenticated && drinkItems && drinkItems.length > 0 && (
           <div className="mb-6">
-            <DrinkMenu eventId={event.id} drinks={drinkItems as import("@/types/database").DrinkItem[]} />
+            <a
+              href={`/events/${event.slug}/menu`}
+              className="block w-full rounded-xl border border-card-border bg-card p-4 text-center transition-colors hover:border-accent/50"
+            >
+              <p className="text-sm font-medium text-foreground">Order Drinks</p>
+              <p className="mt-1 text-xs text-muted">{drinkItems.length} items available</p>
+            </a>
           </div>
         )}
 

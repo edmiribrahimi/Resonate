@@ -45,10 +45,12 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
 export function GuestWarningModal({
   onContinue,
   onClose,
+  onLogin,
   slug,
 }: {
   onContinue: () => void;
   onClose: () => void;
+  onLogin?: () => void;
   slug: string;
 }) {
   return (
@@ -88,22 +90,28 @@ export function GuestWarningModal({
         </div>
 
         {/* Warning content */}
-        <div className="mb-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-          <p className="text-sm text-yellow-300/90">
-            Your drink tokens will be saved in this browser only. If you clear
-            your browser data or switch devices, you may lose access to your
-            tokens.
-          </p>
-        </div>
+        <p className="mb-6 text-sm text-yellow-300/90">
+          You may lose your tokens if you don't log in.
+        </p>
 
         {/* Actions */}
         <div className="space-y-2">
-          <Link
-            href={`/login?redirect=/events/${slug}/menu`}
-            className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
-          >
-            Log in first
-          </Link>
+          {onLogin ? (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
+            >
+              Log in first
+            </button>
+          ) : (
+            <Link
+              href={`/login?redirect=/events/${slug}/menu`}
+              className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
+            >
+              Log in first
+            </Link>
+          )}
           <button
             type="button"
             onClick={onContinue}

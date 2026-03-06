@@ -18,12 +18,14 @@ function formatPrice(price: number) {
 interface DrinkMenuManagerProps {
   eventId: string;
   eventTitle: string;
+  partyId?: string;
   initialItems: DrinkItem[];
 }
 
 export default function DrinkMenuManager({
   eventId,
   eventTitle: _eventTitle,
+  partyId,
   initialItems,
 }: DrinkMenuManagerProps) {
   const [items, setItems] = useState<DrinkItem[]>(initialItems);
@@ -39,7 +41,7 @@ export default function DrinkMenuManager({
 
     startTransition(async () => {
       try {
-        const newItem = await addDrinkItem(eventId, trimmedName, parsedPrice);
+        const newItem = await addDrinkItem(eventId, trimmedName, parsedPrice, partyId);
         setItems((prev) => [...prev, newItem]);
         setName("");
         setPrice("");

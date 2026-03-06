@@ -730,15 +730,21 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
 // =============================================================
 
 /**
- * Fetch drink items for an event, ordered by sort_order.
+ * Fetch drink items for a party (or event if no partyId), ordered by sort_order.
  */
-export async function getDrinkItems(eventId: string): Promise<DrinkItem[]> {
+export async function getDrinkItems(eventId: string, partyId?: string): Promise<DrinkItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("drink_items")
     .select("*")
     .eq("event_id", eventId)
     .order("sort_order", { ascending: true });
+
+  if (partyId) {
+    query = query.eq("party_id", partyId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to fetch drink items: ${error.message}`);
@@ -748,30 +754,37 @@ export async function getDrinkItems(eventId: string): Promise<DrinkItem[]> {
 }
 
 /**
- * Add a drink item to an event's menu.
+ * Add a drink item to a party's menu.
  */
 export async function addDrinkItem(
   eventId: string,
   name: string,
-  price: number
+  price: number,
+  partyId?: string
 ): Promise<DrinkItem> {
   const supabase = await createClient();
   await verifyOrganizer(supabase);
 
-  // Get next sort_order
-  const { data: existing } = await supabase
+  // Get next sort_order scoped to party
+  let sortQuery = supabase
     .from("drink_items")
     .select("sort_order")
     .eq("event_id", eventId)
     .order("sort_order", { ascending: false })
     .limit(1);
 
+  if (partyId) {
+    sortQuery = sortQuery.eq("party_id", partyId);
+  }
+
+  const { data: existing } = await sortQuery;
   const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 0;
 
   const { data, error } = await supabase
     .from("drink_items")
     .insert({
       event_id: eventId,
+      party_id: partyId ?? null,
       name: name.trim(),
       price,
       sort_order: nextOrder,
@@ -839,6 +852,7 @@ export async function removeDrinkItem(itemId: string): Promise<void> {
  */
 export async function purchaseDrinks(
   eventId: string,
+  partyId: string,
   items: { drinkItemId: string; quantity: number }[]
 ): Promise<{ success: boolean; checkoutId: string }> {
   const supabase = await createClient();
@@ -900,16 +914,17 @@ export async function purchaseDrinks(
     };
   });
 
-  // Fetch event title for checkout description
-  const { data: event, error: eventError } = await supabase
-    .from("events")
+  // Fetch party name for checkout description
+  const { data: party } = await supabase
+    .from("event_parties")
     .select("title")
-    .eq("id", eventId)
+    .eq("id", partyId)
     .single();
 
-  if (eventError || !event) {
-    throw new Error("Event not found");
-  }
+  const itemsList = itemsSnapshot
+    .map((i) => `${i.quantity}x ${i.drink_name}`)
+    .join(", ");
+  const description = party ? `${party.title} - ${itemsList}` : itemsList;
 
   // Create SumUp checkout
   const checkoutReference = crypto.randomUUID();
@@ -918,7 +933,7 @@ export async function purchaseDrinks(
   const response = await createCheckout({
     amount: totalAmount,
     currency: "EUR",
-    description: `${event.title} - Drinks`,
+    description,
     checkoutReference,
     returnUrl,
   });
@@ -929,6 +944,7 @@ export async function purchaseDrinks(
     .from("drink_orders")
     .insert({
       event_id: eventId,
+      party_id: partyId,
       user_id: user.id,
       sumup_checkout_id: response.id,
       total_amount: totalAmount,

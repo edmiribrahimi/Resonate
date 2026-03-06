@@ -182,6 +182,7 @@ export interface PendingPurchase {
 export interface DrinkItem {
   id: string;
   event_id: string;
+  party_id: string | null;
   name: string;
   price: number;
   sort_order: number;
@@ -193,6 +194,7 @@ export interface DrinkItem {
 export interface DrinkOrder {
   id: string;
   event_id: string;
+  party_id: string | null;
   user_id: string | null;
   sumup_checkout_id: string;
   total_amount: number;
@@ -213,6 +215,7 @@ export interface DrinkToken {
   id: string;
   order_id: string;
   event_id: string;
+  party_id: string | null;
   user_id: string | null;
   drink_item_id: string | null;
   drink_name: string;
