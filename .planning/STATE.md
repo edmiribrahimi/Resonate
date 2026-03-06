@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
 status: in_progress
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-03-06T17:15:35Z"
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-06T17:23:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # State: Resonate
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-**Phase:** 15 of 18 -- Refund Management (COMPLETE)
-**Plan:** 1/1 (all plans complete)
-**Status:** Phase 15 complete. Refund management with RefundDialog, refund button on eligible transactions, full/partial toggle, fee warning, optimistic UI update.
+**Phase:** 18 of 18 -- Card Tokenization (IN PROGRESS)
+**Plan:** 1/3
+**Status:** Plan 01 complete. Database migration (sumup_customer_id on profiles), 5 SumUp SDK wrapper functions for customer CRUD, tokenization checkout, saved card payment, and card management.
 
 ```
-[Phase Progress]  ####################  1/1 plans in phase 15
+[Phase Progress]  #######_____________  1/3 plans in phase 18
 
-[Overall]         #############_______  6/9 plans complete (across all phases)
+[Overall]         ###############_____  7/9 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -66,23 +66,27 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 17. **[Phase 15]** StatusBadge enhanced with refundedAmount prop for PARTIALLY REFUNDED display
 18. **[Phase 15]** handleRefundComplete invalidates detailCache instead of optimistic detail update for fresh SumUp data
 19. **[Phase 15]** Single commit for both tasks since RefundDialog import makes them interdependent
+20. **[Phase 18]** UUID Supabase used as SumUp customer_id for direct 1:1 mapping -- no separate ID table needed
+21. **[Phase 18]** sumup_customer_id nullable TEXT column with partial index (lazy creation pattern)
+22. **[Phase 18]** getOrCreateCustomer handles 404 (not found) and 409 (conflict/race) for idempotent customer creation
+23. **[Phase 18]** processWithSavedCard returns unified shape for both CheckoutSuccess and CheckoutAccepted (3DS redirect)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 6 |
+| Plans completed | 7 |
 | Plans failed | 0 |
-| Requirements done | 22/26 |
+| Requirements done | 23/26 |
 | Phases complete | 5/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T17:15:35Z
-**Stopped at:** Completed 15-01-PLAN.md
-**What happened:** Executed Phase 15 Plan 01 -- Refund Management. Created RefundDialog component with full/partial toggle, amount validation, fee warning, and confirmation flow. Updated TransactionList with refund button on eligible transactions, PARTIALLY REFUNDED badge in StatusBadge, handleRefundComplete for optimistic updates, and RefundDialog rendering. refundTransactionAction was already present in actions.ts from Phase 16 commit. Both tasks completed, TypeScript and build pass. Requirements REF-01 through REF-05 satisfied. Phase 15 now complete (1/1 plans).
-**Next step:** Execute Phase 18 (Card Tokenization) -- the only remaining phase in v1.2 milestone (3 plans).
+**Last session:** 2026-03-06T17:23:00Z
+**Stopped at:** Completed 18-01-PLAN.md
+**What happened:** Executed Phase 18 Plan 01 -- Card Tokenization Foundation. Created database migration adding sumup_customer_id TEXT column to profiles with partial index. Updated Profile TypeScript type. Added 5 new SumUp SDK wrapper functions: getOrCreateCustomer (idempotent with 404/409 handling), createTokenizationCheckout (SETUP_RECURRING_PAYMENT purpose), processWithSavedCard (server-side token payment with 3DS support), listSavedCards, deactivateCard. TypeScript and build pass clean. Requirement TOK-01 satisfied.
+**Next step:** Execute Phase 18 Plan 02 (Save Card UI) -- checkout flow with tokenization support and card management.
 
 ---
 *State initialized: 2026-03-06*
-*Last updated: 2026-03-06T17:15:35Z*
+*Last updated: 2026-03-06T17:23:00Z*

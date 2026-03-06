@@ -87,7 +87,7 @@ Plans:
 **Depends on:** Phase 13, Phase 17
 **Plans:** 3 plans
 Plans:
-- [ ] 18-01-PLAN.md -- Supabase migration + SumUp customer helpers + customer creation/linking
+- [x] 18-01-PLAN.md -- Supabase migration + SumUp customer helpers + customer creation/linking
 - [ ] 18-02-PLAN.md -- Tokenization checkout flow (checkbox, purpose param, webhook extension)
 - [ ] 18-03-PLAN.md -- Pay with saved card + profile settings for card management
 **Success criteria:**
