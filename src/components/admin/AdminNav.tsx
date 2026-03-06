@@ -9,8 +9,8 @@ interface AdminNavProps {
 }
 
 const tabs = [
-  { href: "/admin/members", label: "Members" },
   { href: "/admin/events", label: "Events" },
+  { href: "/admin/members", label: "Members" },
   { href: "/admin/artists", label: "Artists" },
   { href: "/admin/venues", label: "Venues" },
   { href: "/admin/newsletter", label: "Newsletter" },

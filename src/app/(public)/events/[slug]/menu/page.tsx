@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
-import { listSavedCards } from "@/lib/sumup";
+import MobileNav from "@/components/layout/MobileNav";
 import type { UserRole, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 import GuestLoginBanner from "./GuestLoginBanner";
@@ -45,6 +45,7 @@ export default async function MenuPage({
   } = await supabase.auth.getUser();
   const headersList = await headers();
   const role = headersList.get("x-user-role") as UserRole | null;
+  const status = headersList.get("x-user-status") as import("@/types/database").UserStatus | null;
 
   // Fetch event by slug (must be published)
   const { data: event } = await serviceClient
@@ -96,23 +97,6 @@ export default async function MenuPage({
       }
     })
   );
-
-  // Fetch saved cards for authenticated members
-  let savedCards: { token: string; last4: string; cardType: string }[] = [];
-  if (user) {
-    const { data: memberProfile } = await supabase
-      .from("profiles")
-      .select("sumup_customer_id")
-      .eq("id", user.id)
-      .single();
-    if (memberProfile?.sumup_customer_id) {
-      try {
-        savedCards = await listSavedCards(memberProfile.sumup_customer_id);
-      } catch {
-        // SumUp error -- ignore, show empty
-      }
-    }
-  }
 
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
@@ -171,7 +155,6 @@ export default async function MenuPage({
             drinksByParty={drinksByParty}
             canManage={canManage}
             isAuthenticated={!!user}
-            savedCards={savedCards.length > 0 ? savedCards : undefined}
           />
         ) : (
           <div className="mt-6 rounded-xl border border-card-border bg-card p-6 text-center">
@@ -191,6 +174,8 @@ export default async function MenuPage({
           </div>
         )}
       </div>
+
+      <MobileNav role={role} status={status} />
     </div>
   );
 }

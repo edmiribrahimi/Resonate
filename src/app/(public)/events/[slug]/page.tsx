@@ -14,7 +14,6 @@ import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
 import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
-import { listSavedCards } from "@/lib/sumup";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
 
@@ -330,13 +329,12 @@ export default async function EventDetailPage({
       uploaded_by: m.uploaded_by,
     }));
 
-  // Fetch available drink items for this event
-  const { data: drinkItems } = await supabase
+  // Check if any drinks are available across parties
+  const { count: drinkItemCount } = await supabase
     .from("drink_items")
-    .select("*")
+    .select("*", { count: "exact", head: true })
     .eq("event_id", event.id)
-    .eq("is_available", true)
-    .order("sort_order");
+    .eq("is_available", true);
 
   // Fetch user's drink tokens for this event
   let userDrinkTokens: import("@/types/database").DrinkToken[] | null = null;
@@ -368,23 +366,6 @@ export default async function EventDetailPage({
     if (artists) {
       for (const a of artists) {
         artistSlugs.set(a.name, a.slug);
-      }
-    }
-  }
-
-  // Fetch saved cards for authenticated members
-  let savedCards: { token: string; last4: string; cardType: string }[] = [];
-  if (isAuthenticated && user) {
-    const { data: memberProfile } = await supabase
-      .from("profiles")
-      .select("sumup_customer_id")
-      .eq("id", user.id)
-      .single();
-    if (memberProfile?.sumup_customer_id) {
-      try {
-        savedCards = await listSavedCards(memberProfile.sumup_customer_id);
-      } catch {
-        // SumUp error -- ignore, show empty
       }
     }
   }
@@ -520,7 +501,6 @@ export default async function EventDetailPage({
                 label="Event Pass"
                 isAuthenticated={isAuthenticated}
                 eventSlug={slug}
-                savedCards={savedCards.length > 0 ? savedCards : undefined}
               />
             ) : null}
           </div>
@@ -668,7 +648,7 @@ export default async function EventDetailPage({
                     tiers={party.tiers}
                     isAuthenticated={isAuthenticated}
                     eventSlug={slug}
-                    savedCards={savedCards.length > 0 ? savedCards : undefined}
+
                   />
                 )}
 
@@ -701,14 +681,14 @@ export default async function EventDetailPage({
 
 
         {/* Drink Menu — link for master/organizer only */}
-        {canSeeDrafts && drinkItems && drinkItems.length > 0 && (
+        {canSeeDrafts && (drinkItemCount ?? 0) > 0 && (
           <div className="mb-6">
             <a
               href={`/events/${event.slug}/menu`}
               className="block w-full rounded-xl border border-card-border bg-card p-4 text-center transition-colors hover:border-accent/50"
             >
               <p className="text-sm font-medium text-foreground">Drink Menu</p>
-              <p className="mt-1 text-xs text-muted">{drinkItems.length} items available</p>
+              <p className="mt-1 text-xs text-muted">View available drinks</p>
             </a>
           </div>
         )}

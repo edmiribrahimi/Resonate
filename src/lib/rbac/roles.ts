@@ -65,7 +65,7 @@ const NAV_ITEMS: NavItem[] = [
     requireAuth: true,
   },
   {
-    href: "/admin/members",
+    href: "/admin/events",
     label: "Admin",
     icon: "shield",
     roles: ["master"],
@@ -73,7 +73,7 @@ const NAV_ITEMS: NavItem[] = [
     requireAuth: true,
   },
   {
-    href: "/organizer/members",
+    href: "/organizer/events",
     label: "Organizer",
     icon: "users",
     roles: ["organizer"],
