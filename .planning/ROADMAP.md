@@ -28,6 +28,10 @@ Plans:
 **Goal:** New admin section with transaction list, cursor-based pagination, filters, and transaction detail view.
 **Requirements:** FIN-01, FIN-02, FIN-03, FIN-04, FIN-05, FIN-06
 **Depends on:** Phase 13
+**Plans:** 2 plans
+Plans:
+- [ ] 14-01-PLAN.md -- Finance tab in AdminNav, finance page shell, server actions, transaction table
+- [ ] 14-02-PLAN.md -- Cursor-based pagination, date/status filters, click-to-expand detail view
 **Success criteria:**
 - "Finance" tab in AdminNav, `/admin/finance` route
 - Transaction list with amount, date, status, description columns
