@@ -8,6 +8,7 @@ interface RefundDialogProps {
   transactionAmount: number;
   refundedAmount: number;
   feeAmount: number;
+  payoutDate?: string | null;
   currency: string;
   onClose: () => void;
   onRefundComplete: (amount: number, isFullRefund: boolean) => void;
@@ -18,6 +19,7 @@ export default function RefundDialog({
   transactionAmount,
   refundedAmount,
   feeAmount,
+  payoutDate,
   currency,
   onClose,
   onRefundComplete,
@@ -133,12 +135,12 @@ export default function RefundDialog({
           </div>
         )}
 
-        {/* Fee warning (REF-05) */}
-        {feeAmount > 0 && (
+        {/* Fee warning -- only shown when payout already processed */}
+        {payoutDate && feeAmount > 0 && (
           <div className="mb-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
             <p className="text-xs text-yellow-400">
               SumUp fee of {currency} {feeAmount.toFixed(2)} is non-refundable
-              and will not be returned.
+              (payout already processed).
             </p>
           </div>
         )}

@@ -5,6 +5,8 @@ import RefundDialog from "@/components/admin/RefundDialog";
 import {
   listTransactions,
   getTransactionDetail,
+  searchTicketsByMember,
+  type TicketSearchResult,
 } from "@/app/(admin)/admin/finance/actions";
 
 type TransactionStatus =
@@ -227,6 +229,12 @@ export default function TransactionList() {
   // Refund dialog state
   const [refundTarget, setRefundTarget] = useState<TransactionItem | null>(null);
 
+  // Member search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<TicketSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
   const handleRefundComplete = useCallback(
     (txnCode: string, refundedAmount: number, isFullRefund: boolean) => {
       // Optimistic update: adjust transactions list
@@ -241,6 +249,14 @@ export default function TransactionList() {
             : txn
         )
       );
+      // Also update search results if in search mode
+      setSearchResults((prev) =>
+        prev.map((r) =>
+          r.transactionCode === txnCode
+            ? { ...r, status: isFullRefund ? "REFUNDED" : r.status }
+            : r
+        )
+      );
       // Invalidate detail cache so next expand re-fetches fresh data
       setDetailCache((prev) => {
         const next = { ...prev };
@@ -252,6 +268,30 @@ export default function TransactionList() {
     },
     []
   );
+
+  const handleSearch = useCallback(async () => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearchMode(false);
+      return;
+    }
+    setSearchLoading(true);
+    setIsSearchMode(true);
+    try {
+      const results = await searchTicketsByMember(searchQuery.trim());
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [searchQuery]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setIsSearchMode(false);
+  }, []);
 
   const fetchTransactions = useCallback(
     async (
@@ -397,6 +437,100 @@ export default function TransactionList() {
 
   return (
     <>
+      {/* Member search for ticket refunds */}
+      <div className="mb-4">
+        <label className="mb-1 block text-xs font-medium text-muted">
+          Search member for ticket refund
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Member name..."
+            className="flex-1 rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/50 focus:outline-none"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={searchLoading || searchQuery.trim().length < 2}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-95 disabled:opacity-50"
+          >
+            {searchLoading ? "..." : "Search"}
+          </button>
+          {isSearchMode && (
+            <button
+              onClick={clearSearch}
+              className="rounded-lg border border-card-border px-3 py-2 text-sm text-muted hover:text-foreground transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isSearchMode ? (
+        <div className="mb-6">
+          {searchLoading ? (
+            <LoadingSkeleton />
+          ) : searchResults.length === 0 ? (
+            <div className="rounded-xl border border-card-border bg-card p-6 text-center text-muted">
+              No ticket purchases found for &quot;{searchQuery}&quot;
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-muted">{searchResults.length} ticket purchase(s) found</p>
+              {searchResults.map((result, i) => (
+                <div
+                  key={`${result.checkoutId}-${i}`}
+                  className="rounded-xl border border-card-border bg-card p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{result.memberName}</p>
+                      <p className="text-xs text-muted">{result.memberEmail}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        {result.eventTitle} &middot; {result.tierLabel}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {new Date(result.purchaseDate).toLocaleDateString("en-US", {
+                          year: "numeric", month: "short", day: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{result.currency} {result.amount.toFixed(2)}</p>
+                      <StatusBadge status={result.status === "COMPLETED" ? "SUCCESSFUL" : result.status} />
+                    </div>
+                  </div>
+                  {result.transactionCode && result.status !== "REFUNDED" && (
+                    <div className="mt-3 border-t border-card-border/30 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRefundTarget({
+                            transaction_code: result.transactionCode!,
+                            amount: result.amount,
+                            refunded_amount: 0,
+                            currency: result.currency,
+                          });
+                        }}
+                        className="rounded-full border border-red-500/30 px-4 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                      >
+                        Refund Ticket
+                      </button>
+                    </div>
+                  )}
+                  {!result.transactionCode && (
+                    <p className="mt-2 text-xs text-muted italic">Transaction code unavailable -- refund via SumUp dashboard</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Filters */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex flex-col gap-1">
@@ -569,13 +703,16 @@ export default function TransactionList() {
           )}
         </>
       )}
+      </>
+      )}
 
       {refundTarget && refundTarget.transaction_code && (
         <RefundDialog
           transactionCode={refundTarget.transaction_code}
           transactionAmount={refundTarget.amount ?? 0}
           refundedAmount={refundTarget.refunded_amount ?? 0}
-          feeAmount={detailCache[refundTarget.transaction_code]?.fee_amount ?? 0}
+          feeAmount={isSearchMode ? 0 : (detailCache[refundTarget.transaction_code]?.fee_amount ?? 0)}
+          payoutDate={isSearchMode ? null : (detailCache[refundTarget.transaction_code]?.payout_date ?? null)}
           currency={refundTarget.currency ?? "EUR"}
           onClose={() => setRefundTarget(null)}
           onRefundComplete={(amount, isFullRefund) =>
