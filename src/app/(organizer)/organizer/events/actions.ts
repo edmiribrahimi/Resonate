@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
-import { createCheckout, getOrCreateCustomer, createTokenizationCheckout } from "@/lib/sumup";
+import { createCheckout, getOrCreateCustomer, createTokenizationCheckout, processWithSavedCard } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 
@@ -1118,4 +1118,396 @@ export async function redeemDrinkToken(
   }
 
   return { success: true };
+}
+
+// =============================================================
+// Saved Card Payment (Phase 18 - Tokenization)
+// =============================================================
+
+/**
+ * Purchase a ticket using a saved card token.
+ * Same validation as purchaseTicket, but processes payment server-side
+ * via processWithSavedCard instead of opening the Card Widget.
+ */
+export async function purchaseTicketWithSavedCard(
+  partyId: string | null,
+  tierId: string,
+  cardToken: string
+): Promise<{
+  success: boolean;
+  checkoutId: string;
+  status: "paid" | "redirect" | "pending";
+  redirectUrl?: string;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  // Verify user has a profile
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("status, sumup_customer_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    throw new Error("Profile not found");
+  }
+
+  if (profile.status === "rejected") {
+    throw new Error("Your account has been rejected and cannot purchase tickets");
+  }
+
+  if (!profile.sumup_customer_id) {
+    throw new Error("No saved card on file");
+  }
+
+  // Fetch tier details
+  const { data: tier, error: tierError } = await supabase
+    .from("ticket_tiers")
+    .select("id, name, price, event_id, party_id, quantity, starts_at, expires_at")
+    .eq("id", tierId)
+    .single();
+
+  if (tierError || !tier) {
+    throw new Error("Ticket tier not found");
+  }
+
+  const eventId = tier.event_id;
+
+  // Chain-based validation
+  const tierQuery = supabase
+    .from("ticket_tiers")
+    .select("id, price, quantity, starts_at, expires_at")
+    .eq("event_id", eventId)
+    .order("price", { ascending: true });
+
+  if (tier.party_id) {
+    tierQuery.eq("party_id", tier.party_id);
+  } else {
+    tierQuery.is("party_id", null);
+  }
+
+  const { data: allTiers } = await tierQuery;
+
+  if (allTiers && allTiers.length > 0) {
+    const now = new Date();
+    const tierIds = allTiers.map((t) => t.id);
+    const { data: soldCounts } = await supabase
+      .from("tickets")
+      .select("tier_id")
+      .in("tier_id", tierIds);
+
+    const soldMap = new Map<string, number>();
+    for (const s of soldCounts ?? []) {
+      soldMap.set(s.tier_id, (soldMap.get(s.tier_id) ?? 0) + 1);
+    }
+
+    type TierStatus = "coming_soon" | "available" | "sold_out" | "expired";
+    const statusMap = new Map<string, TierStatus>();
+
+    for (let i = 0; i < allTiers.length; i++) {
+      const t = allTiers[i];
+      const sold = soldMap.get(t.id) ?? 0;
+      const available = t.quantity !== null ? t.quantity - sold : null;
+
+      if (t.starts_at && now < new Date(t.starts_at)) {
+        statusMap.set(t.id, "coming_soon");
+        continue;
+      }
+      if (available !== null && available <= 0) {
+        statusMap.set(t.id, "sold_out");
+        continue;
+      }
+      if (t.expires_at && now >= new Date(t.expires_at)) {
+        statusMap.set(t.id, "expired");
+        continue;
+      }
+      const prev = i > 0 ? allTiers[i - 1] : null;
+      if (prev) {
+        const prevStatus = statusMap.get(prev.id)!;
+        if (prevStatus !== "sold_out" && prevStatus !== "expired") {
+          statusMap.set(t.id, "coming_soon");
+          continue;
+        }
+      }
+      statusMap.set(t.id, "available");
+    }
+
+    const requestedStatus = statusMap.get(tierId);
+    if (requestedStatus !== "available") {
+      throw new Error(`This ticket tier is not available (${requestedStatus ?? "unknown"})`);
+    }
+  }
+
+  if (partyId) {
+    const { data: party, error: partyError } = await supabase
+      .from("event_parties")
+      .select("id, event_id")
+      .eq("id", partyId)
+      .single();
+
+    if (partyError || !party) {
+      throw new Error("Sub-event not found");
+    }
+    if (party.event_id !== eventId) {
+      throw new Error("Tier does not belong to this sub-event's event");
+    }
+
+    const { data: existingTicket } = await supabase
+      .from("tickets")
+      .select("id")
+      .eq("party_id", partyId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingTicket) {
+      throw new Error("You already have a ticket for this sub-event");
+    }
+  } else {
+    const { data: existingTicket } = await supabase
+      .from("tickets")
+      .select("id")
+      .eq("event_id", eventId)
+      .is("party_id", null)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingTicket) {
+      throw new Error("You already have an Event Pass for this event");
+    }
+  }
+
+  // Fetch event details
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("title, slug")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error("Event not found");
+  }
+
+  const checkoutReference = crypto.randomUUID();
+  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
+  const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
+  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("slug", event.slug);
+  redirectUrl.searchParams.set("ctx", "ticket");
+
+  // Create checkout
+  const response = await createCheckout({
+    amount: tier.price,
+    currency: "EUR",
+    description: `${event.title} - ${tier.name}`,
+    checkoutReference,
+    returnUrl,
+    redirectUrl: redirectUrl.toString(),
+  });
+
+  // Create pending purchase record
+  const serviceClient = getServiceClient();
+  const { error: insertError } = await serviceClient
+    .from("pending_purchases")
+    .insert({
+      event_id: eventId,
+      party_id: partyId,
+      tier_id: tierId,
+      user_id: user.id,
+      sumup_checkout_id: response.id,
+      status: "pending",
+    });
+
+  if (insertError) {
+    console.error("Failed to create pending purchase:", insertError);
+    throw new Error("Failed to initiate purchase");
+  }
+
+  // Process with saved card token
+  const result = await processWithSavedCard({
+    checkoutId: response.id,
+    token: cardToken,
+    customerId: profile.sumup_customer_id,
+  });
+
+  if (result.redirect_url) {
+    return { success: true, checkoutId: response.id, status: "redirect", redirectUrl: result.redirect_url };
+  }
+
+  if (result.status === "PAID") {
+    return { success: true, checkoutId: response.id, status: "paid" };
+  }
+
+  return { success: true, checkoutId: response.id, status: "pending" };
+}
+
+/**
+ * Purchase drinks using a saved card token.
+ * Same validation as purchaseDrinks, but processes payment server-side.
+ */
+export async function purchaseDrinksWithSavedCard(
+  eventId: string,
+  partyId: string,
+  items: { drinkItemId: string; quantity: number }[],
+  cardToken: string
+): Promise<{
+  success: boolean;
+  checkoutId: string;
+  status: "paid" | "redirect" | "pending";
+  redirectUrl?: string;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Not authenticated");
+  }
+
+  // Fetch profile with sumup_customer_id
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("sumup_customer_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    throw new Error("Profile not found");
+  }
+
+  if (!profile.sumup_customer_id) {
+    throw new Error("No saved card on file");
+  }
+
+  if (!items || items.length === 0) {
+    throw new Error("No items selected");
+  }
+
+  // Fetch drink items
+  const drinkItemIds = items.map((i) => i.drinkItemId);
+  const { data: drinkItems, error: fetchError } = await supabase
+    .from("drink_items")
+    .select("*")
+    .in("id", drinkItemIds)
+    .eq("event_id", eventId);
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch drink items: ${fetchError.message}`);
+  }
+
+  if (!drinkItems || drinkItems.length !== drinkItemIds.length) {
+    throw new Error("One or more drink items not found or do not belong to this event");
+  }
+
+  // Validate availability
+  const drinkMap = new Map(drinkItems.map((d) => [d.id, d]));
+  for (const item of items) {
+    const drink = drinkMap.get(item.drinkItemId);
+    if (!drink) {
+      throw new Error(`Drink item not found: ${item.drinkItemId}`);
+    }
+    if (!drink.is_available) {
+      throw new Error(`Drink "${drink.name}" is not currently available`);
+    }
+    if (item.quantity < 1) {
+      throw new Error("Quantity must be at least 1");
+    }
+  }
+
+  // Calculate total
+  let totalAmount = 0;
+  const itemsSnapshot = items.map((item) => {
+    const drink = drinkMap.get(item.drinkItemId)!;
+    const lineTotal = drink.price * item.quantity;
+    totalAmount += lineTotal;
+    return {
+      drink_item_id: drink.id,
+      drink_name: drink.name,
+      price: drink.price,
+      quantity: item.quantity,
+    };
+  });
+
+  // Fetch party name for description
+  const { data: party } = await supabase
+    .from("event_parties")
+    .select("title")
+    .eq("id", partyId)
+    .single();
+
+  const itemsList = itemsSnapshot
+    .map((i) => `${i.quantity}x ${i.drink_name}`)
+    .join(", ");
+  const description = party ? `${party.title} - ${itemsList}` : itemsList;
+
+  const checkoutReference = crypto.randomUUID();
+  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
+
+  // Fetch event slug for redirect URL
+  const { data: eventForSlug } = await supabase
+    .from("events")
+    .select("slug")
+    .eq("id", eventId)
+    .single();
+
+  const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
+  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("slug", eventForSlug?.slug ?? "");
+  redirectUrl.searchParams.set("ctx", "drink");
+  redirectUrl.searchParams.set("party", partyId);
+
+  // Create checkout
+  const response = await createCheckout({
+    amount: totalAmount,
+    currency: "EUR",
+    description,
+    checkoutReference,
+    returnUrl,
+    redirectUrl: redirectUrl.toString(),
+  });
+
+  // Create drink order
+  const serviceClient = getServiceClient();
+  const { error: insertError } = await serviceClient
+    .from("drink_orders")
+    .insert({
+      event_id: eventId,
+      party_id: partyId,
+      user_id: user.id,
+      sumup_checkout_id: response.id,
+      total_amount: totalAmount,
+      status: "pending",
+      items: itemsSnapshot,
+    });
+
+  if (insertError) {
+    console.error("Failed to create drink order:", insertError);
+    throw new Error("Failed to initiate drink purchase");
+  }
+
+  // Process with saved card token
+  const result = await processWithSavedCard({
+    checkoutId: response.id,
+    token: cardToken,
+    customerId: profile.sumup_customer_id,
+  });
+
+  if (result.redirect_url) {
+    return { success: true, checkoutId: response.id, status: "redirect", redirectUrl: result.redirect_url };
+  }
+
+  if (result.status === "PAID") {
+    return { success: true, checkoutId: response.id, status: "paid" };
+  }
+
+  return { success: true, checkoutId: response.id, status: "pending" };
 }
