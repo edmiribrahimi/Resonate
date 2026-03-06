@@ -195,13 +195,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true });
       }
 
-      const transactionCode =
-        checkout.transactions?.[0]?.transaction_code || "";
-
-      await supabase.rpc("fulfill_drink_order", {
+      const { error: drinkRpcError } = await supabase.rpc("fulfill_drink_order", {
         p_order_id: drinkOrder.id,
-        p_transaction_code: transactionCode,
       });
+
+      if (drinkRpcError) {
+        await supabase
+          .from("drink_orders")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", drinkOrder.id);
+
+        console.error("Webhook: fulfill_drink_order RPC failed", drinkRpcError.message);
+        return NextResponse.json({ received: true });
+      }
 
       // Sign drink tokens with HMAC (same pattern as ticket QR codes)
       const { data: newTokens } = await supabase
