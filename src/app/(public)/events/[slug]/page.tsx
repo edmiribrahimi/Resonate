@@ -699,18 +699,6 @@ export default async function EventDetailPage({
           );
         })}
 
-        {/* Drinks — link to dedicated menu page */}
-        {isAuthenticated && drinkItems && drinkItems.length > 0 && (
-          <div className="mb-6">
-            <a
-              href={`/events/${event.slug}/menu`}
-              className="block w-full rounded-xl border border-card-border bg-card p-4 text-center transition-colors hover:border-accent/50"
-            >
-              <p className="text-sm font-medium text-foreground">Order Drinks</p>
-              <p className="mt-1 text-xs text-muted">{drinkItems.length} items available</p>
-            </a>
-          </div>
-        )}
 
         {/* My Drinks — user's purchased drink tokens */}
         {userDrinkTokens && userDrinkTokens.length > 0 && (
