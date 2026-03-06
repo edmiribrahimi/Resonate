@@ -45,7 +45,7 @@
 ### Card Tokenization
 
 - [x] **TOK-01**: Resonate member profile linked to SumUp customer (created on first purchase or opt-in)
-- [ ] **TOK-02**: Member can save their card during checkout via `purpose: "SETUP_RECURRING_PAYMENT"` flow
+- [x] **TOK-02**: Member can save their card during checkout via `purpose: "SETUP_RECURRING_PAYMENT"` flow
 - [ ] **TOK-03**: Returning member sees "Pay with saved card" option that charges their stored payment instrument
 - [ ] **TOK-04**: Member can view and delete saved cards from their profile/settings
 
@@ -87,7 +87,7 @@
 | APM-04 | Phase 17 | Complete |
 | APM-05 | Phase 17 | Complete |
 | TOK-01 | Phase 18 | Complete |
-| TOK-02 | Phase 18 | Pending |
+| TOK-02 | Phase 18 | Complete |
 | TOK-03 | Phase 18 | Pending |
 | TOK-04 | Phase 18 | Pending |
 

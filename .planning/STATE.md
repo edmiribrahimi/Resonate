@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
 status: in_progress
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-03-06T17:23:00Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-03-06T17:28:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # State: Resonate
@@ -25,13 +25,13 @@ progress:
 ## Current Position
 
 **Phase:** 18 of 18 -- Card Tokenization (IN PROGRESS)
-**Plan:** 1/3
-**Status:** Plan 01 complete. Database migration (sumup_customer_id on profiles), 5 SumUp SDK wrapper functions for customer CRUD, tokenization checkout, saved card payment, and card management.
+**Plan:** 2/3
+**Status:** Plan 02 complete. Save-card checkbox in ticket/drink checkout flows, conditional tokenization checkout with SumUp customer creation, graceful webhook handling.
 
 ```
-[Phase Progress]  #######_____________  1/3 plans in phase 18
+[Phase Progress]  ##############______  2/3 plans in phase 18
 
-[Overall]         ###############_____  7/9 plans complete (across all phases)
+[Overall]         ################____  8/9 plans complete (across all phases)
 ```
 
 ## Phase Dependencies
@@ -70,22 +70,25 @@ Phases 14, 16, 17 can execute in parallel after Phase 13.
 21. **[Phase 18]** sumup_customer_id nullable TEXT column with partial index (lazy creation pattern)
 22. **[Phase 18]** getOrCreateCustomer handles 404 (not found) and 409 (conflict/race) for idempotent customer creation
 23. **[Phase 18]** processWithSavedCard returns unified shape for both CheckoutSuccess and CheckoutAccepted (3DS redirect)
+24. **[Phase 18]** Tokenization combined with real purchase (single checkout with purpose + amount) rather than separate flows
+25. **[Phase 18]** Save-card checkbox in TierSelection/DrinkMenu (before checkout creation), not in modal -- decision made at checkout creation time
+26. **[Phase 18]** SumUpCheckoutModal left unchanged -- Card Widget auto-handles tokenization consent UI when purpose is set
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Plans completed | 7 |
+| Plans completed | 8 |
 | Plans failed | 0 |
-| Requirements done | 23/26 |
+| Requirements done | 25/26 |
 | Phases complete | 5/6 |
 
 ## Session Continuity
 
-**Last session:** 2026-03-06T17:23:00Z
-**Stopped at:** Completed 18-01-PLAN.md
-**What happened:** Executed Phase 18 Plan 01 -- Card Tokenization Foundation. Created database migration adding sumup_customer_id TEXT column to profiles with partial index. Updated Profile TypeScript type. Added 5 new SumUp SDK wrapper functions: getOrCreateCustomer (idempotent with 404/409 handling), createTokenizationCheckout (SETUP_RECURRING_PAYMENT purpose), processWithSavedCard (server-side token payment with 3DS support), listSavedCards, deactivateCard. TypeScript and build pass clean. Requirement TOK-01 satisfied.
-**Next step:** Execute Phase 18 Plan 02 (Save Card UI) -- checkout flow with tokenization support and card management.
+**Last session:** 2026-03-06T17:28:00Z
+**Stopped at:** Completed 18-02-PLAN.md
+**What happened:** Executed Phase 18 Plan 02 -- Tokenization Checkout Flow. Added saveCard parameter to purchaseTicket and purchaseDrinks server actions. When saveCard=true, creates SumUp customer (lazy) and tokenization checkout with purpose SETUP_RECURRING_PAYMENT. Added save-card checkbox to TierSelection (authenticated only) and DrinkMenu. Extended webhook to handle tokenization checkouts without error logs. GuestDrinkMenu and SumUpCheckoutModal unchanged. Requirements TOK-01 and TOK-02 satisfied.
+**Next step:** Execute Phase 18 Plan 03 (Pay with Saved Card + Card Management) -- saved card payment option and profile settings for card CRUD.
 
 ---
 *State initialized: 2026-03-06*

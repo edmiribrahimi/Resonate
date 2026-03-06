@@ -88,7 +88,7 @@ Plans:
 **Plans:** 3 plans
 Plans:
 - [x] 18-01-PLAN.md -- Supabase migration + SumUp customer helpers + customer creation/linking
-- [ ] 18-02-PLAN.md -- Tokenization checkout flow (checkbox, purpose param, webhook extension)
+- [x] 18-02-PLAN.md -- Tokenization checkout flow (checkbox, purpose param, webhook extension)
 - [ ] 18-03-PLAN.md -- Pay with saved card + profile settings for card management
 **Success criteria:**
 - SumUp customer created and linked to Resonate profile (stored `sumup_customer_id`)
