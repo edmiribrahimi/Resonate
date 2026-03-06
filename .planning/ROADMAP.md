@@ -44,6 +44,9 @@ Plans:
 **Goal:** Admin can issue full or partial refunds from the transaction detail view with confirmation flow.
 **Requirements:** REF-01, REF-02, REF-03, REF-04, REF-05
 **Depends on:** Phase 14
+**Plans:** 1 plan
+Plans:
+- [ ] 15-01-PLAN.md -- Server action, refund button, RefundDialog with full/partial toggle, fee warning, optimistic UI update
 **Success criteria:**
 - "Refund" button on successful, non-refunded transactions
 - Confirmation dialog with full/partial toggle and custom amount input
