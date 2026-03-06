@@ -8,7 +8,7 @@
 
 **Created:** 2026-03-05
 **Depth:** Focused
-**Phases:** 4
+**Phases:** 5
 **Total v1.1 Requirements:** 18
 
 ### Phases
@@ -17,6 +17,7 @@
 - [x] **Phase 9: Drink Menu & Purchase** - Per-event drink menu management, drink purchase via embedded checkout, drink order creation
 - [x] **Phase 10: Drink Redemption** - Drink ticket display, redemption flow with anti-accidental-tap protection, served confirmation
 - [x] **Phase 11: Public Drink Menu** - QR-accessible public menu page per event, guest drink purchase without login
+- [ ] **Phase 12: Drink Order Webhook Fixes** - Error handling for fulfill_drink_order RPC in webhook, remove unused p_transaction_code parameter
 
 ### Phase 8: SumUp Embedded Checkout
 **Goal**: All payments happen inside the app without redirect
@@ -75,6 +76,17 @@ Plans:
   3. Guest can select drinks and pay via embedded SumUp checkout (no login required)
   4. After payment, drink token is shown directly on the page (stored in localStorage for retrieval)
 
+### Phase 12: Drink Order Webhook Fixes
+**Goal**: Fix minor tech debt from milestone audit -- proper error handling and cleanup
+**Depends on**: Phase 9 (webhook), Phase 10 (drink tokens)
+**Requirements**: None (tech debt fix, no new user-facing requirements)
+**Plans:** 1 plan
+Plans:
+- [ ] 12-01-PLAN.md -- Migration (remove unused RPC param) + webhook error handling for drink orders
+**Success Criteria**:
+  1. Webhook handles `fulfill_drink_order` RPC errors by updating `drink_orders.status` to `"failed"` (matching ticket purchase error handling pattern)
+  2. Unused `p_transaction_code` parameter removed from `fulfill_drink_order` RPC signature
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -83,6 +95,7 @@ Plans:
 | 9. Drink Menu & Purchase | 2/2 | Complete | 2026-03-06 |
 | 10. Drink Redemption | 2/2 | Complete    | 2026-03-06 |
 | 11. Public Drink Menu | 2/2 | Complete | 2026-03-06 |
+| 12. Drink Order Webhook Fixes | 0/1 | Planned | -- |
 
 ## Coverage
 
@@ -109,6 +122,8 @@ Phase 10 (Drink Redemption)
   |
   v
 Phase 11 (Public Drink Menu)
+
+Phase 9, 10 ──> Phase 12 (Webhook Fixes)
 ```
 
 ---
