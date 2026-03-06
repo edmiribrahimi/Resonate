@@ -228,8 +228,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    console.error(
-      "Webhook: no pending purchase or drink order found for checkout",
+    // Tokenization checkouts (purpose: "SETUP_RECURRING_PAYMENT") may not have
+    // a matching pending_purchase or drink_order. The card is saved by SumUp on
+    // the customer automatically -- nothing to do server-side.
+    console.log(
+      "Webhook: checkout completed (possibly tokenization), no action needed",
       checkout.id
     );
     return NextResponse.json({ received: true });

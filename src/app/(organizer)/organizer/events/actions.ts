@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
-import { createCheckout } from "@/lib/sumup";
+import { createCheckout, getOrCreateCustomer, createTokenizationCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 
@@ -525,7 +525,7 @@ export async function unpublishEvent(eventId: string) {
  * Only approved members can purchase tickets (TICK-07).
  * partyId can be null for event-level (master) tickets.
  */
-export async function purchaseTicket(partyId: string | null, tierId: string) {
+export async function purchaseTicket(partyId: string | null, tierId: string, saveCard?: boolean) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -701,15 +701,53 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
   redirectUrl.searchParams.set("slug", event.slug);
   redirectUrl.searchParams.set("ctx", "ticket");
 
-  // Create SumUp checkout (card widget mode -- no hosted redirect)
-  const response = await createCheckout({
+  // Prepare tokenization if saveCard requested
+  let customerId: string | undefined;
+  if (saveCard) {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("full_name, sumup_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    if (fullProfile) {
+      const nameParts = (fullProfile.full_name || "").split(" ");
+      const firstName = nameParts[0] || "Member";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      await getOrCreateCustomer({
+        userId: user.id,
+        firstName,
+        lastName,
+        email: user.email!,
+      });
+
+      // Store sumup_customer_id if not already set
+      if (!fullProfile.sumup_customer_id) {
+        const serviceClient = getServiceClient();
+        await serviceClient
+          .from("profiles")
+          .update({ sumup_customer_id: user.id })
+          .eq("id", user.id);
+      }
+
+      customerId = user.id;
+    }
+  }
+
+  // Create SumUp checkout (tokenization checkout when saveCard, standard otherwise)
+  const checkoutParams = {
     amount: tier.price,
     currency: "EUR",
     description: `${event.title} - ${tier.name}`,
     checkoutReference,
     returnUrl,
     redirectUrl: redirectUrl.toString(),
-  });
+  };
+
+  const response = customerId
+    ? await createTokenizationCheckout({ ...checkoutParams, customerId })
+    : await createCheckout(checkoutParams);
 
   // Create pending purchase record using service-role client (bypass RLS)
   const serviceClient = getServiceClient();
@@ -860,7 +898,8 @@ export async function removeDrinkItem(itemId: string): Promise<void> {
 export async function purchaseDrinks(
   eventId: string,
   partyId: string,
-  items: { drinkItemId: string; quantity: number }[]
+  items: { drinkItemId: string; quantity: number }[],
+  saveCard?: boolean
 ): Promise<{ success: boolean; checkoutId: string }> {
   const supabase = await createClient();
   const {
@@ -951,14 +990,53 @@ export async function purchaseDrinks(
   redirectUrl.searchParams.set("ctx", "drink");
   redirectUrl.searchParams.set("party", partyId);
 
-  const response = await createCheckout({
+  // Prepare tokenization if saveCard requested
+  let customerId: string | undefined;
+  if (saveCard) {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("full_name, sumup_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    if (fullProfile) {
+      const nameParts = (fullProfile.full_name || "").split(" ");
+      const firstName = nameParts[0] || "Member";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      await getOrCreateCustomer({
+        userId: user.id,
+        firstName,
+        lastName,
+        email: user.email!,
+      });
+
+      // Store sumup_customer_id if not already set
+      if (!fullProfile.sumup_customer_id) {
+        const svcClient = getServiceClient();
+        await svcClient
+          .from("profiles")
+          .update({ sumup_customer_id: user.id })
+          .eq("id", user.id);
+      }
+
+      customerId = user.id;
+    }
+  }
+
+  // Create SumUp checkout (tokenization checkout when saveCard, standard otherwise)
+  const checkoutParams = {
     amount: totalAmount,
     currency: "EUR",
     description,
     checkoutReference,
     returnUrl,
     redirectUrl: redirectUrl.toString(),
-  });
+  };
+
+  const response = customerId
+    ? await createTokenizationCheckout({ ...checkoutParams, customerId })
+    : await createCheckout(checkoutParams);
 
   // Create drink order using service client (bypass RLS)
   const serviceClient = getServiceClient();
