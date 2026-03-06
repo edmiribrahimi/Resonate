@@ -23,6 +23,7 @@ interface PartyDrinkMenuProps {
   drinksByParty: PartyDrinks[];
   canManage: boolean;
   isAuthenticated: boolean;
+  savedCards?: { token: string; last4: string; cardType: string }[];
 }
 
 export default function PartyDrinkMenu({
@@ -32,6 +33,7 @@ export default function PartyDrinkMenu({
   drinksByParty,
   canManage,
   isAuthenticated,
+  savedCards,
 }: PartyDrinkMenuProps) {
   const [selectedPartyId, setSelectedPartyId] = useState(parties[0]?.id ?? "");
 
@@ -83,6 +85,7 @@ export default function PartyDrinkMenu({
             partyId={selectedPartyId}
             drinks={availableDrinks}
             isAuthenticated={isAuthenticated}
+            savedCards={savedCards}
           />
         </div>
       ) : (

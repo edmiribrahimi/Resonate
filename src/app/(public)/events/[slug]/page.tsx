@@ -14,6 +14,7 @@ import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
 import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
+import { listSavedCards } from "@/lib/sumup";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
 
@@ -371,6 +372,23 @@ export default async function EventDetailPage({
     }
   }
 
+  // Fetch saved cards for authenticated members
+  let savedCards: { token: string; last4: string; cardType: string }[] = [];
+  if (isAuthenticated && user) {
+    const { data: memberProfile } = await supabase
+      .from("profiles")
+      .select("sumup_customer_id")
+      .eq("id", user.id)
+      .single();
+    if (memberProfile?.sumup_customer_id) {
+      try {
+        savedCards = await listSavedCards(memberProfile.sumup_customer_id);
+      } catch {
+        // SumUp error -- ignore, show empty
+      }
+    }
+  }
+
   const canUpload = isAuthenticated && ((isApproved && hasAttended) || isOrganizer || isMasterRole);
   const partyDates = parties.map((p) => p.date);
   const dateRangeDisplay = formatDateRange(partyDates);
@@ -502,6 +520,7 @@ export default async function EventDetailPage({
                 label="Event Pass"
                 isAuthenticated={isAuthenticated}
                 eventSlug={slug}
+                savedCards={savedCards.length > 0 ? savedCards : undefined}
               />
             ) : null}
           </div>
@@ -649,6 +668,7 @@ export default async function EventDetailPage({
                     tiers={party.tiers}
                     isAuthenticated={isAuthenticated}
                     eventSlug={slug}
+                    savedCards={savedCards.length > 0 ? savedCards : undefined}
                   />
                 )}
 
