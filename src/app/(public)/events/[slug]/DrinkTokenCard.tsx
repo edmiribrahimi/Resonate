@@ -10,9 +10,11 @@ interface DrinkTokenCardProps {
     price: number;
     token: string;
     status: "purchased" | "redeemed";
+    created_at?: string;
     redeemed_at: string | null;
   };
   onRedeemed: (tokenId: string) => void;
+  showTimestamps?: boolean;
 }
 
 function formatPrice(price: number) {
@@ -22,7 +24,16 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-export default function DrinkTokenCard({ token, onRedeemed }: DrinkTokenCardProps) {
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: DrinkTokenCardProps) {
   const [showModal, setShowModal] = useState(false);
 
   if (token.status === "redeemed") {
@@ -41,7 +52,20 @@ export default function DrinkTokenCard({ token, onRedeemed }: DrinkTokenCardProp
             &#10003;
           </span>
         </div>
-        <p className="mt-2 text-xs text-muted">Already redeemed</p>
+        {showTimestamps && (
+          <div className="mt-2 space-y-0.5">
+            {token.created_at && (
+              <p className="text-xs text-muted">
+                Purchased: {formatTime(token.created_at)}
+              </p>
+            )}
+            {token.redeemed_at && (
+              <p className="text-xs text-muted">
+                Redeemed: {formatTime(token.redeemed_at)}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -55,6 +79,11 @@ export default function DrinkTokenCard({ token, onRedeemed }: DrinkTokenCardProp
         <p className="mt-0.5 text-sm text-accent font-semibold">
           {formatPrice(token.price)}
         </p>
+        {showTimestamps && token.created_at && (
+          <p className="mt-1 text-xs text-muted">
+            Purchased: {formatTime(token.created_at)}
+          </p>
+        )}
         <button
           type="button"
           onClick={() => setShowModal(true)}

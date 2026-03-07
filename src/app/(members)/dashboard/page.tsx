@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   if (isMemberRole) {
     const { data: allTokens } = await supabase
       .from("drink_tokens")
-      .select("id, drink_name, price, token, status, redeemed_at, event_id, events(title, slug, date)")
+      .select("id, drink_name, price, token, status, created_at, redeemed_at, event_id, events(title, slug, date)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
