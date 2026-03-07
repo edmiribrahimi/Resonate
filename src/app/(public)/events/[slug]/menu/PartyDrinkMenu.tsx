@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import type { DrinkItem } from "@/types/database";
 import GuestDrinkMenu from "./GuestDrinkMenu";
 import DrinkMenuManager from "@/app/(organizer)/organizer/events/[id]/drinks/DrinkMenuManager";
+import { updateMenuClosesAt } from "./actions";
 
 interface Party {
   id: string;
@@ -70,15 +71,99 @@ function getMenuStatus(party: Party): MenuStatus {
   return "closed";
 }
 
+function MenuCloseControl({
+  party,
+  onUpdate,
+}: {
+  party: Party;
+  onUpdate: (partyId: string, time: string | null) => void;
+}) {
+  const currentValue = party.menu_closes_at ?? "";
+  const [time, setTime] = useState(currentValue);
+  const [isPending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
+
+  const hasChanged = time !== currentValue;
+  const fallback = party.end_time
+    ? `Falls back to end time (${party.end_time.slice(0, 5)})`
+    : "No auto-close set";
+
+  function handleSave() {
+    startTransition(async () => {
+      await updateMenuClosesAt(party.id, time || null);
+      onUpdate(party.id, time || null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
+  }
+
+  function handleClear() {
+    setTime("");
+    startTransition(async () => {
+      await updateMenuClosesAt(party.id, null);
+      onUpdate(party.id, null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-card-border bg-card p-3">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <label className="block text-xs font-medium text-muted mb-1">
+            Menu closes at
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => { setTime(e.target.value); setSaved(false); }}
+              className="h-9 rounded-lg border border-card-border bg-background px-3 text-sm text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+            />
+            {hasChanged && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isPending}
+                className="h-9 rounded-lg bg-accent px-3 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              >
+                {isPending ? "..." : "Save"}
+              </button>
+            )}
+            {currentValue && !hasChanged && (
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={isPending}
+                className="h-9 rounded-lg border border-card-border px-3 text-xs font-medium text-muted transition-colors hover:text-foreground hover:border-red-500/30 disabled:opacity-50"
+              >
+                Clear
+              </button>
+            )}
+            {saved && (
+              <span className="text-xs text-green-400">Saved</span>
+            )}
+          </div>
+          {!time && (
+            <p className="mt-1 text-xs text-muted">{fallback}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PartyDrinkMenu({
   eventId,
   eventTitle,
-  parties,
+  parties: initialParties,
   drinksByParty,
   canManage,
   isAuthenticated,
 }: PartyDrinkMenuProps) {
-  const [selectedPartyId, setSelectedPartyId] = useState(parties[0]?.id ?? "");
+  const [selectedPartyId, setSelectedPartyId] = useState(initialParties[0]?.id ?? "");
+  const [parties, setParties] = useState(initialParties);
 
   const selectedParty = parties.find((p) => p.id === selectedPartyId);
   const partyDrinks = drinksByParty.find((d) => d.partyId === selectedPartyId);
@@ -89,6 +174,14 @@ export default function PartyDrinkMenu({
     () => (selectedParty ? getMenuStatus(selectedParty) : "open"),
     [selectedParty]
   );
+
+  function handleMenuCloseUpdate(partyId: string, time: string | null) {
+    setParties((prev) =>
+      prev.map((p) =>
+        p.id === partyId ? { ...p, menu_closes_at: time } : p
+      )
+    );
+  }
 
   return (
     <div>
@@ -110,6 +203,15 @@ export default function PartyDrinkMenu({
             </button>
           ))}
         </div>
+      )}
+
+      {/* Menu close time control (organizer/admin only) */}
+      {canManage && selectedParty && (
+        <MenuCloseControl
+          key={selectedPartyId}
+          party={selectedParty}
+          onUpdate={handleMenuCloseUpdate}
+        />
       )}
 
       {/* Drink menu manager (organizer/admin) */}

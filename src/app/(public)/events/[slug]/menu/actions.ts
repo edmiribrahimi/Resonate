@@ -6,6 +6,39 @@ import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 
 /**
+ * Update menu_closes_at for a party. Only master/organizer can do this.
+ */
+export async function updateMenuClosesAt(
+  partyId: string,
+  menuClosesAt: string | null
+): Promise<{ success: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
+    throw new Error("Not authorized");
+  }
+
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
+    .from("event_parties")
+    .update({ menu_closes_at: menuClosesAt || null })
+    .eq("id", partyId);
+
+  if (error) throw new Error("Failed to update menu closing time");
+  return { success: true };
+}
+
+/**
  * Guest drink purchase — no authentication required.
  * Creates a SumUp checkout and drink_orders with user_id: null.
  * Returns orderId so the guest client can persist it in localStorage / URL.
