@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "SumUp Full Platform Integration"
-status: complete
-stopped_at: Phase 19 executed (all 3 plans)
-last_updated: "2026-03-06T23:50:00Z"
+status: archived
+stopped_at: Milestone v1.2 archived
+last_updated: "2026-03-07T04:20:00Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -20,7 +20,7 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.2 milestone complete -- All fixes applied
+**Current Focus:** v1.2 milestone archived -- Ready for next milestone
 
 ## Current Position
 
@@ -81,7 +81,7 @@ Phase 19 (Fixes) ── independent cleanup phase
 **Last session:** 2026-03-06T23:50:00Z
 **Stopped at:** Phase 19 executed (all 3 plans complete)
 **What happened:** Executed Phase 19 (Fixes) with 3 plans across 2 waves. Wave 1 (parallel): Plan 19-01 removed card tokenization + payout reports (17 files, 1447 lines removed, 6 files deleted); Plan 19-02 added MobileNav to menu/scanner, fixed drink count, made Events the default tab. Wave 2: Plan 19-03 added searchTicketsByMember server action and member search UI to TransactionList with conditional fee warning in RefundDialog. TypeScript compiles clean.
-**Next step:** Milestone v1.2 fully complete. Deploy to production and configure SumUp API keys in Vercel dashboard.
+**Next step:** Milestone v1.2 archived. Run `/gsd:new-milestone` to start next milestone.
 
 ---
 *State initialized: 2026-03-06*

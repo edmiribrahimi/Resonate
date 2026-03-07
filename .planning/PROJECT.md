@@ -10,17 +10,27 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
-**Building:** v1.2 -- SumUp API deep integration (admin finance dashboard, refunds, payout reports)
+**Shipped:** v1.2 (2026-03-07) — [milestone archive](.planning/milestones/v1.2-ROADMAP.md)
 
-**Shipped:** v1.1 (2026-03-06) — [milestone archive](.planning/milestones/v1.1-ROADMAP.md)
+All 33 v1.2 requirements implemented across 7 phases. New capabilities:
+- Official `@sumup/sdk` migration (singleton pattern, type-safe wrappers)
+- Admin finance dashboard with transaction list, cursor-based pagination, filters, detail view
+- In-app refund management (full/partial) with confirmation flow and fee warning
+- Alternative payment methods: Satispay, MyBank, Apple Pay, Google Pay
+- Manual menu closing time per party with 1h grace period for token redemption
+- Daily cron auto-refunds expired unclaimed tokens, 24h cleanup of old tokens
 
-All 18 v1.1 requirements implemented across 5 phases. New capabilities:
+<details>
+<summary>v1.1 (2026-03-06)</summary>
+
+All 18 v1.1 requirements across 5 phases — [archive](.planning/milestones/v1.1-ROADMAP.md):
 - SumUp embedded checkout (in-app card widget, no redirect)
 - Per-event drink menu with CRUD management
 - Drink purchase via embedded checkout with individual HMAC-signed tokens
-- Drink redemption with 3-second countdown anti-tap + SERVED animation
+- Drink redemption with SERVED animation
 - Public drink menu page (`/events/[slug]/menu`) for anonymous guests via QR
 - Guest token persistence via localStorage + URL param fallback
+</details>
 
 <details>
 <summary>v1.0 (2026-03-05)</summary>
@@ -45,17 +55,9 @@ All 45 requirements shipped. See [v1.0-REQUIREMENTS.md](.planning/milestones/v1.
 
 All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.1-REQUIREMENTS.md) for full list.
 
-### v1.2 (In Progress)
+### v1.2 (Complete)
 
-26 requirements across 6 phases. See [REQUIREMENTS.md](.planning/REQUIREMENTS.md) for full list.
-
-**SumUp Full Platform Integration:**
-- [ ] Official `@sumup/sdk` migration (replace custom client)
-- [ ] Admin finance dashboard with transaction list, filters, and detail view
-- [ ] In-app refund management (full and partial) with confirmation flow
-- [ ] Payout reports with date range filtering
-- [ ] Alternative payment methods: Satispay, MyBank, Apple Pay, Google Pay
-- [ ] Card tokenization for faster repeat payments
+All 33 requirements shipped. See [v1.2-REQUIREMENTS.md](.planning/milestones/v1.2-REQUIREMENTS.md) for full list.
 
 ### Out of Scope
 
