@@ -30,7 +30,7 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
           <p className="text-sm text-blue-300">
             Log in to keep your drink tokens safe across devices.{" "}
             <Link
-              href={`/login?redirect=/events/${slug}/menu`}
+              href={`/login?next=/events/${slug}/menu`}
               className="font-medium underline hover:text-blue-200 transition-colors"
             >
               Log in
@@ -55,12 +55,12 @@ export function GuestWarningModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-card p-6">
+      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-card p-6 pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))] sm:pb-6">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">
@@ -106,7 +106,7 @@ export function GuestWarningModal({
             </button>
           ) : (
             <Link
-              href={`/login?redirect=/events/${slug}/menu`}
+              href={`/login?next=/events/${slug}/menu`}
               className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
             >
               Log in first

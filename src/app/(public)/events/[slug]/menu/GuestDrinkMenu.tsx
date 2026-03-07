@@ -153,7 +153,7 @@ export default function GuestDrinkMenu({
     } catch {
       /* localStorage unavailable */
     }
-    router.push(`/login?redirect=/events/${slug}/menu`);
+    router.push(`/login?next=/events/${slug}/menu`);
   }
 
   function handleWarningClose() {
