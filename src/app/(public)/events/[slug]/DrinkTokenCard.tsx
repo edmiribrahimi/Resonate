@@ -9,9 +9,10 @@ interface DrinkTokenCardProps {
     drink_name: string;
     price: number;
     token: string;
-    status: "purchased" | "redeemed";
+    status: "purchased" | "redeemed" | "refunded";
     created_at?: string;
     redeemed_at: string | null;
+    refunded_at?: string | null;
   };
   onRedeemed: (tokenId: string) => void;
   showTimestamps?: boolean;
@@ -62,6 +63,40 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
             {token.redeemed_at && (
               <p className="text-xs text-muted">
                 Redeemed: {formatTime(token.redeemed_at)}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (token.status === "refunded") {
+    return (
+      <div className="rounded-xl border border-card-border bg-card p-4 opacity-60">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground truncate">
+              {token.drink_name}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {formatPrice(token.price)}
+            </p>
+          </div>
+          <span className="shrink-0 text-blue-400 text-xs font-medium" aria-label="Refunded">
+            Refunded
+          </span>
+        </div>
+        {showTimestamps && (
+          <div className="mt-2 space-y-0.5">
+            {token.created_at && (
+              <p className="text-xs text-muted">
+                Purchased: {formatTime(token.created_at)}
+              </p>
+            )}
+            {token.refunded_at && (
+              <p className="text-xs text-muted">
+                Refunded: {formatTime(token.refunded_at)}
               </p>
             )}
           </div>

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   // Fetch drink tokens for this order
   const { data: tokens, error: tokensError } = await serviceClient
     .from("drink_tokens")
-    .select("id, drink_name, price, token, status, redeemed_at")
+    .select("id, drink_name, price, token, status, redeemed_at, refunded_at")
     .eq("order_id", orderId)
     .order("created_at", { ascending: true });
 

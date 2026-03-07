@@ -9,9 +9,10 @@ interface TokenData {
   drink_name: string;
   price: number;
   token: string;
-  status: "purchased" | "redeemed";
+  status: "purchased" | "redeemed" | "refunded";
   created_at?: string;
   redeemed_at: string | null;
+  refunded_at?: string | null;
 }
 
 interface DashboardDrinkTokensProps {
@@ -27,7 +28,7 @@ export default function DashboardDrinkTokens({
   groups: initialGroups,
 }: DashboardDrinkTokensProps) {
   const [groups, setGroups] = useState(initialGroups);
-  const [showRedeemed, setShowRedeemed] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   function handleRedeemed(groupIndex: number, tokenId: string) {
     setGroups((prev) =>
@@ -46,23 +47,25 @@ export default function DashboardDrinkTokens({
     );
   }
 
-  // Split groups into active (has purchased tokens) and redeemed-only
+  // Split groups into active (purchased) and completed (redeemed + refunded)
   const activeGroups: typeof groups = [];
-  const redeemedGroups: typeof groups = [];
+  const completedGroups: typeof groups = [];
 
   for (const group of groups) {
     const purchased = group.tokens.filter((t) => t.status === "purchased");
-    const redeemed = group.tokens.filter((t) => t.status === "redeemed");
+    const completed = group.tokens.filter(
+      (t) => t.status === "redeemed" || t.status === "refunded"
+    );
 
     if (purchased.length > 0) {
       activeGroups.push({ ...group, tokens: purchased });
     }
-    if (redeemed.length > 0) {
-      redeemedGroups.push({ ...group, tokens: redeemed });
+    if (completed.length > 0) {
+      completedGroups.push({ ...group, tokens: completed });
     }
   }
 
-  const totalRedeemed = redeemedGroups.reduce((sum, g) => sum + g.tokens.length, 0);
+  const totalCompleted = completedGroups.reduce((sum, g) => sum + g.tokens.length, 0);
 
   return (
     <div>
@@ -116,22 +119,22 @@ export default function DashboardDrinkTokens({
         </>
       )}
 
-      {activeGroups.length === 0 && redeemedGroups.length > 0 && (
+      {activeGroups.length === 0 && completedGroups.length > 0 && (
         <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
           My Drinks
         </p>
       )}
 
       {/* Redeemed tokens (collapsible) */}
-      {redeemedGroups.length > 0 && (
+      {completedGroups.length > 0 && (
         <div className={activeGroups.length > 0 ? "mt-4" : ""}>
           <button
             type="button"
-            onClick={() => setShowRedeemed(!showRedeemed)}
+            onClick={() => setShowCompleted(!showCompleted)}
             className="flex w-full items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 text-sm text-muted hover:text-foreground transition-colors"
           >
             <span>
-              Redeemed ({totalRedeemed})
+              Completed ({totalCompleted})
             </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -143,15 +146,15 @@ export default function DashboardDrinkTokens({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`transition-transform ${showRedeemed ? "rotate-180" : ""}`}
+              className={`transition-transform ${showCompleted ? "rotate-180" : ""}`}
             >
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
 
-          {showRedeemed && (
+          {showCompleted && (
             <div className="mt-3 space-y-3">
-              {redeemedGroups.map((group, groupIndex) => {
+              {completedGroups.map((group, groupIndex) => {
                 const formattedDate = group.eventDate
                   ? new Date(group.eventDate + "T00:00:00").toLocaleDateString("en-US", {
                       month: "short",
@@ -165,7 +168,7 @@ export default function DashboardDrinkTokens({
 
                 return (
                   <div
-                    key={`redeemed-${group.eventSlug}-${groupIndex}`}
+                    key={`completed-${group.eventSlug}-${groupIndex}`}
                     className="rounded-2xl border border-card-border bg-card p-4"
                   >
                     <Link href={`/events/${group.eventSlug}`} className="mb-3 block">

@@ -48,8 +48,9 @@ interface TokenData {
   drink_name: string;
   price: number;
   token: string;
-  status: "purchased" | "redeemed";
+  status: "purchased" | "redeemed" | "refunded";
   redeemed_at: string | null;
+  refunded_at?: string | null;
 }
 
 function formatPrice(price: number) {
@@ -275,6 +276,27 @@ function GuestDrinkTokenCard({
     );
   }
 
+  if (token.status === "refunded") {
+    return (
+      <div className="rounded-xl border border-card-border bg-card p-4 opacity-60">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground truncate">
+              {token.drink_name}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {formatPrice(token.price)}
+            </p>
+          </div>
+          <span className="shrink-0 text-blue-400 text-xs font-medium" aria-label="Refunded">
+            Refunded
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-muted">Automatically refunded</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4">
@@ -440,12 +462,11 @@ export default function GuestTokenDisplay({
     );
   }
 
-  // Sort: purchased first, redeemed last
-  const sorted = [...tokens].sort((a, b) => {
-    if (a.status === "purchased" && b.status === "redeemed") return -1;
-    if (a.status === "redeemed" && b.status === "purchased") return 1;
-    return 0;
-  });
+  // Sort: purchased first, then refunded, then redeemed
+  const statusOrder = { purchased: 0, refunded: 1, redeemed: 2 };
+  const sorted = [...tokens].sort(
+    (a, b) => statusOrder[a.status] - statusOrder[b.status]
+  );
 
   // Don't render anything if no tokens and not loading
   if (!loading && tokens.length === 0) {

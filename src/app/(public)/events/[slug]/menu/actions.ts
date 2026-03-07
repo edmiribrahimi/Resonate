@@ -262,6 +262,10 @@ export async function redeemDrinkTokenGuest(
     throw new Error("Already redeemed");
   }
 
+  if (token.status === "refunded") {
+    throw new Error("Token has been refunded");
+  }
+
   // 4b. Check grace period — token must be redeemed within 1h after menu close
   if (token.party_id) {
     const { data: party } = await serviceClient

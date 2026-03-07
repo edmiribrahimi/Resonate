@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   if (isMemberRole) {
     const { data: allTokens } = await supabase
       .from("drink_tokens")
-      .select("id, drink_name, price, token, status, created_at, redeemed_at, event_id, events(title, slug, date)")
+      .select("id, drink_name, price, token, status, created_at, redeemed_at, refunded_at, event_id, events(title, slug, date)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
@@ -87,11 +87,12 @@ export default async function DashboardPage() {
     });
     drinkTokenGroups = Array.from(groupMap.values())
       .filter(g => g.tokens.some((t: { status: string }) => t.status === "purchased") ||
-        g.tokens.some((t: { redeemed_at: string | null }) => {
-          if (!t.redeemed_at) return false;
-          const redeemed = new Date(t.redeemed_at);
+        g.tokens.some((t: { status: string; redeemed_at: string | null; refunded_at?: string | null }) => {
+          const completedAt = t.status === "refunded" ? t.refunded_at : t.redeemed_at;
+          if (!completedAt) return false;
+          const completed = new Date(completedAt);
           const nowDate = new Date();
-          return (nowDate.getTime() - redeemed.getTime()) < 48 * 60 * 60 * 1000;
+          return (nowDate.getTime() - completed.getTime()) < 48 * 60 * 60 * 1000;
         }))
       .sort((a, b) => {
         const aHasUnredeemed = a.tokens.some((t: { status: string }) => t.status === "purchased");
