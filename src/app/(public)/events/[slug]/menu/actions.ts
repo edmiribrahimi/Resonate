@@ -21,6 +21,27 @@ export async function purchaseDrinksGuest(
 
   const serviceClient = getServiceClient();
 
+  // Check if menu is still open for this party
+  const { data: partyData } = await serviceClient
+    .from("event_parties")
+    .select("date, end_time, menu_closes_at")
+    .eq("id", partyId)
+    .single();
+
+  if (partyData) {
+    const closeTime = partyData.menu_closes_at ?? partyData.end_time;
+    if (closeTime && partyData.date) {
+      const closeDt = new Date(`${partyData.date}T${closeTime}`);
+      // Handle next-day closing (e.g. party at 23:00, closes at 03:00)
+      if (closeDt.getHours() < 12) {
+        closeDt.setDate(closeDt.getDate() + 1);
+      }
+      if (new Date() >= closeDt) {
+        throw new Error("The drink menu is closed. No new orders can be placed.");
+      }
+    }
+  }
+
   // Fetch drink items by IDs
   const drinkItemIds = items.map((i) => i.drinkItemId);
   const { data: drinkItems, error: fetchError } = await serviceClient
@@ -67,6 +88,11 @@ export async function purchaseDrinksGuest(
       quantity: item.quantity,
     };
   });
+
+  // Validate minimum amount for SumUp (€1.00)
+  if (totalAmount < 1) {
+    throw new Error("Minimum order amount is €1.00");
+  }
 
   // Fetch party name for checkout description
   const { data: party } = await serviceClient
@@ -185,7 +211,7 @@ export async function redeemDrinkTokenGuest(
   const serviceClient = getServiceClient();
   const { data: token, error: tokenError } = await serviceClient
     .from("drink_tokens")
-    .select("id, user_id, status")
+    .select("id, user_id, status, party_id")
     .eq("id", tokenId)
     .single();
 
@@ -201,6 +227,27 @@ export async function redeemDrinkTokenGuest(
   // 4. Check status
   if (token.status === "redeemed") {
     throw new Error("Already redeemed");
+  }
+
+  // 4b. Check grace period — token must be redeemed within 1h after menu close
+  if (token.party_id) {
+    const { data: party } = await serviceClient
+      .from("event_parties")
+      .select("date, end_time, menu_closes_at")
+      .eq("id", token.party_id)
+      .single();
+
+    if (party) {
+      const closeTime = party.menu_closes_at ?? party.end_time;
+      if (closeTime && party.date) {
+        const closeDt = new Date(`${party.date}T${closeTime}`);
+        if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+        const graceEnd = new Date(closeDt.getTime() + 60 * 60 * 1000);
+        if (new Date() > graceEnd) {
+          throw new Error("Token expired — grace period has ended");
+        }
+      }
+    }
   }
 
   // 5. Redeem via SECURITY DEFINER function

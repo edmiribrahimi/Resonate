@@ -19,6 +19,7 @@ interface SubEventFormState {
   date: string;
   time: string;
   end_time: string;
+  menu_closes_at: string;
   venue_text: string;
   venue_id: string | null;
   venue_name: string;
@@ -39,6 +40,7 @@ function defaultSubEvent(sortOrder: number): SubEventFormState {
     date: "",
     time: "",
     end_time: "",
+    menu_closes_at: "",
     venue_text: "",
     venue_id: null,
     venue_name: "",
@@ -60,6 +62,7 @@ export interface PartyInitialData {
   date: string;
   time: string;
   end_time: string | null;
+  menu_closes_at: string | null;
   venue_text: string | null;
   venue_id: string | null;
   venue_name: string | null;
@@ -108,6 +111,7 @@ function subEventFromInitial(p: PartyInitialData): SubEventFormState {
     date: p.date,
     time: p.time,
     end_time: p.end_time ?? "",
+    menu_closes_at: p.menu_closes_at ?? "",
     venue_text: p.venue_text ?? "",
     venue_id: p.venue_id ?? null,
     venue_name: p.venue_name ?? "",
@@ -221,6 +225,9 @@ export default function EventForm({
   );
   const [mainEndTime, setMainEndTime] = useState(
     isMainEventParty ? (singleParty.end_time ?? "") : ""
+  );
+  const [mainMenuClosesAt, setMainMenuClosesAt] = useState(
+    isMainEventParty ? (singleParty.menu_closes_at ?? "") : ""
   );
   const [mainVenueName, setMainVenueName] = useState(
     isMainEventParty ? (singleParty.venue_name ?? "") : ""
@@ -365,6 +372,7 @@ export default function EventForm({
           date: se.date,
           time: se.time,
           end_time: se.end_time || undefined,
+          menu_closes_at: se.menu_closes_at || undefined,
           venue_text: se.venue_text || undefined,
           venue_id: se.venue_id || undefined,
           lineup: se.lineup,
@@ -394,6 +402,7 @@ export default function EventForm({
           date: date,
           time: mainTime,
           end_time: mainEndTime || undefined,
+          menu_closes_at: mainMenuClosesAt || undefined,
           venue_text: mainVenueText || undefined,
           venue_id: mainVenueId || undefined,
           lineup: lineup,
@@ -583,6 +592,26 @@ export default function EventForm({
               className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
             />
           </div>
+        </div>
+
+        {/* Menu closes at */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-menu-closes-at`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Menu Closes At
+          </label>
+          <input
+            id={`${idPrefix}-menu-closes-at`}
+            type="time"
+            value={subEvent.menu_closes_at}
+            onChange={(e) => updateSubEvent(index, "menu_closes_at", e.target.value)}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
+          />
+          <p className="text-xs text-muted">
+            If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour.
+          </p>
         </div>
 
         {/* Venue with autocomplete */}
@@ -917,6 +946,16 @@ export default function EventForm({
               <input id="main-end-time" type="time" value={mainEndTime} onChange={(e) => setMainEndTime(e.target.value)}
                 className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
             </div>
+          </div>
+
+          {/* Menu closes at */}
+          <div className="space-y-2">
+            <label htmlFor="main-menu-closes-at" className="block text-sm font-medium text-foreground">Menu Closes At</label>
+            <input id="main-menu-closes-at" type="time" value={mainMenuClosesAt} onChange={(e) => setMainMenuClosesAt(e.target.value)}
+              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
+            <p className="text-xs text-muted">
+              If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour.
+            </p>
           </div>
 
           {/* Venue with autocomplete */}

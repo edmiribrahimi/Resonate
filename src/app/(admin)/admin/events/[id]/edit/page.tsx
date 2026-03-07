@@ -38,7 +38,7 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
   // Fetch parties for this event (with venue join)
   const { data: parties } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venues(name)")
+    .select("id, title, description, date, time, end_time, menu_closes_at, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venues(name)")
     .eq("event_id", eventId)
     .order("sort_order", { ascending: true });
 
@@ -95,6 +95,7 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
                 date: p.date as string,
                 time: p.time as string,
                 end_time: p.end_time as string | null,
+                menu_closes_at: p.menu_closes_at as string | null,
                 venue_text: p.venue_text as string | null,
                 venue_id: p.venue_id as string | null,
                 venue_name: venueName,

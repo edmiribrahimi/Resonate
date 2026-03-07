@@ -143,6 +143,11 @@ export default function GuestDrinkMenu({
 
     if (items.length === 0) return;
 
+    if (totalPrice < 1) {
+      setError("Minimum order amount is €1.00");
+      return;
+    }
+
     if (isAuthenticated) {
       // Authenticated users skip the warning and go straight to checkout
       startCheckout();

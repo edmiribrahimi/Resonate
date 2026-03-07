@@ -84,6 +84,7 @@ interface PartyInput {
   date: string;
   time: string;
   end_time?: string;
+  menu_closes_at?: string;
   venue_text?: string;
   venue_id?: string;
   lineup?: string[];
@@ -160,6 +161,9 @@ function validateEventData(formData: FormData) {
     }
     if (party.end_time && !timeRegex.test(party.end_time)) {
       throw new Error("Invalid end time for a sub-event");
+    }
+    if (party.menu_closes_at && !timeRegex.test(party.menu_closes_at)) {
+      throw new Error("Invalid menu closing time for a sub-event");
     }
     if (!VALID_ACCESS_TYPES.includes(party.access_type)) {
       throw new Error("Invalid access type for a sub-event");
@@ -282,6 +286,7 @@ export async function createEvent(formData: FormData) {
     date: p.date,
     time: p.time,
     end_time: p.end_time || null,
+    menu_closes_at: p.menu_closes_at || null,
     venue_text: p.venue_text?.trim() || null,
     venue_id: p.venue_id || null,
     lineup: p.lineup ?? [],
@@ -381,6 +386,7 @@ export async function updateEvent(eventId: string, formData: FormData) {
           date: party.date,
           time: party.time,
           end_time: party.end_time || null,
+          menu_closes_at: party.menu_closes_at || null,
           venue_text: party.venue_text?.trim() || null,
           venue_id: party.venue_id || null,
           lineup: party.lineup ?? [],
@@ -402,6 +408,7 @@ export async function updateEvent(eventId: string, formData: FormData) {
         date: party.date,
         time: party.time,
         end_time: party.end_time || null,
+        menu_closes_at: party.menu_closes_at || null,
         venue_text: party.venue_text?.trim() || null,
         venue_id: party.venue_id || null,
         lineup: party.lineup ?? [],
@@ -1014,7 +1021,7 @@ export async function redeemDrinkToken(
   // 3. Verify ownership and current status
   const { data: token, error: tokenError } = await supabase
     .from("drink_tokens")
-    .select("id, user_id, status")
+    .select("id, user_id, status, party_id")
     .eq("id", tokenId)
     .single();
 
@@ -1028,6 +1035,27 @@ export async function redeemDrinkToken(
 
   if (token.status === "redeemed") {
     throw new Error("Already redeemed");
+  }
+
+  // 3b. Check grace period — token must be redeemed within 1h after menu close
+  if (token.party_id) {
+    const { data: party } = await supabase
+      .from("event_parties")
+      .select("date, end_time, menu_closes_at")
+      .eq("id", token.party_id)
+      .single();
+
+    if (party) {
+      const closeTime = party.menu_closes_at ?? party.end_time;
+      if (closeTime && party.date) {
+        const closeDt = new Date(`${party.date}T${closeTime}`);
+        if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+        const graceEnd = new Date(closeDt.getTime() + 60 * 60 * 1000);
+        if (new Date() > graceEnd) {
+          throw new Error("Token expired — grace period has ended");
+        }
+      }
+    }
   }
 
   // 4. Redeem via SECURITY DEFINER function

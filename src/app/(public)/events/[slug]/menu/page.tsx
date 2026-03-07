@@ -66,11 +66,11 @@ export default async function MenuPage({
   // Fetch parties for this event
   const { data: parties } = await serviceClient
     .from("event_parties")
-    .select("id, title")
+    .select("id, title, date, end_time, menu_closes_at")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
-  const partyList = (parties ?? []) as { id: string; title: string }[];
+  const partyList = (parties ?? []) as { id: string; title: string; date: string; end_time: string | null; menu_closes_at: string | null }[];
 
   // Fetch drinks per party
   const drinksByParty = await Promise.all(

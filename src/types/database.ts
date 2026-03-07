@@ -38,6 +38,7 @@ export interface EventParty {
   date: string;
   time: string;
   end_time: string | null;
+  menu_closes_at: string | null;
   venue_text: string | null;
   access_type: AccessType;
   capacity: number | null;
