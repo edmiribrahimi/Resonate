@@ -127,21 +127,19 @@ export default async function TicketPage({
               Resonate
             </p>
 
-            {/* Event title */}
+            {/* Event / party title (merged when different) */}
             <h2 className="mb-1 text-xl font-bold tracking-tight">
-              {event.title}
+              {party && party.title !== event.title
+                ? `${event.title} — ${party.title}`
+                : event.title}
             </h2>
 
-            {/* Master ticket or party title */}
-            {isMasterTicket ? (
+            {/* Master ticket badge */}
+            {isMasterTicket && (
               <p className="mb-1 text-sm font-medium text-accent">
                 Event Pass
               </p>
-            ) : party ? (
-              <p className="mb-1 text-sm font-medium text-accent">
-                {party.title}
-              </p>
-            ) : null}
+            )}
 
             {/* Tier */}
             <p className="mb-3 text-sm text-muted">{tier.name}</p>
