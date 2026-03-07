@@ -26,7 +26,6 @@ export async function listTransactions(params: {
 
   const merchantCode = process.env.SUMUP_MERCHANT_CODE!;
   const result = await sumup.transactions.list(merchantCode, {
-    payment_types: ["ECOM"],
     limit: params.limit ?? 20,
     order: "descending",
     statuses: params.statuses as
