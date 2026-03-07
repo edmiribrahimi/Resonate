@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { claimGuestOrders } from "@/app/(public)/events/[slug]/menu/actions";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -28,6 +29,24 @@ function LoginForm() {
       setError("Incorrect email or password");
       setLoading(false);
       return;
+    }
+
+    // Claim any guest drink tokens before redirect
+    try {
+      const orderIds: string[] = [];
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("resonate_drink_tokens_")) {
+          const ids = JSON.parse(localStorage.getItem(key) || "[]") as string[];
+          orderIds.push(...ids);
+          localStorage.removeItem(key);
+        }
+      }
+      if (orderIds.length > 0) {
+        await claimGuestOrders(orderIds);
+      }
+    } catch {
+      // Non-blocking: tokens will be claimed on next menu visit
     }
 
     window.location.href = nextUrl || "/dashboard";

@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
@@ -127,6 +128,43 @@ export async function purchaseDrinksGuest(
   }
 
   return { success: true, checkoutId: response.id, orderId: order.id };
+}
+
+/**
+ * Claim guest drink orders after login/register.
+ * Links unclaimed orders (user_id IS NULL) to the authenticated user.
+ */
+export async function claimGuestOrders(
+  orderIds: string[]
+): Promise<{ claimed: number }> {
+  if (!orderIds || orderIds.length === 0) return { claimed: 0 };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { claimed: 0 };
+
+  const serviceClient = getServiceClient();
+
+  // Claim drink orders (only those with user_id IS NULL)
+  const { data: claimed } = await serviceClient
+    .from("drink_orders")
+    .update({ user_id: user.id })
+    .in("id", orderIds)
+    .is("user_id", null)
+    .select("id");
+
+  if (claimed && claimed.length > 0) {
+    const claimedIds = claimed.map((o) => o.id);
+    await serviceClient
+      .from("drink_tokens")
+      .update({ user_id: user.id })
+      .in("order_id", claimedIds)
+      .is("user_id", null);
+  }
+
+  return { claimed: claimed?.length ?? 0 };
 }
 
 /**

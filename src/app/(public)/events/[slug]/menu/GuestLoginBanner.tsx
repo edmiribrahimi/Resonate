@@ -7,6 +7,8 @@ interface GuestLoginBannerProps {
 }
 
 export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
+  const menuUrl = encodeURIComponent(`/events/${slug}/menu`);
+
   return (
     <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
       <div className="flex items-center gap-3">
@@ -28,12 +30,19 @@ export default function GuestLoginBanner({ slug }: GuestLoginBannerProps) {
         </svg>
         <div className="min-w-0 flex-1">
           <p className="text-sm text-blue-300">
-            Log in to keep your drink tokens safe across devices.{" "}
+            Keep your drink tokens safe across devices.{" "}
             <Link
               href={`/login?next=/events/${slug}/menu`}
               className="font-medium underline hover:text-blue-200 transition-colors"
             >
               Log in
+            </Link>
+            {" or "}
+            <Link
+              href={`/register?next=${menuUrl}`}
+              className="font-medium underline hover:text-blue-200 transition-colors"
+            >
+              Sign up
             </Link>
           </p>
         </div>
@@ -46,13 +55,17 @@ export function GuestWarningModal({
   onContinue,
   onClose,
   onLogin,
+  onSignUp,
   slug,
 }: {
   onContinue: () => void;
   onClose: () => void;
   onLogin?: () => void;
+  onSignUp?: () => void;
   slug: string;
 }) {
+  const menuUrl = encodeURIComponent(`/events/${slug}/menu`);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -91,7 +104,7 @@ export function GuestWarningModal({
 
         {/* Warning content */}
         <p className="mb-6 text-sm text-yellow-300/90">
-          You may lose your tokens if you don't log in.
+          You may lose your tokens if you don&apos;t log in.
         </p>
 
         {/* Actions */}
@@ -102,14 +115,30 @@ export function GuestWarningModal({
               onClick={onLogin}
               className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
             >
-              Log in first
+              Log in
             </button>
           ) : (
             <Link
               href={`/login?next=/events/${slug}/menu`}
               className="block w-full rounded-full bg-accent py-3 text-center font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80"
             >
-              Log in first
+              Log in
+            </Link>
+          )}
+          {onSignUp ? (
+            <button
+              type="button"
+              onClick={onSignUp}
+              className="block w-full rounded-full border border-accent/50 py-3 text-center font-medium text-accent transition-all hover:bg-accent/10 active:scale-95 active:opacity-80"
+            >
+              Sign up
+            </button>
+          ) : (
+            <Link
+              href={`/register?next=${menuUrl}`}
+              className="block w-full rounded-full border border-accent/50 py-3 text-center font-medium text-accent transition-all hover:bg-accent/10 active:scale-95 active:opacity-80"
+            >
+              Sign up
             </Link>
           )}
           <button

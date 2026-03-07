@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { purchaseDrinksGuest } from "./actions";
+import { purchaseDrinksGuest, claimGuestOrders } from "./actions";
 import type { DrinkItem } from "@/types/database";
 import SumUpCheckoutModal from "../SumUpCheckoutModal";
 import { GuestWarningModal } from "./GuestLoginBanner";
@@ -55,6 +55,23 @@ export default function GuestDrinkMenu({
   const pathname = usePathname();
   const slug = pathname.split("/")[2] || "";
   const router = useRouter();
+
+  // Claim guest tokens after login/register
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      const key = `${STORAGE_KEY_PREFIX}_${eventId}`;
+      const stored = localStorage.getItem(key);
+      if (!stored) return;
+      const orderIds = JSON.parse(stored) as string[];
+      if (orderIds.length === 0) return;
+      claimGuestOrders(orderIds)
+        .then(() => localStorage.removeItem(key))
+        .catch(() => {});
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [isAuthenticated, eventId]);
 
   // Restore cart from localStorage after login redirect and auto-checkout
   const [autoCheckout, setAutoCheckout] = useState(false);
@@ -140,8 +157,7 @@ export default function GuestDrinkMenu({
     startCheckout();
   }
 
-  function handleWarningLogin() {
-    // Save cart to localStorage before redirecting to login
+  function saveCartToStorage() {
     try {
       const nonZero = Object.fromEntries(
         Object.entries(quantities).filter(([, q]) => q > 0)
@@ -153,7 +169,16 @@ export default function GuestDrinkMenu({
     } catch {
       /* localStorage unavailable */
     }
+  }
+
+  function handleWarningLogin() {
+    saveCartToStorage();
     router.push(`/login?next=/events/${slug}/menu`);
+  }
+
+  function handleWarningSignUp() {
+    saveCartToStorage();
+    router.push(`/register?next=${encodeURIComponent(`/events/${slug}/menu`)}`);
   }
 
   function handleWarningClose() {
@@ -268,6 +293,7 @@ export default function GuestDrinkMenu({
           onContinue={handleWarningContinue}
           onClose={handleWarningClose}
           onLogin={handleWarningLogin}
+          onSignUp={handleWarningSignUp}
           slug={slug}
         />
       )}
