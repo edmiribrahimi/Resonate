@@ -37,7 +37,7 @@ export default function RefundActions({ refundId, ticketId, isDirectRefund }: Re
             Refund
           </button>
         ) : (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-6">
             <div className="w-full max-w-sm rounded-2xl border border-card-border bg-background p-6">
               <h3 className="mb-4 text-lg font-bold">Confirm Refund</h3>
               <textarea

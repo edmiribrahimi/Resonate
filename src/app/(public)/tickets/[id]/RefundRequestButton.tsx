@@ -48,7 +48,7 @@ export default function RefundRequestButton({ ticketId }: RefundRequestButtonPro
       </button>
 
       {showDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-6">
           <div className="w-full max-w-sm rounded-2xl border border-card-border bg-background p-6">
             <h3 className="mb-4 text-lg font-bold">Request Refund</h3>
 

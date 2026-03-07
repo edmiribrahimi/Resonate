@@ -33,7 +33,7 @@ export default function SecretVenueDialog({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6"
           onClick={() => setOpen(false)}
         >
           <div
