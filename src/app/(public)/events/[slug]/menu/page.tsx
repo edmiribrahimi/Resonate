@@ -7,6 +7,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import type { UserRole, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 import GuestLoginBanner from "./GuestLoginBanner";
+import UserTokenDisplay from "./UserTokenDisplay";
 import EventQRCode from "./EventQRCode";
 import PartyDrinkMenu from "./PartyDrinkMenu";
 
@@ -98,6 +99,18 @@ export default async function MenuPage({
     })
   );
 
+  // Fetch authenticated user's drink tokens for this event
+  let userTokens: { id: string; drink_name: string; price: number; token: string; status: "purchased" | "redeemed"; redeemed_at: string | null }[] = [];
+  if (user) {
+    const { data: tokens } = await supabase
+      .from("drink_tokens")
+      .select("id, drink_name, price, token, status, redeemed_at")
+      .eq("user_id", user.id)
+      .eq("event_id", event.id)
+      .order("created_at", { ascending: true });
+    userTokens = (tokens ?? []) as typeof userTokens;
+  }
+
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
   const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
@@ -164,8 +177,14 @@ export default async function MenuPage({
           </div>
         )}
 
-        {/* Guest tokens (unauthenticated only, client-side) */}
-        {!user && (
+        {/* Drink tokens */}
+        {user ? (
+          userTokens.length > 0 && (
+            <div className="mt-6">
+              <UserTokenDisplay tokens={userTokens} />
+            </div>
+          )
+        ) : (
           <div className="mt-6">
             <GuestTokenDisplay
               eventId={event.id}
