@@ -17,7 +17,7 @@
 
 - [x] **Phase 20: Navigation Consolidation** - Streamline bottom nav to 3-4 tabs with role-aware Account page as management hub
 - [x] **Phase 21: Layout Elegance** - Motion library integration with enter animations, skeletons, toasts, and micro-interactions
-- [ ] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
+- [x] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
 - [ ] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [ ] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
 
@@ -65,11 +65,11 @@ Plans:
   2. Organizer can open any event and see revenue summary (gross/net ticket + drink sales), ticket sales velocity chart (daily), and drink sales breakdown with per-item detail
   3. Organizer can see attendance rate (sold vs checked-in) and expired/refunded token rate (redeemed vs wasted percentage) for any event
   4. Admin can view member growth over time with weekly/monthly granularity showing referral vs organic split
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 22-01-PLAN.md -- PostHog + Recharts installation, client/server init, user identification (ANLY-08)
-- [ ] 22-02-PLAN.md -- Per-event analytics page with revenue, velocity, drinks, attendance, token lifecycle (ANLY-01, ANLY-02, ANLY-03, ANLY-04, ANLY-06)
+- [x] 22-02-PLAN.md -- Per-event analytics page with revenue, velocity, drinks, attendance, token lifecycle (ANLY-01, ANLY-02, ANLY-03, ANLY-04, ANLY-06)
 - [x] 22-03-PLAN.md -- Admin member growth page with referral/organic area chart (ANLY-05)
 
 ### Phase 23: Analytics Dashboard & Cross-Event Insights
@@ -100,7 +100,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
-| 22. Analytics Infrastructure & Event Metrics | 2/3 | In progress | - |
+| 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
 
