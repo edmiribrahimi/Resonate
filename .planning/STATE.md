@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: "Ready for `/gsd:plan-phase 20`"
-stopped_at: Phase 20 planned (3 plans, 1 wave)
-last_updated: "2026-03-09T16:36:20.115Z"
+status: "Phase 20 complete (3/3 plans)"
+stopped_at: Completed 20-03-PLAN.md
+last_updated: "2026-03-09T16:48:00Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 3
 ---
 
 # State: Resonate
@@ -20,29 +20,32 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- roadmap complete, ready for phase planning
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 20 complete
 
 ## Current Position
 
-**Phase:** Phase 20 (Navigation Consolidation) -- not started
-**Plan:** --
-**Status:** Ready for `/gsd:plan-phase 20`
+**Phase:** Phase 20 (Navigation Consolidation) -- complete
+**Plan:** 3/3 complete
+**Status:** Phase 20 complete, ready for Phase 21
 
 ```
-[Phase Progress]  ░░░░░░░░░░░░░░░░░░░░  0/5 phases
+[Phase Progress]  ████░░░░░░░░░░░░░░░░  1/5 phases
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 0/5 |
-| Plans completed | 0/? |
-| Requirements shipped | 0/52 |
+| Phases completed | 1/5 |
+| Plans completed | 3/3 (Phase 20) |
+| Requirements shipped | 1/52 |
+| Phase 20 Plan 03 | 2 tasks, 118s |
 
 ## Decisions
 
-(None yet for v1.3)
+- [20-03] Attendee list is read-only (no tap-to-check-in); existing checkin API requires QR token
+- [20-03] Search filtering done in JS after fetch (attendee lists per party typically <500)
+- [20-03] Replaced collapsible attendance with always-visible flat list
 
 ## Accumulated Context
 
@@ -69,9 +72,9 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T16:36:20.109Z
-**Stopped at:** Phase 20 planned (3 plans, 1 wave)
-**Next step:** `/gsd:plan-phase 20` to plan Navigation Consolidation
+**Last session:** 2026-03-09T16:48:00Z
+**Stopped at:** Completed 20-03-PLAN.md (Phase 20 complete)
+**Next step:** Phase 21 planning or execution
 
 ---
 *State initialized: 2026-03-09*

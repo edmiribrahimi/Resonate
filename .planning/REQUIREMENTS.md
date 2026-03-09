@@ -63,7 +63,7 @@
 - [ ] **NAV-01**: Bottom nav shows 3 tabs for members (Events, Gallery, Account) and 4 tabs for staff (Events, Gallery, Check-in, Account)
 - [ ] **NAV-02**: Account page shows role-aware sections: "My Stuff" for all, "Management" for organizer/master
 - [ ] **NAV-03**: Check-in tab is always one tap away for organizer/master roles
-- [ ] **NAV-04**: Check-in page shows unified attendee list for the event (ticket holders + guest list) with name search and QR scan
+- [x] **NAV-04**: Check-in page shows unified attendee list for the event (ticket holders + guest list) with name search and QR scan
 - [ ] **NAV-05**: Account page "Management" section shows quick-stats cards (pending members, next event, total revenue)
 - [ ] **NAV-06**: Account page management section has animated expand/collapse
 - [ ] **NAV-07**: Clear visual separation between "My Stuff" and "Management" sections
@@ -118,7 +118,7 @@
 | NAV-01 | Phase 20 | Pending |
 | NAV-02 | Phase 20 | Pending |
 | NAV-03 | Phase 20 | Pending |
-| NAV-04 | Phase 20 | Pending |
+| NAV-04 | Phase 20 | Complete |
 | NAV-05 | Phase 20 | Pending |
 | NAV-06 | Phase 20 | Pending |
 | NAV-07 | Phase 20 | Pending |
