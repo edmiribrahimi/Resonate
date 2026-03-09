@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Orbitron } from "next/font/google";
 import MotionProvider from "@/components/motion/MotionProvider";
+import { ToastProvider } from "@/components/toast/ToastContext";
 import "./globals.css";
 
 const orbitron = Orbitron({
@@ -52,7 +53,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-dvh antialiased">
         <MotionProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </MotionProvider>
         <Script
           src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"
