@@ -38,7 +38,7 @@ progress:
 |--------|-------|
 | Phases completed | 1/5 |
 | Plans completed | 3/3 (Phase 20) |
-| Requirements shipped | 8/52 |
+| Requirements shipped | 14/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |

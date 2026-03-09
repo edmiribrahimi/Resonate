@@ -34,10 +34,10 @@
 - [ ] **UI-06**: Primary action buttons have hover/tap micro-interactions
 - [ ] **UI-07**: Lists (events, drinks, members) use staggered item animations (50-80ms delay)
 - [ ] **UI-08**: Content sections animate in on scroll (whileInView with threshold)
-- [ ] **UI-09**: Analytics KPI cards have number counting-up micro-interactions
-- [ ] **UI-10**: Dark mode accent elements have subtle ambient glow effects
+- [x] **UI-09**: Analytics KPI cards have number counting-up micro-interactions
+- [x] **UI-10**: Dark mode accent elements have subtle ambient glow effects
 - [ ] **UI-11**: Cards have hover elevation (desktop) and press feedback (mobile)
-- [ ] **UI-12**: App respects prefers-reduced-motion and disables animations accordingly
+- [x] **UI-12**: App respects prefers-reduced-motion and disables animations accordingly
 
 ### Guest List
 
@@ -126,15 +126,15 @@
 | UI-01 | Phase 21 | Pending |
 | UI-02 | Phase 21 | Complete |
 | UI-03 | Phase 21 | Pending |
-| UI-04 | Phase 21 | Pending |
-| UI-05 | Phase 21 | Pending |
+| UI-04 | Phase 21 | Complete |
+| UI-05 | Phase 21 | Complete |
 | UI-06 | Phase 21 | Pending |
 | UI-07 | Phase 21 | Pending |
 | UI-08 | Phase 21 | Pending |
-| UI-09 | Phase 21 | Pending |
-| UI-10 | Phase 21 | Pending |
+| UI-09 | Phase 21 | Complete |
+| UI-10 | Phase 21 | Complete |
 | UI-11 | Phase 21 | Pending |
-| UI-12 | Phase 21 | Pending |
+| UI-12 | Phase 21 | Complete |
 | ANLY-01 | Phase 22 | Pending |
 | ANLY-02 | Phase 22 | Pending |
 | ANLY-03 | Phase 22 | Pending |
