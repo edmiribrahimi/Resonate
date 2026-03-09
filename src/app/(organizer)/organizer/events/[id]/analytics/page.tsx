@@ -9,12 +9,14 @@ import AttendanceCard from "@/components/analytics/AttendanceCard";
 import TokenLifecycleCard from "@/components/analytics/TokenLifecycleCard";
 import TicketVelocityChart from "@/components/analytics/TicketVelocityChart";
 import DrinkSalesBreakdown from "@/components/analytics/DrinkSalesBreakdown";
+import MarketInsightsCard from "@/components/analytics/MarketInsightsCard";
 import {
   fetchEventRevenue,
   fetchDailyVelocity,
   fetchDrinkSales,
   fetchAttendanceRate,
   fetchTokenLifecycle,
+  fetchMarketInsights,
 } from "@/lib/analytics/event-queries";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -54,13 +56,14 @@ export default async function OrganizerAnalyticsPage({
   }
 
   // Fetch all analytics data in parallel
-  const [revenue, velocity, drinkSales, attendance, lifecycle] =
+  const [revenue, velocity, drinkSales, attendance, lifecycle, marketInsights] =
     await Promise.all([
       fetchEventRevenue(supabase, eventId),
       fetchDailyVelocity(supabase, eventId),
       fetchDrinkSales(supabase, eventId),
       fetchAttendanceRate(supabase, eventId),
       fetchTokenLifecycle(supabase, eventId),
+      fetchMarketInsights(supabase, eventId),
     ]);
 
   return (
@@ -104,6 +107,9 @@ export default async function OrganizerAnalyticsPage({
             </h2>
             <DrinkSalesBreakdown drinks={drinkSales} />
           </div>
+
+          {/* Market insights */}
+          <MarketInsightsCard insights={marketInsights} />
         </div>
       </AnimatedSection>
 

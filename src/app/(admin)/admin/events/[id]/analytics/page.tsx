@@ -9,12 +9,17 @@ import AttendanceCard from "@/components/analytics/AttendanceCard";
 import TokenLifecycleCard from "@/components/analytics/TokenLifecycleCard";
 import TicketVelocityChart from "@/components/analytics/TicketVelocityChart";
 import DrinkSalesBreakdown from "@/components/analytics/DrinkSalesBreakdown";
+import DrinkPopularityChart from "@/components/analytics/DrinkPopularityChart";
+import MarketInsightsCard from "@/components/analytics/MarketInsightsCard";
+import PurchaseFunnelChart from "@/components/analytics/PurchaseFunnelChart";
 import {
   fetchEventRevenue,
   fetchDailyVelocity,
   fetchDrinkSales,
   fetchAttendanceRate,
   fetchTokenLifecycle,
+  fetchMarketInsights,
+  fetchPurchaseFunnel,
 } from "@/lib/analytics/event-queries";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -48,13 +53,15 @@ export default async function AdminAnalyticsPage({
   }
 
   // Fetch all analytics data in parallel
-  const [revenue, velocity, drinkSales, attendance, lifecycle] =
+  const [revenue, velocity, drinkSales, attendance, lifecycle, marketInsights, purchaseFunnel] =
     await Promise.all([
       fetchEventRevenue(supabase, eventId),
       fetchDailyVelocity(supabase, eventId),
       fetchDrinkSales(supabase, eventId),
       fetchAttendanceRate(supabase, eventId),
       fetchTokenLifecycle(supabase, eventId),
+      fetchMarketInsights(supabase, eventId),
+      fetchPurchaseFunnel(supabase, eventId),
     ]);
 
   return (
@@ -97,6 +104,25 @@ export default async function AdminAnalyticsPage({
               Drink Sales
             </h2>
             <DrinkSalesBreakdown drinks={drinkSales} />
+          </div>
+
+          {/* Drink popularity ranking */}
+          <div className="rounded-2xl border border-card-border bg-card p-6">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
+              Drink Popularity
+            </h2>
+            <DrinkPopularityChart drinks={drinkSales} />
+          </div>
+
+          {/* Market insights */}
+          <MarketInsightsCard insights={marketInsights} />
+
+          {/* Purchase funnel */}
+          <div className="rounded-2xl border border-card-border bg-card p-6">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
+              Purchase Funnel
+            </h2>
+            <PurchaseFunnelChart data={purchaseFunnel} />
           </div>
         </div>
       </AnimatedSection>
