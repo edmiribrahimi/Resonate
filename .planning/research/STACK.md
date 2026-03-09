@@ -1,276 +1,216 @@
-# Technology Stack: Milestone Additions
+# Technology Stack: v1.3 Refinement & Intelligence
 
 **Project:** Resonate -- Private Music Events Community Platform
-**Researched:** 2026-02-24
-**Scope:** Additional libraries and services for: SumUp payments, referral system, role-based access, media uploads, branded emails, Orbitron font
-**Existing stack (not re-researched):** Next.js 16.1.6, React 19.2.3, Supabase (JS SDK 2.97.0, SSR 0.8.0), Tailwind CSS 4.x, PWA via next-pwa
+**Researched:** 2026-03-09
+**Scope:** Stack additions for analytics/data collection, app audit tooling, UI animations, guest list, admin nav consolidation
+**Existing stack (NOT re-researched):** Next.js 16.1.6, React 19.2.3, Supabase (JS SDK 2.97.0, SSR 0.8.0), Tailwind CSS 4.x, PWA, SumUp SDK 0.1.1, Resend, React Email, Orbitron font
 
 ---
 
 ## Recommended Additions
 
-### 1. SumUp Payment Integration
+### 1. Analytics: PostHog Cloud (Free Tier) + Custom Supabase Events Table
+
+**Approach: Hybrid** -- PostHog for behavioral analytics (pageviews, funnels, session replay), custom Supabase table for business-critical transactional data (drink purchases, expired tokens, revenue metrics).
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| SumUp Checkout API (REST) | v1 | Server-side checkout creation and payment processing | SumUp does not provide a first-party Node.js SDK. The REST API is well-documented and straightforward -- create a checkout server-side, redirect the user to SumUp's hosted payment page, receive a webhook on completion. No npm package needed. |
+| `posthog-js` | ^1.357.x | Client-side behavior tracking, pageviews, custom events, session replay | Industry-standard product analytics with generous free tier (1M events/month). React hooks (`usePostHog`), automatic pageview capture, and `instrumentation-client.ts` support for Next.js 15.3+. |
+| `posthog-node` | ^5.26.x | Server-side event capture from server actions and API routes | Required for tracking server-side events (drink purchases, token redemptions, refunds). Singleton pattern with `flushAt: 1` and `flushInterval: 0` for short-lived serverless functions. |
 
-**How it works:**
+**Why PostHog Cloud (not self-hosted, not custom-only, not Mixpanel):**
 
-SumUp's online payment flow uses their **Checkout API**:
-1. Server creates a checkout via `POST https://api.sumup.com/v0.1/checkouts` with amount, currency, description, and merchant code
-2. Response includes a `checkout_id` and optionally a redirect URL to SumUp's hosted payment page
-3. User completes payment on SumUp's hosted page (PCI-compliant -- no card data touches our server)
-4. SumUp sends a webhook to a configured callback URL with payment status
-5. Our webhook handler updates the ticket/order status in Supabase
+- **Free tier is more than enough:** 1M events/month, 5K session recordings, unlimited team size. A community event app with ~100-1000 users will never hit these limits.
+- **Zero infrastructure:** No Docker containers, no maintenance. PostHog Cloud just works on Vercel.
+- **Session replay included:** See exactly how users interact with the drink menu, ticket purchasing, and event pages. This is worth the integration alone.
+- **Supabase themselves use PostHog** -- confirmed in PostHog's customer stories. The integration is well-tested.
+- **Not Mixpanel:** PostHog is open-source, has a more generous free tier, and does not require enterprise plans for basic features like funnels and retention.
+- **Not custom-only:** Building a full analytics dashboard from scratch (charting, funnels, cohorts, retention) would be a massive effort. PostHog gives this out of the box.
 
-**Authentication:** OAuth2 bearer token. SumUp provides API keys via the SumUp Dashboard. Store `SUMUP_API_KEY` and `SUMUP_MERCHANT_CODE` as environment variables.
+**Why ALSO a custom Supabase events table:**
 
-**Why NOT a client-side SDK:** SumUp offers a card widget for embedding, but the hosted checkout page is simpler, handles PCI compliance entirely on their side, and works perfectly for a ticket purchase flow (user clicks "Buy" -> redirect to SumUp -> return to our confirmation page).
+PostHog is excellent for product analytics but your transactional/business data (drink revenue per event, expired token counts, ticket sales trends) already lives in Supabase. Rather than piping everything to PostHog, query these aggregations directly from PostgreSQL with simple SQL views. This avoids vendor lock-in for critical business metrics.
 
-**Confidence:** MEDIUM -- Based on SumUp developer documentation from training data. SumUp's API surface is stable, but exact endpoint paths and OAuth flow details should be verified against https://developer.sumup.com before implementation.
+**Custom analytics_events table (Supabase):**
 
-**Environment variables to add:**
+```sql
+CREATE TABLE public.analytics_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_name TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
+  event_id UUID REFERENCES public.events(id),
+  party_id UUID REFERENCES public.event_parties(id),
+  properties JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_analytics_events_name ON public.analytics_events(event_name);
+CREATE INDEX idx_analytics_events_event ON public.analytics_events(event_id);
+CREATE INDEX idx_analytics_events_created ON public.analytics_events(created_at);
+
+-- RLS: allow inserts from authenticated users, reads only for admins/organizers
+ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
 ```
-SUMUP_API_KEY=your-sumup-api-key
-SUMUP_MERCHANT_CODE=your-merchant-code
-SUMUP_WEBHOOK_SECRET=your-webhook-secret (if SumUp supports webhook signature verification)
-NEXT_PUBLIC_SUMUP_REDIRECT_URL=https://yourdomain.com/api/payments/callback
+
+**Events to track in this table:**
+- `drink_purchase` (amount, items, guest vs member)
+- `token_expired` (order_id, amount_refunded)
+- `ticket_purchase` (tier, amount)
+- `ticket_refund` (amount, reason)
+- `member_joined` (referred_by, auto_approved)
+- `guest_list_added` (event_id, added_by)
+
+**PostHog setup pattern (Next.js 16 App Router):**
+
+Client-side: Use `instrumentation-client.ts` (supported since Next.js 15.3) for lightweight initialization -- no provider wrapping needed for basic tracking. For `usePostHog()` hook in components, add a `PostHogProvider` in `app/layout.tsx`.
+
+Server-side: Create `src/lib/posthog.ts` with a singleton `PostHog` node client. In server actions, call `posthog.capture()` then `await posthog.flush()`.
+
+**Environment variables:**
+```
+NEXT_PUBLIC_POSTHOG_KEY=phc_xxx
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
-**No npm packages required.** Use native `fetch()` (available in Next.js server components and API routes) to call SumUp's REST API.
+Use the EU instance (`eu.i.posthog.com`) for GDPR compliance since Resonate operates in Italy/EU.
+
+**Confidence:** HIGH -- PostHog's Next.js App Router integration is extensively documented. Free tier limits verified via official pricing page. `instrumentation-client.ts` support verified for Next.js 15.3+.
 
 ---
 
-### 2. Branded Transactional Emails via Resend + React Email
+### 2. UI Animations: Motion (formerly Framer Motion)
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `@react-email/components` | ^0.0.31 | Build branded HTML email templates with React components | Resend's recommended approach. Write emails as React components with type safety. Renders to cross-client-compatible HTML. |
-| `resend` (existing) | ^6.9.2 | Send transactional emails | Already installed. Extend usage from newsletter-only to all transactional emails (confirmation, approval, ticket receipt, referral invite). |
+| `motion` | ^12.35.x | Micro-interactions, page transitions, layout animations, exit animations | The de-facto React animation library. 30M+ npm downloads/month. Declarative API (`animate`, `exit`, `layout`) that works naturally with React 19 and Tailwind CSS v4. |
 
-**Why React Email:** Resend and React Email are built by the same team (Resend, Inc.). React Email provides components like `<Html>`, `<Head>`, `<Body>`, `<Container>`, `<Section>`, `<Text>`, `<Img>`, `<Button>`, `<Hr>` that render to battle-tested HTML compatible with Gmail, Outlook, Apple Mail, etc. Writing raw HTML emails is painful and error-prone; React Email solves this with a component model.
+**Why `motion` (not `framer-motion`, not CSS-only, not GSAP):**
 
-**Why NOT:**
-- **MJML:** Adds a separate template language and compilation step. React Email stays in the TypeScript/React ecosystem you already use.
-- **Handlebars/EJS templates:** No type safety, hard to maintain, poor DX compared to React components.
-- **Inline HTML strings:** Unmaintainable for branded emails with logos, colors, and responsive layouts.
+- **`motion` is the new package name.** Framer Motion was rebranded to "Motion" in late 2024. The `motion` package is the maintained version. `framer-motion` still works (same API) but new projects should use `motion` with imports from `motion/react`.
+- **React 19 compatibility:** AnimatePresence bug in React 19 strict mode was fixed in v12.1.0 (Feb 2025). Current v12.35.x is fully compatible.
+- **Tailwind CSS v4 integration is clean:** Motion handles animation via inline styles and native browser animations, which override Tailwind classes without conflict. Let Tailwind handle static styling, let Motion handle animation.
+- **Not CSS-only animations:** Tailwind's built-in `animate-*` utilities are fine for simple loading spinners, but insufficient for exit animations (`AnimatePresence`), layout transitions, gesture-based interactions, and coordinated staggered animations.
+- **Not GSAP:** GSAP is timeline-based and imperative. Motion is declarative and React-native. For a React app, Motion integrates with the component lifecycle naturally. GSAP also has licensing complexity for commercial use.
 
-**Email templates to build:**
-1. Welcome / registration confirmation (with Resonate branding)
-2. Member approved notification
-3. Member rejected notification
-4. Ticket purchase confirmation / receipt
-5. Referral invite (shareable link)
-6. Password reset (branded override of Supabase default)
+**Bundle size considerations:**
 
-**Supabase email customization:** Supabase Auth sends its own emails for signup confirmation and password reset. You can customize these templates in the Supabase Dashboard (Authentication > Email Templates) with HTML. For full control, disable Supabase's default emails and send your own via Resend using auth webhooks or the `handle_new_user` trigger pattern. The recommended approach for Resonate is to customize Supabase's built-in templates with Resonate branding for auth flows, and use Resend directly for all other transactional emails.
+Full Motion bundle is ~34kb (gzipped). This can be reduced to ~4.6kb using `LazyMotion` + `domAnimation` feature set for initial render, with full features loaded asynchronously. For Resonate's use case (micro-interactions, not complex timeline animations), the `domAnimation` subset is sufficient:
 
-**Confidence:** MEDIUM -- React Email API is stable and widely used with Resend. Version number should be verified via npm before installing.
-
-**Installation:**
-```bash
-npm install @react-email/components
-```
-
----
-
-### 3. Orbitron Google Font Integration
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `next/font/google` (built-in) | N/A (part of Next.js 16) | Load Orbitron font with zero layout shift and self-hosting | Next.js has built-in Google Fonts support via `next/font/google`. It automatically self-hosts the font files at build time (no external requests to Google at runtime), provides font-display swap, and generates CSS variable bindings for use with Tailwind. |
-
-**No npm package needed.** `next/font` is built into Next.js.
-
-**Implementation pattern:**
 ```typescript
-// src/app/layout.tsx
-import { Orbitron } from "next/font/google";
+import { LazyMotion, domAnimation } from "motion/react";
 
-const orbitron = Orbitron({
-  subsets: ["latin"],
-  variable: "--font-orbitron",
-  display: "swap",
-});
-
-// Apply to <html> or <body>:
-<html lang="en" className={orbitron.variable}>
+// Wrap app or specific pages
+<LazyMotion features={domAnimation}>
+  {children}
+</LazyMotion>
 ```
 
-Then in `globals.css` or Tailwind config, set Orbitron as the default font family, or use the CSS variable `var(--font-orbitron)` where needed.
+**Specific use cases for Resonate v1.3:**
 
-**Why NOT:**
-- **Google Fonts CDN `<link>` tag:** Causes external network requests, FOUT/FOIT issues, and is slower than self-hosting. Next.js font optimization is strictly better.
-- **Manual font file download:** Unnecessary complexity when `next/font` handles this automatically.
+1. **Page transitions:** `AnimatePresence` with `mode="wait"` for smooth route transitions
+2. **Card/list animations:** Staggered entry for event cards, drink menu items
+3. **Modal transitions:** Bottom-sheet slide-up on mobile (matches existing z-[60] pattern)
+4. **Layout animations:** `layout` prop for smooth reordering when filtering/sorting
+5. **Micro-interactions:** Button press feedback, icon state changes, toggle transitions
+6. **Scroll-triggered reveals:** `whileInView` for content appearing as user scrolls
 
-**Confidence:** HIGH -- `next/font/google` has been stable since Next.js 13 and is the documented approach. Orbitron is available in Google Fonts.
-
----
-
-### 4. Media Uploads (Photos/Videos)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Supabase Storage (existing) | N/A (part of Supabase) | Store uploaded photos and videos | Already configured in the project (image remote patterns for `*.supabase.co` in `next.config.ts`). Supabase Storage provides S3-compatible object storage with RLS policies, image transformations, and CDN delivery. No additional service needed. |
-
-**No new npm packages required.** The existing `@supabase/supabase-js` SDK includes the Storage API (`supabase.storage.from('bucket').upload(...)`, `.getPublicUrl(...)`, `.createSignedUrl(...)`).
-
-**Implementation considerations:**
-
-- **Storage buckets:** Create separate buckets for different media types:
-  - `event-photos` -- public bucket for event photos
-  - `event-videos` -- public bucket for event videos
-  - Consider a single `event-media` bucket with folder structure: `event-media/{event_id}/photos/`, `event-media/{event_id}/videos/`
-
-- **Upload limits:** Supabase free tier allows 1GB storage, 2GB bandwidth/month. Paid plans scale. For video uploads, set reasonable file size limits (e.g., 50MB for videos, 10MB for photos) in the upload handler.
-
-- **Image transformations:** Supabase Storage supports on-the-fly image transformations (resize, crop) via URL parameters. Use this for generating thumbnails without a separate image processing service.
-
-- **RLS on storage:** Supabase Storage supports RLS-like policies on buckets. Configure so that authenticated members can upload to event-media buckets, and files are publicly readable.
-
-**Schema changes needed:**
-- Add `uploaded_by` (uuid, references auth.users) column to `event_media` table
-- Update RLS policies so members can insert their own media (not just admins)
-
-**Video considerations:**
-- Supabase Storage does not transcode video. Users must upload web-compatible formats (MP4/H.264).
-- For large videos, consider client-side compression before upload, or accept the limitation.
-- Video playback uses native HTML5 `<video>` element -- no additional player library needed for basic playback.
-
-**Why NOT:**
-- **Cloudinary/Imgix:** Adds external service dependency and cost for a feature that Supabase Storage handles natively. Reconsider only if image transformation needs exceed Supabase's capabilities.
-- **AWS S3 directly:** Supabase Storage is S3-compatible under the hood and already integrated. No reason to add another service.
-- **Uploadthing:** Adds dependency and routing complexity. Supabase Storage is already in the stack.
-
-**Confidence:** HIGH -- Supabase Storage is well-documented and already partially configured in this project.
+**Confidence:** HIGH -- Motion v12.35.x verified on npm. React 19 compatibility confirmed. Tailwind CSS v4 integration documented on motion.dev.
 
 ---
 
-### 5. Role-Based Access Control
+### 3. App Audit Tooling (Dev Dependencies -- ONE-TIME USE)
+
+These tools are for the audit phase only. They produce reports, inform fixes, then can be removed.
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Supabase RLS + custom `role` column | N/A (PostgreSQL/Supabase) | Enforce master/organizer/member roles at the database level | The existing schema already has `is_admin` boolean on `profiles`. Replace this with a proper `role` enum column. RLS policies enforce access at the database level -- no additional library needed. |
+| `@next/bundle-analyzer` | ^16.1.6 | Visualize JavaScript bundle sizes | Matches Next.js 16.1.6. Generates interactive treemap of bundles. Essential for identifying bloat before optimizing. |
+| `eslint-plugin-jsx-a11y` | ^6.x | Static accessibility linting for JSX | Catches a11y issues at lint time (missing alt text, improper ARIA roles, etc). Supports ESLint 9 flat config via `jsxA11y.flatConfigs.recommended`. |
+| Lighthouse CI (CLI) | latest | Automated performance, a11y, SEO, best practices audits | Run `npx @lhci/cli autorun` against production build. Generates reports for all audit domains. No npm install needed (use npx). |
 
-**No new npm packages required.** Role-based access is implemented entirely through:
-1. A `role` column on the `profiles` table (PostgreSQL enum: `master`, `organizer`, `member`)
-2. RLS policies that check `role` for authorization
-3. Next.js middleware that checks role for route protection
-4. Server-side role checks in API routes
+**IMPORTANT: `@axe-core/react` is NOT recommended.** It does not support React 18+, and Resonate uses React 19.2.3. Deque has deprecated the React wrapper. Use `eslint-plugin-jsx-a11y` for build-time checks and Lighthouse for runtime accessibility audits instead.
 
-**Schema migration:**
+**Why these tools and not others:**
+
+- **`@next/bundle-analyzer`** is official from the Next.js team, matches the project's Next.js version exactly. No alternative needed.
+- **`eslint-plugin-jsx-a11y`** is the only maintained static a11y linter for JSX/React. It now supports ESLint 9 flat config, which matches eslint-config-next's setup.
+- **Lighthouse CI via `npx`** avoids installing yet another dev dependency. Run it once, get the report, fix issues. Lighthouse includes axe-core internally for accessibility testing.
+
+**Audit workflow (run once, not permanent):**
+
+```bash
+# 1. Bundle analysis
+ANALYZE=true npm run build   # with @next/bundle-analyzer configured
+
+# 2. Lighthouse audit (production build required)
+npm run build && npm start &
+npx @lhci/cli autorun --collect.url=http://localhost:3000
+
+# 3. Accessibility lint (permanent -- keep in eslint config)
+# Already runs via eslint on every lint
+```
+
+**Confidence:** HIGH -- `@next/bundle-analyzer` v16.1.6 verified on npm. `eslint-plugin-jsx-a11y` flat config support confirmed via GitHub issues. Lighthouse CI is Google-maintained.
+
+---
+
+### 4. Guest List: Database Changes Only (No New Libraries)
+
+The guest list feature requires new Supabase tables and server actions, NOT new npm packages.
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Supabase (existing) | N/A | Guest list storage, RLS policies, auto-registration logic | All guest list logic is CRUD operations + server actions. Adding a library for this would be over-engineering. |
+
+**New database table:**
+
 ```sql
--- Create role enum
-CREATE TYPE user_role AS ENUM ('master', 'organizer', 'member', 'pending');
+CREATE TABLE public.guest_list_entries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  party_id UUID REFERENCES public.event_parties(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  added_by UUID NOT NULL REFERENCES auth.users(id),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked_in', 'no_show')),
+  auto_register BOOLEAN DEFAULT false,
+  auto_approve BOOLEAN DEFAULT false,
+  free_ticket BOOLEAN DEFAULT false,
+  ticket_id UUID REFERENCES public.tickets(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
--- Add role column (replace is_admin)
-ALTER TABLE public.profiles ADD COLUMN role user_role DEFAULT 'pending';
-
--- Migrate existing data
-UPDATE public.profiles SET role = 'master' WHERE is_admin = true;
-UPDATE public.profiles SET role = 'member' WHERE is_admin = false;
-
--- Eventually drop is_admin after migration is verified
--- ALTER TABLE public.profiles DROP COLUMN is_admin;
+CREATE INDEX idx_guest_list_event ON public.guest_list_entries(event_id);
+CREATE INDEX idx_guest_list_email ON public.guest_list_entries(email);
 ```
 
-**RLS policy patterns:**
-```sql
--- Example: Only organizers and master can create events
-CREATE POLICY "Organizers can create events"
-  ON public.events FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('organizer', 'master')
-    )
-  );
+**Guest list flow:**
+1. Organizer adds names to guest list (with optional email)
+2. If `auto_register = true` and email provided: system creates a pending profile
+3. If `auto_approve = true`: profile is auto-approved (skips approval queue)
+4. If `free_ticket = true`: free ticket generated automatically
+5. Guest receives email invitation (via existing Resend integration)
 
--- Example: Pending members can browse but not RSVP
-CREATE POLICY "Approved members can RSVP"
-  ON public.rsvps FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role IN ('member', 'organizer', 'master')
-    )
-  );
-```
+**No new npm packages needed.** This is 100% server actions + Supabase queries + existing email infrastructure.
 
-**Middleware enhancement:** Extend the existing `middleware.ts` to check roles for route segments:
-- `/admin/*` -- master only
-- `/organizer/*` -- organizer + master
-- `/dashboard/*`, `/events/*/buy` -- member + organizer + master (not pending)
-
-**Why NOT:**
-- **CASL or similar authorization libraries:** Overkill for 4 roles. RLS + middleware covers this cleanly. CASL adds complexity for a simple role hierarchy.
-- **Supabase custom claims (JWT):** Storing roles in JWT claims avoids a DB lookup on every request but adds complexity around claim refresh when roles change. For a community platform with low request volume, querying the `profiles` table is fine. Reconsider if performance becomes an issue.
-
-**Confidence:** HIGH -- This is standard Supabase/PostgreSQL pattern. RLS with role checks is well-documented.
+**Confidence:** HIGH -- Standard CRUD pattern with Supabase. No new technology required.
 
 ---
 
-### 6. Referral System
+### 5. Admin Navigation Consolidation: No New Libraries
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `nanoid` | ^5.1.0 | Generate unique, URL-safe referral codes | Lightweight (130 bytes), no dependencies, cryptographically random, configurable length and alphabet. Better than UUID for user-facing URLs (shorter, URL-safe by default). |
+The admin/organizer navigation consolidation into the account button is a pure UI refactor. No new libraries.
 
 **Implementation approach:**
+- Move admin/organizer links from sidebar/separate nav into a dropdown menu anchored to the account avatar/button
+- Role-based menu items (master sees admin links, organizer sees organizer links, member sees member links)
+- Use Motion (from section 2) for dropdown animation
+- No new routing changes -- just UI reorganization
 
-The referral system is primarily a database + application logic feature, not a library-heavy one.
-
-**Schema additions:**
-```sql
--- Add referral columns to profiles
-ALTER TABLE public.profiles ADD COLUMN referral_code TEXT UNIQUE;
-ALTER TABLE public.profiles ADD COLUMN referred_by UUID REFERENCES public.profiles(id);
-ALTER TABLE public.profiles ADD COLUMN status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected'));
-
--- Generate referral code for existing members
--- (Done via application code using nanoid on approval)
-```
-
-**Referral flow:**
-1. Each approved member gets a unique referral code (generated with `nanoid`, e.g., `RSN-abc123xy`)
-2. Referral link: `https://resonate.app/join?ref=abc123xy`
-3. Registration page reads `ref` query param, stores it
-4. On signup, if valid `ref` code found: set `referred_by` to referrer's ID, set `status` to `approved`
-5. On signup without `ref`: set `status` to `pending`
-
-**Why nanoid over alternatives:**
-- **UUID:** Too long for URLs (36 chars). nanoid generates 8-12 char codes that are user-friendly.
-- **shortid:** Deprecated, recommends nanoid as replacement.
-- **crypto.randomUUID():** Produces full UUIDs, not short codes.
-- **Custom random string function:** nanoid is battle-tested and handles edge cases (collision resistance, URL safety).
-
-**Confidence:** HIGH -- nanoid is a stable, widely-used library. The referral logic is straightforward application code.
-
-**Installation:**
-```bash
-npm install nanoid
-```
-
----
-
-### 7. Member Approval Flow
-
-No additional libraries needed. This is implemented entirely with:
-- The `status` column on `profiles` (from referral system schema above)
-- The `role` column (from RBAC schema above)
-- RLS policies that check status
-- Admin/organizer UI pages for reviewing pending members
-- Resend emails for approval/rejection notifications
-
-**Flow:**
-1. Non-referred user signs up -> `status = 'pending'`, `role = 'pending'`
-2. Referred user signs up -> `status = 'approved'`, `role = 'member'` (auto-approved)
-3. Master/organizer reviews pending members in admin panel
-4. On approval: `status = 'approved'`, `role = 'member'`, referral code generated, notification email sent
-5. On rejection: `status = 'rejected'`, notification email sent
-
-**Confidence:** HIGH -- Pure application logic with existing tools.
+**Confidence:** HIGH -- Pure UI work using existing stack.
 
 ---
 
@@ -278,67 +218,88 @@ No additional libraries needed. This is implemented entirely with:
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Payments | SumUp Checkout API (REST) | Stripe | Project constraint: SumUp is required (owner already uses SumUp) |
-| Payments | SumUp hosted checkout | SumUp card widget embed | Hosted checkout is simpler, fully PCI-compliant, no iframe complexity |
-| Email templates | React Email | MJML | Different ecosystem; React Email stays in TypeScript/React |
-| Email templates | React Email | Handlebars/EJS | No type safety, worse DX |
-| Fonts | next/font/google | CDN link tag | Self-hosting is faster, no external requests, no FOUT |
-| Media storage | Supabase Storage | Cloudinary | Already in stack, no additional service needed |
-| Media storage | Supabase Storage | Uploadthing | Already in stack, adds unnecessary dependency |
-| Authorization | RLS + role column | CASL | Overkill for 4-role system |
-| Authorization | DB role check | JWT custom claims | Adds claim refresh complexity for minimal perf gain |
-| Referral codes | nanoid | UUID | UUIDs are too long for user-facing referral links |
-| Video player | Native HTML5 video | Video.js/Plyr | Basic playback is sufficient; no custom controls needed |
+| Analytics | PostHog Cloud (free) | Custom Supabase-only analytics | Building funnels, retention charts, session replay from scratch is months of work. PostHog gives this free. |
+| Analytics | PostHog Cloud (free) | Mixpanel | Less generous free tier, closed-source, more expensive at scale. |
+| Analytics | PostHog Cloud (free) | Google Analytics | Not designed for product analytics. No session replay. Privacy concerns for EU users. |
+| Analytics | PostHog Cloud (free) | Self-hosted PostHog | Unnecessary infrastructure burden for a small community app. Cloud free tier is sufficient. |
+| Analytics | Hybrid (PostHog + Supabase table) | PostHog-only | Business metrics (revenue, refunds) belong in your database. Don't depend on PostHog for financial reporting. |
+| Animations | Motion (`motion`) | Framer Motion (`framer-motion`) | Same library, but `motion` is the current package name. Use the new one for new installs. |
+| Animations | Motion | CSS animations + Tailwind animate-* | Insufficient for exit animations, layout transitions, gesture interactions. |
+| Animations | Motion | GSAP | Imperative API, licensing complexity, heavier bundle for React apps. |
+| Animations | Motion | React Spring | Smaller community, less documentation, no `AnimatePresence` equivalent. |
+| A11y audit | eslint-plugin-jsx-a11y | @axe-core/react | @axe-core/react does NOT support React 18+. Deprecated by Deque. |
+| Bundle audit | @next/bundle-analyzer | webpack-bundle-analyzer | @next/bundle-analyzer IS webpack-bundle-analyzer, pre-configured for Next.js. |
 
 ---
 
 ## Complete Installation
 
 ```bash
-# New dependencies
-npm install @react-email/components nanoid
+# Production dependencies (2 packages)
+npm install posthog-js motion
 
-# Type definitions (nanoid ships its own types, no @types needed)
-# React Email ships its own types, no @types needed
+# Dev dependencies (2 packages)
+npm install -D @next/bundle-analyzer eslint-plugin-jsx-a11y
+
+# Server-side analytics (1 package)
+npm install posthog-node
 ```
 
-That is all. Two new npm packages total. Everything else uses existing infrastructure (Supabase, Resend, Next.js built-ins) or raw REST API calls (SumUp).
+**Total: 5 new npm packages.** Three production, two dev-only.
+
+**What NOT to install:**
+- `@axe-core/react` -- incompatible with React 19
+- `framer-motion` -- use `motion` instead (same library, new name)
+- `mixpanel-browser` -- PostHog is better for this use case
+- `react-spring` -- Motion is more feature-complete
+- `gsap` -- overkill and licensing issues
+- `@vercel/analytics` -- PostHog covers this and more
+- Any charting library for analytics dashboard -- PostHog dashboard is the analytics UI
+- Any guest list management library -- pure CRUD, no library needed
 
 ---
 
 ## New Environment Variables
 
 ```bash
-# SumUp Payments
-SUMUP_API_KEY=your-sumup-api-key
-SUMUP_MERCHANT_CODE=your-merchant-code
-
-# Resend (expand existing)
-RESEND_FROM_EMAIL=no-reply@resonate.app
-RESEND_AUDIENCE_ID=your-audience-id  # Already used but not documented in .env.example
+# PostHog Analytics (required)
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
-Note: `SUMUP_WEBHOOK_SECRET` may also be needed if SumUp supports webhook signature verification (verify during implementation).
+No other new environment variables needed. Guest list uses existing Supabase and Resend credentials.
 
 ---
 
 ## New Database Objects
 
 ### Tables to add:
-- `ticket_tiers` -- Stores tier definitions per event (name, price, capacity, sort order)
-- `orders` -- Stores ticket purchase records (user, event, tier, amount, SumUp checkout ID, status)
+- `analytics_events` -- Custom business event tracking (purchases, refunds, token lifecycle)
+- `guest_list_entries` -- Guest list per event with auto-registration/approval/ticket flags
 
-### Columns to add to `profiles`:
-- `role` (user_role enum) -- Replaces `is_admin` boolean
-- `status` (text: pending/approved/rejected) -- Approval state
-- `referral_code` (text, unique) -- For referral links
-- `referred_by` (uuid, FK to profiles) -- Who invited this member
+### SQL Views to add (for admin analytics dashboard):
+- `v_revenue_per_event` -- Aggregate ticket + drink revenue per event
+- `v_token_lifecycle` -- Token purchase/redeem/expire/refund rates
+- `v_member_growth` -- New members over time, referral sources
+- `v_event_attendance` -- RSVP vs actual attendance rates
 
-### Columns to add to `event_media`:
-- `uploaded_by` (uuid, FK to auth.users) -- Track who uploaded
+### Columns to add:
+- None on existing tables. All new data goes into new tables.
 
-### Storage buckets to create:
-- `event-media` -- For photos and videos uploaded by members
+---
+
+## Integration Points with Existing Stack
+
+| Existing Component | Integration With | How |
+|--------------------|-----------------|-----|
+| Next.js App Router | PostHog | `instrumentation-client.ts` for auto-pageviews, `PostHogProvider` in layout for hooks |
+| Server Actions | PostHog Node | `posthog.capture()` in purchase/redeem/refund server actions |
+| Server Actions | analytics_events table | Supabase insert in same server action (co-located with PostHog capture) |
+| Supabase Auth | PostHog | Identify user on login: `posthog.identify(userId, { role, status })` |
+| Tailwind CSS v4 | Motion | Tailwind for static styles, Motion for animation props. No conflict. |
+| Existing modals (z-[60]) | Motion | Wrap modal content in `motion.div` with `AnimatePresence` for enter/exit |
+| ESLint 9 (eslint-config-next) | eslint-plugin-jsx-a11y | Add `jsxA11y.flatConfigs.recommended` to flat config |
+| next.config.ts | @next/bundle-analyzer | Wrap config with `withBundleAnalyzer()`, conditionally enabled via ANALYZE env |
 
 ---
 
@@ -346,38 +307,36 @@ Note: `SUMUP_WEBHOOK_SECRET` may also be needed if SumUp supports webhook signat
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| SumUp API | MEDIUM | API structure from training data. Endpoint URLs, auth flow, and webhook format should be verified against official docs before implementation. |
-| React Email | MEDIUM | Package is well-known and stable. Exact latest version should be verified via npm at install time. |
-| Orbitron / next/font | HIGH | Built-in Next.js feature, well-documented, no version concerns. |
-| Supabase Storage | HIGH | Already partially configured in the project. Standard usage patterns. |
-| Role-based access (RLS) | HIGH | Standard PostgreSQL/Supabase patterns. Already using RLS in the schema. |
-| Referral system (nanoid) | HIGH | Stable library, simple integration. |
-| Approval flow | HIGH | Pure application logic, no new dependencies. |
-| Email templates | MEDIUM | React Email is the right choice but version pinning should be verified. |
-
----
-
-## Research Limitations
-
-Web search and web fetch tools were unavailable during this research session. All recommendations are based on:
-1. Codebase analysis (HIGH confidence -- direct observation)
-2. Training data knowledge with May 2025 cutoff (MEDIUM confidence -- may be slightly outdated)
-
-**Before implementation, verify:**
-- SumUp Checkout API current endpoint paths and authentication flow at https://developer.sumup.com
-- `@react-email/components` latest version via `npm info @react-email/components`
-- `nanoid` latest version via `npm info nanoid`
-- Supabase Storage image transformation availability on your plan
+| PostHog (posthog-js, posthog-node) | HIGH | Official docs for Next.js App Router verified. Free tier limits confirmed. EU instance available. |
+| Motion (animation library) | HIGH | v12.35.x on npm confirmed. React 19 + strict mode fix verified (v12.1.0). Tailwind v4 integration documented. |
+| @next/bundle-analyzer | HIGH | v16.1.6 matches project's Next.js version exactly. Official Next.js package. |
+| eslint-plugin-jsx-a11y | HIGH | ESLint 9 flat config support confirmed. Standard React a11y tooling. |
+| Lighthouse CI | HIGH | Google-maintained, runs via npx, includes axe-core for a11y. |
+| Custom Supabase analytics table | HIGH | Standard PostgreSQL pattern. No special tooling needed. |
+| Guest list database design | HIGH | Standard CRUD. Uses existing Supabase infrastructure. |
+| @axe-core/react incompatibility | HIGH | Confirmed: does NOT support React 18+. Verified via npm page and Deque deprecation notice. |
 
 ---
 
 ## Sources
 
-- Codebase analysis: `/Users/etiesse/Resonate/package.json`, `supabase/schema.sql`, `next.config.ts`, `src/app/layout.tsx`
-- SumUp Developer Documentation: https://developer.sumup.com (not fetched -- training data)
-- React Email Documentation: https://react.email (not fetched -- training data)
-- Next.js Font Optimization: https://nextjs.org/docs/app/building-your-application/optimizing/fonts (not fetched -- training data)
-- Supabase Storage Documentation: https://supabase.com/docs/guides/storage (not fetched -- training data)
-- nanoid: https://github.com/ai/nanoid (not fetched -- training data)
+- [PostHog Next.js Docs](https://posthog.com/docs/libraries/next-js) -- Official integration guide for App Router
+- [PostHog Tutorials: Next.js App Directory Analytics](https://posthog.com/tutorials/nextjs-app-directory-analytics) -- Setup walkthrough
+- [PostHog Pricing](https://posthog.com/pricing) -- Free tier limits (1M events/month)
+- [Vercel KB: PostHog + Next.js](https://vercel.com/kb/guide/posthog-nextjs-vercel-feature-flags-analytics) -- Vercel-specific configuration
+- [How Supabase Uses PostHog](https://posthog.com/customers/supabase) -- Confirms Supabase + PostHog is a proven combination
+- [PostHog + Supabase Signup Funnel](https://posthog.com/tutorials/nextjs-supabase-signup-funnel) -- Hybrid tracking approach
+- [Motion.dev](https://motion.dev/) -- Official Motion documentation
+- [Motion npm](https://www.npmjs.com/package/motion) -- v12.35.x confirmed
+- [Motion: Reduce Bundle Size](https://motion.dev/docs/react-reduce-bundle-size) -- LazyMotion documentation (~4.6kb)
+- [Motion: Tailwind CSS Integration](https://motion.dev/docs/react-tailwind) -- Official Tailwind guide
+- [Motion: AnimatePresence](https://motion.dev/docs/react-animate-presence) -- React 19 strict mode fix noted
+- [Motion Changelog](https://motion.dev/changelog) -- v12.1.0 React 19 fix confirmed
+- [@next/bundle-analyzer npm](https://www.npmjs.com/package/@next/bundle-analyzer) -- v16.1.6 confirmed
+- [eslint-plugin-jsx-a11y GitHub](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y) -- ESLint 9 flat config support
+- [@axe-core/react npm](https://www.npmjs.com/package/@axe-core/react) -- React 18+ incompatibility confirmed
+- [Lighthouse CI GitHub](https://github.com/GoogleChrome/lighthouse) -- Includes axe-core
+- [Supabase Custom Analytics Guide](https://bootstrapped.app/guide/how-to-create-custom-analytics-with-supabase) -- Custom events table pattern
+- [Supabase Performance Tuning](https://supabase.com/docs/guides/platform/performance) -- PostgreSQL insert optimization
 
-*Stack analysis: 2026-02-24*
+*Stack analysis: 2026-03-09*

@@ -1,589 +1,730 @@
 # Architecture Patterns
 
-**Domain:** Private music events community platform
-**Researched:** 2026-02-24
-**Focus:** SumUp payments, referral tracking, role-based access, media uploads, approval flows
+**Domain:** Private music events community platform -- v1.3 Refinement & Intelligence
+**Researched:** 2026-03-09
+**Focus:** Analytics data collection, audit integration, UI elegance, guest list management, nav consolidation
 
 ## Recommended Architecture
 
-The existing Next.js 16 App Router + Supabase architecture is sound and should be extended, not restructured. The six new feature domains (payments, referrals, roles, media, approvals, event CRUD) integrate as new layers atop the existing route groups, middleware, and RLS policies.
+The existing Next.js 16 App Router + Supabase architecture remains sound. v1.3 features layer on top of the established patterns (Server Actions for mutations, route groups for access control, middleware for role resolution, service client for admin operations). No architectural restructuring is needed -- only targeted extensions.
 
-### High-Level System Diagram
+### High-Level System Changes
 
 ```
 Browser (PWA)
   |
   v
-Next.js Middleware (auth + role resolution)
+Next.js Middleware (existing -- no changes needed)
   |
-  +-- (public) routes ---- read-only, no auth required
-  +-- (auth) routes ------- login, register (with referral code capture)
-  +-- (members) routes ---- dashboard, tickets, referrals, media upload
-  +-- (organizer) routes -- event CRUD, ticket sales view
-  +-- (admin) routes ------ approval queue, member management, all events
+  +-- (public) routes ---- [UNCHANGED]
+  +-- (auth) routes ------- [UNCHANGED]
+  +-- (members) routes ---- dashboard [MODIFIED: account hub integration]
+  +-- (organizer) routes -- [MODIFIED: guest list management]
+  +-- (admin) routes ------ [MODIFIED: analytics dashboard, guest list]
   |
   v
-API Routes (/api/...)
-  +-- /api/webhooks/sumup --- SumUp payment callbacks (no auth, signature verification)
-  +-- /api/checkout --------- create SumUp checkout (authenticated)
-  +-- /api/media/upload ----- presigned URL generation (authenticated)
-  +-- /api/auth/callback ---- existing auth callback
-  +-- /api/membership/verify  existing QR verification
+Server Actions (existing pattern)
+  +-- trackEvent()     [NEW: analytics event recording]
+  +-- addToGuestList() [NEW: guest list CRUD]
+  +-- processGuest()   [NEW: auto-register, auto-approve, generate ticket]
   |
   v
 Supabase
-  +-- Auth (users, sessions, JWT with role in app_metadata)
-  +-- Database (profiles, events, ticket_tiers, orders, referrals, event_media, approval_queue)
-  +-- Storage (event-media bucket with RLS)
-  +-- Edge Functions (optional: SumUp webhook if Vercel cold starts are problematic)
+  +-- Database [MODIFIED: 2 new tables]
+      +-- analytics_events [NEW]
+      +-- guest_list_entries [NEW]
+  +-- Auth [UNCHANGED]
+  +-- Storage [UNCHANGED]
 ```
 
 ### Component Boundaries
 
-| Component | Responsibility | Communicates With | Auth Required |
-|-----------|---------------|-------------------|---------------|
-| **Middleware (role-aware)** | Session refresh + role resolution from profile; route gating by role | Supabase Auth, profile cache | N/A (runs on every request) |
-| **Registration flow** | Capture referral code from URL, pass to signup, set initial approval status | Supabase Auth, profiles table, referrals table | No (public) |
-| **Approval queue UI** | List pending members, approve/reject actions | profiles table (status field) | Admin or Organizer |
-| **Event CRUD** | Create, edit, publish events with ticket tiers | events table, ticket_tiers table, Supabase Storage (cover images) | Organizer or Admin |
-| **Checkout flow** | Select ticket tier, create SumUp checkout, redirect to payment | API route -> SumUp API, orders table | Approved Member |
-| **SumUp webhook handler** | Receive payment confirmation, update order status, create ticket record | orders table, tickets table (no auth -- uses signature verification) |
-| **Referral system** | Generate unique referral link, track who invited whom | profiles table (referral_code), referrals table | Member (to view/share link) |
-| **Media upload pipeline** | Upload photos/videos to Supabase Storage, create event_media record | Supabase Storage, event_media table, attendances table (verify attendance) | Approved Member |
-| **Ticket display** | Show purchased tickets with QR code for event entry | orders table, tickets table | Member |
+| Component | Responsibility | Status | Communicates With |
+|-----------|---------------|--------|-------------------|
+| **analytics_events table** | Store all tracked user/system events | NEW | Server Actions, cron jobs |
+| **trackEvent() utility** | Server-side event recording function | NEW | analytics_events table |
+| **Analytics dashboard page** | Admin view of aggregated analytics | NEW | analytics_events, existing tables (drink_orders, tickets, profiles) |
+| **guest_list_entries table** | Per-event guest list with processing status | NEW | Server Actions, profiles, tickets, rsvps |
+| **Guest list management UI** | Admin/organizer CRUD for guest list | NEW | guest_list_entries table |
+| **processGuestEntry() action** | Auto-register, auto-approve, generate ticket for guest | NEW | profiles, guest_list_entries, tickets |
+| **MobileNav** | Bottom tab navigation | MODIFIED | Remove Admin/Organizer tabs |
+| **Dashboard page** | Member account hub | MODIFIED | Add admin/organizer sections for elevated roles |
+| **AnimatedSection wrapper** | Client component for scroll/mount animations | NEW | framer-motion (motion) |
 
 ### Data Flow
 
-#### 1. Registration with Referral
+#### 1. Analytics Event Tracking (Server-Side)
 
 ```
-1. Visitor clicks referral link: /register?ref=ABC123
-2. Registration page captures `ref` query param, stores in form state
-3. On signup, `ref` code sent as user_metadata: { referral_code: "ABC123" }
-4. Supabase trigger `handle_new_user()` (modified):
-   a. Creates profile row
-   b. If referral_code present and valid:
-      - Sets profile.status = 'approved'
-      - Inserts row in referrals table (referrer_id, referred_id)
-   c. If no referral_code:
-      - Sets profile.status = 'pending'
-5. Pending members can browse events but middleware/RLS blocks RSVP, ticket purchase, media upload
+1. User performs action (page view, purchase, RSVP, etc.)
+2. Server Action / API route completes primary operation
+3. After success, calls trackEvent() utility (fire-and-forget)
+4. trackEvent() inserts row into analytics_events via service client
+5. No client-side tracking code -- all server-side for privacy & reliability
+6. Admin views aggregated data via analytics dashboard (SQL queries on analytics_events + existing tables)
 ```
 
-#### 2. Approval Flow
+**Why server-side only:** No need for client-side analytics SDKs (PostHog, Mixpanel). The community is small (hundreds, not millions). Server-side tracking via existing Server Actions captures all meaningful events without adding JS bundle weight or privacy concerns. The data already flows through Server Actions -- we just log it.
+
+#### 2. Guest List Processing Flow
 
 ```
-1. Admin/Organizer navigates to /admin/approvals
-2. Server component fetches profiles WHERE status = 'pending'
-3. Admin clicks Approve or Reject
-4. Server Action updates profile.status to 'approved' or 'rejected'
-5. (Optional) Resend sends email notification to member about approval status
-6. Approved member can now RSVP, buy tickets, upload media
+1. Admin/Organizer adds guest to event guest list:
+   { email, full_name, event_id, party_id?, tier_id?, notes }
+2. Guest entry stored in guest_list_entries with status: 'pending'
+3. Admin triggers "Process Guest List" (or runs automatically on event publish)
+4. For each pending entry:
+   a. Check if profile exists with matching email
+      - YES: use existing profile
+      - NO: create Supabase Auth user + profile (auto-approved, random password)
+   b. Set profile status = 'approved' (if not already)
+   c. If tier_id specified: generate free ticket (amount_paid = 0)
+      If party access_type = 'free_rsvp': create RSVP
+   d. Update guest_list_entries.status = 'processed'
+   e. Send welcome/ticket email via Resend
+5. Guest receives email with login credentials + ticket link
 ```
 
-#### 3. SumUp Checkout Flow
+#### 3. Nav Consolidation Flow
 
 ```
-1. Approved member on event detail page selects ticket tier
-2. Client calls POST /api/checkout with { event_id, tier_id }
-3. API route (authenticated):
-   a. Validates member is approved
-   b. Checks tier availability (capacity - sold)
-   c. Creates order row: { user_id, event_id, tier_id, status: 'pending', amount }
-   d. Calls SumUp API: POST /v0.1/checkouts with:
-      - amount, currency, checkout_reference (order.id)
-      - redirect_url: /tickets/[order_id]/confirmation
-   e. Returns SumUp checkout_id and checkout URL to client
-4. Client redirects to SumUp hosted checkout page (or renders SumUp card widget)
-5. After payment:
-   a. SumUp redirects user to /tickets/[order_id]/confirmation
-   b. SumUp sends webhook POST to /api/webhooks/sumup
-6. Webhook handler:
-   a. Verifies request authenticity (SumUp webhook signature or checkout lookup)
-   b. Finds order by checkout_reference
-   c. Updates order.status = 'paid' (or 'failed')
-   d. If paid: creates ticket record with unique QR code
-7. Confirmation page polls order status (or uses Supabase realtime) to show ticket
+Current:
+  MobileNav tabs: [Events] [Gallery] [Account] [Admin/Organizer]
+  Admin/Organizer tab -> popover with Dashboard + Scanner links
+
+Proposed:
+  MobileNav tabs: [Events] [Gallery] [Account]
+  Account tab -> /dashboard (existing)
+  Dashboard page -> adds admin/organizer sections for elevated roles:
+    - "Admin Dashboard" link card
+    - "Organizer Dashboard" link card
+    - "Scanner" link card
+    - "Finance" link card (master only)
+
+Result: MobileNav always has exactly 3 tabs. Admin/organizer controls accessed via Account.
 ```
 
-**IMPORTANT -- SumUp Integration Notes (MEDIUM confidence, verify against current SumUp docs):**
-- SumUp's Online Payments API uses a hosted checkout page or embeddable card form
-- Create checkout via `POST https://api.sumup.com/v0.1/checkouts`
-- Required fields: `amount`, `currency`, `checkout_reference`, `merchant_code`
-- Auth: Bearer token (OAuth2 access token from SumUp merchant account)
-- Webhook/callback: SumUp supports a `redirect_url` for post-payment redirect; webhook support may require configuration in SumUp dashboard
-- If SumUp does not support server-to-server webhooks reliably, the confirmation page should poll the SumUp checkout status API: `GET /v0.1/checkouts/{id}`
-- **Phase-specific research REQUIRED** to verify: webhook availability, signature verification method, and whether the SumUp card widget (sumup-card SDK) works in Next.js SSR context
-
-#### 4. Event CRUD (Organizer)
+#### 4. UI Animation Integration
 
 ```
-1. Organizer navigates to /organizer/events/new
-2. Form captures: title, description, date, time, location, lineup, capacity, cover image
-3. Cover image uploaded to Supabase Storage (event-covers bucket)
-4. On submit: Server Action inserts event row + ticket_tier rows
-5. Slug auto-generated from title (slugify)
-6. Event starts as is_published = false (draft)
-7. Organizer can publish when ready (sets is_published = true)
-8. Organizer can add/edit ticket tiers: { name, price, capacity, sales_start, sales_end }
+Server Component (data fetching)
+  |
+  v
+AnimatedSection (client boundary -- "use client")
+  |
+  +-- motion.div with initial/animate/whileInView props
+  |
+  v
+Children rendered (can be server or client components)
 ```
 
-#### 5. Media Upload Pipeline
+## New Database Schema
 
+### NEW: analytics_events
+
+```sql
+create table public.analytics_events (
+  id uuid default gen_random_uuid() primary key,
+  event_type text not null,           -- 'page_view', 'ticket_purchase', 'drink_purchase',
+                                      -- 'rsvp', 'drink_redeem', 'token_expired', 'member_approved',
+                                      -- 'media_upload', 'referral_signup', 'guest_processed'
+  user_id uuid references auth.users on delete set null,  -- null for anonymous events
+  event_id uuid references public.events on delete set null,  -- null for non-event actions
+  party_id uuid references public.event_parties on delete set null,
+  metadata jsonb default '{}',        -- flexible payload per event type:
+                                      -- page_view: { path, referrer }
+                                      -- ticket_purchase: { tier_id, amount, tier_name }
+                                      -- drink_purchase: { order_id, items, total, is_guest }
+                                      -- token_expired: { token_count, refund_amount }
+  created_at timestamptz default now()
+);
+
+-- Indexes for common query patterns
+create index idx_analytics_event_type on analytics_events(event_type);
+create index idx_analytics_created_at on analytics_events(created_at);
+create index idx_analytics_event_id on analytics_events(event_id);
+create index idx_analytics_user_id on analytics_events(user_id);
+
+-- Composite index for time-range queries by type
+create index idx_analytics_type_time on analytics_events(event_type, created_at desc);
 ```
-1. Approved member on event detail page (for an event they attended) clicks "Upload"
-2. Client validates: file type (image/video), file size (images < 10MB, videos < 100MB)
-3. Client calls API route or Server Action to get presigned upload URL
-4. Server verifies:
-   a. User is approved member
-   b. User has attendance record for this event
-5. File uploaded directly to Supabase Storage (event-media bucket)
-   Path: event-media/{event_id}/{user_id}/{timestamp}_{filename}
-6. On upload complete: insert event_media row { event_id, uploaded_by, url, type, status: 'published' }
-7. Media appears on event gallery and member profile
+
+**Schema rationale:** Single table with `event_type` discriminator + `metadata` JSONB column. This avoids creating N tables for N event types while keeping queries simple (`WHERE event_type = 'ticket_purchase'`). JSONB indexes can be added for specific metadata fields if query performance becomes an issue.
+
+**RLS policy:** No client access. Only service client (via Server Actions) inserts. Admin reads via service client in dashboard Server Components. No RLS needed -- table is invisible to anon/authenticated clients.
+
+```sql
+-- No RLS policies: table accessed exclusively via service client
+-- Alternatively, enable RLS with no policies = deny all client access
+alter table public.analytics_events enable row level security;
 ```
 
-#### 6. Role-Based Access
+### NEW: guest_list_entries
 
+```sql
+create table public.guest_list_entries (
+  id uuid default gen_random_uuid() primary key,
+  event_id uuid references public.events on delete cascade not null,
+  party_id uuid references public.event_parties on delete set null,
+  tier_id uuid references public.ticket_tiers on delete set null,
+  email text not null,
+  full_name text not null,
+  notes text,
+  status text check (status in ('pending', 'processed', 'failed')) default 'pending',
+  profile_id uuid references public.profiles on delete set null,  -- linked after processing
+  ticket_id uuid references public.tickets on delete set null,    -- linked after ticket generation
+  error_message text,                                              -- reason if failed
+  added_by uuid references auth.users on delete set null not null,
+  processed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+
+  -- Prevent duplicate guests per event
+  unique(event_id, email)
+);
+
+create index idx_guest_list_event on guest_list_entries(event_id);
+create index idx_guest_list_status on guest_list_entries(status);
 ```
-Middleware on every request:
-1. Refresh session (existing behavior)
-2. If user authenticated, fetch profile (with caching strategy -- see below)
-3. Attach role + status to request context
 
-Role hierarchy:
-  master > organizer > member (approved) > member (pending) > anonymous
-
-Route protection matrix:
-  /events, /gallery      -- anonymous OK
-  /register, /login      -- anonymous only (redirect if logged in)
-  /dashboard, /tickets   -- approved member+
-  /events/:id/upload     -- approved member+ (with attendance check)
-  /organizer/*            -- organizer+ only
-  /admin/*                -- master only
-```
+**RLS policy:** Only master/organizer can read/write, enforced via service client in Server Actions (same pattern as existing admin actions like `approveMember`). Enable RLS with no public policies.
 
 ## Patterns to Follow
 
-### Pattern 1: Role in Profile, Not JWT Custom Claims
+### Pattern 1: Server-Side Analytics via trackEvent()
 
-**What:** Store role in `profiles.role` column (enum: 'master', 'organizer', 'member') and status in `profiles.status` column (enum: 'pending', 'approved', 'rejected'). Query profile in middleware rather than embedding in JWT custom claims.
+**What:** A single utility function that inserts analytics events, called from existing Server Actions after successful operations.
 
-**Why:** Supabase custom claims require a database function call to update and don't take effect until next JWT refresh (up to 1 hour). Profile-based roles are immediately consistent after an admin changes them.
+**Why:** Minimal code changes -- add one `trackEvent()` call at the end of each existing Server Action. No client-side code. No new dependencies. Data immediately queryable via SQL.
 
-**When:** All role checks in middleware, RLS policies, and Server Components.
+**When:** After every significant user action (purchase, RSVP, redeem, approve, register).
 
 **Implementation:**
+
 ```typescript
-// src/lib/supabase/middleware.ts -- updated
-export async function updateSession(request: NextRequest) {
-  // ... existing session refresh code ...
+// src/lib/analytics.ts
+import { getServiceClient } from "@/lib/supabase/service";
 
-  const { data: { user } } = await supabase.auth.getUser();
+interface TrackEventParams {
+  eventType: string;
+  userId?: string | null;
+  eventId?: string | null;
+  partyId?: string | null;
+  metadata?: Record<string, unknown>;
+}
 
-  if (user) {
-    // Fetch profile for role/status (consider caching in cookie)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, status')
-      .eq('id', user.id)
+export function trackEvent(params: TrackEventParams): void {
+  // Fire-and-forget: don't await, don't block the calling action
+  const supabase = getServiceClient();
+  supabase
+    .from("analytics_events")
+    .insert({
+      event_type: params.eventType,
+      user_id: params.userId ?? null,
+      event_id: params.eventId ?? null,
+      party_id: params.partyId ?? null,
+      metadata: params.metadata ?? {},
+    })
+    .then(({ error }) => {
+      if (error) console.error("Analytics tracking failed:", error);
+    });
+}
+```
+
+**Integration example (existing rsvpToParty action):**
+
+```typescript
+// src/app/(public)/events/[slug]/rsvp-actions.ts -- ADD after successful insert
+import { trackEvent } from "@/lib/analytics";
+
+// ... existing code ...
+// After successful RSVP insert:
+trackEvent({
+  eventType: "rsvp",
+  userId: user.id,
+  eventId: eventId,
+  partyId: partyId,
+});
+```
+
+### Pattern 2: Animated Client Wrappers for Server Components
+
+**What:** Thin `"use client"` wrapper components that add animations without affecting data fetching in Server Components.
+
+**Why:** Next.js 16 Server Components can't use framer-motion directly (no DOM access). The existing codebase already uses this pattern (e.g., ScannerPage is a Server Component wrapping ScannerClient). Extend the same pattern for animations.
+
+**When:** Scroll-triggered animations, page mount transitions, staggered list reveals.
+
+**Implementation:**
+
+```typescript
+// src/components/ui/AnimatedSection.tsx
+"use client";
+
+import { motion } from "framer-motion";
+import type { ReactNode } from "react";
+
+interface AnimatedSectionProps {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}
+
+export default function AnimatedSection({
+  children,
+  className,
+  delay = 0,
+}: AnimatedSectionProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.4, delay, ease: "easeOut" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+**Usage in Server Components:**
+
+```tsx
+// Any page.tsx (Server Component)
+import AnimatedSection from "@/components/ui/AnimatedSection";
+
+export default async function EventDetailPage() {
+  const event = await fetchEvent(); // server-side data fetch
+  return (
+    <div>
+      <AnimatedSection>
+        <h1>{event.title}</h1>
+      </AnimatedSection>
+      <AnimatedSection delay={0.1}>
+        <p>{event.description}</p>
+      </AnimatedSection>
+    </div>
+  );
+}
+```
+
+**Bundle optimization:** Use `LazyMotion` with `domAnimation` feature set at the root layout level to reduce framer-motion bundle from ~30kb to ~15kb.
+
+```typescript
+// src/app/layout.tsx -- wrap children
+import { LazyMotion, domAnimation } from "framer-motion";
+
+// In the body:
+<LazyMotion features={domAnimation}>
+  {children}
+</LazyMotion>
+```
+
+**Note:** LazyMotion is a client component. It must wrap children in a client boundary. This is acceptable at the layout level since the body already renders client-side SumUp SDK script.
+
+### Pattern 3: Guest List with Atomic Processing
+
+**What:** Guest list entries are processed atomically -- each guest is either fully processed (profile + approval + ticket) or marked as failed with an error message.
+
+**Why:** Partial processing (profile created but ticket generation failed) creates inconsistent state that's hard to debug. Record the error per-entry so admins can see what went wrong and retry.
+
+**When:** Processing guest list entries (individually or in bulk).
+
+**Implementation:**
+
+```typescript
+// src/app/(admin)/admin/events/[id]/guest-list/actions.ts
+"use server";
+
+import { getServiceClient } from "@/lib/supabase/service";
+import { trackEvent } from "@/lib/analytics";
+import { createClient } from "@supabase/supabase-js";
+
+export async function processGuestEntry(entryId: string) {
+  const supabase = getServiceClient();
+
+  const { data: entry } = await supabase
+    .from("guest_list_entries")
+    .select("*")
+    .eq("id", entryId)
+    .single();
+
+  if (!entry || entry.status !== "pending") {
+    throw new Error("Entry not found or already processed");
+  }
+
+  try {
+    // 1. Find or create profile
+    let profileId: string;
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id, status")
+      .eq("email", entry.email)
       .single();
 
-    // Inject into request headers for downstream Server Components
-    if (profile) {
-      supabaseResponse.headers.set('x-user-role', profile.role);
-      supabaseResponse.headers.set('x-user-status', profile.status);
+    if (existingProfile) {
+      profileId = existingProfile.id;
+      // Auto-approve if pending
+      if (existingProfile.status !== "approved") {
+        await supabase
+          .from("profiles")
+          .update({ status: "approved" })
+          .eq("id", profileId);
+      }
+    } else {
+      // Create auth user + profile via Supabase Admin API
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
+        email: entry.email,
+        email_confirm: true,
+        user_metadata: { full_name: entry.full_name },
+      });
+      if (authError) throw authError;
+      profileId = authUser.user.id;
+
+      // Profile created by handle_new_user trigger, update status
+      await supabase
+        .from("profiles")
+        .update({ status: "approved" })
+        .eq("id", profileId);
     }
-  }
 
-  // Route protection based on role + status
-  // ...
+    // 2. Generate ticket if tier specified
+    let ticketId: string | null = null;
+    if (entry.tier_id) {
+      const { data: ticket, error: ticketError } = await supabase
+        .from("tickets")
+        .insert({
+          event_id: entry.event_id,
+          party_id: entry.party_id,
+          tier_id: entry.tier_id,
+          user_id: profileId,
+          amount_paid: 0, // free ticket for guest list
+        })
+        .select("id")
+        .single();
+      if (ticketError) throw ticketError;
+      ticketId = ticket.id;
+    }
+
+    // 3. Or create RSVP for free_rsvp parties
+    if (!entry.tier_id && entry.party_id) {
+      await supabase.from("rsvps").insert({
+        event_id: entry.event_id,
+        party_id: entry.party_id,
+        user_id: profileId,
+      });
+    }
+
+    // 4. Mark as processed
+    await supabase
+      .from("guest_list_entries")
+      .update({
+        status: "processed",
+        profile_id: profileId,
+        ticket_id: ticketId,
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", entryId);
+
+    // 5. Track analytics
+    trackEvent({
+      eventType: "guest_processed",
+      eventId: entry.event_id,
+      metadata: { email: entry.email, created_new_profile: !existingProfile },
+    });
+
+  } catch (err) {
+    // Mark as failed with error
+    await supabase
+      .from("guest_list_entries")
+      .update({
+        status: "failed",
+        error_message: err instanceof Error ? err.message : "Unknown error",
+      })
+      .eq("id", entryId);
+    throw err;
+  }
 }
 ```
 
-**Trade-off:** One extra DB query per request. Mitigate by caching role in a short-lived cookie (5 min TTL) that middleware refreshes, avoiding a DB round-trip on every navigation.
+### Pattern 4: Dashboard as Account Hub (Nav Consolidation)
 
-### Pattern 2: Server Actions for Mutations, API Routes for Webhooks
+**What:** Transform the dashboard page into a role-aware account hub. Regular members see the current dashboard. Admin/organizer users see additional link cards to admin and organizer dashboards.
 
-**What:** Use Next.js Server Actions (functions marked `'use server'`) for all authenticated mutations (RSVP, approve member, create event). Reserve API routes (`/api/...`) for external integrations (SumUp webhook, membership verification).
+**Why:** Eliminates the 4th/5th tab from MobileNav (Admin/Organizer), reducing visual clutter. The Account tab becomes a single entry point for all user-specific functions. This follows the pattern of apps like Twitter/X where settings and admin controls live under the profile/account icon.
 
-**Why:** Server Actions provide built-in CSRF protection, work with the auth cookie context, and integrate naturally with React form handling. API routes are needed for external callers that don't have a browser session.
+**When:** All authenticated users. Conditional rendering based on role.
 
-**When:** Every write operation.
+**Changes to existing components:**
 
-```typescript
-// src/app/(organizer)/events/new/actions.ts
-'use server'
+```
+MODIFIED: src/components/layout/MobileNav.tsx
+  - Remove Admin and Organizer from NAV_ITEMS
+  - MobileNav always shows exactly: Events, Gallery, Account
+  - Remove STAFF_ICONS popover logic entirely
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+MODIFIED: src/lib/rbac/roles.ts
+  - Remove Admin and Organizer nav items from NAV_ITEMS array
+  - Simplify getVisibleNavItems() (no more role-based filtering for nav)
 
-export async function createEvent(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  // Verify organizer role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'organizer' && profile?.role !== 'master') {
-    throw new Error('Forbidden')
-  }
-
-  const event = {
-    title: formData.get('title') as string,
-    // ... other fields
-    created_by: user.id,
-  }
-
-  const { data, error } = await supabase.from('events').insert(event).select().single()
-  if (error) throw error
-
-  redirect(`/organizer/events/${data.slug}`)
-}
+MODIFIED: src/app/(members)/dashboard/page.tsx
+  - Add "Staff Tools" section (visible for master/organizer roles)
+  - Section contains link cards to:
+    /admin/events (master only)
+    /organizer/events (organizer only)
+    /admin/scanner (master + organizer)
+    /admin/finance (master only)
+    /admin/members (master only)
 ```
 
-### Pattern 3: RLS as the Authorization Backbone
-
-**What:** Every authorization rule must exist as a Supabase RLS policy. Middleware and Server Actions provide UX-level gating (redirects, error messages) but RLS is the security boundary.
-
-**Why:** If a client somehow bypasses the middleware or a developer forgets an auth check in a Server Action, RLS prevents unauthorized data access. Defense in depth.
-
-**When:** Every table, every operation.
-
-```sql
--- Example: Only approved members can insert RSVPs
-create policy "Approved members can RSVP"
-  on public.rsvps for insert
-  with check (
-    auth.uid() = user_id
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid()
-      and status = 'approved'
-    )
-  );
-
--- Example: Organizers can manage their own events
-create policy "Organizers manage own events"
-  on public.events for all
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid()
-      and (role = 'organizer' or role = 'master')
-    )
-  );
-
--- Example: Only attendees can upload media for an event
-create policy "Attendees can upload event media"
-  on public.event_media for insert
-  with check (
-    exists (
-      select 1 from public.attendances
-      where event_id = event_media.event_id
-      and user_id = auth.uid()
-    )
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid()
-      and status = 'approved'
-    )
-  );
-```
-
-### Pattern 4: Supabase Storage with Path-Based RLS
-
-**What:** Use Supabase Storage buckets with RLS policies tied to the file path structure.
-
-**Why:** Storage RLS uses the same `auth.uid()` context as database RLS, keeping authorization consistent. Path structure (`event-media/{event_id}/{user_id}/...`) encodes ownership in the path itself.
-
-**When:** All file uploads (event covers, event media).
-
-```sql
--- Storage bucket: event-media (public read, authenticated upload)
--- Policy: Anyone can view
-create policy "Public read event media"
-  on storage.objects for select
-  using (bucket_id = 'event-media');
-
--- Policy: Approved attendees can upload to their own path
-create policy "Attendees upload own media"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'event-media'
-    and auth.uid() is not null
-    and (storage.foldername(name))[2] = auth.uid()::text
-    -- Verify attendance via DB check in the upload API route, not in RLS
-    -- (Storage RLS can't easily join to attendances table)
-  );
-```
-
-**Note:** Storage RLS has limited ability to join against custom tables. For the attendance check, validate in the Server Action/API route before generating the upload path, then use path-based ownership in storage RLS.
-
-### Pattern 5: Webhook Security Without Auth Cookies
-
-**What:** The SumUp webhook endpoint (`/api/webhooks/sumup`) runs without user auth cookies. Secure it by verifying the request origin.
-
-**Why:** Webhooks are server-to-server. They don't carry user sessions.
-
-**When:** SumUp payment notifications.
-
-```typescript
-// src/app/api/webhooks/sumup/route.ts
-import { createClient } from '@supabase/supabase-js' // admin client, NOT the SSR one
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // service role bypasses RLS
-)
-
-export async function POST(request: Request) {
-  const body = await request.json()
-
-  // Option A: Verify webhook signature (if SumUp provides one)
-  // Option B: Look up checkout via SumUp API to verify status independently
-  const checkoutId = body.id || body.checkout_reference
-  // Verify with SumUp API: GET /v0.1/checkouts/{checkoutId}
-  // This confirms the payment status server-to-server
-
-  // Update order in database
-  await supabaseAdmin
-    .from('orders')
-    .update({ status: body.status === 'PAID' ? 'paid' : 'failed' })
-    .eq('sumup_checkout_id', checkoutId)
-
-  return new Response('OK', { status: 200 })
-}
-```
-
-**Critical:** Use `SUPABASE_SERVICE_ROLE_KEY` (not the anon key) for webhook handlers because there's no user session. This bypasses RLS, so validate inputs carefully.
+**Existing pages remain unchanged:** AdminNav and OrganizerNav horizontal tab bars stay as-is within their respective route groups. Only the top-level navigation changes.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Role in JWT Custom Claims Only
+### Anti-Pattern 1: Client-Side Analytics Tracking
 
-**What:** Storing role exclusively in Supabase JWT custom claims via `auth.users.raw_app_meta_data`.
+**What:** Adding PostHog, Mixpanel, or custom client-side JS for tracking events.
 
-**Why bad:** JWT claims only refresh when the token expires (default 1 hour). If an admin promotes a user to organizer, the user doesn't see the change until their JWT refreshes. This creates confusing "I was approved but I can't do anything" states.
+**Why bad:** Adds bundle size (15-50kb), requires cookie consent in EU, can be blocked by ad blockers, creates a second data source disconnected from server truth. For a community of hundreds of users, this is massive over-engineering.
 
-**Instead:** Store role in `profiles.role` and check it server-side. Optionally sync to JWT claims for RLS policies that need it, but always fetch the profile as the source of truth for middleware decisions.
+**Instead:** Track events server-side in existing Server Actions. The data flows through the server anyway -- just log it.
 
-### Anti-Pattern 2: Client-Side Role Checks as Security
+### Anti-Pattern 2: Separate Database for Analytics
 
-**What:** Checking role in React components to hide/show UI and treating that as authorization.
+**What:** Using a separate analytics database (ClickHouse, BigQuery, TimescaleDB).
 
-**Why bad:** Anyone can modify client JavaScript. If the RLS policy doesn't enforce the role check, a crafted request can bypass it.
+**Why bad:** The community is small (<1000 active users). PostgreSQL handles analytical queries on thousands of rows without issue. A separate analytics service adds infrastructure complexity, cost, and data sync challenges for zero benefit at this scale.
 
-**Instead:** Client-side checks for UX (hide buttons the user can't use). RLS and Server Action checks for security. Both must exist.
+**Instead:** Single `analytics_events` table in existing Supabase PostgreSQL. Use indexes and materialized views if queries become slow (unlikely at this scale).
 
-### Anti-Pattern 3: Direct File Upload to Supabase Storage from Client Without Validation
+### Anti-Pattern 3: Animated Layout Components at Server Boundary
 
-**What:** Letting the client upload directly to Supabase Storage without server-side file validation.
+**What:** Wrapping entire page layouts or route groups in animated client components.
 
-**Why bad:** Users could upload malicious files, exceed size limits, or upload to wrong paths. Storage RLS alone can't validate file types or sizes.
+**Why bad:** Forces the entire page tree below the animation component to become client-rendered, losing Server Component benefits (zero JS bundle for static content, direct DB access, streaming SSR).
 
-**Instead:** Server Action validates file metadata (type, size), generates the correct storage path, then either:
-- Returns a presigned URL for client-side upload (better for large files), or
-- Proxies the upload through the server (simpler for small files)
+**Instead:** Apply animation wrappers to specific sections, not entire layouts. Keep the animation boundary narrow: `AnimatedSection` wraps a `<div>` with children, not a page.
 
-### Anti-Pattern 4: Polling SumUp Status in Client Without Timeout
+### Anti-Pattern 4: Guest Auto-Registration via Supabase Edge Functions
 
-**What:** After SumUp redirect, the confirmation page polls the order status indefinitely waiting for the webhook to update it.
+**What:** Processing guest list entries via Supabase Edge Functions (Deno runtime) instead of Next.js Server Actions.
 
-**Why bad:** If the webhook fails or is delayed, the user stares at a spinner forever.
+**Why bad:** The entire codebase uses Server Actions for mutations. Introducing Edge Functions creates a second execution environment with different debugging, deployment, and error handling patterns. No benefit for this use case.
 
-**Instead:** Set a 30-second polling timeout. After timeout, show "Payment is being processed, check your tickets page in a few minutes" and stop polling. The webhook will eventually update the status.
+**Instead:** Process guest lists via Server Actions with `getServiceClient()`, same as all other admin operations (approveMember, updateMemberRole, etc.).
 
-## New Database Schema (Additions)
+### Anti-Pattern 5: Over-Animating with Framer Motion
 
-The following tables and columns need to be added to the existing schema.
+**What:** Adding entrance animations to every element, page transitions on route changes, spring physics to buttons.
 
-### Modified: profiles
+**Why bad:** Violates the "minimal design" principle. Animations feel sluggish on low-end devices. PWA users expect native-like snappiness, not web app theatrics. Excessive animation wrappers add client-side JavaScript weight.
 
-```sql
--- Add role and status columns
-alter table public.profiles
-  add column role text check (role in ('master', 'organizer', 'member')) default 'member',
-  add column status text check (status in ('pending', 'approved', 'rejected')) default 'pending',
-  add column referral_code text unique,
-  add column referred_by uuid references public.profiles(id);
+**Instead:** Limit animations to: (1) scroll-triggered section reveals (subtle opacity + translateY), (2) skeleton loading states, (3) feedback animations on user actions (already exists: `active:scale-95`). No page transitions.
 
--- Generate referral_code on profile creation (modify existing trigger)
--- referral_code format: 6 alphanumeric chars, e.g., "X7K9M2"
-```
+## Integration Points -- Detailed
 
-### New: ticket_tiers
+### Feature 1: Analytics Data Collection
 
-```sql
-create table public.ticket_tiers (
-  id uuid default gen_random_uuid() primary key,
-  event_id uuid references public.events on delete cascade not null,
-  name text not null,           -- 'Early Bird', 'Regular', 'VIP'
-  price decimal(10,2) not null,
-  currency text default 'EUR',
-  capacity integer,             -- null = unlimited
-  sales_start timestamptz,
-  sales_end timestamptz,
-  sort_order integer default 0,
-  created_at timestamptz default now()
-);
-```
+**New components:**
 
-### New: orders
+| Component | Type | Location |
+|-----------|------|----------|
+| `analytics_events` table | Database | Supabase migration |
+| `trackEvent()` | Utility function | `src/lib/analytics.ts` |
+| Analytics dashboard page | Server Component | `src/app/(admin)/admin/analytics/page.tsx` |
+| AnalyticsCharts | Client Component | `src/components/admin/AnalyticsCharts.tsx` |
 
-```sql
-create table public.orders (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users on delete cascade not null,
-  event_id uuid references public.events on delete cascade not null,
-  tier_id uuid references public.ticket_tiers on delete set null,
-  status text check (status in ('pending', 'paid', 'failed', 'refunded')) default 'pending',
-  amount decimal(10,2) not null,
-  currency text default 'EUR',
-  sumup_checkout_id text,       -- SumUp's checkout ID for lookup
-  sumup_transaction_id text,    -- SumUp's transaction ID after payment
-  paid_at timestamptz,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-```
+**Modified components:**
 
-### New: referrals
+| Component | Change |
+|-----------|--------|
+| `rsvpToParty()` | Add `trackEvent("rsvp", ...)` call |
+| `purchaseDrinksGuest()` | Add `trackEvent("drink_purchase", ...)` call |
+| `redeemDrinkTokenGuest()` | Add `trackEvent("drink_redeem", ...)` call |
+| SumUp webhook handler | Add `trackEvent("ticket_purchase", ...)` call |
+| `approveMember()` | Add `trackEvent("member_approved", ...)` call |
+| Registration auth callback | Add `trackEvent("member_signup", ...)` call |
+| Refund cron job | Add `trackEvent("token_expired", ...)` call |
 
-```sql
-create table public.referrals (
-  id uuid default gen_random_uuid() primary key,
-  referrer_id uuid references public.profiles(id) on delete cascade not null,
-  referred_id uuid references public.profiles(id) on delete cascade not null unique,
-  created_at timestamptz default now()
-);
-```
+**Analytics data sources (for dashboard):** The dashboard does NOT rely solely on `analytics_events`. It queries existing tables for definitive counts:
 
-### Modified: event_media
+| Metric | Data Source | Query |
+|--------|-------------|-------|
+| Total revenue (tickets) | `tickets` | `SUM(amount_paid)` |
+| Total revenue (drinks) | `drink_orders` WHERE status = 'completed' | `SUM(total_amount)` |
+| Expired token refunds | `drink_tokens` WHERE status = 'refunded' | COUNT + `SUM(price)` |
+| Member growth | `profiles` | COUNT grouped by `created_at` month |
+| Event attendance | `attendance` | COUNT per event |
+| RSVP rate | `rsvps` vs `event_parties.capacity` | COUNT ratio |
+| Referral effectiveness | `profiles` WHERE `referred_by IS NOT NULL` | COUNT |
+| Popular drinks | `drink_orders.items` (JSONB) | JSONB aggregate |
 
-```sql
--- Add uploaded_by column to track who uploaded
-alter table public.event_media
-  add column uploaded_by uuid references auth.users on delete set null;
-```
+The `analytics_events` table supplements with behavioral data (page views, funnel steps) that existing tables don't capture.
 
-### Modified: events
+### Feature 2: Audit Findings Integration
 
-```sql
--- Add created_by to track which organizer created the event
-alter table public.events
-  add column created_by uuid references auth.users on delete set null;
-```
+No new database tables or major architectural changes. Audit findings translate to targeted modifications across the codebase.
+
+**Organization approach:** Group audit findings by domain and implement within existing component/action files:
+
+| Domain | Example Fixes | Location |
+|--------|--------------|----------|
+| UX | Improve empty states, loading skeletons | Existing page components |
+| Performance | Optimize N+1 queries in event detail page | `src/app/(public)/events/[slug]/page.tsx` |
+| Security | Add rate limiting to Server Actions, CSRF hardening | Middleware, server actions |
+| Accessibility | Add aria labels, focus management, color contrast | All UI components |
+| SEO | Add structured data, OpenGraph per event | Event pages metadata |
+| Code quality | Reduce `any` types, add error boundaries | Throughout |
+
+### Feature 3: UI Elegance
+
+**New components:**
+
+| Component | Type | Location |
+|-----------|------|----------|
+| `AnimatedSection` | Client Component | `src/components/ui/AnimatedSection.tsx` |
+| `StaggeredList` | Client Component | `src/components/ui/StaggeredList.tsx` |
+| `SkeletonCard` | Server Component (CSS only) | `src/components/ui/SkeletonCard.tsx` |
+
+**Modified components:** Various page components to wrap sections in `AnimatedSection`. No structural changes -- just wrapping existing JSX.
+
+**New dependency:** `framer-motion` (or `motion` -- the package was renamed). Install via `npm install motion`.
+
+### Feature 4: Guest List Management
+
+**New components:**
+
+| Component | Type | Location |
+|-----------|------|----------|
+| `guest_list_entries` table | Database | Supabase migration |
+| Guest list page | Server Component | `src/app/(admin)/admin/events/[id]/guest-list/page.tsx` |
+| `GuestListClient` | Client Component | `src/app/(admin)/admin/events/[id]/guest-list/GuestListClient.tsx` |
+| Guest list actions | Server Actions | `src/app/(admin)/admin/events/[id]/guest-list/actions.ts` |
+| `GuestListEntry` type | Type definition | `src/types/database.ts` |
+
+**Modified components:**
+
+| Component | Change |
+|-----------|--------|
+| `AdminNav` | Add "Guest List" tab (conditionally, when viewing event detail) |
+| `OrganizerNav` | Same -- add "Guest List" tab in event context |
+| `database.ts` types | Add `GuestListEntry` interface |
+
+**Integration with existing systems:**
+
+- Uses `supabase.auth.admin.createUser()` for new guest profiles (same admin API used by Supabase internally)
+- Uses existing `handle_new_user` trigger for profile creation
+- Generates tickets using same `tickets` table (with `amount_paid: 0` for guest list entries)
+- Creates RSVPs using same `rsvps` table
+- Sends emails via existing `sendEmail()` + React Email templates
+
+### Feature 5: Nav Consolidation
+
+**Modified components:**
+
+| Component | Change |
+|-----------|--------|
+| `MobileNav.tsx` | Remove Admin/Organizer items, remove popover logic |
+| `roles.ts` | Remove Admin/Organizer NavItems, simplify `getVisibleNavItems()` |
+| Dashboard `page.tsx` | Add "Staff Tools" section with role-conditional link cards |
+
+**New components:** None -- this is purely a restructuring of existing components.
+
+**Route structure unchanged:** All `/admin/*` and `/organizer/*` routes stay exactly where they are. Only the navigation entry point changes (from MobileNav tab to Dashboard link cards).
 
 ## Build Order (Dependency Graph)
 
-The features have hard dependencies that dictate implementation order.
-
 ```
-Layer 0: Role + Status infrastructure
+Phase 1: Analytics Infrastructure + Nav Consolidation
   |
-  +-- profiles schema changes (role, status, referral_code)
-  +-- middleware role resolution
-  +-- RLS policy updates for role-based access
-  |
-  v
-Layer 1: Approval + Referral (depends on Layer 0)
-  |
-  +-- Registration flow with referral code capture
-  +-- handle_new_user trigger update (auto-approve referred, pending otherwise)
-  +-- Referral link generation (member dashboard)
-  +-- Approval queue UI (admin)
+  +-- analytics_events table + trackEvent() utility
+  +-- Nav consolidation (MobileNav simplification + Dashboard hub)
+  |   (These two are independent and can be parallel tasks)
   |
   v
-Layer 2: Event CRUD (depends on Layer 0, independent of Layer 1)
+Phase 2: Analytics Integration + UI Elegance
   |
-  +-- events schema update (created_by)
-  +-- ticket_tiers table
-  +-- Organizer event creation form
-  +-- Event editing
-  +-- Cover image upload to Supabase Storage
-  +-- Replace mock event data with real Supabase queries
+  +-- Add trackEvent() calls to all existing Server Actions
+  +-- Install framer-motion, create AnimatedSection + StaggeredList
+  +-- Apply animations to key pages (events list, event detail, dashboard)
   |
   v
-Layer 3: Payments (depends on Layer 0 + Layer 2)
+Phase 3: Full App Audit
   |
-  +-- orders table
-  +-- SumUp API integration (checkout creation)
-  +-- SumUp webhook handler
-  +-- Checkout flow UI (tier selection -> payment -> confirmation)
-  +-- Ticket display with QR code
+  +-- UX audit + fixes
+  +-- Performance audit + fixes (benefits from analytics being active)
+  +-- Security audit + fixes
+  +-- Accessibility audit + fixes
+  +-- SEO audit + fixes
   |
   v
-Layer 4: Media Upload (depends on Layer 0, partially Layer 2)
+Phase 4: Guest List Management
   |
-  +-- Supabase Storage bucket setup (event-media)
-  +-- Storage RLS policies
-  +-- Upload UI on event detail page
-  +-- Gallery display (event page + member profile)
-  +-- event_media schema update (uploaded_by)
+  +-- guest_list_entries table + types
+  +-- Guest list CRUD UI (admin/organizer event detail)
+  +-- Guest processing logic (auto-register, auto-approve, ticket generation)
+  +-- Email notifications for processed guests
+  |
+  v
+Phase 5: Analytics Dashboard + Polish
+  |
+  +-- Analytics dashboard page with charts (needs data from Phase 2+)
+  +-- Final polish pass across all new features
 ```
 
-**Ordering rationale:**
+**Phase ordering rationale:**
 
-1. **Layer 0 first** because every other feature depends on knowing who the user is and what they're allowed to do. The existing `is_admin` boolean is insufficient for the three-tier role model (master/organizer/member) and the pending/approved status distinction.
+1. **Analytics infra first** because every subsequent phase benefits from tracking. Nav consolidation pairs here because it's a quick, self-contained refactor that unblocks the dashboard improvements needed in later phases.
 
-2. **Layer 1 before Layer 3** because the payment flow must check approval status. If approvals aren't built first, there's no way to gate ticket purchases to approved members only.
+2. **Analytics integration + UI elegance together** because both involve modifying existing components. Touching the same files in the same phase reduces merge conflicts and redundant work. UI refinements also benefit from understanding current UX patterns (informed by audit thinking).
 
-3. **Layer 2 before Layer 3** because you need real events with ticket tiers before you can sell tickets. The current mock data won't work for payment flows.
+3. **Full app audit in Phase 3** because the audit should evaluate the new analytics and UI work alongside existing code. Doing the audit after UI changes prevents double-work (fixing something that's about to be redesigned).
 
-4. **Layer 2 is independent of Layer 1** -- organizers can create events regardless of the referral/approval system. These can be built in parallel if desired.
+4. **Guest list in Phase 4** because it's the most complex new feature (new table, auth user creation, ticket generation pipeline) and is completely independent of Phases 1-3. It also benefits from analytics being live (track guest processing events).
 
-5. **Layer 4 last** because it's the lowest-priority feature and has the most complex infrastructure (storage buckets, file validation, upload UI). It also benefits from Layer 2 being complete (real events to attach media to) and Layer 0 (attendance-gated uploads).
+5. **Analytics dashboard last** because it needs real data to be useful. By Phase 5, several weeks of analytics events will have accumulated from Phase 2's tracking integration, making the dashboard immediately valuable rather than showing empty charts.
 
 ## Scalability Considerations
 
-| Concern | At 100 members | At 1,000 members | At 10,000 members |
-|---------|----------------|-------------------|-------------------|
-| Profile query in middleware | Negligible | Add 5-min cookie cache | Add 5-min cookie cache; consider JWT custom claims sync |
-| SumUp checkout creation | No issue | No issue | Check SumUp rate limits |
-| Media storage | Free tier sufficient | ~50GB, free tier likely enough | Upgrade Supabase plan, add image optimization |
-| Media upload concurrency | No issue | No issue | Queue uploads, add progress indication |
-| Event gallery rendering | Client-side pagination | Server-side pagination | CDN + image transforms via Supabase Image Transformation |
+| Concern | Current (100s users) | At 1K users | At 10K users |
+|---------|---------------------|-------------|-------------|
+| analytics_events inserts | Negligible | Add batch inserts (queue + flush) | Consider partitioning by month |
+| analytics_events queries | Direct SQL | Add materialized views for aggregates | Add materialized views with cron refresh |
+| Guest list processing | Sequential, fine | Sequential, fine | Batch with Promise.allSettled |
+| Framer-motion bundle | 15kb with LazyMotion | Same | Same (client-side, no scale concern) |
+| Dashboard hub rendering | Single DB query for role | Same | Same |
 
-This platform is designed for a curated community (invitation-gated), so member counts are unlikely to reach 10,000 in the near term. Architecture decisions optimize for the 100-1,000 range.
-
-## Environment Variables (New)
-
-```env
-# SumUp
-SUMUP_API_KEY=           # OAuth access token for SumUp API
-SUMUP_MERCHANT_CODE=     # Merchant code from SumUp dashboard
-SUMUP_WEBHOOK_SECRET=    # (if SumUp provides webhook signing -- verify in docs)
-
-# Supabase (additional)
-SUPABASE_SERVICE_ROLE_KEY=  # For webhook handlers that bypass RLS
-```
+**Key insight:** This community platform is invitation-gated. Growth is inherently limited by referral velocity. The architecture optimizes for the 100-1000 member range. If growth exceeds expectations, `analytics_events` is the only table that might need partitioning -- and PostgreSQL handles millions of rows well with proper indexes.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Role-based middleware + RLS | HIGH | Standard Supabase + Next.js pattern, well-documented |
-| Approval flow | HIGH | Simple status field + query, no external dependencies |
-| Referral tracking | HIGH | Standard pattern: unique code per user, FK tracking |
-| Event CRUD + ticket tiers | HIGH | Standard Supabase CRUD, well-understood patterns |
-| Supabase Storage media upload | HIGH | Well-documented, path-based RLS is standard |
-| SumUp API checkout creation | MEDIUM | Based on training data; exact API shape, webhook support, and SDK availability need verification against current SumUp docs |
-| SumUp webhook handling | LOW | Unclear whether SumUp sends server-to-server webhooks or relies on client redirect only; needs phase-specific research |
-| SumUp card widget in Next.js | LOW | SumUp provides a JS SDK for embedded card forms, but compatibility with Next.js 16 SSR/client components is unverified |
+| Analytics via PostgreSQL table | HIGH | Standard pattern, well-suited for this scale. No external service needed. |
+| Server-side trackEvent() pattern | HIGH | Follows existing fire-and-forget pattern (same as email sending in codebase). |
+| Framer-motion + Server Components | HIGH | Verified: Motion 12.x works with Next.js 16.x, client wrapper pattern well-documented. |
+| Guest list auto-registration | MEDIUM | `supabase.auth.admin.createUser()` is well-documented. Password reset flow for new users needs verification -- guests may need a "Set your password" link in the welcome email. |
+| Nav consolidation approach | HIGH | Simple component refactor. Follows common PWA pattern (3 bottom tabs max). |
+| Analytics dashboard queries | MEDIUM | SQL aggregations on JSONB metadata and cross-table joins. Performance depends on data volume -- may need materialized views if queries slow down. |
+| Audit integration | HIGH | No architectural risk -- it's targeted improvements to existing components. |
 
 ## Sources
 
-- Existing codebase analysis (direct file reads)
-- Supabase documentation (training data, HIGH confidence for RLS, Storage, Auth patterns)
-- SumUp Developer API (training data, MEDIUM confidence -- recommend verifying at https://developer.sumup.com/api before implementation)
-- Next.js App Router patterns (training data, HIGH confidence for middleware, Server Actions, route groups)
+- Existing codebase analysis: all source files in `src/` examined directly
+- [Supabase Logs & Analytics](https://supabase.com/features/logs-analytics) -- Supabase's own analytics architecture (Postgres not optimized for high-volume analytics inserts, but fine for our scale)
+- [Can I use Supabase for analytics?](https://www.tinybird.co/blog/can-i-use-supabase-for-user-facing-analytics) -- Analysis of Supabase analytics suitability
+- [How to use Framer Motion with Next.js Server Components](https://www.hemantasundaray.com/blog/use-framer-motion-with-nextjs-server-components) -- Client wrapper pattern for animations
+- [Framer Motion: Complete React & Next.js Guide 2026](https://inhaq.com/blog/framer-motion-complete-guide-react-nextjs-developers.html) -- Confirmed Motion 12.x + Next.js 16.x compatibility
+- [Bottom Tab Bar Navigation Design Best Practices](https://uxdworld.com/bottom-tab-bar-navigation-design-best-practices/) -- 3-5 tabs maximum recommendation
+- [Designing Reliable Analytics for Event](https://database.tools/2025/11/09/designing-reliable-analytics-for-event/) -- Event analytics schema patterns
+- [Hatchet: Use Postgres for your events table](https://hatchet.run/blog/postgres-events-table) -- PostgreSQL event table design patterns
 
 ---
 
-*Architecture research: 2026-02-24*
+*Architecture research: 2026-03-09 -- v1.3 Refinement & Intelligence*
