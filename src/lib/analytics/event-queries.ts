@@ -223,3 +223,126 @@ export async function fetchTokenLifecycle(
     wastedRate: total > 0 ? Math.round((refunded / total) * 100) : 0,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Market insights
+// ---------------------------------------------------------------------------
+
+export interface MarketInsights {
+  avgSpendPerAttendee: number;
+  peakPurchaseHours: { hour: number; count: number }[];
+}
+
+/**
+ * Fetch market insights: average spend per checked-in attendee and top 5 peak
+ * purchase hours (combined ticket + drink order timestamps).
+ */
+export async function fetchMarketInsights(
+  supabase: SupabaseClient,
+  eventId: string
+): Promise<MarketInsights> {
+  const [ticketsResult, drinkOrdersResult, attendanceResult] =
+    await Promise.all([
+      supabase
+        .from("tickets")
+        .select("amount_paid, created_at")
+        .eq("event_id", eventId),
+      supabase
+        .from("drink_orders")
+        .select("total_amount, created_at")
+        .eq("event_id", eventId)
+        .eq("status", "completed"),
+      supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("checked_in", true),
+    ]);
+
+  const tickets = ticketsResult.data ?? [];
+  const drinkOrders = drinkOrdersResult.data ?? [];
+  const checkedIn = attendanceResult.count ?? 0;
+
+  const totalTicketRevenue = tickets.reduce((s, t) => s + t.amount_paid, 0);
+  const totalDrinkRevenue = drinkOrders.reduce(
+    (s, d) => s + d.total_amount,
+    0
+  );
+  const avgSpendPerAttendee =
+    checkedIn > 0
+      ? Math.round(((totalTicketRevenue + totalDrinkRevenue) / checkedIn) * 100) / 100
+      : 0;
+
+  // Combine timestamps and count by hour
+  const hourCounts = new Map<number, number>();
+  for (const t of tickets) {
+    const hour = new Date(t.created_at).getHours();
+    hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
+  }
+  for (const d of drinkOrders) {
+    const hour = new Date(d.created_at).getHours();
+    hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
+  }
+
+  const peakPurchaseHours = Array.from(hourCounts.entries())
+    .map(([hour, count]) => ({ hour, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return { avgSpendPerAttendee, peakPurchaseHours };
+}
+
+// ---------------------------------------------------------------------------
+// Purchase funnel
+// ---------------------------------------------------------------------------
+
+export interface FunnelStep {
+  name: string;
+  value: number;
+  fill: string;
+}
+
+/**
+ * Fetch drink purchase funnel: checkouts -> payments -> tokens -> redeemed.
+ * All data from Supabase (no PostHog dependency).
+ */
+export async function fetchPurchaseFunnel(
+  supabase: SupabaseClient,
+  eventId: string
+): Promise<FunnelStep[]> {
+  const [checkoutsResult, paymentsResult, tokensResult, redeemedResult] =
+    await Promise.all([
+      supabase
+        .from("drink_orders")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId),
+      supabase
+        .from("drink_orders")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("status", "completed"),
+      supabase
+        .from("drink_tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId),
+      supabase
+        .from("drink_tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("status", "redeemed"),
+    ]);
+
+  const colors = [
+    "var(--color-accent)",
+    "#6366f1",
+    "#8b5cf6",
+    "#c084fc",
+  ];
+
+  return [
+    { name: "Checkouts", value: checkoutsResult.count ?? 0, fill: colors[0] },
+    { name: "Payments", value: paymentsResult.count ?? 0, fill: colors[1] },
+    { name: "Tokens", value: tokensResult.count ?? 0, fill: colors[2] },
+    { name: "Redeemed", value: redeemedResult.count ?? 0, fill: colors[3] },
+  ];
+}
