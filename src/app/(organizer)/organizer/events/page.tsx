@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
-import OrganizerNav from "@/components/layout/OrganizerNav";
+import StaffNav from "@/components/staff/StaffNav";
 import EventList from "@/components/events/EventList";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -63,7 +63,7 @@ export default async function OrganizerEventsPage() {
         </Link>
       </header>
 
-      <OrganizerNav />
+      <StaffNav role={role} context="organizer" />
 
       <div className="px-6">
         <EventList events={events ?? []} />

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
-import AdminNav from "@/components/admin/AdminNav";
+import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 import { getSubscriberStats } from "./actions";
 import NewsletterClient from "./NewsletterClient";
@@ -29,7 +29,7 @@ export default async function AdminNewsletterPage() {
       <div className="px-6 pt-10">
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Admin</h1>
       </div>
-      <AdminNav role={role} />
+      <StaffNav role={role} context="admin" />
 
       <div className="px-6">
         {configError ? (

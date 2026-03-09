@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
-import AdminNav from "@/components/admin/AdminNav";
+import StaffNav from "@/components/staff/StaffNav";
 import TransactionList from "@/components/admin/TransactionList";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -20,7 +20,7 @@ export default async function AdminFinancePage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <AdminNav role={role} />
+      <StaffNav role={role} context="admin" />
 
       <div className="px-6">
         <TransactionList />

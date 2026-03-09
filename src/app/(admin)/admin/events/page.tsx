@@ -4,7 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import EventList from "@/components/events/EventList";
-import AdminNav from "@/components/admin/AdminNav";
+import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminEventsPage() {
@@ -63,7 +63,7 @@ export default async function AdminEventsPage() {
         </Link>
       </header>
 
-      <AdminNav role={role} />
+      <StaffNav role={role} context="admin" />
 
       <div className="px-6">
         <EventList events={events} basePath="/admin/events" />

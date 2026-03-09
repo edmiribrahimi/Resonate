@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
-import OrganizerNav from "@/components/layout/OrganizerNav";
+import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function OrganizerArtistsPage() {
@@ -28,7 +28,7 @@ export default async function OrganizerArtistsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Organizer</h1>
       </header>
 
-      <OrganizerNav />
+      <StaffNav role={role} context="organizer" />
 
       <div className="px-6">
         {!artists || artists.length === 0 ? (

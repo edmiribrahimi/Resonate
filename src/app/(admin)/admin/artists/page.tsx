@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
-import AdminNav from "@/components/admin/AdminNav";
+import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminArtistsPage() {
@@ -28,7 +28,7 @@ export default async function AdminArtistsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <AdminNav role={role} />
+      <StaffNav role={role} context="admin" />
 
       <div className="px-6">
         {!artists || artists.length === 0 ? (
