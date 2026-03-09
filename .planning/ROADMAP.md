@@ -32,7 +32,12 @@
   2. Account page shows "My Stuff" section for all users and "Management" section (with quick-stats cards and expand/collapse) only for organizer/master roles
   3. Organizer/master can reach the Check-in page in one tap from any screen, and the Check-in page shows a unified attendee list with name search and QR scan
   4. All admin and organizer routes use a single unified StaffNav component with clear visual separation between personal and management sections
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md -- StaffNav + MobileNav simplification + roles.ts update (NAV-01, NAV-03, NAV-08)
+- [ ] 20-02-PLAN.md -- Account page restructure with My Stuff + Management sections (NAV-02, NAV-05, NAV-06, NAV-07)
+- [ ] 20-03-PLAN.md -- Check-in page enhancement with attendee list and name search (NAV-04)
 
 ### Phase 21: Layout Elegance
 **Goal:** Every interaction in the app feels responsive and polished through consistent animations, loading states, and feedback -- while respecting user motion preferences
@@ -83,7 +88,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 20. Navigation Consolidation | 0/? | Not started | - |
+| 20. Navigation Consolidation | 0/3 | Planned | - |
 | 21. Layout Elegance | 0/? | Not started | - |
 | 22. Analytics Infrastructure & Event Metrics | 0/? | Not started | - |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
