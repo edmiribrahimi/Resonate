@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Orbitron } from "next/font/google";
+import MotionProvider from "@/components/motion/MotionProvider";
 import "./globals.css";
 
 const orbitron = Orbitron({
@@ -50,7 +51,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="min-h-dvh antialiased">
-        {children}
+        <MotionProvider>
+          {children}
+        </MotionProvider>
         <Script
           src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"
           strategy="afterInteractive"

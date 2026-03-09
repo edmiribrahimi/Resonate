@@ -22,6 +22,7 @@
 
 html {
   color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -44,4 +45,17 @@ input[type="time"] {
   body {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Ambient glow utilities for dark mode accent elements */
+@utility glow-accent {
+  box-shadow:
+    0 0 15px rgba(229, 72, 77, 0.15),
+    0 0 30px rgba(229, 72, 77, 0.05);
+}
+
+@utility glow-accent-strong {
+  box-shadow:
+    0 0 20px rgba(229, 72, 77, 0.25),
+    0 0 40px rgba(229, 72, 77, 0.1);
 }
