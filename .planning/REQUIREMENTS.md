@@ -67,7 +67,7 @@
 - [x] **NAV-05**: Account page "Management" section shows quick-stats cards (pending members, next event, total revenue)
 - [x] **NAV-06**: Account page management section has animated expand/collapse
 - [x] **NAV-07**: Clear visual separation between "My Stuff" and "Management" sections
-- [ ] **NAV-08**: Unified StaffNav component used consistently across admin and organizer routes
+- [x] **NAV-08**: Unified StaffNav component used consistently across admin and organizer routes
 
 ## v1.4 Requirements (Deferred)
 
@@ -115,14 +115,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 20 | Pending |
+| NAV-01 | Phase 20 | Complete |
 | NAV-02 | Phase 20 | Complete |
-| NAV-03 | Phase 20 | Pending |
+| NAV-03 | Phase 20 | Complete |
 | NAV-04 | Phase 20 | Complete |
 | NAV-05 | Phase 20 | Complete |
 | NAV-06 | Phase 20 | Complete |
 | NAV-07 | Phase 20 | Complete |
-| NAV-08 | Phase 20 | Pending |
+| NAV-08 | Phase 20 | Complete |
 | UI-01 | Phase 21 | Pending |
 | UI-02 | Phase 21 | Pending |
 | UI-03 | Phase 21 | Pending |
