@@ -1,0 +1,83 @@
+export default function AdminAnalyticsLoading() {
+  return (
+    <div className="min-h-dvh pb-24">
+      {/* Header skeleton */}
+      <header className="px-6 pt-12 pb-6">
+        <div className="h-4 w-28 animate-pulse rounded bg-card-border/50" />
+        <div className="mt-3 h-8 w-32 animate-pulse rounded-lg bg-card-border/50" />
+        <div className="mt-2 h-4 w-48 animate-pulse rounded bg-card-border/50" />
+      </header>
+
+      <div className="px-6 space-y-6">
+        {/* Revenue card skeleton */}
+        <div className="animate-pulse rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-6">
+          <div className="h-4 w-24 rounded bg-card-border/50" />
+          <div className="mt-2 h-9 w-40 rounded-lg bg-card-border/50" />
+          <div className="mt-2 h-3 w-32 rounded bg-card-border/50" />
+          <div className="mt-6 grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="h-3 w-16 rounded bg-card-border/50" />
+              <div className="h-6 w-28 rounded bg-card-border/50" />
+              <div className="h-3 w-24 rounded bg-card-border/50" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 w-16 rounded bg-card-border/50" />
+              <div className="h-6 w-28 rounded bg-card-border/50" />
+              <div className="h-3 w-24 rounded bg-card-border/50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance + Token lifecycle skeletons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="animate-pulse rounded-2xl border border-card-border bg-card p-6">
+            <div className="h-3 w-20 rounded bg-card-border/50" />
+            <div className="mt-3 h-8 w-16 rounded-lg bg-card-border/50" />
+            <div className="mt-3 h-2 w-full rounded-full bg-card-border/50" />
+            <div className="mt-3 flex justify-between">
+              <div className="h-3 w-16 rounded bg-card-border/50" />
+              <div className="h-3 w-24 rounded bg-card-border/50" />
+            </div>
+          </div>
+          <div className="animate-pulse rounded-2xl border border-card-border bg-card p-6">
+            <div className="h-3 w-28 rounded bg-card-border/50" />
+            <div className="mt-3 h-8 w-32 rounded-lg bg-card-border/50" />
+            <div className="mt-2 h-4 w-24 rounded bg-card-border/50" />
+            <div className="mt-3 h-2 w-full rounded-full bg-card-border/50" />
+            <div className="mt-3 flex gap-4">
+              <div className="h-3 w-20 rounded bg-card-border/50" />
+              <div className="h-3 w-20 rounded bg-card-border/50" />
+              <div className="h-3 w-20 rounded bg-card-border/50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Ticket velocity chart skeleton */}
+        <div className="animate-pulse rounded-2xl border border-card-border bg-card p-6">
+          <div className="h-3 w-24 rounded bg-card-border/50 mb-4" />
+          <div className="h-48 w-full rounded-lg bg-card-border/50" />
+        </div>
+
+        {/* Drink sales skeleton */}
+        <div className="animate-pulse rounded-2xl border border-card-border bg-card p-6">
+          <div className="h-3 w-24 rounded bg-card-border/50 mb-4" />
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between border-b border-card-border/50 pb-3"
+              >
+                <div className="h-4 w-24 rounded bg-card-border/50" />
+                <div className="flex gap-4">
+                  <div className="h-4 w-8 rounded bg-card-border/50" />
+                  <div className="h-4 w-16 rounded bg-card-border/50" />
+                  <div className="h-4 w-8 rounded bg-card-border/50" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
