@@ -8,6 +8,17 @@ Resonate (re:sonate — motion music hub) is a private, invitation-driven music 
 
 Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
 
+## Current Milestone: v1.3 Refinement & Intelligence
+
+**Goal:** Transform Resonate from functional to polished — comprehensive analytics for data-driven decisions, full app audit with fixes, elegant UI refinements, guest list management, and streamlined admin navigation.
+
+**Target features:**
+- Comprehensive user analytics and data collection (behavior tracking, drink purchases, expired tokens, market insights)
+- Full app audit across all domains (UX, performance, security, code quality, accessibility, SEO)
+- Layout elegance and intuitiveness improvements while maintaining minimal design
+- Guest list per event with auto-registration, auto-approval, and free ticket generation
+- Admin/organizer navigation consolidation into account button
+
 ## Current State
 
 **Shipped:** v1.2 (2026-03-07) — [milestone archive](.planning/milestones/v1.2-ROADMAP.md)
@@ -103,4 +114,4 @@ All 33 requirements shipped. See [v1.2-REQUIREMENTS.md](.planning/milestones/v1.
 | Media on both event page and member profile | Maximum visibility for community content | — Pending |
 
 ---
-*Last updated: 2026-03-06 after v1.2 milestone initialization*
+*Last updated: 2026-03-09 after v1.3 milestone initialization*
