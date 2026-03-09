@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import {
   deleteEvent,
   publishEvent,
@@ -127,8 +128,9 @@ export default function EventList({
         </div>
       )}
 
+      <StaggeredList className="space-y-3">
       {events.map((event) => (
-        <div
+        <StaggeredItem
           key={event.id}
           className="rounded-xl border border-card-border bg-card p-4"
         >
@@ -218,8 +220,9 @@ export default function EventList({
               {pendingAction === `delete-${event.id}` ? "..." : "Delete"}
             </button>
           </div>
-        </div>
+        </StaggeredItem>
       ))}
+      </StaggeredList>
     </div>
   );
 }

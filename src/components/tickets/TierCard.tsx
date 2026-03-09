@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import PressableCard from "@/components/motion/PressableCard";
 import {
   updateTier,
   deleteTier,
@@ -77,7 +78,7 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
+    <PressableCard className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
           <p className="text-sm text-red-400">{error}</p>
@@ -247,6 +248,6 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
           </div>
         </>
       )}
-    </div>
+    </PressableCard>
   );
 }

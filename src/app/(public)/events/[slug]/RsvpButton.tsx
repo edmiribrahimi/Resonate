@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import PressableButton from "@/components/motion/PressableButton";
 import { rsvpToParty, cancelRsvp } from "./rsvp-actions";
 
 interface RsvpButtonProps {
@@ -59,11 +60,10 @@ export default function RsvpButton({
           <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
-      <button
-        type="button"
+      <PressableButton
         onClick={handleToggle}
         disabled={isPending}
-        className={`w-full rounded-full py-3 font-medium text-white transition-all active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full rounded-full py-3 font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
           hasRsvp
             ? "bg-red-500/80 hover:bg-red-500"
             : "bg-accent hover:bg-accent-hover"
@@ -74,7 +74,7 @@ export default function RsvpButton({
           : hasRsvp
             ? "Cancel RSVP"
             : "I'm going"}
-      </button>
+      </PressableButton>
     </div>
   );
 }

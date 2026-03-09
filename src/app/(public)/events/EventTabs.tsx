@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
 
 interface VenueInfo {
@@ -57,57 +58,59 @@ function EventList({ events, isPast }: { events: EventCard[]; isPast: boolean })
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <StaggeredList className="flex flex-col gap-4">
       {events.map((event) => (
-        <Link key={event.slug} href={`/events/${event.slug}`}>
-          <div
-            className={`rounded-2xl border border-card-border p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
-              isPast
-                ? "bg-card/50 opacity-70 hover:opacity-100"
-                : "bg-card"
-            }`}
-          >
-            <p className="mb-1 text-sm text-muted">
-              {formatDateRange(event.start_date, event.end_date)}
-            </p>
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-base font-semibold">{event.title}</h3>
-              {event.is_draft && (
-                <span className="shrink-0 rounded-full bg-yellow-500/20 px-2.5 py-0.5 text-xs font-medium text-yellow-400">
-                  Draft
-                </span>
+        <StaggeredItem key={event.slug}>
+          <Link href={`/events/${event.slug}`}>
+            <div
+              className={`rounded-2xl border border-card-border p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+                isPast
+                  ? "bg-card/50 opacity-70 hover:opacity-100"
+                  : "bg-card"
+              }`}
+            >
+              <p className="mb-1 text-sm text-muted">
+                {formatDateRange(event.start_date, event.end_date)}
+              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-base font-semibold">{event.title}</h3>
+                {event.is_draft && (
+                  <span className="shrink-0 rounded-full bg-yellow-500/20 px-2.5 py-0.5 text-xs font-medium text-yellow-400">
+                    Draft
+                  </span>
+                )}
+              </div>
+              {event.lineup.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {event.lineup.map((artist) => (
+                    <span
+                      key={artist}
+                      className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent font-medium"
+                    >
+                      {artist}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {event.venues.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap">
+                  {event.venues.map((v, i) => (
+                    <span key={i} className="inline-flex items-center gap-1">
+                      {i > 0 && <span className="mx-0.5">+</span>}
+                      {v.venue_secret ? (
+                        <><LockClosedIcon /> Secret Venue</>
+                      ) : (
+                        <><MapPinIcon /> {v.venue_name ?? v.venue_text}</>
+                      )}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
-            {event.lineup.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {event.lineup.map((artist) => (
-                  <span
-                    key={artist}
-                    className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent font-medium"
-                  >
-                    {artist}
-                  </span>
-                ))}
-              </div>
-            )}
-            {event.venues.length > 0 && (
-              <div className="flex items-center gap-1.5 text-sm text-muted flex-wrap">
-                {event.venues.map((v, i) => (
-                  <span key={i} className="inline-flex items-center gap-1">
-                    {i > 0 && <span className="mx-0.5">+</span>}
-                    {v.venue_secret ? (
-                      <><LockClosedIcon /> Secret Venue</>
-                    ) : (
-                      <><MapPinIcon /> {v.venue_name ?? v.venue_text}</>
-                    )}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </Link>
+          </Link>
+        </StaggeredItem>
       ))}
-    </div>
+    </StaggeredList>
   );
 }
 

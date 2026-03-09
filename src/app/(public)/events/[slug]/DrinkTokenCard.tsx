@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PressableCard from "@/components/motion/PressableCard";
 import RedeemConfirmationModal from "./RedeemConfirmationModal";
 
 interface DrinkTokenCardProps {
@@ -107,7 +108,7 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
 
   return (
     <>
-      <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4">
+      <PressableCard className="rounded-xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4">
         <p className="text-sm font-medium text-foreground truncate">
           {token.drink_name}
         </p>
@@ -122,11 +123,11 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
         <button
           type="button"
           onClick={() => setShowModal(true)}
-          className="mt-3 w-full rounded-full bg-accent py-2.5 font-medium text-white transition-all active:scale-95 active:opacity-80"
+          className="mt-3 w-full rounded-full bg-accent py-2.5 font-medium text-white transition-all"
         >
           Redeem
         </button>
-      </div>
+      </PressableCard>
 
       {showModal && (
         <RedeemConfirmationModal

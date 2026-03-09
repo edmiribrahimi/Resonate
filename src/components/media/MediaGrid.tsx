@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 
 export interface MediaGridItem {
   id: string;
@@ -19,12 +20,12 @@ export default function MediaGrid({ items, onItemClick, actions }: MediaGridProp
   if (items.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <StaggeredList className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {items.map((item) => (
+        <StaggeredItem key={item.id}>
         <button
-          key={item.id}
           type="button"
-          className="relative aspect-square overflow-hidden rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent active:scale-95 active:opacity-80 transition-transform"
+          className="relative aspect-square overflow-hidden rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-accent active:scale-95 active:opacity-80 transition-transform w-full"
           onClick={() => onItemClick?.(item)}
         >
           {item.type === "photo" ? (
@@ -57,7 +58,8 @@ export default function MediaGrid({ items, onItemClick, actions }: MediaGridProp
             </div>
           )}
         </button>
+        </StaggeredItem>
       ))}
-    </div>
+    </StaggeredList>
   );
 }

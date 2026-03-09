@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { purchaseDrinks } from "@/app/(organizer)/organizer/events/actions";
+import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
+import PressableButton from "@/components/motion/PressableButton";
 import type { DrinkItem } from "@/types/database";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
@@ -72,11 +74,11 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
         </div>
       )}
 
-      <div className="space-y-2 mb-4">
+      <StaggeredList className="space-y-2 mb-4">
         {drinks.map((drink) => {
           const qty = quantities[drink.id] ?? 0;
           return (
-            <div
+            <StaggeredItem
               key={drink.id}
               className="flex items-center justify-between rounded-xl border border-card-border bg-card p-3"
             >
@@ -113,10 +115,10 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
                   +
                 </button>
               </div>
-            </div>
+            </StaggeredItem>
           );
         })}
-      </div>
+      </StaggeredList>
 
       {/* Order summary bar */}
       {totalItems > 0 && (
@@ -129,14 +131,13 @@ export default function DrinkMenu({ eventId, partyId, drinks }: DrinkMenuProps) 
               {formatPrice(totalPrice)}
             </span>
           </div>
-          <button
-            type="button"
+          <PressableButton
             onClick={handleOrder}
             disabled={isPending}
-            className="w-full rounded-full bg-accent py-3 font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? "Processing..." : "Order Drinks"}
-          </button>
+          </PressableButton>
         </div>
       )}
 

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
+import PressableButton from "@/components/motion/PressableButton";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 interface Tier {
@@ -261,14 +262,13 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         })}
       </div>
 
-      <button
-        type="button"
+      <PressableButton
         disabled={!selectedTierId || isPending}
         onClick={handlePurchase}
-        className="w-full rounded-full bg-accent py-3 font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
-      </button>
+      </PressableButton>
 
       {checkoutId && (
         <SumUpCheckoutModal

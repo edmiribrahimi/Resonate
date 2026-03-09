@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import DrinkTokenCard from "@/app/(public)/events/[slug]/DrinkTokenCard";
 
 interface TokenData {
@@ -75,7 +76,7 @@ export default function DashboardDrinkTokens({
           <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
             My Drinks
           </p>
-          <div className="space-y-3">
+          <StaggeredList className="space-y-3">
             {activeGroups.map((group, groupIndex) => {
               const formattedDate = group.eventDate
                 ? new Date(group.eventDate + "T00:00:00").toLocaleDateString("en-US", {
@@ -90,7 +91,7 @@ export default function DashboardDrinkTokens({
               );
 
               return (
-                <div
+                <StaggeredItem
                   key={`active-${group.eventSlug}-${groupIndex}`}
                   className="rounded-2xl border border-card-border bg-card p-4"
                 >
@@ -112,10 +113,10 @@ export default function DashboardDrinkTokens({
                       />
                     ))}
                   </div>
-                </div>
+                </StaggeredItem>
               );
             })}
-          </div>
+          </StaggeredList>
         </>
       )}
 
