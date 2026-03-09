@@ -22,7 +22,7 @@
 - [x] **ANLY-13**: Admin can view referral chain effectiveness (referrer -> referred member -> spending total)
 - [x] **ANLY-14**: Admin can track guest-to-member conversion (anonymous drink buyers who later register)
 - [x] **ANLY-15**: Admin can view drink purchase funnel (menu view -> cart -> checkout -> payment -> token)
-- [ ] **ANLY-16**: Admin can compare metrics side-by-side for 2+ events
+- [x] **ANLY-16**: Admin can compare metrics side-by-side for 2+ events
 
 ### Layout Elegance
 
@@ -135,22 +135,22 @@
 | UI-10 | Phase 21 | Complete |
 | UI-11 | Phase 21 | Complete |
 | UI-12 | Phase 21 | Complete |
-| ANLY-01 | Phase 22 | Pending |
-| ANLY-02 | Phase 22 | Pending |
-| ANLY-03 | Phase 22 | Pending |
-| ANLY-04 | Phase 22 | Pending |
+| ANLY-01 | Phase 22 | Complete |
+| ANLY-02 | Phase 22 | Complete |
+| ANLY-03 | Phase 22 | Complete |
+| ANLY-04 | Phase 22 | Complete |
 | ANLY-05 | Phase 22 | Complete |
-| ANLY-06 | Phase 22 | Pending |
+| ANLY-06 | Phase 22 | Complete |
 | ANLY-08 | Phase 22 | Complete |
 | ANLY-07 | Phase 23 | Complete |
-| ANLY-09 | Phase 23 | Pending |
+| ANLY-09 | Phase 23 | Complete |
 | ANLY-10 | Phase 23 | Complete |
 | ANLY-11 | Phase 23 | Complete |
-| ANLY-12 | Phase 23 | Pending |
-| ANLY-13 | Phase 23 | Pending |
-| ANLY-14 | Phase 23 | Pending |
+| ANLY-12 | Phase 23 | Complete |
+| ANLY-13 | Phase 23 | Complete |
+| ANLY-14 | Phase 23 | Complete |
 | ANLY-15 | Phase 23 | Complete |
-| ANLY-16 | Phase 23 | Pending |
+| ANLY-16 | Phase 23 | Complete |
 | GSTL-01 | Phase 24 | Pending |
 | GSTL-02 | Phase 24 | Pending |
 | GSTL-03 | Phase 24 | Pending |

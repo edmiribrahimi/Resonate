@@ -18,7 +18,7 @@
 - [x] **Phase 20: Navigation Consolidation** - Streamline bottom nav to 3-4 tabs with role-aware Account page as management hub
 - [x] **Phase 21: Layout Elegance** - Motion library integration with enter animations, skeletons, toasts, and micro-interactions
 - [x] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
-- [ ] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
+- [x] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [ ] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
 
 ## Phase Details
@@ -81,13 +81,13 @@ Plans:
   2. Admin can view per-member spend profiles (total across events), drink popularity rankings per event, and repeat attendee rate across events
   3. Admin can view referral chain effectiveness (referrer to referred to spending), guest-to-member conversion tracking, and drink purchase funnel (menu view to token)
   4. Organizer can see market insights per event (avg spend per attendee, peak purchase times) and admin can compare metrics side-by-side for 2+ events
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 23-01-PLAN.md -- Admin KPI dashboard + StaffNav Analytics tab (ANLY-07)
 - [x] 23-02-PLAN.md -- Per-event enhancements: drink popularity, market insights, purchase funnel (ANLY-10, ANLY-11, ANLY-15)
 - [x] 23-03-PLAN.md -- Member intelligence: spend profiles, repeat rate, referral chains, guest conversion (ANLY-09, ANLY-12, ANLY-13, ANLY-14)
-- [ ] 23-04-PLAN.md -- Side-by-side event comparison (ANLY-16)
+- [x] 23-04-PLAN.md -- Side-by-side event comparison (ANLY-16)
 
 ### Phase 24: Guest List Management
 **Goal:** Organizers can manage per-event guest lists that automatically handle registration, approval, and free ticket generation -- with both email-based (invitation + QR) and no-email (door check-in) flows
@@ -107,7 +107,7 @@ Plans:
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
 | 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
-| 23. Analytics Dashboard & Cross-Event Insights | 3/4 | In progress | - |
+| 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete | 2026-03-09 |
 | 24. Guest List Management | 0/? | Not started | - |
 
 ---
