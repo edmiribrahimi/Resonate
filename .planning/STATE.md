@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: planning
-stopped_at: Completed 21-03 (Phase 21 complete)
-last_updated: "2026-03-09T18:36:09.083Z"
+status: executing
+stopped_at: Completed 22-01 (PostHog + Recharts Infrastructure)
+last_updated: "2026-03-09T20:16:21Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
 ---
 
 # State: Resonate
@@ -20,13 +20,13 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 21 complete, Phase 22 next
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 22 in progress
 
 ## Current Position
 
-**Phase:** Phase 21 (Layout Elegance) -- COMPLETE
-**Plan:** 3/3 complete
-**Status:** Ready to plan
+**Phase:** Phase 22 (Analytics Infrastructure & Event Metrics) -- IN PROGRESS
+**Plan:** 1/3 complete
+**Status:** Executing
 
 ```
 [Phase Progress]  ████████░░░░░░░░░░░░  2/5 phases
@@ -37,14 +37,15 @@ progress:
 | Metric | Value |
 |--------|-------|
 | Phases completed | 2/5 |
-| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21) |
-| Requirements shipped | 20/52 |
+| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 1/3 (Phase 22) |
+| Requirements shipped | 21/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
 | Phase 21 Plan 01 | 3 tasks, 248s |
 | Phase 21 Plan 02 | 2 tasks, 188s |
 | Phase 21 Plan 03 | 2 tasks, 537s |
+| Phase 22 Plan 01 | 2 tasks, 136s |
 
 ## Decisions
 
@@ -66,6 +67,10 @@ progress:
 - [21-03] DrinkMenu quantity +/- buttons keep CSS active:scale-95 (small utility buttons)
 - [21-03] Event detail artist link chips keep CSS active:scale-95 (link elements, not primary actions)
 - [21-03] Order Drinks button in DrinkMenu upgraded to PressableButton (primary purchase action, auto-added)
+- [22-01] PostHog init guarded with typeof window check + env var presence (no crash without config)
+- [22-01] Server singleton uses no-op object when NEXT_PUBLIC_POSTHOG_KEY is missing (safe local dev)
+- [22-01] PostHogIdentify placed in dashboard only (PostHog persists identity across pages via localStorage)
+- [22-01] Role defaults to "member" when x-user-role header is null
 
 ## Accumulated Context
 
@@ -92,10 +97,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T18:27:19Z
-**Stopped at:** Completed 21-03 (Phase 21 complete)
-**Next step:** Research and plan Phase 22 (Analytics Infrastructure & Event Metrics)
+**Last session:** 2026-03-09T20:16:21Z
+**Stopped at:** Completed 22-01 (PostHog + Recharts Infrastructure)
+**Next step:** Execute Phase 22 Plan 02 (Per-event analytics page)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T18:27:19Z*
+*Last updated: 2026-03-09T20:16:21Z*

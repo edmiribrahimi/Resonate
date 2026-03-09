@@ -68,7 +68,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 22-01-PLAN.md -- PostHog + Recharts installation, client/server init, user identification (ANLY-08)
+- [x] 22-01-PLAN.md -- PostHog + Recharts installation, client/server init, user identification (ANLY-08)
 - [ ] 22-02-PLAN.md -- Per-event analytics page with revenue, velocity, drinks, attendance, token lifecycle (ANLY-01, ANLY-02, ANLY-03, ANLY-04, ANLY-06)
 - [ ] 22-03-PLAN.md -- Admin member growth page with referral/organic area chart (ANLY-05)
 
@@ -100,7 +100,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
-| 22. Analytics Infrastructure & Event Metrics | 0/3 | Planning complete | - |
+| 22. Analytics Infrastructure & Event Metrics | 1/3 | In progress | - |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
 

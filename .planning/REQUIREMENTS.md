@@ -14,7 +14,7 @@
 - [ ] **ANLY-05**: Admin can view member growth over time (weekly/monthly, referral vs organic split)
 - [ ] **ANLY-06**: Organizer can view expired/refunded token rate per event (% redeemed vs wasted)
 - [ ] **ANLY-07**: Admin can view top-level KPI dashboard (total revenue, total members, upcoming events, recent activity)
-- [ ] **ANLY-08**: App tracks pageviews and user behavior via PostHog (EU instance, free tier)
+- [x] **ANLY-08**: App tracks pageviews and user behavior via PostHog (EU instance, free tier)
 - [ ] **ANLY-09**: Admin can view per-member spend profile (total spent across events: tickets + drinks)
 - [ ] **ANLY-10**: Admin can view drink popularity ranking per event (most sold, highest redemption rate)
 - [ ] **ANLY-11**: Organizer can view market insights per event (avg spend/attendee, peak purchase times)
@@ -141,7 +141,7 @@
 | ANLY-04 | Phase 22 | Pending |
 | ANLY-05 | Phase 22 | Pending |
 | ANLY-06 | Phase 22 | Pending |
-| ANLY-08 | Phase 22 | Pending |
+| ANLY-08 | Phase 22 | Complete |
 | ANLY-07 | Phase 23 | Pending |
 | ANLY-09 | Phase 23 | Pending |
 | ANLY-10 | Phase 23 | Pending |
