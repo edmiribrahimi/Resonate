@@ -38,11 +38,18 @@ progress:
 |--------|-------|
 | Phases completed | 1/5 |
 | Plans completed | 3/3 (Phase 20) |
-| Requirements shipped | 1/52 |
+| Requirements shipped | 8/52 |
+| Phase 20 Plan 01 | 2 tasks, 219s |
+| Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
 
 ## Decisions
 
+- [20-01] Kept /dashboard URL despite "Account" label in nav (avoids middleware/redirect churn)
+- [20-01] Passed actual role prop to StaffNav in organizer pages (role available from headers)
+- [20-02] ManagementSection as client component with pre-fetched data props (parallel Promise.all queries in parent)
+- [20-02] CSS grid-rows animation for collapsible sections (no motion library needed)
+- [20-02] Management links verified against actual admin/organizer route paths
 - [20-03] Attendee list is read-only (no tap-to-check-in); existing checkin API requires QR token
 - [20-03] Search filtering done in JS after fetch (attendee lists per party typically <500)
 - [20-03] Replaced collapsible attendance with always-visible flat list
@@ -72,8 +79,8 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T16:48:00Z
-**Stopped at:** Completed 20-03-PLAN.md (Phase 20 complete)
+**Last session:** 2026-03-09T16:49:24Z
+**Stopped at:** Completed 20-01-PLAN.md (Phase 20 all plans complete)
 **Next step:** Phase 21 planning or execution
 
 ---
