@@ -9,6 +9,13 @@ const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 // Membership QR: URL containing code=RSN-
 const MEMBERSHIP_PATTERN = /code=RSN-/i;
 
+interface Attendee {
+  ticketId: string;
+  name: string;
+  checkedIn: boolean;
+  checkedInAt: string | null;
+}
+
 interface AttendanceEvent {
   partyId: string;
   partyTitle: string;
@@ -17,6 +24,7 @@ interface AttendanceEvent {
   totalTickets: number;
   checkedIn: number;
   recentCheckins: { name: string; time: string }[];
+  attendees: Attendee[];
 }
 
 export default function ScannerClient() {
@@ -24,12 +32,13 @@ export default function ScannerClient() {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [attendance, setAttendance] = useState<AttendanceEvent[]>([]);
-  const [showAttendance, setShowAttendance] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const scannerRef = useRef<HTMLDivElement>(null);
 
-  const fetchAttendance = useCallback(async () => {
+  const fetchAttendance = useCallback(async (search?: string) => {
     try {
-      const res = await fetch("/api/tickets/attendance");
+      const params = search ? `?search=${encodeURIComponent(search)}` : "";
+      const res = await fetch(`/api/tickets/attendance${params}`);
       if (res.ok) {
         const data = await res.json();
         setAttendance(data.events ?? []);
@@ -39,16 +48,20 @@ export default function ScannerClient() {
     }
   }, []);
 
+  // Debounced search: triggers on searchQuery change (also handles initial load when searchQuery is "")
   useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
+    const timer = setTimeout(() => {
+      fetchAttendance(searchQuery || undefined);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchAttendance]);
 
   // Refresh attendance after each successful scan
   useEffect(() => {
     if (status === "success") {
-      fetchAttendance();
+      fetchAttendance(searchQuery || undefined);
     }
-  }, [status, fetchAttendance]);
+  }, [status, fetchAttendance, searchQuery]);
 
   useEffect(() => {
     let scanner: unknown;
@@ -155,128 +168,125 @@ export default function ScannerClient() {
 
   return (
     <div className="min-h-dvh bg-background p-6 pb-24">
-      <h1 className="mb-6 text-2xl font-bold">QR Scanner</h1>
+      <h1 className="mb-6 text-2xl font-bold">Check-in</h1>
 
-      {!result ? (
-        <div ref={scannerRef}>
-          <div id="qr-reader" className="overflow-hidden rounded-2xl" />
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4">
-          <div
-            className={`w-full rounded-2xl border p-8 text-center ${
-              status === "success"
-                ? "border-green-500/30 bg-green-500/10"
-                : status === "error"
-                ? "border-accent/30 bg-accent/10"
-                : "border-card-border bg-card"
-            }`}
-          >
-            <p className="text-xl font-semibold">{message || "Verifying..."}</p>
-          </div>
+      {/* Search input -- always visible */}
+      <div className="relative mb-4">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search attendee by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-card-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/50 focus:border-accent focus:outline-none"
+        />
+      </div>
 
-          <button
-            onClick={resetScanner}
-            className="w-full rounded-full bg-accent py-3 font-medium text-white hover:bg-accent-hover active:scale-95 active:opacity-80 transition-transform"
-          >
-            Scan another QR
-          </button>
-        </div>
-      )}
-
-      {/* Attendance section */}
+      {/* Attendee list -- always visible */}
       {attendance.length > 0 && (
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setShowAttendance(!showAttendance)}
-            className="flex w-full items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 active:scale-[0.98] active:opacity-80 transition-transform"
-          >
-            <span className="text-sm font-semibold text-foreground">
-              Today&apos;s Attendance
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-accent">
-                {attendance.reduce((sum, e) => sum + e.checkedIn, 0)} / {attendance.reduce((sum, e) => sum + e.totalTickets, 0)}
-              </span>
-              <svg
-                className={`h-4 w-4 text-muted transition-transform ${showAttendance ? "rotate-180" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+        <div className="space-y-4 mb-6">
+          {attendance.map((evt) => {
+            const pct = evt.totalTickets > 0
+              ? Math.round((evt.checkedIn / evt.totalTickets) * 100)
+              : 0;
+
+            return (
+              <div
+                key={evt.partyId}
+                className="rounded-xl border border-card-border bg-card p-4 space-y-3"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </div>
-          </button>
+                {/* Party header */}
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {evt.eventTitle}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {evt.partyTitle} &middot; {formatTime(evt.time)}
+                  </p>
+                </div>
 
-          {showAttendance && (
-            <div className="mt-3 space-y-3">
-              {attendance.map((evt) => {
-                const pct = evt.totalTickets > 0
-                  ? Math.round((evt.checkedIn / evt.totalTickets) * 100)
-                  : 0;
-
-                return (
-                  <div
-                    key={evt.partyId}
-                    className="rounded-xl border border-card-border bg-card p-4 space-y-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {evt.eventTitle}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {evt.partyTitle} &middot; {formatTime(evt.time)}
-                      </p>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-muted">Checked in</span>
-                        <span className="text-xs font-semibold text-foreground">
-                          {evt.checkedIn} / {evt.totalTickets} ({pct}%)
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-card-border overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-accent transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Recent check-ins */}
-                    {evt.recentCheckins.length > 0 && (
-                      <div>
-                        <p className="text-xs text-muted mb-1">Recent</p>
-                        <div className="space-y-1">
-                          {evt.recentCheckins.map((c, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="text-foreground">{c.name}</span>
-                              <span className="text-muted">{formatCheckinTime(c.time)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* Progress bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted">Checked in</span>
+                    <span className="text-xs font-semibold text-foreground">
+                      {evt.checkedIn} / {evt.totalTickets} ({pct}%)
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="h-2 rounded-full bg-card-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={fetchAttendance}
-                className="w-full rounded-full border border-card-border py-2 text-xs font-medium text-muted hover:text-foreground transition-colors active:scale-95 active:opacity-80"
-              >
-                Refresh
-              </button>
-            </div>
-          )}
+                {/* Attendee list */}
+                <div>
+                  {evt.attendees.length > 0 ? (
+                    <div>
+                      {evt.attendees.map((a) => (
+                        <div
+                          key={a.ticketId}
+                          className="flex items-center justify-between py-3 border-b border-card-border/50 last:border-0"
+                        >
+                          <span className="text-sm text-foreground">{a.name}</span>
+                          {a.checkedIn ? (
+                            <span className="flex items-center gap-1 text-xs font-medium text-green-500">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                              </svg>
+                              {a.checkedInAt ? formatCheckinTime(a.checkedInAt) : "Checked in"}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted">Not arrived</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted py-2">No attendees found</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* QR Scanner section */}
+      <div className="border-t border-card-border/50 pt-4">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">QR Scanner</h2>
+
+        {!result ? (
+          <div ref={scannerRef}>
+            <div id="qr-reader" className="overflow-hidden rounded-2xl" />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4">
+            <div
+              className={`w-full rounded-2xl border p-8 text-center ${
+                status === "success"
+                  ? "border-green-500/30 bg-green-500/10"
+                  : status === "error"
+                  ? "border-accent/30 bg-accent/10"
+                  : "border-card-border bg-card"
+              }`}
+            >
+              <p className="text-xl font-semibold">{message || "Verifying..."}</p>
+            </div>
+
+            <button
+              onClick={resetScanner}
+              className="w-full rounded-full bg-accent py-3 font-medium text-white hover:bg-accent-hover active:scale-95 active:opacity-80 transition-transform"
+            >
+              Scan another QR
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
