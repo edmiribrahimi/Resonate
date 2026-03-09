@@ -52,8 +52,8 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 21-01-PLAN.md -- Motion foundation: install library, MotionProvider, CSS utilities, all animation components, toast system, skeleton primitives (UI-04, UI-05, UI-09, UI-10, UI-12)
-- [ ] 21-02-PLAN.md -- Skeleton loading states: loading.tsx for all major route groups (UI-02)
+- [x] 21-01-PLAN.md -- Motion foundation: install library, MotionProvider, CSS utilities, all animation components, toast system, skeleton primitives (UI-04, UI-05, UI-09, UI-10, UI-12)
+- [x] 21-02-PLAN.md -- Skeleton loading states: loading.tsx for all major route groups (UI-02)
 - [ ] 21-03-PLAN.md -- Page animation integration: apply enter animations, staggered lists, pressable cards/buttons across pages (UI-01, UI-03, UI-06, UI-07, UI-08, UI-11)
 
 ### Phase 22: Analytics Infrastructure & Event Metrics
@@ -94,7 +94,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
-| 21. Layout Elegance | 0/3 | Planning complete | - |
+| 21. Layout Elegance | 2/3 | In progress | - |
 | 22. Analytics Infrastructure & Event Metrics | 0/? | Not started | - |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
