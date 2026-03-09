@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: planning
-stopped_at: Completed 23-04 (Event Comparison) -- Phase 23 complete
-last_updated: "2026-03-09T21:42:16.392Z"
+status: executing
+stopped_at: Completed 24-01 (Database Foundation)
+last_updated: "2026-03-09T22:42:17Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # State: Resonate
@@ -20,13 +20,13 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 24 next
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 24 in progress
 
 ## Current Position
 
-**Phase:** Phase 23 (Analytics Dashboard & Cross-Event Insights)
-**Plan:** 4/4 complete
-**Status:** Ready to plan
+**Phase:** Phase 24 (Guest List Management)
+**Plan:** 1/? complete
+**Status:** Executing
 
 ```
 [Phase Progress]  ████████████████░░░░  4/5 phases
@@ -52,6 +52,7 @@ progress:
 | Phase 23 Plan 02 | 2 tasks, 153s |
 | Phase 23 Plan 03 | 2 tasks, 200s |
 | Phase 23 Plan 04 | 2 tasks, 167s |
+| Phase 24 Plan 01 | 2 tasks, 214s |
 
 ## Decisions
 
@@ -100,6 +101,10 @@ progress:
 - [23-04] EventSelector uses useRouter().push() with URL search params for server-side re-render on selection change
 - [23-04] Per-attendee mode is default (fair comparison per research recommendation)
 - [23-04] Mode toggle uses Link-based navigation preserving event selection in search params
+- [24-01] tier_id made nullable (not hidden tier approach) -- simpler, ticket_type already distinguishes guest list tickets
+- [24-01] approveRefund gracefully handles free tickets (skip SumUp, update records, delete ticket)
+- [24-01] adminRefund throws error on free tickets (complimentary ticket safety net)
+- [24-01] Email matching in trigger uses LOWER() for case-insensitive comparison
 
 ## Accumulated Context
 
@@ -126,10 +131,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T21:35:34Z
-**Stopped at:** Completed 23-04 (Event Comparison) -- Phase 23 complete
-**Next step:** Begin Phase 24 (Guest List Management)
+**Last session:** 2026-03-09T22:42:17Z
+**Stopped at:** Completed 24-01 (Database Foundation)
+**Next step:** Continue Phase 24 -- next plan
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T21:35:34Z*
+*Last updated: 2026-03-09T22:42:17Z*
