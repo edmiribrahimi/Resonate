@@ -70,7 +70,7 @@ Plans:
 Plans:
 - [x] 22-01-PLAN.md -- PostHog + Recharts installation, client/server init, user identification (ANLY-08)
 - [ ] 22-02-PLAN.md -- Per-event analytics page with revenue, velocity, drinks, attendance, token lifecycle (ANLY-01, ANLY-02, ANLY-03, ANLY-04, ANLY-06)
-- [ ] 22-03-PLAN.md -- Admin member growth page with referral/organic area chart (ANLY-05)
+- [x] 22-03-PLAN.md -- Admin member growth page with referral/organic area chart (ANLY-05)
 
 ### Phase 23: Analytics Dashboard & Cross-Event Insights
 **Goal:** Admin has a comprehensive KPI dashboard with cross-event intelligence -- member spending profiles, drink popularity, repeat attendance, referral effectiveness, and side-by-side event comparison
@@ -100,7 +100,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
-| 22. Analytics Infrastructure & Event Metrics | 1/3 | In progress | - |
+| 22. Analytics Infrastructure & Event Metrics | 2/3 | In progress | - |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
 

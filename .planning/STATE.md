@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
 status: executing
-stopped_at: Completed 22-01 (PostHog + Recharts Infrastructure)
-last_updated: "2026-03-09T20:16:21Z"
+stopped_at: Completed 22-02 (Per-Event Analytics Page)
+last_updated: "2026-03-09T20:23:32Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 9
 ---
 
 # State: Resonate
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 **Phase:** Phase 22 (Analytics Infrastructure & Event Metrics) -- IN PROGRESS
-**Plan:** 1/3 complete
-**Status:** Executing
+**Plan:** 3/3 complete
+**Status:** Complete
 
 ```
-[Phase Progress]  ████████░░░░░░░░░░░░  2/5 phases
+[Phase Progress]  ████████████░░░░░░░░  3/5 phases
 ```
 
 ## Performance Metrics
@@ -37,8 +37,8 @@ progress:
 | Metric | Value |
 |--------|-------|
 | Phases completed | 2/5 |
-| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 1/3 (Phase 22) |
-| Requirements shipped | 21/52 |
+| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22) |
+| Requirements shipped | 27/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
@@ -46,6 +46,8 @@ progress:
 | Phase 21 Plan 02 | 2 tasks, 188s |
 | Phase 21 Plan 03 | 2 tasks, 537s |
 | Phase 22 Plan 01 | 2 tasks, 136s |
+| Phase 22 Plan 02 | 2 tasks, 229s |
+| Phase 22 Plan 03 | 2 tasks, 183s |
 
 ## Decisions
 
@@ -71,6 +73,14 @@ progress:
 - [22-01] Server singleton uses no-op object when NEXT_PUBLIC_POSTHOG_KEY is missing (safe local dev)
 - [22-01] PostHogIdentify placed in dashboard only (PostHog persists identity across pages via localStorage)
 - [22-01] Role defaults to "member" when x-user-role header is null
+- [22-03] Weekly/monthly toggle uses Link-based navigation with search params (server-side re-render, no client state)
+- [22-03] Cumulative member counts computed in JS after simple profiles SELECT (no SQL GROUP BY needed)
+- [22-02] Two-step ticket refund lookup (get ticket IDs first, then query refunds) to avoid unreliable Supabase nested join filters
+- [22-02] DrinkSalesBreakdown is Server Component (no animation), other cards are client components for CountUp
+- [22-02] Revenue card uses accent gradient border to visually distinguish from standard cards
+- [22-02] Stacked progress bar in TokenLifecycleCard shows green/red/gray for redeemed/refunded/pending
+- [22-02] Attendance progress bar color-coded by threshold (green >=70%, yellow 40-70%, muted below)
+- [22-03] ISO week calculation done in pure JS (no date-fns dependency)
 
 ## Accumulated Context
 
@@ -97,10 +107,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T20:16:21Z
-**Stopped at:** Completed 22-01 (PostHog + Recharts Infrastructure)
-**Next step:** Execute Phase 22 Plan 02 (Per-event analytics page)
+**Last session:** 2026-03-09T20:23:32Z
+**Stopped at:** Completed 22-02 (Per-Event Analytics Page) -- Phase 22 complete (3/3)
+**Next step:** Execute Phase 23 (Analytics Dashboard & Cross-Event Insights)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T20:16:21Z*
+*Last updated: 2026-03-09T20:23:04Z*
