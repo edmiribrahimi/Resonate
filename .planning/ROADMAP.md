@@ -84,9 +84,9 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 23-01-PLAN.md -- Admin KPI dashboard + StaffNav Analytics tab (ANLY-07)
+- [x] 23-01-PLAN.md -- Admin KPI dashboard + StaffNav Analytics tab (ANLY-07)
 - [x] 23-02-PLAN.md -- Per-event enhancements: drink popularity, market insights, purchase funnel (ANLY-10, ANLY-11, ANLY-15)
-- [ ] 23-03-PLAN.md -- Member intelligence: spend profiles, repeat rate, referral chains, guest conversion (ANLY-09, ANLY-12, ANLY-13, ANLY-14)
+- [x] 23-03-PLAN.md -- Member intelligence: spend profiles, repeat rate, referral chains, guest conversion (ANLY-09, ANLY-12, ANLY-13, ANLY-14)
 - [ ] 23-04-PLAN.md -- Side-by-side event comparison (ANLY-16)
 
 ### Phase 24: Guest List Management
@@ -107,7 +107,7 @@ Plans:
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
 | 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
-| 23. Analytics Dashboard & Cross-Event Insights | 2/4 | In progress | - |
+| 23. Analytics Dashboard & Cross-Event Insights | 3/4 | In progress | - |
 | 24. Guest List Management | 0/? | Not started | - |
 
 ---
