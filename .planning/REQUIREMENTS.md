@@ -1,7 +1,7 @@
 # Requirements: Resonate v1.3
 
 **Defined:** 2026-03-09
-**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
+**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community -- the gating mechanism (referral + approval) is what makes the community valuable.
 
 ## v1.3 Requirements
 
@@ -19,9 +19,9 @@
 - [ ] **ANLY-10**: Admin can view drink popularity ranking per event (most sold, highest redemption rate)
 - [ ] **ANLY-11**: Organizer can view market insights per event (avg spend/attendee, peak purchase times)
 - [ ] **ANLY-12**: Admin can view repeat attendee rate (% members attending multiple events)
-- [ ] **ANLY-13**: Admin can view referral chain effectiveness (referrer → referred member → spending total)
+- [ ] **ANLY-13**: Admin can view referral chain effectiveness (referrer -> referred member -> spending total)
 - [ ] **ANLY-14**: Admin can track guest-to-member conversion (anonymous drink buyers who later register)
-- [ ] **ANLY-15**: Admin can view drink purchase funnel (menu view → cart → checkout → payment → token)
+- [ ] **ANLY-15**: Admin can view drink purchase funnel (menu view -> cart -> checkout -> payment -> token)
 - [ ] **ANLY-16**: Admin can compare metrics side-by-side for 2+ events
 
 ### Layout Elegance
@@ -50,9 +50,9 @@
 - [ ] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
 - [ ] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
 - [ ] **GSTL-09**: New user registering with email matching a guest list entry is auto-approved (alternative approval path)
-- [ ] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email — parse, validate, deduplicate, preview)
+- [ ] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
 - [ ] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
-- [ ] **GSTL-12**: Guests without email have no QR code — check-in is by name lookup at the door
+- [ ] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
 - [ ] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
 - [ ] **GSTL-14**: Profiles track approval method (approved_via: referral / guest_list / admin_manual)
 - [ ] **GSTL-15**: Tickets distinguish type (ticket_type: purchased / guest_list) and sales dashboard separates paid vs free
@@ -71,7 +71,7 @@
 
 ## v1.4 Requirements (Deferred)
 
-### App Audit (Research Complete — see .planning/research/)
+### App Audit (Research Complete -- see .planning/research/)
 
 - **AUDT-01**: Lighthouse performance score >90 on all pages
 - **AUDT-02**: Security headers configured (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
@@ -97,7 +97,7 @@
 
 | Feature | Reason |
 |---------|--------|
-| Custom analytics dashboard UI (Chart.js/Recharts) | PostHog provides dashboards, funnels, charts — no need to build custom |
+| Custom analytics dashboard UI (Chart.js/Recharts) | PostHog provides dashboards, funnels, charts -- no need to build custom |
 | Page-level route transitions (AnimatePresence) | Broken in Next.js App Router as of 2026 |
 | Public RSVP wall (Partiful-style) | Contradicts private/curated community model |
 | SMS invitations for guest list | Per-message cost, privacy/regulatory complexity |
@@ -115,13 +115,64 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| NAV-01 | Phase 20 | Pending |
+| NAV-02 | Phase 20 | Pending |
+| NAV-03 | Phase 20 | Pending |
+| NAV-04 | Phase 20 | Pending |
+| NAV-05 | Phase 20 | Pending |
+| NAV-06 | Phase 20 | Pending |
+| NAV-07 | Phase 20 | Pending |
+| NAV-08 | Phase 20 | Pending |
+| UI-01 | Phase 21 | Pending |
+| UI-02 | Phase 21 | Pending |
+| UI-03 | Phase 21 | Pending |
+| UI-04 | Phase 21 | Pending |
+| UI-05 | Phase 21 | Pending |
+| UI-06 | Phase 21 | Pending |
+| UI-07 | Phase 21 | Pending |
+| UI-08 | Phase 21 | Pending |
+| UI-09 | Phase 21 | Pending |
+| UI-10 | Phase 21 | Pending |
+| UI-11 | Phase 21 | Pending |
+| UI-12 | Phase 21 | Pending |
+| ANLY-01 | Phase 22 | Pending |
+| ANLY-02 | Phase 22 | Pending |
+| ANLY-03 | Phase 22 | Pending |
+| ANLY-04 | Phase 22 | Pending |
+| ANLY-05 | Phase 22 | Pending |
+| ANLY-06 | Phase 22 | Pending |
+| ANLY-08 | Phase 22 | Pending |
+| ANLY-07 | Phase 23 | Pending |
+| ANLY-09 | Phase 23 | Pending |
+| ANLY-10 | Phase 23 | Pending |
+| ANLY-11 | Phase 23 | Pending |
+| ANLY-12 | Phase 23 | Pending |
+| ANLY-13 | Phase 23 | Pending |
+| ANLY-14 | Phase 23 | Pending |
+| ANLY-15 | Phase 23 | Pending |
+| ANLY-16 | Phase 23 | Pending |
+| GSTL-01 | Phase 24 | Pending |
+| GSTL-02 | Phase 24 | Pending |
+| GSTL-03 | Phase 24 | Pending |
+| GSTL-04 | Phase 24 | Pending |
+| GSTL-05 | Phase 24 | Pending |
+| GSTL-06 | Phase 24 | Pending |
+| GSTL-07 | Phase 24 | Pending |
+| GSTL-08 | Phase 24 | Pending |
+| GSTL-09 | Phase 24 | Pending |
+| GSTL-10 | Phase 24 | Pending |
+| GSTL-11 | Phase 24 | Pending |
+| GSTL-12 | Phase 24 | Pending |
+| GSTL-13 | Phase 24 | Pending |
+| GSTL-14 | Phase 24 | Pending |
+| GSTL-15 | Phase 24 | Pending |
+| GSTL-16 | Phase 24 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 52 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 52
+- Mapped to phases: 52
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*
