@@ -81,7 +81,13 @@ Plans:
   2. Admin can view per-member spend profiles (total across events), drink popularity rankings per event, and repeat attendee rate across events
   3. Admin can view referral chain effectiveness (referrer to referred to spending), guest-to-member conversion tracking, and drink purchase funnel (menu view to token)
   4. Organizer can see market insights per event (avg spend per attendee, peak purchase times) and admin can compare metrics side-by-side for 2+ events
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 23-01-PLAN.md -- Admin KPI dashboard + StaffNav Analytics tab (ANLY-07)
+- [ ] 23-02-PLAN.md -- Per-event enhancements: drink popularity, market insights, purchase funnel (ANLY-10, ANLY-11, ANLY-15)
+- [ ] 23-03-PLAN.md -- Member intelligence: spend profiles, repeat rate, referral chains, guest conversion (ANLY-09, ANLY-12, ANLY-13, ANLY-14)
+- [ ] 23-04-PLAN.md -- Side-by-side event comparison (ANLY-16)
 
 ### Phase 24: Guest List Management
 **Goal:** Organizers can manage per-event guest lists that automatically handle registration, approval, and free ticket generation -- with both email-based (invitation + QR) and no-email (door check-in) flows
@@ -101,7 +107,7 @@ Plans:
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
 | 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
 | 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
-| 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
+| 23. Analytics Dashboard & Cross-Event Insights | 0/4 | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
 
 ---
