@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
@@ -206,23 +207,25 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-muted">Hey,</p>
-            <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
+      <AnimatedSection>
+        <header className="px-6 pt-12 pb-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted">Hey,</p>
+              <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
+            </div>
+            <span className="mt-2 shrink-0 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent">
+              {roleLabel}
+            </span>
           </div>
-          <span className="mt-2 shrink-0 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent">
-            {roleLabel}
-          </span>
-        </div>
-        <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
-        {memberSince && (
-          <p className="text-xs text-muted/60">Member since {memberSince}</p>
-        )}
-      </header>
+          <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
+          {memberSince && (
+            <p className="text-xs text-muted/60">Member since {memberSince}</p>
+          )}
+        </header>
+      </AnimatedSection>
 
-      <div className="flex flex-col gap-4 px-6">
+      <AnimatedSection delay={0.1} className="flex flex-col gap-4 px-6">
         {isPendingOrRejected ? (
           <>
             {/* Pending / Rejected state */}
@@ -408,7 +411,7 @@ export default async function DashboardPage() {
             )}
           </>
         )}
-      </div>
+      </AnimatedSection>
 
       <MobileNav role={role} status={status} />
     </div>

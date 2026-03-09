@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import MemberTable from "@/components/admin/MemberTable";
 import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -74,20 +75,22 @@ export default async function AdminMembersPage() {
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
-      </header>
+      <AnimatedSection>
+        <header className="px-6 pt-12 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
+        </header>
+      </AnimatedSection>
 
       <StaffNav role={role} context="admin" />
 
-      <div className="px-6">
+      <AnimatedSection delay={0.1} className="px-6">
         <MemberTable
           members={members}
           currentUserId={userId}
           showActions={true}
           callerRole="master"
         />
-      </div>
+      </AnimatedSection>
 
       <MobileNav role={role} status={status} />
     </div>

@@ -4,6 +4,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import type { UserRole, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 import GuestLoginBanner from "./GuestLoginBanner";
@@ -142,24 +143,27 @@ export default async function MenuPage({
         }`}
       >
         {/* Event info */}
-        <h1 className="text-2xl font-bold text-foreground">{event.title}</h1>
-        <p className="mt-1 text-sm text-muted">{formattedDate}</p>
+        <AnimatedSection>
+          <h1 className="text-2xl font-bold text-foreground">{event.title}</h1>
+          <p className="mt-1 text-sm text-muted">{formattedDate}</p>
 
-        {/* QR Code (organizer/admin only) */}
-        {canManage && (
-          <div className="mt-6">
-            <EventQRCode url={menuUrl} eventTitle={event.title} />
-          </div>
-        )}
+          {/* QR Code (organizer/admin only) */}
+          {canManage && (
+            <div className="mt-6">
+              <EventQRCode url={menuUrl} eventTitle={event.title} />
+            </div>
+          )}
 
-        {/* Login suggestion banner (unauthenticated only) */}
-        {!user && (
-          <div className="mt-6">
-            <GuestLoginBanner slug={slug} />
-          </div>
-        )}
+          {/* Login suggestion banner (unauthenticated only) */}
+          {!user && (
+            <div className="mt-6">
+              <GuestLoginBanner slug={slug} />
+            </div>
+          )}
+        </AnimatedSection>
 
         {/* Party drink menu with selector */}
+        <AnimatedSection delay={0.1}>
         {partyList.length > 0 ? (
           <PartyDrinkMenu
             eventId={event.id}
@@ -176,6 +180,7 @@ export default async function MenuPage({
             </p>
           </div>
         )}
+        </AnimatedSection>
 
         {/* Drink tokens */}
         {user ? (

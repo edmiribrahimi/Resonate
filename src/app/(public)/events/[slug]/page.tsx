@@ -3,6 +3,7 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
@@ -388,7 +389,7 @@ export default async function EventDetailPage({
       {isAuthenticated && <PendingIntentHandler eventSlug={slug} />}
 
       {/* Cover */}
-      <div className="relative px-6 pt-6">
+      <AnimatedSection className="relative px-6 pt-6">
         <Link
           href="/events"
           className="absolute left-10 top-10 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm active:scale-95 active:opacity-80 transition-transform"
@@ -409,30 +410,31 @@ export default async function EventDetailPage({
             <MusicalNoteIcon className="h-12 w-12" />
           </div>
         )}
-      </div>
+      </AnimatedSection>
 
       <div className="px-6 pt-6">
-        {/* Date range */}
-        <p className="mb-1 text-sm font-medium text-accent">
-          {dateRangeDisplay}
-        </p>
-
-        {/* Title + Share */}
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {event.title}
-          </h1>
-          <ShareButton title={event.title} description={event.description} />
-        </div>
-
-        {/* Description */}
-        {event.description && (
-          <p className="mb-6 text-muted whitespace-pre-line">
-            {event.description}
+        {/* Date range, Title + Share, Description */}
+        <AnimatedSection delay={0.1}>
+          <p className="mb-1 text-sm font-medium text-accent">
+            {dateRangeDisplay}
           </p>
-        )}
+
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {event.title}
+            </h1>
+            <ShareButton title={event.title} description={event.description} />
+          </div>
+
+          {event.description && (
+            <p className="mb-6 text-muted whitespace-pre-line">
+              {event.description}
+            </p>
+          )}
+        </AnimatedSection>
 
         {/* Lineup (event-level only — party lineups are shown inside each party card) */}
+        <AnimatedSection scrollTriggered>
         {(() => {
           const allPartyLineupNames = new Set(parties.flatMap((p) => p.lineup));
           const eventLineup = (event.lineup ?? []) as string[];
@@ -478,10 +480,11 @@ export default async function EventDetailPage({
             </div>
           );
         })()}
+        </AnimatedSection>
 
         {/* Event Pass section (event-level tiers) */}
         {eventTiers.length > 0 && (
-          <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          <AnimatedSection scrollTriggered className="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-4">
             {hasMasterTicket ? (
               <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
                 <p className="text-sm font-medium text-green-400 mb-3">
@@ -503,7 +506,7 @@ export default async function EventDetailPage({
                 eventSlug={slug}
               />
             ) : null}
-          </div>
+          </AnimatedSection>
         )}
 
         {/* Party sections */}
@@ -682,7 +685,7 @@ export default async function EventDetailPage({
 
         {/* Drink Menu — link for master/organizer only */}
         {canSeeDrafts && (drinkItemCount ?? 0) > 0 && (
-          <div className="mb-6">
+          <AnimatedSection scrollTriggered className="mb-6">
             <a
               href={`/events/${event.slug}/menu`}
               className="block w-full rounded-xl border border-card-border bg-card p-4 text-center transition-colors hover:border-accent/50"
@@ -690,18 +693,18 @@ export default async function EventDetailPage({
               <p className="text-sm font-medium text-foreground">Drink Menu</p>
               <p className="mt-1 text-xs text-muted">View available drinks</p>
             </a>
-          </div>
+          </AnimatedSection>
         )}
 
         {/* My Drinks — user's purchased drink tokens */}
         {userDrinkTokens && userDrinkTokens.length > 0 && (
-          <div className="mb-6">
+          <AnimatedSection scrollTriggered className="mb-6">
             <MyDrinks tokens={userDrinkTokens} />
-          </div>
+          </AnimatedSection>
         )}
 
         {/* Event Gallery */}
-        <div className="mb-6">
+        <AnimatedSection scrollTriggered className="mb-6">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
             Gallery
           </h2>
@@ -710,7 +713,7 @@ export default async function EventDetailPage({
             canUpload={canUpload}
             eventId={event.id}
           />
-        </div>
+        </AnimatedSection>
       </div>
 
       <MobileNav role={role} status={status} />

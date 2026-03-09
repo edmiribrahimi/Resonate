@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole, UserStatus } from "@/types/database";
 import EventTabs from "./EventTabs";
@@ -123,11 +124,15 @@ export default async function EventsPage() {
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Events</h1>
-      </header>
+      <AnimatedSection>
+        <header className="px-6 pt-12 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Events</h1>
+        </header>
+      </AnimatedSection>
 
-      <EventTabs upcoming={upcoming} past={past} />
+      <AnimatedSection delay={0.1}>
+        <EventTabs upcoming={upcoming} past={past} />
+      </AnimatedSection>
 
       <MobileNav role={role} status={status} />
     </div>

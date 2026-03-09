@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import StaffNav from "@/components/staff/StaffNav";
 import EventList from "@/components/events/EventList";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -53,21 +54,23 @@ export default async function OrganizerEventsPage() {
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="flex items-center justify-between px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Organizer</h1>
-        <Link
-          href="/organizer/events/new"
-          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-        >
-          Create Event
-        </Link>
-      </header>
+      <AnimatedSection>
+        <header className="flex items-center justify-between px-6 pt-12 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Organizer</h1>
+          <Link
+            href="/organizer/events/new"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            Create Event
+          </Link>
+        </header>
+      </AnimatedSection>
 
       <StaffNav role={role} context="organizer" />
 
-      <div className="px-6">
+      <AnimatedSection delay={0.1} className="px-6">
         <EventList events={events ?? []} />
-      </div>
+      </AnimatedSection>
 
       <MobileNav role={role} status={status} />
     </div>

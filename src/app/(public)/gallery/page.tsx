@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
+import AnimatedSection from "@/components/motion/AnimatedSection";
 import GalleryClient from "./GalleryClient";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -54,14 +55,16 @@ export default async function GalleryPage() {
 
   return (
     <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Gallery</h1>
-        <p className="mt-1 text-muted">Moments from our events</p>
-      </header>
+      <AnimatedSection>
+        <header className="px-6 pt-12 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Gallery</h1>
+          <p className="mt-1 text-muted">Moments from our events</p>
+        </header>
+      </AnimatedSection>
 
-      <div className="px-6">
+      <AnimatedSection delay={0.1} className="px-6">
         <GalleryClient groups={groups} />
-      </div>
+      </AnimatedSection>
 
       <MobileNav role={role} status={status} />
     </div>
