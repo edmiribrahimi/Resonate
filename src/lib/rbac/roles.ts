@@ -33,14 +33,6 @@ export interface NavItem {
 // Full navigation items list with role/status requirements
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/",
-    label: "Home",
-    icon: "home",
-    roles: null,
-    requireApproved: false,
-    requireAuth: false,
-  },
-  {
     href: "/events",
     label: "Events",
     icon: "calendar",
@@ -57,27 +49,19 @@ const NAV_ITEMS: NavItem[] = [
     requireAuth: false,
   },
   {
+    href: "/admin/scanner",
+    label: "Check-in",
+    icon: "qrcode",
+    roles: ["master", "organizer"],
+    requireApproved: true,
+    requireAuth: true,
+  },
+  {
     href: "/dashboard",
     label: "Account",
     icon: "user",
     roles: null,
     requireApproved: false,
-    requireAuth: true,
-  },
-  {
-    href: "/admin/events",
-    label: "Admin",
-    icon: "shield",
-    roles: ["master"],
-    requireApproved: true,
-    requireAuth: true,
-  },
-  {
-    href: "/organizer/events",
-    label: "Organizer",
-    icon: "users",
-    roles: ["organizer"],
-    requireApproved: true,
     requireAuth: true,
   },
 ];
@@ -86,11 +70,11 @@ const NAV_ITEMS: NavItem[] = [
  * Filter navigation items based on user role and status.
  *
  * Logic:
- * - Unauthenticated (role=null): Home, Events, Gallery only
- * - Pending/rejected: Home, Events, Dashboard only (no Gallery)
- * - Approved member: Home, Events, Gallery, Members (dashboard)
- * - Organizer (approved): same as member + Organizer item
- * - Master (approved): same as member + Admin item
+ * - Unauthenticated (role=null): Events, Gallery (2 tabs)
+ * - Pending/rejected member: Events, Account (2 tabs -- Gallery hidden)
+ * - Approved member: Events, Gallery, Account (3 tabs)
+ * - Organizer (approved): Events, Gallery, Check-in, Account (4 tabs)
+ * - Master (approved): Events, Gallery, Check-in, Account (4 tabs)
  */
 export function getVisibleNavItems(
   role: UserRole | null,
@@ -100,18 +84,13 @@ export function getVisibleNavItems(
   const isApproved = status === "approved";
 
   return NAV_ITEMS.filter((item) => {
-    // Hide Home for logged-in users (redirects to dashboard anyway)
-    if (item.href === "/" && isAuthenticated) {
-      return false;
-    }
-
     // Check authentication requirement
     if (item.requireAuth && !isAuthenticated) {
       return false;
     }
 
     // Check approval requirement
-    // Gallery: visible to unauthenticated users AND approved members, but NOT pending/rejected
+    // Gallery & Check-in: visible to unauthenticated users AND approved members, but NOT pending/rejected
     if (item.requireApproved) {
       if (isAuthenticated && !isApproved) {
         return false;
