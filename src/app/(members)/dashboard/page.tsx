@@ -10,6 +10,7 @@ import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import DashboardDrinkTokens from "./DashboardDrinkTokens";
+import ManagementSection from "@/components/account/ManagementSection";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -159,7 +160,49 @@ export default async function DashboardPage() {
   const role = (headersList.get("x-user-role") as UserRole) || null;
   const status = (headersList.get("x-user-status") as UserStatus) || null;
 
+  const isStaff = role === "master" || role === "organizer";
   const isPendingOrRejected = status === "pending" || status === "rejected";
+
+  // Fetch management stats for staff users
+  let managementStats = {
+    pendingMembers: 0,
+    nextEvent: null as { title: string; date: string } | null,
+    totalRevenue: 0,
+  };
+  if (isStaff) {
+    const [pendingResult, nextEventResult, ticketRevenueResult, drinkRevenueResult] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending"),
+        supabase
+          .from("events")
+          .select("title, date")
+          .gte("date", now)
+          .eq("is_published", true)
+          .order("date", { ascending: true })
+          .limit(1),
+        supabase.from("tickets").select("amount_paid"),
+        supabase
+          .from("drink_orders")
+          .select("total_amount")
+          .eq("status", "completed"),
+      ]);
+    const ticketRevenue = (ticketRevenueResult.data ?? []).reduce(
+      (sum, t) => sum + (t.amount_paid ?? 0),
+      0
+    );
+    const drinkRevenue = (drinkRevenueResult.data ?? []).reduce(
+      (sum, d) => sum + (d.total_amount ?? 0),
+      0
+    );
+    managementStats = {
+      pendingMembers: pendingResult.count ?? 0,
+      nextEvent: nextEventResult.data?.[0] ?? null,
+      totalRevenue: ticketRevenue + drinkRevenue,
+    };
+  }
 
   return (
     <div className="min-h-dvh pb-24">
@@ -220,6 +263,8 @@ export default async function DashboardPage() {
           </>
         ) : (
           <>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">My Stuff</p>
+
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
               <Link href="/membership-card">
@@ -351,6 +396,16 @@ export default async function DashboardPage() {
                 <LogoutButton />
               </div>
             </div>
+
+            {/* Management — staff only */}
+            {isStaff && (
+              <ManagementSection
+                role={role as "master" | "organizer"}
+                pendingMembers={managementStats.pendingMembers}
+                nextEvent={managementStats.nextEvent}
+                totalRevenue={managementStats.totalRevenue}
+              />
+            )}
           </>
         )}
       </div>
