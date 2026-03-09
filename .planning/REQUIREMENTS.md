@@ -16,12 +16,12 @@
 - [ ] **ANLY-07**: Admin can view top-level KPI dashboard (total revenue, total members, upcoming events, recent activity)
 - [x] **ANLY-08**: App tracks pageviews and user behavior via PostHog (EU instance, free tier)
 - [ ] **ANLY-09**: Admin can view per-member spend profile (total spent across events: tickets + drinks)
-- [ ] **ANLY-10**: Admin can view drink popularity ranking per event (most sold, highest redemption rate)
-- [ ] **ANLY-11**: Organizer can view market insights per event (avg spend/attendee, peak purchase times)
+- [x] **ANLY-10**: Admin can view drink popularity ranking per event (most sold, highest redemption rate)
+- [x] **ANLY-11**: Organizer can view market insights per event (avg spend/attendee, peak purchase times)
 - [ ] **ANLY-12**: Admin can view repeat attendee rate (% members attending multiple events)
 - [ ] **ANLY-13**: Admin can view referral chain effectiveness (referrer -> referred member -> spending total)
 - [ ] **ANLY-14**: Admin can track guest-to-member conversion (anonymous drink buyers who later register)
-- [ ] **ANLY-15**: Admin can view drink purchase funnel (menu view -> cart -> checkout -> payment -> token)
+- [x] **ANLY-15**: Admin can view drink purchase funnel (menu view -> cart -> checkout -> payment -> token)
 - [ ] **ANLY-16**: Admin can compare metrics side-by-side for 2+ events
 
 ### Layout Elegance
@@ -144,12 +144,12 @@
 | ANLY-08 | Phase 22 | Complete |
 | ANLY-07 | Phase 23 | Pending |
 | ANLY-09 | Phase 23 | Pending |
-| ANLY-10 | Phase 23 | Pending |
-| ANLY-11 | Phase 23 | Pending |
+| ANLY-10 | Phase 23 | Complete |
+| ANLY-11 | Phase 23 | Complete |
 | ANLY-12 | Phase 23 | Pending |
 | ANLY-13 | Phase 23 | Pending |
 | ANLY-14 | Phase 23 | Pending |
-| ANLY-15 | Phase 23 | Pending |
+| ANLY-15 | Phase 23 | Complete |
 | ANLY-16 | Phase 23 | Pending |
 | GSTL-01 | Phase 24 | Pending |
 | GSTL-02 | Phase 24 | Pending |

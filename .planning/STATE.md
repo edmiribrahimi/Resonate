@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: planning
-stopped_at: Completed 22-02 (Per-Event Analytics Page) -- Phase 22 complete (3/3)
-last_updated: "2026-03-09T20:30:24.511Z"
+status: executing
+stopped_at: Completed 23-03 (Member Intelligence)
+last_updated: "2026-03-09T21:29:43Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # State: Resonate
@@ -20,13 +20,13 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 22 in progress
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 23 in progress
 
 ## Current Position
 
-**Phase:** Phase 22 (Analytics Infrastructure & Event Metrics) -- COMPLETE
-**Plan:** 3/3 complete
-**Status:** Ready to plan
+**Phase:** Phase 23 (Analytics Dashboard & Cross-Event Insights)
+**Plan:** 3/4 complete
+**Status:** Executing
 
 ```
 [Phase Progress]  ████████████░░░░░░░░  3/5 phases
@@ -38,7 +38,7 @@ progress:
 |--------|-------|
 | Phases completed | 3/5 |
 | Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22) |
-| Requirements shipped | 27/52 |
+| Requirements shipped | 35/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
@@ -48,6 +48,9 @@ progress:
 | Phase 22 Plan 01 | 2 tasks, 136s |
 | Phase 22 Plan 02 | 2 tasks, 229s |
 | Phase 22 Plan 03 | 2 tasks, 183s |
+| Phase 23 Plan 01 | 2 tasks, 171s |
+| Phase 23 Plan 02 | 2 tasks, 153s |
+| Phase 23 Plan 03 | 2 tasks, 200s |
 
 ## Decisions
 
@@ -81,6 +84,17 @@ progress:
 - [22-02] Stacked progress bar in TokenLifecycleCard shows green/red/gray for redeemed/refunded/pending
 - [22-02] Attendance progress bar color-coded by threshold (green >=70%, yellow 40-70%, muted below)
 - [22-03] ISO week calculation done in pure JS (no date-fns dependency)
+- [23-02] Drink popularity reuses existing DrinkSalesItem data (sorted by quantity instead of revenue)
+- [23-02] Organizer gets MarketInsightsCard only; DrinkPopularityChart and PurchaseFunnelChart are admin-only per ANLY-10/ANLY-15 scope
+- [23-02] Peak purchase hours use client-side Date.getHours() on UTC timestamps (consistent with existing codebase pattern)
+- [23-01] fetchKPIDashboard uses getServiceClient() to bypass RLS for cross-user revenue aggregation
+- [23-01] Revenue is gross (tickets + drinks) at overview level -- no refund deduction for simplicity
+- [23-01] Recent activity merges latest 10 tickets + 10 drinks, sorts by date, takes top 10
+- [23-01] RecentActivityFeed is a Server Component (no animation needed, just data display)
+- [23-03] All 4 cross-event queries use getServiceClient() to bypass RLS (cross-user aggregation requires service role)
+- [23-03] Guest conversion detection via profile.created_at > drink_order.created_at (order before registration = was guest)
+- [23-03] ReferralChainTable uses native HTML details/summary for collapsible rows (no JS state needed)
+- [23-03] MemberSpendTable follows DrinkSalesBreakdown responsive pattern (hidden/block for table vs cards)
 
 ## Accumulated Context
 
@@ -107,10 +121,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T20:23:32Z
-**Stopped at:** Completed 22-02 (Per-Event Analytics Page) -- Phase 22 complete (3/3)
-**Next step:** Execute Phase 23 (Analytics Dashboard & Cross-Event Insights)
+**Last session:** 2026-03-09T21:28:00Z
+**Stopped at:** Completed 23-02 (Per-Event Market Insights & Drink Analytics)
+**Next step:** Execute 23-03 (Member Intelligence)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T20:23:32Z*
+*Last updated: 2026-03-09T21:28:00Z*
