@@ -10,6 +10,7 @@ export interface Profile {
   role: UserRole;
   status: UserStatus;
   referred_by: string | null;
+  approved_via: 'referral' | 'guest_list' | 'admin_manual' | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,11 +110,12 @@ export interface Ticket {
   id: string;
   event_id: string;
   party_id: string | null;
-  tier_id: string;
+  tier_id: string | null;
   user_id: string;
   sumup_checkout_id: string | null;
   sumup_transaction_code: string | null;
   amount_paid: number;
+  ticket_type: 'purchased' | 'guest_list';
   reminder_sent: boolean;
   checked_in: boolean;
   checked_in_at: string | null;
@@ -225,4 +227,22 @@ export interface DrinkToken {
   status: "purchased" | "redeemed";
   redeemed_at: string | null;
   created_at: string;
+}
+
+export type GuestListStatus = 'pending' | 'invited' | 'registered' | 'ticket_issued' | 'checked_in' | 'already_has_ticket' | 'failed';
+
+export interface GuestListEntry {
+  id: string;
+  event_id: string;
+  party_id: string | null;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  added_by: string;
+  status: GuestListStatus;
+  profile_id: string | null;
+  ticket_id: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }

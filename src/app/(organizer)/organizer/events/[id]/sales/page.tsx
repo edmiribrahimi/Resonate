@@ -68,11 +68,18 @@ export default async function OrganizerSalesPage({
     })
   );
 
+  // Count guest list tickets separately
+  const { count: guestListCount } = await supabase
+    .from("tickets")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", eventId)
+    .eq("ticket_type", "guest_list");
+
   // Fetch buyers with profile and tier joins
   const { data: rawBuyers } = await supabase
     .from("tickets")
     .select(
-      "id, amount_paid, created_at, tier_id, user_id, profiles!user_id(full_name, email), ticket_tiers!tier_id(name)"
+      "id, amount_paid, created_at, tier_id, ticket_type, user_id, profiles!user_id(full_name, email), ticket_tiers!tier_id(name)"
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -82,17 +89,21 @@ export default async function OrganizerSalesPage({
     const tier = Array.isArray(b.ticket_tiers)
       ? b.ticket_tiers[0]
       : b.ticket_tiers;
+    const ticketType = (b as { ticket_type?: string }).ticket_type;
     return {
       id: b.id,
       memberName: (profile as { full_name?: string })?.full_name ?? "Unknown",
       memberEmail: (profile as { email?: string })?.email ?? "",
-      tierName: (tier as { name?: string })?.name ?? "Unknown",
+      tierName: ticketType === "guest_list"
+        ? "Guest List"
+        : (tier as { name?: string })?.name ?? "Unknown",
       purchaseDate: b.created_at,
     };
   });
 
   const totalRevenue = tierSalesData.reduce((sum, t) => sum + t.revenue, 0);
   const totalSold = tierSalesData.reduce((sum, t) => sum + t.sold, 0);
+  const guestCount = guestListCount ?? 0;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -108,6 +119,12 @@ export default async function OrganizerSalesPage({
       </header>
 
       <div className="px-6">
+        {guestCount > 0 && (
+          <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm text-muted">Guest List</p>
+            <p className="text-lg font-bold">{guestCount} free ticket{guestCount !== 1 ? "s" : ""}</p>
+          </div>
+        )}
         <SalesDashboard
           eventTitle={event.title}
           tiers={tierSalesData}

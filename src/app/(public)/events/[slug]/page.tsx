@@ -53,7 +53,7 @@ interface PartyWithTiers {
     starts_at?: string | null;
     expires_at?: string | null;
   }[];
-  userTicket: { id: string; tier_id: string } | null;
+  userTicket: { id: string; tier_id: string | null } | null;
   userRsvp: { id: string } | null;
   spotsLeft: number | null;
 }
@@ -214,7 +214,7 @@ export default async function EventDetailPage({
       }
 
       // Check if user has ticket/rsvp for this party
-      let userTicket: { id: string; tier_id: string } | null = null;
+      let userTicket: { id: string; tier_id: string | null } | null = null;
       let userRsvp: { id: string } | null = null;
 
       if (isAuthenticated && user) {

@@ -114,12 +114,35 @@ export async function approveRefund(refundId: string) {
   // Fetch ticket for SumUp transaction code
   const { data: ticket } = await serviceClient
     .from("tickets")
-    .select("id, sumup_transaction_code, event_id")
+    .select("id, sumup_transaction_code, event_id, amount_paid, ticket_type")
     .eq("id", refund.ticket_id)
     .single();
 
   if (!ticket) {
     throw new Error("Ticket not found");
+  }
+
+  // Guard: skip SumUp refund for free/guest list tickets
+  if (ticket.amount_paid === 0 || ticket.ticket_type === "guest_list") {
+    // No payment to refund -- just update records and delete ticket
+    await serviceClient
+      .from("ticket_refunds")
+      .update({
+        status: "approved",
+        processed_by: user.id,
+        sumup_status: null,
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", refundId);
+
+    await serviceClient
+      .from("tickets")
+      .delete()
+      .eq("id", ticket.id);
+
+    revalidatePath("/events");
+    revalidatePath("/organizer/events");
+    return { success: true };
   }
 
   // Process SumUp refund
@@ -323,12 +346,17 @@ export async function adminRefund(ticketId: string, reason?: string) {
   // Fetch ticket
   const { data: ticket } = await serviceClient
     .from("tickets")
-    .select("id, user_id, amount_paid, sumup_transaction_code, event_id")
+    .select("id, user_id, amount_paid, sumup_transaction_code, event_id, ticket_type")
     .eq("id", ticketId)
     .single();
 
   if (!ticket) {
     throw new Error("Ticket not found");
+  }
+
+  // Guard: prevent refund attempts on free/guest list tickets
+  if (ticket.amount_paid === 0 || ticket.ticket_type === "guest_list") {
+    throw new Error("This is a complimentary ticket -- no refund needed");
   }
 
   // Process SumUp refund
