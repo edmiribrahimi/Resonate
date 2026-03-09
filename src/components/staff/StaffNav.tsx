@@ -21,6 +21,12 @@ const STAFF_TABS = [
     contexts: ["admin"],
     roles: ["master"] as UserRole[],
   },
+  {
+    href: "analytics",
+    label: "Analytics",
+    contexts: ["admin"],
+    roles: ["master"] as UserRole[],
+  },
 ];
 
 export default function StaffNav({ role, context }: StaffNavProps) {
