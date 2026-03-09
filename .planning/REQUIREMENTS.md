@@ -50,9 +50,9 @@
 - [x] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
 - [x] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
 - [x] **GSTL-09**: New user registering with email matching a guest list entry is auto-approved (alternative approval path)
-- [ ] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
-- [ ] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
-- [ ] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
+- [x] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
+- [x] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
+- [x] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
 - [x] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
 - [x] **GSTL-14**: Profiles track approval method (approved_via: referral / guest_list / admin_manual)
 - [x] **GSTL-15**: Tickets distinguish type (ticket_type: purchased / guest_list) and sales dashboard separates paid vs free
@@ -160,9 +160,9 @@
 | GSTL-07 | Phase 24 | Pending |
 | GSTL-08 | Phase 24 | Pending |
 | GSTL-09 | Phase 24 | Complete |
-| GSTL-10 | Phase 24 | Pending |
-| GSTL-11 | Phase 24 | Pending |
-| GSTL-12 | Phase 24 | Pending |
+| GSTL-10 | Phase 24 | Complete |
+| GSTL-11 | Phase 24 | Complete |
+| GSTL-12 | Phase 24 | Complete |
 | GSTL-13 | Phase 24 | Pending |
 | GSTL-14 | Phase 24 | Complete |
 | GSTL-15 | Phase 24 | Complete |

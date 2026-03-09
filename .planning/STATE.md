@@ -38,7 +38,7 @@ progress:
 |--------|-------|
 | Phases completed | 5/5 |
 | Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23) |
-| Requirements shipped | 36/52 |
+| Requirements shipped | 52/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
@@ -112,6 +112,12 @@ progress:
 - [24-02] 500ms delay after createUser to allow handle_new_user trigger to create profile row
 - [24-02] ilike for case-insensitive email matching in profiles lookup
 - [24-02] maybeSingle instead of single for profile lookup to avoid error on no match
+- [24-03] Dynamic import for processGuestEntry in bulkAddGuests (graceful handling when Plan 02 not yet executed)
+- [24-03] PapaParse client-side parsing with header normalization (trim, lowercase, underscore spaces)
+- [24-03] Clone only copies name+email, does NOT auto-process entries (organizer triggers manually)
+- [24-03] Attendance API sorts unchecked first then alphabetical for check-in usability
+- [24-03] POST check-in returns 409 for already-checked-in guests (idempotent with feedback)
+- [24-03] fetchOrganizerEvents filters to only events with guest list entries (avoids empty clone sources)
 
 ## Accumulated Context
 
@@ -138,10 +144,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T22:51:00Z
-**Stopped at:** Completed 24-02 (Core Guest List Management)
-**Next step:** Continue Phase 24 -- next plan
+**Last session:** 2026-03-09T22:51:09Z
+**Stopped at:** Completed 24-03 (Bulk Operations & Check-in Integration)
+**Next step:** Phase 24 complete -- all v1.3 phases done
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T22:51:00Z*
+*Last updated: 2026-03-09T22:51:09Z*
