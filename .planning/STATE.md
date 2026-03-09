@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
 status: executing
-stopped_at: Completed 24-01 (Database Foundation)
-last_updated: "2026-03-09T22:42:17Z"
+stopped_at: Completed 24-03 (Bulk Operations & Check-in Integration)
+last_updated: "2026-03-09T22:51:09Z"
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 16
 ---
 
 # State: Resonate
@@ -25,18 +25,18 @@ progress:
 ## Current Position
 
 **Phase:** Phase 24 (Guest List Management)
-**Plan:** 1/? complete
-**Status:** Executing
+**Plan:** 3/3 complete
+**Status:** Complete
 
 ```
-[Phase Progress]  ████████████████░░░░  4/5 phases
+[Phase Progress]  ████████████████████  5/5 phases
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 4/5 |
+| Phases completed | 5/5 |
 | Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23) |
 | Requirements shipped | 36/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
@@ -53,6 +53,8 @@ progress:
 | Phase 23 Plan 03 | 2 tasks, 200s |
 | Phase 23 Plan 04 | 2 tasks, 167s |
 | Phase 24 Plan 01 | 2 tasks, 214s |
+| Phase 24 Plan 02 | 2 tasks, 269s |
+| Phase 24 Plan 03 | 2 tasks, 282s |
 
 ## Decisions
 
@@ -105,6 +107,11 @@ progress:
 - [24-01] approveRefund gracefully handles free tickets (skip SumUp, update records, delete ticket)
 - [24-01] adminRefund throws error on free tickets (complimentary ticket safety net)
 - [24-01] Email matching in trigger uses LOWER() for case-insensitive comparison
+- [24-02] Recovery link type (not invite) for password-set URL to avoid duplicate user creation
+- [24-02] Existing users get ticket URL instead of password-set link in invitation email
+- [24-02] 500ms delay after createUser to allow handle_new_user trigger to create profile row
+- [24-02] ilike for case-insensitive email matching in profiles lookup
+- [24-02] maybeSingle instead of single for profile lookup to avoid error on no match
 
 ## Accumulated Context
 
@@ -131,10 +138,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T22:42:17Z
-**Stopped at:** Completed 24-01 (Database Foundation)
+**Last session:** 2026-03-09T22:51:00Z
+**Stopped at:** Completed 24-02 (Core Guest List Management)
 **Next step:** Continue Phase 24 -- next plan
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T22:42:17Z*
+*Last updated: 2026-03-09T22:51:00Z*

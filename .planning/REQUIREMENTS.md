@@ -41,19 +41,19 @@
 
 ### Guest List
 
-- [ ] **GSTL-01**: Organizer can add guests to event guest list by name, surname, and email (email optional)
-- [ ] **GSTL-02**: Organizer can view guest list with status per entry (invited / registered / has ticket / checked in)
-- [ ] **GSTL-03**: System sends branded invitation email with QR code to guests with email address
-- [ ] **GSTL-04**: Non-member guests with email are auto-registered and auto-approved on the platform
-- [ ] **GSTL-05**: Existing approved members on guest list receive a free ticket (ticket_type: guest_list, amount_paid: 0)
-- [ ] **GSTL-06**: Pending members on guest list are auto-approved and receive a free ticket
-- [ ] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
-- [ ] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
+- [x] **GSTL-01**: Organizer can add guests to event guest list by name, surname, and email (email optional)
+- [x] **GSTL-02**: Organizer can view guest list with status per entry (invited / registered / has ticket / checked in)
+- [x] **GSTL-03**: System sends branded invitation email with QR code to guests with email address
+- [x] **GSTL-04**: Non-member guests with email are auto-registered and auto-approved on the platform
+- [x] **GSTL-05**: Existing approved members on guest list receive a free ticket (ticket_type: guest_list, amount_paid: 0)
+- [x] **GSTL-06**: Pending members on guest list are auto-approved and receive a free ticket
+- [x] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
+- [x] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
 - [x] **GSTL-09**: New user registering with email matching a guest list entry is auto-approved (alternative approval path)
 - [ ] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
 - [ ] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
 - [ ] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
-- [ ] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
+- [x] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
 - [x] **GSTL-14**: Profiles track approval method (approved_via: referral / guest_list / admin_manual)
 - [x] **GSTL-15**: Tickets distinguish type (ticket_type: purchased / guest_list) and sales dashboard separates paid vs free
 - [x] **GSTL-16**: Email deliverability ensured via SPF, DKIM, DMARC records on sending domain
