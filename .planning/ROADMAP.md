@@ -16,7 +16,7 @@
 ## Phases
 
 - [x] **Phase 20: Navigation Consolidation** - Streamline bottom nav to 3-4 tabs with role-aware Account page as management hub
-- [ ] **Phase 21: Layout Elegance** - Motion library integration with enter animations, skeletons, toasts, and micro-interactions
+- [x] **Phase 21: Layout Elegance** - Motion library integration with enter animations, skeletons, toasts, and micro-interactions
 - [ ] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
 - [ ] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [ ] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
@@ -49,12 +49,12 @@ Plans:
   3. User actions (save, delete, purchase, redeem) show toast notifications that slide in and auto-dismiss, and all buttons/cards give tactile press feedback (scale on tap/hover)
   4. Content sections animate into view on scroll, dark mode elements have subtle ambient glow, and cards have hover elevation on desktop / press feedback on mobile
   5. Analytics KPI cards (when built in Phase 22-23) have number counting-up micro-interactions
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 21-01-PLAN.md -- Motion foundation: install library, MotionProvider, CSS utilities, all animation components, toast system, skeleton primitives (UI-04, UI-05, UI-09, UI-10, UI-12)
 - [x] 21-02-PLAN.md -- Skeleton loading states: loading.tsx for all major route groups (UI-02)
-- [ ] 21-03-PLAN.md -- Page animation integration: apply enter animations, staggered lists, pressable cards/buttons across pages (UI-01, UI-03, UI-06, UI-07, UI-08, UI-11)
+- [x] 21-03-PLAN.md -- Page animation integration: apply enter animations, staggered lists, pressable cards/buttons across pages (UI-01, UI-03, UI-06, UI-07, UI-08, UI-11)
 
 ### Phase 22: Analytics Infrastructure & Event Metrics
 **Goal:** Organizers can see comprehensive per-event performance data (revenue, ticket velocity, drink sales, attendance, token lifecycle) and the app silently tracks user behavior via PostHog
@@ -94,7 +94,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 20. Navigation Consolidation | 3/3 | Complete    | 2026-03-09 |
-| 21. Layout Elegance | 2/3 | In progress | - |
+| 21. Layout Elegance | 3/3 | Complete    | 2026-03-09 |
 | 22. Analytics Infrastructure & Event Metrics | 0/? | Not started | - |
 | 23. Analytics Dashboard & Cross-Event Insights | 0/? | Not started | - |
 | 24. Guest List Management | 0/? | Not started | - |
