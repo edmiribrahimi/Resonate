@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim().toLowerCase() || "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -62,6 +64,26 @@ export async function GET() {
         .order("checked_in_at", { ascending: false })
         .limit(10);
 
+      // Fetch all attendees for this party
+      const { data: attendeesData } = await serviceClient
+        .from("tickets")
+        .select("id, checked_in, checked_in_at, user_id, profiles(full_name)")
+        .eq("party_id", party.id)
+        .order("checked_in", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      const allAttendees = (attendeesData ?? []).map((t) => ({
+        ticketId: t.id as string,
+        name: (t.profiles as unknown as { full_name: string })?.full_name ?? "Unknown",
+        checkedIn: t.checked_in as boolean,
+        checkedInAt: t.checked_in_at as string | null,
+      }));
+
+      // Apply search filter if provided
+      const filteredAttendees = search
+        ? allAttendees.filter((a) => a.name.toLowerCase().includes(search))
+        : allAttendees;
+
       return {
         partyId: party.id,
         partyTitle: party.title,
@@ -73,6 +95,7 @@ export async function GET() {
           name: (t.profiles as unknown as { full_name: string })?.full_name ?? "Unknown",
           time: t.checked_in_at,
         })),
+        attendees: filteredAttendees,
       };
     })
   );
