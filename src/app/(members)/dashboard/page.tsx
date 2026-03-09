@@ -12,6 +12,7 @@ import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import DashboardDrinkTokens from "./DashboardDrinkTokens";
 import ManagementSection from "@/components/account/ManagementSection";
+import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -207,6 +208,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-dvh pb-24">
+      <PostHogIdentify
+        userId={user.id}
+        email={userEmail}
+        role={role ?? "member"}
+      />
       <AnimatedSection>
         <header className="px-6 pt-12 pb-6">
           <div className="flex items-start justify-between">
