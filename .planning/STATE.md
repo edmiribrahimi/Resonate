@@ -20,7 +20,7 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 in progress
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 complete, Phase 27 next
 
 ## Current Position
 
@@ -36,9 +36,9 @@ progress:
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 6/6 |
-| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23), 3/3 (Phase 24), 1/1 (Phase 25) |
-| Requirements shipped | 52/52 |
+| Phases completed | 7/7 |
+| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23), 3/3 (Phase 24), 1/1 (Phase 25), 3/3 (Phase 26) |
+| Requirements shipped | 54/54 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
@@ -58,6 +58,7 @@ progress:
 | Phase 25 Plan 01 | 3 tasks, 229s |
 | Phase 26 Plan 01 | 2 tasks, 211s |
 | Phase 26 Plan 02 | 2 tasks, 173s |
+| Phase 26 Plan 03 | 2 tasks, 233s |
 
 ## Decisions
 
@@ -133,6 +134,10 @@ progress:
 - [26-02] Discount code input hidden for event-level tiers (partyId null) since codes are party-scoped
 - [26-02] Client-side EUR 1.00 guard: tiers below minimum keep original price display (no green price)
 - [26-02] Anonymous user intent preserves discountCodeId in localStorage for post-registration purchase
+- [26-03] Tier selection via multi-checkbox for better mobile UX (not multi-select dropdown)
+- [26-03] DiscountCodeCard derives selectedTierIds from tier_names matching (display-to-id resolution)
+- [26-03] Backward-compatible discountSummary prop (optional, existing SalesDashboard usage unchanged)
+- [26-03] Admin sales page receives identical discount tracking to organizer sales page
 
 ## Accumulated Context
 
@@ -164,10 +169,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-10T02:15:39Z
-**Stopped at:** Completed 26-02-PLAN.md (Buyer-Side Discount Code Integration)
-**Next step:** Execute 26-03-PLAN.md (Organizer CRUD UI components + sales dashboard discount tracking)
+**Last session:** 2026-03-10T02:16:53Z
+**Stopped at:** Completed 26-03-PLAN.md (Organizer CRUD UI + Sales Dashboard Discount Tracking)
+**Next step:** Execute Phase 27 (Guest Navigation Fix)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-10T02:15:39Z*
+*Last updated: 2026-03-10T02:16:53Z*

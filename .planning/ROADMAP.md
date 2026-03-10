@@ -21,7 +21,7 @@
 - [x] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [x] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
 - [x] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
-- [ ] **Phase 26: Discount Codes** - Codici sconto per ticket: schema, CRUD organizer, campo input checkout, validazione case-insensitive, SumUp prezzo scontato
+- [x] **Phase 26: Discount Codes** - Codici sconto per ticket: schema, CRUD organizer, campo input checkout, validazione case-insensitive, SumUp prezzo scontato
 - [ ] **Phase 27: Guest Navigation Fix** - Ripristinare tab Home per guest non autenticati con link alla landing page e CTA registrazione
 - [ ] **Phase 28: Single Event Tier Fix** - Nascondere event pass tier per eventi con un solo sub-event
 
@@ -134,12 +134,12 @@ Plans:
   2. Buyer sees a "Hai un codice sconto?" input field during ticket checkout; entering a valid code shows the discounted price before payment
   3. Validation is case-insensitive, rejects codes that would bring price to €0, enforces usage limits, and only accepts codes for the correct party
   4. SumUp checkout uses the discounted amount; ticket record stores discount_code_id for traceability; sales dashboard shows discount usage
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 26-01-PLAN.md -- Database schema, types, CRUD + validation server actions (SC-01, SC-03)
 - [x] 26-02-PLAN.md -- Buyer-side discount code input + purchase flow + webhook integration (SC-02, SC-03, SC-04)
-- [ ] 26-03-PLAN.md -- Organizer CRUD UI components + sales dashboard discount tracking (SC-01, SC-04)
+- [x] 26-03-PLAN.md -- Organizer CRUD UI components + sales dashboard discount tracking (SC-01, SC-04)
 
 ### Phase 27: Guest Navigation Fix
 **Goal:** Non-authenticated guests can discover how to register via a Home tab that links to the landing page with registration CTA
@@ -175,7 +175,7 @@ Plans:
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
-| 26. Discount Codes | 2/3 | In Progress | - |
+| 26. Discount Codes | 3/3 | Complete    | 2026-03-10 |
 | 27. Guest Navigation Fix | 0/1 | Planned     | - |
 | 28. Single Event Tier Fix | 0/1 | Planned     | - |
 

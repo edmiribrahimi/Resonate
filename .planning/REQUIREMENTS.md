@@ -87,6 +87,13 @@
 - **AUDT-12**: Rate limiting on auth endpoints
 - **AUDT-13**: Bundle size CI monitoring with @next/bundle-analyzer
 
+### Discount Codes (Sconti)
+
+- [x] **SC-01**: Organizer can create/edit/delete discount codes per party with: code string, type (percentage/fixed), amount, optional max uses, active toggle, optional tier restriction
+- [x] **SC-02**: Buyer sees "Hai un codice sconto?" input during checkout; entering valid code shows discounted price
+- [x] **SC-03**: Validation is case-insensitive, rejects codes that would bring price below EUR 1.00, enforces usage limits, party-scoped
+- [x] **SC-04**: SumUp checkout uses discounted amount; ticket stores discount_code_id; sales dashboard shows discount code usage and summary
+
 ### Analytics Deferred
 
 - **ANLY-D1**: Conversion funnel visualization via PostHog dashboards
@@ -167,12 +174,16 @@
 | GSTL-14 | Phase 24 | Complete |
 | GSTL-15 | Phase 24 | Complete |
 | GSTL-16 | Phase 24 | Complete |
+| SC-01 | Phase 26 | Complete |
+| SC-02 | Phase 26 | Complete |
+| SC-03 | Phase 26 | Complete |
+| SC-04 | Phase 26 | Complete |
 
 **Coverage:**
-- v1.3 requirements: 52 total
-- Mapped to phases: 52
+- v1.3 requirements: 56 total
+- Mapped to phases: 56
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after roadmap creation*
+*Last updated: 2026-03-10*
