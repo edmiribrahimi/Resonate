@@ -62,6 +62,21 @@ export async function getCheckout(checkoutId: string) {
   }
 }
 
+export async function getTransaction(transactionCode: string) {
+  const merchantCode = process.env.SUMUP_MERCHANT_CODE!;
+  const detail = await sumup.transactions.get(merchantCode, {
+    transaction_code: transactionCode,
+  });
+
+  return detail as {
+    transaction_code: string;
+    amount: number;
+    currency: string;
+    status: string;
+    refunded_amount?: number;
+  };
+}
+
 export async function refundTransaction(transactionCode: string, amount?: number) {
   try {
     await sumup.transactions.refund(

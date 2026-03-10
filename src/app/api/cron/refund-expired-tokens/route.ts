@@ -110,6 +110,18 @@ export async function GET(request: Request) {
         })
         .in("id", tokenIds);
 
+      // Track refunded amount on the order (survives token cleanup)
+      const { data: existingOrder } = await supabase
+        .from("drink_orders")
+        .select("refunded_amount")
+        .eq("id", orderId)
+        .single();
+      const prevRefunded = Number(existingOrder?.refunded_amount ?? 0);
+      await supabase
+        .from("drink_orders")
+        .update({ refunded_amount: prevRefunded + roundedAmount })
+        .eq("id", orderId);
+
       refundedCount += tokens.length;
     } catch (err) {
       console.error(`Refund failed for order ${orderId}:`, err);

@@ -51,7 +51,7 @@ export async function fetchMemberSpendProfiles(
     supabase.from("tickets").select("user_id, amount_paid, event_id"),
     supabase
       .from("drink_orders")
-      .select("user_id, total_amount")
+      .select("user_id, total_amount, refunded_amount")
       .eq("status", "completed"),
   ]);
 
@@ -84,7 +84,7 @@ export async function fetchMemberSpendProfiles(
       drinks: 0,
       events: new Set<string>(),
     };
-    entry.drinks += d.total_amount;
+    entry.drinks += d.total_amount - d.refunded_amount;
     spendMap.set(d.user_id, entry);
   }
 
@@ -154,7 +154,7 @@ export async function fetchReferralChains(): Promise<ReferralChain[]> {
     supabase.from("tickets").select("user_id, amount_paid"),
     supabase
       .from("drink_orders")
-      .select("user_id, total_amount")
+      .select("user_id, total_amount, refunded_amount")
       .eq("status", "completed"),
   ]);
 
@@ -162,7 +162,7 @@ export async function fetchReferralChains(): Promise<ReferralChain[]> {
   const tickets = ticketsResult.data ?? [];
   const drinkOrders = drinkOrdersResult.data ?? [];
 
-  // Build spend per user (tickets + drinks)
+  // Build spend per user (tickets + net drinks)
   const userSpend = new Map<string, number>();
   for (const t of tickets) {
     if (!t.user_id) continue;
@@ -172,7 +172,7 @@ export async function fetchReferralChains(): Promise<ReferralChain[]> {
     if (!d.user_id) continue;
     userSpend.set(
       d.user_id,
-      (userSpend.get(d.user_id) ?? 0) + d.total_amount
+      (userSpend.get(d.user_id) ?? 0) + (d.total_amount - d.refunded_amount)
     );
   }
 

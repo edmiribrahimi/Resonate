@@ -85,6 +85,53 @@ export async function refundTransactionAction(
 ): Promise<{ success: true }> {
   await requireMaster();
   await refundTransaction(transactionCode, amount);
+
+  const supabase = getServiceClient();
+  const now = new Date().toISOString();
+
+  // Invalidate ticket if this transaction is a ticket purchase
+  const { data: ticket } = await supabase
+    .from("tickets")
+    .select("id, amount_paid, user_id")
+    .eq("sumup_transaction_code", transactionCode)
+    .maybeSingle();
+
+  if (ticket) {
+    await supabase.from("ticket_refunds").insert({
+      ticket_id: ticket.id,
+      requested_by: ticket.user_id,
+      processed_by: ticket.user_id,
+      amount: ticket.amount_paid,
+      status: "approved",
+      sumup_status: "completed",
+      type: "admin_initiated",
+      processed_at: now,
+    });
+    await supabase.from("tickets").delete().eq("id", ticket.id);
+  }
+
+  // Invalidate drink tokens if this transaction is a drink order
+  const { data: drinkOrder } = await supabase
+    .from("drink_orders")
+    .select("id, total_amount")
+    .eq("sumup_transaction_code", transactionCode)
+    .maybeSingle();
+
+  if (drinkOrder) {
+    // Mark all purchased tokens as refunded
+    await supabase
+      .from("drink_tokens")
+      .update({ status: "refunded", refunded_at: now })
+      .eq("order_id", drinkOrder.id)
+      .eq("status", "purchased");
+
+    // Full refund
+    await supabase
+      .from("drink_orders")
+      .update({ refunded_amount: drinkOrder.total_amount })
+      .eq("id", drinkOrder.id);
+  }
+
   return { success: true };
 }
 

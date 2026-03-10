@@ -46,7 +46,7 @@ export async function fetchKPIDashboard(): Promise<KPIDashboard> {
       supabase.from("tickets").select("amount_paid"),
       supabase
         .from("drink_orders")
-        .select("total_amount")
+        .select("total_amount, refunded_amount")
         .eq("status", "completed"),
     ]);
 
@@ -58,7 +58,7 @@ export async function fetchKPIDashboard(): Promise<KPIDashboard> {
     0
   );
   const drinkRevenue = (drinkOrdersResult.data ?? []).reduce(
-    (sum, d) => sum + d.total_amount,
+    (sum, d) => sum + (d.total_amount - d.refunded_amount),
     0
   );
   const totalRevenue = ticketRevenue + drinkRevenue;

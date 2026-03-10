@@ -53,22 +53,17 @@ export async function fetchEventRevenue(
   supabase: SupabaseClient,
   eventId: string
 ): Promise<EventRevenue> {
-  // Fetch ticket amounts, completed drink orders, and drink-token refunds in
-  // parallel. Ticket refunds require a two-step lookup because the
-  // ticket_refunds table references ticket_id, not event_id directly.
-  const [ticketsResult, drinkOrdersResult, drinkRefundsResult] =
+  // Fetch ticket amounts and completed drink orders in parallel.
+  // Ticket refunds require a two-step lookup because ticket_refunds
+  // references ticket_id, not event_id directly.
+  const [ticketsResult, drinkOrdersResult] =
     await Promise.all([
       supabase.from("tickets").select("id, amount_paid").eq("event_id", eventId),
       supabase
         .from("drink_orders")
-        .select("total_amount")
+        .select("total_amount, refunded_amount")
         .eq("event_id", eventId)
         .eq("status", "completed"),
-      supabase
-        .from("drink_tokens")
-        .select("price")
-        .eq("event_id", eventId)
-        .eq("status", "refunded"),
     ]);
 
   const grossTickets = (ticketsResult.data ?? []).reduce(
@@ -79,8 +74,8 @@ export async function fetchEventRevenue(
     (s, d) => s + d.total_amount,
     0
   );
-  const drinkRefunds = (drinkRefundsResult.data ?? []).reduce(
-    (s, t) => s + t.price,
+  const drinkRefunds = (drinkOrdersResult.data ?? []).reduce(
+    (s, d) => s + d.refunded_amount,
     0
   );
 
@@ -249,7 +244,7 @@ export async function fetchMarketInsights(
         .eq("event_id", eventId),
       supabase
         .from("drink_orders")
-        .select("total_amount, created_at")
+        .select("total_amount, refunded_amount, created_at")
         .eq("event_id", eventId)
         .eq("status", "completed"),
       supabase
@@ -265,7 +260,7 @@ export async function fetchMarketInsights(
 
   const totalTicketRevenue = tickets.reduce((s, t) => s + t.amount_paid, 0);
   const totalDrinkRevenue = drinkOrders.reduce(
-    (s, d) => s + d.total_amount,
+    (s, d) => s + (d.total_amount - d.refunded_amount),
     0
   );
   const avgSpendPerAttendee =
