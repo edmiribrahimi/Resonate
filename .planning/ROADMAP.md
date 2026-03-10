@@ -151,6 +151,18 @@ Plans:
 Plans:
 - [ ] 27-01-PLAN.md -- Aggiungere Home tab per guest non autenticati con link alla landing page (GNAV-01, GNAV-02)
 
+### Phase 28: Single Event Tier Fix
+**Goal:** Hide the event pass tier in ticket management when the event has only one sub-event (no need for a cross-party pass on single-party events)
+**Depends on:** Nothing (standalone UI fix)
+**Requirements:** TIER-FIX-01, TIER-FIX-02
+**Success Criteria** (what must be TRUE):
+  1. When an event has only one party (no sub-events), the event pass tier section is hidden in the organizer ticket management page
+  2. Buyer-side TierSelection also hides event-level tiers when there is only one party
+**Plans:** 1 plan
+
+Plans:
+- [ ] 28-01-PLAN.md -- Hide event pass section on organizer/admin/buyer pages when single party (TIER-FIX-01, TIER-FIX-02)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -163,19 +175,7 @@ Plans:
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
 | 26. Discount Codes | 0/? | Planned     | - |
 | 27. Guest Navigation Fix | 0/1 | Planned     | - |
-| 28. Single Event Tier Fix | 0/? | Planned     | - |
-
-### Phase 28: Single Event Tier Fix
-**Goal:** Hide the event pass tier in ticket management when the event has only one sub-event (no need for a cross-party pass on single-party events)
-**Depends on:** Nothing (standalone UI fix)
-**Requirements:** TBD
-**Success Criteria** (what must be TRUE):
-  1. When an event has only one party (no sub-events), the event pass tier section is hidden in the organizer ticket management page
-  2. Buyer-side TierSelection also hides event-level tiers when there is only one party
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 28 to break down)
+| 28. Single Event Tier Fix | 0/1 | Planned     | - |
 
 ---
 *Roadmap created: 2026-03-09*
