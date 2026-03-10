@@ -182,19 +182,12 @@ export default function ScannerClient() {
   };
 
   function formatCheckinTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("en-US", {
+    return new Date(iso).toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
 
-  function formatTime(time: string) {
-    const [h, m] = time.split(":");
-    const hour = parseInt(h, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${m} ${ampm}`;
-  }
 
   return (
     <div className="min-h-dvh bg-background p-6 pb-24">
@@ -233,7 +226,7 @@ export default function ScannerClient() {
                     {evt.eventTitle}
                   </p>
                   <p className="text-xs text-muted">
-                    {evt.partyTitle} &middot; {evt.date} &middot; {formatTime(evt.time)}
+                    {evt.partyTitle !== evt.eventTitle && <>{evt.partyTitle} &middot; </>}{evt.date} &middot; {evt.time?.slice(0, 5)}
                   </p>
                 </div>
 
