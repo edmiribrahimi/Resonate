@@ -479,3 +479,66 @@ begin
   return v_ticket_id;
 end;
 $$;
+
+-- ============================================================
+-- Discount Codes
+-- ============================================================
+
+-- Discount codes: organizer-created codes per party for discounted ticket purchases
+create table public.discount_codes (
+  id uuid primary key default gen_random_uuid(),
+  party_id uuid not null references public.event_parties on delete cascade,
+  code text not null,
+  discount_type text not null check (discount_type in ('percentage', 'fixed')),
+  discount_amount numeric(10,2) not null check (discount_amount > 0),
+  max_uses integer,  -- NULL = unlimited
+  is_active boolean not null default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Case-insensitive unique constraint per party
+create unique index discount_codes_party_code_unique
+  on public.discount_codes (party_id, lower(code));
+
+-- Junction table for tier-specific discount codes (empty = applies to all tiers)
+create table public.discount_code_tiers (
+  discount_code_id uuid not null references public.discount_codes on delete cascade,
+  tier_id uuid not null references public.ticket_tiers on delete cascade,
+  primary key (discount_code_id, tier_id)
+);
+
+-- Add discount_code_id to tickets for traceability
+-- ALTER TABLE public.tickets ADD COLUMN discount_code_id uuid REFERENCES public.discount_codes ON DELETE SET NULL;
+
+-- Add discount_code_id to pending_purchases for webhook passthrough
+-- ALTER TABLE public.pending_purchases ADD COLUMN discount_code_id uuid REFERENCES public.discount_codes ON DELETE SET NULL;
+
+alter table public.discount_codes enable row level security;
+alter table public.discount_code_tiers enable row level security;
+
+-- discount_codes RLS: open SELECT (buyers validate codes), admin/organizer for mutations
+create policy discount_codes_select on public.discount_codes
+  for select using (true);
+
+create policy discount_codes_insert on public.discount_codes
+  for insert with check ((select public.is_admin_or_organizer()));
+
+create policy discount_codes_update on public.discount_codes
+  for update using ((select public.is_admin_or_organizer()));
+
+create policy discount_codes_delete on public.discount_codes
+  for delete using ((select public.is_admin_or_organizer()));
+
+-- discount_code_tiers RLS: same pattern
+create policy discount_code_tiers_select on public.discount_code_tiers
+  for select using (true);
+
+create policy discount_code_tiers_insert on public.discount_code_tiers
+  for insert with check ((select public.is_admin_or_organizer()));
+
+create policy discount_code_tiers_update on public.discount_code_tiers
+  for update using ((select public.is_admin_or_organizer()));
+
+create policy discount_code_tiers_delete on public.discount_code_tiers
+  for delete using ((select public.is_admin_or_organizer()));
