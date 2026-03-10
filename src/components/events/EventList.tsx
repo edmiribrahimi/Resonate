@@ -183,6 +183,13 @@ export default function EventList({
             </Link>
 
             <Link
+              href={`${basePath}/${event.id}/guest-list`}
+              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
+            >
+              Guest List
+            </Link>
+
+            <Link
               href={`${basePath}/${event.id}/media`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
