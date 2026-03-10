@@ -6,7 +6,7 @@ status: in_progress
 stopped_at: Phase 26 (Discount Codes) not yet planned
 last_updated: "2026-03-10T01:00:47.065Z"
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 6
   total_plans: 17
   completed_plans: 17
@@ -137,6 +137,7 @@ progress:
 ### Roadmap Evolution
 - Phase 26 added: Discount Codes (percentage/fixed discounts for ticket tiers, case-insensitive, usage limits, SumUp €1 minimum guard)
 - Phase 27 added: Guest Navigation Fix (Home tab for non-authenticated guests → landing page with registration CTA)
+- Phase 28 added: Single Event Tier Fix (hide event pass tier when event has only one sub-event)
 
 ### v1.3 Roadmap Notes
 - Phase numbering starts at 20 (v1.2 ended at 19)

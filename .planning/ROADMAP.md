@@ -23,6 +23,7 @@
 - [x] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
 - [ ] **Phase 26: Discount Codes** - Codici sconto per ticket: schema, CRUD organizer, campo input checkout, validazione case-insensitive, SumUp prezzo scontato
 - [ ] **Phase 27: Guest Navigation Fix** - Ripristinare tab Home per guest non autenticati con link alla landing page e CTA registrazione
+- [ ] **Phase 28: Single Event Tier Fix** - Nascondere event pass tier per eventi con un solo sub-event
 
 ## Phase Details
 
@@ -162,6 +163,19 @@ Plans:
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
 | 26. Discount Codes | 0/? | Planned     | - |
 | 27. Guest Navigation Fix | 0/? | Planned     | - |
+| 28. Single Event Tier Fix | 0/? | Planned     | - |
+
+### Phase 28: Single Event Tier Fix
+**Goal:** Hide the event pass tier in ticket management when the event has only one sub-event (no need for a cross-party pass on single-party events)
+**Depends on:** Nothing (standalone UI fix)
+**Requirements:** TBD
+**Success Criteria** (what must be TRUE):
+  1. When an event has only one party (no sub-events), the event pass tier section is hidden in the organizer ticket management page
+  2. Buyer-side TierSelection also hides event-level tiers when there is only one party
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 28 to break down)
 
 ---
 *Roadmap created: 2026-03-09*
