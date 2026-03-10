@@ -69,6 +69,11 @@
 - [x] **NAV-07**: Clear visual separation between "My Stuff" and "Management" sections
 - [x] **NAV-08**: Unified StaffNav component used consistently across admin and organizer routes
 
+### Guest Navigation
+
+- [x] **GNAV-01**: Non-authenticated guest sees Home/Events/Gallery in bottom nav (3 tabs); Home links to landing page with registration CTA
+- [x] **GNAV-02**: Authenticated user does NOT see the Home tab; navigation remains unchanged (member: Events/Gallery/Account; staff: Events/Gallery/Check-in/Account)
+
 ## v1.4 Requirements (Deferred)
 
 ### App Audit (Research Complete -- see .planning/research/)
@@ -178,10 +183,12 @@
 | SC-02 | Phase 26 | Complete |
 | SC-03 | Phase 26 | Complete |
 | SC-04 | Phase 26 | Complete |
+| GNAV-01 | Phase 27 | Complete |
+| GNAV-02 | Phase 27 | Complete |
 
 **Coverage:**
-- v1.3 requirements: 56 total
-- Mapped to phases: 56
+- v1.3 requirements: 58 total
+- Mapped to phases: 58
 - Unmapped: 0
 
 ---
