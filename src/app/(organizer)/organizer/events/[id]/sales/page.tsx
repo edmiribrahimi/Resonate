@@ -78,14 +78,30 @@ export default async function OrganizerSalesPage({
 
   const serviceClient = getServiceClient();
 
-  // Fetch buyers with profile and tier joins (using service client to avoid RLS/FK issues)
+  // Fetch tickets (no profiles join - ambiguous FK through auth.users)
   const { data: rawBuyers } = await serviceClient
     .from("tickets")
-    .select(
-      "id, amount_paid, created_at, tier_id, ticket_type, user_id, discount_code_id, profiles(full_name, email), ticket_tiers(name)"
-    )
+    .select("id, amount_paid, created_at, tier_id, ticket_type, user_id, discount_code_id")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
+
+  // Fetch profiles and tiers separately
+  const buyerUserIds = [...new Set((rawBuyers ?? []).map((b) => b.user_id).filter(Boolean))] as string[];
+  const profileMap = new Map<string, { full_name: string; email: string }>();
+  if (buyerUserIds.length > 0) {
+    const { data: profiles } = await serviceClient
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", buyerUserIds);
+    for (const p of profiles ?? []) {
+      profileMap.set(p.id, { full_name: p.full_name ?? "Unknown", email: p.email ?? "" });
+    }
+  }
+
+  const tierMap = new Map<string, string>();
+  for (const t of tiers ?? []) {
+    tierMap.set(t.id, t.name);
+  }
 
   // Fetch discount codes used in this event
   const discountCodeIds = [
@@ -114,7 +130,6 @@ export default async function OrganizerSalesPage({
       discountCodeMap.set(c.id, c.code);
     }
 
-    // Build discount summary
     const useCounts = new Map<string, number>();
     for (const b of rawBuyers ?? []) {
       const dcId = (b as { discount_code_id?: string }).discount_code_id;
@@ -132,20 +147,17 @@ export default async function OrganizerSalesPage({
   }
 
   const buyers = (rawBuyers ?? []).map((b) => {
-    const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
-    const tier = Array.isArray(b.ticket_tiers)
-      ? b.ticket_tiers[0]
-      : b.ticket_tiers;
     const ticketType = (b as { ticket_type?: string }).ticket_type;
     const dcId = (b as { discount_code_id?: string }).discount_code_id;
+    const profile = profileMap.get(b.user_id as string);
     return {
       id: b.id,
-      memberName: (profile as { full_name?: string })?.full_name ?? "Unknown",
-      memberEmail: (profile as { email?: string })?.email ?? "",
+      memberName: profile?.full_name ?? "Unknown",
+      memberEmail: profile?.email ?? "",
       tierName:
         ticketType === "guest_list"
           ? "Guest List"
-          : (tier as { name?: string })?.name ?? "Unknown",
+          : tierMap.get(b.tier_id as string) ?? "Unknown",
       purchaseDate: b.created_at,
       discountCode: dcId ? discountCodeMap.get(dcId) ?? null : null,
     };

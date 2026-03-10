@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import {
   addDrinkItem,
   updateDrinkItem,
@@ -32,6 +32,16 @@ export default function DrinkMenuManager({
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const editNameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId && editNameRef.current) {
+      editNameRef.current.focus();
+    }
+  }, [editingId]);
 
   function handleAdd() {
     const trimmedName = name.trim();
@@ -47,6 +57,43 @@ export default function DrinkMenuManager({
         setPrice("");
       } catch (err) {
         console.error("Failed to add drink item:", err);
+      }
+    });
+  }
+
+  function startEdit(item: DrinkItem) {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditPrice(String(item.price));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditName("");
+    setEditPrice("");
+  }
+
+  function handleSaveEdit(item: DrinkItem) {
+    const trimmedName = editName.trim();
+    const parsedPrice = parseFloat(editPrice);
+
+    if (!trimmedName || isNaN(parsedPrice) || parsedPrice <= 0) return;
+    if (trimmedName === item.name && parsedPrice === item.price) {
+      cancelEdit();
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await updateDrinkItem(item.id, { name: trimmedName, price: parsedPrice });
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, name: trimmedName, price: parsedPrice } : i
+          )
+        );
+        cancelEdit();
+      } catch (err) {
+        console.error("Failed to update drink item:", err);
       }
     });
   }
@@ -130,57 +177,107 @@ export default function DrinkMenuManager({
                 !item.is_available ? "opacity-50" : ""
               }`}
             >
-              {/* Name + price */}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
-                  {item.name}
-                </p>
-                <p className="text-sm text-accent font-semibold">
-                  {formatPrice(item.price)}
-                </p>
-              </div>
-
-              {/* Availability toggle */}
-              <button
-                type="button"
-                onClick={() => handleToggle(item)}
-                disabled={isPending}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed ${
-                  item.is_available ? "bg-accent" : "bg-card-border"
-                }`}
-                role="switch"
-                aria-checked={item.is_available}
-                aria-label={`Toggle ${item.name} availability`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
-                    item.is_available ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
-
-              {/* Remove button */}
-              <button
-                type="button"
-                onClick={() => handleRemove(item.id)}
-                disabled={isPending}
-                className="shrink-0 rounded-lg p-2 text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:cursor-not-allowed"
-                aria-label={`Remove ${item.name}`}
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              {editingId === item.id ? (
+                /* Edit mode */
+                <div className="min-w-0 flex-1 flex gap-2">
+                  <input
+                    ref={editNameRef}
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEdit(item);
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    className="min-w-0 flex-1 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
                   />
-                </svg>
-              </button>
+                  <input
+                    type="number"
+                    step="0.50"
+                    min="0.01"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEdit(item);
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    className="w-20 shrink-0 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSaveEdit(item)}
+                    disabled={isPending}
+                    className="shrink-0 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="shrink-0 rounded-lg px-3 py-1 text-xs font-medium text-muted hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                /* Display mode */
+                <>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    className="min-w-0 flex-1 text-left group"
+                  >
+                    <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+                      {item.name}
+                    </p>
+                    <p className="text-sm text-accent font-semibold">
+                      {formatPrice(item.price)}
+                    </p>
+                  </button>
+
+                  {/* Availability toggle */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(item)}
+                    disabled={isPending}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed ${
+                      item.is_available ? "bg-accent" : "bg-card-border"
+                    }`}
+                    role="switch"
+                    aria-checked={item.is_available}
+                    aria-label={`Toggle ${item.name} availability`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                        item.is_available ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(item.id)}
+                    disabled={isPending}
+                    className="shrink-0 rounded-lg p-2 text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:cursor-not-allowed"
+                    aria-label={`Remove ${item.name}`}
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </div>

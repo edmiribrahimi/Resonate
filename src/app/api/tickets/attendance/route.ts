@@ -71,29 +71,31 @@ export async function GET(request: Request) {
         .eq("party_id", party.id)
         .eq("checked_in", true);
 
-      // Fetch recent check-ins (last 10)
-      const { data: recentCheckins } = await serviceClient
-        .from("tickets")
-        .select("id, checked_in_at, profiles(full_name)")
-        .eq("party_id", party.id)
-        .eq("checked_in", true)
-        .order("checked_in_at", { ascending: false })
-        .limit(10);
-
-      // Fetch all ticket-based attendees for this party
+      // Fetch all ticket-based attendees for this party (no profiles join - ambiguous FK)
       const { data: attendeesData } = await serviceClient
         .from("tickets")
-        .select("id, checked_in, checked_in_at, user_id, profiles(full_name)")
+        .select("id, checked_in, checked_in_at, user_id")
         .eq("party_id", party.id)
         .order("checked_in", { ascending: true })
         .order("created_at", { ascending: true });
 
+      // Fetch profiles separately for ticket holders
+      const userIds = [...new Set((attendeesData ?? []).map((t) => t.user_id).filter(Boolean))] as string[];
+      const profileMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await serviceClient
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", userIds);
+        for (const p of profiles ?? []) {
+          profileMap.set(p.id, p.full_name ?? "Unknown");
+        }
+      }
+
       const ticketAttendees = (attendeesData ?? []).map((t) => ({
         ticketId: t.id as string,
         guestListEntryId: null as string | null,
-        name:
-          (t.profiles as unknown as { full_name: string })?.full_name ??
-          "Unknown",
+        name: profileMap.get(t.user_id as string) ?? "Unknown",
         checkedIn: t.checked_in as boolean,
         checkedInAt: t.checked_in_at as string | null,
         isGuestList: false,
@@ -142,12 +144,11 @@ export async function GET(request: Request) {
         totalTickets: totalTickets ?? 0,
         guestListCount: guestListAttendees.length,
         checkedIn: checkedIn ?? 0,
-        recentCheckins: (recentCheckins ?? []).map((t) => ({
-          name:
-            (t.profiles as unknown as { full_name: string })?.full_name ??
-            "Unknown",
-          time: t.checked_in_at,
-        })),
+        recentCheckins: ticketAttendees
+          .filter((a) => a.checkedIn && a.checkedInAt)
+          .sort((a, b) => new Date(b.checkedInAt!).getTime() - new Date(a.checkedInAt!).getTime())
+          .slice(0, 10)
+          .map((a) => ({ name: a.name, time: a.checkedInAt })),
         attendees: filteredAttendees,
       };
     })

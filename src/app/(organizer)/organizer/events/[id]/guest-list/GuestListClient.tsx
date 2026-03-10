@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast/ToastContext";
 import { addGuest, removeGuest } from "./actions";
-import CSVImport from "./CSVImport";
 import type { GuestListEntry, GuestListStatus } from "@/types/database";
 
 interface GuestListClientProps {
@@ -235,9 +234,6 @@ export default function GuestListClient({
           {isSubmitting ? "Adding..." : "Add Guest"}
         </button>
       </form>
-
-      {/* CSV Import & Clone */}
-      <CSVImport eventId={eventId} parties={parties} />
 
       {/* Summary Stats */}
       {entries.length > 0 && (
