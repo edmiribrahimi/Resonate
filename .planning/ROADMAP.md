@@ -128,16 +128,18 @@ Plans:
 ### Phase 26: Discount Codes
 **Goal:** Organizers can create discount codes per party that apply percentage or fixed discounts to any ticket tier -- buyers enter codes manually during checkout, case-insensitive validation, with optional usage limits and minimum price guard (SumUp €1.00 minimum)
 **Depends on:** Phase 25
-**Requirements:** TBD
+**Requirements:** SC-01, SC-02, SC-03, SC-04
 **Success Criteria** (what must be TRUE):
   1. Organizer can create/edit/delete discount codes per party with: code string, discount type (percentage/fixed), discount amount, optional max uses, active toggle
   2. Buyer sees a "Hai un codice sconto?" input field during ticket checkout; entering a valid code shows the discounted price before payment
   3. Validation is case-insensitive, rejects codes that would bring price to €0, enforces usage limits, and only accepts codes for the correct party
   4. SumUp checkout uses the discounted amount; ticket record stores discount_code_id for traceability; sales dashboard shows discount usage
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 26 to break down)
+- [ ] 26-01-PLAN.md -- Database schema, types, CRUD + validation server actions (SC-01, SC-03)
+- [ ] 26-02-PLAN.md -- Buyer-side discount code input + purchase flow + webhook integration (SC-02, SC-03, SC-04)
+- [ ] 26-03-PLAN.md -- Organizer CRUD UI components + sales dashboard discount tracking (SC-01, SC-04)
 
 ### Phase 27: Guest Navigation Fix
 **Goal:** Non-authenticated guests can discover how to register via a Home tab that links to the landing page with registration CTA
@@ -173,7 +175,7 @@ Plans:
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
-| 26. Discount Codes | 0/? | Planned     | - |
+| 26. Discount Codes | 0/3 | Planned     | - |
 | 27. Guest Navigation Fix | 0/1 | Planned     | - |
 | 28. Single Event Tier Fix | 0/1 | Planned     | - |
 
