@@ -229,3 +229,310 @@ export async function deleteTier(tierId: string, eventId: string) {
   revalidatePath(`/organizer/events/${eventId}/tickets`);
   return { success: true };
 }
+
+// =============================================================
+// Discount Code Server Actions
+// =============================================================
+
+/**
+ * Create a new discount code for a party.
+ */
+export async function createDiscountCode(
+  eventId: string,
+  partyId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const { user, isMaster } = await verifyOrganizer(supabase);
+
+  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+
+  // Validate inputs
+  const code = (formData.get("code") as string)?.trim();
+  if (!code || code.length < 1) {
+    throw new Error("Il codice sconto e obbligatorio");
+  }
+
+  const discountType = formData.get("discount_type") as string;
+  if (discountType !== "percentage" && discountType !== "fixed") {
+    throw new Error("Tipo sconto non valido (percentage o fixed)");
+  }
+
+  const discountAmountRaw = formData.get("discount_amount") as string;
+  const discountAmount = parseFloat(discountAmountRaw);
+  if (isNaN(discountAmount) || discountAmount <= 0) {
+    throw new Error("L'importo dello sconto deve essere maggiore di 0");
+  }
+
+  if (discountType === "percentage" && discountAmount > 100) {
+    throw new Error("La percentuale di sconto non puo superare il 100%");
+  }
+
+  const maxUsesRaw = (formData.get("max_uses") as string)?.trim() || null;
+  const maxUses = maxUsesRaw ? parseInt(maxUsesRaw, 10) : null;
+  if (maxUses !== null && (isNaN(maxUses) || maxUses < 1)) {
+    throw new Error("Il numero massimo di utilizzi deve essere un intero positivo");
+  }
+
+  const isActive = formData.get("is_active") !== "false";
+
+  const tierIdsRaw = (formData.get("tier_ids") as string)?.trim() || null;
+  let tierIds: string[] = [];
+  if (tierIdsRaw) {
+    try {
+      tierIds = JSON.parse(tierIdsRaw);
+    } catch {
+      throw new Error("Formato tier_ids non valido");
+    }
+  }
+
+  // Use service-role client for master (bypasses RLS ownership check)
+  const client = isMaster ? getServiceClient() : supabase;
+
+  const { data: discountCode, error } = await client
+    .from("discount_codes")
+    .insert({
+      party_id: partyId,
+      code,
+      discount_type: discountType,
+      discount_amount: discountAmount,
+      max_uses: maxUses,
+      is_active: isActive,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Esiste gia un codice con questo nome per questo evento");
+    }
+    throw new Error(`Errore nella creazione del codice sconto: ${error.message}`);
+  }
+
+  // Insert tier associations if specified
+  if (tierIds.length > 0 && discountCode) {
+    const junctionRows = tierIds.map((tierId) => ({
+      discount_code_id: discountCode.id,
+      tier_id: tierId,
+    }));
+
+    const { error: junctionError } = await client
+      .from("discount_code_tiers")
+      .insert(junctionRows);
+
+    if (junctionError) {
+      throw new Error(`Errore nell'associazione dei tier: ${junctionError.message}`);
+    }
+  }
+
+  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  return { success: true };
+}
+
+/**
+ * Update an existing discount code.
+ */
+export async function updateDiscountCode(
+  discountCodeId: string,
+  eventId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const { user, isMaster } = await verifyOrganizer(supabase);
+
+  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+
+  // Validate inputs
+  const code = (formData.get("code") as string)?.trim();
+  if (!code || code.length < 1) {
+    throw new Error("Il codice sconto e obbligatorio");
+  }
+
+  const discountType = formData.get("discount_type") as string;
+  if (discountType !== "percentage" && discountType !== "fixed") {
+    throw new Error("Tipo sconto non valido (percentage o fixed)");
+  }
+
+  const discountAmountRaw = formData.get("discount_amount") as string;
+  const discountAmount = parseFloat(discountAmountRaw);
+  if (isNaN(discountAmount) || discountAmount <= 0) {
+    throw new Error("L'importo dello sconto deve essere maggiore di 0");
+  }
+
+  if (discountType === "percentage" && discountAmount > 100) {
+    throw new Error("La percentuale di sconto non puo superare il 100%");
+  }
+
+  const maxUsesRaw = (formData.get("max_uses") as string)?.trim() || null;
+  const maxUses = maxUsesRaw ? parseInt(maxUsesRaw, 10) : null;
+  if (maxUses !== null && (isNaN(maxUses) || maxUses < 1)) {
+    throw new Error("Il numero massimo di utilizzi deve essere un intero positivo");
+  }
+
+  const isActive = formData.get("is_active") !== "false";
+
+  const tierIdsRaw = (formData.get("tier_ids") as string)?.trim() || null;
+  let tierIds: string[] | null = null;
+  if (tierIdsRaw) {
+    try {
+      tierIds = JSON.parse(tierIdsRaw);
+    } catch {
+      throw new Error("Formato tier_ids non valido");
+    }
+  }
+
+  const client = isMaster ? getServiceClient() : supabase;
+
+  const { error } = await client
+    .from("discount_codes")
+    .update({
+      code,
+      discount_type: discountType,
+      discount_amount: discountAmount,
+      max_uses: maxUses,
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", discountCodeId);
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Esiste gia un codice con questo nome per questo evento");
+    }
+    throw new Error(`Errore nell'aggiornamento del codice sconto: ${error.message}`);
+  }
+
+  // Update tier associations: delete existing, re-insert if provided
+  if (tierIds !== null) {
+    // Delete existing junction rows
+    const { error: deleteError } = await client
+      .from("discount_code_tiers")
+      .delete()
+      .eq("discount_code_id", discountCodeId);
+
+    if (deleteError) {
+      throw new Error(`Errore nella rimozione delle associazioni tier: ${deleteError.message}`);
+    }
+
+    // Insert new junction rows (if any)
+    if (tierIds.length > 0) {
+      const junctionRows = tierIds.map((tierId) => ({
+        discount_code_id: discountCodeId,
+        tier_id: tierId,
+      }));
+
+      const { error: junctionError } = await client
+        .from("discount_code_tiers")
+        .insert(junctionRows);
+
+      if (junctionError) {
+        throw new Error(`Errore nell'associazione dei tier: ${junctionError.message}`);
+      }
+    }
+  }
+
+  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  return { success: true };
+}
+
+/**
+ * Delete a discount code. Only allowed if the code has not been used.
+ */
+export async function deleteDiscountCode(
+  discountCodeId: string,
+  eventId: string
+) {
+  const supabase = await createClient();
+  const { user, isMaster } = await verifyOrganizer(supabase);
+
+  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+
+  const client = isMaster ? getServiceClient() : supabase;
+
+  // Check if discount code has been used on any tickets
+  const { count, error: countError } = await client
+    .from("tickets")
+    .select("*", { count: "exact", head: true })
+    .eq("discount_code_id", discountCodeId);
+
+  if (countError) {
+    throw new Error(`Errore nel controllo dell'utilizzo: ${countError.message}`);
+  }
+
+  if (count && count > 0) {
+    throw new Error("Impossibile eliminare un codice sconto gia utilizzato");
+  }
+
+  const { error } = await client
+    .from("discount_codes")
+    .delete()
+    .eq("id", discountCodeId);
+
+  if (error) {
+    throw new Error(`Errore nell'eliminazione del codice sconto: ${error.message}`);
+  }
+
+  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  return { success: true };
+}
+
+/**
+ * Validate a discount code for buyer-side display.
+ * This is a PUBLIC action -- any authenticated user can validate.
+ */
+export async function validateDiscountCode(
+  partyId: string,
+  code: string
+): Promise<{
+  id: string;
+  discount_type: "percentage" | "fixed";
+  discount_amount: number;
+  applicable_tier_ids: string[] | null;
+}> {
+  const supabase = await createClient();
+
+  const { data: discountCode, error } = await supabase
+    .from("discount_codes")
+    .select("id, discount_type, discount_amount, max_uses, is_active")
+    .eq("party_id", partyId)
+    .ilike("code", code.trim())
+    .single();
+
+  if (error || !discountCode) {
+    throw new Error("Codice non valido");
+  }
+
+  if (!discountCode.is_active) {
+    throw new Error("Codice non piu attivo");
+  }
+
+  // Check usage limits
+  if (discountCode.max_uses !== null) {
+    const { count } = await supabase
+      .from("tickets")
+      .select("*", { count: "exact", head: true })
+      .eq("discount_code_id", discountCode.id);
+
+    if ((count ?? 0) >= discountCode.max_uses) {
+      throw new Error("Codice esaurito");
+    }
+  }
+
+  // Check tier restrictions
+  const { data: tierRestrictions } = await supabase
+    .from("discount_code_tiers")
+    .select("tier_id")
+    .eq("discount_code_id", discountCode.id);
+
+  const applicableTierIds =
+    tierRestrictions && tierRestrictions.length > 0
+      ? tierRestrictions.map((t) => t.tier_id)
+      : null;
+
+  return {
+    id: discountCode.id,
+    discount_type: discountCode.discount_type as "percentage" | "fixed",
+    discount_amount: discountCode.discount_amount,
+    applicable_tier_ids: applicableTierIds,
+  };
+}

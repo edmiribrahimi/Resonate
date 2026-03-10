@@ -106,6 +106,23 @@ export interface TicketTier {
   updated_at: string;
 }
 
+export interface DiscountCode {
+  id: string;
+  party_id: string;
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_amount: number;
+  max_uses: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountCodeTier {
+  discount_code_id: string;
+  tier_id: string;
+}
+
 export interface Ticket {
   id: string;
   event_id: string;
@@ -116,6 +133,7 @@ export interface Ticket {
   sumup_transaction_code: string | null;
   amount_paid: number;
   ticket_type: 'purchased' | 'guest_list';
+  discount_code_id: string | null;
   reminder_sent: boolean;
   checked_in: boolean;
   checked_in_at: string | null;
@@ -176,6 +194,7 @@ export interface PendingPurchase {
   user_id: string;
   sumup_checkout_id: string;
   status: "pending" | "completed" | "failed" | "expired";
+  discount_code_id: string | null;
   ticket_id: string | null;
   error_message: string | null;
   created_at: string;
