@@ -30,6 +30,7 @@ async function verifyOrganizerRole() {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim().toLowerCase() || "";
+  const partyIdFilter = searchParams.get("partyId");
 
   const auth = await verifyOrganizerRole();
   if ("error" in auth) {
@@ -43,12 +44,19 @@ export async function GET(request: Request) {
   const today = new Date().toISOString().split("T")[0];
 
   // Fetch current and upcoming parties (today + future) with their events
-  const { data: parties } = await serviceClient
+  let partiesQuery = serviceClient
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title)")
     .gte("date", today)
     .order("date", { ascending: true })
     .order("time", { ascending: true });
+
+  // If partyId filter provided, only fetch that party
+  if (partyIdFilter) {
+    partiesQuery = partiesQuery.eq("id", partyIdFilter);
+  }
+
+  const { data: parties } = await partiesQuery;
 
   if (!parties || parties.length === 0) {
     return NextResponse.json({ events: [] });
@@ -58,23 +66,10 @@ export async function GET(request: Request) {
     parties.map(async (party) => {
       const event = party.events as unknown as { title: string };
 
-      // Count total tickets for this party
-      const { count: totalTickets } = await serviceClient
-        .from("tickets")
-        .select("*", { count: "exact", head: true })
-        .eq("party_id", party.id);
-
-      // Count checked-in tickets
-      const { count: checkedIn } = await serviceClient
-        .from("tickets")
-        .select("*", { count: "exact", head: true })
-        .eq("party_id", party.id)
-        .eq("checked_in", true);
-
-      // Fetch all ticket-based attendees for this party (no profiles join - ambiguous FK)
+      // Fetch all ticket-based attendees for this party
       const { data: attendeesData } = await serviceClient
         .from("tickets")
-        .select("id, checked_in, checked_in_at, user_id")
+        .select("id, checked_in, checked_in_at, user_id, ticket_type")
         .eq("party_id", party.id)
         .order("checked_in", { ascending: true })
         .order("created_at", { ascending: true });
@@ -92,6 +87,19 @@ export async function GET(request: Request) {
         }
       }
 
+      // Fetch tier names for tickets
+      const tierIds = [...new Set((attendeesData ?? []).map((t) => (t as unknown as { tier_id: string }).tier_id).filter(Boolean))];
+      const tierMap = new Map<string, string>();
+      if (tierIds.length > 0) {
+        const { data: tiers } = await serviceClient
+          .from("ticket_tiers")
+          .select("id, name")
+          .in("id", tierIds);
+        for (const t of tiers ?? []) {
+          tierMap.set(t.id, t.name);
+        }
+      }
+
       const ticketAttendees = (attendeesData ?? []).map((t) => ({
         ticketId: t.id as string,
         guestListEntryId: null as string | null,
@@ -100,6 +108,8 @@ export async function GET(request: Request) {
         checkedInAt: t.checked_in_at as string | null,
         isGuestList: false,
         hasEmail: true,
+        ticketType: (t.ticket_type as string) || "purchased",
+        tierName: tierMap.get((t as unknown as { tier_id: string }).tier_id) || null,
       }));
 
       // Fetch guest list entries without tickets (name-only check-in)
@@ -119,6 +129,8 @@ export async function GET(request: Request) {
         checkedInAt: null as string | null,
         isGuestList: true,
         hasEmail: !!g.email,
+        ticketType: "guest_list" as string,
+        tierName: null as string | null,
       }));
 
       // Combine all attendees
@@ -141,14 +153,9 @@ export async function GET(request: Request) {
         eventTitle: event.title,
         date: party.date,
         time: party.time,
-        totalTickets: totalTickets ?? 0,
+        totalTickets: ticketAttendees.length,
         guestListCount: guestListAttendees.length,
-        checkedIn: checkedIn ?? 0,
-        recentCheckins: ticketAttendees
-          .filter((a) => a.checkedIn && a.checkedInAt)
-          .sort((a, b) => new Date(b.checkedInAt!).getTime() - new Date(a.checkedInAt!).getTime())
-          .slice(0, 10)
-          .map((a) => ({ name: a.name, time: a.checkedInAt })),
+        checkedIn: allAttendees.filter((a) => a.checkedIn).length,
         attendees: filteredAttendees,
       };
     })
@@ -193,7 +200,7 @@ export async function POST(request: Request) {
   // Verify the entry exists and is not already checked in
   const { data: entry, error: fetchError } = await serviceClient
     .from("guest_list_entries")
-    .select("id, status")
+    .select("id, status, first_name, last_name")
     .eq("id", guestListEntryId)
     .single();
 
@@ -236,5 +243,8 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    name: `${entry.first_name} ${entry.last_name}`,
+  });
 }

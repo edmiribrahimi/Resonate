@@ -1,196 +1,90 @@
-# Requirements: Resonate v1.3
+# Requirements: Resonate v1.4 — Check-in Overhaul
 
-**Defined:** 2026-03-09
-**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community -- the gating mechanism (referral + approval) is what makes the community valuable.
+**Defined:** 2026-03-10
+**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
 
-## v1.3 Requirements
+## Check-in Flow
 
-### Analytics & Data Collection
+- [ ] **CHKIN-01**: Party selector screen when opening check-in — staff picks a single party before scanning or viewing attendees
+- [ ] **CHKIN-02**: Attendee list, name search, and filter tabs (All / Not Arrived / Checked In) scoped to selected party
+- [ ] **CHKIN-03**: Progress bar shows check-in count for selected party only
 
-- [x] **ANLY-01**: Organizer can view revenue summary per event (gross/net ticket + drink sales)
-- [x] **ANLY-02**: Organizer can view ticket sales over time chart per event (daily velocity)
-- [x] **ANLY-03**: Organizer can view drink sales summary per event with per-drink breakdown
-- [x] **ANLY-04**: Organizer can view attendance rate per event (tickets sold vs checked in)
-- [x] **ANLY-05**: Admin can view member growth over time (weekly/monthly, referral vs organic split)
-- [x] **ANLY-06**: Organizer can view expired/refunded token rate per event (% redeemed vs wasted)
-- [x] **ANLY-07**: Admin can view top-level KPI dashboard (total revenue, total members, upcoming events, recent activity)
-- [x] **ANLY-08**: App tracks pageviews and user behavior via PostHog (EU instance, free tier)
-- [x] **ANLY-09**: Admin can view per-member spend profile (total spent across events: tickets + drinks)
-- [x] **ANLY-10**: Admin can view drink popularity ranking per event (most sold, highest redemption rate)
-- [x] **ANLY-11**: Organizer can view market insights per event (avg spend/attendee, peak purchase times)
-- [x] **ANLY-12**: Admin can view repeat attendee rate (% members attending multiple events)
-- [x] **ANLY-13**: Admin can view referral chain effectiveness (referrer -> referred member -> spending total)
-- [x] **ANLY-14**: Admin can track guest-to-member conversion (anonymous drink buyers who later register)
-- [x] **ANLY-15**: Admin can view drink purchase funnel (menu view -> cart -> checkout -> payment -> token)
-- [x] **ANLY-16**: Admin can compare metrics side-by-side for 2+ events
+## QR Scanner UX
 
-### Layout Elegance
+- [ ] **SCAN-01**: Continuous camera scanning — point at QR, no capture/photo button needed
+- [ ] **SCAN-02**: Green flash overlay + haptic vibration on valid scan — shows attendee name + ticket type
+- [ ] **SCAN-03**: Red flash overlay + haptic vibration + reason text on invalid scan (already checked in / not found / wrong event)
+- [ ] **SCAN-04**: Auto-return to scanning mode after flash (~1-1.5s delay), near-instant verify cycle
+- [ ] **SCAN-05**: Cross-event validation — ticket for a different party/event triggers red flash with specific message
+- [ ] **SCAN-06**: Duplicate scan shows date/time of previous check-in in the red flash message
+- [ ] **SCAN-07**: Offline support — check-in works without connectivity, syncs when back online
+- [ ] **SCAN-08**: Flashlight/torch toggle for scanning in dark venues
+- [ ] **SCAN-09**: Undo check-in from scan history — tap any of the last 5 scans to reverse the check-in
+- [ ] **SCAN-10**: Last 5 scans history visible below the scanner viewfinder
 
-- [x] **UI-01**: All pages have component enter animations (fade + translateY, 200-300ms, ease-out)
-- [x] **UI-02**: Async content shows skeleton loading states instead of blank/flash
-- [x] **UI-03**: All buttons and cards have consistent press/tap feedback (whileTap scale)
-- [x] **UI-04**: Page has smooth scroll behavior for anchor links
-- [x] **UI-05**: User actions show toast notifications with slide-in animation and auto-dismiss
-- [x] **UI-06**: Primary action buttons have hover/tap micro-interactions
-- [x] **UI-07**: Lists (events, drinks, members) use staggered item animations (50-80ms delay)
-- [x] **UI-08**: Content sections animate in on scroll (whileInView with threshold)
-- [x] **UI-09**: Analytics KPI cards have number counting-up micro-interactions
-- [x] **UI-10**: Dark mode accent elements have subtle ambient glow effects
-- [x] **UI-11**: Cards have hover elevation (desktop) and press feedback (mobile)
-- [x] **UI-12**: App respects prefers-reduced-motion and disables animations accordingly
+## Membership Door Check-in
 
-### Guest List
+- [ ] **MEMB-01**: Membership QR scan → verify member → instant check-in for selected party
+- [ ] **MEMB-02**: Record attendance in database for membership-based check-in (no ticket created — cash tracked via SumUp app)
+- [ ] **MEMB-03**: Invalid/unknown membership code → red flash with "Member not found" message
 
-- [x] **GSTL-01**: Organizer can add guests to event guest list by name, surname, and email (email optional)
-- [x] **GSTL-02**: Organizer can view guest list with status per entry (invited / registered / has ticket / checked in)
-- [x] **GSTL-03**: System sends branded invitation email with QR code to guests with email address
-- [x] **GSTL-04**: Non-member guests with email are auto-registered and auto-approved on the platform
-- [x] **GSTL-05**: Existing approved members on guest list receive a free ticket (ticket_type: guest_list, amount_paid: 0)
-- [x] **GSTL-06**: Pending members on guest list are auto-approved and receive a free ticket
-- [x] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
-- [x] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
-- [x] **GSTL-09**: New user registering with email matching a guest list entry is auto-approved (alternative approval path)
-- [x] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
-- [x] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
-- [x] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
-- [x] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
-- [x] **GSTL-14**: Profiles track approval method (approved_via: referral / guest_list / admin_manual)
-- [x] **GSTL-15**: Tickets distinguish type (ticket_type: purchased / guest_list) and sales dashboard separates paid vs free
-- [x] **GSTL-16**: Email deliverability ensured via SPF, DKIM, DMARC records on sending domain
+## Deferred from v1.3
 
-### Navigation Consolidation
-
-- [x] **NAV-01**: Bottom nav shows 3 tabs for members (Events, Gallery, Account) and 4 tabs for staff (Events, Gallery, Check-in, Account)
-- [x] **NAV-02**: Account page shows role-aware sections: "My Stuff" for all, "Management" for organizer/master
-- [x] **NAV-03**: Check-in tab is always one tap away for organizer/master roles
-- [x] **NAV-04**: Check-in page shows unified attendee list for the event (ticket holders + guest list) with name search and QR scan
-- [x] **NAV-05**: Account page "Management" section shows quick-stats cards (pending members, next event, total revenue)
-- [x] **NAV-06**: Account page management section has animated expand/collapse
-- [x] **NAV-07**: Clear visual separation between "My Stuff" and "Management" sections
-- [x] **NAV-08**: Unified StaffNav component used consistently across admin and organizer routes
-
-### Guest Navigation
-
-- [x] **GNAV-01**: Non-authenticated guest sees Home/Events/Gallery in bottom nav (3 tabs); Home links to landing page with registration CTA
-- [x] **GNAV-02**: Authenticated user does NOT see the Home tab; navigation remains unchanged (member: Events/Gallery/Account; staff: Events/Gallery/Check-in/Account)
-
-## v1.4 Requirements (Deferred)
-
-### App Audit (Research Complete -- see .planning/research/)
+### App Audit
 
 - **AUDT-01**: Lighthouse performance score >90 on all pages
 - **AUDT-02**: Security headers configured (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
 - **AUDT-03**: All server actions validated with Zod schemas
 - **AUDT-04**: WCAG AA color contrast on all text elements
-- **AUDT-05**: Keyboard navigation for all interactive elements (modals, forms, bottom sheets)
+- **AUDT-05**: Keyboard navigation for all interactive elements
 - **AUDT-06**: SEO metadata (OpenGraph, Twitter cards) on all public pages
 - **AUDT-07**: All images use next/image with proper width/height/sizes
 - **AUDT-08**: Error boundaries (error.tsx) per route group
 - **AUDT-09**: eslint-plugin-jsx-a11y integrated and findings fixed
-- **AUDT-10**: JSON-LD structured data for events (Schema.org Event markup)
+- **AUDT-10**: JSON-LD structured data for events
 - **AUDT-11**: PWA offline fallback page
 - **AUDT-12**: Rate limiting on auth endpoints
-- **AUDT-13**: Bundle size CI monitoring with @next/bundle-analyzer
-
-### Discount Codes (Sconti)
-
-- [x] **SC-01**: Organizer can create/edit/delete discount codes per party with: code string, type (percentage/fixed), amount, optional max uses, active toggle, optional tier restriction
-- [x] **SC-02**: Buyer sees "Hai un codice sconto?" input during checkout; entering valid code shows discounted price
-- [x] **SC-03**: Validation is case-insensitive, rejects codes that would bring price below EUR 1.00, enforces usage limits, party-scoped
-- [x] **SC-04**: SumUp checkout uses discounted amount; ticket stores discount_code_id; sales dashboard shows discount code usage and summary
+- **AUDT-13**: Bundle size CI monitoring
 
 ### Analytics Deferred
 
 - **ANLY-D1**: Conversion funnel visualization via PostHog dashboards
 - **ANLY-D2**: Session replay analysis workflow
-- **ANLY-D3**: Layout animations on filter/sort (Motion layout prop)
+- **ANLY-D3**: Layout animations on filter/sort
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Custom analytics dashboard UI (Chart.js/Recharts) | PostHog provides dashboards, funnels, charts -- no need to build custom |
-| Page-level route transitions (AnimatePresence) | Broken in Next.js App Router as of 2026 |
-| Public RSVP wall (Partiful-style) | Contradicts private/curated community model |
-| SMS invitations for guest list | Per-message cost, privacy/regulatory complexity |
-| Plus-one / guest-of-guest management | Contradicts "each person is a known member" model |
-| Calendar ICS attachment in emails | Complex cross-client rendering, low ROI for nightlife events |
-| AI-powered event recommendations | Irrelevant at <1000 members; manual curation is the brand value |
-| WCAG AAA compliance | AAA conflicts with dark theme + Orbitron aesthetics; AA is the target |
-| Real-time WebSocket dashboard | Over-engineered for event frequency; server-rendered refresh sufficient |
-| Google Analytics integration | PostHog covers all needs; avoid duplicate tracking + GDPR overhead |
-| A/B testing framework | Not needed at current user scale |
-| 3D transforms / WebGL / Lottie animations | Performance-heavy on mobile, contradicts minimal design |
-| Automated email follow-up sequences | Over-engineered for a community where organizers know guests |
+| Cash payment tracking in Resonate | Cash handled via SumUp app directly |
+| Ticket creation for cash payers | No digital ticket needed — attendance record suffices |
+| Non-member door entry without membership QR | Must register (referral/approval) or buy ticket online |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 20 | Complete |
-| NAV-02 | Phase 20 | Complete |
-| NAV-03 | Phase 20 | Complete |
-| NAV-04 | Phase 20 | Complete |
-| NAV-05 | Phase 20 | Complete |
-| NAV-06 | Phase 20 | Complete |
-| NAV-07 | Phase 20 | Complete |
-| NAV-08 | Phase 20 | Complete |
-| UI-01 | Phase 21 | Complete |
-| UI-02 | Phase 21 | Complete |
-| UI-03 | Phase 21 | Complete |
-| UI-04 | Phase 21 | Complete |
-| UI-05 | Phase 21 | Complete |
-| UI-06 | Phase 21 | Complete |
-| UI-07 | Phase 21 | Complete |
-| UI-08 | Phase 21 | Complete |
-| UI-09 | Phase 21 | Complete |
-| UI-10 | Phase 21 | Complete |
-| UI-11 | Phase 21 | Complete |
-| UI-12 | Phase 21 | Complete |
-| ANLY-01 | Phase 22 | Complete |
-| ANLY-02 | Phase 22 | Complete |
-| ANLY-03 | Phase 22 | Complete |
-| ANLY-04 | Phase 22 | Complete |
-| ANLY-05 | Phase 22 | Complete |
-| ANLY-06 | Phase 22 | Complete |
-| ANLY-08 | Phase 22 | Complete |
-| ANLY-07 | Phase 23 | Complete |
-| ANLY-09 | Phase 23 | Complete |
-| ANLY-10 | Phase 23 | Complete |
-| ANLY-11 | Phase 23 | Complete |
-| ANLY-12 | Phase 23 | Complete |
-| ANLY-13 | Phase 23 | Complete |
-| ANLY-14 | Phase 23 | Complete |
-| ANLY-15 | Phase 23 | Complete |
-| ANLY-16 | Phase 23 | Complete |
-| GSTL-01 | Phase 25 | Complete |
-| GSTL-02 | Phase 25 | Complete |
-| GSTL-03 | Phase 24 | Complete |
-| GSTL-04 | Phase 24 | Complete |
-| GSTL-05 | Phase 24 | Complete |
-| GSTL-06 | Phase 24 | Complete |
-| GSTL-07 | Phase 24 | Complete |
-| GSTL-08 | Phase 24 | Complete |
-| GSTL-09 | Phase 24 | Complete |
-| GSTL-10 | Phase 25 | Complete |
-| GSTL-11 | Phase 25 | Complete |
-| GSTL-12 | Phase 25 | Complete |
-| GSTL-13 | Phase 24 | Complete |
-| GSTL-14 | Phase 24 | Complete |
-| GSTL-15 | Phase 24 | Complete |
-| GSTL-16 | Phase 24 | Complete |
-| SC-01 | Phase 26 | Complete |
-| SC-02 | Phase 26 | Complete |
-| SC-03 | Phase 26 | Complete |
-| SC-04 | Phase 26 | Complete |
-| GNAV-01 | Phase 27 | Complete |
-| GNAV-02 | Phase 27 | Complete |
+| CHKIN-01 | Phase 29 | Planned |
+| CHKIN-02 | Phase 29 | Planned |
+| CHKIN-03 | Phase 29 | Planned |
+| SCAN-01 | Phase 29 | Planned |
+| SCAN-02 | Phase 29 | Planned |
+| SCAN-03 | Phase 29 | Planned |
+| SCAN-04 | Phase 29 | Planned |
+| SCAN-05 | Phase 29 | Planned |
+| SCAN-06 | Phase 29 | Planned |
+| SCAN-07 | Phase 29 | Planned |
+| SCAN-08 | Phase 29 | Planned |
+| SCAN-09 | Phase 29 | Planned |
+| SCAN-10 | Phase 29 | Planned |
+| MEMB-01 | Phase 30 | Planned |
+| MEMB-02 | Phase 30 | Planned |
+| MEMB-03 | Phase 30 | Planned |
 
 **Coverage:**
-- v1.3 requirements: 58 total
-- Mapped to phases: 58
+- v1.4 requirements: 16 total
+- Mapped to phases: 16
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-09*
-*Last updated: 2026-03-10*
+*Requirements defined: 2026-03-10*

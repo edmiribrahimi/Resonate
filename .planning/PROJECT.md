@@ -10,14 +10,24 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
-**Shipped:** v1.3 (2026-03-10) — [milestone archive](.planning/milestones/v1.3-ROADMAP.md)
+**In Progress:** v1.4 — Check-in Overhaul (2 phases, 11 requirements)
 
-All 60 v1.3 requirements implemented across 9 phases. New capabilities:
+Goals:
+- Party selector: staff picks a single party before scanning or viewing attendees
+- QR scanner UX: continuous scanning with instant green/red flash feedback + haptic vibration
+- Cross-event validation: ticket for wrong event triggers red flash with specific reason
+- Membership door check-in: scan membership QR → verify → instant check-in (cash tracked via SumUp app)
+
+<details>
+<summary>v1.3 (2026-03-10)</summary>
+
+All 60 v1.3 requirements implemented across 9 phases — [archive](.planning/milestones/v1.3-ROADMAP.md):
 - Navigation consolidated to 3-4 role-aware tabs with Account as management hub
 - Motion library (4.6kb) with enter animations, staggered lists, pressable feedback, CountUp, toast, 11 skeleton loading states
 - PostHog EU analytics + Recharts dashboards: per-event metrics, KPI overview, member insights, event comparison
 - Guest list management with auto-registration, invitation emails with QR, scanner check-in
 - Discount codes with case-insensitive validation, SumUp integration, sales tracking
+</details>
 
 <details>
 <summary>v1.2 (2026-03-07)</summary>
@@ -114,4 +124,4 @@ All 33 requirements shipped. See [v1.2-REQUIREMENTS.md](.planning/milestones/v1.
 | Media on both event page and member profile | Maximum visibility for community content | — Pending |
 
 ---
-*Last updated: 2026-03-09 after v1.3 milestone initialization*
+*Last updated: 2026-03-10 after v1.4 milestone initialization*

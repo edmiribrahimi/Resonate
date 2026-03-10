@@ -54,6 +54,17 @@ input[type="time"] {
     0 0 30px rgba(229, 72, 77, 0.05);
 }
 
+@keyframes flash-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @utility glow-accent-strong {
   box-shadow:
     0 0 20px rgba(229, 72, 77, 0.25),

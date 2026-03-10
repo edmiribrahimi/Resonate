@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { token } = body;
+    const { token, partyId } = body;
 
     if (!token || typeof token !== "string") {
       return NextResponse.json({ valid: false, status: "invalid_token" });
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const { data: ticket } = await serviceClient
       .from("tickets")
       .select(
-        "id, checked_in, event_id, party_id, user_id, profiles(full_name), events(title), event_parties(title)"
+        "id, checked_in, checked_in_at, event_id, party_id, user_id, ticket_type, profiles(full_name), events(title), event_parties(title), ticket_tiers(name)"
       )
       .eq("id", ticketId)
       .single();
@@ -54,12 +54,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false, status: "not_found" });
     }
 
+    // Cross-event validation: if partyId provided, check ticket belongs to that party
+    if (partyId && ticket.party_id !== partyId) {
+      const party = ticket.event_parties as unknown as { title: string } | null;
+      const event = ticket.events as unknown as { title: string } | null;
+      return NextResponse.json({
+        valid: false,
+        status: "wrong_event",
+        member_name: (ticket.profiles as unknown as { full_name: string } | null)?.full_name || "Unknown",
+        event_title: event?.title || "",
+        party_title: party?.title || "",
+        ticket_party_id: ticket.party_id,
+        ticket_event_id: ticket.event_id,
+      });
+    }
+
     if (ticket.checked_in) {
       const memberProfile = ticket.profiles as unknown as { full_name: string } | null;
       return NextResponse.json({
         valid: false,
         status: "already_checked_in",
         member_name: memberProfile?.full_name || "Unknown",
+        checked_in_at: ticket.checked_in_at,
+        party_id: ticket.party_id,
+        event_id: ticket.event_id,
       });
     }
 
@@ -76,6 +94,7 @@ export async function POST(request: Request) {
     const memberProfile = ticket.profiles as unknown as { full_name: string } | null;
     const event = ticket.events as unknown as { title: string } | null;
     const party = ticket.event_parties as unknown as { title: string } | null;
+    const tier = ticket.ticket_tiers as unknown as { name: string } | null;
 
     return NextResponse.json({
       valid: true,
@@ -83,6 +102,10 @@ export async function POST(request: Request) {
       member_name: memberProfile?.full_name || "Unknown",
       event_title: event?.title || "",
       party_title: party?.title || "",
+      ticket_type: ticket.ticket_type || "purchased",
+      tier_name: tier?.name || null,
+      party_id: ticket.party_id,
+      event_id: ticket.event_id,
     });
   } catch (error) {
     console.error("Check-in error:", error);
