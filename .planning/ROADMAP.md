@@ -108,7 +108,7 @@ Plans:
 - [x] 24-03-PLAN.md -- Bulk operations: CSV import, clone, name-based check-in (GSTL-10, GSTL-11, GSTL-12)
 
 ### Phase 25: Guest List Wiring Fixes
-**Goal:** Wire all orphaned guest list components — CSVImport rendering, organizer navigation links, scanner guest list check-in, and PostHog tracking for guest list operations
+**Goal:** Wire all orphaned guest list components -- CSVImport rendering, organizer navigation links, scanner guest list check-in, and PostHog tracking for guest list operations
 **Depends on:** Phase 24 (fixes gaps found in Phase 24 audit)
 **Requirements:** GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12
 **Gap Closure:** Closes gaps from v1.3 milestone audit
@@ -117,7 +117,7 @@ Plans:
   2. Organizer can navigate to the guest list page from the event management UI (EventList or event detail)
   3. ScannerClient renders guest list entries alongside ticket holders and supports name-based check-in via POST API
   4. Guest list operations (add, remove, CSV import, check-in) fire PostHog capture events
-**Plans:** 0/1 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] 25-01-PLAN.md -- Wire CSVImport, navigation links, scanner integration, PostHog tracking (GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12)
