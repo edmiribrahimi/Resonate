@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
 import { processGuestEntry } from "@/lib/guest-list/process-entry";
+import { getPostHogServer } from "@/lib/posthog/server";
 import type { UserRole } from "@/types/database";
 
 /**
@@ -139,6 +140,18 @@ export async function addGuest(
     }
 
     revalidatePath(`/organizer/events/${eventId}/guest-list`);
+
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: userId,
+      event: "guest_list_add",
+      properties: {
+        event_id: eventId,
+        has_email: !!email,
+        party_id: partyId,
+      },
+    });
+
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -152,7 +165,7 @@ export async function addGuest(
  */
 export async function removeGuest(entryId: string, eventId: string) {
   try {
-    await verifyOrganizerAccess(eventId);
+    const userId = await verifyOrganizerAccess(eventId);
     const serviceClient = getServiceClient();
 
     // Fetch the entry to check if a ticket was issued
@@ -179,6 +192,17 @@ export async function removeGuest(entryId: string, eventId: string) {
     }
 
     revalidatePath(`/organizer/events/${eventId}/guest-list`);
+
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: userId,
+      event: "guest_list_remove",
+      properties: {
+        event_id: eventId,
+        had_ticket: hadTicket,
+      },
+    });
+
     return { success: true, hadTicket };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

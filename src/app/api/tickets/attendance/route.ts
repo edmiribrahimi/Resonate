@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getPostHogServer } from "@/lib/posthog/server";
 
 async function verifyOrganizerRole() {
   const supabase = await createClient();
@@ -221,6 +222,15 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  const posthog = getPostHogServer();
+  posthog.capture({
+    distinctId: auth.user.id,
+    event: "guest_list_checkin",
+    properties: {
+      guest_list_entry_id: guestListEntryId,
+    },
+  });
 
   return NextResponse.json({ success: true });
 }

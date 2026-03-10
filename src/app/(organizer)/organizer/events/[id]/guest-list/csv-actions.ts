@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getPostHogServer } from "@/lib/posthog/server";
 
 function getServiceClient() {
   return createSupabaseClient(
@@ -216,6 +217,18 @@ export async function bulkAddGuests(
 
   revalidatePath(`/organizer/events/${eventId}/guest-list`);
 
+  const posthog = getPostHogServer();
+  posthog.capture({
+    distinctId: user.id,
+    event: "guest_list_csv_import",
+    properties: {
+      event_id: eventId,
+      imported,
+      skipped,
+      failed,
+    },
+  });
+
   return { imported, skipped, failed, errors };
 }
 
@@ -297,6 +310,18 @@ export async function cloneGuestList(
   }
 
   revalidatePath(`/organizer/events/${targetEventId}/guest-list`);
+
+  const posthog = getPostHogServer();
+  posthog.capture({
+    distinctId: user.id,
+    event: "guest_list_clone",
+    properties: {
+      source_event_id: sourceEventId,
+      target_event_id: targetEventId,
+      cloned,
+      skipped,
+    },
+  });
 
   return { cloned, skipped };
 }
