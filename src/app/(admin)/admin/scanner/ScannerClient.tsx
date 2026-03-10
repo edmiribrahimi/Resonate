@@ -23,6 +23,7 @@ interface AttendanceEvent {
   partyId: string;
   partyTitle: string;
   eventTitle: string;
+  date: string;
   time: string;
   totalTickets: number;
   guestListCount: number;
@@ -232,7 +233,7 @@ export default function ScannerClient() {
                     {evt.eventTitle}
                   </p>
                   <p className="text-xs text-muted">
-                    {evt.partyTitle} &middot; {formatTime(evt.time)}
+                    {evt.partyTitle} &middot; {evt.date} &middot; {formatTime(evt.time)}
                   </p>
                 </div>
 

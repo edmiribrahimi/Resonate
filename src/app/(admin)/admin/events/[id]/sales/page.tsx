@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import MobileNav from "@/components/layout/MobileNav";
 import SalesDashboard from "@/components/events/SalesDashboard";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -62,11 +63,13 @@ export default async function AdminSalesPage({
     })
   );
 
-  // Fetch buyers with profile and tier joins (including discount_code_id)
-  const { data: rawBuyers } = await supabase
+  const serviceClient = getServiceClient();
+
+  // Fetch buyers with profile and tier joins (using service client to avoid RLS/FK issues)
+  const { data: rawBuyers } = await serviceClient
     .from("tickets")
     .select(
-      "id, amount_paid, created_at, tier_id, user_id, discount_code_id, profiles!user_id(full_name, email), ticket_tiers!tier_id(name)"
+      "id, amount_paid, created_at, tier_id, ticket_type, user_id, discount_code_id, profiles(full_name, email), ticket_tiers(name)"
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -120,12 +123,16 @@ export default async function AdminSalesPage({
     const tier = Array.isArray(b.ticket_tiers)
       ? b.ticket_tiers[0]
       : b.ticket_tiers;
+    const ticketType = (b as { ticket_type?: string }).ticket_type;
     const dcId = (b as { discount_code_id?: string }).discount_code_id;
     return {
       id: b.id,
       memberName: (profile as { full_name?: string })?.full_name ?? "Unknown",
       memberEmail: (profile as { email?: string })?.email ?? "",
-      tierName: (tier as { name?: string })?.name ?? "Unknown",
+      tierName:
+        ticketType === "guest_list"
+          ? "Guest List"
+          : (tier as { name?: string })?.name ?? "Unknown",
       purchaseDate: b.created_at,
       discountCode: dcId ? discountCodeMap.get(dcId) ?? null : null,
     };

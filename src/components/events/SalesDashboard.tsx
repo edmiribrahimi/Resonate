@@ -79,7 +79,7 @@ export default function SalesDashboard({
           {tiers.map((tier) => {
             const sellThrough =
               tier.quantity > 0 ? (tier.sold / tier.quantity) * 100 : 0;
-            const isSoldOut = tier.sold >= tier.quantity;
+            const isSoldOut = tier.quantity > 0 && tier.sold >= tier.quantity;
 
             return (
               <div

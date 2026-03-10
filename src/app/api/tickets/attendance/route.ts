@@ -42,11 +42,13 @@ export async function GET(request: Request) {
   const serviceClient = getServiceClient();
   const today = new Date().toISOString().split("T")[0];
 
-  // Fetch today's parties with their events
+  // Fetch current and upcoming parties (today + future) with their events
   const { data: parties } = await serviceClient
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title)")
-    .eq("date", today);
+    .gte("date", today)
+    .order("date", { ascending: true })
+    .order("time", { ascending: true });
 
   if (!parties || parties.length === 0) {
     return NextResponse.json({ events: [] });
@@ -135,6 +137,7 @@ export async function GET(request: Request) {
         partyId: party.id,
         partyTitle: party.title,
         eventTitle: event.title,
+        date: party.date,
         time: party.time,
         totalTickets: totalTickets ?? 0,
         guestListCount: guestListAttendees.length,
