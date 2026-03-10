@@ -21,6 +21,8 @@
 - [x] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [x] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
 - [x] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
+- [ ] **Phase 26: Discount Codes** - Codici sconto per ticket: schema, CRUD organizer, campo input checkout, validazione case-insensitive, SumUp prezzo scontato
+- [ ] **Phase 27: Guest Navigation Fix** - Ripristinare tab Home per guest non autenticati con link alla landing page e CTA registrazione
 
 ## Phase Details
 
@@ -122,6 +124,32 @@ Plans:
 Plans:
 - [x] 25-01-PLAN.md -- Wire CSVImport, navigation links, scanner integration, PostHog tracking (GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12)
 
+### Phase 26: Discount Codes
+**Goal:** Organizers can create discount codes per party that apply percentage or fixed discounts to any ticket tier -- buyers enter codes manually during checkout, case-insensitive validation, with optional usage limits and minimum price guard (SumUp €1.00 minimum)
+**Depends on:** Phase 25
+**Requirements:** TBD
+**Success Criteria** (what must be TRUE):
+  1. Organizer can create/edit/delete discount codes per party with: code string, discount type (percentage/fixed), discount amount, optional max uses, active toggle
+  2. Buyer sees a "Hai un codice sconto?" input field during ticket checkout; entering a valid code shows the discounted price before payment
+  3. Validation is case-insensitive, rejects codes that would bring price to €0, enforces usage limits, and only accepts codes for the correct party
+  4. SumUp checkout uses the discounted amount; ticket record stores discount_code_id for traceability; sales dashboard shows discount usage
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 26 to break down)
+
+### Phase 27: Guest Navigation Fix
+**Goal:** Non-authenticated guests can discover how to register via a Home tab that links to the landing page with registration CTA
+**Depends on:** Phase 20
+**Requirements:** TBD
+**Success Criteria** (what must be TRUE):
+  1. Guest (non-authenticated) sees Home/Events/Gallery in bottom nav; Home tab links to the landing page with clear registration CTA
+  2. Authenticated member sees Events/Gallery/Account (no Home tab)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 27 to break down)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -132,6 +160,8 @@ Plans:
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
+| 26. Discount Codes | 0/? | Planned     | - |
+| 27. Guest Navigation Fix | 0/? | Planned     | - |
 
 ---
 *Roadmap created: 2026-03-09*

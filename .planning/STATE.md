@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: completed
-stopped_at: Completed 25-01 (Guest List Integration Fixes)
+status: in_progress
+stopped_at: Phase 26 (Discount Codes) not yet planned
 last_updated: "2026-03-10T01:00:47.065Z"
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 6
   total_plans: 17
   completed_plans: 17
@@ -20,16 +20,16 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 25 complete
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 next
 
 ## Current Position
 
-**Phase:** Phase 25 (Guest List Wiring Fixes)
-**Plan:** 1/1 complete
-**Status:** Milestone complete
+**Phase:** Phase 26 (Discount Codes) -- not yet planned
+**Plan:** 0/?
+**Status:** In progress
 
 ```
-[Phase Progress]  ████████████████████  6/6 phases
+[Phase Progress]  ███████████████░░░░░  6/8 phases
 ```
 
 ## Performance Metrics
@@ -133,6 +133,10 @@ progress:
 - Member search uses getServiceClient() to bypass RLS
 - RefundDialog fee warning conditional on payout_date
 - Auto-refund cron runs daily at 07:00 UTC
+
+### Roadmap Evolution
+- Phase 26 added: Discount Codes (percentage/fixed discounts for ticket tiers, case-insensitive, usage limits, SumUp €1 minimum guard)
+- Phase 27 added: Guest Navigation Fix (Home tab for non-authenticated guests → landing page with registration CTA)
 
 ### v1.3 Roadmap Notes
 - Phase numbering starts at 20 (v1.2 ended at 19)
