@@ -279,9 +279,9 @@ export default async function EventDetailPage({
     })
   );
 
-  // Fetch event-level tiers (party_id IS NULL)
+  // Fetch event-level tiers (party_id IS NULL) -- only when multiple parties exist
   let eventTiers: { id: string; name: string; price: number; quantity: number | null; sold: number; available: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }[] = [];
-  {
+  if (parties.length > 1) {
     const { data: rawEventTiers } = await supabase
       .from("ticket_tiers")
       .select("*")
@@ -482,8 +482,8 @@ export default async function EventDetailPage({
         })()}
         </AnimatedSection>
 
-        {/* Event Pass section (event-level tiers) */}
-        {eventTiers.length > 0 && (
+        {/* Event Pass section (event-level tiers) -- only show when multiple parties exist */}
+        {parties.length > 1 && eventTiers.length > 0 && (
           <AnimatedSection scrollTriggered className="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-4">
             {hasMasterTicket ? (
               <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
