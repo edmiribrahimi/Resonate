@@ -2,9 +2,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import MobileNav from "@/components/layout/MobileNav";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
+import RefundActions from "@/app/(organizer)/organizer/events/[id]/tickets/RefundActions";
 import type { UserRole, UserStatus } from "@/types/database";
 
 interface PageProps {
@@ -80,12 +82,44 @@ export default async function AdminTicketTiersPage({ params }: PageProps) {
     }
   }
 
+  // Fetch sold tickets with buyer info
+  const serviceClient = getServiceClient();
+  const { data: soldTickets } = await serviceClient
+    .from("tickets")
+    .select("id, user_id, amount_paid, tier_id, created_at, profiles(full_name, email), ticket_tiers(name)")
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: false });
+
+  // Fetch pending refund requests
+  const ticketIds = (soldTickets ?? []).map((t: { id: string }) => t.id);
+  let pendingRefunds: { id: string; ticket_id: string; reason: string | null; amount: number; created_at: string }[] = [];
+  if (ticketIds.length > 0) {
+    const { data } = await serviceClient
+      .from("ticket_refunds")
+      .select("id, ticket_id, reason, amount, created_at")
+      .in("ticket_id", ticketIds)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+    pendingRefunds = data ?? [];
+  }
+
+  const ticketBuyerMap = new Map<string, string>();
+  for (const t of soldTickets ?? []) {
+    const rawProfile = t.profiles as unknown;
+    const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as { full_name: string; email: string } | null;
+    ticketBuyerMap.set(t.id, profile?.full_name || profile?.email || "Unknown");
+  }
+
   function formatPartyDate(dateStr: string): string {
     return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
       weekday: "short",
       day: "numeric",
       month: "short",
     });
+  }
+
+  function formatPrice(price: number) {
+    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(price);
   }
 
   return (
@@ -156,6 +190,69 @@ export default async function AdminTicketTiersPage({ params }: PageProps) {
               </div>
             );
           })
+        )}
+
+        {/* Pending Refund Requests */}
+        {pendingRefunds.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              Pending Refund Requests
+            </h2>
+            <div className="space-y-3">
+              {pendingRefunds.map((refund) => (
+                <div
+                  key={refund.id}
+                  className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {ticketBuyerMap.get(refund.ticket_id) || "Unknown"}
+                    </p>
+                    <p className="text-sm font-bold text-accent">
+                      {formatPrice(refund.amount)}
+                    </p>
+                  </div>
+                  {refund.reason && (
+                    <p className="text-xs text-muted mb-3">&ldquo;{refund.reason}&rdquo;</p>
+                  )}
+                  <RefundActions refundId={refund.id} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sold Tickets */}
+        {(soldTickets ?? []).length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              Sold Tickets ({(soldTickets ?? []).length})
+            </h2>
+            <div className="space-y-2">
+              {(soldTickets ?? []).map((ticket: { id: string; amount_paid: number; created_at: string; profiles: unknown; ticket_tiers: unknown }) => {
+                const rawProfile = ticket.profiles as unknown;
+                const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as { full_name: string; email: string } | null;
+                const rawTier = ticket.ticket_tiers as unknown;
+                const tier = (Array.isArray(rawTier) ? rawTier[0] : rawTier) as { name: string } | null;
+                return (
+                  <div
+                    key={ticket.id}
+                    className="flex items-center justify-between rounded-xl border border-card-border bg-card p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {profile?.full_name || profile?.email || "Unknown"}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {tier?.name} &middot; {formatPrice(ticket.amount_paid)}
+                      </p>
+                    </div>
+                    <RefundActions ticketId={ticket.id} isDirectRefund />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 
