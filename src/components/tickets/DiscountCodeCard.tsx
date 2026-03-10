@@ -75,7 +75,7 @@ export default function DiscountCodeCard({
         setError(
           err instanceof Error
             ? err.message
-            : "Errore nell'aggiornamento del codice sconto."
+            : "Failed to update discount code."
         );
       }
     });
@@ -85,7 +85,7 @@ export default function DiscountCodeCard({
     setError(null);
 
     const confirmed = window.confirm(
-      `Sei sicuro di voler eliminare il codice "${discountCode.code}"?`
+      `Are you sure you want to delete the code "${discountCode.code}"?`
     );
     if (!confirmed) return;
 
@@ -93,13 +93,13 @@ export default function DiscountCodeCard({
       try {
         const result = await deleteDiscountCode(discountCode.id, eventId);
         if (!result.success) {
-          setError("Errore nell'eliminazione del codice sconto.");
+          setError("Failed to delete discount code.");
         }
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : "Errore nell'eliminazione del codice sconto."
+            : "Failed to delete discount code."
         );
       }
     });
@@ -124,7 +124,7 @@ export default function DiscountCodeCard({
       {isEditing ? (
         <form onSubmit={handleUpdate} className="space-y-3">
           <div>
-            <label className="block text-xs text-muted mb-1">Codice</label>
+            <label className="block text-xs text-muted mb-1">Code</label>
             <input
               name="code"
               type="text"
@@ -138,7 +138,7 @@ export default function DiscountCodeCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-muted mb-1">
-                Tipo Sconto
+                Discount Type
               </label>
               <select
                 name="discount_type"
@@ -148,13 +148,13 @@ export default function DiscountCodeCard({
                 }
                 className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
               >
-                <option value="percentage">Percentuale</option>
-                <option value="fixed">Fisso (EUR)</option>
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed (EUR)</option>
               </select>
             </div>
             <div>
               <label className="block text-xs text-muted mb-1">
-                {discountType === "percentage" ? "Sconto (%)" : "Sconto (EUR)"}
+                {discountType === "percentage" ? "Discount (%)" : "Discount (EUR)"}
               </label>
               <input
                 name="discount_amount"
@@ -170,14 +170,14 @@ export default function DiscountCodeCard({
 
           <div>
             <label className="block text-xs text-muted mb-1">
-              Utilizzi Massimi
+              Max Uses
             </label>
             <input
               name="max_uses"
               type="number"
               min={1}
               defaultValue={discountCode.max_uses ?? ""}
-              placeholder="Illimitato"
+              placeholder="Unlimited"
               className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
@@ -185,11 +185,11 @@ export default function DiscountCodeCard({
           {tiers.length > 0 && (
             <div>
               <p className="block text-xs text-muted mb-1">
-                Applica a{" "}
+                Apply to{" "}
                 <span className="text-muted/60">
                   {selectedTierIds.length === 0
-                    ? "(Tutti i tier)"
-                    : `(${selectedTierIds.length} selezionati)`}
+                    ? "(All tiers)"
+                    : `(${selectedTierIds.length} selected)`}
                 </span>
               </p>
               <div className="space-y-1.5">
@@ -219,7 +219,7 @@ export default function DiscountCodeCard({
               value="true"
               className="rounded border-card-border bg-background text-accent focus:ring-accent"
             />
-            <span className="text-xs text-muted">Attivo</span>
+            <span className="text-xs text-muted">Active</span>
             <input type="hidden" name="is_active" value="false" />
           </label>
 
@@ -229,7 +229,7 @@ export default function DiscountCodeCard({
               disabled={isPending}
               className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
             >
-              {isPending ? "Salvataggio..." : "Salva"}
+              {isPending ? "Saving..." : "Save"}
             </button>
             <button
               type="button"
@@ -245,7 +245,7 @@ export default function DiscountCodeCard({
               }}
               className="rounded-full border border-card-border px-4 py-1.5 text-xs font-medium text-muted hover:bg-card-border/30 transition-all active:scale-95 active:opacity-80"
             >
-              Annulla
+              Cancel
             </button>
           </div>
         </form>
@@ -259,11 +259,11 @@ export default function DiscountCodeCard({
                 </h3>
                 {discountCode.is_active ? (
                   <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 uppercase">
-                    Attivo
+                    Active
                   </span>
                 ) : (
                   <span className="rounded-full bg-gray-500/20 px-2 py-0.5 text-[10px] font-semibold text-gray-400 uppercase">
-                    Inattivo
+                    Inactive
                   </span>
                 )}
               </div>
@@ -275,13 +275,13 @@ export default function DiscountCodeCard({
                 </span>
                 <span>
                   {discountCode.max_uses !== null
-                    ? `${discountCode.used}/${discountCode.max_uses} usati`
-                    : `${discountCode.used} usati`}
+                    ? `${discountCode.used}/${discountCode.max_uses} used`
+                    : `${discountCode.used} used`}
                 </span>
                 <span>
                   {discountCode.tier_names.length === 0
-                    ? "Tutti i tier"
-                    : `Solo: ${discountCode.tier_names.join(", ")}`}
+                    ? "All tiers"
+                    : `Only: ${discountCode.tier_names.join(", ")}`}
                 </span>
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function DiscountCodeCard({
               onClick={() => setIsEditing(true)}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-all active:scale-95 active:opacity-80"
             >
-              Modifica
+              Edit
             </button>
 
             {discountCode.used === 0 && (
@@ -303,7 +303,7 @@ export default function DiscountCodeCard({
                 disabled={isPending}
                 className="rounded-full border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-all active:scale-95 active:opacity-80 disabled:opacity-50"
               >
-                {isPending ? "..." : "Elimina"}
+                {isPending ? "..." : "Delete"}
               </button>
             )}
           </div>

@@ -270,7 +270,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                 {/* Discount Codes for this party */}
                 <div className="mt-6 space-y-4">
                   <h3 className="text-base font-semibold text-foreground">
-                    Codici Sconto
+                    Discount Codes
                   </h3>
                   <AddDiscountCodeForm
                     eventId={eventId}

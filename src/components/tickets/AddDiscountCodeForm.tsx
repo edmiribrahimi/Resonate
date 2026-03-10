@@ -46,7 +46,7 @@ export default function AddDiscountCodeForm({
         setError(
           err instanceof Error
             ? err.message
-            : "Errore nella creazione del codice sconto."
+            : "Failed to create discount code."
         );
       }
     });
@@ -63,7 +63,7 @@ export default function AddDiscountCodeForm({
   return (
     <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
       <h2 className="text-sm font-semibold text-foreground mb-3">
-        Aggiungi Codice Sconto
+        Add Discount Code
       </h2>
 
       {error && (
@@ -78,7 +78,7 @@ export default function AddDiscountCodeForm({
             htmlFor={`dc-code-${partyId}`}
             className="block text-xs text-muted mb-1"
           >
-            Codice
+            Code
           </label>
           <input
             id={`dc-code-${partyId}`}
@@ -86,7 +86,7 @@ export default function AddDiscountCodeForm({
             type="text"
             required
             maxLength={50}
-            placeholder="es. EARLYBIRD20"
+            placeholder="e.g. EARLYBIRD20"
             className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
@@ -97,7 +97,7 @@ export default function AddDiscountCodeForm({
               htmlFor={`dc-type-${partyId}`}
               className="block text-xs text-muted mb-1"
             >
-              Tipo Sconto
+              Discount Type
             </label>
             <select
               id={`dc-type-${partyId}`}
@@ -108,8 +108,8 @@ export default function AddDiscountCodeForm({
               }
               className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="percentage">Percentuale</option>
-              <option value="fixed">Fisso (EUR)</option>
+              <option value="percentage">Percentage</option>
+              <option value="fixed">Fixed (EUR)</option>
             </select>
           </div>
           <div>
@@ -117,7 +117,7 @@ export default function AddDiscountCodeForm({
               htmlFor={`dc-amount-${partyId}`}
               className="block text-xs text-muted mb-1"
             >
-              {discountType === "percentage" ? "Sconto (%)" : "Sconto (EUR)"}
+              {discountType === "percentage" ? "Discount (%)" : "Discount (EUR)"}
             </label>
             <input
               id={`dc-amount-${partyId}`}
@@ -137,14 +137,14 @@ export default function AddDiscountCodeForm({
             htmlFor={`dc-max-${partyId}`}
             className="block text-xs text-muted mb-1"
           >
-            Utilizzi Massimi
+            Max Uses
           </label>
           <input
             id={`dc-max-${partyId}`}
             name="max_uses"
             type="number"
             min={1}
-            placeholder="Illimitato"
+            placeholder="Unlimited"
             className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
@@ -152,11 +152,11 @@ export default function AddDiscountCodeForm({
         {tiers.length > 0 && (
           <div>
             <p className="block text-xs text-muted mb-1">
-              Applica a{" "}
+              Apply to{" "}
               <span className="text-muted/60">
                 {selectedTierIds.length === 0
-                  ? "(Tutti i tier)"
-                  : `(${selectedTierIds.length} selezionati)`}
+                  ? "(All tiers)"
+                  : `(${selectedTierIds.length} selected)`}
               </span>
             </p>
             <div className="space-y-1.5">
@@ -186,7 +186,7 @@ export default function AddDiscountCodeForm({
             value="true"
             className="rounded border-card-border bg-background text-accent focus:ring-accent"
           />
-          <span className="text-xs text-muted">Attivo</span>
+          <span className="text-xs text-muted">Active</span>
           <input type="hidden" name="is_active" value="false" />
         </label>
 
@@ -195,7 +195,7 @@ export default function AddDiscountCodeForm({
           disabled={isPending}
           className="w-full rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {isPending ? "Aggiunta..." : "Aggiungi Codice"}
+          {isPending ? "Adding..." : "Add Code"}
         </button>
       </form>
     </div>

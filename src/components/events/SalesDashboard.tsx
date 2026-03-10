@@ -149,7 +149,7 @@ export default function SalesDashboard({
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Email</th>
                       <th className="px-4 py-3 font-medium">Tier</th>
-                      <th className="px-4 py-3 font-medium">Sconto</th>
+                      <th className="px-4 py-3 font-medium">Discount</th>
                       <th className="px-4 py-3 font-medium">Date</th>
                     </tr>
                   </thead>
@@ -228,7 +228,7 @@ export default function SalesDashboard({
       {discountSummary && discountSummary.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-            Codici Sconto
+            Discount Codes
           </h2>
           <div className="space-y-2">
             {discountSummary.map((ds) => (
@@ -244,7 +244,7 @@ export default function SalesDashboard({
                     {ds.discount_type === "percentage"
                       ? `${ds.discount_amount}%`
                       : formatEUR(ds.discount_amount)}{" "}
-                    sconto
+                    off
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-foreground">

@@ -250,28 +250,28 @@ export async function createDiscountCode(
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
   if (!code || code.length < 1) {
-    throw new Error("Il codice sconto e obbligatorio");
+    throw new Error("Discount code is required");
   }
 
   const discountType = formData.get("discount_type") as string;
   if (discountType !== "percentage" && discountType !== "fixed") {
-    throw new Error("Tipo sconto non valido (percentage o fixed)");
+    throw new Error("Invalid discount type (percentage or fixed)");
   }
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
   if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("L'importo dello sconto deve essere maggiore di 0");
+    throw new Error("Discount amount must be greater than 0");
   }
 
   if (discountType === "percentage" && discountAmount > 100) {
-    throw new Error("La percentuale di sconto non puo superare il 100%");
+    throw new Error("Discount percentage cannot exceed 100%");
   }
 
   const maxUsesRaw = (formData.get("max_uses") as string)?.trim() || null;
   const maxUses = maxUsesRaw ? parseInt(maxUsesRaw, 10) : null;
   if (maxUses !== null && (isNaN(maxUses) || maxUses < 1)) {
-    throw new Error("Il numero massimo di utilizzi deve essere un intero positivo");
+    throw new Error("Max uses must be a positive integer");
   }
 
   const isActive = formData.get("is_active") !== "false";
@@ -282,7 +282,7 @@ export async function createDiscountCode(
     try {
       tierIds = JSON.parse(tierIdsRaw);
     } catch {
-      throw new Error("Formato tier_ids non valido");
+      throw new Error("Invalid tier_ids format");
     }
   }
 
@@ -304,9 +304,9 @@ export async function createDiscountCode(
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error("Esiste gia un codice con questo nome per questo evento");
+      throw new Error("A code with this name already exists for this event");
     }
-    throw new Error(`Errore nella creazione del codice sconto: ${error.message}`);
+    throw new Error(`Failed to create discount code: ${error.message}`);
   }
 
   // Insert tier associations if specified
@@ -321,7 +321,7 @@ export async function createDiscountCode(
       .insert(junctionRows);
 
     if (junctionError) {
-      throw new Error(`Errore nell'associazione dei tier: ${junctionError.message}`);
+      throw new Error(`Failed to associate tiers: ${junctionError.message}`);
     }
   }
 
@@ -345,28 +345,28 @@ export async function updateDiscountCode(
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
   if (!code || code.length < 1) {
-    throw new Error("Il codice sconto e obbligatorio");
+    throw new Error("Discount code is required");
   }
 
   const discountType = formData.get("discount_type") as string;
   if (discountType !== "percentage" && discountType !== "fixed") {
-    throw new Error("Tipo sconto non valido (percentage o fixed)");
+    throw new Error("Invalid discount type (percentage or fixed)");
   }
 
   const discountAmountRaw = formData.get("discount_amount") as string;
   const discountAmount = parseFloat(discountAmountRaw);
   if (isNaN(discountAmount) || discountAmount <= 0) {
-    throw new Error("L'importo dello sconto deve essere maggiore di 0");
+    throw new Error("Discount amount must be greater than 0");
   }
 
   if (discountType === "percentage" && discountAmount > 100) {
-    throw new Error("La percentuale di sconto non puo superare il 100%");
+    throw new Error("Discount percentage cannot exceed 100%");
   }
 
   const maxUsesRaw = (formData.get("max_uses") as string)?.trim() || null;
   const maxUses = maxUsesRaw ? parseInt(maxUsesRaw, 10) : null;
   if (maxUses !== null && (isNaN(maxUses) || maxUses < 1)) {
-    throw new Error("Il numero massimo di utilizzi deve essere un intero positivo");
+    throw new Error("Max uses must be a positive integer");
   }
 
   const isActive = formData.get("is_active") !== "false";
@@ -377,7 +377,7 @@ export async function updateDiscountCode(
     try {
       tierIds = JSON.parse(tierIdsRaw);
     } catch {
-      throw new Error("Formato tier_ids non valido");
+      throw new Error("Invalid tier_ids format");
     }
   }
 
@@ -397,9 +397,9 @@ export async function updateDiscountCode(
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error("Esiste gia un codice con questo nome per questo evento");
+      throw new Error("A code with this name already exists for this event");
     }
-    throw new Error(`Errore nell'aggiornamento del codice sconto: ${error.message}`);
+    throw new Error(`Failed to update discount code: ${error.message}`);
   }
 
   // Update tier associations: delete existing, re-insert if provided
@@ -411,7 +411,7 @@ export async function updateDiscountCode(
       .eq("discount_code_id", discountCodeId);
 
     if (deleteError) {
-      throw new Error(`Errore nella rimozione delle associazioni tier: ${deleteError.message}`);
+      throw new Error(`Failed to remove tier associations: ${deleteError.message}`);
     }
 
     // Insert new junction rows (if any)
@@ -426,7 +426,7 @@ export async function updateDiscountCode(
         .insert(junctionRows);
 
       if (junctionError) {
-        throw new Error(`Errore nell'associazione dei tier: ${junctionError.message}`);
+        throw new Error(`Failed to associate tiers: ${junctionError.message}`);
       }
     }
   }
@@ -456,11 +456,11 @@ export async function deleteDiscountCode(
     .eq("discount_code_id", discountCodeId);
 
   if (countError) {
-    throw new Error(`Errore nel controllo dell'utilizzo: ${countError.message}`);
+    throw new Error(`Failed to check usage: ${countError.message}`);
   }
 
   if (count && count > 0) {
-    throw new Error("Impossibile eliminare un codice sconto gia utilizzato");
+    throw new Error("Cannot delete a discount code that has been used");
   }
 
   const { error } = await client
@@ -469,7 +469,7 @@ export async function deleteDiscountCode(
     .eq("id", discountCodeId);
 
   if (error) {
-    throw new Error(`Errore nell'eliminazione del codice sconto: ${error.message}`);
+    throw new Error(`Failed to delete discount code: ${error.message}`);
   }
 
   revalidatePath(`/organizer/events/${eventId}/tickets`);
@@ -499,11 +499,11 @@ export async function validateDiscountCode(
     .single();
 
   if (error || !discountCode) {
-    throw new Error("Codice non valido");
+    throw new Error("Invalid code");
   }
 
   if (!discountCode.is_active) {
-    throw new Error("Codice non piu attivo");
+    throw new Error("Code is no longer active");
   }
 
   // Check usage limits
@@ -514,7 +514,7 @@ export async function validateDiscountCode(
       .eq("discount_code_id", discountCode.id);
 
     if ((count ?? 0) >= discountCode.max_uses) {
-      throw new Error("Codice esaurito");
+      throw new Error("Code usage limit reached");
     }
   }
 

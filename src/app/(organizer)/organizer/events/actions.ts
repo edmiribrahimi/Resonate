@@ -708,9 +708,9 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
       .eq("id", discountCodeId)
       .single();
 
-    if (codeError || !code) throw new Error("Codice sconto non valido");
-    if (!code.is_active) throw new Error("Codice sconto non piu attivo");
-    if (code.party_id !== partyId) throw new Error("Codice non valido per questo evento");
+    if (codeError || !code) throw new Error("Invalid discount code");
+    if (!code.is_active) throw new Error("Discount code is no longer active");
+    if (code.party_id !== partyId) throw new Error("Code not valid for this event");
 
     // Check tier applicability
     const { data: tierRestrictions } = await supabase
@@ -721,7 +721,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     if (tierRestrictions && tierRestrictions.length > 0) {
       const applicableTierIds = tierRestrictions.map(t => t.tier_id);
       if (!applicableTierIds.includes(tierId)) {
-        throw new Error("Codice non valido per questo tier");
+        throw new Error("Code not valid for this tier");
       }
     }
 
@@ -731,7 +731,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
         .from("tickets")
         .select("*", { count: "exact", head: true })
         .eq("discount_code_id", code.id);
-      if ((count ?? 0) >= code.max_uses) throw new Error("Codice esaurito");
+      if ((count ?? 0) >= code.max_uses) throw new Error("Code usage limit reached");
     }
 
     // Compute discounted price
@@ -743,7 +743,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     // SumUp minimum EUR 1.00
     if (finalPrice < 1.00) {
-      throw new Error("Lo sconto porterebbe il prezzo sotto il minimo di 1,00 EUR");
+      throw new Error("Discount would bring price below minimum (€1.00)");
     }
 
     validatedDiscountCodeId = code.id;

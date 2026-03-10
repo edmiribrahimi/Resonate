@@ -199,7 +199,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       const result = await validateDiscountCode(partyId, discountCode.trim());
       setDiscount(result);
     } catch (err) {
-      setDiscountError(err instanceof Error ? err.message : "Codice non valido");
+      setDiscountError(err instanceof Error ? err.message : "Invalid code");
     } finally {
       setIsValidating(false);
     }
@@ -319,7 +319,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                 onClick={() => setShowDiscountInput(!showDiscountInput)}
                 className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
-                {showDiscountInput ? "Nascondi" : "Hai un codice sconto?"}
+                {showDiscountInput ? "Hide" : "Have a discount code?"}
               </button>
               {showDiscountInput && (
                 <div className="mt-2 flex gap-2">
@@ -328,7 +328,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleValidateCode(); } }}
-                    placeholder="Inserisci codice"
+                    placeholder="Enter code"
                     className="flex-1 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <button
@@ -337,7 +337,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     disabled={!discountCode.trim() || isValidating}
                     className="rounded-lg bg-accent/20 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/30 transition-colors disabled:opacity-50"
                   >
-                    {isValidating ? "..." : "Applica"}
+                    {isValidating ? "..." : "Apply"}
                   </button>
                 </div>
               )}
@@ -345,7 +345,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           ) : (
             <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
               <p className="text-xs text-green-400">
-                Sconto applicato: {discount.discount_type === "percentage"
+                Discount applied: {discount.discount_type === "percentage"
                   ? `${discount.discount_amount}%`
                   : formatPrice(discount.discount_amount)}
               </p>
