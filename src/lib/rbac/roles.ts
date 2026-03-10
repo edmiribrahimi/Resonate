@@ -28,10 +28,21 @@ export interface NavItem {
   requireApproved: boolean;
   /** Requires authentication */
   requireAuth: boolean;
+  /** Hide this item when user is authenticated (e.g. Home tab for guests only) */
+  hideWhenAuth: boolean;
 }
 
 // Full navigation items list with role/status requirements
 const NAV_ITEMS: NavItem[] = [
+  {
+    href: "/",
+    label: "Home",
+    icon: "home",
+    roles: null,
+    requireApproved: false,
+    requireAuth: false,
+    hideWhenAuth: true,
+  },
   {
     href: "/events",
     label: "Events",
@@ -39,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: null,
     requireApproved: false,
     requireAuth: false,
+    hideWhenAuth: false,
   },
   {
     href: "/gallery",
@@ -47,6 +59,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: null,
     requireApproved: true,
     requireAuth: false,
+    hideWhenAuth: false,
   },
   {
     href: "/admin/scanner",
@@ -55,6 +68,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["master", "organizer"],
     requireApproved: true,
     requireAuth: true,
+    hideWhenAuth: false,
   },
   {
     href: "/dashboard",
@@ -63,6 +77,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: null,
     requireApproved: false,
     requireAuth: true,
+    hideWhenAuth: false,
   },
 ];
 
@@ -70,7 +85,7 @@ const NAV_ITEMS: NavItem[] = [
  * Filter navigation items based on user role and status.
  *
  * Logic:
- * - Unauthenticated (role=null): Events, Gallery (2 tabs)
+ * - Unauthenticated (role=null): Home, Events, Gallery (3 tabs)
  * - Pending/rejected member: Events, Account (2 tabs -- Gallery hidden)
  * - Approved member: Events, Gallery, Account (3 tabs)
  * - Organizer (approved): Events, Gallery, Check-in, Account (4 tabs)
@@ -84,6 +99,11 @@ export function getVisibleNavItems(
   const isApproved = status === "approved";
 
   return NAV_ITEMS.filter((item) => {
+    // Hide guest-only items from authenticated users
+    if (item.hideWhenAuth && isAuthenticated) {
+      return false;
+    }
+
     // Check authentication requirement
     if (item.requireAuth && !isAuthenticated) {
       return false;
