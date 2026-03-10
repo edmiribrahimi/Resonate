@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
+import { validateDiscountCode } from "@/app/(organizer)/organizer/events/[id]/tickets/actions";
 import PressableButton from "@/components/motion/PressableButton";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
@@ -157,6 +158,18 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
+  // Discount code state
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discount, setDiscount] = useState<{
+    id: string;
+    discount_type: "percentage" | "fixed";
+    discount_amount: number;
+    applicable_tier_ids: string[] | null;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -170,6 +183,34 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const availableTier = availableTierIndex >= 0 ? tiers[availableTierIndex] : null;
   const countdownTarget = availableTier?.expires_at ? new Date(availableTier.expires_at) : null;
 
+  function computeDiscountedPrice(price: number, disc: NonNullable<typeof discount>): number {
+    if (disc.discount_type === "percentage") {
+      return Math.round(price * (1 - disc.discount_amount / 100) * 100) / 100;
+    }
+    return Math.round((price - disc.discount_amount) * 100) / 100;
+  }
+
+  async function handleValidateCode() {
+    if (!discountCode.trim() || !partyId) return;
+    setDiscountError(null);
+    setDiscount(null);
+    setIsValidating(true);
+    try {
+      const result = await validateDiscountCode(partyId, discountCode.trim());
+      setDiscount(result);
+    } catch (err) {
+      setDiscountError(err instanceof Error ? err.message : "Codice non valido");
+    } finally {
+      setIsValidating(false);
+    }
+  }
+
+  function handleClearDiscount() {
+    setDiscount(null);
+    setDiscountCode("");
+    setDiscountError(null);
+  }
+
   function handlePurchase() {
     if (!selectedTierId) return;
     setError(null);
@@ -178,7 +219,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
     if (!isAuthenticated) {
       localStorage.setItem(
         "resonate_intent",
-        JSON.stringify({ type: "purchase", tierId: selectedTierId, partyId, eventSlug })
+        JSON.stringify({ type: "purchase", tierId: selectedTierId, partyId, eventSlug, discountCodeId: discount?.id ?? null })
       );
       window.location.href = `/register?next=/events/${eventSlug}`;
       return;
@@ -186,7 +227,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
 
     startTransition(async () => {
       try {
-        const result = await purchaseTicket(partyId, selectedTierId);
+        const result = await purchaseTicket(partyId, selectedTierId, discount?.id ?? null);
         if (result.success && result.checkoutId) {
           setCheckoutId(result.checkoutId);
         }
@@ -253,14 +294,75 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                     )}
                   </div>
                 </div>
-                <p className="shrink-0 text-sm font-bold text-accent">
-                  {formatPrice(tier.price)}
-                </p>
+                <div className="shrink-0 text-right">
+                  {discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 ? (
+                    <>
+                      <p className="text-xs text-muted line-through">{formatPrice(tier.price)}</p>
+                      <p className="text-sm font-bold text-green-400">{formatPrice(computeDiscountedPrice(tier.price, discount))}</p>
+                    </>
+                  ) : (
+                    <p className="shrink-0 text-sm font-bold text-accent">{formatPrice(tier.price)}</p>
+                  )}
+                </div>
               </div>
             </button>
           );
         })}
       </div>
+
+      {partyId && (
+        <div className="mb-4">
+          {!discount ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowDiscountInput(!showDiscountInput)}
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
+              >
+                {showDiscountInput ? "Nascondi" : "Hai un codice sconto?"}
+              </button>
+              {showDiscountInput && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleValidateCode(); } }}
+                    placeholder="Inserisci codice"
+                    className="flex-1 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleValidateCode}
+                    disabled={!discountCode.trim() || isValidating}
+                    className="rounded-lg bg-accent/20 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/30 transition-colors disabled:opacity-50"
+                  >
+                    {isValidating ? "..." : "Applica"}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
+              <p className="text-xs text-green-400">
+                Sconto applicato: {discount.discount_type === "percentage"
+                  ? `${discount.discount_amount}%`
+                  : formatPrice(discount.discount_amount)}
+              </p>
+              <button
+                type="button"
+                onClick={handleClearDiscount}
+                className="text-xs text-muted hover:text-foreground transition-colors"
+              >
+                Rimuovi
+              </button>
+            </div>
+          )}
+          {discountError && (
+            <p className="mt-1 text-xs text-red-400">{discountError}</p>
+          )}
+        </div>
+      )}
 
       <PressableButton
         disabled={!selectedTierId || isPending}
