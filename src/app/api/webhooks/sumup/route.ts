@@ -55,6 +55,7 @@ export async function POST(request: Request) {
           p_sumup_checkout_id: checkout.id,
           p_sumup_transaction_code: transactionCode,
           p_amount_paid: checkout.amount,
+          p_discount_code_id: purchase.discount_code_id ?? null,
         }
       );
 

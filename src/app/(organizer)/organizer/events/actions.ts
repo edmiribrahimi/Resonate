@@ -532,7 +532,7 @@ export async function unpublishEvent(eventId: string) {
  * Only approved members can purchase tickets (TICK-07).
  * partyId can be null for event-level (master) tickets.
  */
-export async function purchaseTicket(partyId: string | null, tierId: string) {
+export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -696,6 +696,59 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
     throw new Error("Event not found");
   }
 
+  // Discount validation (only for party-specific tiers with a discount code)
+  let finalPrice = tier.price;
+  let validatedDiscountCodeId: string | null = null;
+
+  if (discountCodeId && partyId) {
+    // Fetch and validate discount code
+    const { data: code, error: codeError } = await supabase
+      .from("discount_codes")
+      .select("id, party_id, discount_type, discount_amount, max_uses, is_active")
+      .eq("id", discountCodeId)
+      .single();
+
+    if (codeError || !code) throw new Error("Codice sconto non valido");
+    if (!code.is_active) throw new Error("Codice sconto non piu attivo");
+    if (code.party_id !== partyId) throw new Error("Codice non valido per questo evento");
+
+    // Check tier applicability
+    const { data: tierRestrictions } = await supabase
+      .from("discount_code_tiers")
+      .select("tier_id")
+      .eq("discount_code_id", code.id);
+
+    if (tierRestrictions && tierRestrictions.length > 0) {
+      const applicableTierIds = tierRestrictions.map(t => t.tier_id);
+      if (!applicableTierIds.includes(tierId)) {
+        throw new Error("Codice non valido per questo tier");
+      }
+    }
+
+    // Check usage limits
+    if (code.max_uses !== null) {
+      const { count } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("discount_code_id", code.id);
+      if ((count ?? 0) >= code.max_uses) throw new Error("Codice esaurito");
+    }
+
+    // Compute discounted price
+    if (code.discount_type === "percentage") {
+      finalPrice = Math.round(tier.price * (1 - code.discount_amount / 100) * 100) / 100;
+    } else {
+      finalPrice = Math.round((tier.price - code.discount_amount) * 100) / 100;
+    }
+
+    // SumUp minimum EUR 1.00
+    if (finalPrice < 1.00) {
+      throw new Error("Lo sconto porterebbe il prezzo sotto il minimo di 1,00 EUR");
+    }
+
+    validatedDiscountCodeId = code.id;
+  }
+
   // Generate unique checkout reference
   const checkoutReference = crypto.randomUUID();
 
@@ -710,7 +763,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
 
   // Create SumUp checkout
   const response = await createCheckout({
-    amount: tier.price,
+    amount: finalPrice,
     currency: "EUR",
     description: `${event.title} - ${tier.name}`,
     checkoutReference,
@@ -729,6 +782,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string) {
       user_id: user.id,
       sumup_checkout_id: response.id,
       status: "pending",
+      discount_code_id: validatedDiscountCodeId,
     });
 
   if (insertError) {
