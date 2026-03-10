@@ -20,6 +20,7 @@
 - [x] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
 - [x] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [x] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
+- [ ] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
 
 ## Phase Details
 
@@ -106,6 +107,21 @@ Plans:
 - [x] 24-02-PLAN.md -- Core guest list: add/view/remove, processing pipeline, invitation email (GSTL-01, GSTL-02, GSTL-03, GSTL-04, GSTL-05, GSTL-06, GSTL-07, GSTL-08, GSTL-13)
 - [x] 24-03-PLAN.md -- Bulk operations: CSV import, clone, name-based check-in (GSTL-10, GSTL-11, GSTL-12)
 
+### Phase 25: Guest List Wiring Fixes
+**Goal:** Wire all orphaned guest list components — CSVImport rendering, organizer navigation links, scanner guest list check-in, and PostHog tracking for guest list operations
+**Depends on:** Phase 24 (fixes gaps found in Phase 24 audit)
+**Requirements:** GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12
+**Gap Closure:** Closes gaps from v1.3 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. CSVImport component is rendered inside GuestListClient and accessible from the guest list page UI
+  2. Organizer can navigate to the guest list page from the event management UI (EventList or event detail)
+  3. ScannerClient renders guest list entries alongside ticket holders and supports name-based check-in via POST API
+  4. Guest list operations (add, remove, CSV import, check-in) fire PostHog capture events
+**Plans:** 0/1 plans
+
+Plans:
+- [ ] 25-01-PLAN.md -- Wire CSVImport, navigation links, scanner integration, PostHog tracking (GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12)
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -115,7 +131,8 @@ Plans:
 | 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
+| 25. Guest List Wiring Fixes | 0/1 | Planned     | - |
 
 ---
 *Roadmap created: 2026-03-09*
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-10*
