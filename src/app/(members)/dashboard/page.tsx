@@ -11,6 +11,7 @@ import LogoutButton from "@/components/auth/LogoutButton";
 import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import DashboardDrinkTokens from "./DashboardDrinkTokens";
+import ManagementSection from "@/components/account/ManagementSection";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -161,8 +162,8 @@ export default async function DashboardPage() {
   const role = (headersList.get("x-user-role") as UserRole) || null;
   const status = (headersList.get("x-user-status") as UserStatus) || null;
 
+  const isStaff = role === "master" || role === "organizer";
   const isPendingOrRejected = status === "pending" || status === "rejected";
-
 
   return (
     <div className="min-h-dvh pb-24">
@@ -364,6 +365,10 @@ export default async function DashboardPage() {
               </div>
             </div>
 
+            {/* Management Tools — staff only */}
+            {isStaff && (
+              <ManagementSection role={role as "master" | "organizer"} />
+            )}
           </>
         )}
       </AnimatedSection>
