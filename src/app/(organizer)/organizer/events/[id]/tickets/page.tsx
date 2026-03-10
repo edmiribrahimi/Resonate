@@ -55,6 +55,14 @@ export default async function TicketTiersPage({ params }: PageProps) {
     redirect("/organizer/events");
   }
 
+  // Count ALL parties for this event (to decide if event pass section is relevant)
+  const { count: totalPartyCount } = await supabase
+    .from("event_parties")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  const showEventPass = (totalPartyCount ?? 0) > 1;
+
   // Fetch paid parties for this event
   const { data: parties } = await supabase
     .from("event_parties")
@@ -207,26 +215,28 @@ export default async function TicketTiersPage({ params }: PageProps) {
       </header>
 
       <div className="px-6 space-y-8">
-        {/* Event Pass Tiers (event-level) */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Event Pass Tiers
-          </h2>
+        {/* Event Pass Tiers (event-level) -- only show when multiple parties exist */}
+        {showEventPass && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              Event Pass Tiers
+            </h2>
 
-          <AddTierForm eventId={eventId} partyId={null} />
+            <AddTierForm eventId={eventId} partyId={null} />
 
-          {eventLevelTiers.length === 0 ? (
-            <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
-              <p className="text-muted text-sm">No event-level tiers yet. Add one to offer an all-access pass.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {eventLevelTiers.map((tier) => (
-                <TierCard key={tier.id} tier={tier} eventId={eventId} />
-              ))}
-            </div>
-          )}
-        </div>
+            {eventLevelTiers.length === 0 ? (
+              <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+                <p className="text-muted text-sm">No event-level tiers yet. Add one to offer an all-access pass.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {eventLevelTiers.map((tier) => (
+                  <TierCard key={tier.id} tier={tier} eventId={eventId} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Party-specific tiers */}
         {(parties ?? []).length === 0 ? (
