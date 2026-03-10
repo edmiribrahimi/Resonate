@@ -13,6 +13,14 @@ interface BuyerData {
   memberEmail: string;
   tierName: string;
   purchaseDate: string;
+  discountCode?: string | null;
+}
+
+interface DiscountSummary {
+  code: string;
+  uses: number;
+  discount_type: "percentage" | "fixed";
+  discount_amount: number;
 }
 
 interface SalesDashboardProps {
@@ -21,6 +29,7 @@ interface SalesDashboardProps {
   buyers: BuyerData[];
   totalRevenue: number;
   totalSold: number;
+  discountSummary?: DiscountSummary[];
 }
 
 function formatEUR(amount: number) {
@@ -46,6 +55,7 @@ export default function SalesDashboard({
   buyers,
   totalRevenue,
   totalSold,
+  discountSummary,
 }: SalesDashboardProps) {
   return (
     <div className="space-y-6">
@@ -139,6 +149,7 @@ export default function SalesDashboard({
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Email</th>
                       <th className="px-4 py-3 font-medium">Tier</th>
+                      <th className="px-4 py-3 font-medium">Sconto</th>
                       <th className="px-4 py-3 font-medium">Date</th>
                     </tr>
                   </thead>
@@ -158,6 +169,13 @@ export default function SalesDashboard({
                           <span className="rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
                             {buyer.tierName}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {buyer.discountCode ? (
+                            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+                              {buyer.discountCode}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-muted">
                           {formatDate(buyer.purchaseDate)}
@@ -189,15 +207,54 @@ export default function SalesDashboard({
                       {buyer.tierName}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-muted">
-                    {formatDate(buyer.purchaseDate)}
-                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="text-xs text-muted">
+                      {formatDate(buyer.purchaseDate)}
+                    </p>
+                    {buyer.discountCode && (
+                      <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+                        {buyer.discountCode}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </>
         )}
       </div>
+
+      {/* Discount Code Summary */}
+      {discountSummary && discountSummary.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+            Codici Sconto
+          </h2>
+          <div className="space-y-2">
+            {discountSummary.map((ds) => (
+              <div
+                key={ds.code}
+                className="flex items-center justify-between rounded-xl border border-card-border bg-card p-3"
+              >
+                <div>
+                  <p className="text-sm font-mono font-semibold text-foreground">
+                    {ds.code}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {ds.discount_type === "percentage"
+                      ? `${ds.discount_amount}%`
+                      : formatEUR(ds.discount_amount)}{" "}
+                    sconto
+                  </p>
+                </div>
+                <p className="text-sm font-semibold text-foreground">
+                  {ds.uses} {ds.uses === 1 ? "uso" : "usi"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

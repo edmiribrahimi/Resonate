@@ -6,6 +6,8 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import MobileNav from "@/components/layout/MobileNav";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
+import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
+import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
 import RefundActions from "./RefundActions";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -91,6 +93,54 @@ export default async function TicketTiersPage({ params }: PageProps) {
       }
       tiersByParty.get(partyId)!.push(tier);
     }
+  }
+
+  // Fetch discount codes for this event's paid parties
+  const { data: discountCodes } = await supabase
+    .from("discount_codes")
+    .select("*, discount_code_tiers(tier_id)")
+    .in("party_id", (parties ?? []).map((p) => p.id))
+    .order("created_at", { ascending: true });
+
+  // Compute usage counts for each discount code
+  const discountCodesWithUsage = await Promise.all(
+    (discountCodes ?? []).map(async (dc) => {
+      const { count } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("discount_code_id", dc.id);
+
+      // Get tier names for restricted codes
+      const restrictedTierIds = (
+        dc.discount_code_tiers ?? []
+      ).map((t: { tier_id: string }) => t.tier_id);
+      const tierNames = restrictedTierIds
+        .map(
+          (tid: string) => tiersWithSold.find((t) => t.id === tid)?.name
+        )
+        .filter(Boolean) as string[];
+
+      return {
+        id: dc.id,
+        party_id: dc.party_id,
+        code: dc.code,
+        discount_type: dc.discount_type as "percentage" | "fixed",
+        discount_amount: dc.discount_amount,
+        max_uses: dc.max_uses,
+        is_active: dc.is_active,
+        used: count ?? 0,
+        tier_names: tierNames,
+      };
+    })
+  );
+
+  // Group discount codes by party
+  const discountsByParty = new Map<string, typeof discountCodesWithUsage>();
+  for (const dc of discountCodesWithUsage) {
+    if (!discountsByParty.has(dc.party_id)) {
+      discountsByParty.set(dc.party_id, []);
+    }
+    discountsByParty.get(dc.party_id)!.push(dc);
   }
 
   // Fetch sold tickets for this event
@@ -206,6 +256,42 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     ))}
                   </div>
                 )}
+
+                {/* Discount Codes for this party */}
+                <div className="mt-6 space-y-4">
+                  <h3 className="text-base font-semibold text-foreground">
+                    Codici Sconto
+                  </h3>
+                  <AddDiscountCodeForm
+                    eventId={eventId}
+                    partyId={party.id}
+                    tiers={(tiersByParty.get(party.id) ?? []).map((t) => ({
+                      id: t.id,
+                      name: t.name,
+                    }))}
+                  />
+                  {(discountsByParty.get(party.id) ?? []).length === 0 ? (
+                    <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+                      <p className="text-muted text-sm">
+                        Nessun codice sconto per questo sub-event.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(discountsByParty.get(party.id) ?? []).map((dc) => (
+                        <DiscountCodeCard
+                          key={dc.id}
+                          discountCode={dc}
+                          eventId={eventId}
+                          tiers={(tiersByParty.get(party.id) ?? []).map((t) => ({
+                            id: t.id,
+                            name: t.name,
+                          }))}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })

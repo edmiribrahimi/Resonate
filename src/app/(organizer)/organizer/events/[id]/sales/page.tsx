@@ -75,14 +75,58 @@ export default async function OrganizerSalesPage({
     .eq("event_id", eventId)
     .eq("ticket_type", "guest_list");
 
-  // Fetch buyers with profile and tier joins
+  // Fetch buyers with profile and tier joins (including discount_code_id)
   const { data: rawBuyers } = await supabase
     .from("tickets")
     .select(
-      "id, amount_paid, created_at, tier_id, ticket_type, user_id, profiles!user_id(full_name, email), ticket_tiers!tier_id(name)"
+      "id, amount_paid, created_at, tier_id, ticket_type, user_id, discount_code_id, profiles!user_id(full_name, email), ticket_tiers!tier_id(name)"
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
+
+  // Fetch discount codes used in this event
+  const discountCodeIds = [
+    ...new Set(
+      (rawBuyers ?? [])
+        .map((b) => (b as { discount_code_id?: string }).discount_code_id)
+        .filter(Boolean)
+    ),
+  ] as string[];
+
+  let discountCodeMap = new Map<string, string>();
+  let discountSummaryData: {
+    code: string;
+    uses: number;
+    discount_type: "percentage" | "fixed";
+    discount_amount: number;
+  }[] = [];
+
+  if (discountCodeIds.length > 0) {
+    const { data: codes } = await supabase
+      .from("discount_codes")
+      .select("id, code, discount_type, discount_amount")
+      .in("id", discountCodeIds);
+
+    for (const c of codes ?? []) {
+      discountCodeMap.set(c.id, c.code);
+    }
+
+    // Build discount summary
+    const useCounts = new Map<string, number>();
+    for (const b of rawBuyers ?? []) {
+      const dcId = (b as { discount_code_id?: string }).discount_code_id;
+      if (dcId) {
+        useCounts.set(dcId, (useCounts.get(dcId) ?? 0) + 1);
+      }
+    }
+
+    discountSummaryData = (codes ?? []).map((c) => ({
+      code: c.code,
+      uses: useCounts.get(c.id) ?? 0,
+      discount_type: c.discount_type as "percentage" | "fixed",
+      discount_amount: c.discount_amount,
+    }));
+  }
 
   const buyers = (rawBuyers ?? []).map((b) => {
     const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
@@ -90,14 +134,17 @@ export default async function OrganizerSalesPage({
       ? b.ticket_tiers[0]
       : b.ticket_tiers;
     const ticketType = (b as { ticket_type?: string }).ticket_type;
+    const dcId = (b as { discount_code_id?: string }).discount_code_id;
     return {
       id: b.id,
       memberName: (profile as { full_name?: string })?.full_name ?? "Unknown",
       memberEmail: (profile as { email?: string })?.email ?? "",
-      tierName: ticketType === "guest_list"
-        ? "Guest List"
-        : (tier as { name?: string })?.name ?? "Unknown",
+      tierName:
+        ticketType === "guest_list"
+          ? "Guest List"
+          : (tier as { name?: string })?.name ?? "Unknown",
       purchaseDate: b.created_at,
+      discountCode: dcId ? discountCodeMap.get(dcId) ?? null : null,
     };
   });
 
@@ -131,6 +178,7 @@ export default async function OrganizerSalesPage({
           buyers={buyers}
           totalRevenue={totalRevenue}
           totalSold={totalSold}
+          discountSummary={discountSummaryData}
         />
       </div>
 
