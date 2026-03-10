@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
 status: in_progress
-stopped_at: Completed 26-01-PLAN.md (Discount Codes Database Foundation)
-last_updated: "2026-03-10T02:09:46Z"
+stopped_at: Completed 26-03-PLAN.md (Organizer CRUD UI + Sales Dashboard Discount Tracking)
+last_updated: "2026-03-10T02:16:53Z"
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 20
 ---
 
 # State: Resonate
@@ -24,12 +24,12 @@ progress:
 
 ## Current Position
 
-**Phase:** Phase 26 (Discount Codes)
-**Plan:** 1/3
-**Status:** In progress
+**Phase:** Phase 26 (Discount Codes) -- COMPLETE
+**Plan:** 3/3
+**Status:** Phase 26 complete, ready for Phase 27
 
 ```
-[Phase Progress]  ███████████████░░░░░  6/9 phases
+[Phase Progress]  ████████████████░░░░  7/9 phases
 ```
 
 ## Performance Metrics
@@ -57,6 +57,7 @@ progress:
 | Phase 24 Plan 03 | 2 tasks, 282s |
 | Phase 25 Plan 01 | 3 tasks, 229s |
 | Phase 26 Plan 01 | 2 tasks, 211s |
+| Phase 26 Plan 02 | 2 tasks, 173s |
 
 ## Decisions
 
@@ -128,6 +129,10 @@ progress:
 - [26-01] Open SELECT RLS for discount_codes (buyers validate codes; distribution via passaparola)
 - [26-01] Italian error messages for discount code validation (Codice non valido, Codice non piu attivo, Codice esaurito)
 - [26-01] p_discount_code_id DEFAULT NULL preserves backward compatibility with existing reserve_ticket() calls
+- [26-02] Explicit "Applica" button for discount code validation (not debounced input, clearer UX)
+- [26-02] Discount code input hidden for event-level tiers (partyId null) since codes are party-scoped
+- [26-02] Client-side EUR 1.00 guard: tiers below minimum keep original price display (no green price)
+- [26-02] Anonymous user intent preserves discountCodeId in localStorage for post-registration purchase
 
 ## Accumulated Context
 
@@ -159,10 +164,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-10T02:09:46Z
-**Stopped at:** Completed 26-01-PLAN.md (Discount Codes Database Foundation)
-**Next step:** Execute 26-02-PLAN.md (Buyer-side discount code input + purchase flow + webhook integration)
+**Last session:** 2026-03-10T02:15:39Z
+**Stopped at:** Completed 26-02-PLAN.md (Buyer-Side Discount Code Integration)
+**Next step:** Execute 26-03-PLAN.md (Organizer CRUD UI components + sales dashboard discount tracking)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-10T02:09:46Z*
+*Last updated: 2026-03-10T02:15:39Z*
