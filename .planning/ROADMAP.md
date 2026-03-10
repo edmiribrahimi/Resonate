@@ -137,7 +137,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 26-01-PLAN.md -- Database schema, types, CRUD + validation server actions (SC-01, SC-03)
+- [x] 26-01-PLAN.md -- Database schema, types, CRUD + validation server actions (SC-01, SC-03)
 - [ ] 26-02-PLAN.md -- Buyer-side discount code input + purchase flow + webhook integration (SC-02, SC-03, SC-04)
 - [ ] 26-03-PLAN.md -- Organizer CRUD UI components + sales dashboard discount tracking (SC-01, SC-04)
 
@@ -175,7 +175,7 @@ Plans:
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
-| 26. Discount Codes | 0/3 | Planned     | - |
+| 26. Discount Codes | 1/3 | In Progress | - |
 | 27. Guest Navigation Fix | 0/1 | Planned     | - |
 | 28. Single Event Tier Fix | 0/1 | Planned     | - |
 

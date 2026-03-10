@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
 status: in_progress
-stopped_at: Phase 26 (Discount Codes) not yet planned
-last_updated: "2026-03-10T01:00:47.065Z"
+stopped_at: Completed 26-01-PLAN.md (Discount Codes Database Foundation)
+last_updated: "2026-03-10T02:09:46Z"
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
 ---
 
 # State: Resonate
@@ -20,16 +20,16 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 next
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 in progress
 
 ## Current Position
 
-**Phase:** Phase 26 (Discount Codes) -- not yet planned
-**Plan:** 0/?
+**Phase:** Phase 26 (Discount Codes)
+**Plan:** 1/3
 **Status:** In progress
 
 ```
-[Phase Progress]  ███████████████░░░░░  6/8 phases
+[Phase Progress]  ███████████████░░░░░  6/9 phases
 ```
 
 ## Performance Metrics
@@ -56,6 +56,7 @@ progress:
 | Phase 24 Plan 02 | 2 tasks, 269s |
 | Phase 24 Plan 03 | 2 tasks, 282s |
 | Phase 25 Plan 01 | 3 tasks, 229s |
+| Phase 26 Plan 01 | 2 tasks, 211s |
 
 ## Decisions
 
@@ -123,6 +124,10 @@ progress:
 - [25-01] Guest List link placed between Sales and Media in EventList actions (logical grouping)
 - [25-01] Purple badge for guest list entries in scanner (visual distinction from ticket holders)
 - [25-01] PostHog capture calls placed after successful DB operations but before return (non-blocking analytics)
+- [26-01] Junction table (discount_code_tiers) for many-to-many discount-to-tier mapping instead of nullable tier_id
+- [26-01] Open SELECT RLS for discount_codes (buyers validate codes; distribution via passaparola)
+- [26-01] Italian error messages for discount code validation (Codice non valido, Codice non piu attivo, Codice esaurito)
+- [26-01] p_discount_code_id DEFAULT NULL preserves backward compatibility with existing reserve_ticket() calls
 
 ## Accumulated Context
 
@@ -154,10 +159,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-10T00:54:22Z
-**Stopped at:** Completed 25-01 (Guest List Integration Fixes)
-**Next step:** Phase 25 complete -- all v1.3 phases and gap closure done
+**Last session:** 2026-03-10T02:09:46Z
+**Stopped at:** Completed 26-01-PLAN.md (Discount Codes Database Foundation)
+**Next step:** Execute 26-02-PLAN.md (Buyer-side discount code input + purchase flow + webhook integration)
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-10T00:54:22Z*
+*Last updated: 2026-03-10T02:09:46Z*
