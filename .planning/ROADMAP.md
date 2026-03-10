@@ -142,14 +142,14 @@ Plans:
 ### Phase 27: Guest Navigation Fix
 **Goal:** Non-authenticated guests can discover how to register via a Home tab that links to the landing page with registration CTA
 **Depends on:** Phase 20
-**Requirements:** TBD
+**Requirements:** GNAV-01, GNAV-02
 **Success Criteria** (what must be TRUE):
   1. Guest (non-authenticated) sees Home/Events/Gallery in bottom nav; Home tab links to the landing page with clear registration CTA
   2. Authenticated member sees Events/Gallery/Account (no Home tab)
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 27 to break down)
+- [ ] 27-01-PLAN.md -- Aggiungere Home tab per guest non autenticati con link alla landing page (GNAV-01, GNAV-02)
 
 ## Progress
 
@@ -162,7 +162,7 @@ Plans:
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
 | 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
 | 26. Discount Codes | 0/? | Planned     | - |
-| 27. Guest Navigation Fix | 0/? | Planned     | - |
+| 27. Guest Navigation Fix | 0/1 | Planned     | - |
 | 28. Single Event Tier Fix | 0/? | Planned     | - |
 
 ### Phase 28: Single Event Tier Fix
