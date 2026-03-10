@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
-status: planning
-stopped_at: Completed 26-03-PLAN.md (Organizer CRUD UI + Sales Dashboard Discount Tracking)
-last_updated: "2026-03-10T02:24:23.402Z"
+status: executing
+stopped_at: Completed 27-01-PLAN.md (Guest Navigation Home Tab) and 28-01-PLAN.md (Single Event Tier Fix)
+last_updated: "2026-03-10T02:28:30Z"
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 22
-  completed_plans: 20
+  completed_phases: 9
+  total_plans: 23
+  completed_plans: 22
 ---
 
 # State: Resonate
@@ -20,16 +20,16 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 26 complete, Phase 27 next
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 27 and 28 complete
 
 ## Current Position
 
-**Phase:** Phase 26 (Discount Codes) -- COMPLETE
-**Plan:** 3/3
-**Status:** Ready to plan
+**Phase:** Phase 27 (Guest Navigation Fix) + Phase 28 (Single Event Tier Fix) -- COMPLETE
+**Plan:** All plans complete
+**Status:** Complete
 
 ```
-[Phase Progress]  ████████████████░░░░  7/9 phases
+[Phase Progress]  ████████████████████  9/9 phases
 ```
 
 ## Performance Metrics
@@ -38,7 +38,7 @@ progress:
 |--------|-------|
 | Phases completed | 7/7 |
 | Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23), 3/3 (Phase 24), 1/1 (Phase 25), 3/3 (Phase 26) |
-| Requirements shipped | 54/54 |
+| Requirements shipped | 58/58 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
 | Phase 20 Plan 03 | 2 tasks, 118s |
@@ -59,6 +59,8 @@ progress:
 | Phase 26 Plan 01 | 2 tasks, 211s |
 | Phase 26 Plan 02 | 2 tasks, 173s |
 | Phase 26 Plan 03 | 2 tasks, 233s |
+| Phase 27 Plan 01 | 1 task, 98s |
+| Phase 28 Plan 01 | 2 tasks, 102s |
 
 ## Decisions
 
@@ -138,6 +140,11 @@ progress:
 - [26-03] DiscountCodeCard derives selectedTierIds from tier_names matching (display-to-id resolution)
 - [26-03] Backward-compatible discountSummary prop (optional, existing SalesDashboard usage unchanged)
 - [26-03] Admin sales page receives identical discount tracking to organizer sales page
+- [27-01] hideWhenAuth boolean field on NavItem interface (extensible for future guest-only items)
+- [27-01] Exact pathname match for "/" to prevent always-active state on Home tab
+- [28-01] Organizer/admin pages use separate count query for total parties (existing paid-only query insufficient)
+- [28-01] Buyer page reuses existing parties array length (already fetches all access types, no extra query)
+- [28-01] Event-level tier DB fetch skipped for single-party events on buyer page (avoids unnecessary queries)
 
 ## Accumulated Context
 
@@ -169,9 +176,9 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-10T02:16:53Z
-**Stopped at:** Completed 26-03-PLAN.md (Organizer CRUD UI + Sales Dashboard Discount Tracking)
-**Next step:** Execute Phase 27 (Guest Navigation Fix)
+**Last session:** 2026-03-10T02:28:03Z
+**Stopped at:** Completed 28-01-PLAN.md (Single Event Tier Fix)
+**Next step:** Execute Phase 27 (Guest Navigation Fix) or remaining phases
 
 ---
 *State initialized: 2026-03-09*
