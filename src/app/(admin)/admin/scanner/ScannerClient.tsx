@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
 // UUID pattern: 8-4-4-4-12 hex chars
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -8,6 +8,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/i;
 // Membership QR: URL containing code=RSN-
 const MEMBERSHIP_PATTERN = /code=RSN-/i;
+
+type FilterTab = "all" | "not_arrived" | "checked_in";
 
 interface Attendee {
   ticketId: string | null;
@@ -38,7 +40,10 @@ export default function ScannerClient() {
   const [message, setMessage] = useState("");
   const [attendance, setAttendance] = useState<AttendanceEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("not_arrived");
+  const [showScanner, setShowScanner] = useState(false);
   const scannerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const fetchAttendance = useCallback(async (search?: string) => {
     try {
@@ -69,6 +74,8 @@ export default function ScannerClient() {
   }, [status, fetchAttendance, searchQuery]);
 
   useEffect(() => {
+    if (!showScanner) return;
+
     let scanner: unknown;
 
     async function initScanner() {
@@ -95,7 +102,7 @@ export default function ScannerClient() {
         (scanner as { clear: () => Promise<void> }).clear().catch(() => {});
       }
     };
-  }, []);
+  }, [showScanner]);
 
   const handleVerify = async (code: string) => {
     try {
@@ -188,142 +195,228 @@ export default function ScannerClient() {
     });
   }
 
+  // Compute filtered attendees per event
+  const filteredAttendance = useMemo(() => {
+    return attendance.map((evt) => {
+      let filtered = evt.attendees;
+      if (activeFilter === "not_arrived") {
+        filtered = filtered.filter((a) => !a.checkedIn);
+      } else if (activeFilter === "checked_in") {
+        filtered = filtered.filter((a) => a.checkedIn);
+      }
+      return { ...evt, filteredAttendees: filtered };
+    });
+  }, [attendance, activeFilter]);
+
+  // Global counts across all events
+  const totalAttendees = attendance.reduce(
+    (sum, evt) => sum + evt.attendees.length,
+    0
+  );
+  const totalCheckedIn = attendance.reduce(
+    (sum, evt) => sum + evt.attendees.filter((a) => a.checkedIn).length,
+    0
+  );
+  const totalNotArrived = totalAttendees - totalCheckedIn;
+
+  const FILTER_TABS: { key: FilterTab; label: string; count: number }[] = [
+    { key: "all", label: "All", count: totalAttendees },
+    { key: "not_arrived", label: "Not Arrived", count: totalNotArrived },
+    { key: "checked_in", label: "Checked In", count: totalCheckedIn },
+  ];
 
   return (
-    <div className="min-h-dvh bg-background p-6 pb-24">
-      <h1 className="mb-6 text-2xl font-bold">Check-in</h1>
-
-      {/* Search input -- always visible */}
-      <div className="relative mb-4">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search attendee by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-xl border border-card-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/50 focus:border-accent focus:outline-none"
-        />
-      </div>
-
-      {/* Attendee list -- always visible */}
-      {attendance.length > 0 && (
-        <div className="space-y-4 mb-6">
-          {attendance.map((evt) => {
-            const pct = evt.totalTickets > 0
-              ? Math.round((evt.checkedIn / evt.totalTickets) * 100)
-              : 0;
-
-            return (
-              <div
-                key={evt.partyId}
-                className="rounded-xl border border-card-border bg-card p-4 space-y-3"
-              >
-                {/* Party header */}
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {evt.eventTitle}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {evt.partyTitle !== evt.eventTitle && <>{evt.partyTitle} &middot; </>}{evt.date} &middot; {evt.time?.slice(0, 5)}
-                  </p>
-                </div>
-
-                {/* Progress bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted">Checked in</span>
-                    <span className="text-xs font-semibold text-foreground">
-                      {evt.checkedIn} / {evt.totalTickets} ({pct}%)
-                      {evt.guestListCount > 0 && (
-                        <span className="text-muted font-normal"> + {evt.guestListCount} guest list</span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-card-border overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Attendee list */}
-                <div>
-                  {evt.attendees.length > 0 ? (
-                    <div>
-                      {evt.attendees.map((a) => (
-                        <div
-                          key={a.ticketId || a.guestListEntryId}
-                          className="flex items-center justify-between py-3 border-b border-card-border/50 last:border-0"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-foreground">{a.name}</span>
-                            {a.isGuestList && (
-                              <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-400">
-                                Guest List
-                              </span>
-                            )}
-                          </div>
-                          {a.checkedIn ? (
-                            <span className="flex items-center gap-1 text-xs font-medium text-green-500">
-                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                              </svg>
-                              {a.checkedInAt ? formatCheckinTime(a.checkedInAt) : "Checked in"}
-                            </span>
-                          ) : a.isGuestList && a.guestListEntryId ? (
-                            <button
-                              onClick={() => handleGuestCheckIn(a.guestListEntryId!)}
-                              className="rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent hover:bg-accent/30 transition-colors"
-                            >
-                              Check in
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted">Not arrived</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted py-2">No attendees found</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+    <div className="min-h-dvh bg-background pb-24">
+      {/* Sticky header with search and filters */}
+      <div className="sticky top-0 z-10 bg-background px-6 pt-6 pb-3">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Check-in</h1>
+          <button
+            onClick={() => setShowScanner((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              showScanner
+                ? "bg-accent text-white"
+                : "bg-card border border-card-border text-muted hover:text-foreground"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5Z" />
+            </svg>
+            QR Scan
+          </button>
         </div>
-      )}
 
-      {/* QR Scanner section */}
-      <div className="border-t border-card-border/50 pt-4">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">QR Scanner</h2>
+        {/* Search */}
+        <div className="relative mb-3">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            ref={searchRef}
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-xl border border-card-border bg-card py-3 pl-10 pr-10 text-sm text-foreground placeholder:text-muted/50 focus:border-accent focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
 
-        {!result ? (
-          <div ref={scannerRef}>
-            <div id="qr-reader" className="overflow-hidden rounded-2xl" />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4">
-            <div
-              className={`w-full rounded-2xl border p-8 text-center ${
-                status === "success"
-                  ? "border-green-500/30 bg-green-500/10"
-                  : status === "error"
-                  ? "border-accent/30 bg-accent/10"
-                  : "border-card-border bg-card"
+        {/* Filter tabs */}
+        <div className="flex gap-1 rounded-xl bg-card p-1">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveFilter(tab.key)}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                activeFilter === tab.key
+                  ? "bg-accent/20 text-accent"
+                  : "text-muted hover:text-foreground"
               }`}
             >
-              <p className="text-xl font-semibold">{message || "Verifying..."}</p>
-            </div>
-
-            <button
-              onClick={resetScanner}
-              className="w-full rounded-full bg-accent py-3 font-medium text-white hover:bg-accent-hover active:scale-95 active:opacity-80 transition-transform"
-            >
-              Scan another QR
+              {tab.label}{" "}
+              <span className="opacity-60">({tab.count})</span>
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-6">
+        {/* QR Scanner - collapsible */}
+        {showScanner && (
+          <div className="mb-4 rounded-xl border border-card-border bg-card p-4">
+            {!result ? (
+              <div ref={scannerRef}>
+                <div id="qr-reader" className="overflow-hidden rounded-2xl" />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <div
+                  className={`w-full rounded-2xl border p-8 text-center ${
+                    status === "success"
+                      ? "border-green-500/30 bg-green-500/10"
+                      : status === "error"
+                      ? "border-accent/30 bg-accent/10"
+                      : "border-card-border bg-card"
+                  }`}
+                >
+                  <p className="text-xl font-semibold">{message || "Verifying..."}</p>
+                </div>
+
+                <button
+                  onClick={resetScanner}
+                  className="w-full rounded-full bg-accent py-3 font-medium text-white hover:bg-accent-hover active:scale-95 active:opacity-80 transition-transform"
+                >
+                  Scan another QR
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Attendee list */}
+        {filteredAttendance.length > 0 && (
+          <div className="space-y-4">
+            {filteredAttendance.map((evt) => {
+              const totalForParty = evt.attendees.length;
+              const checkedInForParty = evt.attendees.filter((a) => a.checkedIn).length;
+              const pct = totalForParty > 0
+                ? Math.round((checkedInForParty / totalForParty) * 100)
+                : 0;
+
+              return (
+                <div
+                  key={evt.partyId}
+                  className="rounded-xl border border-card-border bg-card p-4 space-y-3"
+                >
+                  {/* Party header */}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {evt.eventTitle}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {evt.partyTitle !== evt.eventTitle && <>{evt.partyTitle} &middot; </>}{evt.date} &middot; {evt.time?.slice(0, 5)}
+                    </p>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted">Checked in</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {checkedInForParty} / {totalForParty}{evt.guestListCount > 0 && (
+                          <span className="text-purple-400 font-normal"> (+{evt.guestListCount} guest list)</span>
+                        )} ({pct}%)
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-card-border overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Attendee list */}
+                  <div>
+                    {evt.filteredAttendees.length > 0 ? (
+                      <div>
+                        {evt.filteredAttendees.map((a) => (
+                          <div
+                            key={a.ticketId || a.guestListEntryId}
+                            className="flex items-center justify-between py-3 border-b border-card-border/50 last:border-0"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <span className="text-sm text-foreground truncate">{a.name}</span>
+                              {a.isGuestList && (
+                                <span className="shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-400">
+                                  Guest List
+                                </span>
+                              )}
+                            </div>
+                            {a.checkedIn ? (
+                              <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-green-500">
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                {a.checkedInAt ? formatCheckinTime(a.checkedInAt) : "Checked in"}
+                              </span>
+                            ) : a.isGuestList && a.guestListEntryId ? (
+                              <button
+                                onClick={() => handleGuestCheckIn(a.guestListEntryId!)}
+                                className="shrink-0 rounded-full bg-accent/20 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/30 active:scale-95 transition-all"
+                              >
+                                Check in
+                              </button>
+                            ) : (
+                              <span className="shrink-0 text-xs text-muted">Not arrived</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted py-2">
+                        {activeFilter === "not_arrived"
+                          ? "Everyone has arrived!"
+                          : activeFilter === "checked_in"
+                            ? "No one checked in yet"
+                            : "No attendees found"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

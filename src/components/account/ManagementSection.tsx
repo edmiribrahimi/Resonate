@@ -14,6 +14,7 @@ const masterLinks = [
   { label: "Venues", href: "/admin/venues" },
   { label: "Newsletter", href: "/admin/newsletter" },
   { label: "Finance", href: "/admin/finance" },
+  { label: "Analytics", href: "/admin/analytics" },
 ];
 
 const organizerLinks = [

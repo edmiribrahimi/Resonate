@@ -11,6 +11,8 @@ export interface EventRevenue {
   netDrinks: number;
   totalGross: number;
   totalNet: number;
+  discountedTickets: number;
+  totalDiscount: number;
 }
 
 export interface DailyVelocity {
@@ -58,7 +60,7 @@ export async function fetchEventRevenue(
   // references ticket_id, not event_id directly.
   const [ticketsResult, drinkOrdersResult] =
     await Promise.all([
-      supabase.from("tickets").select("id, amount_paid").eq("event_id", eventId),
+      supabase.from("tickets").select("id, amount_paid, discount_code_id, tier_id").eq("event_id", eventId),
       supabase
         .from("drink_orders")
         .select("total_amount, refunded_amount")
@@ -94,6 +96,24 @@ export async function fetchEventRevenue(
   const netTickets = grossTickets - ticketRefundsTotal;
   const netDrinks = grossDrinks - drinkRefunds;
 
+  // Discount impact: for tickets with discount_code_id, look up original tier price
+  const discountedTicketRows = (ticketsResult.data ?? []).filter(
+    (t) => t.discount_code_id && t.tier_id
+  );
+  let totalDiscount = 0;
+  if (discountedTicketRows.length > 0) {
+    const tierIds = [...new Set(discountedTicketRows.map((t) => t.tier_id as string))];
+    const { data: tiers } = await supabase
+      .from("ticket_tiers")
+      .select("id, price")
+      .in("id", tierIds);
+    const tierMap = new Map((tiers ?? []).map((t) => [t.id, t.price]));
+    for (const ticket of discountedTicketRows) {
+      const originalPrice = tierMap.get(ticket.tier_id as string) ?? ticket.amount_paid;
+      totalDiscount += originalPrice - ticket.amount_paid;
+    }
+  }
+
   return {
     grossTickets,
     grossDrinks,
@@ -101,6 +121,8 @@ export async function fetchEventRevenue(
     netDrinks,
     totalGross: grossTickets + grossDrinks,
     totalNet: netTickets + netDrinks,
+    discountedTickets: discountedTicketRows.length,
+    totalDiscount,
   };
 }
 

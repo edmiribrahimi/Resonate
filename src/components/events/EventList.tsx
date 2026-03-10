@@ -100,11 +100,9 @@ export default function EventList({
 
   function formatDate(dateStr: string) {
     try {
-      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      const d = new Date(dateStr + "T00:00:00");
+      const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
     } catch {
       return dateStr;
     }
@@ -194,6 +192,13 @@ export default function EventList({
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Media
+            </Link>
+
+            <Link
+              href={`${basePath}/${event.id}/analytics`}
+              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
+            >
+              Analytics
             </Link>
 
             {event.is_published ? (

@@ -38,6 +38,11 @@ export default function RevenueCard({ revenue }: { revenue: EventRevenue }) {
                 format={eur}
               />
             </p>
+            {revenue.discountedTickets > 0 && (
+              <p className="text-purple-400">
+                Discounts ({revenue.discountedTickets}): −<CountUp value={revenue.totalDiscount} format={eur} />
+              </p>
+            )}
           </div>
         </div>
 

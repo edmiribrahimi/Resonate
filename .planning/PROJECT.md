@@ -8,28 +8,28 @@ Resonate (re:sonate — motion music hub) is a private, invitation-driven music 
 
 Members can discover events, confirm attendance, and buy tickets within a trusted, curated community — the gating mechanism (referral + approval) is what makes the community valuable.
 
-## Current Milestone: v1.3 Refinement & Intelligence
-
-**Goal:** Transform Resonate from functional to polished — comprehensive analytics for data-driven decisions, full app audit with fixes, elegant UI refinements, guest list management, and streamlined admin navigation.
-
-**Target features:**
-- Comprehensive user analytics and data collection (behavior tracking, drink purchases, expired tokens, market insights)
-- Full app audit across all domains (UX, performance, security, code quality, accessibility, SEO)
-- Layout elegance and intuitiveness improvements while maintaining minimal design
-- Guest list per event with auto-registration, auto-approval, and free ticket generation
-- Admin/organizer navigation consolidation into account button
-
 ## Current State
 
-**Shipped:** v1.2 (2026-03-07) — [milestone archive](.planning/milestones/v1.2-ROADMAP.md)
+**Shipped:** v1.3 (2026-03-10) — [milestone archive](.planning/milestones/v1.3-ROADMAP.md)
 
-All 33 v1.2 requirements implemented across 7 phases. New capabilities:
+All 60 v1.3 requirements implemented across 9 phases. New capabilities:
+- Navigation consolidated to 3-4 role-aware tabs with Account as management hub
+- Motion library (4.6kb) with enter animations, staggered lists, pressable feedback, CountUp, toast, 11 skeleton loading states
+- PostHog EU analytics + Recharts dashboards: per-event metrics, KPI overview, member insights, event comparison
+- Guest list management with auto-registration, invitation emails with QR, scanner check-in
+- Discount codes with case-insensitive validation, SumUp integration, sales tracking
+
+<details>
+<summary>v1.2 (2026-03-07)</summary>
+
+All 33 v1.2 requirements implemented across 7 phases — [archive](.planning/milestones/v1.2-ROADMAP.md):
 - Official `@sumup/sdk` migration (singleton pattern, type-safe wrappers)
 - Admin finance dashboard with transaction list, cursor-based pagination, filters, detail view
 - In-app refund management (full/partial) with confirmation flow and fee warning
 - Alternative payment methods: Satispay, MyBank, Apple Pay, Google Pay
 - Manual menu closing time per party with 1h grace period for token redemption
 - Daily cron auto-refunds expired unclaimed tokens, 24h cleanup of old tokens
+</details>
 
 <details>
 <summary>v1.1 (2026-03-06)</summary>
