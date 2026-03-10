@@ -20,7 +20,7 @@
 - [x] **Phase 22: Analytics Infrastructure & Event Metrics** - PostHog setup, trackEvent utility, analytics_events table, per-event revenue/sales/attendance views
 - [x] **Phase 23: Analytics Dashboard & Cross-Event Insights** - Admin KPI dashboard, per-member spend, drink popularity, repeat attendees, referral chains, event comparison
 - [x] **Phase 24: Guest List Management** - Per-event guest lists with auto-registration, auto-approval, free tickets, invitation emails, CSV import
-- [ ] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
+- [x] **Phase 25: Guest List Wiring Fixes** - Wire CSVImport rendering, navigation links, scanner integration, PostHog tracking
 
 ## Phase Details
 
@@ -117,10 +117,10 @@ Plans:
   2. Organizer can navigate to the guest list page from the event management UI (EventList or event detail)
   3. ScannerClient renders guest list entries alongside ticket holders and supports name-based check-in via POST API
   4. Guest list operations (add, remove, CSV import, check-in) fire PostHog capture events
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 25-01-PLAN.md -- Wire CSVImport, navigation links, scanner integration, PostHog tracking (GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12)
+- [x] 25-01-PLAN.md -- Wire CSVImport, navigation links, scanner integration, PostHog tracking (GSTL-01, GSTL-02, GSTL-10, GSTL-11, GSTL-12)
 
 ## Progress
 
@@ -131,7 +131,7 @@ Plans:
 | 22. Analytics Infrastructure & Event Metrics | 3/3 | Complete    | 2026-03-09 |
 | 23. Analytics Dashboard & Cross-Event Insights | 4/4 | Complete    | 2026-03-09 |
 | 24. Guest List Management | 3/3 | Complete    | 2026-03-09 |
-| 25. Guest List Wiring Fixes | 0/1 | Planned     | - |
+| 25. Guest List Wiring Fixes | 1/1 | Complete    | 2026-03-10 |
 
 ---
 *Roadmap created: 2026-03-09*

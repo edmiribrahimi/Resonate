@@ -41,8 +41,8 @@
 
 ### Guest List
 
-- [ ] **GSTL-01**: Organizer can add guests to event guest list by name, surname, and email (email optional)
-- [ ] **GSTL-02**: Organizer can view guest list with status per entry (invited / registered / has ticket / checked in)
+- [x] **GSTL-01**: Organizer can add guests to event guest list by name, surname, and email (email optional)
+- [x] **GSTL-02**: Organizer can view guest list with status per entry (invited / registered / has ticket / checked in)
 - [x] **GSTL-03**: System sends branded invitation email with QR code to guests with email address
 - [x] **GSTL-04**: Non-member guests with email are auto-registered and auto-approved on the platform
 - [x] **GSTL-05**: Existing approved members on guest list receive a free ticket (ticket_type: guest_list, amount_paid: 0)
@@ -50,9 +50,9 @@
 - [x] **GSTL-07**: Organizer can remove a guest from the list (warning if ticket already issued)
 - [x] **GSTL-08**: Guest list supports per-party granularity (nullable party_id: null = all parties)
 - [x] **GSTL-09**: New user registering with email matching a guest list entry is auto-approved (alternative approval path)
-- [ ] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
-- [ ] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
-- [ ] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
+- [x] **GSTL-10**: Organizer can bulk import guests via CSV (name, surname, email -- parse, validate, deduplicate, preview)
+- [x] **GSTL-11**: Organizer can clone a guest list from a previous event to a new event
+- [x] **GSTL-12**: Guests without email have no QR code -- check-in is by name lookup at the door
 - [x] **GSTL-13**: Invitation email includes event details, QR code, and link to set password and claim account
 - [x] **GSTL-14**: Profiles track approval method (approved_via: referral / guest_list / admin_manual)
 - [x] **GSTL-15**: Tickets distinguish type (ticket_type: purchased / guest_list) and sales dashboard separates paid vs free
@@ -151,19 +151,19 @@
 | ANLY-14 | Phase 23 | Complete |
 | ANLY-15 | Phase 23 | Complete |
 | ANLY-16 | Phase 23 | Complete |
-| GSTL-01 | Phase 25 | Pending |
-| GSTL-02 | Phase 25 | Pending |
-| GSTL-03 | Phase 24 | Pending |
-| GSTL-04 | Phase 24 | Pending |
-| GSTL-05 | Phase 24 | Pending |
-| GSTL-06 | Phase 24 | Pending |
-| GSTL-07 | Phase 24 | Pending |
-| GSTL-08 | Phase 24 | Pending |
+| GSTL-01 | Phase 25 | Complete |
+| GSTL-02 | Phase 25 | Complete |
+| GSTL-03 | Phase 24 | Complete |
+| GSTL-04 | Phase 24 | Complete |
+| GSTL-05 | Phase 24 | Complete |
+| GSTL-06 | Phase 24 | Complete |
+| GSTL-07 | Phase 24 | Complete |
+| GSTL-08 | Phase 24 | Complete |
 | GSTL-09 | Phase 24 | Complete |
-| GSTL-10 | Phase 25 | Pending |
-| GSTL-11 | Phase 25 | Pending |
-| GSTL-12 | Phase 25 | Pending |
-| GSTL-13 | Phase 24 | Pending |
+| GSTL-10 | Phase 25 | Complete |
+| GSTL-11 | Phase 25 | Complete |
+| GSTL-12 | Phase 25 | Complete |
+| GSTL-13 | Phase 24 | Complete |
 | GSTL-14 | Phase 24 | Complete |
 | GSTL-15 | Phase 24 | Complete |
 | GSTL-16 | Phase 24 | Complete |

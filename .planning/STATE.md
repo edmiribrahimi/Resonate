@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Refinement & Intelligence
 status: executing
-stopped_at: Completed 24-03 (Bulk Operations & Check-in Integration)
-last_updated: "2026-03-09T22:51:09Z"
+stopped_at: Completed 25-01 (Guest List Integration Fixes)
+last_updated: "2026-03-10T00:54:22Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 17
+  completed_plans: 17
 ---
 
 # State: Resonate
@@ -20,24 +20,24 @@ progress:
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.3 Refinement & Intelligence -- Phase 24 in progress
+**Current Focus:** v1.3 Refinement & Intelligence -- Phase 25 complete
 
 ## Current Position
 
-**Phase:** Phase 24 (Guest List Management)
-**Plan:** 3/3 complete
+**Phase:** Phase 25 (Guest List Wiring Fixes)
+**Plan:** 1/1 complete
 **Status:** Complete
 
 ```
-[Phase Progress]  ████████████████████  5/5 phases
+[Phase Progress]  ████████████████████  6/6 phases
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 5/5 |
-| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23) |
+| Phases completed | 6/6 |
+| Plans completed | 3/3 (Phase 20), 3/3 (Phase 21), 3/3 (Phase 22), 4/4 (Phase 23), 3/3 (Phase 24), 1/1 (Phase 25) |
 | Requirements shipped | 52/52 |
 | Phase 20 Plan 01 | 2 tasks, 219s |
 | Phase 20 Plan 02 | 2 tasks, 213s |
@@ -55,6 +55,7 @@ progress:
 | Phase 24 Plan 01 | 2 tasks, 214s |
 | Phase 24 Plan 02 | 2 tasks, 269s |
 | Phase 24 Plan 03 | 2 tasks, 282s |
+| Phase 25 Plan 01 | 3 tasks, 229s |
 
 ## Decisions
 
@@ -118,6 +119,10 @@ progress:
 - [24-03] Attendance API sorts unchecked first then alphabetical for check-in usability
 - [24-03] POST check-in returns 409 for already-checked-in guests (idempotent with feedback)
 - [24-03] fetchOrganizerEvents filters to only events with guest list entries (avoids empty clone sources)
+- [25-01] CSVImport rendered between add guest form and summary stats (natural workflow position)
+- [25-01] Guest List link placed between Sales and Media in EventList actions (logical grouping)
+- [25-01] Purple badge for guest list entries in scanner (visual distinction from ticket holders)
+- [25-01] PostHog capture calls placed after successful DB operations but before return (non-blocking analytics)
 
 ## Accumulated Context
 
@@ -144,10 +149,10 @@ progress:
 
 ## Session Continuity
 
-**Last session:** 2026-03-09T22:51:09Z
-**Stopped at:** Completed 24-03 (Bulk Operations & Check-in Integration)
-**Next step:** Phase 24 complete -- all v1.3 phases done
+**Last session:** 2026-03-10T00:54:22Z
+**Stopped at:** Completed 25-01 (Guest List Integration Fixes)
+**Next step:** Phase 25 complete -- all v1.3 phases and gap closure done
 
 ---
 *State initialized: 2026-03-09*
-*Last updated: 2026-03-09T22:51:09Z*
+*Last updated: 2026-03-10T00:54:22Z*
