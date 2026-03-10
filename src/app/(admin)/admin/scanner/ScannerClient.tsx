@@ -10,10 +10,13 @@ const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 const MEMBERSHIP_PATTERN = /code=RSN-/i;
 
 interface Attendee {
-  ticketId: string;
+  ticketId: string | null;
+  guestListEntryId: string | null;
   name: string;
   checkedIn: boolean;
   checkedInAt: string | null;
+  isGuestList: boolean;
+  hasEmail: boolean;
 }
 
 interface AttendanceEvent {
@@ -22,6 +25,7 @@ interface AttendanceEvent {
   eventTitle: string;
   time: string;
   totalTickets: number;
+  guestListCount: number;
   checkedIn: number;
   recentCheckins: { name: string; time: string }[];
   attendees: Attendee[];
@@ -145,6 +149,31 @@ export default function ScannerClient() {
     }
   };
 
+  const handleGuestCheckIn = async (guestListEntryId: string) => {
+    try {
+      const res = await fetch("/api/tickets/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestListEntryId }),
+      });
+
+      if (res.ok) {
+        setStatus("success");
+        setMessage("Check-in OK -- guest list");
+        fetchAttendance(searchQuery || undefined);
+      } else if (res.status === 409) {
+        setStatus("error");
+        setMessage("Already checked in");
+      } else {
+        setStatus("error");
+        setMessage("Check-in failed");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Connection error");
+    }
+  };
+
   const resetScanner = () => {
     setResult(null);
     setStatus("idle");
@@ -213,6 +242,9 @@ export default function ScannerClient() {
                     <span className="text-xs text-muted">Checked in</span>
                     <span className="text-xs font-semibold text-foreground">
                       {evt.checkedIn} / {evt.totalTickets} ({pct}%)
+                      {evt.guestListCount > 0 && (
+                        <span className="text-muted font-normal"> + {evt.guestListCount} guest list</span>
+                      )}
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-card-border overflow-hidden">
@@ -229,10 +261,17 @@ export default function ScannerClient() {
                     <div>
                       {evt.attendees.map((a) => (
                         <div
-                          key={a.ticketId}
+                          key={a.ticketId || a.guestListEntryId}
                           className="flex items-center justify-between py-3 border-b border-card-border/50 last:border-0"
                         >
-                          <span className="text-sm text-foreground">{a.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-foreground">{a.name}</span>
+                            {a.isGuestList && (
+                              <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-400">
+                                Guest List
+                              </span>
+                            )}
+                          </div>
                           {a.checkedIn ? (
                             <span className="flex items-center gap-1 text-xs font-medium text-green-500">
                               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -240,6 +279,13 @@ export default function ScannerClient() {
                               </svg>
                               {a.checkedInAt ? formatCheckinTime(a.checkedInAt) : "Checked in"}
                             </span>
+                          ) : a.isGuestList && a.guestListEntryId ? (
+                            <button
+                              onClick={() => handleGuestCheckIn(a.guestListEntryId!)}
+                              className="rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent hover:bg-accent/30 transition-colors"
+                            >
+                              Check in
+                            </button>
                           ) : (
                             <span className="text-xs text-muted">Not arrived</span>
                           )}
