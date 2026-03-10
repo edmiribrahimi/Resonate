@@ -52,16 +52,18 @@ export async function GET(request: Request) {
 
       // Check SumUp transaction status
       const tx = await getTransaction(txCode);
+      const isRefunded =
+        tx.status === "REFUNDED" || (tx.refunded_amount ?? 0) > 0;
 
-      if (tx.status === "REFUNDED") {
-        // Invalidate all tokens (purchased ones become refunded)
+      if (isRefunded) {
+        // Invalidate all purchased tokens
         await supabase
           .from("drink_tokens")
           .update({ status: "refunded", refunded_at: now })
           .eq("order_id", order.id)
           .eq("status", "purchased");
 
-        // Set refunded_amount = total (always full refund)
+        // Full refund (refunded_amount = total)
         await supabase
           .from("drink_orders")
           .update({ refunded_amount: order.total_amount })
@@ -99,8 +101,10 @@ export async function GET(request: Request) {
       if (!txCode) continue;
 
       const tx = await getTransaction(txCode);
+      const isRefunded =
+        tx.status === "REFUNDED" || (tx.refunded_amount ?? 0) > 0;
 
-      if (tx.status === "REFUNDED") {
+      if (isRefunded) {
         // Create refund record for audit trail
         await supabase.from("ticket_refunds").insert({
           ticket_id: ticket.id,
