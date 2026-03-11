@@ -28,11 +28,19 @@ interface CheckinDB extends DBSchema {
       "by-party": string;
     };
   };
+  members: {
+    key: string; // membership_code (e.g. RSN-XXXXXXXX)
+    value: {
+      membershipCode: string;
+      userId: string;
+      fullName: string;
+    };
+  };
   pendingCheckins: {
-    key: string; // ticketId or guestListEntryId
+    key: string; // ticketId, guestListEntryId, or membership_code
     value: {
       id: string;
-      type: "ticket" | "guest";
+      type: "ticket" | "guest" | "membership";
       checkedInAt: string;
       partyId: string;
     };
@@ -40,7 +48,7 @@ interface CheckinDB extends DBSchema {
 }
 
 const DB_NAME = "resonate-checkin";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<CheckinDB> | null = null;
 
@@ -55,6 +63,11 @@ async function getDB(): Promise<IDBPDatabase<CheckinDB>> {
           keyPath: "ticketId",
         });
         store.createIndex("by-party", "partyId");
+      }
+
+      // Members store for offline membership verification
+      if (!db.objectStoreNames.contains("members")) {
+        db.createObjectStore("members", { keyPath: "membershipCode" });
       }
 
       // Pending check-ins queue
@@ -208,4 +221,43 @@ export async function clearPartyCache(partyId: string): Promise<void> {
     cursor = await cursor.continue();
   }
   await tx.done;
+}
+
+/** Cache all members for offline membership verification. */
+export async function cacheMembers(
+  members: Array<{ id: string; full_name: string; membership_code: string }>
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction("members", "readwrite");
+  await tx.store.clear();
+  for (const m of members) {
+    await tx.store.put({
+      membershipCode: m.membership_code,
+      userId: m.id,
+      fullName: m.full_name,
+    });
+  }
+  await tx.done;
+}
+
+/** Look up a member by membership_code in offline cache. */
+export async function findMember(
+  membershipCode: string
+): Promise<CheckinDB["members"]["value"] | undefined> {
+  const db = await getDB();
+  return db.get("members", membershipCode);
+}
+
+/** Queue a membership check-in for later sync. */
+export async function checkInMemberLocally(
+  membershipCode: string,
+  partyId: string
+): Promise<void> {
+  const db = await getDB();
+  await db.put("pendingCheckins", {
+    id: membershipCode,
+    type: "membership",
+    checkedInAt: new Date().toISOString(),
+    partyId,
+  });
 }

@@ -38,6 +38,21 @@ export async function syncPendingCheckins(): Promise<number> {
             await markSynced(checkin.id);
             synced++;
           }
+        } else if (checkin.type === "membership") {
+          // Membership check-in: POST to membership verify with code + partyId
+          const res = await fetch("/api/membership/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: checkin.id,
+              partyId: checkin.partyId,
+            }),
+          });
+
+          if (res.ok) {
+            await markSynced(checkin.id);
+            synced++;
+          }
         } else {
           // Guest list check-in
           const res = await fetch("/api/tickets/attendance", {

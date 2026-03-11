@@ -5,8 +5,11 @@ import ScanFlash from "@/components/scanner/ScanFlash";
 import { vibrateSuccess, vibrateError } from "@/utils/haptics";
 import {
   cacheAttendees,
+  cacheMembers,
   findAttendee,
+  findMember,
   checkInLocally,
+  checkInMemberLocally,
   markCheckedInLocally,
   getPendingCount,
 } from "@/lib/offline/checkin-store";
@@ -90,6 +93,11 @@ export default function ScannerClient() {
   // Scan history state
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
 
+  // Torch state
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+
   // Online/offline state
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -160,6 +168,11 @@ export default function ScannerClient() {
           // Cache attendees in IndexedDB for offline (only full list, not search-filtered)
           if (eventData && !search) {
             cacheAttendees(selectedPartyId, eventData.attendees).catch(() => {});
+            // Also pre-cache all members for offline membership verification
+            fetch("/api/membership/list")
+              .then((r) => r.ok ? r.json() : null)
+              .then((d) => d?.members && cacheMembers(d.members))
+              .catch(() => {});
           }
 
           // Piggyback sync on successful fetch
@@ -220,12 +233,31 @@ export default function ScannerClient() {
         },
         () => {} // ignore scan errors
       );
+
+      // Detect torch capability from the video track
+      try {
+        const videoEl = document.querySelector("#qr-reader video") as HTMLVideoElement | null;
+        const stream = videoEl?.srcObject as MediaStream | null;
+        const track = stream?.getVideoTracks()[0];
+        if (track) {
+          videoTrackRef.current = track;
+          const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+          if (caps?.torch) {
+            setTorchAvailable(true);
+          }
+        }
+      } catch {
+        // torch detection failed — ignore
+      }
     }
 
     initScanner().catch(() => {});
 
     return () => {
       scannerInstanceRef.current = null;
+      videoTrackRef.current = null;
+      setTorchOn(false);
+      setTorchAvailable(false);
       if (qrcode) {
         qrcode.stop().catch(() => {});
       }
@@ -255,6 +287,18 @@ export default function ScannerClient() {
       try { scanner.resume(); } catch { /* ignore if already running */ }
     }
   }, []);
+
+  const toggleTorch = useCallback(async () => {
+    const track = videoTrackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      setTorchOn(next);
+    } catch {
+      // torch toggle failed
+    }
+  }, [torchOn]);
 
   const addScanRecord = useCallback((record: ScanRecord) => {
     setScanHistory((prev) => [record, ...prev].slice(0, 5));
@@ -458,6 +502,40 @@ export default function ScannerClient() {
           }
         } else {
           membershipCode = code;
+        }
+
+        // Offline membership flow: check IndexedDB cache
+        if (!navigator.onLine && selectedPartyId) {
+          try {
+            const member = await findMember(membershipCode);
+            if (member) {
+              await checkInMemberLocally(membershipCode, selectedPartyId);
+              showFlash("success", member.fullName, "Member · Offline");
+              addScanRecord({
+                id: membershipCode,
+                type: "membership",
+                name: member.fullName,
+                status: "success",
+                timestamp: Date.now(),
+                canUndo: true,
+              });
+              getPendingCount().then(setPendingCount).catch(() => {});
+            } else {
+              showFlash("error", "Member not found (offline)");
+              addScanRecord({
+                id: membershipCode,
+                type: "membership",
+                name: "Unknown",
+                status: "error",
+                reason: "Not in cache",
+                timestamp: Date.now(),
+                canUndo: false,
+              });
+            }
+          } catch {
+            showFlash("error", "Offline check-in error");
+          }
+          return;
         }
 
         const res = await fetch("/api/membership/verify", {
@@ -931,6 +1009,22 @@ export default function ScannerClient() {
             <div ref={scannerRef}>
               <div id="qr-reader" className="overflow-hidden rounded-2xl" />
             </div>
+            {/* Torch toggle — only shown when camera supports it */}
+            {torchAvailable && (
+              <button
+                onClick={toggleTorch}
+                className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
+                  torchOn
+                    ? "bg-yellow-500/20 text-yellow-400"
+                    : "bg-card-border/30 text-muted hover:text-foreground"
+                }`}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                </svg>
+                {torchOn ? "Torch On" : "Torch Off"}
+              </button>
+            )}
           </div>
         )}
 
