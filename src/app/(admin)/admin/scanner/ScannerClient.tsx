@@ -37,6 +37,18 @@ interface AttendanceEvent {
   attendees: Attendee[];
 }
 
+interface ScanRecord {
+  id: string;
+  type: "ticket" | "membership" | "guest";
+  name: string;
+  ticketType?: string;
+  status: "success" | "error";
+  reason?: string;
+  timestamp: number;
+  undone?: boolean;
+  canUndo: boolean;
+}
+
 export default function ScannerClient() {
   // Party selection state
   const [parties, setParties] = useState<AttendanceEvent[]>([]);
@@ -61,6 +73,9 @@ export default function ScannerClient() {
   } | null>(null);
   const scannerInstanceRef = useRef<unknown>(null);
   const isProcessingRef = useRef(false);
+
+  // Scan history state
+  const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
 
   // Fetch all parties for party selector
   const fetchParties = useCallback(async () => {
@@ -180,6 +195,46 @@ export default function ScannerClient() {
     }
   }, []);
 
+  const addScanRecord = useCallback((record: ScanRecord) => {
+    setScanHistory((prev) => [record, ...prev].slice(0, 5));
+  }, []);
+
+  const handleUndoCheckIn = useCallback(
+    async (record: ScanRecord) => {
+      if (!record.canUndo || record.undone) return;
+
+      const confirmMsg = `Undo check-in for ${record.name}?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      try {
+        const body: { ticketId?: string; guestListEntryId?: string } =
+          record.type === "guest"
+            ? { guestListEntryId: record.id }
+            : { ticketId: record.id };
+
+        const res = await fetch("/api/tickets/checkin/undo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          setScanHistory((prev) =>
+            prev.map((s) =>
+              s === record ? { ...s, undone: true, canUndo: false } : s
+            )
+          );
+          vibrateError();
+          showFlash("error", "Check-in undone", record.name);
+          fetchAttendance(searchQuery || undefined);
+        }
+      } catch {
+        // silently fail
+      }
+    },
+    [showFlash, fetchAttendance, searchQuery]
+  );
+
   const handleVerify = async (code: string) => {
     try {
       if (TICKET_TOKEN_PATTERN.test(code)) {
@@ -195,23 +250,77 @@ export default function ScannerClient() {
             .filter(Boolean)
             .join(" · ") || undefined;
           showFlash("success", data.member_name, subtitle);
+          addScanRecord({
+            id: code.split(".")[0],
+            type: data.ticket_type === "guest_list" ? "guest" : "ticket",
+            name: data.member_name,
+            ticketType: data.tier_name || undefined,
+            status: "success",
+            timestamp: Date.now(),
+            canUndo: true,
+          });
         } else if (data.status === "wrong_event") {
           showFlash(
             "error",
             `Ticket for ${data.party_title || data.event_title}`,
             data.member_name
           );
+          addScanRecord({
+            id: code.split(".")[0],
+            type: "ticket",
+            name: data.member_name || "Unknown",
+            status: "error",
+            reason: `Wrong event: ${data.party_title || data.event_title}`,
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         } else if (data.status === "already_checked_in") {
           const time = data.checked_in_at
             ? `Checked in at ${formatCheckinTime(data.checked_in_at)}`
             : undefined;
           showFlash("error", "Already checked in", `${data.member_name}${time ? ` · ${time}` : ""}`);
+          addScanRecord({
+            id: code.split(".")[0],
+            type: "ticket",
+            name: data.member_name || "Unknown",
+            status: "error",
+            reason: "Already checked in",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         } else if (data.status === "not_found") {
           showFlash("error", "Ticket not found");
+          addScanRecord({
+            id: code.split(".")[0],
+            type: "ticket",
+            name: "Unknown",
+            status: "error",
+            reason: "Not found",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         } else if (data.status === "invalid_signature") {
           showFlash("error", "Invalid QR code");
+          addScanRecord({
+            id: code,
+            type: "ticket",
+            name: "Unknown",
+            status: "error",
+            reason: "Invalid QR",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         } else {
           showFlash("error", "Check-in failed");
+          addScanRecord({
+            id: code,
+            type: "ticket",
+            name: "Unknown",
+            status: "error",
+            reason: "Check-in failed",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         }
       } else if (MEMBERSHIP_PATTERN.test(code) || UUID_PATTERN.test(code)) {
         const url = MEMBERSHIP_PATTERN.test(code)
@@ -222,11 +331,37 @@ export default function ScannerClient() {
 
         if (data.valid) {
           showFlash("success", data.member_name, "Member");
+          addScanRecord({
+            id: code,
+            type: "membership",
+            name: data.member_name,
+            status: "success",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         } else {
           showFlash("error", "Member not found");
+          addScanRecord({
+            id: code,
+            type: "membership",
+            name: "Unknown",
+            status: "error",
+            reason: "Member not found",
+            timestamp: Date.now(),
+            canUndo: false,
+          });
         }
       } else {
         showFlash("error", "QR code not recognized");
+        addScanRecord({
+          id: code,
+          type: "ticket",
+          name: "Unknown",
+          status: "error",
+          reason: "QR not recognized",
+          timestamp: Date.now(),
+          canUndo: false,
+        });
       }
     } catch {
       showFlash("error", "Connection error");
@@ -244,7 +379,16 @@ export default function ScannerClient() {
       if (res.ok) {
         const data = await res.json();
         setStatus("success");
-        setMessage(`✓ ${data.name || "Guest"} — Guest List`);
+        setMessage(`${data.name || "Guest"} -- Guest List`);
+        addScanRecord({
+          id: guestListEntryId,
+          type: "guest",
+          name: data.name || "Guest",
+          ticketType: "Guest List",
+          status: "success",
+          timestamp: Date.now(),
+          canUndo: true,
+        });
         fetchAttendance(searchQuery || undefined);
       } else if (res.status === 409) {
         setStatus("error");
@@ -267,12 +411,20 @@ export default function ScannerClient() {
     setShowScanner(false);
     setFlash(null);
     setStatus("idle");
+    setScanHistory([]);
     isProcessingRef.current = false;
     fetchParties();
   };
 
   function formatCheckinTime(iso: string) {
     return new Date(iso).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function formatScanTime(ts: number) {
+    return new Date(ts).toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -587,7 +739,7 @@ export default function ScannerClient() {
           </div>
         )}
 
-        {/* Flash overlay — renders above everything */}
+        {/* Flash overlay -- renders above everything */}
         {flash && (
           <ScanFlash
             type={flash.type}
@@ -595,6 +747,125 @@ export default function ScannerClient() {
             subtitle={flash.subtitle}
             onDismiss={dismissFlash}
           />
+        )}
+
+        {/* Scan history */}
+        {scanHistory.length > 0 && (
+          <div className="mb-4 space-y-1">
+            <p className="text-[10px] font-medium text-muted uppercase tracking-wider mb-2">
+              Recent scans
+            </p>
+            {scanHistory.map((record, i) => {
+              const isUndone = record.undone;
+              const isSuccess = record.status === "success" && !isUndone;
+              const isError = record.status === "error";
+              const canTap = isSuccess && record.canUndo;
+
+              return (
+                <button
+                  key={`${record.id}-${record.timestamp}-${i}`}
+                  onClick={() => canTap && handleUndoCheckIn(record)}
+                  disabled={!canTap}
+                  className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
+                    canTap
+                      ? "hover:bg-card-border/30 active:scale-[0.98]"
+                      : ""
+                  } ${isUndone ? "opacity-50" : ""}`}
+                >
+                  {/* Status icon */}
+                  <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full">
+                    {isUndone ? (
+                      <svg
+                        className="h-4 w-4 text-muted"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                        />
+                      </svg>
+                    ) : isSuccess ? (
+                      <svg
+                        className="h-4 w-4 text-green-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m4.5 12.75 6 6 9-13.5"
+                        />
+                      </svg>
+                    ) : isError ? (
+                      <svg
+                        className="h-4 w-4 text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18 18 6M6 6l12 12"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+
+                  {/* Name + type */}
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className={`text-sm truncate block ${
+                        isUndone
+                          ? "text-muted line-through"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {record.name}
+                    </span>
+                    {(record.ticketType || record.reason) && (
+                      <span className="text-[10px] text-muted truncate block">
+                        {isError
+                          ? record.reason
+                          : isUndone
+                            ? "Undone"
+                            : record.ticketType}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Time */}
+                  <span className="shrink-0 text-[10px] text-muted tabular-nums">
+                    {formatScanTime(record.timestamp)}
+                  </span>
+
+                  {/* Undo hint for tappable items */}
+                  {canTap && (
+                    <svg
+                      className="shrink-0 h-3.5 w-3.5 text-muted"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                      />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {/* Attendee list for selected party */}
