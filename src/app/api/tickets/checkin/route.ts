@@ -27,16 +27,21 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { token, partyId } = body;
+    const { token, partyId, ticketId: directTicketId, offlineSync } = body;
 
-    if (!token || typeof token !== "string") {
+    let ticketId: string | null = null;
+
+    if (offlineSync && directTicketId) {
+      // Offline sync: accept ticketId directly (no HMAC token available offline)
+      ticketId = directTicketId;
+    } else if (token && typeof token === "string") {
+      // Normal flow: verify HMAC signature
+      ticketId = verifyTicketToken(token);
+      if (!ticketId) {
+        return NextResponse.json({ valid: false, status: "invalid_signature" });
+      }
+    } else {
       return NextResponse.json({ valid: false, status: "invalid_token" });
-    }
-
-    // Verify HMAC signature
-    const ticketId = verifyTicketToken(token);
-    if (!ticketId) {
-      return NextResponse.json({ valid: false, status: "invalid_signature" });
     }
 
     const serviceClient = getServiceClient();
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
     const { data: ticket } = await serviceClient
       .from("tickets")
       .select(
-        "id, checked_in, checked_in_at, event_id, party_id, user_id, ticket_type, profiles(full_name), events(title), event_parties(title), ticket_tiers(name)"
+        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, profiles(full_name), events(title), event_parties(title), ticket_tiers(name)"
       )
       .eq("id", ticketId)
       .single();
@@ -71,6 +76,28 @@ export async function POST(request: Request) {
 
     if (ticket.checked_in) {
       const memberProfile = ticket.profiles as unknown as { full_name: string } | null;
+      const checkedInBy = (ticket as unknown as { checked_in_by: string | null }).checked_in_by;
+
+      // Idempotent: if same user checked it in, return success (safe for offline sync replay)
+      if (checkedInBy === user.id) {
+        const event = ticket.events as unknown as { title: string } | null;
+        const party = ticket.event_parties as unknown as { title: string } | null;
+        const tier = ticket.ticket_tiers as unknown as { name: string } | null;
+        return NextResponse.json({
+          valid: true,
+          status: "checked_in",
+          member_name: memberProfile?.full_name || "Unknown",
+          event_title: event?.title || "",
+          party_title: party?.title || "",
+          ticket_type: ticket.ticket_type || "purchased",
+          tier_name: tier?.name || null,
+          party_id: ticket.party_id,
+          event_id: ticket.event_id,
+          already_by_you: true,
+        });
+      }
+
+      // Different user checked it in — return conflict
       return NextResponse.json({
         valid: false,
         status: "already_checked_in",

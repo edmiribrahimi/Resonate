@@ -3,6 +3,17 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import ScanFlash from "@/components/scanner/ScanFlash";
 import { vibrateSuccess, vibrateError } from "@/utils/haptics";
+import {
+  cacheAttendees,
+  findAttendee,
+  checkInLocally,
+  markCheckedInLocally,
+  getPendingCount,
+} from "@/lib/offline/checkin-store";
+import {
+  syncPendingCheckins,
+  setupSyncListeners,
+} from "@/lib/offline/sync-manager";
 
 // UUID pattern: 8-4-4-4-12 hex chars
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,6 +88,42 @@ export default function ScannerClient() {
   // Scan history state
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
 
+  // Online/offline state
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Track online/offline status + pending count
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+
+    // Setup sync listeners (online event, visibility change)
+    const cleanupSync = setupSyncListeners();
+
+    // Update pending count periodically
+    const updatePending = async () => {
+      try {
+        const count = await getPendingCount();
+        setPendingCount(count);
+      } catch {
+        // IndexedDB not available
+      }
+    };
+    updatePending();
+    const interval = setInterval(updatePending, 5000);
+
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      cleanupSync();
+      clearInterval(interval);
+    };
+  }, []);
+
   // Fetch all parties for party selector
   const fetchParties = useCallback(async () => {
     try {
@@ -93,7 +140,7 @@ export default function ScannerClient() {
     }
   }, []);
 
-  // Fetch attendees for selected party
+  // Fetch attendees for selected party + cache in IndexedDB for offline use
   const fetchAttendance = useCallback(
     async (search?: string) => {
       if (!selectedPartyId) return;
@@ -105,10 +152,22 @@ export default function ScannerClient() {
         if (res.ok) {
           const data = await res.json();
           const events = data.events ?? [];
-          setAttendance(events[0] ?? null);
+          const eventData = events[0] ?? null;
+          setAttendance(eventData);
+
+          // Cache attendees in IndexedDB for offline (only full list, not search-filtered)
+          if (eventData && !search) {
+            cacheAttendees(selectedPartyId, eventData.attendees).catch(() => {});
+          }
+
+          // Piggyback sync on successful fetch
+          syncPendingCheckins().then(async () => {
+            const count = await getPendingCount();
+            setPendingCount(count);
+          }).catch(() => {});
         }
       } catch {
-        // silently fail
+        // silently fail — offline mode will use cached data
       }
     },
     [selectedPartyId]
@@ -238,6 +297,65 @@ export default function ScannerClient() {
   const handleVerify = async (code: string) => {
     try {
       if (TICKET_TOKEN_PATTERN.test(code)) {
+        const ticketIdFromQR = code.split(".")[0];
+
+        // Offline flow: check IndexedDB cache
+        if (!navigator.onLine) {
+          try {
+            const attendee = await findAttendee(ticketIdFromQR);
+            if (attendee && !attendee.checkedIn) {
+              // Found and not checked in — check in locally
+              await checkInLocally(ticketIdFromQR);
+              const subtitle = [
+                attendee.tierName,
+                attendee.ticketType === "guest_list" ? "Guest List" : null,
+                "Offline",
+              ].filter(Boolean).join(" · ") || "Offline";
+              showFlash("success", attendee.name, subtitle);
+              addScanRecord({
+                id: ticketIdFromQR,
+                type: attendee.ticketType === "guest_list" ? "guest" : "ticket",
+                name: attendee.name,
+                ticketType: attendee.tierName || undefined,
+                status: "success",
+                timestamp: Date.now(),
+                canUndo: true,
+              });
+              // Update pending count
+              getPendingCount().then(setPendingCount).catch(() => {});
+            } else if (attendee && attendee.checkedIn) {
+              const time = attendee.checkedInAt
+                ? `at ${formatCheckinTime(attendee.checkedInAt)}`
+                : "";
+              showFlash("error", "Already checked in", `${attendee.name}${time ? ` ${time}` : ""}`);
+              addScanRecord({
+                id: ticketIdFromQR,
+                type: "ticket",
+                name: attendee.name,
+                status: "error",
+                reason: "Already checked in",
+                timestamp: Date.now(),
+                canUndo: false,
+              });
+            } else {
+              showFlash("error", "Ticket not found (offline)");
+              addScanRecord({
+                id: ticketIdFromQR,
+                type: "ticket",
+                name: "Unknown",
+                status: "error",
+                reason: "Not in cache",
+                timestamp: Date.now(),
+                canUndo: false,
+              });
+            }
+          } catch {
+            showFlash("error", "Offline check-in error");
+          }
+          return;
+        }
+
+        // Online flow: POST to /api/tickets/checkin
         const res = await fetch("/api/tickets/checkin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -251,7 +369,7 @@ export default function ScannerClient() {
             .join(" · ") || undefined;
           showFlash("success", data.member_name, subtitle);
           addScanRecord({
-            id: code.split(".")[0],
+            id: ticketIdFromQR,
             type: data.ticket_type === "guest_list" ? "guest" : "ticket",
             name: data.member_name,
             ticketType: data.tier_name || undefined,
@@ -259,6 +377,8 @@ export default function ScannerClient() {
             timestamp: Date.now(),
             canUndo: true,
           });
+          // Update IndexedDB cache (without adding to pending queue — already synced online)
+          markCheckedInLocally(ticketIdFromQR).catch(() => {});
         } else if (data.status === "wrong_event") {
           showFlash(
             "error",
@@ -266,7 +386,7 @@ export default function ScannerClient() {
             data.member_name
           );
           addScanRecord({
-            id: code.split(".")[0],
+            id: ticketIdFromQR,
             type: "ticket",
             name: data.member_name || "Unknown",
             status: "error",
@@ -280,7 +400,7 @@ export default function ScannerClient() {
             : undefined;
           showFlash("error", "Already checked in", `${data.member_name}${time ? ` · ${time}` : ""}`);
           addScanRecord({
-            id: code.split(".")[0],
+            id: ticketIdFromQR,
             type: "ticket",
             name: data.member_name || "Unknown",
             status: "error",
@@ -291,7 +411,7 @@ export default function ScannerClient() {
         } else if (data.status === "not_found") {
           showFlash("error", "Ticket not found");
           addScanRecord({
-            id: code.split(".")[0],
+            id: ticketIdFromQR,
             type: "ticket",
             name: "Unknown",
             status: "error",
@@ -364,6 +484,29 @@ export default function ScannerClient() {
         });
       }
     } catch {
+      // Network error — try offline fallback for ticket tokens
+      if (TICKET_TOKEN_PATTERN.test(code)) {
+        const ticketIdFromQR = code.split(".")[0];
+        try {
+          const attendee = await findAttendee(ticketIdFromQR);
+          if (attendee && !attendee.checkedIn) {
+            await checkInLocally(ticketIdFromQR);
+            showFlash("success", attendee.name, "Offline");
+            addScanRecord({
+              id: ticketIdFromQR,
+              type: "ticket",
+              name: attendee.name,
+              status: "success",
+              timestamp: Date.now(),
+              canUndo: true,
+            });
+            getPendingCount().then(setPendingCount).catch(() => {});
+            return;
+          }
+        } catch {
+          // IndexedDB also failed
+        }
+      }
       showFlash("error", "Connection error");
     }
   };
@@ -413,6 +556,11 @@ export default function ScannerClient() {
     setStatus("idle");
     setScanHistory([]);
     isProcessingRef.current = false;
+    // Sync any pending check-ins before switching party
+    syncPendingCheckins().then(async () => {
+      const count = await getPendingCount();
+      setPendingCount(count);
+    }).catch(() => {});
     fetchParties();
   };
 
@@ -591,9 +739,23 @@ export default function ScannerClient() {
                 </svg>
               </button>
               <div className="min-w-0">
-                <h1 className="text-lg font-bold truncate">
-                  {selectedParty?.partyTitle || "Check-in"}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold truncate">
+                    {selectedParty?.partyTitle || "Check-in"}
+                  </h1>
+                  {/* Online/Offline status indicator */}
+                  {isOnline ? (
+                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      Online
+                    </span>
+                  ) : (
+                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                      Offline{pendingCount > 0 ? ` (${pendingCount})` : ""}
+                    </span>
+                  )}
+                </div>
                 {selectedParty &&
                   selectedParty.partyTitle !== selectedParty.eventTitle && (
                     <p className="text-xs text-muted truncate">
