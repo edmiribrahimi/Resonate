@@ -10,13 +10,23 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
-**In Progress:** v1.4 — Check-in Overhaul (2 phases, 11 requirements)
+**Shipped:** v1.4 — Check-in Overhaul (2026-03-11)
 
-Goals:
+Delivered: party selection for check-in, continuous QR scanner with green/red flash + haptic feedback, scan history with undo, offline support via IndexedDB + service worker, membership door check-in with attendance recording, torch toggle for dark venues.
+
+**Next Milestone:** TBD — run `/gsd:new-milestone` to define
+
+<details>
+<summary>v1.4 (2026-03-11)</summary>
+
+All 16 v1.4 requirements implemented across 2 phases — [archive](.planning/milestones/v1.4-ROADMAP.md):
 - Party selector: staff picks a single party before scanning or viewing attendees
-- QR scanner UX: continuous scanning with instant green/red flash feedback + haptic vibration
-- Cross-event validation: ticket for wrong event triggers red flash with specific reason
-- Membership door check-in: scan membership QR → verify → instant check-in (cash tracked via SumUp app)
+- Continuous QR scanner with instant green/red flash feedback + haptic vibration + auto-return
+- Scan history with undo check-in capability (last 5 scans)
+- Offline support via IndexedDB + @serwist/next service worker
+- Membership door check-in with attendance recording
+- Torch toggle for dark venues
+</details>
 
 <details>
 <summary>v1.3 (2026-03-10)</summary>
@@ -76,9 +86,13 @@ All 45 requirements shipped. See [v1.0-REQUIREMENTS.md](.planning/milestones/v1.
 
 All 18 requirements shipped. See [v1.1-REQUIREMENTS.md](.planning/milestones/v1.1-REQUIREMENTS.md) for full list.
 
-### v1.2 (Complete)
+### v1.3 (Complete)
 
-All 33 requirements shipped. See [v1.2-REQUIREMENTS.md](.planning/milestones/v1.2-REQUIREMENTS.md) for full list.
+All 60 requirements shipped. See [v1.3-REQUIREMENTS.md](.planning/milestones/v1.3-REQUIREMENTS.md) for full list.
+
+### v1.4 (Complete)
+
+All 16 requirements shipped. See [v1.4-REQUIREMENTS.md](.planning/milestones/v1.4-REQUIREMENTS.md) for full list.
 
 ### Out of Scope
 
@@ -124,4 +138,4 @@ All 33 requirements shipped. See [v1.2-REQUIREMENTS.md](.planning/milestones/v1.
 | Media on both event page and member profile | Maximum visibility for community content | — Pending |
 
 ---
-*Last updated: 2026-03-10 after v1.4 milestone initialization*
+*Last updated: 2026-03-11 after v1.4 milestone completion*
