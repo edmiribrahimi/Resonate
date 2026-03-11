@@ -21,6 +21,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const TICKET_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/i;
 // Membership QR: URL containing code=RSN-
 const MEMBERSHIP_PATTERN = /code=RSN-/i;
+// Bare membership code: RSN-XXXXXX
+const BARE_MEMBERSHIP_PATTERN = /^RSN-[A-Z0-9]{6,10}$/i;
 
 type FilterTab = "all" | "not_arrived" | "checked_in";
 
@@ -266,10 +268,12 @@ export default function ScannerClient() {
       if (!window.confirm(confirmMsg)) return;
 
       try {
-        const body: { ticketId?: string; guestListEntryId?: string } =
+        const body: { ticketId?: string; guestListEntryId?: string; attendanceId?: string } =
           record.type === "guest"
             ? { guestListEntryId: record.id }
-            : { ticketId: record.id };
+            : record.type === "membership"
+              ? { attendanceId: record.id }
+              : { ticketId: record.id };
 
         const res = await fetch("/api/tickets/checkin/undo", {
           method: "POST",
@@ -442,27 +446,56 @@ export default function ScannerClient() {
             canUndo: false,
           });
         }
-      } else if (MEMBERSHIP_PATTERN.test(code) || UUID_PATTERN.test(code)) {
-        const url = MEMBERSHIP_PATTERN.test(code)
-          ? code
-          : `/api/membership/verify?code=${encodeURIComponent(code)}`;
-        const res = await fetch(url);
+      } else if (MEMBERSHIP_PATTERN.test(code) || BARE_MEMBERSHIP_PATTERN.test(code)) {
+        // Extract membership code from QR URL or bare code
+        let membershipCode: string;
+        if (MEMBERSHIP_PATTERN.test(code)) {
+          try {
+            const url = new URL(code);
+            membershipCode = url.searchParams.get("code") || code;
+          } catch {
+            membershipCode = code;
+          }
+        } else {
+          membershipCode = code;
+        }
+
+        const res = await fetch("/api/membership/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: membershipCode, partyId: selectedPartyId }),
+        });
         const data = await res.json();
 
-        if (data.valid) {
+        if (data.valid && data.status === "checked_in") {
           showFlash("success", data.member_name, "Member");
           addScanRecord({
-            id: code,
+            id: data.attendance_id,
             type: "membership",
             name: data.member_name,
             status: "success",
+            timestamp: Date.now(),
+            canUndo: true,
+          });
+          fetchAttendance(searchQuery || undefined);
+        } else if (data.valid && data.status === "already_checked_in") {
+          const time = data.checked_in_at
+            ? formatCheckinTime(data.checked_in_at)
+            : "";
+          showFlash("error", "Already checked in", `${data.member_name}${time ? ` \u00b7 Checked in at ${time}` : ""}`);
+          addScanRecord({
+            id: membershipCode,
+            type: "membership",
+            name: data.member_name,
+            status: "error",
+            reason: "Already checked in",
             timestamp: Date.now(),
             canUndo: false,
           });
         } else {
           showFlash("error", "Member not found");
           addScanRecord({
-            id: code,
+            id: membershipCode,
             type: "membership",
             name: "Unknown",
             status: "error",

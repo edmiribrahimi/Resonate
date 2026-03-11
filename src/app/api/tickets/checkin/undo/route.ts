@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       );
     }
 
-    let body: { ticketId?: string; guestListEntryId?: string };
+    let body: { ticketId?: string; guestListEntryId?: string; attendanceId?: string };
     try {
       body = await request.json();
     } catch {
@@ -44,11 +44,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { ticketId, guestListEntryId } = body;
+    const { ticketId, guestListEntryId, attendanceId } = body;
 
-    if (!ticketId && !guestListEntryId) {
+    if (!ticketId && !guestListEntryId && !attendanceId) {
       return NextResponse.json(
-        { success: false, error: "ticketId or guestListEntryId is required" },
+        { success: false, error: "ticketId, guestListEntryId, or attendanceId is required" },
         { status: 400 }
       );
     }
@@ -132,6 +132,36 @@ export async function POST(request: Request) {
       if (updateError) {
         return NextResponse.json(
           { success: false, error: "Failed to undo guest check-in" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Undo membership attendance check-in
+    if (attendanceId) {
+      const { data: attendance, error: fetchError } = await serviceClient
+        .from("attendances")
+        .select("id")
+        .eq("id", attendanceId)
+        .single();
+
+      if (fetchError || !attendance) {
+        return NextResponse.json(
+          { success: false, error: "Attendance record not found" },
+          { status: 404 }
+        );
+      }
+
+      const { error: deleteError } = await serviceClient
+        .from("attendances")
+        .delete()
+        .eq("id", attendanceId);
+
+      if (deleteError) {
+        return NextResponse.json(
+          { success: false, error: "Failed to undo membership check-in" },
           { status: 500 }
         );
       }
