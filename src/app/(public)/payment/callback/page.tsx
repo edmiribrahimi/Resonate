@@ -1,23 +1,28 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
-import { checkPaymentStatus } from "./actions";
+import { checkPaymentStatus, type PaymentCallbackStatus } from "./actions";
 
-type PaymentStatus = "checking" | "PENDING" | "PAID" | "FAILED" | "EXPIRED" | "NOT_FOUND";
+type ViewStatus = "checking" | PaymentCallbackStatus;
 
 function PaymentCallbackContent() {
   const searchParams = useSearchParams();
-  const ref = searchParams.get("ref");
-  const slug = searchParams.get("slug");
-  const ctx = searchParams.get("ctx"); // "ticket" or "drink"
+  const router = useRouter();
 
-  const [status, setStatus] = useState<PaymentStatus>("checking");
+  const ctx = (searchParams.get("ctx") as "drink" | "ticket" | null) ?? null;
+  const orderParam = searchParams.get("order");
+  const purchaseParam = searchParams.get("purchase");
+  const id = ctx === "drink" ? orderParam : purchaseParam;
+  const slug = searchParams.get("slug") ?? undefined;
+  const party = searchParams.get("party") ?? undefined;
+
+  const [status, setStatus] = useState<ViewStatus>("checking");
   const pollCountRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!ref) {
+    if (!ctx || !id) {
       setStatus("NOT_FOUND");
       return;
     }
@@ -28,16 +33,27 @@ function PaymentCallbackContent() {
       if (cancelled) return;
 
       try {
-        const result = await checkPaymentStatus(ref!);
+        const result = await checkPaymentStatus({
+          ctx: ctx as "drink" | "ticket",
+          id: id!,
+          slug,
+          party,
+        });
         if (cancelled) return;
 
-        if (result.status === "PENDING" && pollCountRef.current < 5) {
+        if (result.status === "PAID" && result.redirectTo) {
+          router.replace(result.redirectTo);
+          return;
+        }
+
+        if (result.status === "PENDING" && pollCountRef.current < 8) {
           setStatus("PENDING");
           pollCountRef.current += 1;
           timerRef.current = setTimeout(poll, 2000);
-        } else {
-          setStatus(result.status);
+          return;
         }
+
+        setStatus(result.status);
       } catch {
         if (!cancelled) setStatus("NOT_FOUND");
       }
@@ -49,7 +65,7 @@ function PaymentCallbackContent() {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [ref]);
+  }, [ctx, id, slug, party, router]);
 
   const eventUrl = slug ? `/events/${slug}` : "/events";
 
@@ -71,7 +87,7 @@ function PaymentCallbackContent() {
           </>
         )}
 
-        {/* Success */}
+        {/* Success (only shown briefly before auto-redirect, or as a fallback) */}
         {status === "PAID" && (
           <>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20">

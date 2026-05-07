@@ -139,8 +139,10 @@ export async function purchaseDrinksGuest(
     .join(", ");
   const description = party ? `${party.title} - ${itemsList}` : itemsList;
 
-  // Create SumUp checkout
-  const checkoutReference = crypto.randomUUID();
+  // Use one UUID as both the drink_orders.id AND the SumUp checkout_reference,
+  // so the post-3DS /payment/callback?order=<id> can find the order via DB lookup
+  // without needing a SumUp API round-trip.
+  const orderId = crypto.randomUUID();
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
   // Fetch event slug for redirect URL
@@ -150,9 +152,9 @@ export async function purchaseDrinksGuest(
     .eq("id", eventId)
     .single();
 
-  // Build redirect URL for APM flows
+  // Build redirect URL for APM and 3DS flows
   const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
-  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("order", orderId);
   redirectUrl.searchParams.set("slug", eventForSlug?.slug ?? "");
   redirectUrl.searchParams.set("ctx", "drink");
   redirectUrl.searchParams.set("party", partyId);
@@ -161,15 +163,16 @@ export async function purchaseDrinksGuest(
     amount: totalAmount,
     currency: "EUR",
     description,
-    checkoutReference,
+    checkoutReference: orderId,
     returnUrl,
     redirectUrl: redirectUrl.toString(),
   });
 
   // Create drink order with user_id: null (guest purchase)
-  const { data: order, error: insertError } = await serviceClient
+  const { error: insertError } = await serviceClient
     .from("drink_orders")
     .insert({
+      id: orderId,
       event_id: eventId,
       party_id: partyId,
       user_id: null,
@@ -177,16 +180,14 @@ export async function purchaseDrinksGuest(
       total_amount: totalAmount,
       status: "pending",
       items: itemsSnapshot,
-    })
-    .select("id")
-    .single();
+    });
 
-  if (insertError || !order) {
+  if (insertError) {
     console.error("Failed to create drink order:", insertError);
     throw new Error("Failed to initiate drink purchase");
   }
 
-  return { success: true, checkoutId: response.id, orderId: order.id };
+  return { success: true, checkoutId: response.id, orderId };
 }
 
 /**

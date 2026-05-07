@@ -749,15 +749,16 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     validatedDiscountCodeId = code.id;
   }
 
-  // Generate unique checkout reference
-  const checkoutReference = crypto.randomUUID();
+  // Use one UUID as both the pending_purchases.id AND the SumUp checkout_reference,
+  // so the post-3DS /payment/callback?purchase=<id> can find the record via DB lookup.
+  const purchaseId = crypto.randomUUID();
 
   // Build webhook URL (return_url triggers SumUp webhook after payment)
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
-  // Build redirect URL for APM flows (Satispay, MyBank, Apple Pay, Google Pay)
+  // Build redirect URL for APM and 3DS flows
   const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
-  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("purchase", purchaseId);
   redirectUrl.searchParams.set("slug", event.slug);
   redirectUrl.searchParams.set("ctx", "ticket");
 
@@ -766,7 +767,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     amount: finalPrice,
     currency: "EUR",
     description: `${event.title} - ${tier.name}`,
-    checkoutReference,
+    checkoutReference: purchaseId,
     returnUrl,
     redirectUrl: redirectUrl.toString(),
   });
@@ -776,6 +777,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
   const { error: insertError } = await serviceClient
     .from("pending_purchases")
     .insert({
+      id: purchaseId,
       event_id: eventId,
       party_id: partyId,
       tier_id: tierId,
@@ -790,7 +792,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     throw new Error("Failed to initiate purchase");
   }
 
-  return { success: true, checkoutId: response.id };
+  return { success: true, checkoutId: response.id, purchaseId };
 }
 
 // =============================================================
@@ -922,7 +924,7 @@ export async function purchaseDrinks(
   eventId: string,
   partyId: string,
   items: { drinkItemId: string; quantity: number }[]
-): Promise<{ success: boolean; checkoutId: string }> {
+): Promise<{ success: boolean; checkoutId: string; orderId: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -994,8 +996,9 @@ export async function purchaseDrinks(
     .join(", ");
   const description = party ? `${party.title} - ${itemsList}` : itemsList;
 
-  // Create SumUp checkout
-  const checkoutReference = crypto.randomUUID();
+  // Use one UUID as both the drink_orders.id AND the SumUp checkout_reference,
+  // so the post-3DS /payment/callback?order=<id> can find the order via DB lookup.
+  const orderId = crypto.randomUUID();
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/sumup`;
 
   // Fetch event slug for redirect URL
@@ -1005,9 +1008,9 @@ export async function purchaseDrinks(
     .eq("id", eventId)
     .single();
 
-  // Build redirect URL for APM flows
+  // Build redirect URL for APM and 3DS flows
   const redirectUrl = new URL("/payment/callback", process.env.NEXT_PUBLIC_APP_URL);
-  redirectUrl.searchParams.set("ref", checkoutReference);
+  redirectUrl.searchParams.set("order", orderId);
   redirectUrl.searchParams.set("slug", eventForSlug?.slug ?? "");
   redirectUrl.searchParams.set("ctx", "drink");
   redirectUrl.searchParams.set("party", partyId);
@@ -1017,7 +1020,7 @@ export async function purchaseDrinks(
     amount: totalAmount,
     currency: "EUR",
     description,
-    checkoutReference,
+    checkoutReference: orderId,
     returnUrl,
     redirectUrl: redirectUrl.toString(),
   });
@@ -1027,6 +1030,7 @@ export async function purchaseDrinks(
   const { error: insertError } = await serviceClient
     .from("drink_orders")
     .insert({
+      id: orderId,
       event_id: eventId,
       party_id: partyId,
       user_id: user.id,
@@ -1041,7 +1045,7 @@ export async function purchaseDrinks(
     throw new Error("Failed to initiate drink purchase");
   }
 
-  return { success: true, checkoutId: response.id };
+  return { success: true, checkoutId: response.id, orderId };
 }
 
 // =============================================================
