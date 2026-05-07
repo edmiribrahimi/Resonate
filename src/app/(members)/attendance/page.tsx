@@ -50,11 +50,7 @@ export default async function AttendancePage() {
                 <div>
                   <p className="font-medium">{att.event_title}</p>
                   <p className="text-sm text-muted">
-                    {new Date(att.date).toLocaleDateString("en-US", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    {(() => { const d = new Date(att.date); const M = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
                   </p>
                 </div>
               </div>

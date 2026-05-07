@@ -214,12 +214,12 @@ export default function TierCard({ tier, eventId }: TierCardProps) {
                 </span>
                 {tier.starts_at && new Date(tier.starts_at) > new Date() && (
                   <span>
-                    Starts {new Date(tier.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    Starts {(() => { const d = new Date(tier.starts_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; })()}
                   </span>
                 )}
                 {tier.expires_at && new Date(tier.expires_at) >= new Date() && (
                   <span>
-                    Expires {new Date(tier.expires_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    Expires {(() => { const d = new Date(tier.expires_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; })()}
                   </span>
                 )}
               </div>

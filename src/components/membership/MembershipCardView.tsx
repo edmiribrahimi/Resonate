@@ -30,10 +30,7 @@ export default function MembershipCardView({
         <h2 className="mt-2 text-2xl font-bold">{fullName}</h2>
         <p className="mt-1 text-sm text-muted">
           Member since{" "}
-          {new Date(memberSince).toLocaleDateString("en-US", {
-            month: "long",
-            year: "numeric",
-          })}
+          {(() => { const d = new Date(memberSince); const M = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return `${M[d.getMonth()]} ${d.getFullYear()}`; })()}
         </p>
       </div>
 

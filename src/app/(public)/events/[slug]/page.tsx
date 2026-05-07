@@ -90,30 +90,22 @@ function isVenueVisible(opts: {
   return { visible: false, hint: opts.venueSecretHint };
 }
 
+const WD_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const WD_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MO_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MO_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 function formatDateRange(dates: string[]): string {
   if (dates.length === 0) return "";
   const sorted = [...new Set(dates)].sort();
   if (sorted.length === 1) {
-    return new Date(sorted[0] + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const d = new Date(sorted[0] + "T00:00:00");
+    return `${WD_LONG[d.getDay()]}, ${d.getDate()} ${MO_LONG[d.getMonth()]} ${d.getFullYear()}`;
   }
   const start = new Date(sorted[0] + "T00:00:00");
   const end = new Date(sorted[sorted.length - 1] + "T00:00:00");
-  const startStr = start.toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-  const endStr = end.toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-  return `${startStr} - ${endStr}`;
+  const fmt = (d: Date) => `${WD_SHORT[d.getDay()]} ${d.getDate()} ${MO_SHORT[d.getMonth()]}`;
+  return `${fmt(start)} - ${fmt(end)}`;
 }
 
 export default async function EventDetailPage({
@@ -377,11 +369,8 @@ export default async function EventDetailPage({
   const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
 
   function formatPartyDate(dateStr: string): string {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    });
+    const d = new Date(dateStr + "T00:00:00");
+    return `${WD_SHORT[d.getDay()]} ${d.getDate()} ${MO_SHORT[d.getMonth()]}`;
   }
 
   return (

@@ -111,10 +111,8 @@ export async function fetchMemberGrowth(
     let label: string;
     if (granularity === "weekly") {
       const monday = getMondayOfISOWeek(period);
-      label = monday.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
+      const MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      label = `${monday.getDate()} ${MS[monday.getMonth()]}`;
     } else {
       const [yearStr, monthStr] = period.split("-");
       const date = new Date(
@@ -122,10 +120,8 @@ export async function fetchMemberGrowth(
         parseInt(monthStr, 10) - 1,
         1
       );
-      label = date.toLocaleDateString("en-US", {
-        month: "short",
-        year: "numeric",
-      });
+      const MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      label = `${MS[date.getMonth()]} ${date.getFullYear()}`;
     }
 
     return {

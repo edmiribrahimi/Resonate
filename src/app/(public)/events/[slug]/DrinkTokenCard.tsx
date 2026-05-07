@@ -26,13 +26,10 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
 export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: DrinkTokenCardProps) {

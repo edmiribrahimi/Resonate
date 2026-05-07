@@ -79,10 +79,11 @@ export default function DashboardDrinkTokens({
           <StaggeredList className="space-y-3">
             {activeGroups.map((group, groupIndex) => {
               const formattedDate = group.eventDate
-                ? new Date(group.eventDate + "T00:00:00").toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
+                ? (() => {
+                    const d = new Date(group.eventDate + "T00:00:00");
+                    const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                    return `${d.getDate()} ${M[d.getMonth()]}`;
+                  })()
                 : "";
 
               // Find the original group index for handleRedeemed
@@ -157,10 +158,11 @@ export default function DashboardDrinkTokens({
             <div className="mt-3 space-y-3">
               {completedGroups.map((group, groupIndex) => {
                 const formattedDate = group.eventDate
-                  ? new Date(group.eventDate + "T00:00:00").toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
+                  ? (() => {
+                      const d = new Date(group.eventDate + "T00:00:00");
+                      const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                      return `${d.getDate()} ${M[d.getMonth()]}`;
+                    })()
                   : "";
 
                 const origIndex = groups.findIndex(

@@ -48,11 +48,8 @@ export default function EventSelector({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
   };
 
   return (

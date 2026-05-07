@@ -29,21 +29,20 @@ interface EventTabsProps {
   past: EventCard[];
 }
 
+const WEEKDAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const WEEKDAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 function formatDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  const d = new Date(dateStr + "T00:00:00");
+  return `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
 function formatDateRange(startDate: string, endDate: string): string {
   if (startDate === endDate) {
-    return new Date(startDate + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
+    const d = new Date(startDate + "T00:00:00");
+    return `${WEEKDAYS_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}`;
   }
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }

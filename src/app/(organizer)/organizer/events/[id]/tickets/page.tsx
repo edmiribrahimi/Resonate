@@ -185,11 +185,10 @@ export default async function TicketTiersPage({ params }: PageProps) {
   }
 
   function formatPartyDate(dateStr: string): string {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    });
+    const d = new Date(dateStr + "T00:00:00");
+    const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${WD[d.getDay()]} ${d.getDate()} ${M[d.getMonth()]}`;
   }
 
   function formatPrice(price: number) {

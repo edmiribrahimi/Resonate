@@ -33,10 +33,11 @@ export default async function DashboardPage() {
 
   const userEmail = user.email ?? "";
   const memberSince = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
+    ? (() => {
+        const d = new Date(profile.created_at);
+        const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        return `${M[d.getMonth()]} ${d.getFullYear()}`;
+      })()
     : null;
 
   const roleLabel =
@@ -323,12 +324,11 @@ export default async function DashboardPage() {
                                 )}
                                 <span className="text-xs text-muted">
                                   {eventData
-                                    ? new Date(
-                                        eventData.date + "T00:00:00"
-                                      ).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                      })
+                                    ? (() => {
+                                        const d = new Date(eventData.date + "T00:00:00");
+                                        const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                                        return `${d.getDate()} ${M[d.getMonth()]}`;
+                                      })()
                                     : ""}
                                 </span>
                               </div>

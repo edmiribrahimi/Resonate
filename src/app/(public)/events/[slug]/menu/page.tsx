@@ -114,12 +114,12 @@ export default async function MenuPage({
 
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
-  const formattedDate = new Date(event.date).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const formattedDate = (() => {
+    const d = new Date(event.date);
+    const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `${WD[d.getDay()]}, ${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
+  })();
 
   return (
     <div className="min-h-dvh bg-background">

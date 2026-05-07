@@ -77,11 +77,7 @@ export default function BroadcastList({ refreshKey }: { refreshKey: number }) {
                   {broadcast.status}
                 </span>
                 <span>
-                  {new Date(broadcast.created_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  {(() => { const d = new Date(broadcast.created_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
                 </span>
               </div>
             </div>

@@ -165,11 +165,7 @@ export default async function VenuePage({
                       {event.title}
                     </p>
                     <p className="text-xs text-muted">
-                      {new Date(event.date + "T00:00:00").toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      {(() => { const d = new Date(event.date + "T00:00:00"); const M = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
                     </p>
                   </div>
                 </Link>

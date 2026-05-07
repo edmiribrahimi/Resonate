@@ -77,14 +77,12 @@ export default async function TicketPage({
 
   // Format date
   const displayDate = party?.date ?? event.date;
-  const formattedDate = new Date(
-    displayDate + "T00:00:00"
-  ).toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const formattedDate = (() => {
+    const d = new Date(displayDate + "T00:00:00");
+    const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `${WD[d.getDay()]}, ${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
+  })();
 
   const displayTime = party?.time ?? "";
   const displayEndTime = party?.end_time ?? null;

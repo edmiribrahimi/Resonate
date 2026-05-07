@@ -76,11 +76,9 @@ export default function MyMediaSection({ groups }: MyMediaSectionProps) {
 
   function formatEventDate(dateStr: string): string {
     try {
-      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+      const d = new Date(dateStr + "T00:00:00");
+      const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
     } catch {
       return dateStr;
     }

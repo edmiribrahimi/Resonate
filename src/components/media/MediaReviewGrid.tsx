@@ -52,12 +52,9 @@ export default function MediaReviewGrid({ items }: MediaReviewGridProps) {
 
   function formatDate(dateStr: string): string {
     try {
-      return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
+      const d = new Date(dateStr);
+      const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d.getDate()} ${M[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     } catch {
       return dateStr;
     }

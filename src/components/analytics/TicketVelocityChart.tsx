@@ -30,12 +30,11 @@ export default function TicketVelocityChart({
           <XAxis
             dataKey="date"
             tick={{ fill: "var(--color-muted)", fontSize: 10 }}
-            tickFormatter={(d: string) =>
-              new Date(d + "T00:00:00").toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })
-            }
+            tickFormatter={(d: string) => {
+              const dt = new Date(d + "T00:00:00");
+              const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+              return `${dt.getDate()} ${M[dt.getMonth()]}`;
+            }}
           />
           <YAxis
             tick={{ fill: "var(--color-muted)", fontSize: 10 }}

@@ -614,11 +614,7 @@ export default function MemberTable({
                 </div>
                 <p className="mt-1 text-xs text-muted">
                   Joined{" "}
-                  {new Date(member.created_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
+                  {(() => { const d = new Date(member.created_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
                 </p>
               </div>
 
@@ -719,11 +715,7 @@ function MemberRowDesktop({
           <StatusBadge status={member.status} />
         </td>
         <td className="px-4 py-3 text-muted">
-          {new Date(member.created_at).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
+          {(() => { const d = new Date(member.created_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
         </td>
         {showActions && (
           <td className="px-4 py-3">

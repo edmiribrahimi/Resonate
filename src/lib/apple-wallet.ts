@@ -104,10 +104,12 @@ export async function generateAppleWalletPass(
   });
 
   // Secondary: date + time
-  const formattedDate = new Date(data.date + "T00:00:00").toLocaleDateString(
-    "en-US",
-    { weekday: "short", day: "numeric", month: "short" }
-  );
+  const formattedDate = (() => {
+    const d = new Date(data.date + "T00:00:00");
+    const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${WD[d.getDay()]} ${d.getDate()} ${M[d.getMonth()]}`;
+  })();
   pass.secondaryFields.push({
     key: "date",
     label: "DATE",
@@ -116,21 +118,12 @@ export async function generateAppleWalletPass(
 
   if (data.time) {
     const [h, m] = data.time.split(":");
-    const hour = parseInt(h, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    const timeStr = `${hour12}:${m} ${ampm}`;
+    const timeStr = `${h}:${m}`;
     pass.secondaryFields.push({
       key: "time",
       label: "TIME",
       value: data.endTime
-        ? `${timeStr} - ${(() => {
-            const [eh, em] = data.endTime.split(":");
-            const ehour = parseInt(eh, 10);
-            const eampm = ehour >= 12 ? "PM" : "AM";
-            const ehour12 = ehour % 12 || 12;
-            return `${ehour12}:${em} ${eampm}`;
-          })()}`
+        ? `${timeStr} - ${data.endTime}`
         : timeStr,
     });
   }

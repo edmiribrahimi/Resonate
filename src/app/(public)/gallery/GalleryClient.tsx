@@ -37,11 +37,7 @@ export default function GalleryClient({ groups }: { groups: EventGroup[] }) {
             >
               <h2 className="text-lg font-semibold">{group.eventTitle}</h2>
               <p className="text-sm text-muted">
-                {new Date(group.eventDate + "T00:00:00").toLocaleDateString("en-US", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                {(() => { const d = new Date(group.eventDate + "T00:00:00"); const M = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
               </p>
             </a>
             <MediaGrid
