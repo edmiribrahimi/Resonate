@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, useMemo } from "react";
+
 interface TierSalesData {
   id: string;
   name: string;
@@ -23,6 +27,8 @@ interface DiscountSummary {
   discount_amount: number;
 }
 
+import RefundActions from "@/app/(organizer)/organizer/events/[id]/tickets/RefundActions";
+
 interface SalesDashboardProps {
   eventTitle: string;
   tiers: TierSalesData[];
@@ -36,15 +42,11 @@ function formatEUR(amount: number) {
   return `EUR ${amount.toFixed(2)}`;
 }
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function formatDate(dateStr: string) {
   try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(dateStr);
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
   } catch {
     return dateStr;
   }
@@ -57,6 +59,19 @@ export default function SalesDashboard({
   totalSold,
   discountSummary,
 }: SalesDashboardProps) {
+  const [search, setSearch] = useState("");
+
+  const filteredBuyers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return buyers;
+    return buyers.filter(
+      (b) =>
+        b.memberName.toLowerCase().includes(q) ||
+        b.memberEmail.toLowerCase().includes(q) ||
+        b.tierName.toLowerCase().includes(q)
+    );
+  }, [buyers, search]);
+
   return (
     <div className="space-y-6">
       {/* Revenue Summary */}
@@ -131,12 +146,27 @@ export default function SalesDashboard({
 
       {/* Buyer List */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-          Buyers
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+            Buyers
+          </h2>
+          {buyers.length > 0 && (
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, tier..."
+              className="w-full max-w-xs rounded-lg border border-card-border bg-card px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-accent/50 focus:outline-none"
+            />
+          )}
+        </div>
         {buyers.length === 0 ? (
           <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
             <p className="text-sm text-muted/60">No tickets sold yet</p>
+          </div>
+        ) : filteredBuyers.length === 0 ? (
+          <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+            <p className="text-sm text-muted/60">No results for &quot;{search}&quot;</p>
           </div>
         ) : (
           <>
@@ -151,10 +181,11 @@ export default function SalesDashboard({
                       <th className="px-4 py-3 font-medium">Tier</th>
                       <th className="px-4 py-3 font-medium">Discount</th>
                       <th className="px-4 py-3 font-medium">Date</th>
+                      <th className="px-4 py-3 font-medium"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {buyers.map((buyer) => (
+                    {filteredBuyers.map((buyer) => (
                       <tr
                         key={buyer.id}
                         className="border-b border-card-border/50 last:border-0"
@@ -180,6 +211,9 @@ export default function SalesDashboard({
                         <td className="px-4 py-3 text-muted">
                           {formatDate(buyer.purchaseDate)}
                         </td>
+                        <td className="px-4 py-3">
+                          <RefundActions ticketId={buyer.id} isDirectRefund />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -189,7 +223,7 @@ export default function SalesDashboard({
 
             {/* Mobile cards */}
             <div className="sm:hidden space-y-2">
-              {buyers.map((buyer) => (
+              {filteredBuyers.map((buyer) => (
                 <div
                   key={buyer.id}
                   className="rounded-2xl border border-card-border bg-card p-4"
@@ -207,15 +241,18 @@ export default function SalesDashboard({
                       {buyer.tierName}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <p className="text-xs text-muted">
-                      {formatDate(buyer.purchaseDate)}
-                    </p>
-                    {buyer.discountCode && (
-                      <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
-                        {buyer.discountCode}
-                      </span>
-                    )}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted">
+                        {formatDate(buyer.purchaseDate)}
+                      </p>
+                      {buyer.discountCode && (
+                        <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+                          {buyer.discountCode}
+                        </span>
+                      )}
+                    </div>
+                    <RefundActions ticketId={buyer.id} isDirectRefund />
                   </div>
                 </div>
               ))}

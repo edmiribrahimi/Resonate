@@ -5,8 +5,9 @@ import RefundDialog from "@/components/admin/RefundDialog";
 import {
   listTransactions,
   getTransactionDetail,
-  searchTicketsByMember,
-  type TicketSearchResult,
+  enrichTransactionsWithBuyers,
+  searchPurchasesByMember,
+  type PurchaseSearchResult,
 } from "@/app/(admin)/admin/finance/actions";
 
 type TransactionStatus =
@@ -69,11 +70,9 @@ function StatusBadge({ status, refundedAmount }: { status?: string; refundedAmou
 
 function formatDate(timestamp?: string): string {
   if (!timestamp) return "--";
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const d = new Date(timestamp);
+  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function formatAmount(amount?: number, currency?: string): string {
@@ -231,9 +230,12 @@ export default function TransactionList() {
 
   // Member search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<TicketSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<PurchaseSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
+
+  // Buyer name enrichment for transaction list
+  const [buyerMap, setBuyerMap] = useState<Record<string, string>>({});
 
   const handleRefundComplete = useCallback(
     (txnCode: string, refundedAmount: number, isFullRefund: boolean) => {
@@ -278,7 +280,7 @@ export default function TransactionList() {
     setSearchLoading(true);
     setIsSearchMode(true);
     try {
-      const results = await searchTicketsByMember(searchQuery.trim());
+      const results = await searchPurchasesByMember(searchQuery.trim());
       setSearchResults(results);
     } catch {
       setSearchResults([]);
@@ -313,10 +315,20 @@ export default function TransactionList() {
             : undefined,
           statuses: statusFilter !== "all" ? [statusFilter] : undefined,
         });
-        setTransactions(result.items as TransactionItem[]);
+        const items = result.items as TransactionItem[];
+        setTransactions(items);
         setNextCursor(result.nextCursor);
         setNextCursorParam(result.nextCursorParam);
         setHasMore(result.hasMore);
+
+        // Enrich with buyer names
+        const codes = items
+          .map((t) => t.transaction_code)
+          .filter((c): c is string => !!c);
+        if (codes.length > 0) {
+          const buyers = await enrichTransactionsWithBuyers(codes);
+          setBuyerMap((prev) => ({ ...prev, ...buyers }));
+        }
       } catch (e) {
         setError(
           e instanceof Error ? e.message : "Failed to load transactions"
@@ -335,10 +347,20 @@ export default function TransactionList() {
       setError(null);
       try {
         const result = await listTransactions({});
-        setTransactions(result.items as TransactionItem[]);
+        const items = result.items as TransactionItem[];
+        setTransactions(items);
         setNextCursor(result.nextCursor);
         setNextCursorParam(result.nextCursorParam);
         setHasMore(result.hasMore);
+
+        // Enrich with buyer names
+        const codes = items
+          .map((t) => t.transaction_code)
+          .filter((c): c is string => !!c);
+        if (codes.length > 0) {
+          const buyers = await enrichTransactionsWithBuyers(codes);
+          setBuyerMap(buyers);
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load transactions"
@@ -437,10 +459,10 @@ export default function TransactionList() {
 
   return (
     <>
-      {/* Member search for ticket refunds */}
+      {/* Member search */}
       <div className="mb-4">
         <label className="mb-1 block text-xs font-medium text-muted">
-          Search member for ticket refund
+          Search member purchases
         </label>
         <div className="flex gap-2">
           <input
@@ -475,27 +497,34 @@ export default function TransactionList() {
             <LoadingSkeleton />
           ) : searchResults.length === 0 ? (
             <div className="rounded-xl border border-card-border bg-card p-6 text-center text-muted">
-              No ticket purchases found for &quot;{searchQuery}&quot;
+              No purchases found for &quot;{searchQuery}&quot;
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-xs text-muted">{searchResults.length} ticket purchase(s) found</p>
+              <p className="text-xs text-muted">{searchResults.length} purchase(s) found</p>
               {searchResults.map((result, i) => (
                 <div
-                  key={`${result.checkoutId}-${i}`}
+                  key={`${result.id}-${i}`}
                   className="rounded-xl border border-card-border bg-card p-4"
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-sm">{result.memberName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{result.memberName}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          result.type === "ticket"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-purple-500/20 text-purple-400"
+                        }`}>
+                          {result.type === "ticket" ? "Ticket" : "Drinks"}
+                        </span>
+                      </div>
                       <p className="text-xs text-muted">{result.memberEmail}</p>
                       <p className="mt-1 text-xs text-muted">
-                        {result.eventTitle} &middot; {result.tierLabel}
+                        {result.eventTitle} &middot; {result.description}
                       </p>
                       <p className="text-xs text-muted">
-                        {new Date(result.purchaseDate).toLocaleDateString("en-US", {
-                          year: "numeric", month: "short", day: "numeric",
-                        })}
+                        {formatDate(result.purchaseDate)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -517,7 +546,7 @@ export default function TransactionList() {
                         }}
                         className="rounded-full border border-red-500/30 px-4 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
                       >
-                        Refund Ticket
+                        Refund
                       </button>
                     </div>
                   )}
@@ -608,6 +637,7 @@ export default function TransactionList() {
                         isExpanded={isExpanded}
                         detailCache={detailCache}
                         detailLoading={detailLoading}
+                        buyerName={buyerMap[txn.transaction_code ?? ""] ?? null}
                         onToggleExpand={() => toggleExpanded(txnCode)}
                         onRefundClick={() => setRefundTarget(txn)}
                       />
@@ -637,6 +667,11 @@ export default function TransactionList() {
                         <p className="font-medium text-sm">
                           {txn.product_summary || "Transaction"}
                         </p>
+                        {buyerMap[txn.transaction_code ?? ""] && (
+                          <p className="text-xs text-accent mt-0.5">
+                            {buyerMap[txn.transaction_code ?? ""]}
+                          </p>
+                        )}
                         <p className="text-xs text-muted mt-0.5">
                           {formatDate(txn.timestamp)}
                         </p>
@@ -731,6 +766,7 @@ function DesktopTransactionRow({
   isExpanded,
   detailCache,
   detailLoading,
+  buyerName,
   onToggleExpand,
   onRefundClick,
 }: {
@@ -739,6 +775,7 @@ function DesktopTransactionRow({
   isExpanded: boolean;
   detailCache: Record<string, any>;
   detailLoading: string | null;
+  buyerName: string | null;
   onToggleExpand: () => void;
   onRefundClick: () => void;
 }) {
@@ -768,8 +805,11 @@ function DesktopTransactionRow({
         >
           {formatDate(txn.timestamp)}
         </td>
-        <td className="px-4 py-3 font-medium">
-          {txn.product_summary || "Transaction"}
+        <td className="px-4 py-3">
+          <p className="font-medium">{txn.product_summary || "Transaction"}</p>
+          {buyerName && (
+            <p className="text-xs text-accent mt-0.5">{buyerName}</p>
+          )}
         </td>
         <td className="px-4 py-3 text-right font-medium">
           {formatAmount(txn.amount, txn.currency)}

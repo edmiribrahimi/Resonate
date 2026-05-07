@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { sumup, refundTransaction, getCheckout } from "@/lib/sumup";
+import { sumup, refundTransaction } from "@/lib/sumup";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { UserRole } from "@/types/database";
 
@@ -135,29 +135,93 @@ export async function refundTransactionAction(
   return { success: true };
 }
 
-export interface TicketSearchResult {
+/**
+ * Given an array of SumUp transaction codes, look up the buyer name
+ * from our tickets and drink_orders tables.
+ * Returns a map: transactionCode -> buyerName
+ */
+export async function enrichTransactionsWithBuyers(
+  transactionCodes: string[]
+): Promise<Record<string, string>> {
+  await requireMaster();
+
+  if (transactionCodes.length === 0) return {};
+
+  const supabase = getServiceClient();
+  const buyerMap: Record<string, string> = {};
+
+  // Lookup tickets
+  const { data: tickets } = await supabase
+    .from("tickets")
+    .select("sumup_transaction_code, user_id")
+    .in("sumup_transaction_code", transactionCodes);
+
+  // Lookup drink orders
+  const { data: drinkOrders } = await supabase
+    .from("drink_orders")
+    .select("sumup_transaction_code, user_id")
+    .in("sumup_transaction_code", transactionCodes);
+
+  // Collect all user IDs
+  const userIdToTxns = new Map<string, string[]>();
+  for (const t of tickets ?? []) {
+    if (t.user_id && t.sumup_transaction_code) {
+      const existing = userIdToTxns.get(t.user_id) ?? [];
+      existing.push(t.sumup_transaction_code);
+      userIdToTxns.set(t.user_id, existing);
+    }
+  }
+  for (const d of drinkOrders ?? []) {
+    if (d.user_id && d.sumup_transaction_code) {
+      const existing = userIdToTxns.get(d.user_id) ?? [];
+      existing.push(d.sumup_transaction_code);
+      userIdToTxns.set(d.user_id, existing);
+    }
+  }
+
+  const userIds = [...userIdToTxns.keys()];
+  if (userIds.length === 0) return buyerMap;
+
+  // Fetch profile names
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", userIds);
+
+  for (const profile of profiles ?? []) {
+    const txnCodes = userIdToTxns.get(profile.id) ?? [];
+    for (const code of txnCodes) {
+      buyerMap[code] = profile.full_name ?? "Unknown";
+    }
+  }
+
+  return buyerMap;
+}
+
+export interface PurchaseSearchResult {
   memberName: string;
   memberEmail: string;
   eventTitle: string;
-  tierLabel: string;
+  description: string;
   amount: number;
   currency: string;
   purchaseDate: string;
   transactionCode: string | null;
-  checkoutId: string;
+  id: string;
+  type: "ticket" | "drink";
   status: string;
 }
 
-export async function searchTicketsByMember(
+export async function searchPurchasesByMember(
   query: string
-): Promise<TicketSearchResult[]> {
+): Promise<PurchaseSearchResult[]> {
   await requireMaster();
 
   if (!query || query.trim().length < 2) return [];
 
   const supabase = getServiceClient();
 
-  // 1. Search profiles by name (ILIKE for case-insensitive partial match)
+  // 1. Search profiles by name
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, full_name, email")
@@ -167,17 +231,58 @@ export async function searchTicketsByMember(
   if (!profiles || profiles.length === 0) return [];
 
   const userIds = profiles.map((p) => p.id);
+  const results: PurchaseSearchResult[] = [];
 
-  // 2. Find completed ticket purchases for these users
-  const { data: purchases } = await supabase
-    .from("pending_purchases")
+  // 2. Find tickets
+  const { data: tickets } = await supabase
+    .from("tickets")
     .select(`
       id,
       user_id,
-      sumup_checkout_id,
-      status,
+      amount_paid,
+      sumup_transaction_code,
       created_at,
-      tier:ticket_tiers(label, price),
+      tier:ticket_tiers(name, price),
+      event:events(title)
+    `)
+    .in("user_id", userIds)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  for (const ticket of tickets ?? []) {
+    const profile = profiles.find((p) => p.id === ticket.user_id);
+    if (!profile) continue;
+
+    const tier = ticket.tier as unknown as { name: string; price: number } | null;
+    const event = ticket.event as unknown as { title: string } | null;
+
+    results.push({
+      memberName: profile.full_name,
+      memberEmail: profile.email,
+      eventTitle: event?.title ?? "Unknown Event",
+      description: tier?.name ?? "Ticket",
+      amount: ticket.amount_paid ?? tier?.price ?? 0,
+      currency: "EUR",
+      purchaseDate: ticket.created_at,
+      transactionCode: ticket.sumup_transaction_code,
+      id: ticket.id,
+      type: "ticket",
+      status: ticket.sumup_transaction_code ? "SUCCESSFUL" : "COMPLETED",
+    });
+  }
+
+  // 3. Find drink orders
+  const { data: drinkOrders } = await supabase
+    .from("drink_orders")
+    .select(`
+      id,
+      user_id,
+      total_amount,
+      refunded_amount,
+      sumup_transaction_code,
+      status,
+      items,
+      created_at,
       event:events(title)
     `)
     .in("user_id", userIds)
@@ -185,49 +290,40 @@ export async function searchTicketsByMember(
     .order("created_at", { ascending: false })
     .limit(20);
 
-  if (!purchases || purchases.length === 0) return [];
-
-  // 3. For each purchase, get the SumUp transaction code via checkout
-  const results: TicketSearchResult[] = [];
-
-  for (const purchase of purchases) {
-    const profile = profiles.find((p) => p.id === purchase.user_id);
+  for (const order of drinkOrders ?? []) {
+    const profile = profiles.find((p) => p.id === order.user_id);
     if (!profile) continue;
 
-    // Type-safe access to joined data
-    const tier = purchase.tier as unknown as { label: string; price: number } | null;
-    const event = purchase.event as unknown as { title: string } | null;
-
-    let transactionCode: string | null = null;
-    let amount = tier?.price ?? 0;
-    let currency = "EUR";
-    let purchaseStatus = "COMPLETED";
-
-    try {
-      const checkout = await getCheckout(purchase.sumup_checkout_id);
-      if (checkout.transactions && checkout.transactions.length > 0) {
-        transactionCode = checkout.transactions[0].transaction_code;
-        purchaseStatus = checkout.transactions[0].status;
-      }
-      amount = checkout.amount ?? amount;
-      currency = checkout.currency ?? currency;
-    } catch {
-      // SumUp error -- still show the result but without transaction code (no refund possible)
-    }
+    const event = order.event as unknown as { title: string } | null;
+    const items = order.items as { name: string; quantity: number }[];
+    const itemsSummary = items
+      .map((i) => `${i.quantity}x ${i.name}`)
+      .join(", ");
 
     results.push({
       memberName: profile.full_name,
       memberEmail: profile.email,
       eventTitle: event?.title ?? "Unknown Event",
-      tierLabel: tier?.label ?? "Ticket",
-      amount,
-      currency,
-      purchaseDate: purchase.created_at,
-      transactionCode,
-      checkoutId: purchase.sumup_checkout_id,
-      status: purchaseStatus,
+      description: itemsSummary || "Drinks",
+      amount: order.total_amount ?? 0,
+      currency: "EUR",
+      purchaseDate: order.created_at,
+      transactionCode: order.sumup_transaction_code,
+      id: order.id,
+      type: "drink",
+      status: (order.refunded_amount ?? 0) >= (order.total_amount ?? 0)
+        ? "REFUNDED"
+        : (order.refunded_amount ?? 0) > 0
+          ? "PARTIALLY REFUNDED"
+          : "SUCCESSFUL",
     });
   }
+
+  // Sort by date descending
+  results.sort(
+    (a, b) =>
+      new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+  );
 
   return results;
 }
