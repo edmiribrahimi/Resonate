@@ -194,7 +194,7 @@ export default function GuestDrinkMenu({
               key={drink.id}
               className="flex flex-col rounded-xl border border-card-border bg-card p-4"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 text-center">
                 <p className="text-base font-semibold text-foreground">
                   {drink.name}
                 </p>
