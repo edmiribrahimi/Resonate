@@ -178,35 +178,37 @@ function GuestRedeemConfirmationModal({
 
   if (phase === "active" || phase === "serving" || phase === "cancelling") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent animate-pulse">
-          Pass to the bartender
-        </p>
-        <p className="mt-4 text-3xl font-bold text-foreground text-center">
-          {drinkName}
-        </p>
-        <p className="mt-1 text-sm text-muted">Active — awaiting service</p>
-
-        {error && (
-          <div className="mt-6 w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-            <p className="text-sm text-red-400">{error}</p>
-          </div>
-        )}
-
-        <div className="mt-10 w-full max-w-sm space-y-3">
-          <button
-            type="button"
-            onClick={handleServe}
-            disabled={isPending}
-            className="w-full rounded-full bg-accent py-4 text-base font-semibold text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+      <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md">
+        {/* Big tap-to-serve area: takes the whole screen above the Cancel row */}
+        <button
+          type="button"
+          onClick={handleServe}
+          disabled={isPending}
+          className="flex flex-1 flex-col items-center justify-center px-6 text-center transition-colors active:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <p className="text-xs uppercase tracking-[0.3em] text-accent animate-pulse">
+            {phase === "serving" ? "Serving..." : "Tap anywhere to serve"}
+          </p>
+          <p className="mt-4 text-4xl sm:text-5xl font-bold text-foreground">
+            {drinkName}
+          </p>
+          <p className="mt-2 text-sm text-muted">Active — awaiting service</p>
+          {error && (
+            <div className="mt-6 w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+          <p className="mt-12 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-white">
             {phase === "serving" ? "Serving..." : "Mark as served"}
-          </button>
+          </p>
+        </button>
+
+        <div className="px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
           <button
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="w-full rounded-full border border-card-border bg-transparent py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mx-auto block rounded-full border border-card-border bg-transparent px-6 py-2 text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {phase === "cancelling" ? "Cancelling..." : "Cancel"}
           </button>
@@ -233,10 +235,7 @@ function GuestRedeemConfirmationModal({
           </button>
         </div>
 
-        <p className="mb-2 text-center text-xl font-semibold text-foreground">{drinkName}</p>
-        <p className="mb-6 text-center text-sm text-muted">
-          Confirm only when you&apos;re at the bar. After confirming, hand the phone to the bartender.
-        </p>
+        <p className="mb-6 text-center text-xl font-semibold text-foreground">{drinkName}</p>
 
         {error && (
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
