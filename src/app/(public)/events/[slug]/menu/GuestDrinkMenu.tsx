@@ -192,13 +192,13 @@ export default function GuestDrinkMenu({
           return (
             <div
               key={drink.id}
-              className="flex items-center justify-between rounded-xl border border-card-border bg-card p-3"
+              className="flex items-center justify-between rounded-xl border border-card-border bg-card p-4"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-base font-semibold text-foreground">
                   {drink.name}
                 </p>
-                <p className="text-sm text-accent font-semibold">
+                <p className="mt-0.5 text-lg font-bold text-accent">
                   {formatPrice(drink.price)}
                 </p>
               </div>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
+import { Inter } from "next/font/google";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
@@ -13,6 +14,10 @@ import GuestTokenDisplay from "./GuestTokenDisplay";
 import UserTokenDisplay from "./UserTokenDisplay";
 import EventQRCode from "./EventQRCode";
 import PartyDrinkMenu from "./PartyDrinkMenu";
+
+// Inter — neutral, highly readable in low-light venues. Scoped to the menu
+// page only so the rest of the app keeps Orbitron as its display font.
+const menuFont = Inter({ subsets: ["latin"], display: "swap" });
 
 export async function generateMetadata({
   params,
@@ -116,15 +121,8 @@ export default async function MenuPage({
 
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
-  const formattedDate = (() => {
-    const d = new Date(event.date);
-    const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    const M = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    return `${WD[d.getDay()]}, ${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
-  })();
-
   return (
-    <div className="min-h-dvh bg-background">
+    <div className={`min-h-dvh bg-background ${menuFont.className}`}>
       {/* Header section */}
       <div className="relative">
         {event.cover_image && (
@@ -144,12 +142,9 @@ export default async function MenuPage({
           event.cover_image ? "-mt-12 relative z-10" : "pt-8"
         }`}
       >
-        {/* Event info */}
+        {/* Event title and date intentionally omitted — keep the menu focused
+            on drinks. QR code is still shown to organizers/admins. */}
         <AnimatedSection>
-          <h1 className="text-2xl font-bold text-foreground">{event.title}</h1>
-          <p className="mt-1 text-sm text-muted">{formattedDate}</p>
-
-          {/* QR Code (organizer/admin only) */}
           {canManage && (
             <div className="mt-6">
               <EventQRCode url={menuUrl} eventTitle={event.title} />
