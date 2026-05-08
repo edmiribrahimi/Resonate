@@ -186,13 +186,13 @@ export default function GuestDrinkMenu({
         </div>
       )}
 
-      <div className="space-y-2 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         {drinks.map((drink) => {
           const qty = quantities[drink.id] ?? 0;
           return (
             <div
               key={drink.id}
-              className="flex items-center justify-between rounded-xl border border-card-border bg-card p-4"
+              className="flex flex-col rounded-xl border border-card-border bg-card p-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-base font-semibold text-foreground">
@@ -204,7 +204,7 @@ export default function GuestDrinkMenu({
               </div>
 
               {/* Quantity selector */}
-              <div className="flex items-center gap-2">
+              <div className="mt-3 flex items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => updateQuantity(drink.id, -1)}
