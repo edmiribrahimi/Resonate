@@ -195,7 +195,7 @@ export default function GuestDrinkMenu({
               className="flex flex-col rounded-xl border border-card-border bg-card p-4"
             >
               <div className="min-w-0 flex-1 text-center">
-                <p className="text-base font-semibold text-foreground">
+                <p className="whitespace-pre-line text-base font-semibold text-foreground">
                   {drink.name}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-accent">
