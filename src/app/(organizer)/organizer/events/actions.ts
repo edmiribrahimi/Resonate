@@ -917,6 +917,47 @@ export async function removeDrinkItem(itemId: string): Promise<void> {
 }
 
 /**
+ * Reorder drink items by overwriting their sort_order with the array index.
+ * Caller is expected to pass the full ordered list of ids for the same scope
+ * (event_id + party_id) so the UI and DB stay in sync.
+ */
+export async function reorderDrinkItems(
+  eventId: string,
+  ids: string[]
+): Promise<{ success: true }> {
+  const supabase = await createClient();
+  const { user, isMaster } = await verifyOrganizer(supabase);
+
+  // Organizer-only: must own the event
+  if (!isMaster) {
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("created_by")
+      .eq("id", eventId)
+      .single();
+    if (eventError || !event || event.created_by !== user.id) {
+      throw new Error("Forbidden: not your event");
+    }
+  }
+
+  if (ids.length === 0) return { success: true };
+
+  const serviceClient = getServiceClient();
+  await Promise.all(
+    ids.map((id, index) =>
+      serviceClient
+        .from("drink_items")
+        .update({ sort_order: index })
+        .eq("id", id)
+        .eq("event_id", eventId)
+    )
+  );
+
+  revalidatePath("/organizer/events");
+  return { success: true };
+}
+
+/**
  * Initiate a drink purchase via SumUp checkout.
  * Creates a drink_orders row and returns the checkout ID for card widget.
  */

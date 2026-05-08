@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
+import { Reorder, useDragControls } from "motion/react";
 import {
   addDrinkItem,
   updateDrinkItem,
   removeDrinkItem,
+  reorderDrinkItems,
 } from "@/app/(organizer)/organizer/events/actions";
 import type { DrinkItem } from "@/types/database";
 
@@ -126,6 +128,22 @@ export default function DrinkMenuManager({
     });
   }
 
+  function handleReorder(newItems: DrinkItem[]) {
+    const prev = items;
+    setItems(newItems);
+    startTransition(async () => {
+      try {
+        await reorderDrinkItems(
+          eventId,
+          newItems.map((i) => i.id)
+        );
+      } catch (err) {
+        console.error("Failed to reorder drink items:", err);
+        setItems(prev);
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       {/* Add form */}
@@ -169,119 +187,200 @@ export default function DrinkMenuManager({
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <Reorder.Group
+          axis="y"
+          values={items}
+          onReorder={handleReorder}
+          className="space-y-2"
+        >
           {items.map((item) => (
-            <div
+            <DrinkRow
               key={item.id}
-              className={`flex items-center gap-3 rounded-xl border border-card-border bg-card p-4 transition-opacity ${
-                !item.is_available ? "opacity-50" : ""
-              }`}
-            >
-              {editingId === item.id ? (
-                /* Edit mode */
-                <div className="min-w-0 flex-1 flex gap-2">
-                  <input
-                    ref={editNameRef}
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit(item);
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                    className="min-w-0 flex-1 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    step="0.50"
-                    min="0.01"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit(item);
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                    className="w-20 shrink-0 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleSaveEdit(item)}
-                    disabled={isPending}
-                    className="shrink-0 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    className="shrink-0 rounded-lg px-3 py-1 text-xs font-medium text-muted hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                /* Display mode */
-                <>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(item)}
-                    className="min-w-0 flex-1 text-left group"
-                  >
-                    <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
-                      {item.name}
-                    </p>
-                    <p className="text-sm text-accent font-semibold">
-                      {formatPrice(item.price)}
-                    </p>
-                  </button>
-
-                  {/* Availability toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggle(item)}
-                    disabled={isPending}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed ${
-                      item.is_available ? "bg-accent" : "bg-card-border"
-                    }`}
-                    role="switch"
-                    aria-checked={item.is_available}
-                    aria-label={`Toggle ${item.name} availability`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
-                        item.is_available ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-
-                  {/* Remove button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(item.id)}
-                    disabled={isPending}
-                    className="shrink-0 rounded-lg p-2 text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:cursor-not-allowed"
-                    aria-label={`Remove ${item.name}`}
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </>
-              )}
-            </div>
+              item={item}
+              isEditing={editingId === item.id}
+              isPending={isPending}
+              editName={editName}
+              editPrice={editPrice}
+              setEditName={setEditName}
+              setEditPrice={setEditPrice}
+              editNameRef={editNameRef}
+              onStartEdit={() => startEdit(item)}
+              onSaveEdit={() => handleSaveEdit(item)}
+              onCancelEdit={cancelEdit}
+              onToggle={() => handleToggle(item)}
+              onRemove={() => handleRemove(item.id)}
+            />
           ))}
-        </div>
+        </Reorder.Group>
       )}
     </div>
+  );
+}
+
+interface DrinkRowProps {
+  item: DrinkItem;
+  isEditing: boolean;
+  isPending: boolean;
+  editName: string;
+  editPrice: string;
+  setEditName: (v: string) => void;
+  setEditPrice: (v: string) => void;
+  editNameRef: React.RefObject<HTMLInputElement | null>;
+  onStartEdit: () => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onToggle: () => void;
+  onRemove: () => void;
+}
+
+function DrinkRow({
+  item,
+  isEditing,
+  isPending,
+  editName,
+  editPrice,
+  setEditName,
+  setEditPrice,
+  editNameRef,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onToggle,
+  onRemove,
+}: DrinkRowProps) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={dragControls}
+      className={`flex items-center gap-3 rounded-xl border border-card-border bg-card p-4 transition-opacity ${
+        !item.is_available ? "opacity-50" : ""
+      }`}
+    >
+      {/* Drag handle (hidden while editing to avoid pointer conflicts) */}
+      {!isEditing && (
+        <button
+          type="button"
+          onPointerDown={(e) => dragControls.start(e)}
+          className="shrink-0 cursor-grab touch-none rounded-md p-1 text-muted hover:text-foreground active:cursor-grabbing"
+          aria-label={`Drag to reorder ${item.name}`}
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <circle cx="9" cy="6" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="9" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="6" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="18" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
+      )}
+
+      {isEditing ? (
+        <div className="min-w-0 flex-1 flex gap-2">
+          <input
+            ref={editNameRef}
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSaveEdit();
+              if (e.key === "Escape") onCancelEdit();
+            }}
+            className="min-w-0 flex-1 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
+          />
+          <input
+            type="number"
+            step="0.50"
+            min="0.01"
+            value={editPrice}
+            onChange={(e) => setEditPrice(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSaveEdit();
+              if (e.key === "Escape") onCancelEdit();
+            }}
+            className="w-20 shrink-0 rounded-lg border border-accent bg-background px-2 py-1 text-sm text-foreground focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={onSaveEdit}
+            disabled={isPending}
+            className="shrink-0 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="shrink-0 rounded-lg px-3 py-1 text-xs font-medium text-muted hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="min-w-0 flex-1 text-left group"
+          >
+            <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors whitespace-pre-line">
+              {item.name}
+            </p>
+            <p className="text-sm text-accent font-semibold">
+              {formatPrice(item.price)}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={isPending}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed ${
+              item.is_available ? "bg-accent" : "bg-card-border"
+            }`}
+            role="switch"
+            aria-checked={item.is_available}
+            aria-label={`Toggle ${item.name} availability`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                item.is_available ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={isPending}
+            className="shrink-0 rounded-lg p-2 text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:cursor-not-allowed"
+            aria-label={`Remove ${item.name}`}
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </>
+      )}
+    </Reorder.Item>
   );
 }
