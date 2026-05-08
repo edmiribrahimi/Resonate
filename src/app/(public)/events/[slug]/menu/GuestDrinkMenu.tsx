@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { purchaseDrinksGuest, claimGuestOrders } from "./actions";
 import type { DrinkItem } from "@/types/database";
 import SumUpCheckoutModal from "../SumUpCheckoutModal";
-import { GuestWarningModal } from "./GuestLoginBanner";
+// Pre-checkout login/signup prompt temporarily disabled — re-enable by
+// restoring `usePathname`/`useRouter`, the showWarning state, and
+// the <GuestWarningModal /> render with its handlers.
+// import { usePathname, useRouter } from "next/navigation";
+// import { GuestWarningModal } from "./GuestLoginBanner";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("de-DE", {
@@ -48,13 +51,8 @@ export default function GuestDrinkMenu({
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const pathname = usePathname();
-  const slug = pathname.split("/")[2] || "";
-  const router = useRouter();
 
   // Claim guest tokens after login/register
   useEffect(() => {
@@ -148,46 +146,11 @@ export default function GuestDrinkMenu({
       return;
     }
 
-    if (isAuthenticated) {
-      // Authenticated users skip the warning and go straight to checkout
-      startCheckout();
-    } else {
-      // Show warning before creating checkout for guests
-      setShowWarning(true);
-    }
-  }
-
-  function handleWarningContinue() {
-    setShowWarning(false);
+    // Pre-checkout login/signup prompt is temporarily disabled: every order
+    // (auth or guest) goes straight to SumUp checkout. Re-introduce the
+    // `if (!isAuthenticated) setShowWarning(true)` branch when the prompt
+    // and its handlers (handleWarningContinue/Login/SignUp/Close) are restored.
     startCheckout();
-  }
-
-  function saveCartToStorage() {
-    try {
-      const nonZero = Object.fromEntries(
-        Object.entries(quantities).filter(([, q]) => q > 0)
-      );
-      localStorage.setItem(
-        `${CART_STORAGE_KEY}_${eventId}`,
-        JSON.stringify(nonZero)
-      );
-    } catch {
-      /* localStorage unavailable */
-    }
-  }
-
-  function handleWarningLogin() {
-    saveCartToStorage();
-    router.push(`/login?next=/events/${slug}/menu`);
-  }
-
-  function handleWarningSignUp() {
-    saveCartToStorage();
-    router.push(`/register?next=${encodeURIComponent(`/events/${slug}/menu`)}`);
-  }
-
-  function handleWarningClose() {
-    setShowWarning(false);
   }
 
   function handlePaymentComplete() {
@@ -292,8 +255,8 @@ export default function GuestDrinkMenu({
         </div>
       )}
 
-      {/* Pre-checkout warning modal */}
-      {showWarning && (
+      {/* Pre-checkout warning modal temporarily disabled */}
+      {/* {showWarning && (
         <GuestWarningModal
           onContinue={handleWarningContinue}
           onClose={handleWarningClose}
@@ -301,7 +264,7 @@ export default function GuestDrinkMenu({
           onSignUp={handleWarningSignUp}
           slug={slug}
         />
-      )}
+      )} */}
 
       {/* SumUp checkout modal */}
       {checkoutId && (

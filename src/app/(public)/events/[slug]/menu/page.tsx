@@ -7,7 +7,9 @@ import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import type { UserRole, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
-import GuestLoginBanner from "./GuestLoginBanner";
+// Login/signup invite for guests temporarily disabled — re-enable by
+// restoring this import and the <GuestLoginBanner /> render below.
+// import GuestLoginBanner from "./GuestLoginBanner";
 import UserTokenDisplay from "./UserTokenDisplay";
 import EventQRCode from "./EventQRCode";
 import PartyDrinkMenu from "./PartyDrinkMenu";
@@ -154,12 +156,12 @@ export default async function MenuPage({
             </div>
           )}
 
-          {/* Login suggestion banner (unauthenticated only) */}
-          {!user && (
+          {/* Login/signup banner temporarily disabled */}
+          {/* {!user && (
             <div className="mt-6">
               <GuestLoginBanner slug={slug} />
             </div>
-          )}
+          )} */}
         </AnimatedSection>
 
         {/* Party drink menu with selector */}
