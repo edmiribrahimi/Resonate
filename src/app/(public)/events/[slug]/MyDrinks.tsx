@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DrinkTokenCard from "./DrinkTokenCard";
+import type { DrinkTokenStatus } from "@/types/database";
 
 interface MyDrinksProps {
   tokens: {
@@ -9,7 +10,7 @@ interface MyDrinksProps {
     drink_name: string;
     price: number;
     token: string;
-    status: "purchased" | "redeemed";
+    status: DrinkTokenStatus;
     redeemed_at: string | null;
   }[];
 }
@@ -27,12 +28,26 @@ export default function MyDrinks({ tokens: initialTokens }: MyDrinksProps) {
     );
   }
 
-  // Sort: unredeemed first, redeemed last
-  const sorted = [...tokens].sort((a, b) => {
-    if (a.status === "purchased" && b.status === "redeemed") return -1;
-    if (a.status === "redeemed" && b.status === "purchased") return 1;
-    return 0;
-  });
+  function handleActivated(tokenId: string) {
+    setTokens((prev) =>
+      prev.map((t) => (t.id === tokenId ? { ...t, status: "active" as const } : t))
+    );
+  }
+
+  function handleCancelled(tokenId: string) {
+    setTokens((prev) =>
+      prev.map((t) => (t.id === tokenId ? { ...t, status: "purchased" as const } : t))
+    );
+  }
+
+  // Active first (mid-redemption), then purchased, then refunded, then redeemed
+  const order: Record<DrinkTokenStatus, number> = {
+    active: 0,
+    purchased: 1,
+    refunded: 2,
+    redeemed: 3,
+  };
+  const sorted = [...tokens].sort((a, b) => order[a.status] - order[b.status]);
 
   return (
     <div>
@@ -45,6 +60,8 @@ export default function MyDrinks({ tokens: initialTokens }: MyDrinksProps) {
             key={token.id}
             token={token}
             onRedeemed={handleRedeemed}
+            onActivated={handleActivated}
+            onCancelled={handleCancelled}
           />
         ))}
       </div>

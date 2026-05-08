@@ -233,6 +233,8 @@ export interface DrinkOrderItem {
   quantity: number;
 }
 
+export type DrinkTokenStatus = "purchased" | "active" | "redeemed" | "refunded";
+
 export interface DrinkToken {
   id: string;
   order_id: string;
@@ -243,8 +245,10 @@ export interface DrinkToken {
   drink_name: string;
   price: number;
   token: string;
-  status: "purchased" | "redeemed";
+  status: DrinkTokenStatus;
+  activated_at: string | null;
   redeemed_at: string | null;
+  refunded_at: string | null;
   created_at: string;
 }
 

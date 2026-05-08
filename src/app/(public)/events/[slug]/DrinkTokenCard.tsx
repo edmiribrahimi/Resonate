@@ -10,12 +10,14 @@ interface DrinkTokenCardProps {
     drink_name: string;
     price: number;
     token: string;
-    status: "purchased" | "redeemed" | "refunded";
+    status: "purchased" | "active" | "redeemed" | "refunded";
     created_at?: string;
     redeemed_at: string | null;
     refunded_at?: string | null;
   };
   onRedeemed: (tokenId: string) => void;
+  onActivated?: (tokenId: string) => void;
+  onCancelled?: (tokenId: string) => void;
   showTimestamps?: boolean;
 }
 
@@ -32,7 +34,7 @@ function formatTime(dateStr: string) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
-export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: DrinkTokenCardProps) {
+export default function DrinkTokenCard({ token, onRedeemed, onActivated, onCancelled, showTimestamps }: DrinkTokenCardProps) {
   const [showModal, setShowModal] = useState(false);
 
   if (token.status === "redeemed") {
@@ -103,9 +105,17 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
     );
   }
 
+  const isActive = token.status === "active";
+
   return (
     <>
-      <PressableCard className="rounded-xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4">
+      <PressableCard
+        className={`rounded-xl border p-4 ${
+          isActive
+            ? "border-accent bg-accent/10 animate-pulse"
+            : "border-accent/30 bg-gradient-to-br from-card to-accent/5"
+        }`}
+      >
         <p className="text-sm font-medium text-foreground truncate">
           {token.drink_name}
         </p>
@@ -122,7 +132,7 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
           onClick={() => setShowModal(true)}
           className="mt-3 w-full rounded-full bg-accent py-2.5 font-medium text-white transition-all"
         >
-          Redeem
+          {isActive ? "Active — tap to serve" : "Redeem"}
         </button>
       </PressableCard>
 
@@ -130,7 +140,10 @@ export default function DrinkTokenCard({ token, onRedeemed, showTimestamps }: Dr
         <RedeemConfirmationModal
           drinkName={token.drink_name}
           signedToken={token.token}
+          initialActive={isActive}
           onClose={() => setShowModal(false)}
+          onActivated={() => onActivated?.(token.id)}
+          onCancelled={() => onCancelled?.(token.id)}
           onRedeemed={() => {
             onRedeemed(token.id);
             setShowModal(false);

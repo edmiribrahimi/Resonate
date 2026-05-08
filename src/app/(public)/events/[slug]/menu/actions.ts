@@ -227,21 +227,26 @@ export async function claimGuestOrders(
   return { claimed: claimed?.length ?? 0 };
 }
 
+export type DrinkTokenAction = "activate" | "serve" | "cancel";
+
 /**
- * Guest drink token redemption — no authentication required.
+ * Two-step drink token flow for guest (anonymous) tokens:
+ *   - "activate": purchased -> active (customer confirms intent to redeem)
+ *   - "serve":    active -> redeemed  (bartender finalizes on customer's phone)
+ *   - "cancel":   active -> purchased (customer cancels mid-activation)
+ *
  * Verifies HMAC signature and guards that only guest tokens (user_id IS NULL)
- * can be redeemed via this action.
+ * can use this action, then dispatches to the matching SECURITY DEFINER RPC.
  */
 export async function redeemDrinkTokenGuest(
-  signedToken: string
+  signedToken: string,
+  action: DrinkTokenAction
 ): Promise<{ success: true }> {
-  // 1. Verify HMAC signature
   const tokenId = verifyTicketToken(signedToken);
   if (!tokenId) {
     throw new Error("Invalid token signature");
   }
 
-  // 2. Fetch token and verify it's a guest token
   const serviceClient = getServiceClient();
   const { data: token, error: tokenError } = await serviceClient
     .from("drink_tokens")
@@ -253,22 +258,20 @@ export async function redeemDrinkTokenGuest(
     throw new Error("Token not found");
   }
 
-  // 3. Guard: only guest tokens can use this action
   if (token.user_id !== null) {
     throw new Error("Use authenticated redemption flow");
-  }
-
-  // 4. Check status
-  if (token.status === "redeemed") {
-    throw new Error("Already redeemed");
   }
 
   if (token.status === "refunded") {
     throw new Error("Token has been refunded");
   }
 
-  // 4b. Check grace period — token must be redeemed within 1h after menu close
-  if (token.party_id) {
+  if (token.status === "redeemed" && action !== "serve") {
+    throw new Error("Already redeemed");
+  }
+
+  // Activation requires the menu/grace window to still be open
+  if (action === "activate" && token.party_id) {
     const { data: party } = await serviceClient
       .from("event_parties")
       .select("date, end_time, menu_closes_at")
@@ -288,13 +291,19 @@ export async function redeemDrinkTokenGuest(
     }
   }
 
-  // 5. Redeem via SECURITY DEFINER function
-  const { error: rpcError } = await serviceClient.rpc("redeem_drink_token", {
+  const rpcName =
+    action === "activate"
+      ? "activate_drink_token"
+      : action === "serve"
+        ? "redeem_drink_token"
+        : "deactivate_drink_token";
+
+  const { error: rpcError } = await serviceClient.rpc(rpcName, {
     p_token_id: tokenId,
   });
 
   if (rpcError) {
-    throw new Error("Redemption failed");
+    throw new Error(rpcError.message);
   }
 
   return { success: true };

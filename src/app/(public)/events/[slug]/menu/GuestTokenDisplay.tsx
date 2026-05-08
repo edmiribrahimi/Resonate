@@ -48,7 +48,7 @@ interface TokenData {
   drink_name: string;
   price: number;
   token: string;
-  status: "purchased" | "redeemed" | "refunded";
+  status: "purchased" | "active" | "redeemed" | "refunded";
   redeemed_at: string | null;
   refunded_at?: string | null;
 }
@@ -63,58 +63,87 @@ function formatPrice(price: number) {
 // ---------------------------------------------------------------------------
 // GuestRedeemConfirmationModal — fork of RedeemConfirmationModal
 // Uses redeemDrinkTokenGuest instead of redeemDrinkToken
+// Two-step flow: customer activates -> bartender finalizes (or customer cancels)
 // ---------------------------------------------------------------------------
 
-type Phase = "confirm" | "redeeming" | "served";
+type Phase = "confirm" | "activating" | "active" | "serving" | "served" | "cancelling";
 
 function GuestRedeemConfirmationModal({
   drinkName,
   signedToken,
+  initialActive = false,
   onClose,
+  onActivated,
   onRedeemed,
+  onCancelled,
 }: {
   drinkName: string;
   signedToken: string;
+  initialActive?: boolean;
   onClose: () => void;
+  onActivated?: () => void;
   onRedeemed: () => void;
+  onCancelled?: () => void;
 }) {
-  const [phase, setPhase] = useState<Phase>("confirm");
+  const [phase, setPhase] = useState<Phase>(initialActive ? "active" : "confirm");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const servedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-dismiss SERVED after 3 seconds
   useEffect(() => {
     if (phase !== "served") return;
-
     servedTimerRef.current = setTimeout(() => {
       onRedeemed();
       onClose();
     }, 3000);
-
     return () => {
       if (servedTimerRef.current) clearTimeout(servedTimerRef.current);
     };
   }, [phase, onRedeemed, onClose]);
 
-  const handleConfirm = useCallback(() => {
+  const handleActivate = useCallback(() => {
     setError(null);
-    setPhase("redeeming");
-
+    setPhase("activating");
     startTransition(async () => {
       try {
-        await redeemDrinkTokenGuest(signedToken);
-        setPhase("served");
+        await redeemDrinkTokenGuest(signedToken, "activate");
+        setPhase("active");
+        onActivated?.();
       } catch (err) {
         setPhase("confirm");
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Redemption failed. Please try again."
-        );
+        setError(err instanceof Error ? err.message : "Activation failed.");
+      }
+    });
+  }, [signedToken, startTransition, onActivated]);
+
+  const handleServe = useCallback(() => {
+    setError(null);
+    setPhase("serving");
+    startTransition(async () => {
+      try {
+        await redeemDrinkTokenGuest(signedToken, "serve");
+        setPhase("served");
+      } catch (err) {
+        setPhase("active");
+        setError(err instanceof Error ? err.message : "Redemption failed.");
       }
     });
   }, [signedToken, startTransition]);
+
+  const handleCancel = useCallback(() => {
+    setError(null);
+    setPhase("cancelling");
+    startTransition(async () => {
+      try {
+        await redeemDrinkTokenGuest(signedToken, "cancel");
+        onCancelled?.();
+        onClose();
+      } catch (err) {
+        setPhase("active");
+        setError(err instanceof Error ? err.message : "Cancellation failed.");
+      }
+    });
+  }, [signedToken, startTransition, onCancelled, onClose]);
 
   const handleServedTap = useCallback(() => {
     if (servedTimerRef.current) clearTimeout(servedTimerRef.current);
@@ -122,7 +151,6 @@ function GuestRedeemConfirmationModal({
     onClose();
   }, [onRedeemed, onClose]);
 
-  // SERVED full-screen overlay
   if (phase === "served") {
     return (
       <div
@@ -132,9 +160,7 @@ function GuestRedeemConfirmationModal({
         <div className="text-center">
           <p
             className="text-6xl font-bold text-accent"
-            style={{
-              animation: "servedScale 400ms ease-out forwards",
-            }}
+            style={{ animation: "servedScale 400ms ease-out forwards" }}
           >
             SERVED
           </p>
@@ -142,16 +168,49 @@ function GuestRedeemConfirmationModal({
         </div>
         <style>{`
           @keyframes servedScale {
-            from {
-              transform: scale(0.5);
-              opacity: 0;
-            }
-            to {
-              transform: scale(1);
-              opacity: 1;
-            }
+            from { transform: scale(0.5); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
           }
         `}</style>
+      </div>
+    );
+  }
+
+  if (phase === "active" || phase === "serving" || phase === "cancelling") {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md p-6">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent animate-pulse">
+          Pass to the bartender
+        </p>
+        <p className="mt-4 text-3xl font-bold text-foreground text-center">
+          {drinkName}
+        </p>
+        <p className="mt-1 text-sm text-muted">Active — awaiting service</p>
+
+        {error && (
+          <div className="mt-6 w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+
+        <div className="mt-10 w-full max-w-sm space-y-3">
+          <button
+            type="button"
+            onClick={handleServe}
+            disabled={isPending}
+            className="w-full rounded-full bg-accent py-4 text-base font-semibold text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {phase === "serving" ? "Serving..." : "Mark as served"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isPending}
+            className="w-full rounded-full border border-card-border bg-transparent py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {phase === "cancelling" ? "Cancelling..." : "Cancel"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -159,76 +218,45 @@ function GuestRedeemConfirmationModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-card p-6 pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))] sm:pb-6">
-        {/* Close button */}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
-            Redeem Drink
-          </h2>
+          <h2 className="text-lg font-semibold text-foreground">Redeem Drink</h2>
           <button
             type="button"
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-card-border transition-colors"
             aria-label="Close"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* Drink name */}
-        <p className="mb-6 text-center text-xl font-semibold text-foreground">
-          {drinkName}
+        <p className="mb-2 text-center text-xl font-semibold text-foreground">{drinkName}</p>
+        <p className="mb-6 text-center text-sm text-muted">
+          Confirm only when you&apos;re at the bar. After confirming, hand the phone to the bartender.
         </p>
 
-        {/* Error message */}
         {error && (
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
             <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
-        {/* Confirm button */}
         <button
           type="button"
-          onClick={handleConfirm}
+          onClick={handleActivate}
           disabled={isPending}
           className="w-full rounded-full py-3 px-8 font-semibold text-white transition-all bg-accent active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPending ? (
+          {phase === "activating" ? (
             <span className="inline-flex items-center gap-2">
-              <svg
-                className="h-4 w-4 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
+              <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Redeeming...
+              Activating...
             </span>
           ) : (
             "Confirm"
@@ -246,9 +274,13 @@ function GuestRedeemConfirmationModal({
 function GuestDrinkTokenCard({
   token,
   onRedeemed,
+  onActivated,
+  onCancelled,
 }: {
   token: TokenData;
   onRedeemed: (tokenId: string) => void;
+  onActivated?: (tokenId: string) => void;
+  onCancelled?: (tokenId: string) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
 
@@ -297,9 +329,17 @@ function GuestDrinkTokenCard({
     );
   }
 
+  const isActive = token.status === "active";
+
   return (
     <>
-      <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4">
+      <div
+        className={`rounded-xl border p-4 ${
+          isActive
+            ? "border-accent bg-accent/10 animate-pulse"
+            : "border-accent/30 bg-gradient-to-br from-card to-accent/5"
+        }`}
+      >
         <p className="text-sm font-medium text-foreground truncate">
           {token.drink_name}
         </p>
@@ -311,7 +351,7 @@ function GuestDrinkTokenCard({
           onClick={() => setShowModal(true)}
           className="mt-3 w-full rounded-full bg-accent py-2.5 font-medium text-white transition-all active:scale-95 active:opacity-80"
         >
-          Redeem
+          {isActive ? "Active — tap to serve" : "Redeem"}
         </button>
       </div>
 
@@ -319,7 +359,10 @@ function GuestDrinkTokenCard({
         <GuestRedeemConfirmationModal
           drinkName={token.drink_name}
           signedToken={token.token}
+          initialActive={isActive}
           onClose={() => setShowModal(false)}
+          onActivated={() => onActivated?.(token.id)}
+          onCancelled={() => onCancelled?.(token.id)}
           onRedeemed={() => {
             onRedeemed(token.id);
             setShowModal(false);
@@ -462,8 +505,20 @@ export default function GuestTokenDisplay({
     );
   }
 
-  // Sort: purchased first, then refunded, then redeemed
-  const statusOrder = { purchased: 0, refunded: 1, redeemed: 2 };
+  function handleActivated(tokenId: string) {
+    setTokens((prev) =>
+      prev.map((t) => (t.id === tokenId ? { ...t, status: "active" as const } : t))
+    );
+  }
+
+  function handleCancelled(tokenId: string) {
+    setTokens((prev) =>
+      prev.map((t) => (t.id === tokenId ? { ...t, status: "purchased" as const } : t))
+    );
+  }
+
+  // Sort: active first (the one being served right now), then purchased, then refunded, then redeemed
+  const statusOrder = { active: 0, purchased: 1, refunded: 2, redeemed: 3 };
   const sorted = [...tokens].sort(
     (a, b) => statusOrder[a.status] - statusOrder[b.status]
   );
@@ -489,6 +544,8 @@ export default function GuestTokenDisplay({
               key={token.id}
               token={token}
               onRedeemed={handleRedeemed}
+              onActivated={handleActivated}
+              onCancelled={handleCancelled}
             />
           ))}
         </div>

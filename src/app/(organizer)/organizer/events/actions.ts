@@ -1052,12 +1052,20 @@ export async function purchaseDrinks(
 // Drink Token Redemption
 // =============================================================
 
+export type DrinkTokenAction = "activate" | "serve" | "cancel";
+
 /**
- * Redeem a drink token. Verifies HMAC signature, ownership, and status
- * before calling the redeem_drink_token SECURITY DEFINER function.
+ * Two-step drink token flow for authenticated users:
+ *   - "activate": purchased -> active (customer confirms intent to redeem)
+ *   - "serve":    active -> redeemed  (bartender finalizes on customer's phone)
+ *   - "cancel":   active -> purchased (customer cancels mid-activation)
+ *
+ * Verifies HMAC signature, ownership, refund/expiry, then dispatches to the
+ * matching SECURITY DEFINER RPC.
  */
 export async function redeemDrinkToken(
-  signedToken: string
+  signedToken: string,
+  action: DrinkTokenAction
 ): Promise<{ success: true }> {
   // 1. Verify HMAC signature
   const tokenId = verifyTicketToken(signedToken);
@@ -1091,16 +1099,16 @@ export async function redeemDrinkToken(
     throw new Error("Not your token");
   }
 
-  if (token.status === "redeemed") {
-    throw new Error("Already redeemed");
-  }
-
   if (token.status === "refunded") {
     throw new Error("Token has been refunded");
   }
 
-  // 3b. Check grace period — token must be redeemed within 1h after menu close
-  if (token.party_id) {
+  if (token.status === "redeemed" && action !== "serve") {
+    throw new Error("Already redeemed");
+  }
+
+  // 3b. Activation requires the menu/grace window to still be open
+  if (action === "activate" && token.party_id) {
     const { data: party } = await supabase
       .from("event_parties")
       .select("date, end_time, menu_closes_at")
@@ -1120,14 +1128,20 @@ export async function redeemDrinkToken(
     }
   }
 
-  // 4. Redeem via SECURITY DEFINER function
+  const rpcName =
+    action === "activate"
+      ? "activate_drink_token"
+      : action === "serve"
+        ? "redeem_drink_token"
+        : "deactivate_drink_token";
+
   const serviceClient = getServiceClient();
-  const { error: rpcError } = await serviceClient.rpc("redeem_drink_token", {
+  const { error: rpcError } = await serviceClient.rpc(rpcName, {
     p_token_id: tokenId,
   });
 
   if (rpcError) {
-    throw new Error("Redemption failed");
+    throw new Error(rpcError.message);
   }
 
   return { success: true };
