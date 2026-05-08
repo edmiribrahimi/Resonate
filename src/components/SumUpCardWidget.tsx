@@ -64,6 +64,8 @@ interface SumUpCardWidgetProps {
   onError: (body: Record<string, unknown>) => void;
   onLoad?: () => void;
   locale?: string;
+  country?: string;
+  currency?: string;
 }
 
 export function SumUpCardWidget({
@@ -71,7 +73,9 @@ export function SumUpCardWidget({
   onSuccess,
   onError,
   onLoad,
-  locale = "en-GB",
+  locale = "it-IT",
+  country = "IT",
+  currency = "EUR",
 }: SumUpCardWidgetProps) {
   const instanceRef = useRef<SumUpCardInstance | null>(null);
 
@@ -100,6 +104,8 @@ export function SumUpCardWidget({
       id: "sumup-card",
       checkoutId,
       locale,
+      country,
+      currency,
       showFooter: false,
       ...(googlePayMerchantId && {
         googlePay: {
@@ -125,7 +131,7 @@ export function SumUpCardWidget({
         instanceRef.current = null;
       }
     };
-  }, [checkoutId, locale]);
+  }, [checkoutId, locale, country, currency]);
 
   return <div id="sumup-card" />;
 }
