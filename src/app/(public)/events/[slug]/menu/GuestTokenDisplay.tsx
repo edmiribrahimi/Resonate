@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import { redeemDrinkTokenGuest } from "./actions";
+import { formatDateTimeNoYear } from "@/utils/formatTime";
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -302,7 +303,11 @@ function GuestDrinkTokenCard({
             &#10003;
           </span>
         </div>
-        <p className="mt-2 text-xs text-muted">Already redeemed</p>
+        <p className="mt-2 text-xs text-muted">
+          {token.redeemed_at
+            ? `Redeemed at ${formatDateTimeNoYear(token.redeemed_at)}`
+            : "Already redeemed"}
+        </p>
       </div>
     );
   }
