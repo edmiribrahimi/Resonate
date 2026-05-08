@@ -140,7 +140,7 @@ export default async function MenuPage({
       </div>
 
       <div
-        className={`mx-auto max-w-lg px-4 pb-24 ${
+        className={`mx-auto max-w-lg px-4 ${user ? "pb-24" : "pb-8"} ${
           event.cover_image ? "-mt-12 relative z-10" : "pt-8"
         }`}
       >
@@ -201,7 +201,9 @@ export default async function MenuPage({
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      {/* MobileNav hidden for guests so they don't navigate away from the
+          menu and lose track of their tokens. */}
+      {user && <MobileNav role={role} status={status} />}
     </div>
   );
 }
