@@ -47,3 +47,22 @@ public/workbox-*.js.map
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Materiale di produzione — NON PUBBLICO
+#
+# Questo repository e' PUBBLICO (github.com/edmiribrahimi/Resonate). Il
+# materiale di produzione — calendario delle serate, sedi candidate, line-up
+# non ancora annunciate, trattative aperte, ricerca di scouting — deve restare
+# privato.
+#
+# Non e' una preferenza di pulizia del repo: una pubblicazione su repo pubblico
+# e' IRREVERSIBILE. Un file spinto resta nei fork, nelle cache dei mirror e
+# nella history anche dopo la rimozione. E' la stessa logica di
+# .claude/rules/venue-secrecy.md, applicata al materiale invece che al singolo
+# indirizzo.
+#
+# Verificato meccanicamente: `npm run verify:persona`, controllo F.
+# ─────────────────────────────────────────────────────────────────────────────
+docs/
+.firecrawl/

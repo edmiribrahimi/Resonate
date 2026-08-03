@@ -1,11 +1,22 @@
 # Production Calendar — Operational Gates
 
-> **Nessun `paths:`.** Questo modulo governa materiale che oggi non vive nel
-> repo: sta nel production tracker (artifact `re:sonate — Production`, dati
-> estratti da `Music.ics`, aggiornato al 02/08/2026). Va **consultato a mano**
-> ogni volta che si parla di format, date, sigle o pipeline editoriale.
-> Se un giorno il tracker viene versionato sotto `.planning/production/`,
-> aggiungere qui `paths: ".planning/production/**"`.
+> **Nessun `paths:`, e non e' un limite tecnico: e' una decisione.**
+>
+> Il materiale di produzione — `docs/Music-*.ics`, `docs/calendario-produzione.html`,
+> lo scouting in `.firecrawl/` e l'artifact `re:sonate — Production` — **non
+> deve diventare pubblico**, e `github.com/edmiribrahimi/Resonate` **e' un repo
+> pubblico**. Versionarlo per farlo caricare automaticamente significherebbe
+> pubblicarlo, ed e' un'operazione **irreversibile**: un file spinto su un repo
+> pubblico resta nei fork, nelle cache e nella history anche dopo la rimozione.
+>
+> Le date, le sedi candidate, i dj non ancora annunciati e le trattative aperte
+> sono esattamente il tipo di informazione che il progetto tiene chiusa fino al
+> momento che sceglie — la stessa logica di `venue-secrecy.md`, applicata al
+> materiale invece che al singolo indirizzo.
+>
+> Questo modulo si consulta **a mano**. Se un giorno servisse l'aggancio
+> automatico, la strada e' un repo privato separato o una directory ignorata
+> ma leggibile in locale — **mai** versionare qui.
 
 ## Before Touching
 

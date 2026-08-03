@@ -150,7 +150,25 @@ classificato ("si", "fatto", conferme). Nel dubbio, mettilo.
    genera i codici con `Math.random()`). **Verifica ogni voce contro il codice
    corrente prima di citarla.**
 
-5. **macOS/BSD.** `grep -E` per le regex estese, `sed -i ''` per l'in-place.
+5. **Il repository e' PUBBLICO.**
+   `github.com/edmiribrahimi/Resonate` e' pubblico. Ogni commit e' una
+   **pubblicazione**, e una pubblicazione e' **irreversibile**: un file spinto
+   resta nei fork, nelle cache dei mirror e nella history anche dopo la
+   rimozione.
+
+   Il materiale di produzione — `docs/` (calendario, snapshot `.ics`) e
+   `.firecrawl/` (417 file di ricerca scouting) — **deve restare privato** ed
+   e' in `.gitignore`. Verificato meccanicamente dal controllo **F** di
+   `npm run verify:persona`, che pretende sia che le directory siano ignorate
+   sia che nulla al loro interno sia gia' tracciato: `.gitignore` non rimuove
+   dall'indice cio' che c'e' gia'.
+
+   **Prima di aggiungere qualsiasi file al repo, chiediti se puo' essere
+   pubblico.** Date non annunciate, sedi in trattativa, line-up non confermate
+   e contatti non stanno qui. E' `venue-secrecy.md` applicato al materiale
+   invece che al singolo indirizzo.
+
+6. **macOS/BSD.** `grep -E` per le regex estese, `sed -i ''` per l'in-place.
 
 ---
 

@@ -3,6 +3,77 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.3.0] - 2026-08-04
+
+### Il contesto, perche' spiega tutto il resto
+Era in corso l'aggancio dei due moduli di produzione a `docs/`, per farli
+caricare automaticamente. Due accertamenti hanno ribaltato l'operazione:
+
+1. **`github.com/edmiribrahimi/Resonate` e' PUBBLICO** (`gh repo view`:
+   `isPrivate: false`). Committare `docs/` non era versionare: era
+   **pubblicare**.
+2. **I dati di produzione devono restare non pubblici** (decisione
+   dell'owner).
+
+L'aggancio e' stato **revocato**. Il caricamento automatico e' una comodita';
+una pubblicazione su repo pubblico e' irreversibile — resta nei fork, nelle
+cache e nella history anche dopo la rimozione.
+
+### Added
+- **Controllo F** in `scripts/verify-persona.mjs` — *il materiale di produzione
+  resta fuori dal repo pubblico*. Due clausole **indipendenti**, entrambe
+  necessarie:
+  - se `docs/` o `.firecrawl/` esistono su disco, git deve ignorarli;
+  - nulla al loro interno deve essere **gia' tracciato** — `.gitignore` non
+    rimuove dall'indice cio' che c'e' gia', e credere il contrario e' il modo
+    tipico in cui un dato resta esposto dopo che "e' stato ignorato".
+- **`.gitignore`**: `docs/` e `.firecrawl/`, con la ragione scritta accanto.
+- **Guardrail 5** in `CLAUDE.md` — il repository e' pubblico; ogni commit e'
+  una pubblicazione irreversibile.
+- **Gate riservatezza prima della comodita'** in `ai-engineering.md` — quando
+  caricamento automatico e riservatezza sono in tensione, vince la
+  riservatezza. 13 → 14 gate.
+
+### Verifica preventiva sull'esposizione
+Prima di qualsiasi decisione, la history pubblica e' stata ispezionata per dati
+di produzione gia' committati: `git log --all --name-only` filtrato su
+`.ics`/`calendario`/`firecrawl`/`scouting` restituisce **solo file sorgente**
+(gestione venue, migration, `venue-secrecy.md`). **Nessun dato di produzione e'
+mai stato committato**, e il commit `e3e475e` non ha toccato ne' `docs/` ne'
+`.firecrawl/`.
+
+Ispezionato anche il contenuto di `docs/` prima di scartarlo: **0 campi
+`LOCATION`, 0 indirizzi civici, 0 occorrenze di "secret", 0 contatti** su 163
+eventi. Il materiale era in se' pubblicabile — la decisione di non pubblicarlo
+e' stata presa comunque, ed e' quella che conta.
+
+### TROVATO, e ha impedito un aggancio sbagliato
+`docs/calendario-produzione.html` porta `<title>Resonate — Calendario ago 2026
+→ lug 2027</title>` e contiene **zero** occorrenze di `Manifesto`, `Visual`,
+`Location`, `Checklist`, `palette`, `scouting`. **E' la sola sezione
+Calendario**, non l'artifact completo da 311 KB.
+
+Quindi anche senza il vincolo di riservatezza, `brand-visual-system` **non
+poteva** essere agganciato a `docs/`: si sarebbe caricato su file che non
+contengono il suo argomento. Non un path morto — un path **fuorviante**, che il
+controllo A non avrebbe potuto rilevare perche' i file esistono.
+
+### Prova per mutazione — F
+`.gitignore` commentato → **F ✗ da solo**, nominando entrambe le directory con
+la conseguenza esplicita (*"un `git add -A` lo pubblicherebbe"*). Ripristinato
+→ 6/6. Mutazione verificata come applicata prima di leggerne l'esito.
+
+### Changed
+- **`production-calendar.md`** e **`brand-visual-system.md`** — l'assenza di
+  `paths:` non e' piu' motivata come "il materiale non e' nel repo" ma come
+  **decisione di riservatezza**. Se un giorno servisse l'aggancio, la strada e'
+  un repo privato separato, mai versionare qui.
+- **`ai-engineering.md`** — il Gate sul set senza paths cita la ragione vera.
+- **`scripts/verify-persona.mjs`** — 5 → 6 controlli.
+
+### Verifica eseguita
+`npm run verify:persona` → **6/6 verdi**, exit 0.
+
 ## [1.2.0] - 2026-08-04
 
 ### Added

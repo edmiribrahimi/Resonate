@@ -1,8 +1,15 @@
 # Brand & Visual System — Operational Gates
 
-> **Nessun `paths:`**, per la stessa ragione di `production-calendar.md`: il
-> sistema visivo vive nel production tracker (artifact `re:sonate —
-> Production`), non nel repo. Consultazione manuale.
+> **Nessun `paths:`**, per la stessa ragione di `production-calendar.md`, e la
+> ragione **non e' tecnica: e' una decisione**. Il sistema visivo, lo scouting
+> e i manifesti vivono nel production tracker (artifact `re:sonate —
+> Production`) e in `.firecrawl/`, e **non devono diventare pubblici**:
+> `github.com/edmiribrahimi/Resonate` e' un repo pubblico e una pubblicazione
+> e' irreversibile.
+>
+> Versionarli per ottenere il caricamento automatico significherebbe
+> pubblicarli. Consultazione manuale, quindi — e il controllo **F** di
+> `npm run verify:persona` verifica che quel materiale resti fuori.
 
 ## Before Touching
 
