@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:persona": "node scripts/verify-persona.mjs"
   },
   "dependencies": {
     "@react-email/components": "^1.0.8",
