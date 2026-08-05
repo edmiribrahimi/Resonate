@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import ScanFlash from "@/components/scanner/ScanFlash";
 import { vibrateSuccess, vibrateError } from "@/utils/haptics";
 import {
-  cacheAttendees,
+  mergeAttendees,
   cacheMembers,
   findAttendee,
   findMember,
@@ -167,7 +167,10 @@ export default function ScannerClient() {
 
           // Cache attendees in IndexedDB for offline (only full list, not search-filtered)
           if (eventData && !search) {
-            cacheAttendees(selectedPartyId, eventData.attendees).catch(() => {});
+            // NOTE (31-05): `mergeAttendees` returns a refusal as a value when a
+            // payload would shrink the cache. Rendering it is plan 31-11's task;
+            // until then the value is dropped here, exactly as before.
+            mergeAttendees(selectedPartyId, eventData.attendees).catch(() => {});
             // Also pre-cache all members for offline membership verification
             fetch("/api/membership/list")
               .then((r) => r.ok ? r.json() : null)
@@ -348,12 +351,22 @@ export default function ScannerClient() {
         const ticketIdFromQR = code.split(".")[0];
 
         // Offline flow: check IndexedDB cache
-        if (!navigator.onLine) {
+        // A scan without a selected party has no meaning — the record key is
+        // party-scoped, so the party is a precondition, not a filter.
+        if (!navigator.onLine && selectedPartyId) {
           try {
-            const attendee = await findAttendee(ticketIdFromQR);
+            const attendee = await findAttendee(
+              selectedPartyId,
+              "ticket",
+              ticketIdFromQR
+            );
             if (attendee && !attendee.checkedIn) {
               // Found and not checked in — check in locally
-              await checkInLocally(ticketIdFromQR);
+              await checkInLocally(selectedPartyId, "ticket", ticketIdFromQR, {
+                // FIX-10: the full signed string, exactly as scanned.
+                token: code,
+                name: attendee.name,
+              });
               const subtitle = [
                 attendee.tierName,
                 attendee.ticketType === "guest_list" ? "Guest List" : null,
@@ -426,7 +439,11 @@ export default function ScannerClient() {
             canUndo: true,
           });
           // Update IndexedDB cache (without adding to pending queue — already synced online)
-          markCheckedInLocally(ticketIdFromQR).catch(() => {});
+          if (selectedPartyId) {
+            markCheckedInLocally(selectedPartyId, "ticket", ticketIdFromQR).catch(
+              () => {}
+            );
+          }
         } else if (data.status === "wrong_event") {
           showFlash(
             "error",
@@ -509,7 +526,7 @@ export default function ScannerClient() {
           try {
             const member = await findMember(membershipCode);
             if (member) {
-              await checkInMemberLocally(membershipCode, selectedPartyId);
+              await checkInMemberLocally(selectedPartyId, membershipCode);
               showFlash("success", member.fullName, "Member · Offline");
               addScanRecord({
                 id: membershipCode,
@@ -596,12 +613,19 @@ export default function ScannerClient() {
       }
     } catch {
       // Network error — try offline fallback for ticket tokens
-      if (TICKET_TOKEN_PATTERN.test(code)) {
+      if (TICKET_TOKEN_PATTERN.test(code) && selectedPartyId) {
         const ticketIdFromQR = code.split(".")[0];
         try {
-          const attendee = await findAttendee(ticketIdFromQR);
+          const attendee = await findAttendee(
+            selectedPartyId,
+            "ticket",
+            ticketIdFromQR
+          );
           if (attendee && !attendee.checkedIn) {
-            await checkInLocally(ticketIdFromQR);
+            await checkInLocally(selectedPartyId, "ticket", ticketIdFromQR, {
+              token: code,
+              name: attendee.name,
+            });
             showFlash("success", attendee.name, "Offline");
             addScanRecord({
               id: ticketIdFromQR,

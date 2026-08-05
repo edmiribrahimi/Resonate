@@ -27,7 +27,7 @@ export async function syncPendingCheckins(): Promise<number> {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              ticketId: checkin.id,
+              ticketId: checkin.subjectId,
               partyId: checkin.partyId,
               offlineSync: true,
             }),
@@ -35,7 +35,7 @@ export async function syncPendingCheckins(): Promise<number> {
 
           if (res.ok || res.status === 409) {
             // 409 = already checked in, which is fine for idempotent sync
-            await markSynced(checkin.id);
+            await markSynced(checkin.key);
             synced++;
           }
         } else if (checkin.type === "membership") {
@@ -44,13 +44,13 @@ export async function syncPendingCheckins(): Promise<number> {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              code: checkin.id,
+              code: checkin.subjectId,
               partyId: checkin.partyId,
             }),
           });
 
           if (res.ok) {
-            await markSynced(checkin.id);
+            await markSynced(checkin.key);
             synced++;
           }
         } else {
@@ -58,11 +58,11 @@ export async function syncPendingCheckins(): Promise<number> {
           const res = await fetch("/api/tickets/attendance", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ guestListEntryId: checkin.id }),
+            body: JSON.stringify({ guestListEntryId: checkin.subjectId }),
           });
 
           if (res.ok || res.status === 409) {
-            await markSynced(checkin.id);
+            await markSynced(checkin.key);
             synced++;
           }
         }
