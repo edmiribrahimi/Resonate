@@ -32,6 +32,7 @@ Three rules override any requirement below that appears to contradict them:
 - [ ] **FIX-07**: Two check-ins for the same person at two different parties on one device are queued as two entries, not one overwriting the other
 - [ ] **FIX-08**: A membership sync that fails permanently is recorded as failed rather than retried forever, so the pending count means something
 - [ ] **FIX-09**: A ticket refunded after the cache was downloaded is admitted and flagged for review, both online and offline
+- [ ] **FIX-10**: A queued offline scan carries the signed token it was read from, so synchronising a check-in still proves possession of the ticket instead of accepting a bare identifier
 
 ### Capability Model
 
@@ -134,8 +135,68 @@ Deferred, tracked, not in this roadmap.
 
 ## Traceability
 
-Filled during roadmap creation.
+Every v1.5 requirement maps to exactly one phase. Phase numbering continues from
+v1.4 (last phase: 30) — this milestone runs 31 → 42.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | Pending roadmap |
+| FIX-01 | Phase 31 | Complete (applied 2026-08-05) |
+| FIX-02 | Phase 31 | Complete (applied 2026-08-05) |
+| FIX-03 | Phase 31 | Pending |
+| FIX-04 | Phase 31 | Pending |
+| FIX-05 | Phase 31 | Pending |
+| FIX-06 | Phase 31 | Pending |
+| FIX-07 | Phase 31 | Pending |
+| FIX-08 | Phase 31 | Pending |
+| FIX-09 | Phase 31 | Pending |
+| FIX-10 | Phase 31 | Pending |
+| CAP-01 | Phase 32 | Pending |
+| CAP-03 | Phase 32 | Pending |
+| CAP-04 | Phase 32 | Pending |
+| CAP-06 | Phase 32 | Pending |
+| CAP-05 | Phase 33 | Pending |
+| CAP-02 | Phase 34 | Pending |
+| STAFF-01 | Phase 34 | Pending |
+| STAFF-02 | Phase 34 | Pending |
+| STAFF-03 | Phase 34 | Pending |
+| ASSIGN-01 | Phase 35 | Pending |
+| ASSIGN-02 | Phase 35 | Pending |
+| ASSIGN-03 | Phase 35 | Pending |
+| ASSIGN-04 | Phase 35 | Pending |
+| ASSIGN-05 | Phase 35 | Pending |
+| ASSIGN-06 | Phase 35 | Pending |
+| ASSIGN-07 | Phase 35 | Pending |
+| ASSIGN-08 | Phase 35 | Pending |
+| FMT-01 | Phase 36 | Pending |
+| FMT-02 | Phase 36 | Pending |
+| FMT-03 | Phase 36 | Pending |
+| FMT-04 | Phase 36 | Pending |
+| FMT-05 | Phase 36 | Pending |
+| FMT-06 | Phase 36 | Pending |
+| VENUE-01 | Phase 37 | Pending |
+| VENUE-02 | Phase 37 | Pending |
+| LIVE-01 | Phase 38 | Pending |
+| LIVE-02 | Phase 38 | Pending |
+| LIVE-03 | Phase 38 | Pending |
+| LIVE-04 | Phase 38 | Pending |
+| LIVE-05 | Phase 38 | Pending |
+| LIVE-06 | Phase 38 | Pending |
+| LIVE-07 | Phase 38 | Pending |
+| STAFF-04 | Phase 39 | Pending |
+| DS-01 | Phase 40 | Pending |
+| DS-02 | Phase 40 | Pending |
+| DS-03 | Phase 40 | Pending |
+| DS-05 | Phase 40 | Pending |
+| DS-06 | Phase 40 | Pending |
+| DS-10 | Phase 40 | Pending |
+| DS-07 | Phase 41 | Pending |
+| DS-08 | Phase 41 | Pending |
+| DS-09 | Phase 41 | Pending |
+| RESP-01 | Phase 41 | Pending |
+| RESP-02 | Phase 41 | Pending |
+| RESP-03 | Phase 41 | Pending |
+| RESP-04 | Phase 41 | Pending |
+| DS-04 | Phase 42 | Pending |
+| RESP-05 | Phase 42 | Pending |
+
+**Coverage:** 57 / 57 mapped. No orphans, no requirement assigned twice.
