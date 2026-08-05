@@ -120,6 +120,18 @@ export async function updateSession(request: NextRequest) {
   // --- Header injection ---
   // Create new request headers with role/status/id for downstream Server Components
   const requestHeaders = new Headers(request.headers);
+
+  // An inbound x-user-* header is attacker-supplied input: the client can send
+  // whatever it likes. These are cleared unconditionally BEFORE the branch
+  // below, because a request that is not authenticated used to carry the
+  // client's own value straight through to the Server Components and server
+  // actions that read it — including the SumUp refund path, which gates on
+  // x-user-role and then uses a service-role client that bypasses every RLS
+  // policy. Only this middleware may set them.
+  requestHeaders.delete("x-user-role");
+  requestHeaders.delete("x-user-status");
+  requestHeaders.delete("x-user-id");
+
   if (user) {
     requestHeaders.set("x-user-role", role ?? "member");
     requestHeaders.set("x-user-status", status ?? "pending");

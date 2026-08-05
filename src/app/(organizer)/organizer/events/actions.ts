@@ -7,6 +7,7 @@ import { slugify } from "@/utils/slugify";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
+import { menuCloseInstant } from "@/utils/datetime";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
@@ -1159,8 +1160,7 @@ export async function redeemDrinkToken(
     if (party) {
       const closeTime = party.menu_closes_at ?? party.end_time;
       if (closeTime && party.date) {
-        const closeDt = new Date(`${party.date}T${closeTime}`);
-        if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+        const closeDt = menuCloseInstant(party.date, closeTime);
         const graceEnd = new Date(closeDt.getTime() + 60 * 60 * 1000);
         if (new Date() > graceEnd) {
           throw new Error("Token expired — grace period has ended");
@@ -1177,12 +1177,26 @@ export async function redeemDrinkToken(
         : "deactivate_drink_token";
 
   const serviceClient = getServiceClient();
-  const { error: rpcError } = await serviceClient.rpc(rpcName, {
+  const { data: applied, error: rpcError } = await serviceClient.rpc(rpcName, {
     p_token_id: tokenId,
   });
 
   if (rpcError) {
     throw new Error(rpcError.message);
+  }
+
+  // All three RPCs return false when they did nothing because the token was
+  // already in the target state. Discarding that boolean is how a second press
+  // pours a second drink: no error is raised, so the caller reports success and
+  // the screen says SERVED again.
+  if (applied === false) {
+    throw new Error(
+      action === "serve"
+        ? "This token has already been served"
+        : action === "activate"
+          ? "This token is already active"
+          : "This token is not active"
+    );
   }
 
   return { success: true };

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
+import { menuCloseInstant } from "@/utils/datetime";
 
 /**
  * Update menu_closes_at for a party. Only master/organizer can do this.
@@ -64,11 +65,9 @@ export async function purchaseDrinksGuest(
   if (partyData) {
     const closeTime = partyData.menu_closes_at ?? partyData.end_time;
     if (closeTime && partyData.date) {
-      const closeDt = new Date(`${partyData.date}T${closeTime}`);
-      // Handle next-day closing (e.g. party at 23:00, closes at 03:00)
-      if (closeDt.getHours() < 12) {
-        closeDt.setDate(closeDt.getDate() + 1);
-      }
+      // Next-day closing (party at 23:00, closes at 03:00) is handled inside
+      // menuCloseInstant, in Turin time.
+      const closeDt = menuCloseInstant(partyData.date, closeTime);
       if (new Date() >= closeDt) {
         throw new Error("The drink menu is closed. No new orders can be placed.");
       }
@@ -281,8 +280,7 @@ export async function redeemDrinkTokenGuest(
     if (party) {
       const closeTime = party.menu_closes_at ?? party.end_time;
       if (closeTime && party.date) {
-        const closeDt = new Date(`${party.date}T${closeTime}`);
-        if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+        const closeDt = menuCloseInstant(party.date, closeTime);
         const graceEnd = new Date(closeDt.getTime() + 60 * 60 * 1000);
         if (new Date() > graceEnd) {
           throw new Error("Token expired — grace period has ended");
@@ -298,12 +296,26 @@ export async function redeemDrinkTokenGuest(
         ? "redeem_drink_token"
         : "deactivate_drink_token";
 
-  const { error: rpcError } = await serviceClient.rpc(rpcName, {
+  const { data: applied, error: rpcError } = await serviceClient.rpc(rpcName, {
     p_token_id: tokenId,
   });
 
   if (rpcError) {
     throw new Error(rpcError.message);
+  }
+
+  // All three RPCs return false when they did nothing because the token was
+  // already in the target state. Discarding that boolean is how a second press
+  // pours a second drink: no error is raised, so the caller reports success and
+  // the screen says SERVED again.
+  if (applied === false) {
+    throw new Error(
+      action === "serve"
+        ? "This token has already been served"
+        : action === "activate"
+          ? "This token is already active"
+          : "This token is not active"
+    );
   }
 
   return { success: true };
