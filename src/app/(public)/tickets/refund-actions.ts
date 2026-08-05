@@ -111,10 +111,12 @@ export async function approveRefund(refundId: string) {
     throw new Error("This refund has already been processed");
   }
 
-  // Fetch ticket for SumUp transaction code
+  // Fetch ticket for SumUp transaction code.
+  // party_id and event_id are selected because the refund's evidence is written
+  // from them: after the delete below they cannot be recovered from anywhere.
   const { data: ticket } = await serviceClient
     .from("tickets")
-    .select("id, sumup_transaction_code, event_id, amount_paid, ticket_type")
+    .select("id, sumup_transaction_code, event_id, party_id, amount_paid, ticket_type")
     .eq("id", refund.ticket_id)
     .single();
 
@@ -125,13 +127,33 @@ export async function approveRefund(refundId: string) {
   // Guard: skip SumUp refund for free/guest list tickets
   if (ticket.amount_paid === 0 || ticket.ticket_type === "guest_list") {
     // No payment to refund -- just update records and delete ticket
+    const freeProcessedAt = new Date().toISOString();
+
+    // The four refunded_* columns are the refund's evidence, and they are
+    // written HERE, before the delete below, because after it these values are
+    // unreadable: the ticket row is gone and there is nowhere left to read them
+    // from. That ordering is the whole reason the columns exist.
+    //
+    // ticket_id and refunded_ticket_id are not a duplication to tidy up. The
+    // first is the live foreign key and the database sets it to NULL on the
+    // delete (20260805120000_door_scan_events.sql:184-186); the second is not a
+    // foreign key at all and is the durable copy the door reads to admit a
+    // refunded holder, and the finance figures read to count the refund.
     await serviceClient
       .from("ticket_refunds")
       .update({
         status: "approved",
         processed_by: user.id,
         sumup_status: null,
-        processed_at: new Date().toISOString(),
+        processed_at: freeProcessedAt,
+        refunded_ticket_id: ticket.id,
+        // NULL is a legitimate value here: an event-level ticket belongs to no
+        // party. It is not coerced.
+        refunded_party_id: ticket.party_id,
+        refunded_event_id: ticket.event_id,
+        // Same instant as processed_at, taken from one variable so the two
+        // cannot drift.
+        refunded_at: freeProcessedAt,
       })
       .eq("id", refundId);
 
@@ -165,14 +187,22 @@ export async function approveRefund(refundId: string) {
     }
   }
 
-  // Update refund record
+  // Update refund record, evidence included -- written before the delete below,
+  // because after it these values are unreadable. See the note in the free
+  // branch above for why refunded_ticket_id is not a duplicate of ticket_id.
+  const processedAt = new Date().toISOString();
   await serviceClient
     .from("ticket_refunds")
     .update({
       status: "approved",
       processed_by: user.id,
       sumup_status: sumupStatus,
-      processed_at: new Date().toISOString(),
+      processed_at: processedAt,
+      refunded_ticket_id: ticket.id,
+      // May legitimately be NULL for an event-level ticket. Not coerced.
+      refunded_party_id: ticket.party_id,
+      refunded_event_id: ticket.event_id,
+      refunded_at: processedAt,
     })
     .eq("id", refundId);
 
@@ -343,10 +373,11 @@ export async function adminRefund(ticketId: string, reason?: string) {
 
   const serviceClient = getServiceClient();
 
-  // Fetch ticket
+  // Fetch ticket. party_id and event_id feed the refund's evidence and cannot
+  // be recovered after the delete at the end of this function.
   const { data: ticket } = await serviceClient
     .from("tickets")
-    .select("id, user_id, amount_paid, sumup_transaction_code, event_id, ticket_type")
+    .select("id, user_id, amount_paid, sumup_transaction_code, event_id, party_id, ticket_type")
     .eq("id", ticketId)
     .single();
 
@@ -370,7 +401,10 @@ export async function adminRefund(ticketId: string, reason?: string) {
     }
   }
 
-  // Create refund record
+  // Create refund record, evidence included -- written before the delete below,
+  // because after it these values are unreadable. See the note in approveRefund
+  // for why refunded_ticket_id is not a duplicate of ticket_id.
+  const processedAt = new Date().toISOString();
   await serviceClient
     .from("ticket_refunds")
     .insert({
@@ -382,7 +416,12 @@ export async function adminRefund(ticketId: string, reason?: string) {
       status: "approved",
       sumup_status: sumupStatus,
       type: "admin_initiated",
-      processed_at: new Date().toISOString(),
+      processed_at: processedAt,
+      refunded_ticket_id: ticket.id,
+      // May legitimately be NULL for an event-level ticket. Not coerced.
+      refunded_party_id: ticket.party_id,
+      refunded_event_id: ticket.event_id,
+      refunded_at: processedAt,
     });
 
   // Delete the ticket

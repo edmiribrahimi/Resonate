@@ -77,9 +77,13 @@ export async function GET(request: Request) {
   }
 
   // ── Ticket purchases reconciliation ──────────────────────────────────
+  // party_id and event_id are selected because they feed the refund's evidence:
+  // after the delete further down they cannot be recovered from anywhere.
   const { data: tickets } = await supabase
     .from("tickets")
-    .select("id, user_id, amount_paid, sumup_transaction_code, sumup_checkout_id");
+    .select(
+      "id, user_id, amount_paid, party_id, event_id, sumup_transaction_code, sumup_checkout_id"
+    );
 
   for (const ticket of tickets ?? []) {
     if (!ticket.sumup_checkout_id && !ticket.sumup_transaction_code) continue;
@@ -105,7 +109,13 @@ export async function GET(request: Request) {
         tx.status === "REFUNDED" || (tx.refunded_amount ?? 0) > 0;
 
       if (isRefunded) {
-        // Create refund record for audit trail
+        // Create refund record for audit trail.
+        // The four refunded_* columns are written HERE, before the delete
+        // below, because after it these values are unreadable -- the ticket row
+        // is gone and the ticket_id foreign key has been set to NULL by the
+        // database (20260805120000_door_scan_events.sql:184-186).
+        // refunded_ticket_id is the durable copy the door and the finance
+        // figures read.
         await supabase.from("ticket_refunds").insert({
           ticket_id: ticket.id,
           requested_by: ticket.user_id,
@@ -115,6 +125,13 @@ export async function GET(request: Request) {
           sumup_status: "completed",
           type: "admin_initiated",
           processed_at: now,
+          refunded_ticket_id: ticket.id,
+          // NULL is legitimate for an event-level ticket. Not coerced.
+          refunded_party_id: ticket.party_id,
+          refunded_event_id: ticket.event_id,
+          // Same instant as processed_at, from one variable, so they cannot
+          // drift.
+          refunded_at: now,
         });
 
         // Delete the ticket
