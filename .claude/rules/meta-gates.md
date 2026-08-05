@@ -46,19 +46,40 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 |------|-----------------|---------------|
 | `src/middleware.ts`, `src/lib/supabase/middleware.ts` | access-gating | supabase-data, nextjs-architecture |
 | `src/lib/rbac/**` | access-gating | nextjs-architecture |
-| `src/app/api/auth/**` | access-gating | comms-analytics |
+| `src/app/api/auth/**`, `src/app/(auth)/**` | access-gating | comms-analytics |
+| `src/app/(admin)/**`, `src/app/(organizer)/**` | access-gating | nextjs-architecture, ticketing-payments |
 | `src/app/api/webhooks/**` | ticketing-payments | supabase-data |
 | `src/app/api/cron/venue-reveal/**` | venue-secrecy | ticketing-payments, comms-analytics |
-| `src/app/api/cron/**` (gli altri) | ticketing-payments | comms-analytics |
+| `src/app/api/cron/**` (gli altri) | ticketing-payments | comms-analytics, time-and-scheduling |
+| `src/utils/formatTime.ts`, `vercel.json` | time-and-scheduling | ticketing-payments |
+| `src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**` | media-and-storage | venue-secrecy, access-gating |
+| `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/**/sales/**`, `src/app/**/finance/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` | ticketing-payments | access-gating, nextjs-architecture |
+| `src/app/(public)/events/**` | venue-secrecy | ticketing-payments, nextjs-architecture |
 | `src/lib/offline/**` | checkin-offline | supabase-data |
 | `src/app/api/tickets/checkin/**` | checkin-offline | ticketing-payments |
+| `src/app/api/membership/**` | checkin-offline | access-gating |
+| `src/app/**/scanner/**`, `src/components/scanner/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/utils/qr.ts` | checkin-offline | access-gating |
 | `supabase/migrations/**` | supabase-data | access-gating (per le policy) |
 | `src/emails/venue-reveal.tsx` | venue-secrecy | comms-analytics |
 | `src/emails/**` (gli altri) | comms-analytics | — |
-| `src/app/(admin)/**`, `src/app/(organizer)/**` | access-gating | nextjs-architecture |
-| `src/components/**` | nextjs-architecture | access-gating (se mostra dati per ruolo) |
+| `src/app/api/newsletter/**` | comms-analytics | nextjs-architecture |
+| `src/app/**/venues/**`, `src/components/venues/**`, `src/components/events/**` | venue-secrecy | nextjs-architecture, access-gating |
+| `src/components/**` (gli altri) | nextjs-architecture | access-gating (se mostra dati per ruolo) |
+| `src/app/(public)/**`, `src/app/(members)/**`, `src/app/*.tsx`, `src/app/*.ts` (gli altri) | nextjs-architecture | — |
 | `CLAUDE.md`, `.claude/**` | ai-engineering | — (governa se stesso) |
+
+**Questa tabella e' verificata**, dal controllo **G** di `npm run verify:persona`:
+per ogni riga, il modulo primario dichiarato deve **caricarsi davvero** sui file
+che la riga copre. Fino alla v1.4 non lo era, e aveva gia' derivato: la riga
+`src/app/(admin)/**` dichiarava `access-gating` primario mentre il frontmatter
+di quel modulo non lo agganciava. Una tabella che descrive un routing che non
+esiste e' peggio di nessuna tabella: fa credere che qualcuno stia controllando.
+
+I sei moduli **senza `paths:`** — `production-calendar`,
+`brand-visual-system`, `sound-manifesto`, `venue-acquisition`,
+`legal-compliance`, `community-membership` — non compaiono qui per definizione:
+non hanno un path, si consultano a mano.
 
 ## Verifica delle guardie monotone
 
@@ -80,6 +101,19 @@ Per ogni nuovo percorso d'errore o blocco `catch`:
 - L'errore e' loggato con una categoria che lo distingue dagli altri?
 - L'errore e' **visibile** (all'utente o all'operatore), non solo ingoiato?
 - Nessun `catch` che collassa cause diverse in un unico messaggio generico.
+
+**E c'e' un vincolo in piu', verificato il 2026-08-05: non esiste alcun error
+tracking.** `package.json` non ha dipendenze di monitoraggio, quindi **nessun
+errore di produzione raggiunge un essere umano da solo**. I quattro cron girano
+di notte, il webhook dei pagamenti gira quando gira, e se falliscono non lo sa
+nessuno finche' qualcuno non nota l'effetto.
+
+Finche' resta cosi', "loggare l'errore" **non e' sufficiente**: il log e' un
+posto dove nessuno guarda. Un fallimento che conta deve avere un **effetto
+osservabile** — visibile all'utente, allo staff sul posto, o come conseguenza
+misurabile nei dati. E quando si aggiunge un percorso critico senza
+osservabilita', **va detto**, invece di lasciar credere che qualcuno se ne
+accorgera'.
 
 > Il progetto ha gia' un precedente registrato in `.planning/codebase/CONCERNS.md`:
 > il form newsletter cattura ogni errore con *"Qualcosa e' andato storto"*,

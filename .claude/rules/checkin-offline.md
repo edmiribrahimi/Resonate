@@ -5,6 +5,8 @@ paths:
   - "src/app/api/membership/**"
   - "src/utils/qr.ts"
   - "src/utils/haptics.ts"
+  - "src/app/**/scanner/**"
+  - "src/components/scanner/**"
 ---
 
 # Check-in & Offline — Operational Gates
@@ -49,6 +51,9 @@ sta ottimizzando per il report invece che per la porta.
 - **Gate identita' del party**: Uno scan senza un party selezionato non ha significato. Il selettore di party e' una precondizione, non un filtro di comodo — registrare una presenza sull'evento sbagliato corrompe i dati di due serate.
 - **Gate entropia dei codici**: Un codice scansionabile che concede l'ingresso deve resistere a un tentativo di indovinarlo. `src/utils/qr.ts:49` usa `Math.random()` — **difetto presente**. Vedi anche `access-gating.md`.
 - **Gate rate limit sulla verifica**: `api/membership/verify` accetta un codice e dice se e' valido. Senza rate limiting e' un oracolo di forza bruta.
+- **Gate la serata ha un runbook, non solo un'app**: Il codice offline risolve la rete, non l'organizzazione. Prima di ogni serata va deciso e scritto: **quali dispositivi** scansionano e chi li tiene, **come si entra** nell'app (chi ha le credenziali, con quale ruolo), **cosa si fa se lo scanner non funziona affatto**, e **chi decide** alla porta quando il sistema e una persona dicono cose diverse. Sono cinque righe, e valgono piu' di qualunque gate di questo file alle due di notte.
+- **Gate provato prima della porta**: Il percorso di check-in va provato **quel giorno, su quel dispositivo, con quell'account** — non "ha funzionato l'ultima volta". Un aggiornamento del service worker, una sessione scaduta o un permesso fotocamera negato si scoprono in cinque minuti a casa o in dieci minuti davanti a una fila.
+- **Gate il fallimento va visto, non solo gestito**: Il progetto **non ha error tracking** (verificato: nessuna dipendenza di monitoraggio in `package.json`). Un errore di sincronizzazione notturno oggi non raggiunge nessuno. Finche' e' cosi', ogni percorso di errore del check-in deve **mostrarsi allo staff sul posto** — l'unico osservatore che esiste davvero.
 - **Gate query a esito singolo**: Una `.single()` lancia con 0 o con piu' di 1 risultato. Ogni lookup di codice va gestito esplicitamente su entrambi i rami: "non esiste" e "ce ne sono due" sono errori diversi e vanno distinti nel log — il secondo e' una corruzione di dati.
 
 ## Imperative Behaviors
@@ -61,3 +66,6 @@ sta ottimizzando per il report invece che per la porta.
 - When recording attendance: require an explicit party selection
 - When looking up a code: handle "not found" and "duplicate" as distinct errors
 - When exposing a verification endpoint: rate-limit it
+- When a night is coming: write the runbook — devices, accounts, fallback, who decides
+- When the doors open: test the whole scan path that day, on that device, with that account
+- When an error happens at the door: show it to the staff present, since no monitoring will

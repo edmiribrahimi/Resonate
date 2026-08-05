@@ -1,8 +1,20 @@
 ---
 paths:
-  - "src/app/**"
+  - "src/app/(public)/**"
+  - "src/app/(members)/**"
+  - "src/app/(admin)/**"
+  - "src/app/(organizer)/**"
+  - "src/app/(auth)/**"
+  - "src/app/*.tsx"
+  - "src/app/*.ts"
   - "src/components/**"
 ---
+
+> **Perche' non `src/app/api/**`:** i gate di questo modulo riguardano il
+> confine server/client, i route group e la cache — cose delle **pagine**. Su
+> una route API vince il dominio funzionale, come `meta-gates.md` gia'
+> dichiarava. Escluderle non toglie copertura (ogni route API ha il suo
+> dominio) e restituisce budget dove serve.
 
 # Next.js Architecture — Operational Gates
 
@@ -34,6 +46,7 @@ errore di organizzazione.
 - **Gate gruppo = pubblico**: Un file va nel route group del pubblico a cui e' destinato. Un componente condiviso da gruppi diversi non decide da solo cosa mostrare: riceve i permessi come input.
 - **Gate stato vuoto e d'errore**: Ogni vista ha uno stato vuoto e uno d'errore progettati. Una lista vuota identica a una lista non ancora caricata e' un guasto silenzioso con una faccia neutra.
 - **Gate service worker**: Serwist serve contenuto anche quando la rete manca — anche contenuto **vecchio**. Nessuna superficie che mostra stato di pagamento, validita' di biglietto o indirizzo di venue deve essere servita da cache stale. La cache va scelta per rotta, non ereditata.
+- **Gate metadata e Open Graph**: Oggi `generateMetadata` esiste solo su `src/app/layout.tsx` e sulla pagina del menu — le pagine evento **non hanno metadata proprie**. Quando le avranno: un'anteprima social e' **contenuto pubblico e cacheato da terzi**, quindi non porta mai l'indirizzo di un venue segreto, e la sua immagine non e' una foto scattata sul posto. Vedi `venue-secrecy.md` e `media-and-storage.md`.
 - **Gate accessibilita' al buio**: Lo scanner si usa in un locale buio, con una mano, di fretta. Contrasto, dimensione dei target e feedback non visivo (vibrazione) non sono rifiniture: sono la condizione d'uso reale. Il colore non e' mai l'unico canale di un'informazione.
 
 ## Imperative Behaviors

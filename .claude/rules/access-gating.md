@@ -4,6 +4,10 @@ paths:
   - "src/lib/supabase/**"
   - "src/middleware.ts"
   - "src/app/api/auth/**"
+  - "src/app/(auth)/**"
+  - "src/app/(admin)/**"
+  - "src/app/(organizer)/**"
+  - "src/app/api/drinks/**"
 ---
 
 # Access & Gating — Operational Gates
@@ -35,6 +39,7 @@ il meccanismo su cui poggia il valore della community.
 - **Gate service role**: `src/lib/supabase/service.ts` usa la chiave service-role e **bypassa ogni RLS**. Ogni suo uso nuovo va giustificato per iscritto nel commit e non deve mai essere raggiungibile da input non fidato. Una service-client in un percorso che accetta parametri dall'utente e' una escalation.
 - **Gate redirect validato**: Il parametro `next` del callback finisce in `NextResponse.redirect`. Oggi la concatenazione con `origin` impedisce il salto a un altro host, ma resta input non validato in un header `Location`. Ogni nuovo redirect parametrico usa una allow-list di path relativi, mai la stringa grezza.
 - **Gate entropia degli identificatori**: Un codice che concede accesso deve resistere a un tentativo di indovinarlo. `src/utils/qr.ts:49` genera il codice di membership con `Math.random()` — **difetto attualmente presente e confermato**. Ogni nuovo identificatore d'accesso usa `crypto.getRandomValues`, e la verifica ha rate limiting.
+- **Gate nessun rate limiting, oggi**: Verificato il 2026-08-05: **il repo non ha alcun rate limiting** — nessuna dipendenza, nessuna implementazione. Ogni endpoint pubblico che risponde "valido / non valido" e' quindi un oracolo interrogabile senza costo: `api/membership/verify`, il lookup dei token drink, la validazione di un codice sconto. Finche' non esiste, **nessun nuovo endpoint di verifica va aggiunto senza dire, per iscritto, che e' esposto** — e ogni nuovo identificatore va reso abbastanza largo da non essere enumerabile.
 - **Gate coerenza navigazione/permessi**: La lista `NAV_ITEMS` in `src/lib/rbac/roles.ts` nasconde le voci per ruolo. Nascondere un link **non e' proteggere una rotta**: ogni voce nascosta deve avere il suo controllo lato server. Se cambi l'una senza l'altra, hai spostato il problema, non risolto.
 
 ## Imperative Behaviors

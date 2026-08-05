@@ -227,31 +227,35 @@ universale.
 
 | Domain | Scope |
 |--------|-------|
-| Access & Gating | `src/lib/rbac/**`, `src/lib/supabase/**`, `src/middleware.ts`, `src/app/api/auth/**` |
-| Ticketing & Payments | `src/lib/sumup.ts`, `src/lib/apple-wallet.ts`, `src/app/api/webhooks/**`, `src/app/api/cron/**`, `src/app/api/tickets/**`, `src/lib/guest-list/**` |
-| Check-in & Offline | `src/lib/offline/**`, `src/app/api/tickets/checkin/**`, `src/app/api/membership/**`, `src/utils/qr.ts`, `src/utils/haptics.ts` |
-| Venue Secrecy | `src/app/api/cron/venue-reveal/**`, `src/emails/venue-reveal.tsx` |
+| Access & Gating | `src/lib/rbac/**`, `src/lib/supabase/**`, `src/middleware.ts`, `src/app/api/auth/**`, `src/app/(auth)/**`, `src/app/(admin)/**`, `src/app/(organizer)/**`, `src/app/api/drinks/**` |
+| Ticketing & Payments | `src/lib/sumup.ts`, `src/lib/apple-wallet.ts`, `src/app/api/webhooks/**`, `src/app/api/cron/**`, `src/app/api/tickets/**`, `src/lib/guest-list/**`, `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/(public)/events/**`, `src/app/**/sales/**`, `src/app/**/finance/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` |
+| Check-in & Offline | `src/lib/offline/**`, `src/app/api/tickets/checkin/**`, `src/app/api/membership/**`, `src/utils/qr.ts`, `src/utils/haptics.ts`, `src/app/**/scanner/**`, `src/components/scanner/**` |
+| Venue Secrecy | `src/app/api/cron/venue-reveal/**`, `src/emails/venue-reveal.tsx`, `src/app/(public)/events/**`, `src/app/**/venues/**`, `src/components/venues/**`, `src/components/events/**` |
 | Supabase & Data | `supabase/**`, `src/types/database.ts` |
-| Next.js Architecture | `src/app/**`, `src/components/**` |
+| Next.js Architecture | `src/app/(public)/**`, `src/app/(members)/**`, `src/app/(admin)/**`, `src/app/(organizer)/**`, `src/app/(auth)/**`, `src/app/*.tsx`, `src/app/*.ts`, `src/components/**` |
 | Comms & Analytics | `src/emails/**`, `src/lib/email.ts`, `src/lib/analytics/**`, `src/lib/posthog/**`, `src/app/api/newsletter/**` |
 | AI Engineering | `CLAUDE.md`, `.claude/**` |
 | Production Calendar | — consultazione manuale, senza frontmatter |
 | Brand & Visual System | — consultazione manuale, senza frontmatter |
+| Time & Scheduling | `src/utils/formatTime.ts`, `src/utils/datetime.ts`, `src/app/api/cron/**`, `vercel.json` |
+| Media & Storage | `src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**` |
+| Sound Manifesto | — consultazione manuale, senza frontmatter |
+| Venue Acquisition | — consultazione manuale, senza frontmatter |
+| Legal & Compliance | — consultazione manuale, senza frontmatter |
+| Community & Membership | — consultazione manuale, senza frontmatter |
 
 **Sempre caricato:** `meta-gates.md` (impatto cross-dominio, guardie monotone,
 zero fallimenti silenziosi).
 
-**Nota sui due domini di produzione.** `production-calendar.md` e
-`brand-visual-system.md` governano materiale che oggi **non vive nel repo**: sta
-nel production tracker (artifact `re:sonate — Production`, aggiornato al
-02/08/2026). Per questo **non dichiarano `paths:`** — come `meta-gates.md`.
+**Nota sui sei domini manuali.** `production-calendar.md`,
+`brand-visual-system.md`, `sound-manifesto.md`, `venue-acquisition.md`,
+`legal-compliance.md` e `community-membership.md` governano materiale che
+**non vive nel repo** — e non deve arrivarci: versionarlo significherebbe
+**pubblicarlo** (Guardrail 5). Sta nel production tracker (artifact `re:sonate
+— Production`) e in `.firecrawl/`. I moduli portano i **criteri**, mai i
+**candidati**: date non annunciate, sedi in trattativa, line-up e contatti non
+stanno qui.
 
-Dichiarare un glob su una directory inesistente creerebbe un modulo che sembra
-attivo e non carica nulla: un gate silenziosamente spento e' peggio di un gate
-assente, perche' induce a credere che qualcuno stia controllando. Vanno quindi
-**consultati a mano** ogni volta che si parla di format, sigle, pipeline
-editoriale, locandine o scouting.
-
-**Come renderli automatici:** versionare il contenuto del tracker sotto
-`.planning/production/` e aggiungere `paths: ".planning/production/**"` ai due
-moduli. Finche' non accade, il limite resta dichiarato qui.
+Vanno **consultati a mano** ogni volta che si parla di format, sigle, pipeline
+editoriale, locandine, suono, scouting, assetto giuridico o politica di
+accesso. Il set e' verificato dal controllo **D** di `npm run verify:persona`.

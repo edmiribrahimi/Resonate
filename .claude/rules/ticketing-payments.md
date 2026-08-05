@@ -6,6 +6,13 @@ paths:
   - "src/app/api/cron/**"
   - "src/app/api/tickets/**"
   - "src/lib/guest-list/**"
+  - "src/app/**/tickets/**"
+  - "src/app/**/drinks/**"
+  - "src/app/(public)/events/**"
+  - "src/app/**/sales/**"
+  - "src/app/**/finance/**"
+  - "src/app/**/payment/**"
+  - "src/app/**/guest-list/**"
 ---
 
 # Ticketing & Payments — Operational Gates

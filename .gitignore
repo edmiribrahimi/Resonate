@@ -66,3 +66,9 @@ next-env.d.ts
 # ─────────────────────────────────────────────────────────────────────────────
 docs/
 .firecrawl/
+
+# Permessi locali dell'assistente: vive dentro .claude/, che E' versionato, e
+# memorizza comandi gia' eseguiti — fra cui ricerche di scouting che nominano
+# sedi non acquisite. Finora era coperto solo dal gitignore globale della
+# macchina: su un altro clone non lo sarebbe stato.
+.claude/settings.local.json
