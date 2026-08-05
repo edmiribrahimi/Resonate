@@ -1,3 +1,17 @@
+// The one import in this file, and the direction is inverted on purpose. The
+// door's contract is shared by three places at once — the wire, the client and
+// the `door_scan_events` table — so it is defined once in `@/lib/door/outcome`,
+// which imports nothing, and is read from here. Re-declaring the literals would
+// mean a divergence between the table and the response could survive until a
+// night; importing them makes it a `npm run build` error, which in a repository
+// with no test runner is the only automatic gate there is.
+import type {
+  DoorSubjectType,
+  DoorScanOutcomeKind,
+  DoorScanCause,
+  DoorScanSource,
+} from "@/lib/door/outcome";
+
 export type UserRole = "master" | "organizer" | "member";
 export type UserStatus = "pending" | "approved" | "rejected";
 export type AccessType = "free_public" | "free_rsvp" | "paid";
@@ -68,8 +82,13 @@ export interface Attendance {
   id: string;
   event_id: string;
   user_id: string;
-  checked_in_at: string;
-  checked_in_by: string;
+  /** NULL means the presence is event-level, not that a party is missing. */
+  party_id: string | null;
+  // `checked_in_at` has a default but no NOT NULL, and `checked_in_by` has
+  // neither (schema.sql:235-236). Both were typed non-nullable here until
+  // 2026-08-05; the correction is not an addition.
+  checked_in_at: string | null;
+  checked_in_by: string | null;
 }
 
 export interface EventMedia {
@@ -173,7 +192,13 @@ export interface Venue {
 
 export interface TicketRefund {
   id: string;
-  ticket_id: string;
+  /**
+   * Nullable since 2026-08-05: the foreign key is now ON DELETE SET NULL, so
+   * this goes to NULL when the refunded ticket is deleted. The correction is
+   * the point of the change, not a side effect — read `refunded_ticket_id`
+   * for which ticket it was.
+   */
+  ticket_id: string | null;
   requested_by: string;
   processed_by: string | null;
   reason: string | null;
@@ -184,6 +209,13 @@ export interface TicketRefund {
   type: "user_request" | "admin_initiated";
   created_at: string;
   processed_at: string | null;
+  // The refund's evidence. Deliberately not foreign keys in SQL, so that they
+  // survive the ticket they name. On a row written before 2026-08-05 these are
+  // NULL and mean *unknown*, never *none* — the tickets were already gone.
+  refunded_ticket_id: string | null;
+  refunded_party_id: string | null;
+  refunded_event_id: string | null;
+  refunded_at: string | null;
 }
 
 export interface PendingPurchase {
@@ -266,6 +298,41 @@ export interface GuestListEntry {
   profile_id: string | null;
   ticket_id: string | null;
   error_message: string | null;
+  // NULL means *not recorded*, including on a row already at 'checked_in':
+  // the moment and the operator had nowhere to be written before 2026-08-05.
+  // Read `status` for whether the guest was checked in.
+  checked_in_at: string | null;
+  checked_in_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * A single read at the door, and its outcome. Append-only.
+ *
+ * FIX-13: the subject is a ticket, an entry or a membership — never a person.
+ * FIX-12: there is no field here holding a member's name or their address,
+ * because the table has no such column; the copyable technical view renders
+ * these fields straight and therefore cannot export personal data.
+ * FIX-04a: `cause` is NULL on every row the scanner writes. Classification is
+ * applied afterwards, over these rows, never at the phone.
+ */
+export interface DoorScanEvent {
+  id: string;
+  party_id: string;
+  event_id: string;
+  subject_type: DoorSubjectType;
+  ticket_id: string | null;
+  guest_entry_id: string | null;
+  subject_user_id: string | null;
+  outcome: DoorScanOutcomeKind;
+  cause: DoorScanCause | null;
+  scanned_at: string;
+  recorded_at: string;
+  operator_id: string;
+  device_id: string;
+  source: DoorScanSource;
+  token_fingerprint: string | null;
+  /** A reversal is a further event, not an erasure of the admission. */
+  is_undo: boolean;
 }
