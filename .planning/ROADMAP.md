@@ -69,7 +69,22 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A ticket refunded after the cache was downloaded is admitted and flagged for review, with the network on and with the network off
   5. A membership sync that cannot ever succeed is shown as failed rather than retried forever, so the pending count means what it says
   6. Synchronising a queued offline scan still proves possession of the ticket: the signed token read from the code travels with the queued entry, and a bare ticket identifier is no longer accepted as a check-in
-**Plans**: TBD
+**Plans**: 13 plans, in 6 waves
+
+Plans:
+- [ ] 31-01-PLAN.md — The door's offline ground: route-specific service-worker cache, no reload on reconnection, and the night's runbook
+- [ ] 31-02-PLAN.md — The shared three-outcome contract, plus partyEndInstant and the third haptic
+- [ ] 31-03-PLAN.md — Settle the two refund unknowns against a real database before the migration is written
+- [ ] 31-04-PLAN.md — Schema: door_scan_events with RLS, refund evidence, attendance per party, guest-list check-in columns — applied and observed
+- [ ] 31-05-PLAN.md — Offline store v3: composite keys, a stable device id, a merging refresh, a four-state queue
+- [ ] 31-06-PLAN.md — The attendee payload the offline door needs: Event Pass included, operator labels, refund evidence
+- [ ] 31-07-PLAN.md — The check-in route: verify every path, admit every valid holder, record before answering
+- [ ] 31-08-PLAN.md — Membership verify: the same three outcomes, and attendance recorded per party
+- [ ] 31-09-PLAN.md — The refund keeps its evidence, and a failed delete stops being invisible
+- [ ] 31-10-PLAN.md — The sync manager stops trusting res.ok: done, retry, dead, blocked
+- [ ] 31-11-PLAN.md — The scanner: a third state, the same three outcomes on both paths, counters visible online
+- [ ] 31-12-PLAN.md — The night's review list, classified by cause, empty on a normal night
+- [ ] 31-13-PLAN.md — The evidence: static assertions, the door pass on a phone with the radio off, and 31-VERIFICATION.md
 
 ### Phase 32: Capability Model in the Database
 **Goal**: Every permission answer has exactly one definition, held in the database, so a page, a server action and a row-level policy all reach the same verdict from the same source. Behaviour is identical to today when this phase ends.
