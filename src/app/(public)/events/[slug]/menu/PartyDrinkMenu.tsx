@@ -5,6 +5,7 @@ import type { DrinkItem } from "@/types/database";
 import GuestDrinkMenu from "./GuestDrinkMenu";
 import DrinkMenuManager from "@/app/(organizer)/organizer/events/[id]/drinks/DrinkMenuManager";
 import { updateMenuClosesAt } from "./actions";
+import { menuCloseInstant } from "@/utils/datetime";
 
 interface Party {
   id: string;
@@ -38,21 +39,11 @@ function getMenuCloseTime(party: Party): Date | null {
   const closeTime = party.menu_closes_at ?? party.end_time;
   if (!closeTime) return null;
 
-  // closeTime is "HH:MM" or "HH:MM:SS", party.date is "YYYY-MM-DD"
-  const dt = new Date(`${party.date}T${closeTime}`);
-
-  // If the closing time is before the party start (e.g. party at 23:00, closes at 03:00),
-  // assume it's the next day
-  const partyDate = new Date(party.date);
-  if (dt.getTime() < partyDate.getTime() + 12 * 60 * 60 * 1000) {
-    // If close time hour < 12, likely next day
-    const hours = dt.getHours();
-    if (hours < 12) {
-      dt.setDate(dt.getDate() + 1);
-    }
-  }
-
-  return dt;
+  // closeTime is "HH:MM" or "HH:MM:SS", party.date is "YYYY-MM-DD".
+  // Both are Turin wall-clock values: in the browser they would otherwise be
+  // read in the visitor's own zone, so someone abroad would see the menu close
+  // at the wrong moment. Next-day closing is handled inside the helper.
+  return menuCloseInstant(party.date, closeTime);
 }
 
 type MenuStatus = "open" | "grace" | "closed";

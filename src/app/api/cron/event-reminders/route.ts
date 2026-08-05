@@ -4,6 +4,7 @@ import { getResend } from "@/lib/email";
 import { EventReminderEmail } from "@/emails/event-reminder";
 import { render } from "@react-email/render";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
+import { partyStartInstant, zonedDateString } from "@/utils/datetime";
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -20,12 +21,15 @@ export async function GET(request: Request) {
   const now = new Date();
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  // Find parties happening in the next 24 hours
+  // Find parties happening in the next 24 hours.
+  // The SQL filter is deliberately wider than the window and expressed in Turin
+  // days: `date` is a wall-clock date, so a UTC day boundary would drop a party
+  // for the two hours around midnight. The exact cut is the instant filter below.
   const { data: parties } = await supabase
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title, slug)")
-    .gte("date", now.toISOString().split("T")[0])
-    .lte("date", in24h.toISOString().split("T")[0]);
+    .gte("date", zonedDateString(new Date(now.getTime() - 24 * 60 * 60 * 1000)))
+    .lte("date", zonedDateString(new Date(now.getTime() + 48 * 60 * 60 * 1000)));
 
   if (!parties || parties.length === 0) {
     return NextResponse.json({ sent: 0 });
@@ -33,7 +37,7 @@ export async function GET(request: Request) {
 
   // Filter to parties whose date+time is within the next 24h
   const upcomingParties = parties.filter((p) => {
-    const partyDateTime = new Date(`${p.date}T${p.time}`);
+    const partyDateTime = partyStartInstant(p.date, p.time);
     return partyDateTime > now && partyDateTime <= in24h;
   });
 

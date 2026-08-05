@@ -1,6 +1,7 @@
 import { PKPass } from "passkit-generator";
 import path from "path";
 import fs from "fs";
+import { partyStartInstant } from "@/utils/datetime";
 
 interface TicketPassData {
   ticketId: string;
@@ -146,7 +147,7 @@ export async function generateAppleWalletPass(
   }
 
   // Relevant date for lock screen
-  pass.setRelevantDate(new Date(`${data.date}T${data.time || "00:00"}`));
+  pass.setRelevantDate(partyStartInstant(data.date, data.time || "00:00"));
 
   const buffer = pass.getAsBuffer();
   return Buffer.from(buffer);

@@ -17,6 +17,7 @@ import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
+import { partyStartInstant } from "@/utils/datetime";
 
 interface PartyVenue {
   id: string;
@@ -77,7 +78,7 @@ function isVenueVisible(opts: {
   if (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) {
     return { visible: true, hint: null };
   }
-  const partyStart = new Date(`${opts.partyDate}T${opts.partyTime}`);
+  const partyStart = partyStartInstant(opts.partyDate, opts.partyTime);
   const now = new Date();
   // Past event → visible for approved members
   if (now > partyStart && opts.isApproved) return { visible: true, hint: null };

@@ -4,6 +4,7 @@ import { getResend } from "@/lib/email";
 import { VenueRevealEmail } from "@/emails/venue-reveal";
 import { render } from "@react-email/render";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
+import { partyStartInstant } from "@/utils/datetime";
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -33,7 +34,10 @@ export async function GET(request: Request) {
 
   // Filter to parties where the reveal window has opened
   const revealParties = parties.filter((p) => {
-    const partyDateTime = new Date(`${p.date}T${p.time}`);
+    // Turin wall-clock time, not the runtime's zone: a two-hour drift here can
+    // push the reveal past this daily run and into the next one — i.e. after
+    // the doors have opened.
+    const partyDateTime = partyStartInstant(p.date, p.time);
     // Only process future or very recent events (not old ones)
     if (partyDateTime < new Date(now.getTime() - 24 * 60 * 60 * 1000)) return false;
     const hours = p.venue_reveal_hours ?? 24;

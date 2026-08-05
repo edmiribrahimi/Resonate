@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction, getCheckout } from "@/lib/sumup";
+import { menuCloseInstant } from "@/utils/datetime";
 
 /**
  * Daily cron: refund expired unclaimed drink tokens and clean up old ones.
@@ -37,8 +38,7 @@ export async function GET(request: Request) {
     const closeTimeStr = party.menu_closes_at ?? party.end_time;
     if (!closeTimeStr || !party.date) return false;
 
-    const closeDt = new Date(`${party.date}T${closeTimeStr}`);
-    if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+    const closeDt = menuCloseInstant(party.date, closeTimeStr);
     const graceEnd = new Date(closeDt.getTime() + 60 * 60 * 1000);
 
     return now > graceEnd;
@@ -149,8 +149,7 @@ export async function GET(request: Request) {
       const closeTimeStr = party.menu_closes_at ?? party.end_time;
       if (!closeTimeStr || !party.date) return false;
 
-      const closeDt = new Date(`${party.date}T${closeTimeStr}`);
-      if (closeDt.getHours() < 12) closeDt.setDate(closeDt.getDate() + 1);
+      const closeDt = menuCloseInstant(party.date, closeTimeStr);
       const cleanupTime = new Date(
         closeDt.getTime() + 24 * 60 * 60 * 1000
       );
