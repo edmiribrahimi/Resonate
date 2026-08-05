@@ -58,27 +58,62 @@ export function zonedInstant(date: string, time: string | null): Date {
   return secondPass === firstPass ? instant : new Date(naiveUtc - secondPass);
 }
 
+/**
+ * A Turin wall-clock hour that closes a night which *started* on `date`.
+ *
+ * A night runs 22:00 → 06:00, so an hour before noon belongs to the *next*
+ * calendar day. The rule was previously repeated in five places, each reading
+ * the hour in the runtime's zone; here it is applied to the declared Turin
+ * hour, before the conversion, where it cannot drift.
+ *
+ * Private on purpose: the two closing times a night has — when the drink menu
+ * shuts and when the party ends — are the same arithmetic under two names, and
+ * they must not be allowed to become two implementations again.
+ */
+function nightBoundaryInstant(date: string, time: string): Date {
+  const hour = Number(time.split(":")[0] ?? "0");
+  if (hour >= 12) return zonedInstant(date, time);
+
+  const [y, m, d] = date.split("-").map(Number);
+  const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
+  const shifted = nextDay.toISOString().slice(0, 10);
+  return zonedInstant(shifted, time);
+}
+
 /** When a party starts, as an instant. */
 export function partyStartInstant(date: string, time: string | null): Date {
   return zonedInstant(date, time);
 }
 
 /**
+ * When a party ends, as an instant.
+ *
+ * Same crossing-midnight rule as `menuCloseInstant`: an `endTime` of `06:00`
+ * on a night dated the Saturday resolves to the Sunday morning.
+ *
+ * It lives here, beside its siblings, for the reason commit `8f4e004` exists:
+ * these conversions were centralised to stop a six-variant drift, in which the
+ * same "is this night over yet" question was answered six slightly different
+ * ways, each parsing a stored `date` + `time` in the *runtime's* zone — UTC on
+ * Vercel, the visitor's own zone in the browser. That failure never raised an
+ * error; it just moved a window by an hour or two. **A variant of this
+ * conversion inlined at a call site is the defect this module exists to
+ * prevent**, so if a caller needs a boundary this file does not yet expose,
+ * add it here rather than computing it there.
+ */
+export function partyEndInstant(date: string, endTime: string): Date {
+  return nightBoundaryInstant(date, endTime);
+}
+
+/**
  * When the drink menu closes, as an instant.
  *
  * A night runs 22:00 → 06:00, so a closing time before noon belongs to the
- * *next* calendar day. The rule was previously repeated in five places, each
- * reading the hour in the runtime's zone; here it is applied to the declared
- * Turin hour, before the conversion, where it cannot drift.
+ * *next* calendar day — see `nightBoundaryInstant`, which both this and
+ * `partyEndInstant` delegate to so the rule has one implementation.
  */
 export function menuCloseInstant(date: string, closeTime: string): Date {
-  const hour = Number(closeTime.split(":")[0] ?? "0");
-  if (hour >= 12) return zonedInstant(date, closeTime);
-
-  const [y, m, d] = date.split("-").map(Number);
-  const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
-  const shifted = nextDay.toISOString().slice(0, 10);
-  return zonedInstant(shifted, closeTime);
+  return nightBoundaryInstant(date, closeTime);
 }
 
 /** Start of the Turin day that contains `instant`, as `YYYY-MM-DD`. */
