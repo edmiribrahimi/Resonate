@@ -59,10 +59,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 31: Live Defects at the Door and the Bar
 **Goal**: The defects that exist in production today are corrected, so the door reports what actually happened and the bar records nothing it cannot confirm. Nothing in this milestone is built on top of an uncorrected door.
 **Depends on**: Nothing (first phase of the milestone)
-**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10
+**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-04a, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10, FIX-11, FIX-12, FIX-13
 **Success Criteria** (what must be TRUE):
   1. An inbound `x-user-*` header never reaches a Server Component or a server action, and pressing "serve" on an already-served drink token fails with a distinct message instead of reporting success *(both applied 2026-08-05)*
-  2. A genuine duplicate check-in is reported — with the first scan's time and the person who recorded it — online and offline alike, and the queued entry is kept rather than deleted
+  2. The door has three outcomes and only three — recorded now, already recorded, not valid — identical with the network on and off. A ticket already recorded shows who recorded it and when, is never refused, and never reads as a connection error. The queued entry is kept rather than deleted
+  2b. The night's review list is empty on a normal night, raises no notification, and separates a double read from a second unused ticket from two devices minutes apart from a signature this system never issued. A double read does not appear but is counted. A refund issued after the night began does not appear at all — it is accounting
+  2c. A conflict is recorded against the ticket and never as a label on a member; an admitted entry counts as admitted; the technical detail is available to a master and carries identifiers rather than names or email addresses
   3. A check-in recorded offline is still shown as arrived after an attendee-cache refresh, the list is never momentarily empty during that refresh, and the same person checked in at two different nights on one device produces two queued entries
   4. A ticket refunded after the cache was downloaded is admitted and flagged for review, with the network on and with the network off
   5. A membership sync that cannot ever succeed is shown as failed rather than retried forever, so the pending count means what it says

@@ -25,14 +25,22 @@ Three rules override any requirement below that appears to contradict them:
 
 - [x] **FIX-01**: An inbound `x-user-*` request header can never reach a Server Component or server action — the middleware clears them before deciding whether to set them *(applied 2026-08-05)*
 - [x] **FIX-02**: Pressing "serve" on an already-served drink token fails with a distinct message instead of reporting success *(applied 2026-08-05, both callers)*
-- [ ] **FIX-03**: A genuine duplicate check-in survives synchronisation and is reported, instead of being deleted from the queue because the conflict response returns HTTP 200
-- [ ] **FIX-04**: A genuine offline duplicate shows "already checked in" with the first scan's time and the person who recorded it — never "connection error"
+- [ ] **FIX-03**: A genuine duplicate check-in survives synchronisation and is recorded as a conflict, instead of being deleted from the queue because the conflict response returns HTTP 200
+- [ ] **FIX-04**: The door has exactly three outcomes — **recorded now**, **already recorded** (carrying who recorded it and when), and **not valid** — and they are identical with the network on and off. A ticket that is already recorded never shows "connection error", and is never refused: the person in front of the scanner was already admitted
+- [ ] **FIX-04a**: At the door the third outcome states a fact, not a verdict: staff read who recorded the entry and at what time, and decide. The system does not classify the cause at the scanner — that happens afterwards, in the review list
 - [ ] **FIX-05**: Refreshing the attendee cache merges instead of replacing: an unsynced local check-in is never reverted by a server refresh
 - [ ] **FIX-06**: The attendee cache is never momentarily empty during a refresh — a scan during the refresh window cannot refuse a valid guest
 - [ ] **FIX-07**: Two check-ins for the same person at two different parties on one device are queued as two entries, not one overwriting the other
 - [ ] **FIX-08**: A membership sync that fails permanently is recorded as failed rather than retried forever, so the pending count means something
-- [ ] **FIX-09**: A ticket refunded after the cache was downloaded is admitted and flagged for review, both online and offline
+- [ ] **FIX-09**: A ticket refunded after the cache was downloaded is admitted and flagged for review, both online and offline. A refund issued **after** the night began is accounting, not a door conflict, and belongs to the finance surface; only a refund issued **before** the night appears in the night's review list
 - [ ] **FIX-10**: A queued offline scan carries the signed token it was read from, so synchronising a check-in still proves possession of the ticket instead of accepting a bare identifier
+- [ ] **FIX-11**: Each night has a review list that is **empty on a normal night**, raises no notification and asks for no action, and that classifies each conflict by cause rather than presenting a generic error:
+  - a **double read** — same ticket, same operator, same device, within a short window — is deduplicated and does **not** appear, because one person cannot enter twice from one door in seconds; but it is counted, since a rising count means the scanner's feedback is not visible at the door and that is a defect to correct, not to filter away
+  - a **second unused ticket held by the same buyer for that night** is shown as "the same code was read twice", requiring no action beyond making the entry count add up
+  - **two different devices, minutes apart** is the one duplicate that deserves attention: two people may have entered on one ticket
+  - **an invalid signature** — a code this system did not issue — is the only outcome also surfaced to staff at the door when the network returns
+- [ ] **FIX-12**: A person supervising the night reads the review list in plain sentences; the full technical detail is available to a master and uses **identifiers, never names or email addresses**, so it can be pasted into an external tool for diagnosis without exporting a member's personal data
+- [ ] **FIX-13**: A conflict is recorded against the ticket, never as a judgement on a person: no automatic label is attached to a member. An entry that was admitted is counted as admitted. Any consequence for a member is a human decision, taken and recorded as such
 
 ### Capability Model
 
@@ -150,6 +158,10 @@ v1.4 (last phase: 30) — this milestone runs 31 → 42.
 | FIX-08 | Phase 31 | Pending |
 | FIX-09 | Phase 31 | Pending |
 | FIX-10 | Phase 31 | Pending |
+| FIX-04a | Phase 31 | Pending |
+| FIX-11 | Phase 31 | Pending |
+| FIX-12 | Phase 31 | Pending |
+| FIX-13 | Phase 31 | Pending |
 | CAP-01 | Phase 32 | Pending |
 | CAP-03 | Phase 32 | Pending |
 | CAP-04 | Phase 32 | Pending |
