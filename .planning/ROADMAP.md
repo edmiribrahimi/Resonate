@@ -90,10 +90,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 31-06-PLAN.md — The attendee payload the offline door needs: Event Pass included, operator labels, refund evidence
-- [ ] 31-07-PLAN.md — The check-in route: verify every path, admit every valid holder, record before answering
-- [ ] 31-08-PLAN.md — Membership verify: the same three outcomes, and attendance recorded per party
-- [ ] 31-09-PLAN.md — The refund keeps its evidence, and a failed delete stops being invisible
+- [x] 31-06-PLAN.md — The attendee payload the offline door needs: Event Pass included, operator labels, refund evidence
+- [x] 31-07-PLAN.md — The check-in route: verify every path, admit every valid holder, record before answering
+- [x] 31-08-PLAN.md — Membership verify: the same three outcomes, and attendance recorded per party
+- [x] 31-09-PLAN.md — The refund keeps its evidence, and a failed delete stops being invisible
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -275,7 +275,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 31. Live Defects at the Door and the Bar | 5/13 | In Progress|  |
+| 31. Live Defects at the Door and the Bar | 9/13 | In Progress|  |
 | 32. Capability Model in the Database | 0/TBD | Not started | - |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
