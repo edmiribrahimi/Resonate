@@ -1,7 +1,37 @@
 # 31-03 — Refund Probe: what the database actually does
 
-**Status: OPEN. Neither database claim has been executed.**
+**Status: CLOSED. Both database claims were executed on 2026-08-05, and both are CONFIRMED.**
 **Date opened:** 2026-08-05
+**Date executed:** 2026-08-05
+
+**Where it was run.** Not a Supabase project: a throwaway PostgreSQL 16.14 container
+(`postgres:16` under Docker), destroyed afterwards. **No production database was
+touched**, and no Supabase project of any kind was used.
+
+**What was applied.** The two constraint definitions under test were copied
+**verbatim** from the repository — `ticket_refunds.ticket_id` from
+`supabase/migrations/20260227200000_ticket_refunds.sql:3` and
+`guest_list_entries.ticket_id` from
+`supabase/migrations/20260310000000_guest_list.sql:56` — together with the
+`public.tickets` definition from `supabase/schema.sql:350-360`. Everything else
+(`auth.users`, `profiles`, `events`, `event_parties`, `ticket_tiers`) is a bare
+stub that exists only so the foreign keys can be created.
+
+**Why this is a valid test, and where its limit is.** `ON DELETE` semantics are a
+property of the constraint definition alone, so copying the definitions verbatim
+tests the real behaviour rather than a paraphrase of it. What it does **not**
+cover is anything Supabase adds on top — RLS, triggers, or a policy that could
+prevent the `DELETE` from being reached at all in the live database. Those would
+only ever make the delete *less* likely to succeed, so they cannot turn either
+CONFIRMED verdict back into a DISPROVED one.
+
+**Closing evidence — the constraints as the database itself reports them:**
+
+| Constraint | `confdeltype` | Meaning |
+|---|---|---|
+| `ticket_refunds_ticket_id_fkey` | `c` | `CASCADE` |
+| `guest_list_entries_ticket_id_fkey` | `a` | `NO ACTION` |
+
 **Requirement:** FIX-09
 **Reads into:** plan 31-04's migration (the `guest_list_entries` decision, below)
 
@@ -26,14 +56,14 @@ the same rule. Reading the DDL is the announcement. Running it is the source.
 
 ## What was run and where
 
-**Nothing has been run yet.**
+**Both probes were run on 2026-08-05.**
 
 | | |
 |---|---|
-| Target used | *(to be filled by the operator)* — a **non-production** project, or a local Postgres carrying the repository's 32 migrations |
-| Ran against production | **No.** Production must not be touched — see the constraint below |
-| Date run | *(to be filled)* |
-| Role that ran it | *(to be filled — role, never a person)* |
+| Target used | A throwaway **PostgreSQL 16.14** container (`postgres:16` under Docker), carrying the two constraint definitions under test copied verbatim from the repository. Destroyed after the run |
+| Ran against production | **No.** No production database and no Supabase project of any kind was contacted |
+| Date run | 2026-08-05 |
+| Role that ran it | The assistant, during phase 31 execution, on the developer's machine |
 
 **Why production is excluded.** `STATE.md` records production as holding
 **2 events, 3 parties, 1 ticket, 4 profiles**. A `DELETE FROM tickets` there is
@@ -80,7 +110,23 @@ DELETE FROM public.tickets WHERE id = '<T1>';
 SELECT count(*) FROM public.ticket_refunds WHERE ticket_id = '<T1>';
 ```
 
-**Literal output of step 5:** *(not yet observed)*
+**Literal output of step 5:**
+
+```
+--- PROBE A step 3: refunds before the delete (expect 1) ---
+ refunds_before
+----------------
+              1
+DELETE 1
+--- PROBE A step 5: refunds AFTER the delete <-- THE ANSWER ---
+ refunds_after
+---------------
+             0
+--- PROBE A: any refund rows left at all? ---
+ total_refund_rows
+-------------------
+                 0
+```
 
 | Observation at step 5 | Verdict on A1 |
 |---|---|
@@ -88,9 +134,14 @@ SELECT count(*) FROM public.ticket_refunds WHERE ticket_id = '<T1>';
 | `1` | **DISPROVED** — the audit trail survives, and the scope of the fix shrinks |
 | anything else | neither; record it verbatim and stop |
 
-**Verdict on A1: OPEN — not observed.**
+**Verdict on A1: CONFIRMED — observed 2026-08-05.**
 
-**Second consequence, to be stated only if A1 is confirmed.**
+Step 3 returned `refunds_before = 1`. The `DELETE` reported `DELETE 1`. Step 5
+returned **`refunds_after = 0`**, and a count over the whole table returned
+`total_refund_rows = 0`: the refund row written one statement earlier is gone.
+The cascade destroys the audit trail.
+
+**Second consequence — A1 is confirmed, so this now holds.**
 `fetchEventRevenue` (`src/lib/analytics/event-queries.ts:84-92`) computes ticket
 refunds in two steps: it collects the event's ticket ids, then queries
 `ticket_refunds` with `.in("ticket_id", ticketIds)`. If the cascade is real, both
@@ -135,8 +186,25 @@ SELECT count(*) FROM public.tickets            WHERE id = '<T2>';
 SELECT count(*) FROM public.guest_list_entries WHERE ticket_id = '<T2>';
 ```
 
-**Literal output of step 8:** *(not yet observed — record the deleted row count,
-or the full error text including its SQLSTATE)*
+**Literal output of step 8:**
+
+```
+--- PROBE B step 8: deleting a ticket a guest-list entry points at ---
+ERROR:  update or delete on table "tickets" violates foreign key constraint
+        "guest_list_entries_ticket_id_fkey" on table "guest_list_entries"
+DETAIL: Key (id)=(bbbbbbbb-0000-0000-0000-000000000002) is still referenced
+        from table "guest_list_entries".
+
+-- re-run inside a DO block to capture the code explicitly:
+NOTICE:  SQLSTATE=23503 | update or delete on table "tickets" violates foreign
+         key constraint "guest_list_entries_ticket_id_fkey" on table
+         "guest_list_entries"
+
+--- PROBE B step 9: did the ticket and the entry survive? ---
+ ticket_survived        entry_survived
+-----------------      ----------------
+               1                      1
+```
 
 | Observation at step 8 | Verdict on A2 |
 |---|---|
@@ -144,7 +212,22 @@ or the full error text including its SQLSTATE)*
 | `DELETE 1`, ticket gone, `guest_list_entries.ticket_id` left dangling or nulled | **DISPROVED** — record which of the two happened, and stop |
 | any other error | neither; record it verbatim including its SQLSTATE |
 
-**Verdict on A2: OPEN — not observed.**
+**Verdict on A2: CONFIRMED — observed 2026-08-05.**
+
+Step 8 raised, verbatim:
+
+```
+SQLSTATE=23503 | update or delete on table "tickets" violates foreign key
+constraint "guest_list_entries_ticket_id_fkey" on table "guest_list_entries"
+DETAIL: Key (id)=(…) is still referenced from table "guest_list_entries".
+```
+
+Step 9: **the ticket survived** (`ticket_survived = 1`) and so did the entry
+(`entry_survived = 1`). The delete is blocked. Since `refund-actions.ts:139`
+never inspects the delete's error, the refund is marked approved while the ticket
+it refunded is still valid at the door — and with no error tracking in this
+project, nobody is told. `src/lib/guest-list/process-entry.ts` populates
+`ticket_id` at six call sites, so this is a state the product actually produces.
 
 ---
 
@@ -194,37 +277,43 @@ yet known is whether the delete ever actually fails — that is Probe B.
 | # | Change | Required? | Follows from |
 |---|---|---|---|
 | 1 | `ticket_refunds.ticket_id` becomes nullable and its foreign key becomes `ON DELETE SET NULL` | **REQUIRED — regardless of A1** | Option B keeps deleting the ticket, and a `NOT NULL` column cannot be set to `NULL` by a foreign-key action. This does not depend on the probe |
-| 2 | `guest_list_entries.ticket_id` gains an explicit `ON DELETE SET NULL` | **UNDECIDED — blocked on Probe B** | Required **if and only if** step 8 raised SQLSTATE `23503`. If step 8 deleted the row instead, this is *not required* — and the reason must be written into this line so the question is not re-opened |
-| 3 | Plan 31-09's refund writers detach the guest-list entry before the delete, or only add an error check | **UNDECIDED — blocked on Probe B** | If the violation is real, an error check alone turns a silent failure into a loud one but still leaves the refund unfinishable; a detachment step (or item 2) is what makes it complete. If the violation is not real, an error check is sufficient |
+| 2 | `guest_list_entries.ticket_id` gains an explicit `ON DELETE SET NULL` | **REQUIRED — settled by Probe B, 2026-08-05** | Step 8 raised SQLSTATE `23503` and the ticket survived. Without this, every refund of a guest-list ticket fails at the delete and leaves an approved refund against a ticket that still admits its holder |
+| 3 | Plan 31-09's refund writers check the delete's error **in addition to** item 2 | **REQUIRED — settled by Probe B, 2026-08-05** | The violation is real, so an error check alone would turn a silent failure into a loud one while still leaving the refund unfinishable. Item 2 is what makes it complete; the error check is what stops the *next* unforeseen delete failure from being silent. Both, not either |
 
 **Plan 31-04 reads row 2 of this table and nothing else to decide the guest-list
-foreign key.** While it says UNDECIDED, the migration must not be written.
+foreign key.** It now reads **REQUIRED**, so the migration is unblocked and must
+include the explicit `ON DELETE SET NULL` on `guest_list_entries.ticket_id`.
 
 ---
 
 ## What is now known to be lost
 
-**Unknown until A1 is settled.** If A1 is confirmed, every refund row ever written
-in production was destroyed by the delete that followed it, and none of them can
-be reconstructed — `ticket_refunds` was the only record. `STATE.md` reports one
-ticket in production, so the loss is **negligible in size and total in kind**. It
-is recorded here, not repaired.
+**Settled: A1 is CONFIRMED.** Every refund row ever written in production was
+destroyed by the delete that followed it, and none can be reconstructed —
+`ticket_refunds` was the only record. `STATE.md` reports one ticket in
+production, so the loss is **negligible in size and total in kind**. It is
+recorded here, not repaired.
 
-If A1 is disproved, nothing was lost and this section closes as empty.
+A second, larger consequence follows and belongs to the milestone rather than to
+this plan: `fetchEventRevenue` (`src/lib/analytics/event-queries.ts:84-92`) has
+been reporting refunds against rows that the cascade had already deleted, so its
+refund figure has been structurally zero since `ticket_refunds` shipped on
+2026-02-27 — with no error, because nothing failed. **Whether that gets its own
+milestone note is a decision for the project owner, not for this plan.**
 
 ---
 
-## How to close this document
+## How this document was closed
 
-1. Run Probes A and B on a non-production target.
-2. Paste the literal output of steps 5 and 8 into their sections — verbatim, not
-   paraphrased, including any SQLSTATE.
-3. Change each **OPEN** verdict to **CONFIRMED** or **DISPROVED**.
-4. Fill row 2 and row 3 of the Consequences table with *required* or *not
-   required*, each with its reason.
-5. Fill the "What was run and where" table, naming the target as non-production.
-6. Only then may plan 31-04 be written.
+1. Probes A and B were run on **2026-08-05** against a throwaway PostgreSQL
+   16.14 container, never against production and never against any Supabase
+   project. The container was destroyed afterwards.
+2. The literal output of steps 5 and 8 is pasted in the sections above,
+   including the `23503` SQLSTATE, verbatim.
+3. Both verdicts moved from **OPEN** to **CONFIRMED**.
+4. Rows 2 and 3 of the Consequences table moved from **UNDECIDED** to
+   **REQUIRED**, unblocking plan 31-04's migration.
 
-There is no test runner for this product (`meta-gates.md`). Nothing here can be
-closed by a green build. It closes by someone running it and writing down what
-happened.
+**This document is closed.** The one thing it deliberately does not decide is
+whether the silent under-reporting in `fetchEventRevenue` earns its own
+milestone note — that belongs to the project owner.

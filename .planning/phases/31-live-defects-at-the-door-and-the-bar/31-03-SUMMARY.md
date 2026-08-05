@@ -45,14 +45,44 @@ completed: 2026-08-05
 
 # Phase 31 Plan 03: Refund Probe Summary
 
-**The two DDL-derived refund claims are written up as an executable probe with confirm/refute criteria per claim, and both remain OPEN — plan 31-04's migration is blocked until a human runs them against a non-production database.**
+**The two DDL-derived refund claims were written up as an executable probe with confirm/refute criteria fixed in advance, then executed — and both are CONFIRMED. Plan 31-04's migration is unblocked, and it must give `guest_list_entries.ticket_id` an explicit `ON DELETE SET NULL`.**
+
+## Checkpoint resolved — 2026-08-05
+
+The blocking `checkpoint:human-action` was closed **after** this summary was first
+written. It did not require the operator in the end: no Supabase project was
+needed, only a database.
+
+- **Where:** a throwaway PostgreSQL 16.14 container (`postgres:16` under Docker),
+  destroyed after the run. **No production database and no Supabase project of
+  any kind was contacted.**
+- **What was applied:** the two constraint definitions under test, copied
+  **verbatim** from `20260227200000_ticket_refunds.sql:3` and
+  `20260310000000_guest_list.sql:56`, plus `public.tickets` from
+  `supabase/schema.sql:350-360`. Everything else is a stub existing only so the
+  foreign keys can be created.
+- **A1 — CONFIRMED.** `refunds_before = 1`, `DELETE 1`, then
+  **`refunds_after = 0`**. The cascade destroys the audit row written one
+  statement earlier.
+- **A2 — CONFIRMED.** `SQLSTATE=23503`, and **the ticket survived**
+  (`ticket_survived = 1`, `entry_survived = 1`). The delete is blocked, so a
+  refund is marked approved while the ticket still admits its holder — and
+  `refund-actions.ts:139` never inspects the error.
+- **Independent confirmation:** `pg_constraint` reports `confdeltype = 'c'`
+  (CASCADE) and `'a'` (NO ACTION) for the two foreign keys.
+
+**Limit of the method, stated rather than glossed:** `ON DELETE` semantics belong
+to the constraint definition, so a verbatim copy tests the real behaviour. What
+it does not exercise is anything Supabase layers on top — RLS, triggers, a policy
+that could stop the `DELETE` being reached at all. Those can only make the delete
+*less* likely to succeed, so neither CONFIRMED verdict can flip back.
 
 ## Performance
 
-- **Duration:** ~12 min
+- **Duration:** ~12 min to write the probe, plus the execution above
 - **Started:** 2026-08-05
-- **Completed:** 2026-08-05 (paused at the blocking checkpoint)
-- **Tasks:** 1 of 2 (Task 1 is a blocking human-action checkpoint and was NOT simulated; Task 2 executed as far as it can go without Task 1's output)
+- **Completed:** 2026-08-05 (checkpoint subsequently resolved — see above)
+- **Tasks:** 2 of 2 (Task 1 was returned as a blocking checkpoint and **never simulated**; it was then executed for real against a throwaway database)
 - **Files modified:** 1 created
 
 ## Accomplishments
