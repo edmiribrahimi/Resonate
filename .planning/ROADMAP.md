@@ -85,8 +85,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 31-04-PLAN.md — Schema: door_scan_events with RLS, refund evidence, attendance per party, guest-list check-in columns — applied and observed
-- [ ] 31-05-PLAN.md — Offline store v3: composite keys, a stable device id, a merging refresh, a four-state queue
+- [x] 31-04-PLAN.md — Schema: door_scan_events with RLS, refund evidence, attendance per party, guest-list check-in columns — applied and observed
+- [x] 31-05-PLAN.md — Offline store v3: composite keys, a stable device id, a merging refresh, a four-state queue
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -275,7 +275,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 31. Live Defects at the Door and the Bar | 3/13 | In Progress|  |
+| 31. Live Defects at the Door and the Bar | 5/13 | In Progress|  |
 | 32. Capability Model in the Database | 0/TBD | Not started | - |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
