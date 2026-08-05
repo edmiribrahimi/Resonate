@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Check-in Overhaul
-status: archived
-stopped_at: Milestone v1.4 archived
-last_updated: "2026-03-11T02:00:00.000Z"
+milestone: v1.5
+milestone_name: Platform Layout, Access Model & Door Fixes
+status: planning
+last_updated: "2026-08-05T16:08:04.268Z"
+last_activity: 2026-08-05
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: Resonate
@@ -24,8 +25,10 @@ progress:
 
 ## Current Position
 
-**Phase:** All phases complete and archived
-**Status:** Ready for `/gsd:new-milestone`
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-05 — Milestone v1.5 started
 
 ## Decisions
 
@@ -34,6 +37,7 @@ progress:
 ## Accumulated Context
 
 ### Key Files
+
 - `src/app/(admin)/admin/scanner/ScannerClient.tsx` -- main scanner client (~1200 lines)
 - `src/app/(admin)/admin/scanner/page.tsx` -- server component wrapper
 - `src/app/api/tickets/checkin/route.ts` -- ticket QR check-in

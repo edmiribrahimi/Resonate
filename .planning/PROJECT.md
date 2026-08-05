@@ -14,7 +14,40 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 Delivered: party selection for check-in, continuous QR scanner with green/red flash + haptic feedback, scan history with undo, offline support via IndexedDB + service worker, membership door check-in with attendance recording, torch toggle for dark venues.
 
-**Next Milestone:** TBD — run `/gsd:new-milestone` to define
+**Next Milestone:** v1.5 — Platform Layout, Access Model & Door Fixes
+
+## Current Milestone: v1.5 Platform Layout, Access Model & Door Fixes
+
+**Goal:** Bring the platform onto the brand's visual system, make it usable on
+phone, tablet and desktop, unify the work surfaces under an access model that
+fits real staffing, and fix the door and bar defects found during the audit.
+
+**Target features:**
+- Design system: brand tokens, typography (display / data / interface), and a
+  three-tier responsive layout — today `md:` appears once in the whole repo and
+  `xl:` never, while production work happens on tablet and desktop
+- Eight shared primitives, measured from real recurrence (493 card instances,
+  246 chips, 147 buttons), adopted page by page rather than by global replace
+- Format data model (four formats; a series code carries per-series numbering)
+  and a sticky format filter on the events surface
+- One work surface replacing the duplicated admin/organizer trees — 13 routes
+  exist twice, 2.911 lines, and the copies have already diverged
+- Access model: named roles for general capability plus **per-night
+  assignments** for what is local to one night; public credits (dj,
+  photographer) kept separate from permissions
+- Door and bar corrections: duplicate scans reported instead of silently
+  accepted, attendee cache refreshed in real time, refunded tickets admitted and
+  flagged when offline, and no drink ever marked served without server
+  confirmation
+
+**Key context:**
+- Production data is nearly empty (2 events, 3 parties, 1 ticket, 4 profiles) —
+  the safest moment for a deep change
+- No test runner exists: verification is `npm run build` plus written manual
+  procedures, including a dark-venue, network-off pass for the door
+- The door and the bar follow **opposite defaults**: at the door, when in doubt
+  admit and record; at the bar, when in doubt record nothing
+- Design source of truth lives outside this repo and is consulted manually
 
 <details>
 <summary>v1.4 (2026-03-11)</summary>
@@ -137,5 +170,22 @@ All 16 requirements shipped. See [v1.4-REQUIREMENTS.md](.planning/milestones/v1.
 | Multiple ticket tiers per event | Flexibility for organizers (Early Bird, Regular, VIP) | — Pending |
 | Media on both event page and member profile | Maximum visibility for community content | — Pending |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-11 after v1.4 milestone completion*
+*Last updated: 2026-08-05 — milestone v1.5 started*
