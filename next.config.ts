@@ -5,7 +5,11 @@ const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   cacheOnNavigation: true,
-  reloadOnOnline: true,
+  // Deliberately false, not defaulted. On the door device a reload when the
+  // signal returns tears down the camera stream, the selected party and the
+  // in-memory undo list (ScannerClient's scanHistory) while entries are still
+  // queued — and that undo list is the door's only correction mechanism.
+  reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
 });
 
