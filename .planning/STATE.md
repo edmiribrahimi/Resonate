@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: v1.5 roadmap created (phases 31–42), traceability filled
-last_updated: "2026-08-05T19:35:21.817Z"
-last_activity: 2026-08-05 -- Phase 31 planning complete
+last_updated: "2026-08-05T19:42:52.744Z"
+last_activity: 2026-08-05 -- Phase 31 execution started
 progress:
   total_phases: 12
   completed_phases: 0
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 31 of 12 phases (31–42) — Live Defects at the Door and the Bar
-Plan: — (not planned yet)
-Status: Ready to execute
-Last activity: 2026-08-05 -- Phase 31 planning complete
+Phase: 31 (Live Defects at the Door and the Bar) — EXECUTING
+Plan: 1 of 13
+Status: Executing Phase 31
+Last activity: 2026-08-05 -- Phase 31 execution started
 
 Progress: [░░░░░░░░░░] 0%
 

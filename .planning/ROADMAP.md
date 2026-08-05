@@ -79,9 +79,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 31-01-PLAN.md — The door's offline ground: route-specific service-worker cache, no reload on reconnection, and the night's runbook
-- [ ] 31-02-PLAN.md — The shared three-outcome contract, plus partyEndInstant and the third haptic
-- [ ] 31-03-PLAN.md — Settle the two refund unknowns against a real database before the migration is written
+- [x] 31-01-PLAN.md — The door's offline ground: route-specific service-worker cache, no reload on reconnection, and the night's runbook
+- [x] 31-02-PLAN.md — The shared three-outcome contract, plus partyEndInstant and the third haptic
+- [x] 31-03-PLAN.md — Settle the two refund unknowns against a real database before the migration is written
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -275,7 +275,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 31. Live Defects at the Door and the Bar | 0/TBD | Not started | - |
+| 31. Live Defects at the Door and the Bar | 3/13 | In Progress|  |
 | 32. Capability Model in the Database | 0/TBD | Not started | - |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
