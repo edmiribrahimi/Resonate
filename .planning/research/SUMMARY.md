@@ -1,212 +1,194 @@
-# Research Summary: v1.3 Refinement & Intelligence
+# Project Research Summary
 
-**Project:** Resonate -- Private Music Events Community Platform
-**Synthesized:** 2026-03-09
-**Inputs:** STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md
-**Overall Confidence:** HIGH
-
----
+**Project:** Resonate (re:sonate) — v1.5 Platform Layout, Access Model & Door Fixes
+**Domain:** Private, invitation-gated music-events platform (Next.js 16 / React 19 / Supabase / Tailwind 4 PWA) — design-system pass, unified staff access model, format data model, and door/bar defect correction on a live, shipped product
+**Researched:** 2026-08-05
+**Confidence:** HIGH
 
 ## Executive Summary
 
-Resonate v1.3 adds five capabilities to a mature Next.js 16 + Supabase platform: analytics/data collection, a full app audit, UI animation polish, per-event guest lists, and admin navigation consolidation. Research confirms this is achievable with only 5 new npm packages (3 production, 2 dev-only) and zero architectural restructuring. The existing Server Actions + Supabase + App Router patterns extend naturally to all five feature areas.
+v1.5 touches five things that are normally shipped as five separate projects — visual system, routing, the permission model, the data-access boundary, and the door's concurrency model — on an app that already has real money moving through it and a route (`/admin/scanner`) that must work with the network off. All four researchers converge on the same underlying architecture: Postgres/RLS is the actual security boundary, not the middleware header it uses today; per-night staff grants cannot live in a JWT claim because a grant made at 21:50 must work at 22:00, not after the next token refresh; and the door and the bar must never share an offline mechanism because their correctness defaults are opposites (door: when in doubt, admit and record; bar: when in doubt, record nothing). No new npm packages are required — this is version bumps (`tailwindcss`, `@supabase/supabase-js`), two `next/font` calls, and a set of SQL migrations on a stack that already has the right shapes in place.
 
-The most consequential architectural decision is the **hybrid analytics strategy**: PostHog Cloud (EU instance, free tier -- 1M events/month, 5K session recordings) for behavioral analytics combined with a custom `analytics_events` Supabase table for business-critical transactional data. This avoids vendor lock-in for financial metrics while gaining professional funnels, session replay, and dashboards for free. The ARCHITECTURE.md researcher recommended server-side-only analytics without PostHog, but this conflicts with FEATURES.md findings that building funnels, retention charts, and session replay from scratch would take months. The hybrid approach is the correct trade-off: PostHog for product analytics, SQL views on existing tables for financial reporting.
+The stack researcher and the features researcher disagree on one point that this summary does **not** resolve (see below): whether the attendee list should be freshened by a Supabase Realtime subscription at all, or by polling plus manual pull-to-refresh, which is what a comparable ticketing product ships in production. Both positions are evidence-backed; the disagreement is left to the roadmap owner because it is a product risk decision, not a technical one.
 
-The **highest-risk feature is the guest list**, which touches the auth trigger (`handle_new_user()`), creates a new ticket type (free/complimentary), and must coexist with the referral-gating system without undermining it. Three separate pitfalls (auth bypass, existing member conflicts, financial tracking blind spots) converge here. This demands careful database schema design upfront -- specifically an `approved_via` column on profiles, a `ticket_type` column on tickets, and check-before-create logic in the processing pipeline. The lowest-risk features are navigation consolidation and UI animations, both of which are pure UI refactors with no data model changes.
-
----
+Independent of that decision, PITFALLS surfaced four defects that are live in production **today**, not hazards of new work: a drink token can be marked served twice because the RPC's idempotent-`false` return is discarded; a genuine two-operator double check-in is silently deleted from the offline sync queue instead of surfaced; a refunded ticket checks in green with no flag, online or offline; and `x-user-role` — a header trusted by the master-only finance/refund action — is attacker-suppliable on the anonymous request branch. These four outrank every net-new risk in this milestone and should be fixed first, before the larger architecture changes land on top of them. ARCHITECTURE and PITFALLS independently converge on the same build order for the rest: fix the door cache correctness bug before Realtime (Realtime turns a rare race into the normal case), build the capability model in the database before touching a single route, collapse the duplicated `/admin`+`/organizer` trees before adding per-night assignments (so they are not built twice), and treat the door's URL migration as an offline-first constraint with its own verification step, separate from the general route collapse.
 
 ## Key Findings
 
-### From STACK.md
+### Recommended Stack
 
-| Technology | Purpose | Rationale |
-|------------|---------|-----------|
-| `posthog-js` + `posthog-node` | Behavioral analytics (client + server) | Free tier sufficient (1M events/month). EU instance for GDPR. Supabase themselves use PostHog. |
-| `motion` (v12.35.x) | UI animations | Formerly Framer Motion. React 19 compatible (fix in v12.1.0). `LazyMotion` reduces bundle to ~4.6kb. |
-| `@next/bundle-analyzer` (v16.1.6) | Bundle size audit | Matches project Next.js version exactly. One-time audit tool. |
-| `eslint-plugin-jsx-a11y` (v6.x) | Accessibility linting | ESLint 9 flat config support confirmed. Permanent dev dependency. |
-| Lighthouse CI (via npx) | Performance/a11y/SEO auditing | No install needed. Includes axe-core internally. |
+The verdict from STACK.md is that this milestone needs **zero new npm packages** — the correct primitives (native `<dialog>`, the `@theme inline`/`static` token shape, container queries) are already proven in the repo or shipped by the platform. The two real actions are version bumps: `@supabase/supabase-js` 2.97.0 → 2.112.1 (four realtime bug fixes bear directly on this milestone's gates — a real `Error` on `CHANNEL_ERROR` instead of a stringified blob, column-scoped `select` on `postgres_changes`, and an auth-on-socket fix for long-lived door sessions) and `tailwindcss`/`@tailwindcss/postcss` 4.2.1 → 4.3.3 (fixes the default `--font-sans` platform stack, which this milestone's interface face depends on). `@supabase/supabase-js` 2.110.0 dropped Node 20 support — confirm the Vercel Node runtime before bumping.
 
-**Critical: `@axe-core/react` does NOT support React 18+.** Deque has deprecated the React wrapper. Use `eslint-plugin-jsx-a11y` + Lighthouse instead.
+**Core technologies:**
+- `next/font/google` (Anton + Space Mono, bundled with Next) — self-hosts both faces at build time; both are static weights, so `weight` is a required, build-breaking-if-omitted prop. `subsets: ['latin']` does **not** cover the wordmark's reversed-e glyph (`ɘ`, U+0258) — flag this if any heading ever renders it as live text rather than as the logo image.
+- Native `<dialog>` + `showModal()` — Baseline since March 2022, already proven in 3 of the repo's overlay implementations; replaces 15 hand-rolled `fixed inset-0` overlays, 13 of which lack `Escape` handling today.
+- Postgres enums + tables + `SECURITY DEFINER` functions + RLS — the capability model, deliberately with **no JS authorization library**, because the security boundary is RLS and a second policy language would drift from it with no test runner to catch it.
+- A local 6-line `cn()` helper instead of `clsx`/`tailwind-merge`/`cva` — justified by the fact that hand-rolled primitives own both sides of every variant, so there is no class conflict to resolve.
 
-**New environment variables:** `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` (EU: `https://eu.i.posthog.com`).
+Two decisions are flagged as open rather than defaulted: whether Orbitron (still named as a **Constraint** in `PROJECT.md`) is retired or kept for one named role, and which tables enter the `supabase_realtime` publication (each addition is a permanent WAL cost).
 
-### From FEATURES.md
+### Expected Features
 
-**Must-have (v1.3 incomplete without these):**
-- PostHog setup + user identification (immediate analytics value)
-- Revenue + sales summary per event (organizers need financial visibility)
-- Member growth + token lifecycle SQL views (community health metrics)
-- 4-tab bottom nav maximum (Events, Gallery, Scanner, Account)
-- Role-aware Account page with management links
-- Component enter animations + skeleton loading states
-- Toast notifications for action feedback
-- Basic guest list (add by name+email, view status, send invite)
-- Auto-registration for guest list non-members
-- Free ticket generation for guest list members
-- Security headers + server action input validation audit
-- `eslint-plugin-jsx-a11y` integration + accessibility fixes
+FEATURES.md answers four questions with industry-convergent patterns, expressed as deltas against what already exists (ticketing, drink tokens, offline check-in, guest list, referral gating are out of scope for re-research).
 
-**Defer to v1.4+:**
-- Conversion funnel visualization, session replay analysis, event comparison view
-- Per-member spend profiles, guest-to-member conversion tracking
-- Reusable guest list templates, CSV bulk import
-- Referral chain effectiveness, layout animations on filter/sort
+**Must have (table stakes):**
+- Single-select format filter chips (All + 4 formats — inside the 5–6-option ceiling for this UI pattern), URL-encoded (`?format=`), sticky, scroll-preserving, with a designed per-format empty state and a stated default
+- A three-way staff model every surveyed product converges on: **account-wide role**, **per-event/per-night assignment** (granted without changing account-wide rights), and **public credit** (carries zero permissions, requires no account)
+- Duplicate scan reporting with the first-scan time and the recording staff member — both fields (`checked_in_at`, `checked_in_by`) already exist and are already written; only the door-facing message is missing
+- Attendee cache freshness on the order of seconds while the scanner is open, plus an always-available manual pull-to-refresh, plus an online/offline badge with a pending-sync count
+- Bar: never mark a drink served without server confirmation — explicitly the opposite default from the door, and must not share the door's mechanism
 
-**Anti-features (explicitly avoid):**
-- Custom analytics dashboard UI from scratch (PostHog provides this)
-- Any charting library (Chart.js, Recharts) -- duplicates PostHog
-- Page-level AnimatePresence route transitions (broken in Next.js App Router as of 2026)
-- Public RSVP wall (contradicts private community model)
-- SMS invitations, plus-one management, AI recommendations
-- WCAG AAA compliance (AA is the target; AAA conflicts with dark theme aesthetics)
+**Should have (competitive):**
+- Per-format counts on the chips (only once computed from the same draft-aware, visibility-filtered query as the list — otherwise it leaks an unannounced night)
+- Assignment-driven door surface ("is this person on tonight?" rather than "does this person have a permission?")
+- A staleness statement beside the count ("updated 4s ago"), not just a spinner
 
-### From ARCHITECTURE.md
+**Defer (v2+):**
+- Refused-entry reasons (adds a decision at the door — the worst place to add one)
+- Credit-to-member profile pages (a discovery feature; discovery is deliberately manual here)
+- A custom role builder (explicitly deferred, not silently deferred — the team's size is the argument against it)
 
-**Two new database tables:**
-1. `analytics_events` -- Single table with `event_type` discriminator + `metadata` JSONB. No RLS needed (service client only). Indexes on `event_type`, `created_at`, `event_id`.
-2. `guest_list_entries` -- Per-event entries with `status` (pending/processed/failed), linked `profile_id` and `ticket_id` after processing. UNIQUE constraint on `(event_id, email)`.
+**Anti-features worth naming explicitly:** a custom role builder, multi-select format filters, a venue facet on the listing (venue is a secrecy surface), deriving door access from a credit or a credit from an assignment (both invert the independence invariant), time-expiring assignments ("access ends at 06:00" fails during the last twenty minutes of a queue), and — the point of direct disagreement with STACK, below — per-row realtime subscriptions and staff-presence indicators.
 
-**Key patterns:**
-- `trackEvent()` utility: fire-and-forget server-side function called from existing Server Actions after successful operations. Zero client bundle cost for business event tracking.
-- `AnimatedSection` client wrapper: thin `"use client"` component wrapping `motion.div` with `whileInView`. Keeps animation boundary narrow; does not force parent Server Components to become client components.
-- Atomic guest processing: each entry is fully processed (profile + approval + ticket) or marked as failed with an error message. No partial states.
-- Dashboard as account hub: role-conditional "Staff Tools" section with link cards to admin/organizer routes. MobileNav drops to 3 tabs.
+### Architecture Approach
 
-**Analytics dashboard queries existing tables directly** (tickets, drink_orders, profiles, attendance) for definitive counts. The `analytics_events` table supplements with behavioral data that existing tables do not capture.
+ARCHITECTURE.md's target shape moves the security boundary fully into Postgres: a thin `proxy.ts` (renamed from `middleware.ts` per Next 16) that does session refresh only and injects nothing about identity; a server-only DAL (`src/lib/auth/dal.ts`) holding `getViewer()` and `requireCapability()`; one unified `/staff` route tree replacing the duplicated `(admin)`/`(organizer)` trees; and a single set of SQL functions (`has_capability`, `assigned_parties`, `can`) called from three places — the page/action layer via `rpc()`, RLS policies directly, and (if Realtime ships) the `realtime.messages` channel-authorization policy. The existing ~40 RLS policies keep working unmodified because `is_master()`/`is_admin_or_organizer()` are redefined over the new functions rather than rewritten.
 
-### From PITFALLS.md
+**Major components:**
+1. `src/lib/auth/dal.ts` + `capabilities.ts` — the one place an authorization answer is produced or asked for; never re-derived in TypeScript
+2. `staff_roles` / `role_capabilities` / `staff_assignments` (Postgres) — general role stays a JWT-eligible preset table; per-night assignments are explicitly **table-backed only, never a claim**
+3. `formats` / `series_counters` / `event_parties.series_code` (generated, atomic-counter-backed) — monotone numbering that survives deletes without renumbering
+4. `src/lib/offline/{checkin-store,sync-manager,attendance-realtime}.ts` — the IndexedDB store stays the source of truth for the scan verdict; a realtime channel (if adopted) writes to the cache and never gates the scan path
+5. `/door` (moved out of the staff tree, on its own migration step with a Serwist precached-navigation rule, because it is the one URL that may be opened with the network off)
 
-**Top 5 pitfalls with prevention strategies:**
+### Critical Pitfalls
 
-| # | Pitfall | Severity | Prevention |
-|---|---------|----------|------------|
-| 1 | Guest list auto-registration bypasses referral gating | CRITICAL | Add `approved_via` column to profiles. Modify `handle_new_user()` trigger to check `guest_list_event_id` in user metadata. Check-before-create for existing members. |
-| 2 | Analytics tracking inflates client bundle, degrades Core Web Vitals | CRITICAL | Server-side `trackEvent()` for business events (zero bundle cost). PostHog loaded via `lazyOnload` strategy. Measure LCP/TBT before and after. |
-| 3 | Broad app audit introduces regressions across stable features | CRITICAL | Risk-categorize findings (LOW/MEDIUM/HIGH). Isolated commits for HIGH-risk items. Manual regression checklist for critical flows. Never bundle security fixes with UX tweaks. |
-| 4 | Guest list free tickets bypass SumUp revenue tracking | CRITICAL | Add `ticket_type` column (`purchased`/`guest_list`/`complimentary`). Update SalesDashboard to show paid vs free. Refund flow must check `amount_paid > 0`. |
-| 7 | Guest list conflicts with existing member records | MODERATE | Before auto-registering, check `auth.users` for existing email. Before creating free ticket, check for existing ticket at same event. |
+1. **Drink token can be served twice** — `redeem_drink_token`'s idempotent `false` return is discarded by both callers, and an already-redeemed token is deliberately let through on `action === "serve"`. Live in production; fix before any design work touches the redeem flow.
+2. **Offline sync queue silently deletes evidence of a genuine double check-in** — the ticket check-in route encodes conflict as HTTP 200 with an in-band status string, and `sync-manager.ts` treats `res.ok` as "delete the queue entry," destroying the only record that two doors disagreed.
+3. **Realtime cache refresh wipes unsynced local check-ins** — `cacheAttendees()` clears and re-inserts the whole party's attendee set on every refresh; a pending offline check-in gets reverted to "not arrived." This is rare today (refresh only on party selection); Realtime would make frequent refresh the normal case, turning a rare race into the standard failure mode. **Must be fixed before Realtime is switched on, regardless of which realtime approach is chosen.**
+4. **The route collapse silently removes an implicit guard** — 20 admin-only pages are guarded today purely by the `/admin` URL prefix; collapsing to a neutral `/staff` prefix removes that guard unless every route gets an explicit, exhaustive capability mapping. Convergent with the header-trust finding below.
+5. **`x-user-role` is trusted on a money path on the anonymous request branch** — `middleware.ts` only overwrites the header when a user is present, and `admin/finance/actions.ts` gates SumUp refunds and a service-role client on exactly that header. Not a one-line remote takeover (requires a valid, build-rotated Server Action ID), but a real gap on the highest-value path in the app, and the reason the access model must land before the route-tree collapse, not after.
 
-**Cross-feature conflict warnings:**
-- Guest list + referral system: auto-approval must not permanently devalue referral gating. Consider scoping guest approval to event-level, not permanent community membership.
-- Analytics + animations: compounding performance hit. Add sequentially, measure after each.
-- Nav consolidation before analytics: track the final navigation structure, not a transitional one.
-- App audit must not run in parallel with feature work -- audit the stable codebase, then build on top.
+## An Open Disagreement — Not Resolved Here
 
----
+**STACK.md** recommends Supabase Realtime `postgres_changes` (or, per ARCHITECTURE.md's stricter authorization argument, Broadcast-from-database) with a mandatory full refetch on every `SUBSCRIBED`/rejoin, treating the socket purely as "a hint the cache is stale." Rationale: the app is genuinely new to Realtime (zero `.channel(` calls exist today), the setup cost is one migration and one RLS policy, and the free-tier ceilings (200 connections, 100 msg/s) are orders of magnitude above a staff-sized door.
+
+**FEATURES.md** lists "a live websocket subscription per attendee row / staff presence indicators" as an **anti-feature**, and cites a comparable, shipped ticketing product's published numbers instead: ticket/check-in data polled every ~7 seconds, events every 2 minutes, permissions every 3 minutes, plus an always-available manual pull-to-refresh. Its argument: the actual requirement is *freshness*, not *presence*; a subscription multiplies connections on a phone with bad signal and degrades exactly when the network does — the moment it is needed most — and this would be genuinely new infrastructure on the single most failure-sensitive surface in the product.
+
+Both positions are evidence-based and neither researcher is wrong on its own terms — they differ on how much a socket buys over a well-published poll interval for a door with single-digit concurrent devices. **PITFALLS.md and ARCHITECTURE.md both add a load-bearing constraint that applies whichever way this is decided:** if Realtime is adopted, it must never become the decision path (the scanner's verdict comes from IndexedDB, full stop), the channel dies silently on token expiry across an offline/background gap and must be torn down and rebuilt rather than trusted to self-heal, and the cache-wipe bug (finding 3, above) must be fixed first regardless. **This is an open decision for the project owner, to be made explicitly in the phase that would implement it — not defaulted by whichever researcher's file is read last.**
 
 ## Implications for Roadmap
 
-### Resolving Phase Order Conflicts
+Based on combined research (ARCHITECTURE §13 and PITFALLS "Ordering consequences" agree on the shape below; ARCHITECTURE's numbered steps and PITFALLS' phase mapping are reconciled into one sequence):
 
-The three research files that suggest phase ordering disagree:
+### Phase 0: Live-defect corrections (bar + door foundations)
+**Rationale:** These are bugs in production today, independent of everything else in the milestone, and the door-cache bug specifically must land before Realtime touches the same code path. Both researchers place this first for different reasons that agree: PITFALLS because it's live and money-adjacent; ARCHITECTURE because Realtime "widens the exact window this bug opens."
+**Delivers:** Drink-token double-serve fixed; sync-queue conflict reporting instead of silent deletion; offline "Connection error" split into four distinct outcomes; refunded-ticket admit-and-flag (both online and offline); the `checkin-store.ts` clear-and-replace bug replaced with a pending-wins merge.
+**Addresses:** FEATURES table stakes "duplicate scan reported," "refunded ticket admits and flags," "bar never marks served without confirmation."
+**Avoids:** PITFALLS 1, 2, 3, 4, 12.
 
-- **FEATURES.md:** Nav -> Audit -> Elegance -> Analytics -> Guest List
-- **ARCHITECTURE.md:** Analytics+Nav -> Analytics+Elegance -> Audit -> Guest List -> Dashboard
-- **PITFALLS.md:** Audit -> Nav -> Guest List -> Elegance -> Analytics
+### Phase 1: Capability model in the database
+**Rationale:** ARCHITECTURE: the DAL in the next phase calls these functions — building it after would mean reimplementing the rules in TypeScript, which is the exact drift this milestone exists to remove. No application code changes in this phase; verification is that behavior is byte-identical to today.
+**Delivers:** `app_capability` enum, `staff_roles`/`role_capabilities`/`staff_assignments` tables, `has_capability`/`assigned_parties`/`can` SQL functions, `is_master()`/`is_admin_or_organizer()` redefined over them, indexes, seeds reproducing today's role behavior exactly.
+**Avoids:** PITFALLS 8 (fail-open capability refactor), 10 (slow/recursive RLS — the `(select auth.uid())` wrap and `TO authenticated` sweep belong here, mechanically, on all 71 existing policies).
 
-**Synthesized recommendation:** The FEATURES.md ordering is the strongest because it prioritizes foundational changes (nav structure, quality baseline) before adding new capabilities. However, I adjust it based on pitfall analysis: Scanner must stay prominent in nav (PITFALLS), and the audit should establish quality patterns (Zod validation, error boundaries, loading states) that subsequent phases reuse.
+### Phase 2: Server DAL and removal of header trust
+**Rationale:** This is where the finance-action header-spoof hole (finding 5, above) actually closes. Cannot move later — collapsing routes first would carry the header pattern into the new tree.
+**Delivers:** `src/lib/auth/dal.ts` (`getViewer`, `requireCapability`), the 8 duplicated `actions.ts` bodies moved into server-only `src/lib/<domain>/` modules, the 45 `x-user-role` call sites converted, `middleware.ts` → `proxy.ts` with the profiles query and header injection deleted.
+**Avoids:** PITFALLS 9 (forgotten API-route and server-action guards — extract and delete the duplicated `verifyOrganizerRole`), 11 (service-client bypass of RLS on the door/bar paths).
 
-### Recommended Phase Structure (5 phases, starting from Phase 20)
+### Phase 3: Unified `/staff` tree
+**Rationale:** Pages have nothing to call until Phase 2's DAL exists. The door route is explicitly excluded (see Phase 7).
+**Delivers:** One copy of the 13 duplicated routes, capability-driven `StaffNav`, `redirects()` for both legacy `/admin` and `/organizer` prefixes, 59 old page files deleted.
+**Avoids:** PITFALLS 8's route-guard-removal risk directly — requires the total, type-checked route→capability map as a phase deliverable, not a note.
 
-**Phase 20: Navigation Consolidation**
-- Delivers: 4-tab bottom nav (Events, Gallery, Scanner, Account), role-aware Account page, Staff Tools section
-- Features: Nav consolidation table stakes + differentiators from FEATURES.md Category 5
-- Pitfalls to avoid: Scanner access regression (keep at 1-2 taps), z-index conflicts (modals z-[60], MobileNav z-50)
-- Rationale: Smallest scope, zero new dependencies, zero data model changes. Creates the Account page structure where analytics links and guest list management will live. Must happen before analytics so tracking reflects the final navigation structure.
-- Research needed: NO -- standard UI refactor with well-documented patterns
+### Phase 4: Per-night assignments
+**Rationale:** Needs Phase 1 for the functions and Phase 2/3 for a UI home.
+**Delivers:** Assignment grant/revoke UI under `/staff/assignments`, RLS wired onto the door tables, revoke-by-timestamp (never delete), no self-grant, grant validated as of the scan timestamp (a revoked assignment must not strand a queued offline scan).
+**Addresses:** FEATURES "per-night assignments with a small fixed set of types," "revocation is one action." Undo-scope decision (door staff vs. supervisor-only) must be made explicitly here, not left as an implicit widening.
 
-**Phase 21: App Audit**
-- Delivers: Security headers, server action input validation (Zod), accessibility fixes, performance baseline, error boundaries, loading skeletons, SEO metadata on public pages
-- Features: App audit table stakes from FEATURES.md Category 2 + JSON-LD structured data
-- Pitfalls to avoid: Regressions (risk-categorize findings, isolated commits), dark theme breakage from a11y fixes (brand-consistent focus ring using `--accent`), SEO conflicting with private model (only public pages)
-- Rationale: Establishes quality patterns (Zod schemas, error.tsx, loading.tsx) reused by all subsequent phases. Creates the performance baseline that animations and analytics are measured against. Security hardening before guest list (which creates auth users programmatically).
-- Research needed: NO -- audit generates its own findings. Lighthouse + bundle analyzer produce the research.
+### Phase 5: Formats and series numbering
+**Rationale:** Placed after the route collapse for a practical reason, not a technical one — it edits the event editor pages, and doing it before Phase 3 means editing them twice in two trees.
+**Delivers:** `formats`/`series_counters` tables, atomic `next_series_number()`, `event_parties.series_code` as a generated column, the sticky format filter with URL state and per-format empty states, secrecy suppression on `series_code` for parties with a secret venue.
+**Addresses:** FEATURES "format data model + filter chips" (P1 in its own prioritization matrix).
+**Avoids:** ARCHITECTURE's cross-domain warning that `series_scope`, if it ever encodes a venue, publishes a venue reveal through a column nobody thought of as a venue column.
 
-**Phase 22: Layout Elegance**
-- Delivers: Motion library integration, AnimatedSection wrapper, skeleton loading states, toast notifications, enter animations, micro-interactions (whileTap/whileHover), scroll-triggered reveals
-- Features: Layout elegance table stakes + staggered lists + scroll reveals from FEATURES.md Category 3
-- Pitfalls to avoid: Hydration mismatches (use `initial={false}` where needed, thin client wrappers), over-animation (max 300ms, ease-out, meaningful transitions only), bundle bloat (LazyMotion + domAnimation = ~4.6kb), iOS safe-area layout shifts (never animate MobileNav dimensions)
-- Rationale: Post-audit means animations apply to already-optimized components. Creates reusable animation patterns (AnimatedSection, StaggeredList, SkeletonCard) used by analytics dashboard and guest list pages. Respect `prefers-reduced-motion`.
-- Research needed: NO -- Motion API is stable and well-documented
+### Phase 6: Realtime attendance freshener — OR poll + pull-to-refresh
+**Rationale:** This is the phase where the open disagreement above must be resolved by the project owner. Whichever path is chosen, it cannot move earlier: it needs Phase 0 (cache correctness), Phase 1 (channel/query authorization), and Phase 4 (for a per-night channel scope, if Realtime, to mean anything; for a per-party poll scope, if polling).
+**Delivers (if Realtime):** Trigger + `realtime.messages` RLS policy reusing `assigned_parties`, client subscription with backfill-on-`SUBSCRIBED`, three-state liveness indicator defaulting pessimistic, collision reporting in `sync-manager`.
+**Delivers (if poll):** Interval poll while the scanner is open (7–10s range, published to staff), manual pull-to-refresh, online/offline badge with pending-sync count, live sold/checked-in/remaining counts.
+**Avoids:** PITFALLS 5 (silent channel death) if Realtime is chosen; either way, non-negotiable: the connection/poll state is never read by the scan decision path.
 
-**Phase 23: Analytics & Data Collection**
-- Delivers: PostHog Cloud setup (EU), `analytics_events` Supabase table, `trackEvent()` utility, PostHog user identification on auth, custom events in purchase/redeem flows, SQL views for revenue/token/member summaries, admin KPI cards
-- Features: Analytics table stakes + per-member spend profile + drink popularity + session replay from FEATURES.md Category 1
-- Pitfalls to avoid: Client bundle bloat (server-side trackEvent for business events, PostHog via lazyOnload), GDPR exposure (EU instance, separate operational analytics from behavioral tracking, data retention policy), analytics schema without migration strategy (JSONB metadata column for flexibility)
-- Rationale: Benefits from final navigation structure (Phase 20), quality patterns (Phase 21), and animation components (Phase 22). PostHog starts collecting data immediately, making the dashboard valuable from day one. Privacy strategy (operational vs behavioral tracking) must be defined at phase start.
-- Research needed: YES -- PostHog EU GDPR specifics, `instrumentation-client.ts` integration with Next.js 16 App Router, data retention cron job pattern
+### Phase 7: Door URL move + remaining door/bar polish
+**Rationale:** The door's URL is an offline constraint, not a routing preference — a 308 redirect requires the network, which the door may not have. Separated from Phase 3 for that reason.
+**Delivers:** `/door` as the permanent home, shipped together with a Serwist precached-navigation rule so an offline home-screen launch still resolves; `offlineSync` requiring the signed token instead of a bare `ticketId`.
+**Verification:** install-to-home-screen from the old URL, airplane mode, launch, scan — executed and recorded, not asserted.
 
-**Phase 24: Guest List Management**
-- Delivers: `guest_list_entries` table, guest CRUD UI (admin + organizer), auto-registration via `supabase.auth.admin.createUser()`, auto-approval, free ticket generation, invitation email template, guest list per party
-- Features: Guest list table stakes + per-party guest lists + auto-approval on email match from FEATURES.md Category 4
-- Pitfalls to avoid: Auth trigger bypass (modify `handle_new_user()` to check metadata, add `approved_via` column), existing member conflicts (check-before-create), financial blind spots (add `ticket_type` column, update SalesDashboard), Supabase rate limits on bulk operations (batch processing with status tracking)
-- Rationale: Most complex feature -- new table, auth flow changes, email template, free ticket logic. Benefits from all prior phases: clean nav (20), validated patterns and Zod schemas (21), animation components and toasts (22), PostHog tracking for guest processing events (23). Auth trigger modification is the riskiest change in v1.3 and benefits from a stable, well-audited codebase.
-- Research needed: YES -- `supabase.auth.admin.createUser()` password reset flow for newly created users, `handle_new_user()` trigger modification strategy, batch processing rate limits
+### Design system and primitives (parallel track, sequenced after Phase 3)
+**Rationale:** PITFALLS: adopting eight primitives across two duplicated trees means adopting them sixteen times and diverging again — the route collapse is what makes this work cost what it should. The nav-clearance (6 hard-coded paddings) and z-index extraction should be pulled forward into this phase's foundation step, before any breakpoint work, per PITFALLS 16.
+**Avoids:** PITFALLS 13 (service worker serving a stale build on a door device — pair with an explicit deploy-freeze-during-events operational rule), 14 (token swap missing 68 hex literals and 8 `rgba()` literals — grep count is a phase exit criterion), 15 (incremental adoption stalling at 80% — sample 12 of 493 card instances before building the API, migrate in surface-complete slices).
+**Sequencing constraint:** the scanner is migrated last within this track, and only after its behavioral fixes (Phase 0, Phase 7) have shipped and been used at a real night — a visual regression on the scanner is a safety issue, not a cosmetic one.
 
----
+### Phase Ordering Rationale
 
-## Research Flags
+- **Live defects before architecture:** Phase 0 fixes bugs that exist regardless of this milestone; everything else is new risk being introduced deliberately, and should not be reasoned about together with pre-existing risk.
+- **Database before application:** the capability functions (Phase 1) must exist before the DAL (Phase 2) can call them, and before RLS policies (Phase 4) can reuse them, and before a realtime channel policy (Phase 6) can reuse them a third time — one definition, three callers, is only true if the definition comes first.
+- **Route collapse before assignments and formats:** both would otherwise be built twice, once per duplicated tree — the exact cost the collapse itself is meant to eliminate.
+- **The door is not "part of routing"** — it gets its own phase because a 308 redirect requires a network connection the door is designed not to need.
+- **Design work sequenced around, not through, behavioral fixes** — the scanner is where a visual regression is a safety issue, so it is the last surface migrated, and only after Phase 0/7 have been proven at a real event.
 
-| Phase | Needs `/gsd:research-phase`? | Reason |
-|-------|------------------------------|--------|
-| Phase 20 (Nav) | NO | Pure UI refactor, no new patterns |
-| Phase 21 (Audit) | NO | Generates its own findings via tooling |
-| Phase 22 (Elegance) | NO | Motion API well-documented, animation patterns standard |
-| Phase 23 (Analytics) | YES | PostHog EU setup, instrumentation-client.ts integration, GDPR data retention |
-| Phase 24 (Guest List) | YES | Auth trigger modification, admin.createUser() flow, password reset for auto-created users, batch processing limits |
+### Research Flags
 
----
+Needs research during phase planning:
+- **Realtime vs. polling phase (Phase 6):** the disagreement above is unresolved by design; whichever direction the owner picks, the specific Supabase Broadcast-vs-`postgres_changes` mechanics (private channel setup, trigger function, `realtime.messages` RLS) or the specific poll-interval/battery tradeoff needs a short focused pass at plan time.
+- **RLS performance verification (Phase 1/4):** requires a seeded, realistic dataset (a few hundred tickets, several staff) and `EXPLAIN ANALYZE` — production data (4 profiles) proves nothing about the join-based per-night-grant policies.
+- **Service worker update strategy (design-system phase):** `reloadOnOnline`/`skipWaiting` behavior on a live door device needs to be re-decided with the door as the deciding case, verified on a device that already has the *old* service worker installed, not a fresh profile.
+
+Phases with standard, well-documented patterns (research-phase optional):
+- **Phase 2 (DAL/header removal):** Next.js's own data-security guidance is unambiguous and directly cited.
+- **Phase 5 (formats/numbering):** the atomic-counter pattern is a standard Postgres idiom, fully specified in ARCHITECTURE.md.
+- **Native `<dialog>` modal extraction:** the pattern is already proven in three files in this repo.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All packages verified on npm with correct versions. PostHog free tier limits confirmed. Motion React 19 compatibility verified. |
-| Features | HIGH | Competitor analysis covers 6 platforms. Table stakes vs differentiators clearly delineated. Anti-features well-justified. |
-| Architecture | HIGH | Extends existing patterns. No restructuring. Two new tables with clean schemas. trackEvent() follows existing fire-and-forget pattern. |
-| Pitfalls | HIGH | 14 pitfalls identified with concrete prevention strategies. Cross-feature conflicts mapped. All critical pitfalls from direct codebase analysis. |
+| Stack | HIGH | Verified against Context7 docs, official Supabase/Tailwind/Next.js documentation, installed `node_modules` source, and npm registry — not against training data |
+| Features | MEDIUM-HIGH | Vendor documentation for staff-role and door-freshness claims is official and current across 4+ independent products; the filter-UX source (SaaSUI.Design) is a single authored source, though its claims are widely corroborated conventions |
+| Architecture | HIGH | Next.js and Supabase guidance verified against current official docs; every repo claim carries a `file:line` citation re-checked from the current tree, not from the stale `.planning/codebase/` |
+| Pitfalls | HIGH for repo-verified findings (all read from current tree, cross-checked against the known-stale `CONCERNS.md`); HIGH for Supabase RLS/Realtime behavior (official docs); MEDIUM for the Realtime-channel-death claims (community issue trackers, multiple independent reports in agreement, not official documentation) |
 
-### Gaps to Address During Planning
+**Overall confidence:** HIGH
 
-1. **PostHog EU GDPR specifics** -- Verify data processing agreement and retention controls at posthog.com/docs/privacy before Phase 23 starts
-2. **Guest auto-registration password flow** -- Test `supabase.auth.admin.createUser()` with `email_confirm: true` to confirm what email the guest receives and how they set their password
-3. **handle_new_user() trigger modification** -- The trigger currently has no mechanism to signal "skip referral check." Determine whether to modify the trigger or work around it.
-4. **Bundle size after PostHog + Motion** -- Measure actual impact. PostHog (~5kb with lazyOnload) + Motion (~4.6kb with LazyMotion) should total ~10kb gzipped, but verify.
-5. **Guest list and referral system coexistence** -- Business rule needed: do guest-list-approved users keep permanent community access, or is it event-scoped?
-6. **AnimatePresence behavior with loading.tsx** -- Motion docs confirm `AnimatePresence` works with conditional rendering, but test with Next.js streaming/Suspense boundaries
+### Gaps to Address
 
----
+- **The Realtime-vs-polling decision itself** is not a research gap — it is a genuine, evidence-backed disagreement that must be decided by the project owner at the Phase 6 planning step, not resolved by further research.
+- **Assignment vocabulary** (exact named types — "Door," "Bar," "Photo," etc.) and **assignment level** (event-only, party-only, or both) are explicitly product decisions per FEATURES.md, not research findings; needs a decision, not more research, before Phase 4 can be planned in detail.
+- **Undo scope** (door staff vs. supervisor-only) is currently an implicit widening of what an assignment grants — must be a declared decision in Phase 4, per both FEATURES and PITFALLS.
+- **Orbitron's fate** (retire vs. keep for one named role) is a design-system decision blocking the token-swap phase; leaving it undecided risks the "looks done but isn't" failure mode PITFALLS names (a font import surviving with zero rendered glyphs, and a stale Constraint in `PROJECT.md`).
+- **Whether `venue.reveal` becomes a human-triggerable capability or stays cron-only** is flagged as open in ARCHITECTURE — adding any human-triggerable path to a documented one-way switch needs an explicit decision, not a default.
+- **Poll interval / Realtime battery and Supabase-read cost over a full night** was not researched by any of the four files and should be measured, not assumed, whichever direction Phase 6 takes.
 
-## Aggregated Sources
+## Sources
 
-### Stack & Integration
-- [PostHog Next.js Docs](https://posthog.com/docs/libraries/next-js)
-- [PostHog Pricing](https://posthog.com/pricing) -- Free tier: 1M events/month, 5K recordings
-- [How Supabase Uses PostHog](https://posthog.com/customers/supabase)
-- [Motion.dev](https://motion.dev/) -- Official docs, React 19 compatibility, LazyMotion
-- [@next/bundle-analyzer](https://www.npmjs.com/package/@next/bundle-analyzer) -- v16.1.6
-- [eslint-plugin-jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y) -- ESLint 9 flat config
+### Primary (HIGH confidence)
+- Context7 `/websites/supabase`, `/websites/tailwindcss` — Realtime `postgres_changes`/Broadcast/RLS, Tailwind v4 `@theme` namespaces
+- Supabase official docs — Realtime (postgres-changes, subscribing, broadcast, limits), custom-claims RBAC guide, RLS performance and best practices
+- Next.js official docs — data security (Server Actions must re-verify), authentication guide, v16 upgrade guide (`middleware` → `proxy`), font component reference, responsive design
+- npm registry and installed `node_modules` source — version verification, `REALTIME_SUBSCRIBE_STATES`, buffer/timeout constants
+- Google Fonts CSS API — Anton/Space Mono weight and subset verification
+- Direct repo reads (2026-08-05) — `src/lib/supabase/middleware.ts`, `src/lib/offline/{checkin-store,sync-manager}.ts`, `src/app/api/tickets/checkin/route.ts`, `supabase/migrations/**`, `src/app/sw.ts`, `next.config.ts`, `src/app/globals.css`, and 20+ other files cited with `file:line` throughout ARCHITECTURE.md and PITFALLS.md
 
-### Features & Competitors
-- [Eventbrite Analytics + Guest List](https://www.eventbrite.com/help/en-us/articles/569587/create-a-guest-list-and-manage-guests/)
-- [Luma Help Center](https://help.luma.com/)
-- [Partiful Guest Management](https://help.partiful.com/hc/en-us/sections/30470926071195--Managing-Guest-List)
-- [zkipster RSVP Platform](https://www.zkipster.com/online-invitations-rsvp)
-- [NNG Mobile Navigation Patterns](https://www.nngroup.com/articles/mobile-navigation-patterns/)
+### Secondary (MEDIUM-HIGH confidence)
+- Cvent, Momentus Elite, Zoho Backstage, Venuera — staff-role and per-event-assignment vendor documentation (official support/knowledge bases)
+- Resident Advisor Pro, Evessio — public-credit-vs-account vendor documentation
+- Ticket Tailor, Turtini, ThunderTix, QR Code Ticket, AizuPass — door freshness and offline-sync vendor documentation
+- SaaSUI.Design — filter UX conventions (single authored source, widely corroborated)
+- W3C WAI — Understanding SC 2.5.8 Target Size (Minimum), normative
 
-### Architecture
-- [Framer Motion with Next.js Server Components](https://www.hemantasundaray.com/blog/use-framer-motion-with-nextjs-server-components)
-- [Hatchet: PostgreSQL Events Table Patterns](https://hatchet.run/blog/postgres-events-table)
-- [Supabase Custom Analytics](https://bootstrapped.app/guide/how-to-create-custom-analytics-with-supabase)
-
-### Pitfalls
-- [Next.js Production Checklist](https://nextjs.org/docs/app/guides/production-checklist)
-- [Common mistakes with Next.js App Router](https://vercel.com/blog/common-mistakes-with-the-next-js-app-router-and-how-to-fix-them)
-- [Supabase RLS Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+### Tertiary (MEDIUM confidence, needs validation)
+- supabase-js #1732, realtime-js #274, Supabase discussions #37002/#5312 — Realtime channel death after offline/background token expiry (community issue trackers, multiple independent reports in agreement, not official documentation)
 
 ---
-
-*Research synthesis: 2026-03-09 -- v1.3 Refinement & Intelligence*
+*Research completed: 2026-08-05*
+*Ready for roadmap: yes*

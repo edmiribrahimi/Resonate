@@ -1,539 +1,626 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Adding analytics, UI polish, guest list, audit, and nav consolidation to existing event community platform
-**Project:** Resonate v1.3 Refinement & Intelligence
-**Researched:** 2026-03-09
-**Overall Confidence:** MEDIUM-HIGH (codebase analysis HIGH, web research MEDIUM)
+**Domain:** Design-system migration, permission refactor, per-resource RLS, and Realtime-over-offline on a live, shipped events PWA (door check-in + real payments)
+**Project:** Resonate v1.5 — Platform Layout, Access Model & Door Fixes
+**Researched:** 2026-08-05
+**Confidence:** HIGH for repo-verified findings (every `file:line` claim below was read from the current tree, not from `CONCERNS.md`); HIGH for Supabase RLS/Realtime behaviour (official docs); MEDIUM for design-migration and touch-target guidance (WCAG is normative; incremental-adoption guidance is community practice).
+
+> **Note on `CONCERNS.md`:** dated 2026-02-24 and substantially stale. The role check it says is missing now exists (`src/lib/supabase/middleware.ts:78-107`); the PWA wrapper it names has been replaced by `@serwist/next`. Every claim below was re-verified against the current code. Two of its entries **are** still worth carrying forward: `src/utils/qr.ts` code generation, and the open-redirect shape in the auth callback (see Pitfall 9).
+>
+> The previous milestone's research is preserved at `.planning/research/v1.3-PITFALLS.md`.
+
+---
+
+## Baseline measurements (taken 2026-08-05, for later comparison)
+
+These are the numbers this milestone moves. Recorded now so "done" is measurable in a repo that has no test runner.
+
+| Measure | Today |
+|---|---|
+| `md:` occurrences in `src` | 1 |
+| `sm:` / `lg:` / `xl:` | 46 / 6 / 0 |
+| Widest container in the app | `max-w-lg` (no `xl`+ container exists) |
+| Hard-coded 6-digit hex literals in `src` | 68, across 26 files |
+| `rgba(...)` literals in `src` | 8 |
+| Occurrences of the current accent as a literal (`#e5484d` / `229, 72, 77`) | 9 |
+| Files containing an inline `master`/`organizer` string comparison | 53 files, 78 occurrences |
+| Duplicated admin/organizer route trees | 9,447 lines across both groups |
+| RLS policies in migrations | 71 |
+| Bare `auth.uid()` in policies (not wrapped in `SELECT`) | 40 |
+| Policies carrying a `TO` role clause | 5 occurrences total |
+| `SECURITY DEFINER` functions / of which pin `search_path` | 19 / 1 |
+| Realtime subscriptions in `src` | 0 (this milestone introduces the first) |
+| Nav components | 1 (`MobileNav.tsx`, fixed bottom bar at `z-50`) |
+| Hard-coded bottom-nav clearance paddings (`pb-[calc(...)]`) | 6, across 4 files |
+
+---
+
+## Non-negotiables
+
+Three properties are **not** available as trade-offs. If a proposed design weakens one, the design is wrong — do not "accept the risk", change the design.
+
+1. **The door works with the network off.** Any change that makes a scan depend on a server round-trip — a Realtime subscription, a token refresh, a capability lookup — is unacceptable. Realtime is a *freshness accelerator layered on top of* the IndexedDB path, never a replacement for it and never a precondition for it.
+2. **The door's default is admit-and-record.** A valid guest turned away in front of a queue is worse than a double admission. Every new failure branch — cache miss, expired session, refunded-ticket check, dead subscription — must resolve toward admit-with-a-flag, not toward refuse.
+3. **The bar's default is record-nothing.** Opposite polarity. A drink is "served" only after a server confirmation that *distinguishes* "I changed the state" from "it was already in that state". Optimistic SERVED is unacceptable.
+
+Every pitfall below is judged against these three.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause data integrity issues, broken features, security vulnerabilities, or require significant rework.
+### Pitfall 1: The already-redeemed drink token still renders SERVED — the retry/duplicate distinction is lost on the money side
+
+**What goes wrong:**
+`redeem_drink_token` is idempotent by *return value*, not by error: `IF v_token.status = 'redeemed' THEN RETURN false;` (`supabase/migrations/20260307100000_drink_refund.sql:41-43`). Both callers discard that boolean and inspect only `rpcError` — `src/app/(public)/events/[slug]/menu/actions.ts:299-307` and its authenticated twin in `src/app/(organizer)/organizer/events/actions.ts:1108+`. Both also deliberately let `serve` through on an already-redeemed token: `if (token.status === "redeemed" && action !== "serve") throw` (`menu/actions.ts:268-270`). The modal therefore transitions to `served` and plays the SERVED animation (`RedeemConfirmationModal.tsx:65-73`). A bartender who presses Serve twice — or a customer who re-opens an already-redeemed token and hands the phone over — sees SERVED both times and pours twice. Paid count and poured count diverge, with no record that they diverged.
+
+**Why it happens:**
+"Idempotent" was implemented as *tolerant* rather than *informative*. A `false` return meaning "nothing changed" becomes indistinguishable from a `true` meaning "I just changed it" the moment the caller throws the value away. The pattern is correct for a background sync job and wrong for a human-facing confirmation.
+
+**How to avoid:**
+- Change both server actions to return the RPC boolean as a discriminated result — `{ outcome: "served" } | { outcome: "already_served", redeemed_at }` — and make `RedeemConfirmationModal` render a distinct, non-celebratory state for `already_served` (show the original redemption time; never the animation).
+- Remove the `action !== "serve"` escape hatch in both `redeemDrinkToken` and `redeemDrinkTokenGuest`. An already-redeemed token should not reach the RPC from a UI path at all.
+- Apply the same treatment to `activate_drink_token`, which has the identical `RETURN false` shape (`20260508000000_drink_token_active_state.sql:38-40`).
+- Written manual procedure: open a token, serve it, press Serve again on the same screen. The second press must show "already served at HH:MM" and no animation.
+
+**Warning signs:**
+Any server action whose body is `const { error } = await client.rpc(...)` where the RPC's declared return type is `boolean`. Grep for it — the discarded return value *is* the signal.
+
+**Phase to address:** Bar corrections (drink redemption). This is live in production today; it should be early in the milestone, not bundled with design work.
 
 ---
 
-### Pitfall 1: Guest List Auto-Registration Bypasses Referral Gating and Creates Phantom Accounts
+### Pitfall 2: The offline sync queue silently discards a genuine double check-in
 
-**What goes wrong:** The guest list feature auto-registers users and auto-approves them with free tickets. But Resonate's entire value proposition is referral-gated access: the `handle_new_user` trigger in PostgreSQL explicitly sets `status = 'pending'` for users without a valid referral code. Guest list auto-registration must bypass this trigger logic, but if done carelessly, it either: (a) creates Supabase Auth accounts that the trigger sets to `pending`, defeating the purpose, or (b) uses `service_role` to forcefully override status, leaving no audit trail of WHY this user was approved (was it a referral? an admin approval? a guest list entry?).
+**What goes wrong:**
+`sync-manager.ts:31-40` treats `res.ok || res.status === 409` as "synced" and deletes the queue entry. But `/api/tickets/checkin` **never returns 409**. When a *different* operator already checked that ticket in, the route returns HTTP **200** with `{ valid: false, status: "already_checked_in" }` (`src/app/api/tickets/checkin/route.ts:106-113` — a bare `NextResponse.json` with no status argument). `res.ok` is therefore `true`, `markSynced()` runs, the conflict is deleted from the queue and never surfaces to anyone. The only genuine evidence that two people walked in on one ticket is destroyed at the moment it arrives.
 
-**Why it happens:** The current `handle_new_user()` trigger fires on every `auth.users` INSERT. It always runs the referral check logic. There is no mechanism to signal "this user is being created via guest list, skip normal gating." Developers either fight the trigger or bypass it entirely, both of which have problems.
+The mirror-image branch is wrong in the other direction: when the *same* operator checked it in, the route returns `valid: true, already_by_you: true` (`route.ts:83-102`) — correct for a sync replay, but the scanner cannot tell that apart from a fresh admission either.
 
-**Consequences:**
-- Guest list users stuck in `pending` if trigger is not handled, defeating the feature
-- If trigger is bypassed with `service_role`, `referred_by` is NULL and `status` is force-set, losing the audit trail of how the user was approved
-- Existing members who happen to be on a guest list may get duplicate profiles or conflicting states
-- If auto-registered guests later sign up organically with a referral link, the referral is lost because the profile already exists
-- RLS policies that check `status = 'approved'` may not cover the new approval pathway correctly
+**Why it happens:**
+The `409` in the sync manager was written against `/api/tickets/attendance`, which *does* return 409 (`attendance/route.ts:217`). The ticket route encodes failure as in-band status strings instead of HTTP codes, and the two conventions drifted. Nothing failed loudly because `res.ok` is true in both the success and the conflict case.
 
-**Prevention:**
-1. **Add an `approved_via` column to profiles** (enum: `referral`, `admin`, `guest_list`). This preserves the audit trail of how each member was approved, regardless of pathway.
-2. **Modify the `handle_new_user()` trigger** to check for a `guest_list_event_id` key in `raw_user_meta_data`. If present, set `status = 'approved'` and `approved_via = 'guest_list'` directly in the trigger, avoiding service_role bypass.
-3. **Handle existing members on guest lists:** Before auto-registering, check if the email already exists in `auth.users`. If so, just create the free ticket for the existing profile -- do NOT create a new auth account.
-4. **For non-registered guests:** Use `supabase.auth.admin.createUser()` with `email_confirm: true` (pre-confirmed) and pass `guest_list_event_id` in user metadata so the trigger handles it correctly. Send a welcome email with a password-set link.
-5. **Store the guest list source** (which event, who added them) so organizers can track who invited which guests.
+**How to avoid:**
+- Make `/api/tickets/checkin` return HTTP 409 for `already_checked_in` so the two routes agree — then fix `sync-manager` to treat 409 as *report, do not delete silently*: move the entry to a `conflicts` store and raise a visible badge rather than calling `markSynced`.
+- Distinguish three sync outcomes, not two: `synced`, `conflict` (different operator), `replay` (same operator, already-by-you).
+- Surface conflicts in the scanner as a persistent count that must be acknowledged, not a toast. At 02:00 nobody reads a toast.
+- Door polarity is preserved: the guest was already admitted, so nothing at the door changes. The conflict is a post-event reconciliation record, never a refusal.
 
-**Detection:** Add a guest via guest list, then check: (a) is their profile `status = 'approved'`? (b) do they have a free ticket? (c) can they log in? (d) does the admin view show HOW they were approved? If any of these fail, the integration is broken.
+**Warning signs:**
+Any `res.ok` check against a route that encodes failure in the JSON body. `checkin/route.ts` has five such returns (lines 40, 44, 58, 65, 106).
 
-**Phase relevance:** Guest List phase. Must be designed carefully before implementation because it touches the core auth trigger.
-
-**Confidence:** HIGH (direct analysis of existing `handle_new_user()` trigger and referral system in codebase)
+**Phase to address:** Door corrections (duplicate scans). Must land before Realtime, because Realtime drains the queue more often and hides the loss faster.
 
 ---
 
-### Pitfall 2: Analytics Tracking Inflates Client Bundle and Degrades Core Web Vitals
+### Pitfall 3: A genuine offline duplicate is reported as "Connection error"
 
-**What goes wrong:** Adding comprehensive event tracking to an existing Next.js App Router app means adding tracking calls throughout the codebase. Every component that needs to track user behavior must be a Client Component (or have a Client Component wrapper), because tracking requires browser APIs (`window`, `navigator`, event listeners). This pushes Server Components down to Client Components, increasing the JavaScript bundle, and degrading Largest Contentful Paint (LCP), First Input Delay (FID), and Total Blocking Time (TBT).
+**What goes wrong:**
+In the offline fallback path, `ScannerClient.tsx:600-624` reads `if (attendee && !attendee.checkedIn)`. When the attendee **is** found and **is** already checked in locally, the branch is skipped and control falls through to `showFlash("error", "Connection error")`. The single most informative event at the door — the same ticket presented twice — is displayed as a network failure. Staff retry the scan, blame the signal, and eventually wave the person through.
 
-**Why it happens:** The current Resonate app has a clean Server/Client component split -- pages like `dashboard/page.tsx` and `events/[slug]/page.tsx` are Server Components that pass data to targeted Client Components. Adding analytics means either: (a) converting these Server Components to Client Components (destroying the performance benefit), or (b) creating tracking wrapper components that bubble events up from Server-rendered content.
+**Why it happens:**
+The `else` of a truthy-and-condition was never written, so the fall-through landed on the generic error. This is `meta-gates.md`'s zero-silent-failures rule in its most literal form: three distinct causes (not in cache / already checked in / IndexedDB unavailable) collapsing into one message.
 
-Additionally, third-party analytics scripts (GA4, Mixpanel, etc.) loaded directly block the main thread. The current `layout.tsx` already loads the SumUp SDK via `next/script` with `afterInteractive` -- adding more scripts compounds the problem.
+**How to avoid:**
+- Split into four explicit outcomes with four distinct flashes: `admitted (offline)`, `already scanned at HH:MM on this device`, `not in cache — admitted and flagged`, `cache unavailable`.
+- The third is the door-polarity one: a ticket not in the local cache must be **admitted and recorded as unverified**, not rejected. Tickets bought after the last cache refresh are exactly this case, and the current code rejects them.
+- Manual procedure: airplane mode, scan a known ticket twice, then scan a ticket id that was never cached. All three must produce different, readable screens.
 
-**Consequences:**
-- LCP regression if analytics scripts block rendering
-- Increased client-side JavaScript bundle (every `'use client'` boundary pulls its entire import tree into the client)
-- Mobile performance degradation on the PWA, especially on lower-end Android devices at events
-- Analytics calls on every page navigation cause unnecessary re-renders if implemented as effects in root layouts
+**Warning signs:**
+`showFlash("error", ...)` reached by fall-through rather than by an explicit branch. Any error string appearing in more than one causal path.
 
-**Prevention:**
-1. **Use a lightweight, self-hosted or privacy-focused analytics solution** instead of GA4. Plausible, Umami, or PostHog are good candidates. They add <5KB to the bundle vs GA4's ~45KB.
-2. **Load analytics via `next/script` with `strategy="lazyOnload"`** so it loads after everything else. Never use `beforeInteractive`.
-3. **Create a single `AnalyticsProvider` Client Component** at the layout level that handles all tracking. Do NOT scatter `useEffect` tracking calls in individual components.
-4. **For custom event tracking in Server Components**, use a thin Client Component wrapper pattern:
-   ```tsx
-   // TrackView.tsx - "use client", renders nothing, just tracks
-   "use client";
-   import { useEffect } from "react";
-   export function TrackView({ event, data }: { event: string; data?: Record<string, unknown> }) {
-     useEffect(() => { analytics.track(event, data); }, []);
-     return null;
-   }
-   // Use in Server Component: <TrackView event="event_viewed" data={{ slug }} />
-   ```
-5. **Measure before and after** with Vercel Speed Insights or Lighthouse. Set a performance budget: LCP must stay under 2.5s, TBT under 200ms.
-6. **For Supabase-based custom analytics** (tracking drink purchases, token usage, etc.), use server-side logging in Server Actions and API routes, not client-side tracking. This adds zero client bundle cost.
-
-**Detection:** Run Lighthouse before adding analytics and after. Compare LCP, TBT, and JavaScript bundle size. Use `@next/bundle-analyzer` to identify bloated imports.
-
-**Phase relevance:** Analytics phase. Architecture decision must be made first -- which analytics tool and tracking pattern -- before writing any tracking code.
-
-**Confidence:** HIGH (Next.js official guidance on third-party scripts, web search verification of bundle impact patterns)
-
-**Sources:**
-- [Next.js Analytics Guide](https://nextjs.org/docs/app/guides/analytics)
-- [Next.js Production Checklist](https://nextjs.org/docs/app/guides/production-checklist)
+**Phase to address:** Door corrections (duplicate scans).
 
 ---
 
-### Pitfall 3: Broad App Audit Introduces Regressions Across Stable Features
+### Pitfall 4: Realtime cache refresh wipes unsynced local check-ins
 
-**What goes wrong:** v1.3 includes a "full app audit across all domains (UX, performance, security, code quality, accessibility, SEO)." This is inherently dangerous because it touches every part of the app simultaneously. A CSS fix for accessibility (e.g., adding focus rings) breaks the dark theme aesthetic. A performance optimization (e.g., lazy loading images) breaks the gallery scroll behavior. A security hardening (e.g., tightening RLS policies) silently blocks legitimate operations. Changes are scattered across the entire codebase, making each one hard to test in isolation and easy to miss in review.
+**What goes wrong:**
+`cacheAttendees()` (`src/lib/offline/checkin-store.ts:82-129`) **deletes every attendee row for the party, then re-inserts from the server payload**. Server data carries `checkedIn: false` for anyone checked in offline and not yet synced. A refresh running while the pending queue is non-empty therefore resets those people to *not arrived* in the local cache while their entries still sit in `pendingCheckins`. The next scan of the same ticket looks like a first arrival, the attendee list shows a guest who is standing inside as absent, and the door count is wrong.
 
-**Why it happens:** Audits generate a long list of findings across unrelated domains. Developers fix them in one large branch, creating hundreds of small changes that individually seem safe but collectively create unexpected interactions. There are no automated tests in the current Resonate codebase to catch regressions.
+Today this is rare — the cache refreshes only on party selection and manual fetch. **Adding Realtime turns a rare race into the normal case**, because refreshing often is the entire point of the feature. This is the most dangerous interaction in the milestone.
 
-**Consequences:**
-- Drink token redemption breaks because a "cleanup" refactored the modal z-index stack (currently using `z-[60]`)
-- SumUp checkout fails silently because an RLS "fix" tightened a policy that the webhook handler relies on
-- PWA home screen launch breaks because a performance optimization changed the service worker caching strategy
-- Referral auto-approval stops working because a security audit added email confirmation requirements
-- MobileNav safe-area padding breaks because an accessibility fix changed the CSS for `pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))]`
+There is a second, sharper window: between the delete-cursor loop and the insert loop the store for that party is **empty**. A scan landing in that window finds no attendee and — per Pitfall 3 — currently rejects a valid guest.
 
-**Prevention:**
-1. **Categorize audit findings by risk level** before fixing anything. Each fix gets tagged as LOW (cosmetic), MEDIUM (behavior change), or HIGH (security/data/auth change) risk.
-2. **Fix HIGH-risk items in isolated, single-purpose commits.** Never bundle security fixes with UX tweaks.
-3. **Create a manual regression checklist** for the critical user flows before the audit begins:
-   - Member registration with referral
-   - Ticket purchase via SumUp
-   - Drink token purchase and redemption
-   - QR code check-in (membership and ticket)
-   - Admin member approval
-   - Media upload and moderation
-   - PWA install and launch
-4. **Run the regression checklist after each batch of audit fixes,** not just at the end.
-5. **Do NOT audit and fix security (RLS/auth) issues in the same phase as UX/CSS fixes.** Separate them into distinct sub-phases. Security changes need careful isolated testing.
-6. **Preserve the existing z-index convention:** modals at `z-[60]`, MobileNav at `z-50`. Document this in a code comment or style guide before the audit begins.
+**Why it happens:**
+Clear-and-replace is the obvious way to write a cache sync, and it is correct only when the cache holds no authoritative local state. This one does: `checkedIn`/`checkedInAt` written by `checkInLocally` are the only record of an offline admission until sync completes.
 
-**Detection:** After each batch of audit fixes, test all critical flows on mobile (iOS Safari and Chrome Android) in the actual PWA, not just desktop browser.
+**How to avoid:**
+- Never clear-and-replace. Merge: for each incoming attendee, if a pending queue entry exists for that key, **keep the local `checkedIn`/`checkedInAt`** and take only the server's identity fields. Preserve local-true over server-false unconditionally — a local check-in is monotone until it syncs.
+- Perform the merge inside a single IndexedDB `readwrite` transaction so no scan can observe an intermediate empty state.
+- Prefer incremental application of Realtime payloads (patch the one changed row) over a full re-fetch. Reserve the full re-fetch for explicit party selection.
+- Manual procedure: airplane mode, check in two guests, restore network, force a refresh. Both must still read as checked in and the counter must not drop.
 
-**Phase relevance:** App Audit phase. This phase needs the strictest change management discipline of any v1.3 phase.
+**Warning signs:**
+A local counter that decreases after a refresh. A guest appearing under "not arrived" who was scanned earlier. A pending count above zero while the list shows everyone absent.
 
-**Confidence:** HIGH (universal software engineering pattern: broad refactoring causes regressions; verified by community frustration documented in web research about Next.js upgrade regressions)
-
-**Sources:**
-- [Common mistakes with the Next.js App Router](https://vercel.com/blog/common-mistakes-with-the-next-js-app-router-and-how-to-fix-them)
+**Phase to address:** Realtime attendee cache — but the merge must be **written in the door-corrections phase, before Realtime is switched on**. Shipping Realtime onto the current clear-and-replace is the fastest way to lose door records.
 
 ---
 
-### Pitfall 4: Guest List Free Tickets Bypass SumUp Revenue Tracking, Creating Financial Blind Spots
+### Pitfall 5: The Realtime channel dies quietly and nobody notices until the night is over
 
-**What goes wrong:** Resonate's ticket system is tightly coupled to SumUp payments. Every existing ticket has a `sumup_checkout_id` and `sumup_transaction_code` (from the schema in `database.ts`). The admin finance dashboard, refund system, and sales dashboard all query based on these SumUp fields. Guest list free tickets have no SumUp checkout -- they are created directly in the database. This means:
-- The finance dashboard underreports total attendees because free tickets are not in the SumUp transaction list
-- The sales dashboard per event shows only paid tickets, masking actual event capacity usage
-- Refund logic may crash if it encounters a ticket with `sumup_checkout_id = NULL` (assuming all tickets were paid)
-- The existing `SalesDashboard` component and `TransactionList` component may not handle zero-price tickets
+**What goes wrong:**
+Supabase Realtime channels stop delivering without throwing. The best-documented cause is token expiry across a background/offline gap: the access token is not refreshed while the device is offline or backgrounded, the channel reconnects with the stale token and errors, and **re-supplying a fresh token afterwards does not revive it — the channel must be removed and re-created** (supabase-js #1732, realtime-js #274, supabase discussions #37002 and #5312). A scanner phone that spends twenty minutes in a pocket with no signal is exactly this scenario. The UI keeps rendering the last-known list, staff trust it, and it is now silently frozen.
 
-**Why it happens:** The current schema does not have a concept of "free ticket" or "complimentary ticket." Every ticket was created through the SumUp checkout flow. The `Ticket` type has `amount_paid: number` and `sumup_checkout_id: string | null` -- the null case was designed for error states, not intentionally free tickets.
+Two further silent-miss modes apply:
+- **RLS is evaluated per subscriber for Postgres Changes.** If a subscriber has no `SELECT` policy covering a row, the event is simply not delivered — no error. A per-night staff assignment model (Pitfall 8) that narrows `SELECT` will therefore also narrow Realtime delivery, invisibly.
+- **`DELETE` events carry no RLS and carry only primary keys** unless `replica identity full` is set, and delete events cannot be filtered. A removed ticket or guest-list row arrives as a bare id, or not usefully at all.
 
-**Consequences:**
-- Organizer sees "15 tickets sold" but 25 people show up (10 were guest list)
-- Finance dashboard revenue calculations are correct but headcount is wrong
-- Check-in scanner works (QR codes are based on ticket ID, not payment), but the organizer is surprised by unexpected attendees
-- If the same user has both a paid ticket and a guest list free ticket for the same event, the check-in logic may get confused
+**Why it happens:**
+`subscribe()` succeeds, `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` arrive on a callback most integrations ignore, and "no messages" is indistinguishable from "nothing happened" — which, at a door between arrivals, is the expected state.
 
-**Prevention:**
-1. **Add a `ticket_type` column** to the `tickets` table: `'purchased' | 'guest_list' | 'complimentary'`. Default to `'purchased'` to preserve backward compatibility.
-2. **Update `SalesDashboard`** to show separate sections: "Paid: X tickets (EUR Y)" and "Guest List: Z tickets (free)". Total attendance = paid + free.
-3. **Add a UNIQUE constraint** on `(event_id, party_id, user_id)` for tickets to prevent duplicate tickets for the same user at the same party.
-4. **Set `amount_paid = 0` and `sumup_checkout_id = NULL`** for guest list tickets. Ensure the refund flow checks `amount_paid > 0` before attempting a SumUp refund.
-5. **Update `TransactionList` and finance queries** to distinguish between paid and free tickets. Filter free tickets from SumUp-related aggregations.
+**How to avoid:**
+- Treat the subscription as **liveness that must be proven, not assumed**: a visible three-state indicator in the scanner header — `live` / `catching up` / `offline (cache only)`. Default pessimistic; show `live` only on an explicit `SUBSCRIBED` status plus a recent heartbeat.
+- Handle the status callback: on `CHANNEL_ERROR`, `TIMED_OUT` or `CLOSED`, call `removeChannel()` and build a **new** channel. Do not rely on the client's internal retry — that is the documented failure.
+- On every `visibilitychange → visible` and every `online` event, tear the channel down, rebuild it, then run one authoritative merge-refresh. Both listeners already exist in `sync-manager.ts:88-106`; extend them rather than adding a parallel set.
+- Set `replica identity full` on subscribed tables if previous values are needed, and never depend on `DELETE` events for correctness.
+- Add `alter publication supabase_realtime add table ...` as an explicit migration step — a table outside the publication produces a channel that subscribes successfully and never fires.
+- **Bound the blast radius:** when the indicator is not `live`, the scanner behaves exactly as it does offline today. Nothing in the scan path may become conditional on the channel.
 
-**Detection:** Create a guest list ticket, then check: (a) does the sales dashboard count it? (b) does the finance dashboard handle it? (c) does the check-in scanner work? (d) can you "refund" a free ticket? (e) What happens if the same user also buys a paid ticket?
+**Warning signs:**
+A `live` badge that never turns off. An attendee list that stops changing while people are visibly arriving. Long-lived tabs (a bar tablet open all night) that were fine for the first hour.
 
-**Phase relevance:** Guest List phase, but impacts Finance/Sales dashboards built in v1.2.
-
-**Confidence:** HIGH (direct codebase analysis of Ticket type, SalesDashboard, TransactionList, and refund flow)
+**Phase to address:** Realtime attendee cache.
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 6: The membership sync entry that can never succeed — a poison pill in the queue
 
-Mistakes that cause significant UX degradation, performance issues, or require non-trivial fixes but are recoverable.
+**What goes wrong:**
+`sync-manager.ts:56-64` marks a membership check-in synced **only** on `res.ok`. `/api/membership/verify` returns 404 for an unknown code (`membership/verify/route.ts:108`) and 400 for a bad request (lines 72, 81). Those are permanent failures. The entry stays in `pendingCheckins` forever, retried on every `online` event and every `visibilitychange`. The pending badge never reaches zero, so staff learn to ignore it — which is precisely the signal that was supposed to tell them a real check-in had not reached the server.
 
----
+**A second, sharper defect in the same store:** `pendingCheckins` is keyed by `id` alone (`checkin-store.ts:37`; `checkInMemberLocally` at line 244 uses `id: membershipCode`). A multi-party night — which this platform explicitly supports — means one member checking in at two parties on the same device writes the same key twice. **The second `put` overwrites the first, and one of the two check-ins is destroyed before it is ever sent.**
 
-### Pitfall 5: Animations on Server Components Cause Hydration Mismatches and Flash of Unstyled Content
+**Why it happens:**
+Retry loops written without a terminal state, and a natural key chosen before the multi-party model existed.
 
-**What goes wrong:** Adding visual polish (entrance animations, transitions, micro-interactions) to the existing Resonate UI requires careful handling of the Server/Client component boundary. If a developer adds Framer Motion (now `motion`) to a Server Component, the build fails because motion components need DOM access. If they convert the Server Component to a Client Component to use motion, they lose the SSR data fetching benefit and increase the bundle. If they use CSS animations but the initial state differs between server and client, React throws hydration mismatch warnings and users see a flash of incorrectly styled content (FOISC).
+**How to avoid:**
+- Change the pending key to a composite: `${partyId}:${type}:${id}`. This requires an IndexedDB version bump — see Pitfall 7.
+- Classify sync responses into three buckets, not two: **retry** (network error, 5xx, 429), **done** (2xx), **dead** (4xx other than 429). Move `dead` entries to a `failed` store with the status and a timestamp, shown in a separate dismissible list.
+- Cap retries per entry and record the attempt count.
+- Never let the pending badge include entries that can never drain — it destroys the badge's meaning, and the badge is the door's only integrity signal.
 
-**Why it happens:** The current Resonate app uses clean Server Components for data-heavy pages (`events/[slug]/page.tsx` is ~720 lines of Server Component). Adding animations to elements within these pages requires either Client Component wrappers (each adding to the bundle) or CSS-only animations (which avoid the bundle cost but can still cause hydration issues if they depend on viewport state or JavaScript-computed values like `window.innerHeight`).
+**Warning signs:**
+A pending count that never returns to zero. The same id appearing in network logs on every foreground.
 
-**Consequences:**
-- Hydration mismatch console warnings (React 18/19 is strict about this)
-- Flash of content jumping into position on page load
-- 30-50KB bundle increase if Framer Motion is added as a dependency (web research confirms this)
-- Performance degradation on mobile, especially during event page scrolling with animated elements
-- Animations that look great on desktop but stutter on mobile Safari at crowded events (CPU throttled by heat)
-
-**Prevention:**
-1. **Prefer CSS-only animations** for simple transitions (fade-in, slide-up, scale). CSS transitions on `transform` and `opacity` run on the GPU compositor thread and cost zero JavaScript bytes:
-   ```css
-   .fade-in {
-     animation: fadeIn 0.3s ease-out;
-   }
-   @keyframes fadeIn {
-     from { opacity: 0; transform: translateY(8px); }
-     to { opacity: 1; transform: translateY(0); }
-   }
-   ```
-2. **If using a JS animation library, use `motion` (formerly Framer Motion)** with the `motion/react` import, which supports tree-shaking. Create thin `"use client"` wrapper components:
-   ```tsx
-   // components/ui/FadeIn.tsx
-   "use client";
-   import { motion } from "motion/react";
-   export function FadeIn({ children }: { children: React.ReactNode }) {
-     return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>{children}</motion.div>;
-   }
-   ```
-3. **Never animate `width`, `height`, `margin`, or `padding`** -- these trigger layout reflow and cause jank. Only animate `transform` and `opacity`.
-4. **Set `initial={false}` on motion components** when the animated state should match the server-rendered state, avoiding hydration mismatches.
-5. **Test all animations with Chrome DevTools Performance panel** at 4x CPU throttle to simulate mobile at a crowded event.
-6. **Add `prefers-reduced-motion` media query** to respect accessibility preferences:
-   ```css
-   @media (prefers-reduced-motion: reduce) {
-     .fade-in { animation: none; }
-   }
-   ```
-
-**Detection:** Load any page with animations in Chrome DevTools with CPU throttle at 4x. If animations stutter or frame rate drops below 30fps, the approach needs optimization. Check console for hydration mismatch warnings.
-
-**Phase relevance:** UI/UX Elegance phase. Must define the animation approach (CSS vs motion library) before starting, not ad-hoc per component.
-
-**Confidence:** HIGH (web research confirms Framer Motion bundle size impact and hydration issues; Next.js Server Component constraints are well-documented)
-
-**Sources:**
-- [Framer Motion with Next.js Server Components](https://www.hemantasundaray.com/blog/use-framer-motion-with-nextjs-server-components)
-- [CSS vs Framer Motion performance comparison](https://blog.ryanaque.com/fuck-framer-motion-im-going-to-css-instead/)
+**Phase to address:** Door corrections (offline queue).
 
 ---
 
-### Pitfall 6: Navigation Consolidation Breaks Existing Role-Based Popover and Scanner Access
+### Pitfall 7: The IndexedDB version bump destroys unsynced records
 
-**What goes wrong:** The current MobileNav has a carefully designed role-based system: the `getVisibleNavItems()` function in `roles.ts` returns different items based on role and status, and the staff popover (for master/organizer) provides access to both Dashboard and Scanner via a popover menu. Consolidating admin/organizer items into the Account button means restructuring this system. If done carelessly:
-- The Scanner quick-access is lost (it's currently one tap: popover -> Scanner)
-- The organizer and admin dashboards become buried behind multiple navigation steps
-- The popover logic (click handler, outside-tap dismissal, close-on-navigation) needs to be rebuilt on the Account button
-- The middleware route protection (`/admin/*`, `/organizer/*`) still works but the navigation no longer matches
+**What goes wrong:**
+`DB_VERSION = 2`, and the `upgrade` callback only creates stores when absent (`checkin-store.ts:44-77`). Pitfalls 4, 6 and 12 all require schema changes — a composite pending key, a conflicts store, a refunded flag on attendees. The reflexive fix is "bump the version and recreate the stores". A staff device still holding unsynced check-ins from a previous night will have them **deleted by the upgrade**, on a device that is offline and cannot be audited. These are attendance records; some correspond to paid tickets.
 
-**Why it happens:** The current MobileNav is a stateful Client Component with `useState` for popover state, `useRef` for outside-click detection, and `useEffect` for close-on-navigation. This is working correctly. Moving the admin/organizer entry point from a dedicated tab to a sub-menu of Account requires rewriting this interaction while preserving all three behaviors (state management, outside click, route-change close).
+**Why it happens:**
+`deleteObjectStore` + `createObjectStore` is the shortest upgrade to write, and the loss is invisible in development where the DB is always empty.
 
-**Consequences:**
-- Staff users (master/organizer) lose quick access to Scanner -- critical at events for ticket checking
-- If the Account button opens a new panel/modal instead of navigating to `/dashboard`, the current page state may be lost
-- Role-based visibility logic in `getVisibleNavItems()` becomes more complex (now the Account item needs sub-items)
-- If the popover is moved to Account but the z-index stacking is wrong, it could be hidden behind modals (current modals use `z-[60]`, MobileNav uses `z-50`)
-- The popover may not work correctly on iOS Safari if it overlaps the safe area
+**How to avoid:**
+- Make a drained queue a **precondition** of the upgrade: in `upgrade`, never delete a store that may hold pending data. Migrate records forward by reading and re-keying inside the version-change transaction.
+- If a store genuinely must be rebuilt, first copy its contents to a `quarantine` store that survives, and surface an "N records recovered — review" screen.
+- Deploy the schema change **before** a night, never during one, with a written pre-night step: open the scanner on each staff device while online and confirm the pending count is zero.
+- Add the pending count to whatever staff handover checklist exists.
 
-**Prevention:**
-1. **Keep Scanner access as a primary action.** If consolidating into Account, the Scanner must be at most 2 taps away, not buried in a settings page. Consider keeping Scanner as a standalone bottom-nav tab and only consolidating the dashboard links.
-2. **Design the Account menu as a bottom sheet**, not a small popover. Bottom sheets work better on mobile for multiple options and respect the safe area natively.
-3. **Preserve the existing z-index stack:** bottom sheet should be `z-[60]` (same as modals), with backdrop overlay. MobileNav stays at `z-50`.
-4. **Test the full navigation matrix:**
-   - Unauthenticated user: Events, Gallery, Login
-   - Pending member: Events, Account (no admin/organizer options)
-   - Approved member: Events, Gallery, Account
-   - Organizer: Events, Gallery, Account (with Organizer Dashboard + Scanner in sub-menu)
-   - Master: Events, Gallery, Account (with Admin Dashboard + Scanner in sub-menu)
-5. **Do NOT remove the `getVisibleNavItems()` function.** Extend it, don't replace it. The role-based logic is solid and battle-tested.
-6. **Consider a floating action button (FAB) for Scanner** for staff users instead of embedding it in navigation. The Scanner is a frequent-use tool at events and deserves prominent access.
+**Warning signs:**
+A pending count dropping to zero with no corresponding sync request. Any `deleteObjectStore` in the upgrade path.
 
-**Detection:** After restructuring, have a master user and an organizer user test the full navigation on mobile. Time how many taps it takes to reach Scanner. If it's more than 2, the consolidation has made things worse.
-
-**Phase relevance:** Navigation Consolidation phase.
-
-**Confidence:** HIGH (direct codebase analysis of MobileNav.tsx, roles.ts, and OrganizerNav.tsx)
+**Phase to address:** Door corrections (offline queue) — same phase as the key change, because it is the same migration.
 
 ---
 
-### Pitfall 7: Guest List Conflicts with Existing Member Records and Ticket Constraints
+### Pitfall 8: The capability refactor silently widens access — the fail-open default
 
-**What goes wrong:** An organizer adds "john@example.com" to the guest list for Event X. But John is already an approved member with a paid ticket for Event X. The guest list system tries to auto-register and auto-create a free ticket, resulting in: (a) `auth.users` INSERT fails because email already exists, (b) free ticket INSERT may fail if there's a unique constraint on `(event_id, user_id)`, or (c) both succeed and John now has two tickets -- one paid, one free.
+**What goes wrong:**
+Moving from `role === "master"` scattered across 53 files to `can(user, "capability")` centralises the decision, which is the point. The classic failure is that the new helper's **unknown-input behaviour is permissive**: an unrecognised capability name, a null profile, a failed per-night assignment lookup, or a capability that was never wired for a given route all resolve to "allowed" because the helper returns a truthy default or the call site was never added.
 
-This also fails in the reverse direction: guest is added, auto-registered, gets free ticket. Later, the same person discovers Resonate independently and tries to register with a referral link. The auth signup fails because the email is already in `auth.users`, but the error message doesn't explain that they already have an account (created via guest list).
+**The `/admin` prefix is doing more work than it looks.** Today those routes are master-only purely because of the URL: `pathname.startsWith("/admin")` (`middleware.ts:88-95`). Collapse the trees to a neutral path and **all 20 admin pages lose that guard the moment the URL stops containing `admin`**. That is not hypothetical — it is the mechanical consequence of the route move.
 
-**Why it happens:** The guest list feature creates users and tickets programmatically, but the existing system was designed for user-initiated signups and user-initiated ticket purchases. The two pathways don't know about each other.
+**Why it happens:**
+Role-in-URL is an implicit, whole-subtree guard. Capability checks are explicit and per-surface. The migration converts an implicit universal rule into an explicit enumeration, and enumerations have gaps.
 
-**Consequences:**
-- Duplicate tickets for the same user at the same event
-- Auth errors with confusing error messages
-- Financial discrepancy (paid ticket + free ticket for same person)
-- Guest list processing fails silently on existing members
+**How to avoid:**
+- **Deny by default, at the type level.** Make the route→capability mapping a total function: a `Record<RouteId, Capability>` where `RouteId` is a union derived from the actual routes, so TypeScript exhaustiveness fails `npm run build` when a route has no capability. In a repo with no test runner, the type checker is the only mechanism that can enumerate for you — use it deliberately.
+- Have `can()` return `false` for any capability it does not recognise, and log the unknown case **with a distinct category** rather than swallow it.
+- Build the **inventory before the move, not after**: a table of all 33 pages across both groups × today's effective guard (middleware prefix / inline check / none) × the capability replacing it. Anything in "none" today is a pre-existing hole to close, not to preserve.
+- Keep a middleware guard on the new unified prefix as belt-and-braces. The middleware is UX, but a UX guard that redirects is still the difference between a leak and a near-miss.
+- **RLS must move in the same phase.** A capability the UI grants but RLS does not is a broken feature; a capability RLS grants but the UI hides is an open door. Every capability needs a named policy, and the two lists must be diffed by hand.
 
-**Prevention:**
-1. **Before auto-registering, always check `auth.users` and `profiles` for existing email.** If the user exists, skip registration and only create the free ticket (if they don't already have one).
-2. **Before creating a free ticket, check `tickets` table for existing ticket** at the same event/party. If a paid ticket exists, do NOT create a free one. Optionally, mark the guest list entry as "already has ticket."
-3. **Add a `guest_list_entries` table** that tracks all guest list additions independently from tickets:
-   ```sql
-   CREATE TABLE guest_list_entries (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     event_id UUID NOT NULL REFERENCES events(id),
-     party_id UUID REFERENCES event_parties(id),
-     email TEXT NOT NULL,
-     full_name TEXT,
-     added_by UUID NOT NULL REFERENCES profiles(id),
-     status TEXT DEFAULT 'pending', -- pending, registered, existing_member, ticket_created
-     profile_id UUID REFERENCES profiles(id),
-     ticket_id UUID REFERENCES tickets(id),
-     created_at TIMESTAMPTZ DEFAULT now()
-   );
-   ```
-   This decouples the guest list tracking from the ticket/auth systems and provides clear status tracking.
-4. **Process guest list entries asynchronously** (server action, not inline), with clear error handling and status updates per entry.
+**Warning signs:**
+A `can()` with `default: return true`. Any route reachable in the new tree with no entry in the capability map. A page that renders for a `member` account in manual testing.
 
-**Detection:** Add an existing member's email to a guest list. If it crashes, creates duplicates, or silently does nothing with no feedback, this pitfall is present.
-
-**Phase relevance:** Guest List phase.
-
-**Confidence:** HIGH (direct analysis of `handle_new_user()` trigger, `auth.users` uniqueness constraint, and existing ticket schema)
+**Phase to address:** Unified work surface / capability model. The inventory table is a phase deliverable, not a note.
 
 ---
 
-### Pitfall 8: Accessibility Fixes During Audit Break the Intentional Dark Theme Design
+### Pitfall 9: The forgotten surfaces — API routes, server actions, and the pending/unauthenticated paths
 
-**What goes wrong:** An accessibility audit reveals multiple issues: low contrast ratios (muted text `#a1a1aa` on dark background `#0a0a0a` = 4.6:1 ratio, barely passing AA for body text but failing for small text), missing focus indicators (current interactive elements use `active:scale-95 active:opacity-80` for touch but no visible `focus-visible` ring for keyboard users), and missing ARIA labels. Fixing these naively -- adding bright focus rings, increasing text contrast to WCAG AAA standards, adding visible outlines -- can clash with the intentional dark, minimal Resonate aesthetic.
+**What goes wrong:**
+Permission refactors get applied to pages and miss everything else. The specific misses to expect here:
 
-**Why it happens:** The Resonate design system uses very specific brand colors defined in CSS custom properties: `--accent: #e5484d`, `--muted: #a1a1aa`, `--card: #141414`. These were chosen for visual aesthetics, not accessibility compliance. A naive accessibility fix might change `--muted` to a lighter gray, but this changes the entire app's look and feel across every page.
+- **API routes duplicate the check by hand.** `verifyOrganizerRole()` is defined locally inside `src/app/api/tickets/attendance/route.ts:6-28`, and the identical logic is re-implemented inline in `src/app/api/tickets/checkin/route.ts:11-27`. If the capability model is applied only to pages, these keep the old `role !== "master" && role !== "organizer"` semantics and quietly become the widest door in the system — both use `getServiceClient()`, which bypasses RLS entirely.
+- **Server actions are not routes.** `src/app/(organizer)/organizer/events/actions.ts` is 1,100+ lines of mutations. A server action is callable by anyone who can reach the app, regardless of which page linked to it. Moving the file during the route collapse does not move its guards.
+- **The `pending` user.** `middleware.ts:109-118` gates only `/membership-card` and `/attendance` on `status === "approved"`. The new surface must decide explicitly what a `pending` account sees. `member` and `approved` are different axes, and a refactor is exactly when they get conflated — which is the gating mechanism PROJECT.md names as the core value.
+- **The unauthenticated path.** `protectedPrefixes` (`middleware.ts:60-66`) is a hard-coded array containing `/admin` and `/organizer`. Adding a new prefix without adding it there means an unauthenticated visitor is never redirected to login and lands on whatever the page renders before its own `getUser()` runs.
+- **The redirect parameter mismatch.** `middleware.ts:72` sets `?redirect=`; project memory records the login page reading `?next=`. Whichever is authoritative, this refactor touches both — and the auth callback's redirect handling is the `CONCERNS.md` item worth re-verifying rather than assuming fixed. An unvalidated `next`/`redirect` accepting an absolute URL is an open redirect.
 
-**Consequences:**
-- Brand inconsistency if contrast fixes are applied inconsistently across components
-- Focus indicators that look jarring against the dark theme (default blue outlines look terrible on `#0a0a0a` background)
-- Screen reader confusion if ARIA labels are added without understanding the component structure
-- Organizer/admin UI becomes harder to use if focus traps are added to modals but not to the popover in MobileNav
+**Why it happens:**
+"Routes" is the mental model; API handlers, server actions and the middleware prefix array are three separate lists nobody diffs against it.
 
-**Prevention:**
-1. **Design a brand-consistent focus ring** that matches the Resonate aesthetic before fixing any components:
-   ```css
-   :focus-visible {
-     outline: 2px solid var(--accent);
-     outline-offset: 2px;
-   }
-   ```
-   The accent red `#e5484d` has excellent contrast on dark backgrounds and stays on-brand.
-2. **For contrast fixes, adjust only the `--muted` variable** to the minimum that passes WCAG AA for small text (4.5:1). Test value: `#b4b4bc` (5.0:1 on `#0a0a0a`). Do not change it component by component.
-3. **Add skip links and landmark roles** (header, main, nav) without visual changes -- these are invisible to sighted users but essential for screen readers.
-4. **Apply focus styles globally via CSS, not per-component.** The current approach of `active:scale-95` on every button is a touch-specific pattern. Add a `focus-visible:ring-2 focus-visible:ring-accent` Tailwind utility class as a global pattern.
-5. **Test with VoiceOver on iOS** (the primary PWA device) after changes, not just automated axe-core scans. Automated tools catch ~30-40% of accessibility issues (confirmed by web research).
+**How to avoid:**
+- Extract the duplicated `verifyOrganizerRole` into the capability layer and **delete both copies in the same commit** — leaving one behind guarantees drift.
+- Enumerate server actions explicitly (`grep -rn "^export async function" src/app/**/actions.ts`) and assign each a capability. Guard at the top of the action body, never at the call site.
+- Add a written manual matrix to the phase's VERIFICATION.md: for each of `unauthenticated`, `pending member`, `approved member`, `night-scoped staff`, `organizer`, `master`, attempt every unified route and each sensitive API route directly by URL. Record the **observed** result per cell. With no tests, this table is the evidence.
+- Validate the redirect parameter in one place and reuse it: must start with `/`, must not start with `//`, must not parse as an absolute URL.
 
-**Detection:** Run axe-core or Lighthouse accessibility audit before and after fixes. Compare scores, but also visually inspect every page to ensure the dark theme still looks intentional, not "broken."
+**Warning signs:**
+Two functions with the same body in different files. `protectedPrefixes` edited without the route list, or vice versa. Any server action whose first statement is not an auth check.
 
-**Phase relevance:** App Audit phase (accessibility domain).
-
-**Confidence:** MEDIUM-HIGH (contrast ratios calculated from actual CSS values in globals.css; accessibility audit patterns from web research)
-
-**Sources:**
-- [Accessibility Audit Reports Guide 2025](https://testparty.ai/blog/accessibility-audit-reports-complete-guide-for-2025)
+**Phase to address:** Unified work surface / capability model.
 
 ---
 
-### Pitfall 9: Analytics Data Collection Without Privacy Strategy Creates GDPR Liability
+### Pitfall 10: Per-night grants make RLS policies slow and, worse, recursive
 
-**What goes wrong:** v1.3 calls for "comprehensive user analytics and data collection (behavior tracking, drink purchases, expired tokens, market insights)." This is behavioral tracking of identified users. Resonate has user profiles with real names and emails. Tracking which events they view, which drinks they buy, how long they spend on pages, and linking this to their identity creates a GDPR personal data processing obligation. Without a privacy policy update, cookie consent, and data retention policy, this is a legal liability for an EU-targeted music events platform.
+**What goes wrong:**
+Per-night staff assignments mean policies shaped as "this user may read this ticket **if** a row exists in `staff_assignments` joining them to the ticket's party". Four traps, all present-tense risks given the current migrations:
 
-**Why it happens:** Analytics is treated as a purely technical feature. Developers add tracking, data flows into a dashboard, and nobody considers that "user X viewed event Y at timestamp Z" is personal data under GDPR because it's linked to an identified individual.
+1. **Unwrapped `auth.uid()`.** 40 bare occurrences across the migrations, **zero** wrapped in `(select auth.uid())`. Supabase's own benchmark puts this at ~95% (179ms → 9ms) because the unwrapped call is re-evaluated per row rather than once per statement. New join-based policies multiply that cost.
+2. **Join-in-policy.** Supabase measures the naive join form at 9,000ms against 20ms for the `IN (select ... where user_id = (select auth.uid()))` form — a ~99.8% difference. Per-night grants are precisely the case that produces this.
+3. **No `TO` clause.** Only 5 `TO` occurrences exist across 71 policies. Without it every policy is also evaluated for `anon`; Supabase measures 170ms → <0.1ms for anonymous requests once `TO authenticated` is added. The public event and menu pages are anonymous, so this is not theoretical here.
+4. **Recursion.** A policy on `staff_assignments` that itself consults `staff_assignments` produces `infinite recursion detected in policy`. The codebase already avoids this for roles via `SECURITY DEFINER` helpers (`is_admin_or_organizer()`); the assignment lookup needs the same treatment.
 
-**Consequences:**
-- GDPR non-compliance (fines up to 4% of revenue or 20M EUR, whichever is higher)
-- Member trust erosion if the community discovers they're being tracked without consent
-- If using third-party analytics (GA4, Mixpanel), data leaves the EU without appropriate safeguards
-- Cookie consent banners required if analytics uses cookies (GA4 uses cookies)
+**The correctness trap is worse than the performance one.** Production holds 2 events, 3 parties, 1 ticket, 4 profiles. **Every one of these policies will be instant and will look correct.** The performance regression is invisible until a real night; the correctness gaps are invisible until there is more than one of each row.
 
-**Prevention:**
-1. **Prefer server-side analytics** that don't require cookies or client-side tracking. Track aggregated metrics (total page views, event popularity, drink purchase volumes) rather than per-user behavior trails.
-2. **If tracking individual user behavior,** update the privacy policy and add a consent mechanism. For a PWA, this can be a one-time consent prompt, not a cookie banner.
-3. **Use a privacy-focused analytics tool** that stores data in the EU (Plausible, Umami self-hosted, PostHog EU cloud). Avoid GA4 which sends data to Google's US servers.
-4. **Implement data retention:** auto-delete analytics data older than 13 months (GDPR best practice).
-5. **For drink purchase analytics and token tracking,** this is already in the database (Supabase). Use SQL aggregation queries on existing data rather than adding new tracking instrumentation. This is not "analytics tracking" -- it's "reporting on existing transactional data," which has a legitimate interest basis under GDPR.
-6. **Separate "operational analytics" from "behavioral tracking."** Counting total tickets sold per event is operational. Tracking which pages User X visited in which order is behavioral. The first needs no consent; the second does.
+**How to avoid:**
+- Wrap **every** `auth.uid()` in `(select auth.uid())`, including the 40 pre-existing ones. Mechanical, low-risk, and the cheapest win available.
+- Add `TO authenticated` (or `TO anon, authenticated` where genuinely public) to every policy.
+- Express grants as `party_id IN (SELECT party_id FROM staff_assignments WHERE user_id = (SELECT auth.uid()))`, never as a join in the `USING` clause.
+- Index every column named in a policy: `staff_assignments(user_id, party_id)`, plus the `party_id` columns the subquery filters against. 24 indexes exist today; assume more are needed.
+- Write the assignment lookup as one `SECURITY DEFINER STABLE` helper and **pin its `search_path`** — 19 such functions exist and only 1 sets it, which is a genuine privilege-escalation surface and a Supabase linter finding. Fix all 19; they are in the blast radius anyway.
+- **Seed a realistic dataset** (a few hundred tickets across several parties and several staff) in a scratch project and run `EXPLAIN ANALYZE` on the attendee query as a night-scoped staff account. Record the plan in VERIFICATION.md. Without it the phase cannot claim to have verified anything — near-empty production proves nothing.
 
-**Detection:** Review every analytics event being tracked. For each one, ask: "Is this linked to an identified user?" If yes, it needs a legal basis (consent or legitimate interest).
+**Warning signs:**
+`Seq Scan` in `EXPLAIN ANALYZE` on a policy-filtered table. Any policy whose `USING` clause contains a `JOIN`. Query time scaling with total rows rather than the user's rows.
 
-**Phase relevance:** Analytics phase. Privacy strategy must be decided before any tracking code is written.
-
-**Confidence:** MEDIUM (GDPR requirements are well-documented but application to this specific use case requires legal review)
-
----
-
-## Minor Pitfalls
-
-Issues that cause friction, cosmetic bugs, or minor technical debt but are easily fixed.
+**Phase to address:** Per-night assignments / RLS. The `(select auth.uid())` and `TO` sweep should be its own early, mechanical plan within that phase.
 
 ---
 
-### Pitfall 10: Animations on MobileNav Safe Area Create Layout Shift on iOS
+### Pitfall 11: The service client makes RLS decorative on the paths that matter most
 
-**What goes wrong:** Adding animations to the MobileNav (e.g., tab transitions, badge animations, popover entrance) can cause layout shifts because the MobileNav uses `pb-[env(safe-area-inset-bottom)]` for iOS safe area. The safe area inset value is computed at render time and is not available during SSR. If an animation triggers a re-render that recalculates the safe area, the nav jumps.
+**What goes wrong:**
+`getServiceClient()` bypasses RLS. It is used in the check-in route, the attendance route, the drink actions and the guest redemption path. A per-night permission model built entirely in RLS therefore **does not constrain the door or the bar at all** — those paths authorise with a hand-written role check and then read and write with unrestricted privileges.
 
-**Prevention:**
-1. Never animate the height, padding, or position of the MobileNav itself. Only animate content inside it (icon transitions, badge pulsing).
-2. If adding a slide-up bottom sheet from the Account button, position it above the MobileNav (with `bottom: calc(env(safe-area-inset-bottom) + NAV_HEIGHT)`), don't overlap it.
-3. Test on actual iOS devices with the Home Indicator (iPhone X and later), not just Chrome DevTools mobile emulation.
+Concretely today: `checkin/route.ts:31-38` accepts any `master`/`organizer`, and when `offlineSync` is set it **skips HMAC verification entirely** and takes a raw `ticketId` from the request body (`route.ts:37-40`). Any organizer session can check in any ticket id it can guess or enumerate.
 
-**Phase relevance:** UI/UX Elegance phase and Navigation Consolidation phase.
+**Why it happens:**
+The service client solved legitimate problems (reading across users for an attendee list). Once present it becomes the path of least resistance for every subsequent handler.
 
-**Confidence:** HIGH (known iOS PWA safe-area behavior)
+**How to avoid:**
+- Enumerate every `getServiceClient()` call site and record in writing *why* RLS cannot serve it. Where the reason is convenience, switch to the user client.
+- Where it must stay, the capability check **is** the security boundary and must be as explicit as a policy: check the capability *and* the per-night assignment against the resource's `party_id` before touching the service client. The check-in route already receives `partyId` — make it authoritative rather than advisory (it is currently compared only when the caller supplies it, `route.ts:63`).
+- Constrain the `offlineSync` path: require the same signed token the online path requires. The queue can store the full signed token instead of the bare id — it lives in IndexedDB on a staff device either way. **This is a strict improvement with zero cost to offline behaviour**, since the token is already captured at scan time.
+- Log every `offlineSync` submission with the operator id.
 
----
+**Warning signs:**
+A route that resolves `role` from `profiles` and then uses `getServiceClient()` for all subsequent work. Any handler accepting a bare resource id and trusting it.
 
-### Pitfall 11: SEO Audit Changes Conflict with Private Community Model
-
-**What goes wrong:** A standard SEO audit recommends: adding meta descriptions to all pages, structured data (JSON-LD events schema), open graph images, sitemap.xml, and making pages crawlable. But Resonate is a PRIVATE community. Event pages are behind authentication. Making event details crawlable or adding structured data exposes private community information to Google, which contradicts the platform's exclusivity value proposition.
-
-**Prevention:**
-1. **SEO improvements should only apply to public pages:** landing page, login, register, public artist/venue profiles.
-2. **Keep `noindex` on authenticated pages.** Do not add event structured data to pages that should not be discoverable.
-3. **The public menu page (`/events/[slug]/menu`)** is intentionally public for QR scanning at events. This CAN get SEO attention, but consider whether you want it indexed (probably not -- it's for in-person use).
-4. **Limit SEO audit scope** to: (a) og:image for link sharing (already exists in `layout.tsx`), (b) manifest.json accuracy for PWA install, (c) performance (which helps both SEO and UX).
-
-**Phase relevance:** App Audit phase (SEO domain).
-
-**Confidence:** HIGH (Resonate's private community model is explicitly defined in PROJECT.md; anti-feature list explicitly excludes "public event pages / SEO-optimized discovery")
+**Phase to address:** Unified work surface / capability model, with the `offlineSync` token change owned by Door corrections.
 
 ---
 
-### Pitfall 12: Guest List Bulk Operations Hit Supabase Rate Limits
+### Pitfall 12: Refunded tickets — the stale cache admits, and nothing flags it
 
-**What goes wrong:** An organizer uploads a CSV of 200 guest emails. The system tries to create 200 Supabase Auth accounts, 200 profile rows, and 200 tickets in rapid succession. Supabase Auth has rate limits (default: 30 signups per hour on the free plan, 3600/hour on Pro with email confirmation). The bulk operation fails partway through, leaving some guests registered and others not, with no clear indication of which succeeded.
+**What goes wrong:**
+The string `refunded` appears nowhere in `src/app/api/tickets/` or `src/lib/offline/`. `ticket_refunds` exists as a separate table with an approval workflow (`20260227200000_ticket_refunds.sql`) and the check-in route never consults it. A refunded ticket checks in green online *and* offline, and the offline cache has no field in which to record that it was refunded even if the check existed.
 
-**Prevention:**
-1. **Process guest list entries in batches** (10-20 at a time) with delays between batches to stay under rate limits.
-2. **Use `supabase.auth.admin.createUser()` (admin API, not signup API)** which has different (higher) rate limits.
-3. **Track processing status per entry** in the `guest_list_entries` table so the operation can resume if interrupted.
-4. **Show progress to the organizer** ("Processing 45 of 200...") rather than waiting for the entire batch to complete.
-5. **Validate all emails before processing** (format check, duplicate check against existing users) to avoid wasting API calls on invalid entries.
+**Why it happens:**
+Refunds and check-in were built in different milestones and the join between them was never written.
 
-**Phase relevance:** Guest List phase.
+**How to avoid:**
+- Add the refund state to the attendee cache payload and to the IndexedDB record (subject to Pitfall 7's migration constraint).
+- **Apply door polarity, not bar polarity.** A refunded ticket at the door is admitted and flagged, never refused — refusing at the door on possibly-stale cached data is the exact error the queue-facing rule forbids. The flag produces a visible amber state and a reconciliation record, not a red X.
+- Online, the route can be stricter because the data is authoritative — but the outcome is still admit, flag, record. The decision to refuse belongs to a human at the door, never to a cache.
+- Manual procedure: refund a ticket, scan it online and offline. Both admit, both show the flag, and the offline one produces a synced record of the flag.
 
-**Confidence:** MEDIUM (Supabase rate limits vary by plan and may have changed; verify against current Supabase documentation)
+**Warning signs:**
+A refund workflow with no downstream consumer. A ticket state enum the check-in path does not switch on.
 
----
-
-### Pitfall 13: Performance Audit Fixes Cause Service Worker Cache Invalidation Storm
-
-**What goes wrong:** Performance audit fixes may involve changing static asset paths, reorganizing CSS, modifying layout components, or adding new chunks. Each change invalidates cached assets in the PWA service worker. Users who have the app installed on their home screen suddenly need to re-download everything. If many assets change at once, the service worker update takes a long time, and the app may show stale content during the transition.
-
-**Prevention:**
-1. **Batch performance fixes together** and deploy in a single release, not multiple small deploys that each invalidate different cache entries.
-2. **Ensure the service worker uses a `NetworkFirst` strategy for pages** and `CacheFirst` only for immutable static assets (fonts, images). Verify the current `next-pwa` configuration.
-3. **Consider adding a "New version available" toast** that prompts users to reload after a service worker update. This is standard PWA practice and avoids the "stale app" confusion.
-4. **Test the PWA update flow:** install the app, make changes, deploy, verify the update is picked up within a reasonable time (should be immediate on next navigation, not hours later).
-
-**Phase relevance:** App Audit phase (performance domain).
-
-**Confidence:** MEDIUM (service worker behavior varies by `next-pwa` or `@ducanh2912/next-pwa` version; verify current configuration)
+**Phase to address:** Door corrections.
 
 ---
 
-### Pitfall 14: Custom Event Tracking Creates Data Schema Without Migration Strategy
+### Pitfall 13: The service worker serves the old app all night
 
-**What goes wrong:** The analytics phase creates new Supabase tables for tracking events (e.g., `analytics_events`, `page_views`, `user_actions`). These tables accumulate data rapidly. Without a migration strategy for schema changes, adding new tracked events or changing the data shape later becomes painful. Without data retention policies, these tables grow unboundedly and slow down queries.
+**What goes wrong:**
+Current config: `skipWaiting: true`, `clientsClaim: true`, `cleanupOutdatedCaches: true` (`src/app/sw.ts:20-24`), with `cacheOnNavigation: true` and **`reloadOnOnline: true`** (`next.config.ts:5-10`). Three consequences for a token-and-font migration on a door device:
 
-**Prevention:**
-1. **Use a flexible schema** for analytics events:
-   ```sql
-   CREATE TABLE analytics_events (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     event_type TEXT NOT NULL, -- 'page_view', 'ticket_purchase', 'drink_order', etc.
-     properties JSONB DEFAULT '{}', -- flexible key-value pairs
-     user_id UUID REFERENCES profiles(id),
-     session_id TEXT,
-     created_at TIMESTAMPTZ DEFAULT now()
-   );
-   CREATE INDEX idx_analytics_created_at ON analytics_events(created_at);
-   CREATE INDEX idx_analytics_event_type ON analytics_events(event_type);
-   ```
-   The JSONB `properties` column avoids schema changes when adding new event types.
-2. **Add a data retention policy** via a cron job that deletes analytics older than a defined period (e.g., 6 months for detailed events, aggregate into monthly summaries before deletion).
-3. **Enable RLS on analytics tables** -- analytics data is sensitive. Only `service_role` should INSERT; only `master` role should SELECT.
-4. **Consider using existing transactional data** (tickets, drink_orders, rsvps, attendance) for most "analytics" instead of duplicating data into a separate analytics table. SQL queries on existing tables are analytics.
+1. **`reloadOnOnline: true` reloads the page when the device comes back online.** At the door this is the worst possible moment: the camera stream is torn down, in-memory scan history and the selected party are lost (`handleChangeParty` shows how much state is in memory), and a scan in flight is interrupted. IndexedDB survives so no record is lost — but the operator's screen changes under their hands in the dark. This setting predates the offline door work and needs re-deciding with the door as the deciding case.
+2. **`skipWaiting: true` activates a new service worker as soon as it is fetched**, while a page running the *old* JS bundle is still open. That page requests chunk and font URLs from the old build; on Vercel those can 404 after a rollout, producing a chunk-load error mid-night. A deploy during an event is a live-fire change to the door.
+3. **Precached fonts and CSS are content-hashed, but the HTML referencing them is cached too.** A cached navigation response pinning the previous build's CSS hash renders the old tokens — or no font at all — until the shell updates.
 
-**Phase relevance:** Analytics phase.
+**Why it happens:**
+These are correct defaults for a marketing PWA and were never re-evaluated against a device that is deliberately offline, deliberately long-lived, and operated one-handed.
 
-**Confidence:** HIGH (standard data engineering pattern)
+**How to avoid:**
+- **Freeze deploys during events.** Write it down as an operational rule with the same weight as a code gate; it is cheaper and more reliable than any caching strategy.
+- Make updates explicit: drop `skipWaiting` and surface an "Update available — reload" control the operator presses. Never auto-reload a screen with a camera open or a non-empty pending queue.
+- Reconsider `reloadOnOnline`. If it stays, gate it on scanner-inactive **and** pending-count-zero.
+- Use network-first (or fast-revalidating stale-while-revalidate) for navigation responses so the HTML shell cannot pin a dead asset hash, while keeping hashed static assets cache-first.
+- Verify the font swap on a device that already has the **old** service worker installed — not a fresh profile. This is the single most common way a font migration passes review and fails in the field.
+
+**Warning signs:**
+`ChunkLoadError` in the field. The new typeface appearing in a fresh browser but not in the installed PWA. A door device showing last week's UI.
+
+**Phase to address:** Design foundation (tokens + typography), first plan in the phase. The deploy-freeze rule belongs in the milestone's operational notes rather than a phase.
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 14: The token swap misses what the tokens never covered
 
-| Phase Topic | Likely Pitfall | Mitigation |
+**What goes wrong:**
+`globals.css` defines seven `:root` variables re-exported through `@theme inline`. Swapping them changes only what already reads them. The repo contains **68 hard-coded hex literals across 26 files** and **8 `rgba()` literals** that will not move. The clearest instance is in `globals.css` itself: `glow-accent` and `glow-accent-strong` hard-code `rgba(229, 72, 77, ...)` — the current accent, duplicated as a literal. Swap the accent token and every glow in the app still emits the old red. That literal appears 9 times in the tree.
+
+`font-family` has a matching single point of failure: `--font-orbitron` is referenced in exactly four places (`globals.css:31`, `layout.tsx:8`, `:10`, `:50`). Rename it in three of the four and the body rule falls through to `system-ui` — which renders, looks *almost* deliberate on a dark background, and can survive review.
+
+**Why it happens:**
+Tokens get adopted for the values people remember to tokenise. Glows, shadows, gradients, chart colours and SVG `fill`/`stroke` attributes are where the literals hide.
+
+**How to avoid:**
+- Before writing a single new token, run and commit the inventory: `grep -roE '#[0-9a-fA-F]{6}\b' src` and `grep -roE 'rgba?\(' src`. 68 + 8 is a countable, finishable list.
+- Make the count a **phase exit criterion**, verified by re-running the same grep. This is the only automatable check available for the design phase, so it should carry weight.
+- Keep the CSS variable **name** stable across the font swap where possible; if it must change, change all four references in one commit and require the old name to return zero hits.
+- Check the Recharts surfaces specifically — chart colour props are a classic literal reservoir, and this app has several analytics dashboards.
+- Watch `color-scheme: dark` (`globals.css:26`) and the `@supports` safe-area block: both sit outside the token system and both affect how a new palette reads.
+
+**Warning signs:**
+A grep for the old accent returning hits after the swap is "done". A component that looks right in isolation and wrong on a page.
+
+**Phase to address:** Design foundation (tokens + typography).
+
+---
+
+### Pitfall 15: Incremental primitive adoption leaves two design systems running forever
+
+**What goes wrong:**
+Adopting eight primitives page by page across ~48 pages means two visual systems coexist for the whole migration. Two failure shapes:
+
+- **The migration stalls at 80%.** The remaining pages are the awkward ones — analytics dashboards, forms with native date inputs (`globals.css:36-41` already carries an override for them), the scanner. They stay on the old patterns permanently, so the primitive has to support both and grows props until it is a wrapper around the old markup.
+- **The primitive is discovered to be wrong at page 30.** The counts driving the design (493 card instances, 246 chips, 147 buttons) measure *recurrence*, not *variation*. 493 cards is strong evidence that a Card exists; it says nothing about how many distinct card behaviours hide inside it. Changing the API at page 30 means revisiting 29 pages with no test suite to catch what broke.
+
+**Why it happens:**
+Recurrence counts are the easy measurement and get taken as sufficient evidence for an API.
+
+**How to avoid:**
+- **Sample before you build.** Pick 12 of the 493 card instances deliberately spread across public / member / work surfaces and write the primitive's API against those 12 by hand. If it needs more than a couple of variants to cover them, it is really two primitives — find that out at 12, not at 30.
+- Migrate in **surface-complete slices**, never scattered pages: finish every page in one route group before starting the next. A half-migrated group is what stalls; a completed group is shippable.
+- Hard rule: **no new prop may be added to a primitive to accommodate a single call site.** That call site keeps its bespoke markup and is recorded as a known exception. This is the mechanism that stops the primitive rotting.
+- With no visual regression tooling, take before/after screenshots per page at the three breakpoints and keep them with the phase. Manual, but it is the only evidence that will exist and it is cheap against the alternative.
+- Track adoption as a count in the phase file — pages migrated / pages total — so a stall is visible rather than inferred.
+
+**Warning signs:**
+A primitive with more than a handful of variants. A prop named after a page. An adoption count that has not moved in a week.
+
+**Phase to address:** Shared primitives adoption.
+
+---
+
+### Pitfall 16: Retrofitting desktop breaks the mobile app that already works
+
+**What goes wrong:**
+The app is mobile-only in a specific structural sense: `MobileNav.tsx` is the **only** nav component, it is `fixed bottom-0` at `z-50`, and **six hard-coded `pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))]` paddings across four files exist solely to clear it**. The z-index stack is layered around it: `z-[60]` (11 uses) for modals, `z-[70]`, `z-[100]`. Introducing a desktop sidebar or top bar invalidates every one of those six paddings and every assumption in the stack — the compensations become dead space on desktop, and if the mobile bar is conditionally rendered they become dead space at whatever breakpoints the bar is gone.
+
+Two more specific traps:
+
+- **Touch targets get smaller on the bigger screen.** The instinct at `md:`/`xl:` is to reduce padding because there is more room. But tablets are touch devices: WCAG 2.2 SC 2.5.8 requires 24×24 CSS px minimum at Level AA, and platform guidance is 44–48px *not scaled down* for larger screens. The staff work surface is exactly what will be used on a tablet, one-handed, in low light — the context where a `md:h-8` button is a defect. `h-8`, `h-9` and `h-10` are already common in the tree.
+- **Dense tables are the desktop-only feature that breaks mobile.** Nine files already use `<table>`/`overflow-x-auto`. Real desktop tables usually mean a table that horizontally scrolls on phone, hiding the action column — the one users need — off-screen with no affordance. And every existing container maxes out at `max-w-lg`; a naive `xl:` pass that widens containers will stretch line lengths past readability on content surfaces even where it helps work surfaces.
+
+**Why it happens:**
+Breakpoints get treated as "more room" rather than "different input device". Desktop is designed on a mouse-driven laptop, and tablet inherits the desktop layout with touch input.
+
+**How to avoid:**
+- Let **input modality**, not width, drive control sizing: keep touch-sized targets at every breakpoint by default, and treat `@media (pointer: fine)` — not `xl:` — as the licence to go denser. Enforce a minimum interactive height in the primitive layer, not per page.
+- Extract the bottom-nav clearance into **one token or one layout wrapper** before adding any breakpoint. Six copies of a magic calc across four files is what makes the responsive pass expensive; fix it first, in the design-foundation phase.
+- Audit the z-index stack into a named scale at the same time. Adding a sidebar to an implicit stack is how modals end up behind navigation.
+- Choose the desktop table pattern per surface: card list on phone → table at `md:`+ is usually right for work surfaces. Horizontal scroll is acceptable only when the primary action stays pinned and visible.
+- Set container widths per **content type**, not globally. Reading surfaces want a cap; work surfaces want the width.
+- **Test on a real tablet, portrait and landscape, and on the actual door device.** A browser resized to 1024px is not a touch device and will not reveal the target-size problem.
+
+**Warning signs:**
+Any `md:`/`lg:` modifier that *decreases* a height or padding on an interactive element. A modal appearing under the nav at one breakpoint. A table whose action column requires horizontal scrolling.
+
+**Phase to address:** Three-tier responsive layout, with the nav-clearance and z-index extraction pulled forward into Design foundation.
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|---|---|---|---|
+| Global find-and-replace of tokens instead of page-by-page primitive adoption | Migration "done" in a day | Misses the 68 literals entirely and produces a diff too large to review in a repo with no tests | Never — the milestone already rejects it |
+| Keeping `getServiceClient()` on the door and bar paths | Avoids writing RLS for cross-user reads | The per-night permission model does not constrain the two highest-risk surfaces | Only with a written justification per call site and an explicit capability + party check before the client is touched |
+| Leaving the 40 unwrapped `auth.uid()` calls alone | Smaller migration diff | ~95% avoidable latency on every policy-filtered query, compounding with the new join-based grants | Never — mechanical change, and this is the milestone that touches RLS |
+| Realtime as primary source, offline cache as fallback | Simpler mental model, less merge logic | Violates non-negotiable #1; the door stops working when the signal does | Never |
+| Auto-reload on service-worker update | Users always on latest | A screen changing under a one-handed operator in the dark, mid-scan | Never on the scanner route; acceptable elsewhere |
+| `DB_VERSION` bump with delete-and-recreate stores | Two-line upgrade | Destroys unsynced attendance records on offline devices | Only when the pending queue is provably empty on every device |
+| Adding a prop to a primitive for one page | Unblocks the page today | The primitive becomes a wrapper for the old markup and the migration never converges | Never — keep the bespoke markup, record the exception |
+| Shipping the capability refactor without the RLS policies | Half the work, visible progress | UI-only permissions on a system whose repo is public | Never — they are one change |
+| Verifying permissions against near-empty production data | Fast | Proves nothing; correctness gaps only appear with multiple rows per user | Never for RLS — seed a realistic dataset |
+| Bottom-nav clearance left as six literals during the responsive pass | Avoids a refactor commit | Every breakpoint change has to touch four files, and one will be missed | Never — extract before adding breakpoints |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
 |---|---|---|
-| Analytics & Tracking | Client bundle bloat from tracking code; privacy/GDPR exposure; analytics tables without retention | Use server-side analytics on existing data; privacy-first approach; JSONB schema with retention cron (Pitfalls 2, 9, 14) |
-| App Audit & Fixes | Regressions across stable features; accessibility fixes breaking dark theme; SEO conflicting with private model; service worker cache storms | Risk-categorize findings; isolated commits; manual regression checklist; scope SEO to public pages only (Pitfalls 3, 8, 11, 13) |
-| UI/UX Elegance | Animations causing hydration mismatches; bundle bloat from motion library; iOS safe-area layout shifts | CSS-first animations; thin Client Component wrappers; respect `prefers-reduced-motion`; test on real iOS devices (Pitfalls 5, 10) |
-| Guest List | Auth trigger bypass; conflicts with existing members; financial tracking blind spots; Supabase rate limits on bulk ops | Extend `handle_new_user()` trigger; check-before-create pattern; `ticket_type` column; batch processing with status tracking (Pitfalls 1, 4, 7, 12) |
-| Navigation Consolidation | Scanner access regression; popover interaction rewrite; role-based menu complexity; z-index conflicts | Keep Scanner prominent; bottom sheet pattern; extend `getVisibleNavItems()`; preserve z-index convention (Pitfall 6) |
+| Supabase Realtime + Postgres Changes | Assuming a table emits events once RLS allows it | Add the table to the `supabase_realtime` publication in an explicit migration; a missing publication yields a channel that subscribes fine and never fires |
+| Supabase Realtime + RLS | Assuming a subscriber sees what the page can query | Events are authorised per subscriber; narrowing `SELECT` for per-night staff silently narrows delivery. Test Realtime **as** a night-scoped account, never as master |
+| Supabase Realtime + DELETE | Relying on deletes to remove attendees from the cache | Deletes carry no RLS, cannot be filtered, and carry only primary keys unless `replica identity full` is set. Model removals as status updates |
+| Supabase Realtime + `@supabase/ssr` token refresh | Expecting the client to recover after the device was offline or backgrounded | Documented not to: the channel keeps the stale token and a later refresh does not revive it. Remove and re-create the channel on `online` and on `visibilitychange → visible` |
+| Supabase Realtime + scale | Postgres Changes for everything | Single-threaded; throughput scales with subscriber count, and Supabase recommends Broadcast beyond ~3,000 concurrent subscribers. Not a limit this project reaches, but the per-subscriber RLS cost is real at any size — scope the subscription to one party |
+| SumUp refunds ↔ ticket check-in | Treating a refund as a finance-only event | Refund state must flow into the attendee cache; today it does not reach the door at all |
+| SumUp ↔ drink token state | Trusting an RPC's success to mean it acted | `redeem_drink_token` returns `false` when it did nothing. Propagate the boolean |
+| `@serwist/next` + a live door device | Deploying during an event | Freeze deploys during events; make SW updates operator-initiated |
+| `next/font` + a token rename | Renaming the CSS variable in most places | Four references exist; a missed one falls back to `system-ui` silently |
+| IndexedDB (`idb`) + schema change | Delete-and-recreate in `upgrade` | Migrate records forward inside the version-change transaction; never delete a store that may hold pending writes |
+| PostHog + the new work surface | Assuming existing event names survive the route collapse | Route-derived event properties change when 13 routes become one; re-map before the collapse or the analytics history breaks silently |
 
 ---
 
-## Integration Pitfalls: Cross-Feature Conflicts
+## Performance Traps
 
-These pitfalls arise specifically from the COMBINATION of v1.3 features interacting with each other and with the existing system.
-
-### Integration 1: Guest List + Referral System Conflict
-
-**Risk:** Guest list auto-approval undermines the referral system's value. If organizers can just add anyone to a guest list and bypass the referral requirement, the referral system becomes meaningless. Members who worked to earn approval via referral may feel their status is devalued.
-
-**Mitigation:** Guest list entries should be scoped to a specific event, not grant permanent community membership. After the event, guest accounts could either: (a) revert to `pending` unless they also got a referral, or (b) remain `approved` but with a `guest` tag that distinguishes them from referral-approved members. Define the business rule clearly before implementation.
-
-### Integration 2: Analytics + UI Polish Performance Conflict
-
-**Risk:** Adding both analytics tracking AND animation library in the same milestone creates a compounding performance hit. Analytics adds tracking scripts and event handlers. Animations add a JS library (or extra CSS). Together, they could push the client bundle past the tipping point for mobile performance.
-
-**Mitigation:** Implement analytics first, measure performance impact, THEN add animations. Never add both in the same phase without measuring after each. Set a hard performance budget (e.g., max 150KB total JavaScript, LCP under 2.5s).
-
-### Integration 3: App Audit + Everything Else Conflict
-
-**Risk:** The app audit phase touches everything. If it runs concurrently with or just before other v1.3 phases, audit fixes may conflict with feature changes. For example, an audit fix that refactors a component's prop interface will conflict with an animation change to the same component.
-
-**Mitigation:** Run the app audit FIRST in the milestone, get it merged and stable, then build new features on top of the audited codebase. Do not run audit and features in parallel.
-
-### Integration 4: Navigation Consolidation + Analytics Tracking Conflict
-
-**Risk:** Navigation restructuring changes which pages users visit and how. If analytics is tracking page views and navigation patterns, the data becomes meaningless if the navigation structure changes mid-measurement. "Dashboard visits dropped 50%!" might just mean the route changed, not that users stopped using the feature.
-
-**Mitigation:** Implement navigation consolidation BEFORE analytics tracking. Track against the final navigation structure, not the transitional one.
+| Trap | Symptoms | Prevention | When It Breaks |
+|---|---|---|---|
+| Unwrapped `auth.uid()` in 40 policy expressions | Every query uniformly slow; latency scales with rows scanned | Wrap in `(select auth.uid())` | Invisible at 4 profiles; obvious at a few hundred tickets |
+| Join inside a per-night grant policy | One surface (the attendee list) far slower than the rest | Rewrite as `party_id IN (SELECT ... WHERE user_id = (SELECT auth.uid()))` | Immediately at real event size — Supabase measures ~9,000ms for the naive form |
+| Missing indexes on policy columns | `Seq Scan` in `EXPLAIN ANALYZE` | Index `staff_assignments(user_id, party_id)` and every `party_id` the subquery filters | As soon as a table exceeds a few hundred rows |
+| No `TO` clause on 66 of 71 policies | Anonymous page loads slower than they should be | `TO authenticated` / `TO anon, authenticated` on every policy | Already, on the public event and menu pages |
+| Full cache re-fetch on every Realtime event | Battery drain and network churn on the door device; UI stutter | Patch the single changed row; reserve full refresh for party selection | At a real arrival rate — dozens of events per minute during the door rush |
+| Realtime per-subscriber RLS authorisation | Throughput scales with subscriber count, not write rate | Keep subscribed clients few; subscribe to one party, never a whole table | Not a near-term limit, but the reason to scope tightly from day one |
+| Precaching two new font families | Slow first load on the venue's poor connection | Subset aggressively; `font-display: swap`; keep the precache manifest lean | First install on a phone at the door |
+| Eight primitives shipped as one barrel import | Larger client bundles on the public pages | Keep primitives individually importable; watch the public event page bundle | At the first slow 3G load on a venue's connection |
 
 ---
 
-## Recommended Phase Ordering Based on Pitfalls
+## Security Mistakes
 
-The pitfall analysis reveals a clear dependency and risk chain:
+| Mistake | Risk | Prevention |
+|---|---|---|
+| Route collapse removes the `/admin` prefix guard without replacing it per-surface | 20 previously master-only pages reachable by any organizer or any authenticated user | Total, type-checked route→capability map; deny by default; manual role×route matrix in VERIFICATION.md |
+| `offlineSync` accepts a bare `ticketId` with no HMAC (`checkin/route.ts:37-40`) | Any staff session can check in an arbitrary ticket id | Store and submit the full signed token from the queue; it is captured at scan time, so nothing offline is weakened |
+| Service-client routes keep hand-written role checks after the capability migration | RLS is bypassed on the door and bar paths; the permission model does not apply where it matters most | Route service-client handlers through the capability layer and check the resource's `party_id` against the assignment |
+| 18 of 19 `SECURITY DEFINER` functions do not pin `search_path` | Search-path manipulation against elevated functions; a standing Supabase linter finding | `SET search_path = ''` (or an explicit schema) on every one; fully qualify identifiers inside |
+| `?redirect=` / `?next=` accepted without validation | Open redirect from the login and auth-callback flow (the `CONCERNS.md` item worth re-verifying rather than assuming fixed) | One validator: must start with `/`, must not start with `//`, must not parse as an absolute URL |
+| `pending` conflated with `member` in the new capability model | A user awaiting approval gains member capabilities — this is the gating mechanism PROJECT.md calls the core value | Keep role and status as two independent axes in the capability signature; test the `pending` row explicitly |
+| Per-night assignment checked in the UI but not in RLS | An organizer reads another night's guest list — members' personal data | Every capability gets a named policy; diff the capability list against the policy list by hand |
+| Membership codes still generated with `Math.random()` (`src/utils/qr.ts`) | Predictable codes; the one `CONCERNS.md` security entry verified as still true | Move to `crypto.getRandomValues`; the door work touches this file anyway |
+| `.planning/` published to a public repo | Unannounced dates, venues under negotiation and line-ups leaking via research and roadmap files | Refer to roles and formats, never to individuals or specific venues. The persona's control **F** covers `docs/` and `.firecrawl/` but **not** `.planning/`, which is tracked |
 
-1. **App Audit & Fixes** -- Do first. Stabilize the foundation before adding new features. Separate security fixes from UX/CSS fixes. Run regression checklist after. (Pitfalls 3, 8, 11, 13)
+---
 
-2. **Navigation Consolidation** -- Do second. Changes the app's navigation structure, which affects every subsequent feature's UI placement and user flow. Must be settled before analytics can meaningfully track anything. (Pitfall 6)
+## UX Pitfalls
 
-3. **Guest List** -- Do third. Most complex feature, touches auth, ticketing, and referral systems. Needs careful database schema design (`guest_list_entries`, `ticket_type`, `approved_via`). (Pitfalls 1, 4, 7, 12)
+| Pitfall | User Impact | Better Approach |
+|---|---|---|
+| Errors collapsed into one message at the door | Staff cannot distinguish "already scanned" from "no signal" and stop trusting the screen (`ScannerClient.tsx:623`) | Four distinct, high-contrast states with the reason named |
+| A `live` indicator that only ever shows the good state | Staff trust a frozen list | Three-state indicator defaulting pessimistic; `live` requires a positive, recent signal |
+| A pending badge containing entries that can never drain | The badge stops meaning anything, so a real unsynced check-in goes unnoticed | Separate `failed` from `pending`; the pending count must be able to reach zero |
+| Auto-reload on reconnect while the camera is open | The screen changes under a one-handed operator in the dark, mid-scan | Gate the reload on scanner-inactive and pending-count-zero |
+| SERVED animation on an already-redeemed token | A second drink is poured; paid and poured counts diverge silently | A distinct, non-celebratory "already served at HH:MM" state |
+| Smaller controls at `md:`/`xl:` | The staff tablet — the densest, most-used work surface — becomes the hardest to hit | Size by pointer type, not width; enforce a minimum height in the primitive |
+| Dense table scrolling the action column off a phone | The one control users need is invisible with no affordance | Cards on phone, table at `md:`+; if scrolling, pin the action column |
+| Two visual systems visible on one screen mid-migration | The app looks broken rather than in progress | Migrate surface-complete slices; never leave a route group half-done between merges |
+| A refused guest at the door because of a stale cache | A queue forms and the error is public and unrecoverable | Admit and flag; the refusal decision belongs to a human, never to a cache |
 
-4. **UI/UX Elegance** -- Do fourth. Adds animations and polish on top of the stabilized, restructured app. Performance impact can be measured against the audit-improved baseline. (Pitfalls 5, 10)
+---
 
-5. **Analytics & Tracking** -- Do last. Tracks user behavior against the FINAL navigation structure and UI. Privacy strategy should be defined early but implementation comes last so it measures the finished product. (Pitfalls 2, 9, 14)
+## "Looks Done But Isn't" Checklist
 
-**Rationale:**
-- Audit first: fix before building (Pitfall 3 -- regressions are hardest to diagnose when mixed with new features)
-- Nav before analytics: track the final structure, not a transitional one (Integration 4)
-- Guest list before polish: database schema changes are harder to retrofit than CSS animations
-- Analytics last: measures the final product, not a work-in-progress
+- [ ] **Token swap:** often missing the literals — verify `grep -roE '#[0-9a-fA-F]{6}\b' src | wc -l` and `grep -rn '229, 72, 77\|e5484d' src` return the agreed number (baseline 68 and 9)
+- [ ] **Font swap:** often missing one of the four `--font-orbitron` references — verify the old variable name returns zero hits and the new face renders **on a device with the old service worker installed**
+- [ ] **Responsive pass:** often missing the six `pb-[calc(...)]` bottom-nav clearances — verify each is a token or wrapper, and that no `md:`/`lg:`/`xl:` modifier shrinks an interactive element
+- [ ] **Primitive adoption:** often missing the awkward surfaces — verify adoption count equals page count, and that no primitive prop is named after a single page
+- [ ] **Capability refactor:** often missing API routes and server actions — verify zero `role !== "master"` / `=== "organizer"` comparisons remain outside the capability layer (baseline 78 across 53 files)
+- [ ] **Capability refactor:** often missing the `pending` and unauthenticated rows — verify the full role×route matrix is filled with observed results, not expected ones
+- [ ] **Route collapse:** often missing the middleware `protectedPrefixes` array — verify the new unified prefix is in it and an anonymous request to a work-surface URL redirects to login
+- [ ] **RLS grants:** often missing the `TO` clause and the indexes — verify `EXPLAIN ANALYZE` on a seeded dataset shows an index scan, and record the plan
+- [ ] **RLS grants:** often missing `search_path` on `SECURITY DEFINER` functions — verify all 19 (baseline: 1 of 19 correct)
+- [ ] **Realtime:** often missing the publication migration — verify `supabase_realtime` contains the subscribed tables
+- [ ] **Realtime:** often missing the death-and-recovery path — verify by backgrounding the device past the token lifetime, then confirming events still arrive
+- [ ] **Realtime:** often missing the offline-cache merge — verify an offline check-in survives a subsequent refresh with the pending queue non-empty
+- [ ] **Offline queue:** often missing the terminal-failure bucket — verify a permanently-4xx entry leaves `pendingCheckins` and appears in a `failed` list
+- [ ] **Offline queue:** often missing the composite key — verify one member checking in at two parties on one device produces two queue entries
+- [ ] **Duplicate scans:** often missing the online conflict path — verify a ticket checked in by operator A, then synced by operator B, produces a visible conflict rather than a deleted queue entry
+- [ ] **Refunded tickets:** often missing the offline branch — verify the flag appears both online and offline, and that neither path refuses
+- [ ] **Drink serve:** often missing the second press — verify it produces "already served", not the animation
+- [ ] **All phases:** in a repo with no test runner, `npm run build` passing is a typecheck, not a verification. Every phase needs its written manual procedure in VERIFICATION.md with `file:line` evidence
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---|---|---|
+| Second drink poured on a redeemed token | MEDIUM | `redeemed_at` is recorded, so the divergence is reconstructable per token; reconcile stock against redeemed count after the night. Not recoverable **during** service — which is why it must be fixed before, not after |
+| Conflicts silently deleted from the queue (Pitfall 2) | HIGH | Unrecoverable — the record was destroyed client-side and never reached the server. Prevention only |
+| Unsynced check-ins wiped by a cache refresh (Pitfall 4) | HIGH | Partially recoverable while entries remain in `pendingCheckins`; unrecoverable once a sync deletes them. Prevention only |
+| Unsynced check-ins destroyed by a DB version bump (Pitfall 7) | HIGH | Unrecoverable. Enforce a drained queue as a pre-deploy checklist item |
+| Realtime channel died silently mid-night | LOW | The offline path already carried the night; reconcile from the server afterwards. This is exactly why non-negotiable #1 is non-negotiable — it *is* the recovery strategy |
+| Capability gap discovered after ship | MEDIUM | Production data is nearly empty, so exposure is minimal today. Patch the capability map, add the missing policy, audit access for the window |
+| Token swap left literals behind | LOW | The grep finds them; fix and re-run. Cheap because mechanical |
+| Primitive API wrong at page 30 | HIGH | 29 pages revisited with no test suite. Prevented by sampling 12 instances before building |
+| Service worker serving a dead build to a door device | MEDIUM | Uninstall and reinstall the PWA on the device. Painful at 02:00 — prevented by the deploy freeze |
+| Refunded ticket admitted without a flag | LOW | Reconcile `ticket_refunds` against `checked_in` after the event; the flag is for operator awareness, not refusal |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+Phase labels are descriptive; map them onto the roadmap's actual phase names.
+
+| # | Pitfall | Prevention Phase | Verification |
+|---|---|---|---|
+| 1 | Already-redeemed token shows SERVED | Bar corrections | Press Serve twice; second press shows "already served at HH:MM", no animation |
+| 2 | Genuine conflict discarded by sync | Door corrections | Two operators, one ticket; conflict appears as a persistent, acknowledgeable count |
+| 3 | Offline duplicate shown as "Connection error" | Door corrections | Airplane mode: same ticket twice, plus an uncached ticket → three distinct screens |
+| 4 | Cache refresh wipes unsynced check-ins | Door corrections (merge logic) → Realtime (switch-on) | Offline check-in survives a refresh with a non-empty queue; no intermediate empty window |
+| 5 | Realtime channel dies quietly | Realtime attendee cache | Background the device past the token lifetime; events still arrive, and the indicator went pessimistic while it was down |
+| 6 | Poison-pill queue entry / colliding pending key | Door corrections | A permanent 4xx leaves `pendingCheckins`; one member at two parties yields two entries |
+| 7 | DB version bump destroys unsynced records | Door corrections (same migration as 6) | Upgrade with a seeded non-empty pending store; all entries survive |
+| 8 | Capability refactor fails open | Unified work surface / capabilities | Build fails when a route has no capability; a `member` account cannot reach any work-surface route |
+| 9 | Forgotten surfaces (APIs, actions, pending, unauth) | Unified work surface / capabilities | Filled role×route matrix; zero duplicate `verifyOrganizerRole` bodies; unauth request to a work-surface URL redirects |
+| 10 | RLS grants slow / recursive | Per-night assignments / RLS | `EXPLAIN ANALYZE` on a seeded dataset shows index scans; zero bare `auth.uid()`; every policy has `TO` |
+| 11 | Service client makes RLS decorative | Unified work surface / capabilities (+ Door corrections for the token) | Written justification per `getServiceClient()` call site; `offlineSync` requires a signed token |
+| 12 | Refunded ticket admitted with no flag | Door corrections | Refunded ticket admits **and** flags, online and offline |
+| 13 | Service worker serves the old app | Design foundation (+ operational deploy freeze) | Fonts and tokens verified on a device with the previous SW installed; no auto-reload while scanning |
+| 14 | Token swap misses literals | Design foundation | Literal grep hits the agreed number; old accent returns zero |
+| 15 | Two design systems forever | Primitives adoption | Adoption count = page count; no page-named props; per-page screenshots at three breakpoints |
+| 16 | Responsive retrofit breaks mobile | Responsive layout (nav clearance + z-scale pulled into Design foundation) | Real tablet, portrait and landscape; no breakpoint shrinks an interactive element; modals above nav at every width |
+
+---
+
+## Ordering consequences
+
+Five sequencing constraints follow from the pitfalls above. These are the main contribution of this document to the roadmap.
+
+1. **Door and bar corrections come before Realtime.** Pitfall 4 is the reason: Realtime on the current clear-and-replace `cacheAttendees` converts a rare race into the normal case. The merge logic must exist first.
+2. **Bar correction (Pitfall 1) is the earliest item in the milestone.** It is live in production, it involves real money, the fix is small and self-contained, and it depends on nothing else.
+3. **The capability model and the RLS grants are one phase, not two.** A capability without a policy is a UI-only permission on a system whose repo is public. Splitting them creates a window in which the two disagree.
+4. **The nav-clearance and z-index extraction belongs to Design foundation, not to the responsive phase.** Six hard-coded magic paddings across four files is what makes the responsive pass expensive; extracting them is a prerequisite, not part of the work.
+5. **Design work and door work must not interleave on the scanner.** The scanner is the one surface where a visual regression is a safety issue. Migrate it last within the design phases, and only after its behavioural fixes have shipped and been used at a real night.
+
+One cross-cutting note on capacity: this milestone changes the visual system, the routing, the permission model, the data access layer and the door's concurrency model at once. Each of the five has a phase that can be verified independently, but only three of them can be verified *at a desk*. Realtime, the offline queue and the responsive touch targets all require a physical device in the intended conditions. Schedule that device time as work, not as a check at the end — it is the only place the door pitfalls will actually surface.
 
 ---
 
 ## Sources
 
-- Direct codebase analysis: `src/components/layout/MobileNav.tsx`, `src/lib/rbac/roles.ts`, `src/lib/supabase/middleware.ts`, `src/types/database.ts`, `src/app/layout.tsx`, `src/app/globals.css`, `supabase/migrations/20260225000000_phase3_referral.sql`, `src/app/(public)/events/[slug]/page.tsx`, `src/app/(members)/dashboard/page.tsx`
-- [Next.js Analytics Guide](https://nextjs.org/docs/app/guides/analytics)
-- [Next.js Production Checklist](https://nextjs.org/docs/app/guides/production-checklist)
-- [Common mistakes with the Next.js App Router - Vercel](https://vercel.com/blog/common-mistakes-with-the-next-js-app-router-and-how-to-fix-them)
-- [Framer Motion with Next.js Server Components](https://www.hemantasundaray.com/blog/use-framer-motion-with-nextjs-server-components)
-- [CSS vs Framer Motion performance comparison](https://blog.ryanaque.com/fuck-framer-motion-im-going-to-css-instead/)
-- [Bottom navigation bar guide 2025](https://blog.appmysite.com/bottom-navigation-bar-in-mobile-apps-heres-all-you-need-to-know/)
-- [Supabase RLS security dangers](https://dev.to/fabio_a26a4e58d4163919a53/supabase-security-the-hidden-dangers-of-rls-and-how-to-audit-your-api-29e9)
-- [Accessibility Audit Reports Guide 2025](https://testparty.ai/blog/accessibility-audit-reports-complete-guide-for-2025)
-- [Supabase Row Level Security docs](https://supabase.com/docs/guides/database/postgres/row-level-security)
+**Repo-verified (HIGH — read from the current tree on 2026-08-05):**
+- `src/lib/offline/checkin-store.ts`, `src/lib/offline/sync-manager.ts`
+- `src/app/api/tickets/checkin/route.ts`, `src/app/api/tickets/attendance/route.ts`, `src/app/api/membership/verify/route.ts`
+- `src/app/(admin)/admin/scanner/ScannerClient.tsx`
+- `src/app/(public)/events/[slug]/menu/actions.ts`, `src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx`, `src/app/(organizer)/organizer/events/actions.ts`
+- `src/lib/supabase/middleware.ts`, `src/lib/rbac/roles.ts`
+- `supabase/migrations/20260224_rbac_migration.sql`, `20260306100000_phase10_redemption.sql`, `20260307100000_drink_refund.sql`, `20260508000000_drink_token_active_state.sql`, `20260227200000_ticket_refunds.sql`
+- `src/app/sw.ts`, `next.config.ts`, `src/app/globals.css`, `src/app/layout.tsx`, `package.json`
+
+**Official documentation (HIGH):**
+- Supabase — RLS performance recommendations: the `(select auth.uid())` wrap, policy-column indexes, join minimisation, the `TO` clause, security-definer functions, with the measured improvements quoted above
+- Supabase — Realtime Postgres Changes: per-subscriber RLS authorisation, DELETE/RLS/`replica identity full` caveats, single-threaded throughput, Broadcast recommendation beyond ~3,000 subscribers
+- Supabase — Realtime troubleshooting index (heartbeats, `TIMED_OUT`, channel limits)
+- W3C WAI — Understanding SC 2.5.8 Target Size (Minimum): 24×24 CSS px, Level AA, and its five exceptions
+- Serwist — `@serwist/next` configuring reference (`reloadOnOnline`, `cacheOnNavigation`)
+
+**Community / issue trackers (MEDIUM — multiple independent reports in agreement):**
+- supabase-js #1732, realtime-js #274, supabase discussions #37002 and #5312, supabase-flutter #1012 — access token not refreshed for Realtime channels after offline or standby; channels do not recover without being removed and re-created
+- Service-worker stale-precache-after-deploy reports (chunk 404s from a previous build; network-first HTML as the fix)
+- OWASP Business Logic Abuse — Broken Access Control: missing server-side role checks on endpoints accepting any authenticated token
+- Design-token migration and idempotency-key practice write-ups (incremental adoption; retry vs duplicate distinction)
+
+**Explicitly not reused:** `.planning/codebase/CONCERNS.md` (2026-02-24). Its middleware role-check and PWA-wrapper entries were re-verified as false. Its `src/utils/qr.ts` entropy entry was re-verified as still true and is carried forward; the open-redirect entry is carried forward as an item to verify rather than as a finding.
+
+---
+*Pitfalls research for: design-system migration + permission refactor + per-resource RLS + Realtime-over-offline on a live events PWA*
+*Researched: 2026-08-05*
