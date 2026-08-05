@@ -3,11 +3,52 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { DOOR_HTTP } from "@/lib/door/outcome";
 import type {
+  DoorNotValidReason,
   DoorScanOutcomeKind,
+  DoorScanSource,
   DoorSubjectType,
 } from "@/lib/door/outcome";
 
-// GET — backward compatible: membership card view uses this
+/** The subject of every row this route writes. FIX-13: a thing, never a person. */
+const SUBJECT_TYPE = "membership" satisfies DoorSubjectType;
+
+/**
+ * The phone's reading of when it scanned, when it supplied one.
+ *
+ * A device clock is **evidence**, never authority: it is what lets
+ * classification tell a double read from two devices afterwards, and it is
+ * never what decides anything here. An unparseable value falls back to the
+ * server clock rather than rejecting the sync — refusing would strand a queued
+ * entry from an older bundle on a staff phone.
+ */
+function parseIsoInstant(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toISOString();
+}
+
+/** Which path produced the row. Same fallback reasoning as `scannedAt`. */
+function parseSource(value: unknown): DoorScanSource {
+  return value === "offline_sync" || value === "online" ? value : "online";
+}
+
+/** Absent means `"unknown"`, never a rejection — see `parseIsoInstant`. */
+function parseDeviceId(value: unknown): string {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : "unknown";
+}
+
+// GET — backward compatible: membership card view uses this.
+//
+// **Left exactly as it was, and that is a decision, not an oversight.** It
+// answers valid / not-valid for a membership code with no session and no rate
+// limit, over a code space generated with `Math.random()` (`src/utils/qr.ts:49`)
+// — a brute-force oracle. Both halves are known and deferred by name: RATE-01
+// (no rate limiting exists anywhere in this repository) and QR-01. This plan
+// neither fixes them silently nor pretends they are fixed, and it does not
+// widen this handler. The three-outcome contract below applies to the POST,
+// which is the door path; changing this GET's shape would break the membership
+// card view for no gain.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -68,7 +109,13 @@ export async function POST(request: Request) {
       );
     }
 
-    let body: { code?: string; partyId?: string };
+    let body: {
+      code?: string;
+      partyId?: string;
+      scannedAt?: string;
+      deviceId?: string;
+      source?: string;
+    };
     try {
       body = await request.json();
     } catch {
@@ -79,38 +126,192 @@ export async function POST(request: Request) {
     }
 
     const { code, partyId } = body;
+    const scannedAt = parseIsoInstant(body.scannedAt) ?? new Date().toISOString();
+    const deviceId = parseDeviceId(body.deviceId);
+    const source = parseSource(body.source);
 
-    if (!code || !partyId) {
+    const serviceClient = getServiceClient();
+    // Who is holding the phone. Server-derived from the session, never from the
+    // body — the service client below bypasses RLS, so every value it writes is
+    // either server-derived or explicitly validated above.
+    const operatorId = user.id;
+
+    /**
+     * Append one row to the night's record, before returning anything.
+     *
+     * FIX-11's review list reads `door_scan_events` after the night. Half the
+     * door's scans are membership codes, so a list built only from tickets is
+     * empty for the wrong reason.
+     *
+     * `cause` is NULL on every row written here: classification happens
+     * afterwards, over these rows, never at a phone held in front of a person
+     * (src/lib/door/outcome.ts:23-31).
+     *
+     * `token_fingerprint` is NULL and cannot be otherwise. A membership QR is a
+     * plain URL carrying the code (`src/utils/qr.ts:33-43`) — there is no
+     * signature to digest. The proof on this path is therefore **weaker** than
+     * on the ticket path, where the token is HMAC-signed: possession of the
+     * string is the only claim, and the code itself is generated with
+     * `Math.random()` (`qr.ts:49`, open defect QR-01). That is a fact to carry
+     * in the record, not to paper over with a digest of something unsigned.
+     *
+     * Returns false on failure. The caller must not answer `recorded` on a
+     * false: with no error tracking in this project, a log line is a place
+     * nobody looks, and an entry the queue believes was recorded is an entry
+     * that disappears.
+     */
+    async function recordScanEvent(args: {
+      partyId: string;
+      eventId: string;
+      subjectUserId: string | null;
+      outcome: DoorScanOutcomeKind;
+    }): Promise<boolean> {
+      const { error } = await serviceClient.from("door_scan_events").insert({
+        party_id: args.partyId,
+        event_id: args.eventId,
+        subject_type: SUBJECT_TYPE,
+        ticket_id: null,
+        guest_entry_id: null,
+        subject_user_id: args.subjectUserId,
+        outcome: args.outcome,
+        cause: null,
+        scanned_at: scannedAt,
+        operator_id: operatorId,
+        device_id: deviceId,
+        source,
+        token_fingerprint: null,
+      });
+      if (error) {
+        console.error(
+          "[membership-verify] door_scan_events insert failed:",
+          error
+        );
+        return false;
+      }
+      return true;
+    }
+
+    // A scan with no party selected has no meaning, and it is the one outcome
+    // that **cannot** be recorded: `door_scan_events.party_id` is NOT NULL
+    // (migration :64-66) because the party is the unit of the review list.
+    // There is no night to file this under. Permanent, so 422 — the queue
+    // retires it instead of retrying it on every `online` event forever.
+    if (!partyId || typeof partyId !== "string") {
       return NextResponse.json(
-        { valid: false, error: "code and partyId are required" },
-        { status: 400 }
+        {
+          valid: false,
+          error: "code and partyId are required",
+          outcome: "not_valid" satisfies DoorScanOutcomeKind,
+          reason: "no_party_selected" satisfies DoorNotValidReason,
+        },
+        { status: DOOR_HTTP.not_valid }
       );
     }
 
-    const serviceClient = getServiceClient();
-
-    // Look up member by membership_code
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("id, full_name, membership_code")
-      .eq("membership_code", code)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ valid: false, status: "not_found" });
-    }
-
-    // Resolve event_id from event_parties
-    const { data: party } = await serviceClient
+    // Resolve the party first: everything below needs a night to file itself
+    // under. Both branches of the `.single()` are handled — "does not exist"
+    // and "there are two" are different errors, and the second is corruption.
+    const { data: party, error: partyError } = await serviceClient
       .from("event_parties")
       .select("id, event_id")
       .eq("id", partyId)
       .single();
 
+    if (partyError && partyError.code !== "PGRST116") {
+      console.error("[membership-verify] party lookup failed:", partyError);
+      return NextResponse.json(
+        { valid: false, error: "Party lookup failed" },
+        { status: 500 }
+      );
+    }
+
+    // Unknown party — the second outcome that cannot be recorded, this time
+    // because `party_id` is a foreign key: there is no `event_parties` row to
+    // point at. Permanent, so 422 rather than the old 404 that the queue
+    // retried forever.
     if (!party) {
       return NextResponse.json(
-        { valid: false, error: "Party not found" },
-        { status: 404 }
+        {
+          valid: false,
+          error: "Party not found",
+          outcome: "not_valid" satisfies DoorScanOutcomeKind,
+          reason: "wrong_night" satisfies DoorNotValidReason,
+        },
+        { status: DOOR_HTTP.not_valid }
+      );
+    }
+
+    // Look up the member by membership_code. Both `.single()` branches again.
+    //
+    // An absent or blank `code` falls through to the same place as a code that
+    // resolves to nobody, and for the same reason: a code that is not there
+    // cannot be found. It is deliberately **not** reported as
+    // `no_party_selected` — that reason sends a member of staff to the party
+    // selector when the fault is an empty scan, and a message that names the
+    // wrong cause is the failure mode `meta-gates.md` calls out by name.
+    let profile: {
+      id: string;
+      full_name: string;
+      membership_code: string;
+    } | null = null;
+
+    if (typeof code === "string" && code.trim() !== "") {
+      const { data, error: profileError } = await serviceClient
+        .from("profiles")
+        .select("id, full_name, membership_code")
+        .eq("membership_code", code)
+        .single();
+
+      if (profileError && profileError.code !== "PGRST116") {
+        // Two profiles on one membership_code is data corruption, not a miss,
+        // and it gets its own log category so the two never read alike.
+        console.error(
+          "[membership-verify] profile lookup failed (not a miss):",
+          profileError
+        );
+        return NextResponse.json(
+          { valid: false, error: "Member lookup failed" },
+          { status: 500 }
+        );
+      }
+
+      profile = data;
+    }
+
+    // **The single most consequential line in this file.**
+    //
+    // This branch used to return HTTP 200 with `{valid:false,
+    // status:"not_found"}`. `src/lib/offline/sync-manager.ts:52` marks a
+    // membership entry synced on `res.ok`, which was `true` — so a scan the
+    // server could never accept was silently deleted from the queue and
+    // vanished. 422 makes it classifiable as permanently failed: the entry is
+    // retired *visibly* instead of disappearing, which is what FIX-08's "so the
+    // pending count means something" refers to.
+    //
+    // The party is known here, so unlike the two branches above this one **is**
+    // recordable: the row carries `subject_user_id: null`, which says a code was
+    // read at this door and resolved to nobody.
+    if (!profile) {
+      const recorded = await recordScanEvent({
+        partyId: party.id,
+        eventId: party.event_id,
+        subjectUserId: null,
+        outcome: "not_valid",
+      });
+      if (!recorded) {
+        return NextResponse.json(
+          { valid: false, error: "Failed to record scan" },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        {
+          valid: false,
+          status: "not_found",
+          outcome: "not_valid" satisfies DoorScanOutcomeKind,
+          reason: "unknown_code" satisfies DoorNotValidReason,
+        },
+        { status: DOOR_HTTP.not_valid }
       );
     }
 
@@ -140,7 +341,7 @@ export async function POST(request: Request) {
         party_id: party.id,
         user_id: profile.id,
         checked_in_at: new Date().toISOString(),
-        checked_in_by: user.id,
+        checked_in_by: operatorId,
       })
       .select("id, checked_in_at")
       .single();
@@ -173,18 +374,25 @@ export async function POST(request: Request) {
         // join. `checked_in_by` is nullable and the undo path sets it to NULL,
         // so "who" is genuinely unknowable on some rows: `by` is then null,
         // which says *not recorded*, never *nobody*.
-        const operatorId = (existing?.checked_in_by as string | null) ?? null;
+        //
+        // Named `firstOperatorId` and not `operatorId`: the outer `operatorId`
+        // is whoever is holding the phone **now**, this one is whoever recorded
+        // the entry the **first** time, and on a genuine repeat they are
+        // routinely two different people at two different doors. Shadowing the
+        // name would make the response's own meaning ambiguous at a glance.
+        const firstOperatorId =
+          (existing?.checked_in_by as string | null) ?? null;
         let operatorLabel: string | null = null;
-        if (operatorId) {
+        if (firstOperatorId) {
           const { data: operators } = await serviceClient
             .from("profiles")
             .select("id, full_name")
-            .in("id", [operatorId]);
+            .in("id", [firstOperatorId]);
           const operatorMap = new Map<string, string>();
           for (const p of operators ?? []) {
             operatorMap.set(p.id as string, (p.full_name as string) ?? "Unknown");
           }
-          operatorLabel = operatorMap.get(operatorId) ?? "Unknown";
+          operatorLabel = operatorMap.get(firstOperatorId) ?? "Unknown";
         }
 
         // The response is **additive**, and the two halves disagree on purpose.
@@ -205,6 +413,23 @@ export async function POST(request: Request) {
         // is NULL it stays null: substituting the current clock would state
         // this read as the first record, which is exactly what
         // src/lib/door/outcome.ts:105 forbids.
+        const eventRecorded = await recordScanEvent({
+          partyId: party.id,
+          eventId: party.event_id,
+          subjectUserId: profile.id,
+          outcome: "already_recorded",
+        });
+        if (!eventRecorded) {
+          // A conflict acknowledged and then not persisted is the evidence of a
+          // second read destroyed at the moment it arrived — the defect this
+          // phase exists to fix. Return a retryable failure so the queue keeps
+          // the entry, rather than a 409 the sync manager drains.
+          return NextResponse.json(
+            { valid: false, error: "Failed to record scan" },
+            { status: 500 }
+          );
+        }
+
         return NextResponse.json(
           {
             valid: true,
@@ -217,7 +442,9 @@ export async function POST(request: Request) {
               id: profile.id,
             },
             at: existing?.checked_in_at || null,
-            by: operatorId ? { operatorId, operatorLabel } : null,
+            by: firstOperatorId
+              ? { operatorId: firstOperatorId, operatorLabel }
+              : null,
           },
           { status: DOOR_HTTP.already_recorded }
         );
@@ -237,13 +464,44 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
-      valid: true,
-      status: "checked_in",
-      member_name: profile.full_name,
-      membership_code: profile.membership_code,
-      attendance_id: attendance.id,
+    // The attendance row is the presence; this row is the *record of the scan*,
+    // and the review list is built from the second, not the first. Written
+    // before the answer goes back, for the same reason as the conflict branch:
+    // an admission the queue believes was recorded end to end, but which left
+    // no trace, is an admission nobody can ever review.
+    const scanRecorded = await recordScanEvent({
+      partyId: party.id,
+      eventId: party.event_id,
+      subjectUserId: profile.id,
+      outcome: "recorded",
     });
+    if (!scanRecorded) {
+      // Deliberately not `recorded`. The presence is already written, so a
+      // retry lands on the 23505 branch and answers `already_recorded` — which
+      // is true, and which the queue can drain. Answering `recorded` here would
+      // claim a record that does not exist.
+      return NextResponse.json(
+        { valid: false, error: "Failed to record scan" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        valid: true,
+        status: "checked_in",
+        member_name: profile.full_name,
+        membership_code: profile.membership_code,
+        attendance_id: attendance.id,
+        outcome: "recorded" satisfies DoorScanOutcomeKind,
+        subject: {
+          type: SUBJECT_TYPE,
+          id: profile.id,
+        },
+        at: attendance.checked_in_at,
+      },
+      { status: DOOR_HTTP.recorded }
+    );
   } catch (error) {
     console.error("Membership verify error:", error);
     return NextResponse.json(
