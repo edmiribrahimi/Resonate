@@ -89,25 +89,82 @@ export async function refundTransactionAction(
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
-  // Invalidate ticket if this transaction is a ticket purchase
+  // Invalidate ticket if this transaction is a ticket purchase.
+  // party_id and event_id are selected because they feed the refund's evidence:
+  // after the delete below they cannot be recovered from anywhere.
   const { data: ticket } = await supabase
     .from("tickets")
-    .select("id, amount_paid, user_id")
+    .select("id, amount_paid, user_id, party_id, event_id")
     .eq("sumup_transaction_code", transactionCode)
     .maybeSingle();
 
   if (ticket) {
-    await supabase.from("ticket_refunds").insert({
-      ticket_id: ticket.id,
-      requested_by: ticket.user_id,
-      processed_by: ticket.user_id,
-      amount: ticket.amount_paid,
-      status: "approved",
-      sumup_status: "completed",
-      type: "admin_initiated",
-      processed_at: now,
-    });
-    await supabase.from("tickets").delete().eq("id", ticket.id);
+    // The four refunded_* columns are written HERE, before the delete, because
+    // after it these values are unreadable -- the ticket row is gone and the
+    // ticket_id foreign key has been set to NULL by the database
+    // (20260805120000_door_scan_events.sql:184-186). refunded_ticket_id is the
+    // durable copy the door and the finance figures read.
+    const { error: evidenceError } = await supabase
+      .from("ticket_refunds")
+      .insert({
+        ticket_id: ticket.id,
+        requested_by: ticket.user_id,
+        processed_by: ticket.user_id,
+        amount: ticket.amount_paid,
+        status: "approved",
+        sumup_status: "completed",
+        type: "admin_initiated",
+        processed_at: now,
+        refunded_ticket_id: ticket.id,
+        // NULL is legitimate for an event-level ticket. Not coerced.
+        refunded_party_id: ticket.party_id,
+        refunded_event_id: ticket.event_id,
+        // Same instant as processed_at, from one variable, so they cannot
+        // drift.
+        refunded_at: now,
+      });
+
+    // refundTransaction above already moved the money and that is not reversed
+    // here -- a payment state moves forward only. What this stops is deleting
+    // the ticket on top of a lost record, which would leave the refund with no
+    // evidence and no ticket to read it from.
+    if (evidenceError) {
+      console.error(
+        "[finance/refund] refund record insert failed AFTER the SumUp refund -- ticket deliberately left in place",
+        {
+          transactionCode,
+          ticketId: ticket.id,
+          code: evidenceError.code,
+          message: evidenceError.message,
+        }
+      );
+      throw new Error(
+        "The money was returned through SumUp but the refund could not be recorded. Do not retry -- the refund would be attempted a second time. Record it manually and remove the ticket."
+      );
+    }
+
+    // Until now this delete's error was discarded, so a blocked delete returned
+    // { success: true } to the dialog while the ticket kept admitting its
+    // holder. The Supabase client returns the error, it never throws it.
+    const { error: deleteError } = await supabase
+      .from("tickets")
+      .delete()
+      .eq("id", ticket.id);
+
+    if (deleteError) {
+      console.error(
+        "[finance/refund] ticket delete failed -- money returned, ticket still valid",
+        {
+          transactionCode,
+          ticketId: ticket.id,
+          code: deleteError.code,
+          message: deleteError.message,
+        }
+      );
+      throw new Error(
+        `The money was returned and the refund recorded, but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
+      );
+    }
   }
 
   // Invalidate drink tokens if this transaction is a drink order
