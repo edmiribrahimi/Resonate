@@ -1068,31 +1068,44 @@ const cause = new Date(refund.refunded_at) < nightStart
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED 2026-08-05)
+
+> All six were closed during the planning run, before the planner was spawned.
+> Questions 1–3 were answered by the project owner; 2 and 3 were then **verified
+> against the code** rather than taken on trust, and that verification found a
+> defect no requirement had named (an Event Pass is refused at the door). Questions
+> 4–6 were settled by adopting the recommendation below. Each resolution is recorded
+> inline. Nothing in this section is still open.
 
 1. **Option A or Option B for the refunded ticket?** *(blocking — it changes the phase's size)*
    - Known: all three refund paths delete the ticket; the cascade destroys the audit row; 63 `from("tickets")` call sites across 22 files.
    - Unclear: whether the owner wants the ticket lifecycle restructured now.
-   - Recommendation: **Option B now, Option A deferred.** Take it to `/gsd:discuss-phase` — it is Critical (money **and** the door), so `CLAUDE.md`'s *misura due volte* applies.
+   - Recommendation: **Option B now, Option A deferred.** It is Critical (money **and** the door), so `CLAUDE.md`'s *misura due volte* applies.
+   - **RESOLVED — the owner chose Option B.** Option A is recorded as deferred *by decision*, not by omission: the 22-file sweep is not attempted in this phase, and no plan may drift into it partially.
 
 2. **Is a double bill one event or two?**
    - Known: `attendances` is unique per `(event_id, user_id)`.
    - Unclear: the modelling choice in practice.
    - Recommendation: answer before the composite-key work, because the classifier rule depends on it.
+   - **RESOLVED — one event with two parties.** Verified against the schema: `supabase/schema.sql:232-238` defines `attendances` as `unique(event_id, user_id)` with **no `party_id` column at all**, and no migration ever added one. A member checking in at both parties therefore collides server-side, not merely in the offline queue. FIX-07 is unsatisfiable until `attendances` distinguishes the party. Planned in `31-04`.
 
 3. **Do event-level tickets exist?** *(see A4)* — a one-line answer that decides whether N4 is a fix or a note.
+   - **RESOLVED — they exist, and it is a fix, not a note.** A buyer takes a single party or the whole event. Verified: `20260226300000_multi_sub_events.sql:54` makes `tickets.party_id` nullable and `:65` adds `tickets_event_user_master_unique`; `src/app/(public)/events/[slug]/page.tsx:275-282` sells the event-level tiers; `src/app/api/tickets/[id]/wallet/route.ts:66` labels them "Event Pass". **The door refuses them today:** `src/app/api/tickets/checkin/route.ts:63` tests `ticket.party_id !== partyId`, which is always true for `NULL`, yielding `wrong_event`. The correct analog is already in this repo at `src/app/api/tickets/attendance/route.ts:120`. Both sides need it — `attendance/route.ts:73` filters `.eq("party_id", party.id)`, so an Event Pass never reaches the offline cache either. Planned in `31-06` and `31-07`.
 
 4. **Where does the review list live?**
    - Known: the organizer tree already has `events/[id]/{sales,tickets,guest-list,analytics}`; Phase 34 collapses the duplicated trees.
    - Recommendation: put it under the **organizer** tree beside the other per-event surfaces and let Phase 34 move it with everything else. Do not create a new top-level address that Phase 34 will have to redirect.
+   - **RESOLVED — organizer tree, recommendation adopted.** Planned in `31-12`.
 
 5. **One release or two for the outcome contract?**
    - Known: `skipWaiting: true` + `clientsClaim: true` means a staff device can run the old bundle against the new API for one session.
    - Recommendation: make the response additive for one release (keep the legacy fields alongside `outcome`), or update the door device before the night and write it in the runbook. Decide explicitly — do not leave it to chance on a night.
+   - **RESOLVED — additive for one release.** The legacy response fields stay alongside `outcome`. A hard cutover was rejected: `skipWaiting: true` + `clientsClaim: true` means a staff phone can run the old bundle against the new API for one session, and that session is a night at the door.
 
 6. **Does the review list need a notification path?**
    - Known: FIX-11 says it "raises no notification and asks for no action". There is no error tracking (OBS-01, deferred).
    - Recommendation: none this phase. The requirement is explicit, and adding one would contradict it.
+   - **RESOLVED — no notification path.** FIX-11 states the list raises no notification and asks for no action; adding one would contradict the requirement it is meant to satisfy.
 
 ---
 
