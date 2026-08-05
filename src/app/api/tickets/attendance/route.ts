@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getPostHogServer } from "@/lib/posthog/server";
-import { type DoorSubjectType } from "@/lib/door/outcome";
+import {
+  DOOR_HTTP,
+  type DoorOutcome,
+  type DoorSubjectType,
+} from "@/lib/door/outcome";
 
 async function verifyOrganizerRole() {
   const supabase = await createClient();
@@ -72,6 +76,9 @@ const OPERATOR_NOT_RECORDED = "Not recorded";
 
 /** An operator id was recorded but no name resolves for it. Distinct from "not recorded" — the two are different statements. */
 const OPERATOR_UNKNOWN = "Unknown operator";
+
+/** The profile lookup itself failed. Distinct again: a lookup that failed is not a fact that was never written. */
+const OPERATOR_LOOKUP_FAILED = "Operator lookup failed";
 
 /**
  * A refunded ticket whose holder cannot be named without risking naming the
@@ -516,7 +523,7 @@ export async function GET(request: Request) {
 
 /**
  * POST handler for guest-list name-based check-in.
- * Updates guest_list_entries status to 'checked_in'.
+ * Updates guest_list_entries status to 'checked_in', and records when and by whom.
  */
 export async function POST(request: Request) {
   const auth = await verifyOrganizerRole();
@@ -547,39 +554,124 @@ export async function POST(request: Request) {
 
   const serviceClient = getServiceClient();
 
-  // Verify the entry exists and is not already checked in
-  const { data: entry, error: fetchError } = await serviceClient
+  // Verify the entry exists and is not already checked in. `maybeSingle`, not
+  // `single`: "the row is not there" and "the query failed" are different
+  // failures and a 404 for the second one sends the door looking for the wrong
+  // problem.
+  const { data: entryData, error: fetchError } = await serviceClient
     .from("guest_list_entries")
-    .select("id, status, first_name, last_name")
+    .select(
+      "id, status, first_name, last_name, checked_in_at, checked_in_by, updated_at"
+    )
     .eq("id", guestListEntryId)
-    .single();
+    .maybeSingle();
 
-  if (fetchError || !entry) {
+  if (fetchError) {
+    console.error("[attendance] guest_list_entries read failed", {
+      guestListEntryId,
+      message: fetchError.message,
+    });
+    return NextResponse.json(
+      { error: "Could not read the guest list entry" },
+      { status: 500 }
+    );
+  }
+
+  if (!entryData) {
     return NextResponse.json(
       { error: "Guest list entry not found" },
       { status: 404 }
     );
   }
 
+  const entry = entryData as GuestRow & { updated_at: string };
+
   if (entry.status === "checked_in") {
+    // The label is prose; `operatorId` below is the fact. A lookup that failed
+    // and a fact that was never written are different statements and get
+    // different words.
+    let label = OPERATOR_NOT_RECORDED;
+    if (entry.checked_in_by) {
+      const { data: operator, error: operatorError } = await serviceClient
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", entry.checked_in_by)
+        .maybeSingle();
+      if (operatorError) {
+        console.error("[attendance] operator lookup failed", {
+          guestListEntryId,
+          message: operatorError.message,
+        });
+        label = OPERATOR_LOOKUP_FAILED;
+      } else {
+        label =
+          (operator as { full_name: string | null } | null)?.full_name ??
+          OPERATOR_UNKNOWN;
+      }
+    }
+
+    // Typed against the shared contract, so the three outcome strings live in
+    // one place and a divergence is a build error rather than a night at the
+    // door. `already_recorded` states a fact and carries no cause: the
+    // classification happens afterwards, over `door_scan_events`, never here.
+    const alreadyRecorded: Extract<
+      DoorOutcome,
+      { outcome: "already_recorded" }
+    > = {
+      outcome: "already_recorded",
+      subject: {
+        type: "guest_list_entry",
+        id: entry.id,
+        label: `${entry.first_name} ${entry.last_name}`,
+      },
+      // `checked_in_at` is NULL on a row checked in before 2026-08-05, when the
+      // column did not exist. `updated_at` is that row's last change, and this
+      // route is what wrote it — an approximation for legacy rows only, never
+      // the clock of the current read, which would claim the entry was recorded
+      // just now.
+      at: entry.checked_in_at ?? entry.updated_at,
+      by: {
+        // Empty means no operator was ever recorded, which the label says in
+        // words. It is not a placeholder identifier.
+        operatorId: entry.checked_in_by ?? "",
+        operatorLabel: label,
+      },
+    };
+
+    // The legacy `error` / `alreadyCheckedIn` fields stay: a staff device can
+    // run the old bundle against this API for one session, and that session is
+    // a night at the door. The status was already 409 and is now read from the
+    // contract's table instead of being written out again.
     return NextResponse.json(
-      { error: "Guest already checked in", alreadyCheckedIn: true },
-      { status: 409 }
+      {
+        ...alreadyRecorded,
+        error: "Guest already checked in",
+        alreadyCheckedIn: true,
+      },
+      { status: DOOR_HTTP.already_recorded }
     );
   }
 
-  // Update status to checked_in
+  // Update status to checked_in, and record the two facts the third outcome
+  // promises: when, and who.
+  const now = new Date().toISOString();
   const { error: updateError } = await serviceClient
     .from("guest_list_entries")
     .update({
       status: "checked_in",
-      updated_at: new Date().toISOString(),
+      checked_in_at: now,
+      checked_in_by: auth.user.id,
+      updated_at: now,
     })
     .eq("id", guestListEntryId);
 
   if (updateError) {
+    console.error("[attendance] guest check-in write failed", {
+      guestListEntryId,
+      message: updateError.message,
+    });
     return NextResponse.json(
-      { error: "Failed to check in guest" },
+      { error: "Failed to record the guest check-in" },
       { status: 500 }
     );
   }
@@ -596,5 +688,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     name: `${entry.first_name} ${entry.last_name}`,
+    checkedInAt: now,
   });
 }
