@@ -139,7 +139,7 @@ export async function approveRefund(refundId: string) {
     // delete (20260805120000_door_scan_events.sql:184-186); the second is not a
     // foreign key at all and is the durable copy the door reads to admit a
     // refunded holder, and the finance figures read to count the refund.
-    await serviceClient
+    const { error: evidenceError } = await serviceClient
       .from("ticket_refunds")
       .update({
         status: "approved",
@@ -157,10 +157,47 @@ export async function approveRefund(refundId: string) {
       })
       .eq("id", refundId);
 
-    await serviceClient
+    // If the evidence did not land, the ticket must not be deleted: deleting it
+    // now would destroy the only place those values could still be read from.
+    // No money moved on this branch, so retrying is safe.
+    if (evidenceError) {
+      console.error(
+        "[refund/approve/free] refund evidence write failed -- ticket deliberately left in place",
+        {
+          refundId,
+          ticketId: ticket.id,
+          code: evidenceError.code,
+          message: evidenceError.message,
+        }
+      );
+      throw new Error(
+        "The refund could not be recorded, so the ticket was left valid on purpose. Nothing changed -- you can retry."
+      );
+    }
+
+    const { error: deleteError } = await serviceClient
       .from("tickets")
       .delete()
       .eq("id", ticket.id);
+
+    // A blocked delete used to be invisible: the Supabase client returns the
+    // error rather than throwing, this branch discarded it, and the action
+    // returned success while the ticket still admitted its holder at the door.
+    // Money and access disagreeing is the failure this check exists to stop.
+    if (deleteError) {
+      console.error(
+        "[refund/approve/free] ticket delete failed -- refund is approved but the ticket is still valid",
+        {
+          refundId,
+          ticketId: ticket.id,
+          code: deleteError.code,
+          message: deleteError.message,
+        }
+      );
+      throw new Error(
+        `The refund was recorded but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
+      );
+    }
 
     revalidatePath("/events");
     revalidatePath("/organizer/events");
@@ -191,7 +228,7 @@ export async function approveRefund(refundId: string) {
   // because after it these values are unreadable. See the note in the free
   // branch above for why refunded_ticket_id is not a duplicate of ticket_id.
   const processedAt = new Date().toISOString();
-  await serviceClient
+  const { error: evidenceError } = await serviceClient
     .from("ticket_refunds")
     .update({
       status: "approved",
@@ -206,11 +243,48 @@ export async function approveRefund(refundId: string) {
     })
     .eq("id", refundId);
 
+  // The money already left through SumUp above, and that is not reversed here:
+  // a payment state moves forward only (meta-gates.md, monotone guards). What
+  // must not happen is deleting the ticket on top of a lost record -- that
+  // would leave a refund with no evidence and no ticket.
+  if (evidenceError) {
+    console.error(
+      "[refund/approve/paid] refund evidence write failed AFTER the SumUp refund -- ticket deliberately left in place",
+      {
+        refundId,
+        ticketId: ticket.id,
+        code: evidenceError.code,
+        message: evidenceError.message,
+      }
+    );
+    throw new Error(
+      "The money was returned through SumUp but the refund record could not be updated. Do not retry -- the refund would be attempted a second time. Fix the refund record and remove the ticket manually."
+    );
+  }
+
   // Delete the ticket
-  await serviceClient
+  const { error: deleteError } = await serviceClient
     .from("tickets")
     .delete()
     .eq("id", ticket.id);
+
+  // Same silent failure as the free branch, with money already moved: without
+  // this check the organizer saw a successful refund while the holder kept a
+  // ticket that still scans.
+  if (deleteError) {
+    console.error(
+      "[refund/approve/paid] ticket delete failed -- money returned, ticket still valid",
+      {
+        refundId,
+        ticketId: ticket.id,
+        code: deleteError.code,
+        message: deleteError.message,
+      }
+    );
+    throw new Error(
+      `The money was returned and the refund recorded, but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
+    );
+  }
 
   // Fire-and-forget: send refund approved email
   (async () => {
@@ -405,7 +479,7 @@ export async function adminRefund(ticketId: string, reason?: string) {
   // because after it these values are unreadable. See the note in approveRefund
   // for why refunded_ticket_id is not a duplicate of ticket_id.
   const processedAt = new Date().toISOString();
-  await serviceClient
+  const { error: evidenceError } = await serviceClient
     .from("ticket_refunds")
     .insert({
       ticket_id: ticketId,
@@ -424,11 +498,42 @@ export async function adminRefund(ticketId: string, reason?: string) {
       refunded_at: processedAt,
     });
 
+  // The SumUp refund above already moved the money, and this path has no
+  // pending-status guard to stop a second attempt -- so the message says not to
+  // retry rather than inviting one.
+  if (evidenceError) {
+    console.error(
+      "[refund/admin] refund record insert failed AFTER the SumUp refund -- ticket deliberately left in place",
+      {
+        ticketId,
+        code: evidenceError.code,
+        message: evidenceError.message,
+      }
+    );
+    throw new Error(
+      "The money was returned through SumUp but the refund could not be recorded. Do not retry -- the refund would be attempted a second time. Record it manually and remove the ticket."
+    );
+  }
+
   // Delete the ticket
-  await serviceClient
+  const { error: deleteError } = await serviceClient
     .from("tickets")
     .delete()
     .eq("id", ticketId);
+
+  if (deleteError) {
+    console.error(
+      "[refund/admin] ticket delete failed -- money returned, ticket still valid",
+      {
+        ticketId,
+        code: deleteError.code,
+        message: deleteError.message,
+      }
+    );
+    throw new Error(
+      `The money was returned and the refund recorded, but the ticket could NOT be removed (${deleteError.code ?? "unknown error"}): it is still valid at the door. Do not retry -- remove the ticket manually and tell the door.`
+    );
+  }
 
   revalidatePath("/events");
   revalidatePath("/organizer/events");
