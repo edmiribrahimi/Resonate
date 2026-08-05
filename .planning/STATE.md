@@ -2,13 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: ready_to_plan
-last_updated: "2026-08-05T00:00:00.000Z"
-last_activity: 2026-08-05
+status: executing
+stopped_at: v1.5 roadmap created (phases 31–42), traceability filled
+last_updated: "2026-08-05T19:35:21.817Z"
+last_activity: 2026-08-05 -- Phase 31 planning complete
 progress:
   total_phases: 12
   completed_phases: 0
-  total_plans: 0
+  total_plans: 13
   completed_plans: 0
   percent: 0
 ---
@@ -29,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 Phase: 31 of 12 phases (31–42) — Live Defects at the Door and the Bar
 Plan: — (not planned yet)
-Status: Ready to plan
-Last activity: 2026-08-05 — v1.5 roadmap created, 57/57 requirements mapped
+Status: Ready to execute
+Last activity: 2026-08-05 -- Phase 31 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
