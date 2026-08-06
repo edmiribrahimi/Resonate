@@ -269,8 +269,15 @@ export function splitCodeAndComments(source) {
  * tie this check to a build step, and — the reason that actually decides it —
  * would make the mutation proof impossible to run: a deliberately broken
  * `keys.ts` must still be readable by the thing that is supposed to catch it.
+ *
+ * Exported so that a mutation proof can assert its mutation was applied **using
+ * this reader**, not a second one. `ai-engineering.md`'s *prova per mutazione*
+ * gate asks for the mutation to be verified before its result is believed, and
+ * the only assertion worth having is that the mutation is visible to the eyes
+ * that are supposed to catch it. A separate grep can agree with the file and
+ * still disagree with the parser.
  */
-function readCapObject(keysPath) {
+export function readCapObject(keysPath) {
   if (!existsSync(keysPath)) {
     return { entries: [], reason: `${KEYS_FILE} does not exist` };
   }
