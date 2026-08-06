@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
-stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
-last_updated: "2026-08-06T12:34:36.997Z"
+status: ready_to_plan
+stopped_at: Phase 32 complete (11/11) — ready to discuss Phase 33
+last_updated: 2026-08-06T18:33:45.193Z
 last_activity: 2026-08-06 -- Phase 32 execution started
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 24
-  completed_plans: 13
+  completed_plans: 88
   percent: 8
 ---
 
@@ -24,20 +24,20 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 32 — capability-model-in-the-database
+**Current Focus:** Phase 33 — server data access layer
 
 ## Current Position
 
-Phase: 32 (capability-model-in-the-database) — EXECUTING
-Plan: 1 of 11
-Status: Executing Phase 32
+Phase: 33
+Plan: Not started
+Status: Ready to plan
         `gsd/phase-32-capability-model-in-the-database`, which forks the phase 31
         branch. Plan-checker: VERIFICATION PASSED, 0 blockers, 2 warnings — both
         closed before execution.
         Only waves 1 and 6 parallelise; the rest is genuinely sequential, because
         the baseline must be captured and committed **before the first migration
         file exists**. A baseline taken after the change is not a baseline.
-Last activity: 2026-08-06 -- Phase 32 execution started
+Last activity: 2026-08-06
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking

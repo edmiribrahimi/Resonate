@@ -44,12 +44,12 @@ Three rules override any requirement below that appears to contradict them:
 
 ### Capability Model
 
-- [ ] **CAP-01**: Every capability is defined once in the database and evaluated by the same function whether the caller is a page, a server action, or a row-level policy
+- [x] **CAP-01**: Every capability is defined once in the database and evaluated by the same function whether the caller is a page, a server action, or a row-level policy
 - [ ] **CAP-02**: A capability that exists in the database but is not assigned to a route fails the production build
-- [ ] **CAP-03**: Existing role behaviour is reproduced exactly by the new model — a master, an organizer and a member can do neither more nor less than before this milestone
-- [ ] **CAP-04**: A per-night grant takes effect immediately, without waiting for a session or token to refresh
+- [x] **CAP-03**: Existing role behaviour is reproduced exactly by the new model — a master, an organizer and a member can do neither more nor less than before this milestone
+- [x] **CAP-04**: A per-night grant takes effect immediately, without waiting for a session or token to refresh
 - [ ] **CAP-05**: No surface derives permission from a request header; identity comes from the session
-- [ ] **CAP-06**: Every existing row-level policy is reviewed for the performance pattern that re-evaluates the current user per row
+- [x] **CAP-06**: Every existing row-level policy is reviewed for the performance pattern that re-evaluates the current user per row
 
 ### Unified Work Surface
 
@@ -162,10 +162,10 @@ v1.4 (last phase: 30) — this milestone runs 31 → 42.
 | FIX-11 | Phase 31 | Pending |
 | FIX-12 | Phase 31 | Pending |
 | FIX-13 | Phase 31 | Pending |
-| CAP-01 | Phase 32 | Pending |
-| CAP-03 | Phase 32 | Pending |
-| CAP-04 | Phase 32 | Pending |
-| CAP-06 | Phase 32 | Pending |
+| CAP-01 | Phase 32 | Complete |
+| CAP-03 | Phase 32 | Complete |
+| CAP-04 | Phase 32 | Complete |
+| CAP-06 | Phase 32 | Complete |
 | CAP-05 | Phase 33 | Pending |
 | CAP-02 | Phase 34 | Pending |
 | STAFF-01 | Phase 34 | Pending |
