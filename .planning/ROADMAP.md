@@ -97,8 +97,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 31-10-PLAN.md — The sync manager stops trusting res.ok: done, retry, dead, blocked
-- [ ] 31-12-PLAN.md — The night's review list, classified by cause, empty on a normal night
+- [x] 31-10-PLAN.md — The sync manager stops trusting res.ok: done, retry, dead, blocked
+- [x] 31-12-PLAN.md — The night's review list, classified by cause, empty on a normal night
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -275,7 +275,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 31. Live Defects at the Door and the Bar | 9/13 | In Progress|  |
+| 31. Live Defects at the Door and the Bar | 11/13 | In Progress|  |
 | 32. Capability Model in the Database | 0/TBD | Not started | - |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
