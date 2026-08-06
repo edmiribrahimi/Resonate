@@ -74,12 +74,18 @@ expected: all three at once — the bounce to `/dashboard`; `x-capabilities-reso
 result: [pending]
 note: exercised in 32-08 with two asserted mutations and a `curl`; never through a real authenticated browser session.
 
+### 14. CR-01 follow-up — the browser-side failure notice
+steps: revoke `EXECUTE` on `public.my_access_context()`, reload `/admin/newsletter` as `master`, observe, then restore
+expected: an alert panel saying the list could not be loaded — **not** an empty list, and **not** "Newsletter not configured"
+result: [pending]
+note: the mutation proof covered the server action boundary and the server-rendered notice; `BroadcastList`'s browser-side effect path could not be covered because `useEffect` does not run during SSR. Full procedure in `32-REVIEW.md`.
+
 ## Summary
 
-total: 13
+total: 14
 passed: 0
 issues: 0
-pending: 13
+pending: 14
 skipped: 0
 blocked: 0
 
