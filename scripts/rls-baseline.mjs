@@ -739,11 +739,26 @@ async function readRowCounts(target, tables) {
  * primary keys. The md5 is what makes the artefact publishable: it identifies
  * a row set without naming a single row.
  *
- * `vacuous` is the honesty flag. `count = 0` fingerprints as `d41d8cd9…`, the
- * md5 of the empty string, and two empty sides agree for a reason that has
- * nothing to do with the policy. Pitfall 3 names that fingerprint as the
- * warning sign; marking it lets the comparator report how much of the matrix
- * proved nothing, instead of counting it as agreement.
+ * `vacuous` is the honesty flag, and what it means became sharper the moment a
+ * SEEDED target existed. `count = 0` fingerprints as `d41d8cd9…`, the md5 of
+ * the empty string, and Pitfall 3 names that fingerprint as the warning sign.
+ * But a zero has two very different causes:
+ *
+ *   - **the table holds no rows at all** — then two captures agree for a reason
+ *     that has nothing to do with any policy, and the cell proves nothing;
+ *   - **the table holds rows and the persona sees none of them** — then the
+ *     zero IS the policy, and it is one of the strongest cells in the matrix.
+ *
+ * On production the two coincide, because thirteen of the twenty tables are
+ * empty. On the container they never coincide, because the seed guarantees
+ * every table at least two rows. So `vacuous` is `count = 0` **and** the table
+ * globally empty — the same rule D-19 already applies to an `ok:0` in B3.
+ * Marking a real refusal as vacuous would discard exactly the evidence the
+ * container exists to produce.
+ *
+ * The global counts are read once with the privileged role and carried in the
+ * `table_row_counts` trailing key, so the judgement can be audited from the
+ * artefact instead of taken on trust.
  *
  * Reads cannot write, so all 20 tables are batched into ONE transaction per
  * persona and the request count stays at eleven. The one-probe-per-request
@@ -774,6 +789,10 @@ export async function captureB2(target, { phasePoint, targetName }) {
     );
   }
 
+  // The privileged, unfiltered row count per table — the ground truth that
+  // separates "the table was empty" from "the policy showed nothing".
+  const globalCounts = await readRowCounts(target, tables);
+
   const body = buildB2Body(tables);
   const rows = [];
 
@@ -797,7 +816,9 @@ export async function captureB2(target, { phasePoint, targetName }) {
         table: t.table,
         count: r.count,
         pk_md5: r.pk_md5,
-        vacuous: r.count === 0,
+        // A zero on a table that HOLDS rows is the policy refusing, and that is
+        // evidence. Only a zero on a globally empty table proves nothing.
+        vacuous: r.count === 0 && (globalCounts[t.table] ?? 0) === 0,
       });
     }
     say(`      ${label}: ${tables.length} tables read`);
@@ -827,6 +848,10 @@ export async function captureB2(target, { phasePoint, targetName }) {
         persona: label,
         resolved: personas.has(label),
       })),
+      // Why each vacuous cell is vacuous, auditable from the file itself.
+      table_row_counts: Object.fromEntries(
+        [...tables].map((t) => t.table).sort(compareStrings).map((name) => [name, globalCounts[name] ?? null])
+      ),
     },
   });
 
