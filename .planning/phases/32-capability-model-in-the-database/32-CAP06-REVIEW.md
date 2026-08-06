@@ -52,34 +52,34 @@ with `32-RESEARCH.md` § *(e)*.
 `occ pre` is the number of `auth.uid()` tokens in the policy as the **pre-phase**
 B1 dump renders it; `occ post-07` the same count after the capability cutover.
 
-| # | Table | Policy | `cmd` | occ pre | occ post-07 | Class | Transformation | Result |
+| # | Table | Policy | `cmd` | occ pre | occ post-07 | Class | Transformation | Result — measured on the applied post-09 database |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `artists` | `artists_delete_master` | DELETE | 1 | 0 | C | predicate replaced in `20260807010000` | — |
-| 2 | `artists` | `artists_insert_organizer` | INSERT | 1 | 0 | C | predicate replaced in `20260807010000` | — |
-| 3 | `artists` | `artists_update_organizer` | UPDATE | 1 | 0 | C | predicate replaced in `20260807010000` | — |
-| 4 | `attendances` | `attendances_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 5 | `drink_orders` | `drink_orders_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 6 | `drink_tokens` | `drink_tokens_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 7 | `event_media` | `event_media_delete_own` | DELETE | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 8 | `event_media` | `event_media_insert_member` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 9 | `event_media` | `event_media_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 10 | `event_parties` | `event_parties_delete_own` | DELETE | 2 | 2 | **D** | wrapped in `20260807020000` | — |
-| 11 | `event_parties` | `event_parties_update_own` | UPDATE | 2 | 2 | **D** | wrapped in `20260807020000` | — |
-| 12 | `events` | `events_delete_own` | DELETE | 1 | 1 | B | wrapped in `20260807020000` | — |
-| 13 | `events` | `events_select_published` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 14 | `events` | `events_update_own` | UPDATE | 1 | 1 | B | wrapped in `20260807020000` | — |
-| 15 | `pending_purchases` | `pending_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 16 | `profiles` | `profiles_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 17 | `profiles` | `profiles_update_own` | UPDATE | 4 | 4 | **E** | wrapped in `20260807020000` | — |
-| 18 | `rsvps` | `rsvps_delete_own` | DELETE | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 19 | `rsvps` | `rsvps_insert_approved` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 20 | `rsvps` | `rsvps_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 21 | `ticket_refunds` | `refunds_insert_own` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 22 | `ticket_refunds` | `refunds_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 23 | `tickets` | `tickets_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | — |
-| 24 | `venues` | `venues_delete_master` | DELETE | 1 | 0 | C | predicate replaced in `20260807010000` | — |
-| 25 | `venues` | `venues_insert_organizer` | INSERT | 1 | 0 | C | predicate replaced in `20260807010000` | — |
-| 26 | `venues` | `venues_update_organizer` | UPDATE | 1 | 0 | C | predicate replaced in `20260807010000` | — |
+| 1 | `artists` | `artists_delete_master` | DELETE | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
+| 2 | `artists` | `artists_insert_organizer` | INSERT | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
+| 3 | `artists` | `artists_update_organizer` | UPDATE | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
+| 4 | `attendances` | `attendances_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 5 | `drink_orders` | `drink_orders_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 6 | `drink_tokens` | `drink_tokens_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 7 | `event_media` | `event_media_delete_own` | DELETE | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 8 | `event_media` | `event_media_insert_member` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 9 | `event_media` | `event_media_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 10 | `event_parties` | `event_parties_delete_own` | DELETE | 2 | 2 | **D** | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 11 | `event_parties` | `event_parties_update_own` | UPDATE | 2 | 2 | **D** | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 12 | `events` | `events_delete_own` | DELETE | 1 | 1 | B | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 13 | `events` | `events_select_published` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 14 | `events` | `events_update_own` | UPDATE | 1 | 1 | B | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 15 | `pending_purchases` | `pending_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 16 | `profiles` | `profiles_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 17 | `profiles` | `profiles_update_own` | UPDATE | 4 | 4 | **E** | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 18 | `rsvps` | `rsvps_delete_own` | DELETE | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 19 | `rsvps` | `rsvps_insert_approved` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 20 | `rsvps` | `rsvps_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 21 | `ticket_refunds` | `refunds_insert_own` | INSERT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 22 | `ticket_refunds` | `refunds_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 23 | `tickets` | `tickets_select_own` | SELECT | 1 | 1 | A | wrapped in `20260807020000` | 0 bare, all wrapped; the advisor names it no longer |
+| 24 | `venues` | `venues_delete_master` | DELETE | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
+| 25 | `venues` | `venues_insert_organizer` | INSERT | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
+| 26 | `venues` | `venues_update_organizer` | UPDATE | 1 | 0 | C | predicate replaced in `20260807010000` | no bare call survived that migration; the advisor dropped it at post-07 |
 
 **The residual set is 20 policies and 25 occurrences.** That number is not a
 coincidence and it is not this plan's derivation: it is the advisor's own count
@@ -361,4 +361,309 @@ mean somebody removed it.
 
 ## Result
 
-*(filled in Task 3, after the migration is applied and both targets re-captured)*
+`20260807020000_wrap_auth_uid.sql` was applied to production through the
+Management API **migrations** endpoint — not `/database/query`, which runs SQL
+while leaving the project's migration history unaware.
+
+| File | Recorded as | HTTP |
+|---|---|---|
+| `20260807020000_wrap_auth_uid.sql` | `20260806161753 20260807020000_wrap_auth_uid` | **200** |
+
+The endpoint assigned its own version from the wall clock and ignored the one in
+the body — the fourth time this phase has observed it. History: **36** entries
+against **37** files; the gap is still the pre-existing, unregistered
+`20260508000000_drink_token_active_state.sql`, the owner's decision, and not
+repaired here.
+
+### The verdict
+
+```
+production   post-07 → post-09    (this migration alone)
+  ✓ B1 — 67 policies, every difference explained by the whitelist
+        47 unchanged · 20 by T1 · 0 by T2 · 0 by both · 0 unexplained
+  ✓ B2 — 220 cells compared          ✓ B3 — 660 cells compared
+  ✓ auth_rls_initplan 20 → 0, as stated
+  CAP-03: clean
+
+container    post-07 → post-09    (this migration alone)
+  ✓ B1 — 47 unchanged · 20 by T1 · 0 by T2 · 0 by both · 0 unexplained
+  ✓ B2 — 220 cells, 11/11 personas, vacuous 0/220
+  ✓ B3 — 660 cells, 641 carrying real evidence
+  CAP-03: clean
+
+production   pre → post-09        (the whole phase)
+  ✓ B1 — 8 unchanged · 14 by T1 · 39 by T2 · 6 by both · 0 unexplained
+  ✓ auth_rls_initplan 26 → 0, as stated
+  CAP-03: clean
+
+container    pre → post-09        (the whole phase)
+  ✓ B1 — 8 unchanged · 14 by T1 · 39 by T2 · 6 by both · 0 unexplained
+  CAP-03: clean
+```
+
+**`0 by T2` in the post-07 → post-09 window is the load-bearing zero**: this
+migration performed one transformation and only one. The 20 policies it names
+are exactly the 20 the review's residual set names.
+
+### Proof 1 — the advisor names none of the 26
+
+```
+                                                    pre   post-07  post-09
+auth_rls_initplan                                    26        20   absent
+multiple_permissive_policies                         46        46       46
+unindexed_foreign_keys                               35        35       35
+unused_index                                         12        13       13
+anon_security_definer_function_executable            14        14       14
+authenticated_security_definer_function_executable   14        15       15
+function_search_path_mutable                         13        13       13
+auth_leaked_password_protection                       1         1        1
+```
+
+**`auth_rls_initplan` is not `0` — it is gone**, and that is how the Supabase
+advisor says zero: it emits a row per lint only when that lint has at least one
+entity. This was measured on these two captures, not assumed, and the
+comparator was corrected to read an absent lint as a count of zero. Before the
+correction, `--expect-initplan=0` — the terminal state CAP-06 requires — could
+not be satisfied by any database.
+
+Entity list diffed **by hand**, post-07 → post-09:
+
+```
+auth_rls_initplan:  +0 / -20   (all of them)
+every other lint :  +0 / -0
+```
+
+And the 20 entities the advisor dropped are, character for character, the 20
+policies the migration wrapped — checked mechanically:
+
+```
+entities the advisor dropped  : 20
+policies the migration wrapped: 20
+the two sets are identical, character for character: true
+```
+
+**The two pinned lints did not move.** `multiple_permissive_policies` holding at
+46 is the independent proof that no `CREATE POLICY` landed *beside* an existing
+one instead of replacing it. `unused_index` is not pinned (README F3) and in
+fact did not move either.
+
+**`--allow-lint-move` was used only in the whole-phase window**, for
+`authenticated_security_definer_function_executable` 14 → 15. D-32-G says that
+flag is lint-wide, not entity-wide, so the entity list was diffed by hand:
+
+```
+added:   public.my_access_context      (plan 32-06's, not this plan's)
+removed: none
+```
+
+Exactly one entity, and it is the expected one. **In the window that isolates
+this migration, no allowance was needed at all.**
+
+### Proof 2 — `EXPLAIN` after, and a second-order effect that is reported rather than absorbed
+
+The four structural facts, before and after:
+
+| # | Fact | BEFORE | AFTER |
+|---|---|---|---|
+| 1 | `auth.uid()`'s body | **inlined into the per-row `Filter`** as the `COALESCE(NULLIF(current_setting(…)))::uuid` expression | **an `InitPlan`** (`InitPlan 2`, `6`, `30`, …), evaluated once per statement |
+| 2 | the correlated `EXISTS` on `event_parties` | `EXISTS(SubPlan n)`, `Index Cond: (e.id = event_parties.event_id)` | `ANY (event_parties.event_id = (hashed SubPlan n).col1)` — **changed shape** |
+| 3 | the uncorrelated scalar sub-select on `profiles` | `InitPlan` | `InitPlan` — unchanged |
+| 4 | `private.has_capability('staff.manage')` | `InitPlan` | `InitPlan` — unchanged |
+
+Fact 1 is the intended change and it landed. Facts 3 and 4 are unchanged.
+
+**Fact 2 changed more than the token did, and it must not be glossed.** The
+acceptance criterion asked that the `EXISTS` still be a per-row correlated
+subquery and **not** an `InitPlan`. It is **not** an `InitPlan` — the criterion's
+danger is absent. But it is no longer an `EXISTS(SubPlan n)` either: once
+`auth.uid()` became a statement-level constant, every remaining qualifier inside
+the subquery was uncorrelated, so the planner pulled the correlation out into a
+per-row `ANY (event_parties.event_id = …)` test and hashed the inner result
+once. This is Postgres's ordinary `EXISTS` → hashed semi-join rewrite, and it
+is a **second-order effect of the intended transformation**, not a second
+transformation.
+
+**The correlation was moved, not removed** — `event_parties.event_id` is still
+tested per outer row. That is an argument, though, and the threat here is
+elevation, so it was settled by asking the database instead.
+
+### Proof 2b — the class-D ownership test, measured
+
+An **organizer** (holds `staff.manage`, is not master) who created event A and
+did not create event B, attempting `UPDATE` and `DELETE` on a party of each.
+Two containers, one built **without** the wrap migration and one **with** it,
+otherwise identical; every probe inside `begin … rollback`; both destroyed.
+
+```
+                                     BEFORE    AFTER
+  organizer/approved OWNED   update   rows:1   rows:1
+  organizer/approved OWNED   delete   rows:1   rows:1
+  organizer/approved NOT-OWNED update  rows:0   rows:0
+  organizer/approved NOT-OWNED delete  rows:0   rows:0
+  master/approved    OWNED   update   rows:1   rows:1
+  master/approved    OWNED   delete   rows:1   rows:1
+  master/approved    NOT-OWNED update  rows:1   rows:1
+  master/approved    NOT-OWNED delete  rows:1   rows:1
+
+cells that moved between before and after: 0
+```
+
+**`rows:1` against `rows:0` for the organizer is the whole proof.** Had the
+`EXISTS` been hoisted to a statement-level `InitPlan`, the ownership test would
+have stopped discriminating and the NOT-OWNED party would have become writable.
+It did not. The master reads `rows:1` on both, which is the `role = 'master'`
+branch of the `OR` behaving as designed.
+
+**A note on how this probe had to be written, because it is the trap in it.**
+An `UPDATE` or `DELETE` refused by RLS **does not raise** — it simply matches no
+row. The first version of this probe asked only "did it error", and reported
+success for the refusal and for the permission alike: it measured nothing and
+looked green. `returning id` is what turns the verdict into a row count. In this
+repository, where the only evidence is the written procedure, a probe that
+cannot fail is worse than no probe.
+
+### Proof 3 — the privilege-escalation write probe, before and after
+
+An `approved member` setting their own `role`, then their own `status`, on their
+own row. Inside `begin … rollback`.
+
+| Target | Attempt | BEFORE | AFTER |
+|---|---|---|---|
+| container | `set role = 'master'` | **`42P17`** | **`42P17`** |
+| container | `set status = 'approved'` | **`42P17`** | **`42P17`** |
+| production | `set role = 'master'` | **`42P17`** | **`42P17`** |
+| production | `set status = 'approved'` | **`42P17`** | **`42P17`** |
+
+```
+production rollback check: profiles rows 4 -> 4, rows with role='master' 1 -> 1
+```
+
+**The same SQLSTATE, all four pairs.** The guard refuses exactly as it did — by
+crashing rather than by denying, which is D-32-A and is not this plan's to
+repair.
+
+And the cells the comparator actually reads, which matter more than the
+transcript:
+
+```
+production pre       11 profiles UPDATE cells {"42P17":4,"absent":7}
+production post-07   11 profiles UPDATE cells {"42P17":4,"absent":7}
+production post-09   11 profiles UPDATE cells {"42P17":4,"absent":7}
+container  pre       11 profiles UPDATE cells {"42P17":11}
+container  post-07   11 profiles UPDATE cells {"42P17":11}
+container  post-09   11 profiles UPDATE cells {"42P17":11}
+```
+
+`profiles_update_own`'s `EXPLAIN` is still `42P17` after the wrap, on both
+targets: the policy still cannot be planned, so the recursion survived the
+wrapping exactly as `32-07-SUMMARY.md` predicted it would.
+
+### The organizer asymmetry, still there
+
+Not this plan's requirement, but it is the phase's single unrecoverable defect
+and it costs nothing to re-read it out of the committed container artefacts:
+
+```
+organizer/pending  x ticket_tiers   pre ok:1     post-09 ok:1
+organizer/pending  x venues         pre 42501    post-09 42501
+organizer/pending  x artists        pre 42501    post-09 42501
+organizer/approved x ticket_tiers   pre ok:1     post-09 ok:1
+organizer/approved x venues         pre ok:1     post-09 ok:1
+organizer/approved x artists        pre ok:1     post-09 ok:1
+member/approved    x ticket_tiers   pre 42501    post-09 42501
+member/approved    x venues         pre 42501    post-09 42501
+master/pending     x ticket_tiers   pre ok:1     post-09 ok:1
+master/pending     x venues         pre 42501    post-09 42501
+
+10 of 10 cells identical; ok:1 != 42501 for organizer/pending: true
+```
+
+A pending organizer may still insert a ticket tier and may still **not** insert
+a venue. The two answers still disagree, which is the point.
+
+---
+
+## The mutation proof — B1 is the only detector for a misapplied T1
+
+Run **before** production was written to, because *"the comparator will catch
+it"* is an assumption until the invariant is broken and the check is watched to
+fire.
+
+The threat is **T-32-09-03**: wrapping the **comparison** instead of the
+**call**. `(select auth.uid() = user_id)` is legal SQL, is semantically
+identical — `user_id` resolves as a correlated reference — and is **no longer an
+InitPlan**. It is precisely the mistake this transformation tempts, and it would
+undo the plan's entire purpose while looking correct.
+
+Two class-A policies were deliberately broken, and **the mutation was asserted
+applied before any result was read**:
+
+```
+mutation applied? (executable SQL only) correct form 8 -> 6, broken form 1 -> 3
+```
+
+> The first attempt at that assertion **failed**, and it failed correctly: it
+> counted the broken form in the migration's own header comment, where the file
+> quotes it as the thing it does not do. The assertion refused to proceed on
+> arithmetic it could not confirm — which is the whole reason to assert the
+> mutation rather than trust it.
+
+A container built from the mutated repository:
+
+```
+  ✗ predicate_unexplained — rsvps.rsvps_select_own (SELECT) qual
+      before: (auth.uid() = user_id)
+      after : (SELECT (auth.uid() = rsvps.user_id))
+  ✗ predicate_unexplained — tickets.tickets_select_own (SELECT) qual
+      47 unchanged · 18 by T1 · 0 by T2 · 0 by both · 2 unexplained
+  ✓ B2 — 220 cells compared
+  ✓ B3 — 660 cells compared
+  CAP-03: 2 defects — predicate_unexplained
+
+migration restored byte-for-byte: true
+  removed mutant artefact 32-BASELINE-policies.container.mutant.json
+  removed mutant artefact 32-BASELINE-reads.container.mutant.json
+  removed mutant artefact 32-BASELINE-writes.container.mutant.json
+```
+
+**B1 caught it, twice. B2 and B3 passed it in silence** — 220 cells and 660
+cells identical, because the misapplication changes performance, not verdicts.
+
+> **This is the exact mirror image of `32-07-SUMMARY.md`'s finding, and the two
+> belong together.** For a **capability collapse** (T2), B1 passes and only
+> B3-on-the-container catches it. For a **misapplied wrap** (T1), B3 passes and
+> only B1 catches it. **Neither artefact is the safety net; the pair is.** A
+> later plan that drops either one has removed half of it, and the half it drops
+> will be the half that mattered.
+
+### The comparator's own checks, also proved by mutation
+
+The comparator was changed in this plan, so its changed branches were broken
+deliberately too:
+
+```
+--expect-initplan=1 against a database at 0
+  ✗ b5_initplan_unexpected — 20 → 0, but --expect-initplan=1 was stated
+
+a PINNED lint removed from the after artefact
+  ✓ auth_rls_initplan 20 → 0, as stated (the advisor no longer reports the lint)
+  ✗ b5_pinned_lint_moved — multiple_permissive_policies 46 → 0
+
+a NON-pinned lint removed from the after artefact
+  ✗ b5_lint_moved — function_search_path_mutable 13 → 0 (no longer reported at all)
+```
+
+All three fire. The change is **expressive, not permissive**: every branch is
+stricter than or equal to what it replaced.
+
+---
+
+## What this document does not say
+
+It says nothing moved that the whitelist does not explain, and that the two
+policies which would have broken under a blind rewrite did not break. It does
+**not** say any of the 67 policies is *right*. They were inherited, not designed
+here; `42P17` on `profiles` is a faithful recording of a defect, not an
+endorsement of it; and CAP-06 was a performance requirement that this phase
+treated as a security one only because the two policies it touches sit on a
+trust boundary.
