@@ -43,7 +43,7 @@ a visual regression there is a safety issue, not a cosmetic one.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 31: Live Defects at the Door and the Bar** - Correct the nine defects present in production today, before anything is built on top of them (completed 2026-08-06)
-- [ ] **Phase 32: Capability Model in the Database** - One definition of every permission, evaluated identically by pages, actions and row-level policies
+- [x] **Phase 32: Capability Model in the Database** - One definition of every permission, evaluated identically by pages, actions and row-level policies (completed 2026-08-06)
 - [ ] **Phase 33: Server Data-Access Layer** - Identity and capability resolved from the session in one server-only place; no surface trusts a request header
 - [ ] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched
 - [ ] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit
@@ -160,7 +160,7 @@ Plans:
 
 **Wave 9** *(blocked on 32-10)*
 
-- [ ] 32-11-PLAN.md — The phase gate: final re-capture, the CAP-04 demonstration, 32-VERIFICATION.md
+- [x] 32-11-PLAN.md — The phase gate: final re-capture, the CAP-04 demonstration, 32-VERIFICATION.md
 
 ### Phase 33: Server Data-Access Layer
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 10/11 | In Progress|  |
+| 32. Capability Model in the Database | 11/11 | Complete   | 2026-08-06 |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
