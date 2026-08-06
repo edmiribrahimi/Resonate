@@ -28,12 +28,16 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 31 (Live Defects at the Door and the Bar) — EXECUTING
-Plan: 1 of 13
-Status: Executing Phase 31
-Last activity: 2026-08-05 -- Phase 31 execution started
+Phase: 31 (Live Defects at the Door and the Bar) — EXECUTED, NOT VERIFIED
+Plan: 13 of 13
+Status: All 13 plans executed on branch `gsd/phase-31-live-defects-at-the-door-and-the-bar`.
+        Four blocking checkpoints remain open — all four need a human, a device or
+        a real database. `31-VALIDATION.md` keeps `nyquist_compliant: false`
+        deliberately: the file:line evidence is complete, the manual and
+        observable evidence is not executed.
+Last activity: 2026-08-06 -- Phase 31 executed, 61 commits, awaiting manual verification
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 13/13 plans executed · 0/4 manual checkpoints closed
 
 ## Decisions
 
@@ -70,9 +74,37 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-05
-**Stopped at:** v1.5 roadmap created (phases 31–42), traceability filled
-**Next step:** `/gsd:plan-phase 31`
+**Last session:** 2026-08-06
+**Stopped at:** Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
+nothing pushed. `main` is 14 commits ahead of `origin/main`.
+
+**Owner decision this session:** staff always get in — the door decides on role
+alone, and `updateMemberRole` sets `status = 'approved'` when it grants the
+organizer role. Demotion does not revoke approval.
+
+**Found and fixed mid-phase:** the service worker was never built in production
+(`@serwist/next` is a webpack plugin, Next 16 builds with Turbopack). `npm run
+build` is now `next build --webpack`. v1.4's "IndexedDB + service worker" was only
+ever the IndexedDB half.
+
+**Found and recorded, not fixed:** none of the four Supabase clients is
+parameterised with `Database`, so no column name in any query is checked by the
+build. This narrows what a green build means everywhere, not only in phase 31.
+
+**Manual work owed, batched by the owner's choice** — see `31-VERIFICATION.md`:
+1. Apply `supabase/migrations/20260805120000_door_scan_events.sql` from the
+   Supabase dashboard (the CLI is not installed here), then confirm a logged-in
+   member reads zero rows from `door_scan_events`
+2. The `apis` cache check on a phone, production build
+3. The dark-room amber-versus-yellow legibility check
+4. The door pass — six scans, radio off, plus the IndexedDB v2→v3 upgrade on a
+   device that already holds a v2 database
+
+**Next step:** `/gsd-plan-phase 32` (Capability Model in the Database). Note the
+command form: GSD is installed as user skills here, so it is `/gsd-…` with a
+hyphen — the `gsd:` plugin namespace does not exist on this machine, though GSD's
+own generated text uses it.
 
 ---
 *State initialized: 2026-03-10 — v1.5 roadmap 2026-08-05*
