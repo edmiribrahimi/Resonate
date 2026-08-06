@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: v1.5 roadmap created (phases 31–42), traceability filled
-last_updated: "2026-08-05T19:42:52.744Z"
-last_activity: 2026-08-05 -- Phase 31 execution started
+stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+last_updated: "2026-08-06T12:30:33.669Z"
+last_activity: 2026-08-06 -- Phase 32 planning complete
 progress:
   total_phases: 12
-  completed_phases: 0
-  total_plans: 13
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 24
+  completed_plans: 13
+  percent: 8
 ---
 
 # State: Resonate
@@ -30,12 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 Phase: 31 (Live Defects at the Door and the Bar) — EXECUTED, NOT VERIFIED
 Plan: 13 of 13
-Status: All 13 plans executed on branch `gsd/phase-31-live-defects-at-the-door-and-the-bar`.
+Status: Ready to execute
         Four blocking checkpoints remain open — all four need a human, a device or
         a real database. `31-VALIDATION.md` keeps `nyquist_compliant: false`
         deliberately: the file:line evidence is complete, the manual and
         observable evidence is not executed.
-Last activity: 2026-08-06 -- Phase 31 executed, 61 commits, awaiting manual verification
+Last activity: 2026-08-06 -- Phase 32 planning complete
 
 Progress: [██████████] 13/13 plans executed · 0/4 manual checkpoints closed
 
@@ -108,9 +108,11 @@ construction. Today no staff phone holds a v2 database with real check-ins,
 because no event is published — which is precisely why the rule is safe now.
 
 **Manual work owed, batched by the owner's choice** — see `31-VERIFICATION.md`:
+
 1. Apply `supabase/migrations/20260805120000_door_scan_events.sql` from the
    Supabase dashboard (the CLI is not installed here), then confirm a logged-in
    member reads zero rows from `door_scan_events`
+
 2. The `apis` cache check on a phone, production build
 3. The dark-room amber-versus-yellow legibility check
 4. The door pass — six scans, radio off, plus the IndexedDB v2→v3 upgrade on a
