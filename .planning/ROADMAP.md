@@ -120,7 +120,47 @@ Plans:
   3. A permission granted for a single night takes effect on the next request, without signing out and without waiting for a session or token to refresh
   4. Every existing row-level policy has been reviewed for the pattern that re-evaluates the current user once per row, and the review is recorded with its result per policy
 
-**Plans**: TBD
+**Plans**: 11 plans, 9 waves
+
+Plans:
+
+**Wave 1** *(the baseline, before any DDL exists)*
+
+- [ ] 32-01-PLAN.md — The evidence harness: the policy dump and the advisor oracle
+- [ ] 32-02-PLAN.md — B4, the register of every permission surface in application code
+
+**Wave 2** *(blocked on 32-01)*
+
+- [ ] 32-03-PLAN.md — The persona read and write matrices, and the rollback guarantee
+
+**Wave 3** *(blocked on 32-02, 32-03)*
+
+- [ ] 32-04-PLAN.md — The throwaway PostgreSQL 17.6 target, and the first capture on both targets, committed
+
+**Wave 4** *(blocked on 32-04)*
+
+- [ ] 32-05-PLAN.md — The comparator and its two-transformation whitelist
+
+**Wave 5** *(blocked on 32-05)*
+
+- [ ] 32-06-PLAN.md — The capability model: private schema, catalogue, grants, one resolver, one exposed wrapper
+
+**Wave 6** *(blocked on 32-06)*
+
+- [ ] 32-07-PLAN.md — The policy cutover: 45 predicate call sites replaced in place
+- [ ] 32-08-PLAN.md — The resolver, the middleware's four rules, and one reference conversion
+
+**Wave 7** *(blocked on 32-07)*
+
+- [ ] 32-09-PLAN.md — CAP-06: the 26-row review and the wrapping migration
+
+**Wave 8** *(blocked on 32-08, 32-09)*
+
+- [ ] 32-10-PLAN.md — The four-sided capability key check the build cannot perform
+
+**Wave 9** *(blocked on 32-10)*
+
+- [ ] 32-11-PLAN.md — The phase gate: final re-capture, the CAP-04 demonstration, 32-VERIFICATION.md
 
 ### Phase 33: Server Data-Access Layer
 
