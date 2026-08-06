@@ -299,4 +299,37 @@ ALTER TABLE public.guest_list_entries
   ADD CONSTRAINT guest_list_entries_ticket_id_fkey
   FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE SET NULL;
 
+-- 7b. pending_purchases.ticket_id — the third foreign key to tickets, and the
+--     one nobody had looked at.
+--
+-- Found on 2026-08-06 by reading the live database rather than the repository:
+-- `pg_constraint` reported THREE foreign keys pointing at `public.tickets`, not
+-- two. The refund probe ran against a throwaway database built from the
+-- repository's DDL, where `pending_purchases` does not appear at all, so it
+-- could not have surfaced there.
+--
+-- `pending_purchases` is the **SumUp payment record** — every ticket payment this
+-- project receives passes through it, and `src/app/api/webhooks/sumup/route.ts:81`
+-- writes `ticket_id` onto the row when it marks the purchase completed. The live
+-- table already holds a row with a populated `ticket_id`, so this is a reachable
+-- state and not a theoretical one.
+--
+-- Left as `NO ACTION` it reproduces Probe B exactly, on a different table:
+-- deleting a refunded ticket raises SQLSTATE 23503, the ticket survives, and the
+-- refund cannot complete. Plan 31-09's error check would make that loud rather
+-- than silent — but loud and unfinishable is still unfinishable.
+--
+-- `SET NULL` and not `CASCADE`, deliberately and for the same reason as
+-- `ticket_refunds`: this is money that was actually taken. The payment record
+-- outlives the ticket it produced, carrying a null link — it is never destroyed
+-- by the refund of the thing it paid for. `meta-gates.md`, monotone guard on a
+-- payment's state: reconciliation corrects forward, it never pretends an amount
+-- was not taken.
+ALTER TABLE public.pending_purchases
+  DROP CONSTRAINT IF EXISTS pending_purchases_ticket_id_fkey;
+
+ALTER TABLE public.pending_purchases
+  ADD CONSTRAINT pending_purchases_ticket_id_fkey
+  FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE SET NULL;
+
 COMMIT;
