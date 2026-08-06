@@ -143,7 +143,7 @@ Plans:
 
 **Wave 5** *(blocked on 32-05)*
 
-- [ ] 32-06-PLAN.md — The capability model: private schema, catalogue, grants, one resolver, one exposed wrapper
+- [x] 32-06-PLAN.md — The capability model: private schema, catalogue, grants, one resolver, one exposed wrapper
 
 **Wave 6** *(blocked on 32-06)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 5/11 | In Progress|  |
+| 32. Capability Model in the Database | 6/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
