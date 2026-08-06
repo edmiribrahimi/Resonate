@@ -127,6 +127,19 @@ function ok(label, detail) {
   if (detail) for (const line of String(detail).split('\n')) say(`      ${line}`);
 }
 
+/**
+ * The summary line for one artefact. A `✓` printed next to a defect list is a
+ * report that contradicts itself, so the tick is earned per artefact: it is
+ * shown only when nothing was recorded since `mark` was taken.
+ */
+function summary(mark, label, detail) {
+  if (defects.length === mark) ok(label, detail);
+  else {
+    say(`  ✗ ${label}`);
+    if (detail) for (const line of String(detail).split('\n')) say(`      ${line}`);
+  }
+}
+
 /** A measurement that is not a verdict — how much the agreement is worth. */
 function measure(text) {
   movements.push(text);
@@ -601,6 +614,7 @@ function compareB1(before, after) {
 
 function compareB2(before, after) {
   say('\nB2 — the persona read matrix');
+  const mark = defects.length;
   assertSameTarget('B2', before, after);
 
   const index = (artefact) => {
@@ -696,7 +710,8 @@ function compareB2(before, after) {
 
   const resolved = [...pa.values()].filter(Boolean).length;
   const pct = compared ? ((vacuousBoth / compared) * 100).toFixed(1) : '0.0';
-  ok(
+  summary(
+    mark,
     `B2 — ${compared} cells compared`,
     `${resolved}/${pa.size} personas resolved on this target`
   );
@@ -714,6 +729,7 @@ const permitted = (result) => String(result).startsWith('ok:');
 
 function compareB3(before, after) {
   say('\nB3 — the persona write matrix');
+  const mark = defects.length;
   assertSameTarget('B3', before, after);
 
   const index = (artefact) => {
@@ -763,9 +779,19 @@ function compareB3(before, after) {
           'NARROWING — the database permitted this write before and refuses it now. Narrowing ' +
           'is a defect too: CAP-03 says neither more nor less.';
       } else if (wasPermitted && isPermitted) {
+        // Both accepted, different row counts. On an UPDATE or a DELETE that
+        // is the USING clause changing which rows it matches — a widening or
+        // a narrowing that never raises a SQLSTATE, and therefore the one a
+        // comparator looking only at "permitted vs refused" would wave through.
+        const wasRows = Number(String(rb.result).slice(3));
+        const isRows = Number(String(ra.result).slice(3));
         direction =
-          'row count changed on a permitted write — the same verb now affects a different ' +
-          'number of rows.';
+          (isRows > wasRows
+            ? 'WIDENING WITHOUT AN ERROR — the statement was accepted both times, but it now '
+            : 'NARROWING WITHOUT AN ERROR — the statement was accepted both times, but it now ') +
+          `affects ${isRows} rows instead of ${wasRows}. On an UPDATE or a DELETE that is the ` +
+          'USING clause matching a different set of rows.\nNo SQLSTATE is raised either way, so ' +
+          'this is the change a permitted-vs-refused comparison would wave through.';
       } else {
         direction =
           'the SQLSTATE changed. Two refusals are not the same fact: 42P17 (recursion) and ' +
@@ -813,7 +839,7 @@ function compareB3(before, after) {
   const probed = compared - absent;
   const conclusive = probed - inconclusive;
   const pct = compared ? ((absent + inconclusive) / compared) * 100 : 0;
-  ok(`B3 — ${compared} cells compared`);
+  summary(mark, `B3 — ${compared} cells compared`);
   measure(
     `B3 proves nothing on ${absent + inconclusive}/${compared} cells (${pct.toFixed(1)}%): ` +
       `${absent} where the persona does not exist on this target and no probe was ever sent, ` +
