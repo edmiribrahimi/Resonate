@@ -4,8 +4,22 @@ import MobileNav from "@/components/layout/MobileNav";
 import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 import { getSubscriberStats } from "./actions";
+import FailureNotice from "./FailureNotice";
 import NewsletterClient from "./NewsletterClient";
 
+/**
+ * CR-01, fourth call site — the one the review credited with reaching the error
+ * boundary, and which in fact did something worse.
+ *
+ * `getSubscriberStats()` was wrapped in a `try/catch` that rendered every cause
+ * as *"Newsletter not configured — set RESEND_API_KEY and RESEND_AUDIENCE_ID"*.
+ * A `capabilities.resolve_failed` — the database unable to answer who is asking
+ * — therefore sent the operator to check two environment variables that were
+ * never the problem. That is the recorded newsletter anti-pattern exactly
+ * (`.planning/codebase/CONCERNS.md`): one message for unrelated causes.
+ *
+ * The two causes are now told apart before anything is drawn.
+ */
 export default async function AdminNewsletterPage() {
   const headersList = await headers();
   const role = (headersList.get("x-user-role") as UserRole) || null;
@@ -15,14 +29,8 @@ export default async function AdminNewsletterPage() {
     redirect("/dashboard");
   }
 
-  let stats: { total: number } | null = null;
-  let configError: string | null = null;
-
-  try {
-    stats = await getSubscriberStats();
-  } catch (err) {
-    configError = err instanceof Error ? err.message : "Failed to load stats";
-  }
+  const statsResult = await getSubscriberStats();
+  const stats = statsResult.ok ? statsResult.data : null;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -32,15 +40,12 @@ export default async function AdminNewsletterPage() {
       <StaffNav role={role} context="admin" />
 
       <div className="px-6">
-        {configError ? (
-          <div className="mb-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-6">
-            <p className="text-sm font-medium text-yellow-400">
-              Newsletter not configured
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              {configError}. Set RESEND_API_KEY and RESEND_AUDIENCE_ID in your
-              environment variables.
-            </p>
+        {!statsResult.ok ? (
+          <div className="mb-6">
+            <FailureNotice
+              kind={statsResult.failure}
+              detail={statsResult.detail}
+            />
           </div>
         ) : (
           <>

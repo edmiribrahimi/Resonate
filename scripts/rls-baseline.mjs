@@ -19,9 +19,26 @@
  * Zero dependencies, pure ESM, node built-ins only. `fetch` is global.
  *
  * Usage:
- *   npm run baseline:rls
+ *   npm run baseline:rls                                    B1+B2+B5 — nothing writes
  *   npm run baseline:rls -- --only=B1 --target=production --phase-point=pre
  *   npm run baseline:rls -- --target=container --only=B1,B2,B3
+ *   npm run baseline:rls -- --only=B3 --i-know-this-writes  the write probes, on production
+ *   npm run baseline:rls -- --phase-point=post-10 --overwrite   re-capture over an existing file
+ *
+ * TWO REFUSALS THAT ARE THE DEFAULT, because both destructive paths used to be
+ * the path of least resistance (32-REVIEW.md, CR-02):
+ *
+ *   1. **A captured artefact is never overwritten.** Every destination path is
+ *      checked BEFORE anything is measured, and an existing file aborts the run
+ *      with exit 1, naming the file and naming `--overwrite`. It is checked a
+ *      second time in `writeArtefact`, so an importing script cannot skip it.
+ *      A baseline is evidence, not a cache: re-capturing over `pre` makes every
+ *      later comparison agree for the worst possible reason.
+ *   2. **B3 is not in the default set, and on production it needs
+ *      `--i-know-this-writes`.** B3 sends 220+ `read_only: false` INSERT/UPDATE/
+ *      DELETE transactions. They roll back, and that is asserted twice — but a
+ *      default that writes to production is opt-out safety, which is not safety.
+ *
  *
  * This file is BOTH a CLI and a module. `scripts/rls-baseline-container.mjs`
  * imports `captureB1`, `captureB2` and `captureB3` from here and runs them
@@ -366,17 +383,90 @@ function capturedAtDate() {
 /**
  * The pre-phase capture on production is the unsuffixed file, so that
  * `32-BASELINE-policies.json` is always the thing every later capture is
- * compared against, and a later capture never overwrites it by accident.
+ * compared against.
  *
  * The container's capture carries `.container` before the extension. The two
  * targets measure different things — production is the schema truth, the
  * container is the persona truth (phase decision D-22) — so they must never
  * land on the same filename. Each artefact also carries its own `target` key,
  * so a file that gets moved still says what it is.
+ *
+ * **A naming convention is not a guard.** Until 2026-08-06 the sentence above
+ * ended "…and a later capture never overwrites it by accident", and no such
+ * mechanism existed: `pre` was the DEFAULT phase point and `writeArtefact`
+ * called `writeFileSync` unconditionally, so `npm run baseline:rls` with no
+ * arguments — the first line of this file's own usage block — replaced all four
+ * committed pre-phase artefacts with post-phase data. Every later
+ * `--before=pre` comparison would then report `clean` because it was comparing
+ * a capture with itself. That is CR-02 in `32-REVIEW.md`, and
+ * `assertArtefactsWritable` plus the `existsSync` refusal below are what make
+ * the sentence true instead of aspirational.
  */
 function artefactPath(slug, phasePoint, targetSuffix = '') {
   const suffix = phasePoint === 'pre' ? '' : `.${phasePoint}`;
   return `${BASELINE_DIR}/32-BASELINE-${slug}${targetSuffix}${suffix}.json`;
+}
+
+/** The slug each artefact writes to. Read by `assertArtefactsWritable`. */
+const ARTEFACT_SLUGS = { B1: 'policies', B2: 'reads', B3: 'writes', B5: 'advisors' };
+
+/**
+ * Whether this process has been given explicit permission to overwrite a
+ * captured artefact. Off unless a CLI asked for it.
+ *
+ * A module flag rather than an environment variable, deliberately:
+ * `scripts/rls-baseline-container.mjs` imports `writeArtefact` and reads **no**
+ * environment variable at all — a property its own header states and proves with
+ * `grep -c 'process\.env'`, and which is what keeps the container target unable
+ * to reach a real database. Reading `process.env` here would execute on the
+ * container path and quietly cost that proof.
+ */
+let overwriteAllowed = false;
+
+/** Called by a CLI, never by a capture. See `overwriteAllowed`. */
+export function allowArtefactOverwrite() {
+  overwriteAllowed = true;
+}
+
+function overwriteRefusal(path) {
+  return (
+    `refusing to overwrite ${relative(ROOT, path)} — it already exists. A captured ` +
+    'baseline is evidence, not a cache: re-capturing over it makes every later ' +
+    'comparison agree with itself and report clean. Capture to a new ' +
+    '--phase-point, or pass --overwrite if replacing this exact file is the ' +
+    'intention, and say why in the commit.'
+  );
+}
+
+/**
+ * The refusal, hoisted ahead of every measurement.
+ *
+ * `writeArtefact` refuses too, and that refusal is the one that cannot be
+ * bypassed — but it arrives AFTER the capture has run, and B3's capture is 220+
+ * read-write transactions against production. A guard that fires after the
+ * probes have been sent prevents the wrong half of the damage. So the CLI calls
+ * this first, over every artefact it was asked for, and a single existing file
+ * aborts the whole run before a byte reaches the network or Docker starts.
+ *
+ * Throws with every offending path named, not just the first: a run refused
+ * four times in a row teaches nothing the first message did not.
+ */
+export function assertArtefactsWritable({ only, phasePoint, targetSuffix = '' }) {
+  if (overwriteAllowed) return;
+  const existing = only
+    .map((id) => artefactPath(ARTEFACT_SLUGS[id], phasePoint, targetSuffix))
+    .filter((path) => existsSync(path));
+  if (!existing.length) return;
+  throw new Error(
+    `refusing to run: ${existing.length} artefact${existing.length === 1 ? '' : 's'} for ` +
+      `--phase-point=${phasePoint} already exist${existing.length === 1 ? 's' : ''} and ` +
+      'nothing was measured.\n' +
+      existing.map((path) => `      · ${relative(ROOT, path)}`).join('\n') +
+      '\n    A captured baseline is evidence, not a cache: re-capturing over it makes every ' +
+      'later comparison agree with itself and report clean. Capture to a new --phase-point, ' +
+      'or pass --overwrite if replacing these exact files is the intention, and say why in ' +
+      'the commit.'
+  );
 }
 
 function writeArtefact({ artefact, slug, target, postgresVersion, phasePoint, rows, trailing, targetSuffix }) {
@@ -394,6 +484,14 @@ function writeArtefact({ artefact, slug, target, postgresVersion, phasePoint, ro
 
   mkdirSync(BASELINE_DIR, { recursive: true });
   const path = artefactPath(slug, phasePoint, targetSuffix ?? '');
+
+  // The second of the two refusals, and the one that cannot be routed around:
+  // every capture in this file and in the container runner comes through here.
+  // The pre-flight above is the kind one; this is the correct one.
+  if (existsSync(path) && !overwriteAllowed) {
+    throw new Error(overwriteRefusal(path));
+  }
+
   writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   return path;
 }
@@ -1514,8 +1612,26 @@ export async function captureB5(target, { phasePoint }) {
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 
+/**
+ * The default artefact set, and why B3 is not in it.
+ *
+ * B3 is the only capture that sends `read_only: false` INSERT/UPDATE/DELETE
+ * transactions, and against `production` those go to the live database. They
+ * roll back, and that is asserted twice and independently — but the default
+ * invocation of a script is what a hurried person runs, and a destructive
+ * default protected by an assertion is still a destructive default. Ask for it
+ * by name. (32-REVIEW.md, CR-02.)
+ */
+const DEFAULT_ARTEFACTS = ['B1', 'B2', 'B5'];
+
 function parseArgs(argv) {
-  const options = { target: 'production', only: [...KNOWN_ARTEFACTS], phasePoint: 'pre' };
+  const options = {
+    target: 'production',
+    only: [...DEFAULT_ARTEFACTS],
+    phasePoint: 'pre',
+    overwrite: false,
+    acceptsWrites: false,
+  };
 
   for (const arg of argv) {
     const [flag, value] = arg.split('=');
@@ -1532,8 +1648,18 @@ function parseArgs(argv) {
       case '--phase-point':
         options.phasePoint = value;
         break;
+      case '--overwrite':
+        options.overwrite = true;
+        break;
+      case '--i-know-this-writes':
+        options.acceptsWrites = true;
+        break;
       default:
-        fail(`FATAL: unknown flag ${flag}. Known flags: --target, --only, --phase-point.`, 2);
+        fail(
+          `FATAL: unknown flag ${flag}. Known flags: --target, --only, --phase-point, ` +
+            '--overwrite, --i-know-this-writes.',
+          2
+        );
     }
   }
 
@@ -1560,6 +1686,16 @@ function parseArgs(argv) {
   }
   if (!/^[a-z0-9-]+$/.test(String(options.phasePoint))) {
     fail('FATAL: --phase-point must be lowercase letters, digits and hyphens.', 2);
+  }
+  if (options.target === 'production' && options.only.includes('B3') && !options.acceptsWrites) {
+    fail(
+      'FATAL: B3 sends INSERT, UPDATE and DELETE transactions to the PRODUCTION database. ' +
+        'They roll back — asserted before the first byte leaves, and re-asserted by re-reading ' +
+        'every row count afterwards — but that is a reason to allow it deliberately, not a ' +
+        'reason to do it by default. Pass --i-know-this-writes to accept, or run the write ' +
+        'matrix on the throwaway target with --target=container. Nothing was measured.',
+      2
+    );
   }
 
   return options;
@@ -1600,6 +1736,25 @@ if (invokedDirectly) {
   const options = parseArgs(process.argv.slice(2));
 
   console.log('\nrls-baseline — phase 32 evidence harness\n');
+
+  if (options.overwrite) {
+    allowArtefactOverwrite();
+    say('  ! --overwrite: captured artefacts may be replaced. Say why in the commit.');
+  }
+
+  // Before the credential is read, before Docker starts, before one probe is
+  // sent. A refusal that arrives after the measurement has already run costs
+  // the production database 220+ write transactions to tell you it will not
+  // write a file.
+  try {
+    assertArtefactsWritable({
+      only: options.only,
+      phasePoint: options.phasePoint,
+      targetSuffix: options.target === 'container' ? '.container' : '',
+    });
+  } catch (error) {
+    fail(`FATAL: ${error.message}\n`, 1);
+  }
 
   let failures = [];
 

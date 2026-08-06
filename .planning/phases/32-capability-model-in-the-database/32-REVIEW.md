@@ -25,7 +25,12 @@ findings:
   warning: 7
   info: 5
   total: 14
-status: issues_found
+status: blocking_findings_closed
+blocking_findings_closed: 2026-08-06
+blocking_findings_closed_by:
+  - CR-01
+  - CR-02
+warnings_outstanding: 7
 ---
 
 # Phase 32: Code Review Report
@@ -33,7 +38,8 @@ status: issues_found
 **Reviewed:** 2026-08-06
 **Depth:** deep (cross-file, plus a mechanical re-derivation of the policy diff from the committed baselines)
 **Files Reviewed:** 16
-**Status:** issues_found
+**Status:** blocking findings closed 2026-08-06 — see the last section. The seven
+warnings are recorded and outstanding.
 
 ## Summary
 
@@ -562,6 +568,161 @@ than resolving to something else, and the whole file is one transaction, so the
 risk is a failed deploy rather than a wrong policy. Noted because every other
 object this phase creates is scrupulously schema-qualified, and the inconsistency
 will read as an oversight to the next person.
+
+---
+
+---
+
+## Blocking findings closed
+
+**Closed 2026-08-06.** Both critical findings only. The seven warnings
+(WR-01…WR-07) and the five info items are **untouched and still outstanding** —
+they belong to a later phase. No migration, no RLS policy and nothing under
+`supabase/` was modified, and `door.operate` remains `requires_approved = false`
+on both grant rows.
+
+| Finding | Commit | What changed |
+|---|---|---|
+| CR-02 | `816a4c6` | `scripts/rls-baseline.mjs`, `scripts/rls-baseline-container.mjs`, `baseline/README.md` |
+| CR-01 | `30ab72a` | the four newsletter call sites, a new `FailureNotice`, and the contract comment in `src/lib/capabilities/server.ts` |
+
+### CR-02 — the header's claim is now true
+
+The sentence at the artefact-writing section asserted that "a later capture never
+overwrites it by accident" and no such mechanism existed. There are now two
+refusals, both default, both loud and non-zero:
+
+1. **`assertArtefactsWritable`** checks every destination *before anything is
+   measured* — before the credential is read, before Docker starts, before one
+   probe is sent — and names every existing file and the `--overwrite` flag.
+   Hoisting it matters: `writeArtefact` refusing at the end would still have cost
+   the production database 220+ write transactions to tell you it will not write
+   a file.
+2. **`writeArtefact` refuses again** at the point of writing, so a script that
+   imports the capture functions cannot route around the pre-flight. The
+   permission is a module flag set by a CLI, deliberately **not** an environment
+   variable: `rls-baseline-container.mjs` proves it reads no environment variable
+   at all, and it imports this writer.
+
+Additionally, **B3 left the default set** and on `production` now requires
+`--i-know-this-writes`. The rollback clauses are good and were not weakened; a
+destructive default guarded by an assertion is still a destructive default.
+
+The header no longer claims a mechanism it does not have, and records why the
+old sentence was false. `baseline/README.md` carries the same two rules and the
+corrected re-capture commands.
+
+**Proved by mutation — twelve checks, both directions, each precondition
+asserted before its result was read:**
+
+```
+npm run baseline:rls                             -> exit 1, four files named, nothing measured
+npm run baseline:rls -- --only=B1,B2,B3,B5       -> exit 2, refused at the writes gate
+   … --i-know-this-writes                        -> exit 1, refused at the pre-flight
+npm run baseline:container -- --phase-point=pre  -> exit 1, refused before Docker started
+writeArtefact over an existing file              -> throws, names file + --overwrite
+a fresh --phase-point                            -> still writes (the guard does not over-fire)
+the second write to that fresh point             -> refused
+allowArtefactOverwrite()                         -> unlocks BOTH refusals
+```
+
+**The four pre-phase artefacts are byte-identical afterwards.** `sha256` taken
+before the first destructive attempt and re-checked after every one of them:
+
+```
+66ab456ab21f3a9e753f34032cafa3993f921bafd679c56906b52c89452ca4f5  32-BASELINE-policies.json
+7eb681828745fb1054a4e0d85f8b22e94c410da3a03d37508a679e9c354e6386  32-BASELINE-reads.json
+74132d0eb34090c14d7fe48bb0bb4da0067b8071cfb68df606a24ded9f68a132  32-BASELINE-writes.json
+1107b4e0c218af2fcfe8c9f53b24543f764156395fa7f69398ecb7fd3dd6f4ee  32-BASELINE-advisors.json
+shasum -c: 4/4 OK
+```
+
+### CR-01 — a resolve failure is now distinguishable and seen
+
+All four `requireMaster()` callers were reviewed, and the finding was worse than
+recorded at one of them: `page.tsx` did **not** reach the error boundary. It
+caught every cause and rendered *"Newsletter not configured — set RESEND_API_KEY
+and RESEND_AUDIENCE_ID"*, sending the operator to two variables that were never
+the problem — the `CONCERNS.md` newsletter anti-pattern verbatim.
+
+| Call site | Was | Is |
+|---|---|---|
+| `listBroadcasts` → `BroadcastList` | `.catch(() => setBroadcasts([]))` — "No broadcasts yet." | tagged result; failure notice rendered **before** the empty branch |
+| `getSubscriberStats` → `page.tsx` | "Newsletter not configured — set RESEND_API_KEY" for every cause | tagged result; a distinct notice per cause |
+| `createAndSendBroadcast` → `ComposeForm` | `setError(err.message)` — redacted in production | tagged result; validation kept separate from system fault |
+| `deleteBroadcast` → `BroadcastList` | `console.error` in the browser, no UI change | tagged result; notice rendered above the list |
+
+**Why a tagged value and not a better error message.** Next **redacts** the
+message of an error thrown out of a Server Action in a production build, so the
+review's proposed `err.message.startsWith("capabilities.resolve_failed")` would
+work in `next dev` and silently stop working in the deployment where it matters.
+The category has to be a value to survive the boundary. The tag is decided by
+**position** — the guard runs in its own `try`, the provider call in another —
+so nothing depends on the text of an error a framework is free to rewrite.
+`unstable_rethrow` keeps `redirect()` intact: a refusal is still a redirect, not
+a rendered fault.
+
+**Why a rendered notice and not a log line.** This project has no error tracking
+(`meta-gates.md`, verified 2026-08-05), so a log reaches nobody on its own. The
+observable effect is a `role="alert"` notice with a **different message per
+cause** — never a shared fallback string, which is the anti-pattern itself.
+
+`src/lib/capabilities/server.ts` now states the half of the contract it can keep
+and the half a caller owes, lists what each call site actually surfaces today
+(including WR-04's unread header, still open), and says that a new caller of
+`hasCapability` inherits the obligation.
+
+**Proved by mutation against a running dev server driving the real modules.**
+Each mutation was asserted applied (`grep` for its marker) before any result was
+read, and the resolver was restored byte-for-byte afterwards
+(`sha256 b8b5ec05…`, verified; zero `CR01_MUTATION` markers remain).
+
+| Mutation | Action result | Rendered page |
+|---|---|---|
+| **A** resolver throws | `{ok:false, failure:"capabilities_unavailable", detail:"capabilities.resolve_failed: FORCED_BY_MUTATION"}` — **not** `[]` | capability notice; HTML contains **no** "No broadcasts yet" and **no** "Newsletter not configured"; names `my_access_context`, not `RESEND_API_KEY` |
+| **B** resolver ok, holds `admin.access` | `{ok:false, failure:"provider_unavailable", detail:"Missing API key…"}` | the notice **changes** to "The newsletter provider did not answer" — the two causes are distinguished, not one constant |
+| **C** resolver ok, no capability | `NEXT_REDIRECT;replace;/dashboard;307;` propagates | the refusal is still a refusal |
+
+### The manual procedure, since there is no test runner
+
+The mutation proof above covers the action boundary and the server-rendered
+notice. It does **not** cover the browser-side effect path in `BroadcastList`
+(`useEffect` does not run during SSR). That step is manual, and it is written
+here rather than evoked:
+
+1. Sign in as a `master` and open `/admin/newsletter`. Observe the subscriber
+   count and the broadcast list — the healthy state.
+2. In the Supabase SQL editor, revoke the wrapper:
+   `revoke execute on function public.my_access_context() from authenticated;`
+3. Reload `/admin/newsletter`. **Expect:** a red `role="alert"` panel titled
+   *"Permission lookup failed — this is not a refusal"*, in place of the
+   subscriber card. **Expect NOT:** the words "No broadcasts yet" or "Newsletter
+   not configured" anywhere on the page.
+4. Restore: `grant execute on function public.my_access_context() to authenticated;`
+   Reload and confirm the healthy state returns.
+5. For the delete path: with the grant restored, stop the Resend key
+   (`RESEND_API_KEY` unset) and press Delete on a draft. **Expect:** the panel
+   titled *"The newsletter provider did not answer"* above the list, and the row
+   still present. **Expect NOT:** a silently unchanged screen.
+
+Step 2 is a privileged, reversible change to a `GRANT` and touches no data.
+
+### What was deliberately not done
+
+- **WR-01…WR-07 and IN-01…IN-05:** untouched, still outstanding. In particular
+  WR-02 (`door.operate` has no mechanical defence) and WR-04 (the middleware's
+  degraded path signals only through an unread header) remain open and are the
+  two most load-bearing.
+- **No migration, no policy, nothing under `supabase/`.**
+- **The 21 pre-existing lint errors**, including `pendingCookies` in
+  `src/lib/supabase/middleware.ts`. The one lint error inside the changed files
+  (`react-hooks/set-state-in-effect` on `setLoading(true)` in `BroadcastList`) is
+  present verbatim at the parent commit and was left alone.
+
+**Verification:** `npm run build` green from a cleared `.next`. There is no test
+runner for this product and nothing above is claimed to be covered by tests.
+
+_Blocking findings closed: 2026-08-06_
 
 ---
 
