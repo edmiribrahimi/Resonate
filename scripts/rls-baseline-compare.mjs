@@ -862,11 +862,39 @@ function compareB5(before, after, { expectInitplan, allowLintMove }) {
   const b = index(before);
   const a = index(after);
 
-  for (const name of b.keys()) {
-    if (!a.has(name)) {
-      defect('b5_lint_missing', name, 'reported before, absent after.');
-    }
-  }
+  /**
+   * An ABSENT lint is a lint with a count of ZERO.
+   *
+   * Measured on this project, 2026-08-06, comparing the post-07 and post-09
+   * advisor captures: `auth_rls_initplan` reads 20 in one and is **not present
+   * at all** in the other, while the seven other lints are present in both. The
+   * Supabase advisor emits a row per lint only when that lint has at least one
+   * entity; it does not emit a zero.
+   *
+   * Before this was measured, the comparator read an absent lint as
+   * `undefined`, so `--expect-initplan=0` — the terminal state CAP-06 requires,
+   * and the only state in which the advisor names none of the 26 — could not be
+   * satisfied by any database. The expectation was unreachable, not merely
+   * awkward to state.
+   *
+   * **This is expressive, not permissive, and every branch below is stricter or
+   * equal after the change:**
+   *
+   *   * `--expect-initplan=n` still asserts equality with a stated `n`. `0` now
+   *     means what it says instead of never matching.
+   *   * a PINNED lint that disappears now reads `46 → 0` and is still
+   *     `b5_pinned_lint_moved`, where before it was `b5_lint_missing` — same
+   *     defect, better sentence.
+   *   * any other lint that disappears now falls into the general movement
+   *     check as `n → 0`, so it still needs `--allow-lint-move` and a written
+   *     reason. Nothing became automatically forgivable.
+   *
+   * A lint kind absent BEFORE and present after is still reported separately as
+   * `b5_lint_added`, because a new kind of finding is a different event from a
+   * count that grew.
+   */
+  const countOf = (map, name) => (map.has(name) ? map.get(name).count : 0);
+
   for (const name of a.keys()) {
     if (!b.has(name)) {
       defect('b5_lint_added', name, `absent before, ${a.get(name).count} after — a new lint kind appeared.`);
@@ -874,8 +902,11 @@ function compareB5(before, after, { expectInitplan, allowLintMove }) {
   }
 
   // ── the intended movement ───────────────────────────────────────────────
-  const initBefore = b.get('auth_rls_initplan')?.count;
-  const initAfter = a.get('auth_rls_initplan')?.count;
+  const initBefore = countOf(b, 'auth_rls_initplan');
+  const initAfter = countOf(a, 'auth_rls_initplan');
+  const initAfterHow = a.has('auth_rls_initplan')
+    ? ''
+    : ' (the advisor no longer reports the lint at all, which is how it says zero)';
   if (expectInitplan === 'unchanged') {
     if (initBefore !== initAfter) {
       defect(
@@ -897,14 +928,14 @@ function compareB5(before, after, { expectInitplan, allowLintMove }) {
           'all the way.'
       );
     } else {
-      ok(`auth_rls_initplan ${initBefore} → ${initAfter}, as stated`);
+      ok(`auth_rls_initplan ${initBefore} → ${initAfter}, as stated${initAfterHow}`);
     }
   }
 
   // ── the required stillness ──────────────────────────────────────────────
   for (const name of PINNED_LINTS) {
-    const cb = b.get(name)?.count;
-    const ca = a.get(name)?.count;
+    const cb = countOf(b, name);
+    const ca = countOf(a, name);
     if (cb !== ca) {
       defect(
         'b5_pinned_lint_moved',
@@ -917,21 +948,30 @@ function compareB5(before, after, { expectInitplan, allowLintMove }) {
   }
 
   // ── everything else ─────────────────────────────────────────────────────
+  //
+  // Over the UNION of both sides, not over `after` alone: a lint that vanished
+  // is a movement to zero and must be explained like any other. Iterating only
+  // `after` would skip it, which is exactly the case that reached zero here.
   const governed = new Set(['auth_rls_initplan', ...PINNED_LINTS]);
-  for (const [name, rowAfter] of a) {
+  for (const name of new Set([...b.keys(), ...a.keys()])) {
     if (governed.has(name)) continue;
-    const rowBefore = b.get(name);
-    if (!rowBefore || rowBefore.count === rowAfter.count) continue;
+    // Absent BEFORE is a new kind of finding, already reported as
+    // b5_lint_added; reporting it again as a movement would double-count it.
+    if (!b.has(name)) continue;
+    const cb = countOf(b, name);
+    const ca = countOf(a, name);
+    if (cb === ca) continue;
+    const how = a.has(name) ? '' : ' (the lint is no longer reported at all)';
     const reason = LINT_MOVES_ALWAYS_ALLOWED[name];
     if (reason) {
-      measure(`${name} ${rowBefore.count} → ${rowAfter.count} — not pinned: ${reason}`);
+      measure(`${name} ${cb} → ${ca}${how} — not pinned: ${reason}`);
     } else if (allowLintMove.includes(name)) {
-      measure(`${name} ${rowBefore.count} → ${rowAfter.count} — allowed by --allow-lint-move=${name}`);
+      measure(`${name} ${cb} → ${ca}${how} — allowed by --allow-lint-move=${name}`);
     } else {
       defect(
         'b5_lint_moved',
         name,
-        `${rowBefore.count} → ${rowAfter.count}. Every advisor movement needs an explanation. ` +
+        `${cb} → ${ca}${how}. Every advisor movement needs an explanation. ` +
           `If this one is intended, state it: --allow-lint-move=${name}, and write the reason\n` +
           'into 32-VERIFICATION.md. A comparator that guesses is a comparator that excuses.'
       );
