@@ -135,7 +135,7 @@ Plans:
 
 **Wave 3** *(blocked on 32-02, 32-03)*
 
-- [ ] 32-04-PLAN.md — The throwaway PostgreSQL 17.6 target, and the first capture on both targets, committed
+- [x] 32-04-PLAN.md — The throwaway PostgreSQL 17.6 target, and the first capture on both targets, committed
 
 **Wave 4** *(blocked on 32-04)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 3/11 | In Progress|  |
+| 32. Capability Model in the Database | 4/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
