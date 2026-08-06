@@ -346,8 +346,15 @@ async function applyClassification(
  * Skips when offline or when a drain is already running: the re-entrancy guard
  * is not decoration, since `online` and `visibilitychange` routinely fire
  * together when a phone comes out of a pocket in a room with bad signal.
+ *
+ * Returns four numbers rather than one. A single count cannot distinguish a
+ * drained queue from a discarded one, and that distinction is the requirement:
+ * `synced` left because the server holds the record, `failed` left because it
+ * never could, `blocked` is waiting for a sign-in, and `retried` is still in the
+ * queue. The scanner reads the store directly for what remains — these are what
+ * the drain itself just did.
  */
-export async function syncPendingCheckins(): Promise<number> {
+export async function syncPendingCheckins(): Promise<SyncCounters> {
   const counters: SyncCounters = {
     synced: 0,
     retried: 0,
@@ -355,7 +362,7 @@ export async function syncPendingCheckins(): Promise<number> {
     blocked: 0,
   };
 
-  if (!navigator.onLine || isSyncing) return counters.synced;
+  if (!navigator.onLine || isSyncing) return counters;
 
   isSyncing = true;
 
@@ -364,8 +371,10 @@ export async function syncPendingCheckins(): Promise<number> {
 
     for (const entry of pending) {
       // Per item, so one bad entry never aborts the drain — the discipline of
-      // `api/cron/reconcile-refunds/route.ts:95-127`, without its
-      // `catch { errors++ }`, which collapses every cause into one number.
+      // `api/cron/reconcile-refunds/route.ts:95-127`. Not its catch block,
+      // though: that one increments a single error tally and discards the
+      // cause, which is the pattern FIX-08 exists to remove. Every terminal
+      // classification below is counted **and** logged under its own category.
       try {
         // A ticket entry with no token was rekeyed from version 2 by plan
         // 31-05's upgrade: the bundle that queued it discarded the signature.
@@ -406,7 +415,29 @@ export async function syncPendingCheckins(): Promise<number> {
     isSyncing = false;
   }
 
-  return counters.synced;
+  return counters;
+}
+
+/**
+ * Return every held entry to the queue, then drain.
+ *
+ * A staff session expiring at 02:00 turns every queued entry into a 401, and
+ * blocked entries are deliberately never retried — so without this they would
+ * wait for a timer that does not exist. Plan 31-11 wires the sign-in prompt to
+ * it: one action, and the night's queue is moving again.
+ *
+ * The unblock happens even when the device is offline. The drain then does
+ * nothing and the entries sit in `pending`, which is where the next `online`
+ * will find them — the recoverable order, rather than leaving them held on a
+ * session that is now valid.
+ */
+export async function retryBlockedAfterSignIn(): Promise<
+  SyncCounters & { unblocked: number }
+> {
+  const unblocked = await store.unblockAll();
+  console.info("sync:unblocked", { unblocked });
+  const counters = await syncPendingCheckins();
+  return { ...counters, unblocked };
 }
 
 /**
