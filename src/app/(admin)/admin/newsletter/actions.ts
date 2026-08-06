@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { getResend } from "@/lib/email";
 import { CAP } from "@/lib/capabilities/keys";
 import { hasCapability } from "@/lib/capabilities/server";
@@ -59,54 +59,140 @@ async function requireMaster() {
   }
 }
 
-export async function getSubscriberStats() {
-  await requireMaster();
-  const resend = getResend();
-  const { data } = await resend.contacts.list({ audienceId: getAudienceId() });
-  return {
-    total: data?.data?.length ?? 0,
-  };
+/**
+ * ── Why these actions return a failure instead of throwing it ────────────────
+ *
+ * `src/lib/capabilities/server.ts` throws on every resolve failure, on purpose,
+ * so that an infrastructure fault can never be mistaken for a refusal. That
+ * contract holds *at the resolver*. It said nothing about what a caller does
+ * with the throw, and three of this file's four callers swallowed it: the
+ * broadcast list rendered a `capabilities.resolve_failed` as **an empty list**,
+ * presented as fact, and the page rendered it as *"Newsletter not configured —
+ * set RESEND_API_KEY"*, which points the operator at the wrong system entirely.
+ * That is CR-01 in `32-REVIEW.md`, and it is the newsletter precedent from
+ * `.planning/codebase/CONCERNS.md` recreated by the phase that cites it.
+ *
+ * A thrown message cannot carry the diagnosis across the wire. Next redacts the
+ * message of an error thrown out of a Server Action in a production build — the
+ * client receives a generic string and a digest — so `err.message.startsWith(
+ * "capabilities.resolve_failed")` works in `next dev` and silently stops working
+ * in the deployment where it matters. The category has to be a **value** to
+ * survive, so these actions return a tagged result.
+ *
+ * The tag is decided by POSITION, not by parsing a message: the capability guard
+ * runs in its own try, the provider call in another. Nothing depends on the text
+ * of an error, which is the part a framework is free to rewrite.
+ *
+ * This project has **no error tracking** (`meta-gates.md`, verified 2026-08-05),
+ * so a log line reaches nobody. Each failure therefore also gets a distinct,
+ * rendered UI state — see `BroadcastList.tsx`, `ComposeForm.tsx` and `page.tsx`.
+ * The rule the three share: a failure is never drawn as an empty result, and the
+ * two causes are never collapsed into one message.
+ */
+export type NewsletterFailure =
+  /** The permission lookup itself failed. Nothing was asked of Resend. */
+  | "capabilities_unavailable"
+  /** The guard passed; Resend or its configuration did not answer. */
+  | "provider_unavailable";
+
+export type NewsletterResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; failure: NewsletterFailure; detail: string };
+
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-export async function listBroadcasts() {
-  await requireMaster();
-  const resend = getResend();
-  const { data } = await resend.broadcasts.list();
-  return data?.data ?? [];
+/**
+ * Runs the guard, then the body, and reports which of the two failed.
+ *
+ * `unstable_rethrow` is what lets this catch anything at all: `redirect()`
+ * signals itself by throwing, and a `catch` that swallowed it would turn the
+ * refusal of a non-master into a rendered error instead of a redirect. It
+ * re-throws Next's control-flow errors and returns for everything else.
+ */
+async function guarded<T>(
+  action: string,
+  run: () => Promise<T>
+): Promise<NewsletterResult<T>> {
+  try {
+    await requireMaster();
+  } catch (error) {
+    unstable_rethrow(error);
+    const detail = describe(error);
+    console.error(`[newsletter.capabilities_unavailable] ${action}: ${detail}`);
+    return { ok: false, failure: "capabilities_unavailable", detail };
+  }
+
+  try {
+    return { ok: true, data: await run() };
+  } catch (error) {
+    unstable_rethrow(error);
+    const detail = describe(error);
+    console.error(`[newsletter.provider_unavailable] ${action}: ${detail}`);
+    return { ok: false, failure: "provider_unavailable", detail };
+  }
 }
 
-export async function createAndSendBroadcast(subject: string, htmlContent: string) {
-  await requireMaster();
-  const resend = getResend();
-  const fromAddress =
-    process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
-
-  const { data: broadcast, error: createError } = await resend.broadcasts.create({
-    audienceId: getAudienceId(),
-    from: fromAddress,
-    subject,
-    html: htmlContent,
+export async function getSubscriberStats(): Promise<
+  NewsletterResult<{ total: number }>
+> {
+  return guarded("getSubscriberStats", async () => {
+    const resend = getResend();
+    const { data } = await resend.contacts.list({ audienceId: getAudienceId() });
+    return { total: data?.data?.length ?? 0 };
   });
-
-  if (createError || !broadcast) {
-    throw new Error(`Failed to create broadcast: ${createError?.message ?? "Unknown error"}`);
-  }
-
-  const { error: sendError } = await resend.broadcasts.send(broadcast.id);
-
-  if (sendError) {
-    throw new Error(`Failed to send broadcast: ${sendError.message}`);
-  }
-
-  return { id: broadcast.id };
 }
 
-export async function deleteBroadcast(broadcastId: string) {
-  await requireMaster();
-  const resend = getResend();
-  const { error } = await resend.broadcasts.remove(broadcastId);
-  if (error) {
-    throw new Error(`Failed to delete broadcast: ${error.message}`);
-  }
-  return { success: true };
+export async function listBroadcasts(): Promise<NewsletterResult<unknown[]>> {
+  return guarded("listBroadcasts", async () => {
+    const resend = getResend();
+    const { data } = await resend.broadcasts.list();
+    return data?.data ?? [];
+  });
+}
+
+export async function createAndSendBroadcast(
+  subject: string,
+  htmlContent: string
+): Promise<NewsletterResult<{ id: string }>> {
+  return guarded("createAndSendBroadcast", async () => {
+    const resend = getResend();
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
+
+    const { data: broadcast, error: createError } = await resend.broadcasts.create({
+      audienceId: getAudienceId(),
+      from: fromAddress,
+      subject,
+      html: htmlContent,
+    });
+
+    if (createError || !broadcast) {
+      throw new Error(
+        `Failed to create broadcast: ${createError?.message ?? "Unknown error"}`
+      );
+    }
+
+    const { error: sendError } = await resend.broadcasts.send(broadcast.id);
+
+    if (sendError) {
+      throw new Error(`Failed to send broadcast: ${sendError.message}`);
+    }
+
+    return { id: broadcast.id };
+  });
+}
+
+export async function deleteBroadcast(
+  broadcastId: string
+): Promise<NewsletterResult<{ success: true }>> {
+  return guarded("deleteBroadcast", async () => {
+    const resend = getResend();
+    const { error } = await resend.broadcasts.remove(broadcastId);
+    if (error) {
+      throw new Error(`Failed to delete broadcast: ${error.message}`);
+    }
+    return { success: true as const };
+  });
 }

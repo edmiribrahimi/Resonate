@@ -45,12 +45,46 @@
  * already-subscribed address into "Qualcosa è andato storto"
  * (`.planning/codebase/CONCERNS.md`).
  *
- * **What an operator actually sees** when this throws inside a render: Next's
- * error boundary — the surface fails to render rather than rendering as
- * "you may not do this" — plus one `console.error` line beginning
- * `[capabilities.resolve_failed]` in the server log (Vercel runtime logs). Not
- * a page anyone watches, which is exactly why the throw matters more than the
- * log: the broken page is the observable effect, the log line is the diagnosis.
+ * ── What the throw does NOT do, and what a caller therefore owes ─────────────
+ *
+ * Throwing here guarantees only that this module never *returns* a degraded
+ * answer. **It guarantees nothing about the surface**, and the first conversion
+ * of this phase proved it: `src/app/(admin)/admin/newsletter/actions.ts` became
+ * throwable and three of its four callers already swallowed throws — the
+ * broadcast list drew `capabilities.resolve_failed` as "No broadcasts yet.", and
+ * the page drew it as "set RESEND_API_KEY". A throw that lands in someone else's
+ * `catch` is not an observable effect; it is a silent failure with an extra
+ * step. (CR-01, `32-REVIEW.md`.)
+ *
+ * There is also a boundary that no message can cross on its own: Next **redacts**
+ * the message of an error thrown out of a Server Action in a production build.
+ * A client that branches on `err.message.startsWith("capabilities.resolve_failed")`
+ * works in `next dev` and stops working where it matters. A caller that needs the
+ * category on the client must carry it as a **value**, not as a message.
+ *
+ * So the contract has two halves, and only the first one lives in this file:
+ *
+ *   1. **Here:** every failure throws, with a category in the message, and no
+ *      `catch` in this file returns a value.
+ *   2. **At the caller:** the failure must reach a human as something other than
+ *      an empty result, and must not be collapsed with any other cause. This
+ *      project has **no error tracking**, so a log line reaches nobody
+ *      (`meta-gates.md`).
+ *
+ * What that looks like today, call site by call site:
+ *
+ *   - `src/lib/supabase/middleware.ts` — fails closed and sets
+ *     `x-capabilities-resolve-failed`. The header is not read by anything
+ *     (WR-04, deferred).
+ *   - `src/app/(admin)/admin/newsletter/*` — the four converted call sites
+ *     return a tagged `NewsletterResult` and render a distinct notice per cause.
+ *   - Anywhere that neither catches nor tags: Next's error boundary. The broken
+ *     surface is the observable effect; the `console.error` line beginning
+ *     `[capabilities.resolve_failed]` in the Vercel runtime log is the diagnosis.
+ *
+ * **A new caller of `hasCapability` inherits obligation 2.** Wrapping it in a
+ * `catch` that returns `false`, or `[]`, re-creates the defect this file was
+ * written to prevent.
  *
  * ── Memoisation, and its limit ───────────────────────────────────────────────
  *
