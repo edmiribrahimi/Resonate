@@ -53,15 +53,44 @@ organizer/approved   venues        insert -> ok:1     conclusive
 |---|---|---|---|
 | `32-BASELINE-policies.json` | B1 | CAP-03, CAP-01 | `npm run baseline:rls -- --only=B1` |
 | `32-BASELINE-reads.json` | B2 | CAP-03 | `npm run baseline:rls -- --only=B2` |
-| `32-BASELINE-writes.json` | B3 | CAP-03, CAP-06 | `npm run baseline:rls -- --only=B3` |
+| `32-BASELINE-writes.json` | B3 | CAP-03, CAP-06 | `npm run baseline:rls -- --only=B3 --i-know-this-writes` |
 | `32-BASELINE-advisors.json` | B5 | CAP-03, CAP-04, CAP-06 | `npm run baseline:rls -- --only=B5` |
 | `32-BASELINE-policies.container.json` | B1 | CAP-03 | `npm run baseline:container` |
 | `32-BASELINE-reads.container.json` | B2 | CAP-03 | `npm run baseline:container` |
 | `32-BASELINE-writes.container.json` | B3 | CAP-03, CAP-06 | `npm run baseline:container` |
 | `32-BASELINE-surfaces.md` | B4 | CAP-03 | by hand — it is a reading of the code, not of the database |
 
-All four production artefacts at once: `npm run baseline:rls`.
+The three non-writing production artefacts at once: `npm run baseline:rls`.
 All three container artefacts at once: `npm run baseline:container`.
+
+### Two refusals, and why they are the default
+
+**These files are never overwritten.** Every destination is checked *before*
+anything is measured; an existing file aborts the run with exit 1, naming the
+file and naming `--overwrite`. `writeArtefact` checks a second time, so a script
+that imports the capture functions cannot route around it. Re-capturing over
+`pre` would not corrupt an artefact — it would produce a perfectly consistent
+one, which is worse: every later `--before=pre` comparison would then agree with
+itself and report **clean** for the only reason that cannot be detected from the
+files. To re-capture the same phase point deliberately:
+
+```
+npm run baseline:rls -- --phase-point=post-10 --overwrite
+```
+
+and say in the commit why the previous capture was replaced.
+
+**B3 is not in the default set, and on production it needs
+`--i-know-this-writes`.** It is the only capture that sends `read_only: false`
+INSERT/UPDATE/DELETE transactions, and against `production` those reach the live
+database. The two rollback clauses below are real and are asserted twice — but a
+destructive default guarded by an assertion is still a destructive default. On
+the throwaway container B3 needs no extra flag: there is nothing there to
+protect.
+
+Both refusals close CR-02 of `32-REVIEW.md`, which found that the no-argument
+invocation printed in this file destroyed the pre-phase evidence chain *and*
+fired the write probes at production.
 
 ### What each one proves, and what it does not
 

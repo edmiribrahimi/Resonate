@@ -31,6 +31,13 @@
  *   npm run baseline:container                 build, seed, capture B1+B2+B3, destroy
  *   npm run baseline:container -- --smoke      build, assert, destroy — no seed, no capture
  *   npm run baseline:container -- --seed-only --report   build, seed, print the row report, destroy
+ *   npm run baseline:container -- --phase-point=post-10 --overwrite   replace an existing capture
+ *
+ * A CAPTURED ARTEFACT IS NEVER OVERWRITTEN. The destinations are checked before
+ * Docker is asked for anything, and an existing file aborts with exit 1, naming
+ * the file and naming `--overwrite`. The container is throwaway; the artefact it
+ * writes into `.planning/` is not. See `rls-baseline.mjs`, and CR-02 in
+ * `32-REVIEW.md`.
  *
  * Exit codes, the same three `verify-persona.mjs` and `rls-baseline.mjs` use:
  *   0  everything asked for succeeded
@@ -49,6 +56,8 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 import {
+  allowArtefactOverwrite,
+  assertArtefactsWritable,
   captureB1,
   captureB2,
   captureB3,
@@ -443,7 +452,13 @@ export async function withContainer(body, { seed = true } = {}) {
 // ── CLI ────────────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const options = { smoke: false, seedOnly: false, report: false, phasePoint: 'pre' };
+  const options = {
+    smoke: false,
+    seedOnly: false,
+    report: false,
+    phasePoint: 'pre',
+    overwrite: false,
+  };
   for (const arg of argv) {
     const [flag, value] = arg.split('=');
     switch (flag) {
@@ -459,9 +474,13 @@ function parseArgs(argv) {
       case '--phase-point':
         options.phasePoint = value;
         break;
+      case '--overwrite':
+        options.overwrite = true;
+        break;
       default:
         console.error(
-          `FATAL: unknown flag ${flag}. Known flags: --smoke, --seed-only, --report, --phase-point.`
+          `FATAL: unknown flag ${flag}. Known flags: --smoke, --seed-only, --report, ` +
+            '--phase-point, --overwrite.'
         );
         process.exit(2);
     }
@@ -478,6 +497,27 @@ const invokedDirectly = process.argv[1] && resolve(process.argv[1]) === fileURLT
 if (invokedDirectly) {
   const options = parseArgs(process.argv.slice(2));
   console.log('\nrls-baseline-container — phase 32 evidence harness, throwaway target\n');
+
+  if (options.overwrite) {
+    allowArtefactOverwrite();
+    say('  ! --overwrite: captured artefacts may be replaced. Say why in the commit.');
+  }
+
+  // Before Docker is asked for anything. A run that builds, seeds and captures
+  // for two minutes only to refuse the write at the end has told the operator
+  // nothing it could not have told them immediately.
+  if (!options.smoke && !options.seedOnly) {
+    try {
+      assertArtefactsWritable({
+        only: ['B1', 'B2', 'B3'],
+        phasePoint: options.phasePoint,
+        targetSuffix: '.container',
+      });
+    } catch (error) {
+      console.error(`\n  ✗ FATAL: ${error.message}\n`);
+      process.exit(1);
+    }
+  }
 
   let exitCode = 0;
   try {
