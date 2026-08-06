@@ -156,7 +156,7 @@ Plans:
 
 **Wave 8** *(blocked on 32-08, 32-09)*
 
-- [ ] 32-10-PLAN.md — The four-sided capability key check the build cannot perform
+- [x] 32-10-PLAN.md — The four-sided capability key check the build cannot perform
 
 **Wave 9** *(blocked on 32-10)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 9/11 | In Progress|  |
+| 32. Capability Model in the Database | 10/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
