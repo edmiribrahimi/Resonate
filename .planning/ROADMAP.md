@@ -131,7 +131,7 @@ Plans:
 
 **Wave 2** *(blocked on 32-01)*
 
-- [ ] 32-03-PLAN.md — The persona read and write matrices, and the rollback guarantee
+- [x] 32-03-PLAN.md — The persona read and write matrices, and the rollback guarantee
 
 **Wave 3** *(blocked on 32-02, 32-03)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 2/11 | In Progress|  |
+| 32. Capability Model in the Database | 3/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
