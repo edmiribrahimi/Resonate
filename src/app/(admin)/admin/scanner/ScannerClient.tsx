@@ -22,12 +22,15 @@ import {
   getPendingCount,
   getFailedCount,
   getBlockedCount,
+  getFailedCheckins,
   THIS_DEVICE_LABEL,
+  type FailedCheckin,
   type MergeResult,
 } from "@/lib/offline/checkin-store";
 import {
   syncPendingCheckins,
   setupSyncListeners,
+  retryBlockedAfterSignIn,
 } from "@/lib/offline/sync-manager";
 import { isDoorOutcome } from "@/lib/door/outcome";
 import type {
@@ -172,6 +175,43 @@ function flagSentence(flags: DoorFlag[]): string {
   return flags.map((f) => FLAG_MESSAGE[f]).join(" · ");
 }
 
+/** Why an entry could never be recorded, in words a member of staff can act on. */
+const FAILURE_REASON_MESSAGE: Record<string, string> = {
+  invalid_signature: "the code was not issued by us",
+  unknown_code: "nothing matched this code",
+  wrong_night: "the code was for another night",
+  no_party_selected: "no party was selected when it was scanned",
+  unexpected_response: "the server never accepted it",
+};
+
+function failureSentence(reason: string): string {
+  return FAILURE_REASON_MESSAGE[reason] ?? `it failed as "${reason}"`;
+}
+
+/**
+ * How a failed entry is described on screen.
+ *
+ * The store's record key is `partyId:subjectType:subjectId`, and for a
+ * membership entry that subject id **is the membership code** — a credential.
+ * Rendering the raw key would put it on a screen and in a screenshot, so this
+ * shows the kind, the moment it was scanned, and a short id only where the id
+ * is not itself a way in (T-31-11-04). No email and no membership code appears.
+ */
+function failedEntryLabel(entry: FailedCheckin): string {
+  const kind =
+    entry.type === "membership"
+      ? "Membership"
+      : entry.type === "guest"
+        ? "Guest list"
+        : "Ticket";
+  const when = formatClock(entry.scannedAt);
+  const shortId =
+    entry.type === "membership" ? null : entry.subjectId.slice(0, 8);
+  return [kind, shortId, when ? `scanned ${when}` : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function notValidSentence(body: unknown): string {
   const reason = readString(body, "reason");
   return reason !== null &&
@@ -312,6 +352,15 @@ export default function ScannerClient() {
   });
   // What the last refresh could not do. Persistent, never a toast.
   const [cacheNotices, setCacheNotices] = useState<CacheNotice[]>([]);
+
+  // The list behind the "could not be recorded" chip. A number with no way to
+  // see what it counts is a number nobody trusts, and FIX-08 is about the count
+  // meaning something.
+  const [failedEntries, setFailedEntries] = useState<FailedCheckin[] | null>(null);
+  const [blockedResult, setBlockedResult] = useState<string | null>(null);
+
+  /** The camera did not start. Its own line, because it is not a cache problem. */
+  const [cameraFault, setCameraFault] = useState<string | null>(null);
 
   /**
    * This install's id, resolved once and held.
@@ -621,15 +670,30 @@ export default function ScannerClient() {
       }
     }
 
-    initScanner().catch(() => {});
+    // A camera that never starts used to fail into nothing: a blank box, no
+    // sentence, and a member of staff at the door with no idea whether to wait
+    // or to switch to the list. A denied permission and a camera already held by
+    // another app are the two common causes, and both are recoverable — but only
+    // by someone who has been told.
+    initScanner().catch((error) => {
+      console.error("scanner:camera_unavailable", error);
+      setCameraFault(
+        "The camera did not start. Check the camera permission for this site, close any other app using it, or check people in from the list below."
+      );
+    });
 
     return () => {
       scannerInstanceRef.current = null;
       videoTrackRef.current = null;
       setTorchOn(false);
       setTorchAvailable(false);
+      setCameraFault(null);
       if (qrcode) {
-        qrcode.stop().catch(() => {});
+        // Teardown only. A failure here has no consequence for a scan or a
+        // record, so it is logged under its own category and not put on screen.
+        qrcode.stop().catch((error) => {
+          console.error("scanner:camera_stop_failed", error);
+        });
       }
     };
   }, [showScanner]);
@@ -684,6 +748,44 @@ export default function ScannerClient() {
   const addScanRecord = useCallback((record: ScanRecord) => {
     setScanHistory((prev) => [record, ...prev].slice(0, 5));
   }, []);
+
+  /** Open, or close, the list of entries that could never be recorded. */
+  const toggleFailedEntries = useCallback(async () => {
+    if (failedEntries !== null) {
+      setFailedEntries(null);
+      return;
+    }
+    try {
+      setFailedEntries(await getFailedCheckins());
+    } catch (error) {
+      console.error("scanner:failed_list_unavailable", error);
+      setFailedEntries([]);
+      setQueue((prev) => ({ ...prev, unreadable: true }));
+    }
+  }, [failedEntries]);
+
+  /**
+   * Put the held entries back in the queue and drain.
+   *
+   * A staff session expiring at 02:00 turns every queued entry into a 401.
+   * Blocked entries are deliberately never retried (sync-manager.ts:128-131), so
+   * without this they would wait for a timer that does not exist: this is the
+   * one action that gets the night's queue moving again, and the chip is the
+   * only place it is offered.
+   */
+  const handleRetryBlocked = useCallback(async () => {
+    setBlockedResult("Retrying…");
+    try {
+      const counters = await retryBlockedAfterSignIn();
+      await refreshQueueCounts();
+      setBlockedResult(
+        `Released ${counters.unblocked} · recorded ${counters.synced} · still waiting ${counters.retried} · could not be recorded ${counters.failed} · still held ${counters.blocked}`
+      );
+    } catch (error) {
+      console.error("scanner:retry_blocked_failed", error);
+      setBlockedResult("The retry could not run on this device — nothing changed");
+    }
+  }, [refreshQueueCounts]);
 
   const markRecordUndone = useCallback((record: ScanRecord) => {
     setScanHistory((prev) =>
@@ -1421,6 +1523,8 @@ export default function ScannerClient() {
     setStatus("idle");
     setScanHistory([]);
     setCacheNotices([]);
+    setFailedEntries(null);
+    setBlockedResult(null);
     isProcessingRef.current = false;
     // Sync any pending check-ins before switching party
     syncPendingCheckins()
@@ -1609,7 +1713,12 @@ export default function ScannerClient() {
                   <h1 className="text-lg font-bold truncate">
                     {selectedParty?.partyTitle || "Check-in"}
                   </h1>
-                  {/* Online/Offline status indicator */}
+                  {/* Online/Offline status indicator — connectivity, and only
+                      connectivity. It keeps `yellow-500` for Offline, which is
+                      precisely why the third scan state is amber and not yellow:
+                      the two must not read as one signal in a dark room. The
+                      queue count used to live inside this ternary and is now
+                      below, outside it. */}
                   {isOnline ? (
                     <span className="shrink-0 flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
@@ -1618,7 +1727,7 @@ export default function ScannerClient() {
                   ) : (
                     <span className="shrink-0 flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
-                      Offline{queue.pending > 0 ? ` (${queue.pending})` : ""}
+                      Offline
                     </span>
                   )}
                 </div>
@@ -1660,6 +1769,91 @@ export default function ScannerClient() {
             QR Scan
           </button>
         </div>
+
+        {/*
+          The queue, rendered OUTSIDE the Online/Offline ternary above.
+
+          This is the whole of FIX-08's surface. The pending count used to be
+          rendered only inside the offline branch of that pill — invisible while
+          the device was online, which is exactly when a stuck queue matters and
+          exactly when it can be drained. Classifying the queue without fixing
+          this left the number meaning something that nobody could see, and with
+          no error tracking anywhere in this project the person holding the phone
+          is the only observer a failed sync has.
+        */}
+        {(queue.unreadable ||
+          queue.pending > 0 ||
+          queue.failed > 0 ||
+          queue.blocked > 0) && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {queue.pending > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                Pending ({queue.pending})
+              </span>
+            )}
+            {queue.failed > 0 && (
+              <button
+                onClick={toggleFailedEntries}
+                className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500 active:scale-95 transition-transform"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                Could not be recorded ({queue.failed})
+              </button>
+            )}
+            {queue.blocked > 0 && (
+              <button
+                onClick={handleRetryBlocked}
+                className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-500 active:scale-95 transition-transform"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Sign in again to record {queue.blocked}{" "}
+                {queue.blocked === 1 ? "entry" : "entries"}
+              </button>
+            )}
+            {queue.unreadable && (
+              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                This device cannot read its own queue
+              </span>
+            )}
+          </div>
+        )}
+
+        {blockedResult && (
+          <p className="mb-3 text-[10px] text-muted">{blockedResult}</p>
+        )}
+
+        {/* What the failed count actually counts. A number with no way to see
+            behind it is a number nobody trusts. No email and no membership code
+            is rendered here — see `failedEntryLabel`. */}
+        {failedEntries !== null && (
+          <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-red-400 mb-2">
+              Could not be recorded
+            </p>
+            {failedEntries.length === 0 ? (
+              <p className="text-[11px] text-muted">
+                Nothing to show — the list could not be read, or it is empty.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {failedEntries.map((entry) => (
+                  <li key={entry.key} className="text-[11px] text-muted">
+                    <span className="text-foreground">
+                      {failedEntryLabel(entry)}
+                    </span>{" "}
+                    — {failureSentence(entry.reason)}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-[10px] text-muted">
+              These stay on this device. Sort them out from the attendee list, or
+              in the night&apos;s review.
+            </p>
+          </div>
+        )}
 
         {/* Progress bar for selected party */}
         {attendance && (
@@ -1758,6 +1952,46 @@ export default function ScannerClient() {
       </div>
 
       <div className="px-6">
+        {/*
+          What the last refresh could not do — above the scanner, and NOT a
+          toast.
+
+          The person holding the phone may be looking at a queue rather than at
+          the screen, so a message that disappears on its own is a message that
+          was never delivered. Each line stays until a refresh succeeds and
+          replaces the whole set. `mergeAttendees` refuses a payload that would
+          shrink the cache and returns that refusal as a value
+          (checkin-store.ts:429-438); this is where the value becomes something a
+          human sees, which is the difference between FIX-06 being implemented
+          and FIX-06 being done.
+        */}
+        {cameraFault && (
+          <div
+            className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-400"
+            role="status"
+            aria-live="polite"
+          >
+            {cameraFault}
+          </div>
+        )}
+
+        {cacheNotices.length > 0 && (
+          <div className="mb-4 space-y-2" role="status" aria-live="polite">
+            {cacheNotices.map((notice) => (
+              <div
+                key={notice.key}
+                className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+                  notice.tone === "error"
+                    ? "border-red-500/40 bg-red-500/10 text-red-400"
+                    : "border-yellow-500/40 bg-yellow-500/10 text-yellow-500"
+                }`}
+              >
+                {notice.text}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
           <div className="mb-4 rounded-xl border border-card-border bg-card p-4">
