@@ -126,8 +126,8 @@ Plans:
 
 **Wave 1** *(the baseline, before any DDL exists)*
 
-- [ ] 32-01-PLAN.md — The evidence harness: the policy dump and the advisor oracle
-- [ ] 32-02-PLAN.md — B4, the register of every permission surface in application code
+- [x] 32-01-PLAN.md — The evidence harness: the policy dump and the advisor oracle
+- [x] 32-02-PLAN.md — B4, the register of every permission surface in application code
 
 **Wave 2** *(blocked on 32-01)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 0/TBD | Not started | - |
+| 32. Capability Model in the Database | 2/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
