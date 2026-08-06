@@ -11,6 +11,11 @@ import type {
   DoorScanCause,
   DoorScanSource,
 } from "@/lib/door/outcome";
+// The second import, same inverted direction and the same reason. The eight
+// capability keys are shared by a policy body, a catalogue row and every
+// TypeScript caller, so they are defined once in `@/lib/capabilities/keys`,
+// which imports nothing, and are read from here.
+import type { CapabilityKey } from "@/lib/capabilities/keys";
 
 export type UserRole = "master" | "organizer" | "member";
 export type UserStatus = "pending" | "approved" | "rejected";
@@ -335,4 +340,58 @@ export interface DoorScanEvent {
   token_fingerprint: string | null;
   /** A reversal is a further event, not an erasure of the admission. */
   is_undo: boolean;
+}
+
+/**
+ * The two `private` tables, and the payload of the one exposed function.
+ *
+ * ── The honest limit of these three declarations ─────────────────────────────
+ *
+ * This file has no `Database` type and no `Functions` map, and none of the four
+ * Supabase clients is parameterised (`src/lib/supabase/client.ts:4`,
+ * `server.ts:7`, `middleware.ts:15`, `service.ts:4`). So the interfaces below
+ * **document** the shapes and do **not** make `supabase.rpc("my_access_context")`
+ * type-checked: a misspelled function name is still a runtime error, an unknown
+ * capability key still resolves to `false`, and a caller that casts the RPC
+ * result to `AccessContext` is asserting, not proving. `npm run build` cannot
+ * tell you that the database agrees.
+ *
+ * Neither table is reachable over the API — PostgREST serves
+ * `public,graphql_public` only — so `Capability` and `RoleCapability` describe
+ * rows no client will ever receive. They are here so that a script or a
+ * migration reader has one place to check the shape against, and so the
+ * `supabase-data.md` gate *tipi allineati* is satisfied in the same commit as
+ * the DDL.
+ */
+export interface Capability {
+  key: CapabilityKey;
+  description: string;
+}
+
+export interface RoleCapability {
+  role: UserRole;
+  capability: CapabilityKey;
+  /**
+   * The inherited inconsistency, carried as data. `false` reproduces the 34
+   * policies that ignore status; `true` reproduces the four `artists`/`venues`
+   * policies that require `approved`. It is not a setting to tidy.
+   */
+  requires_approved: boolean;
+}
+
+/**
+ * What `public.my_access_context()` returns. Exactly one row, always.
+ *
+ * `role` and `status` are null when the subject has no profile row — which is
+ * also the case in which `capabilities` is empty.
+ *
+ * **No new caller may branch on `role` or `status`.** They are in this payload
+ * only so the middleware can keep injecting the two `x-user-*` headers that 46
+ * files still read, at one round trip instead of two. Every new decision asks
+ * `capabilities`.
+ */
+export interface AccessContext {
+  capabilities: CapabilityKey[];
+  role: UserRole | null;
+  status: UserStatus | null;
 }
