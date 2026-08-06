@@ -42,7 +42,7 @@ a visual regression there is a safety issue, not a cosmetic one.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 31: Live Defects at the Door and the Bar** - Correct the nine defects present in production today, before anything is built on top of them
+- [x] **Phase 31: Live Defects at the Door and the Bar** - Correct the nine defects present in production today, before anything is built on top of them (completed 2026-08-06)
 - [ ] **Phase 32: Capability Model in the Database** - One definition of every permission, evaluated identically by pages, actions and row-level policies
 - [ ] **Phase 33: Server Data-Access Layer** - Identity and capability resolved from the session in one server-only place; no surface trusts a request header
 - [ ] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched
@@ -102,11 +102,11 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 31-11-PLAN.md — The scanner: a third state, the same three outcomes on both paths, counters visible online
+- [x] 31-11-PLAN.md — The scanner: a third state, the same three outcomes on both paths, counters visible online
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 31-13-PLAN.md — The evidence: static assertions, the door pass on a phone with the radio off, and 31-VERIFICATION.md
+- [x] 31-13-PLAN.md — The evidence: static assertions, the door pass on a phone with the radio off, and 31-VERIFICATION.md
 
 ### Phase 32: Capability Model in the Database
 
@@ -275,7 +275,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 31. Live Defects at the Door and the Bar | 11/13 | In Progress|  |
+| 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 0/TBD | Not started | - |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
