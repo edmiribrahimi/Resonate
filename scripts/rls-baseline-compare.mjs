@@ -1131,6 +1131,18 @@ if (invokedDirectly) {
     say(`      after : ${relative(ROOT, afterPath)}  (${after.captured_at}, ${after.phase_point})`);
   }
 
+  // Gathered in one block at the end, the way `verify-persona.mjs` prints its
+  // `misure:`. These are the numbers `32-VERIFICATION.md` has to carry — how
+  // much of the agreement is vacuous, and which advisor lints moved without
+  // being a defect. A verdict that did not say them would be a verdict nobody
+  // could weigh.
+  if (movements.length) {
+    say('\n  measurements — these belong in 32-VERIFICATION.md, not only on this screen:');
+    for (const m of movements) {
+      for (const line of String(m).split('\n')) say(`    ${line}`);
+    }
+  }
+
   say('');
   say(
     '  Note: this script compares two captures. It does not say a policy is correct — it says ' +
