@@ -1078,16 +1078,36 @@ function parseArgs(argv) {
   if (options.only.includes('B5')) {
     if (options.expectInitplan === null) {
       fatal(
-        'FATAL: comparing B5 requires --expect-initplan=26|0|unchanged.\n' +
-          'The same comparator runs after the model migration (where 26 is still correct) and ' +
-          'after the wrap migration (where 0 is required).\n' +
+        'FATAL: comparing B5 requires --expect-initplan=<n>|unchanged.\n' +
+          'The same comparator runs after the model migration (where 26 is still correct), after ' +
+          'the capability cutover (where 20 is required) and after the wrap migration (where 0 is).\n' +
           'Stating which one you expect is the whole point; guessing it would turn the oracle ' +
           'into a rubber stamp. Nothing was compared.'
       );
     }
-    if (!['26', '0', 'unchanged'].includes(String(options.expectInitplan))) {
+    // Any non-negative integer, DERIVED by the caller and stated — not an
+    // enumeration of the two endpoints.
+    //
+    // Why this was widened, in plan 32-07: the original list was 26 | 0 |
+    // unchanged, on the assumption that only the wrap migration can move this
+    // number. That assumption is wrong, and `32-RESEARCH.md` § (e) class C had
+    // already said so: the four `artists`/`venues` organizer policies and the
+    // two master ones carry their only bare `auth.uid()` INSIDE the inline
+    // EXISTS that the capability replacement deletes outright. Replacing the
+    // predicate therefore removes the token with it, and the advisor moves
+    // 26 → 20 in a migration that wrapped nothing.
+    //
+    // This is an EXPRESSIVE widening, not a permissive one. `--expect-initplan=n`
+    // still asserts `initAfter === n` exactly, and a value must still be stated:
+    // the alternative available to plan 32-07 was to drop B5 from the comparison
+    // altogether, which would have blinded the one oracle that has never read
+    // the plan — a far worse trade than letting it be told a third number.
+    const expectation = String(options.expectInitplan);
+    if (expectation !== 'unchanged' && !/^\d+$/.test(expectation)) {
       fatal(
-        `FATAL: --expect-initplan="${options.expectInitplan}" is not one of 26, 0, unchanged.`
+        `FATAL: --expect-initplan="${options.expectInitplan}" is neither a non-negative ` +
+          'integer nor the word "unchanged". The expectation must be derived from the ' +
+          'post-migration predicate set and stated, never guessed.'
       );
     }
   }
