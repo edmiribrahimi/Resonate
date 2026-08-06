@@ -77,7 +77,35 @@ const ARTEFACT_KEY_ORDER = [
 ];
 
 /** The artefacts this script knows how to capture. */
-const KNOWN_ARTEFACTS = ['B1'];
+const KNOWN_ARTEFACTS = ['B1', 'B5'];
+
+/**
+ * ── Pre-registered plausibility floors ────────────────────────────────────
+ *
+ * All three numbers were MEASURED against the production database on
+ * 2026-08-06 and written here before this harness ran for the first time.
+ * They exist for one reason: a harness that cannot fail is not evidence. A
+ * broken parser, a query that silently returns nothing, an API that answers
+ * `[]` — each of those produces a green run and an empty baseline, and an
+ * empty baseline makes every later comparison pass vacuously.
+ *
+ * The same refusal, in the same spirit, is `verify-persona.mjs:225-233`.
+ *
+ * **If a floor trips, the correct response is to investigate the database,
+ * not to lower the number.** A policy count below 67 means policies were
+ * dropped; a table count below 20 means RLS was disabled somewhere. Both are
+ * findings, and both are more important than the capture that was refused.
+ */
+const FLOOR_POLICY_ROWS = 67;
+const FLOOR_RLS_ENABLED_TABLES = 20;
+
+/**
+ * NOT a floor, deliberately. `auth_rls_initplan` was 26 on 2026-08-06 and
+ * this phase exists to drive it to 0, so asserting it would make the
+ * post-phase capture fail for succeeding. It is recorded here so that a
+ * PRE-phase capture reporting anything other than 26 is visible as a finding.
+ */
+const MEASURED_AUTH_RLS_INITPLAN = 26;
 
 // ── secrecy ────────────────────────────────────────────────────────────────
 
@@ -339,13 +367,44 @@ select schemaname, tablename, policyname, cmd, permissive, roles, qual, with_che
  where schemaname = 'public'
 `;
 
-const B1_FACTS_SQL = `
-select version() as pg_version
+/**
+ * The supporting facts, in one read-only round trip.
+ *
+ * `policy_count` and `rls_enabled_tables` are the plausibility floors' input;
+ * `pg_version` is here because plan 32-04 builds a throwaway container that
+ * must MATCH the production major.minor, and a baseline that does not record
+ * which Postgres rendered its predicates cannot be compared against one that
+ * was rendered by a different Postgres.
+ */
+const FACTS_SQL = `
+select
+  (select count(*)::int from pg_policies where schemaname = 'public') as policy_count,
+  (select count(*)::int from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity) as rls_enabled_tables,
+  version() as pg_version
 `;
 
+/** One facts read per run, shared by every artefact captured in that run. */
+let factsPromise = null;
+
+async function getFacts(target) {
+  if (!factsPromise) {
+    factsPromise = target.query(FACTS_SQL, { readOnly: true }).then((rows) => {
+      const row = rows[0] ?? {};
+      return {
+        policyCount: row.policy_count,
+        rlsEnabledTables: row.rls_enabled_tables,
+        postgresVersion: reducePostgresVersion(row.pg_version),
+      };
+    });
+  }
+  return factsPromise;
+}
+
 async function captureB1(target, { phasePoint }) {
-  const facts = await target.query(B1_FACTS_SQL, { readOnly: true });
-  const postgresVersion = reducePostgresVersion(facts[0]?.pg_version);
+  const facts = await getFacts(target);
+  const { postgresVersion, rlsEnabledTables } = facts;
 
   const raw = await target.query(B1_SQL, { readOnly: true });
   const rows = sortRows(
@@ -362,6 +421,22 @@ async function captureB1(target, { phasePoint }) {
     ['tablename', 'policyname', 'cmd']
   );
 
+  // The refusal comes BEFORE the write. A file written from an implausible
+  // measurement is worse than no file: it looks like evidence.
+  if (rows.length < FLOOR_POLICY_ROWS) {
+    throw new Error(
+      `implausible measurement: ${rows.length} policy rows, floor is ${FLOOR_POLICY_ROWS} ` +
+        '(measured 2026-08-06). Nothing was written. Investigate the database — do not lower the floor.'
+    );
+  }
+  if (rlsEnabledTables < FLOOR_RLS_ENABLED_TABLES) {
+    throw new Error(
+      `implausible measurement: ${rlsEnabledTables} tables with RLS enabled, floor is ` +
+        `${FLOOR_RLS_ENABLED_TABLES} (measured 2026-08-06). Nothing was written. ` +
+        'Investigate the database — do not lower the floor.'
+    );
+  }
+
   const path = writeArtefact({
     artefact: 'B1',
     slug: 'policies',
@@ -369,9 +444,123 @@ async function captureB1(target, { phasePoint }) {
     postgresVersion,
     phasePoint,
     rows,
+    trailing: {
+      supporting_counts: {
+        policy_count: facts.policyCount,
+        rls_enabled_tables: rlsEnabledTables,
+      },
+    },
   });
 
-  return { path, rowCount: rows.length, detail: `postgres ${postgresVersion}` };
+  return {
+    path,
+    rowCount: rows.length,
+    detail: `postgres ${postgresVersion}, ${rlsEnabledTables} RLS-enabled tables`,
+  };
+}
+
+// ── B5 — the independent advisor oracle ────────────────────────────────────
+
+/**
+ * Supabase's own linter, read as a third-party oracle.
+ *
+ * Its value is that it is not us. B1 says what the policy set IS; B5 says
+ * what a tool that has never read this plan thinks of it. When the phase
+ * drives `auth_rls_initplan` from 26 to 0 while `multiple_permissive_policies`
+ * (46), `unindexed_foreign_keys` (35) and `unused_index` (14) do not move,
+ * that is an outside witness both to the intended change and to the absence
+ * of an unintended one.
+ *
+ * Entity identity comes from `cache_key`, not from `metadata`. That is not a
+ * preference: for `auth_rls_initplan` the metadata names only the TABLE, and
+ * the 26 POLICIES are the whole point of the artefact. `cache_key` carries
+ * schema, table and policy name, is derived from the entity, and is therefore
+ * stable across runs. It holds table, policy and function names only — all
+ * publishable.
+ */
+async function fetchAdvisor(target, kind) {
+  const payload = await target.get(`/advisors/${kind}`);
+  const lints = Array.isArray(payload) ? payload : (payload.lints ?? []);
+  const byName = new Map();
+  for (const lint of lints) {
+    if (!byName.has(lint.name)) byName.set(lint.name, []);
+    byName.get(lint.name).push(String(lint.cache_key ?? ''));
+  }
+  return [...byName.entries()].map(([name, entities]) => ({
+    advisor: kind,
+    name,
+    count: entities.length,
+    entities: [...new Set(entities)].sort(compareStrings),
+  }));
+}
+
+/**
+ * The two standing invariants that live in the Supabase dashboard rather than
+ * in git, plus the exposed-schema list.
+ *
+ * They are captured here because **nothing in this repository would notice if
+ * either changed.** `hook_custom_access_token_enabled` must stay false or
+ * CAP-04 breaks silently — a capability minted into a token takes up to
+ * `jwt_exp` seconds to take effect. `db_schema` must keep excluding `private`
+ * or every security-definer helper this phase writes becomes a REST endpoint.
+ *
+ * NOTE, and it is the reason this reduction is written by hand: the
+ * `/postgrest` endpoint returns the project's PostgREST **JWT secret** in the
+ * same response. Only `db_schema` is read out of it, the raw response is never
+ * stored, and the secret is registered with `redact()` so it cannot reach an
+ * error message either. Do not "simplify" this by spreading the response.
+ */
+async function fetchInvariants(target) {
+  const auth = await target.get('/config/auth');
+  const postgrest = await target.get('/postgrest');
+  registerSecret(postgrest?.jwt_secret);
+
+  return {
+    hook_custom_access_token_enabled: auth?.hook_custom_access_token_enabled ?? null,
+    jwt_exp: auth?.jwt_exp ?? null,
+    db_schema: postgrest?.db_schema ?? null,
+  };
+}
+
+async function captureB5(target, { phasePoint }) {
+  const { postgresVersion } = await getFacts(target);
+
+  const performance = await fetchAdvisor(target, 'performance');
+  const security = await fetchAdvisor(target, 'security');
+
+  // Same refusal as B1: an advisor that answers nothing is a broken read, not
+  // a clean database. This database had 121 performance lints on 2026-08-06.
+  if (performance.length === 0) {
+    throw new Error(
+      'implausible measurement: the performance advisor returned zero lints. Nothing was written. ' +
+        'Investigate the API response — an empty advisor is a broken read, not a clean database.'
+    );
+  }
+
+  const invariants = await fetchInvariants(target);
+  const rows = sortRows([...performance, ...security], ['advisor', 'name']);
+
+  const path = writeArtefact({
+    artefact: 'B5',
+    slug: 'advisors',
+    target: target.name,
+    postgresVersion,
+    phasePoint,
+    rows,
+    trailing: { invariants },
+  });
+
+  const initplan = rows.find((r) => r.name === 'auth_rls_initplan');
+  const note =
+    initplan && initplan.count !== MEASURED_AUTH_RLS_INITPLAN
+      ? ` — NOTE: auth_rls_initplan is ${initplan.count}, measured ${MEASURED_AUTH_RLS_INITPLAN} on 2026-08-06`
+      : '';
+
+  return {
+    path,
+    rowCount: rows.length,
+    detail: `${performance.length} performance lint kinds, ${security.length} security${note}`,
+  };
 }
 
 // ── CLI ────────────────────────────────────────────────────────────────────
@@ -427,7 +616,7 @@ console.log('\nrls-baseline — phase 32 evidence harness\n');
 
 const failures = [];
 
-const CAPTURES = { B1: captureB1 };
+const CAPTURES = { B1: captureB1, B5: captureB5 };
 
 for (const id of options.only) {
   try {
