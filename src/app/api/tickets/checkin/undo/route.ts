@@ -50,10 +50,10 @@ async function verifyOrganizerRole() {
     return { error: "Forbidden", status: 403 };
   }
 
-  if (profile.status !== "approved") {
-    return { error: "Forbidden: account not approved", status: 403 };
-  }
-
+  // Role decides the door; status does not. Identical to `checkin/route.ts`,
+  // deliberately — see the reasoning there. Staff always get in (owner decision,
+  // 2026-08-06), and the promotion path now approves the account when it grants
+  // the role. These four door routes must never diverge on this.
   return { user, profile };
 }
 

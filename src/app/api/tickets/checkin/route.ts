@@ -108,19 +108,25 @@ interface LegacyFields {
 type ScanEventInsert = Omit<DoorScanEvent, "id">;
 
 /**
- * Role **and** status, never role alone.
+ * Role decides the door. Status does not.
  *
- * `access-gating.md` gate *due assi*: the two are independent axes. And the hole
- * is reachable, not theoretical — `updateMemberRole`
- * (src/app/(admin)/admin/members/actions.ts:114-118) writes `role` without
- * touching `status`, so an organizer promoted from a member who was still
- * `pending` keeps `status = 'pending'`.
+ * `access-gating.md` gate *due assi* still holds — role and status are
+ * independent axes — but at the door they are not both gates. **Staff always get
+ * in**, decided by the project owner on 2026-08-06, and the reason is the
+ * asymmetry this whole phase is built on: a staff member refused by the scanner
+ * at two in the morning cannot admit anyone at all, which is worse than the hole
+ * a status check would close.
  *
- * The two refusals carry **different** messages on purpose. At two in the
- * morning with a queue, a bare "Forbidden" is undiagnosable; "account not
- * approved" names the fix. `meta-gates.md`: with no error tracking anywhere in
- * this repository, the message shown to the person holding the phone is the only
- * observer that exists.
+ * The hole it would have closed is now closed at its source instead:
+ * `updateMemberRole` (src/app/(admin)/admin/members/actions.ts) sets
+ * `status = 'approved'` when it grants the organizer role, because granting
+ * staff rights to an unapproved account was a contradiction in the promotion
+ * path, not a signal to act on at the door.
+ *
+ * The three other door routes — `undo`, `membership/verify`, `attendance` —
+ * check role alone as well. They must stay identical: the same person refused by
+ * one scanner and admitted by another, on the same night, is undiagnosable with
+ * no error tracking anywhere in this repository.
  */
 async function verifyOrganizerRole() {
   const supabase = await createClient();
@@ -141,10 +147,6 @@ async function verifyOrganizerRole() {
 
   if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
     return { error: "Forbidden", status: 403 };
-  }
-
-  if (profile.status !== "approved") {
-    return { error: "Forbidden: account not approved", status: 403 };
   }
 
   return { user, profile };

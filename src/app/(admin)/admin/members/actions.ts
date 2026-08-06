@@ -110,10 +110,27 @@ export async function updateMemberRole(
     throw new Error("Cannot change own role");
   }
 
+  // Granting the organizer role approves the account in the same write.
+  //
+  // Owner decision, 2026-08-06: giving someone staff rights while leaving them
+  // `pending` is a contradiction in this path, not a state to be defended
+  // downstream. Before this, the two axes could drift — a `pending` member
+  // promoted to organizer kept `status = 'pending'`, and every surface that read
+  // both had to decide what that meant. The door chose to admit them
+  // (`api/tickets/checkin/route.ts`); closing it here means the question stops
+  // being asked at all.
+  //
+  // Demotion does NOT revoke approval: `member` and `approved` are different
+  // axes (`access-gating.md`, gate *due assi*), and someone who was approved
+  // stays approved when they stop being staff.
   const serviceClient = getServiceClient();
   const { error } = await serviceClient
     .from("profiles")
-    .update({ role: newRole })
+    .update(
+      newRole === "organizer"
+        ? { role: newRole, status: "approved" }
+        : { role: newRole }
+    )
     .eq("id", memberId);
 
   if (error) {
