@@ -178,8 +178,14 @@ function fail(message, code) {
  * A missing variable is exit 2, not 1: nothing was measured, so nothing
  * failed. The message names the variable, because "environment is wrong" with
  * no name is the silent failure `meta-gates.md` forbids.
+ *
+ * Exported so that `scripts/verify-capabilities.mjs` reaches the same database
+ * through the same door. A second env loader would be a second place for the
+ * project reference to be read and a second place for it to be forgotten in
+ * `registerSecret` — and the whole redaction guarantee is that every printed
+ * string passes through one list.
  */
-function loadEnvironment() {
+export function loadEnvironment() {
   const envFile = `${ROOT}/.env.local`;
   if (existsSync(envFile)) {
     try {
@@ -229,8 +235,13 @@ function loadEnvironment() {
  * throwaway-container target behind this same signature, which is why every
  * SQL string in this file is plain SQL with nothing API-specific in it: the
  * container target must be able to run the identical string.
+ *
+ * Exported for `scripts/verify-capabilities.mjs`, which needs to read
+ * `private.capabilities` and `pg_policies` from the APPLIED database. It reuses
+ * this rather than constructing a second client: a second client is a second
+ * place to forget `read_only`, and a second thing to keep in step with this one.
  */
-function createManagementApiTarget({ token, projectRef }) {
+export function createManagementApiTarget({ token, projectRef }) {
   const base = `${MANAGEMENT_API}/v1/projects/${projectRef}`;
 
   async function query(sql, { readOnly }) {
