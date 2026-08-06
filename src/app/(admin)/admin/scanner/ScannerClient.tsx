@@ -1,22 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import ScanFlash from "@/components/scanner/ScanFlash";
-import { vibrateSuccess, vibrateError } from "@/utils/haptics";
+import ScanFlash, { type ScanFlashType } from "@/components/scanner/ScanFlash";
 import {
+  vibrateSuccess,
+  vibrateError,
+  vibrateAlreadyRecorded,
+} from "@/utils/haptics";
+import {
+  attendeeKey,
   mergeAttendees,
   cacheMembers,
   findAttendee,
+  findBySubject,
   findMember,
   checkInLocally,
   checkInMemberLocally,
   markCheckedInLocally,
+  undoCheckInLocally,
+  getDeviceId,
   getPendingCount,
+  getFailedCount,
+  getBlockedCount,
+  getFailedCheckins,
+  THIS_DEVICE_LABEL,
+  type FailedCheckin,
+  type MergeResult,
 } from "@/lib/offline/checkin-store";
 import {
   syncPendingCheckins,
   setupSyncListeners,
+  retryBlockedAfterSignIn,
 } from "@/lib/offline/sync-manager";
+import { isDoorOutcome } from "@/lib/door/outcome";
+import type {
+  DoorFlag,
+  DoorNotValidReason,
+  DoorSubjectType,
+} from "@/lib/door/outcome";
 
 // UUID pattern: 8-4-4-4-12 hex chars
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -27,7 +48,213 @@ const MEMBERSHIP_PATTERN = /code=RSN-/i;
 // Bare membership code: RSN-XXXXXX
 const BARE_MEMBERSHIP_PATTERN = /^RSN-[A-Z0-9]{6,10}$/i;
 
+/**
+ * The four refusals, one sentence each — never a shared "Invalid".
+ *
+ * `meta-gates.md` forbids a handler that collapses distinct causes into one
+ * message, and this project already has the recorded precedent: the newsletter
+ * form's single "Qualcosa e' andato storto". At the door the sentence on the
+ * screen is the only observer that exists — there is **no error tracking
+ * anywhere in this repository** — so a shared word here is a night nobody can
+ * debug, and a member of staff sent to fix the wrong thing.
+ */
+const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
+  invalid_signature: "This code was not issued by us",
+  unknown_code: "No ticket or member matches this code",
+  wrong_night: "This code is for another night",
+  no_party_selected: "Choose the party first — a scan needs a night",
+};
+
+/** A reason from a bundle this one does not know. Its own sentence, not one of the four. */
+const UNRECOGNISED_REASON_MESSAGE = "This code could not be validated";
+
+/**
+ * An admission that is not ordinary. Both read as *admitted, and someone should
+ * look at this afterwards* — never as a refusal.
+ */
+const FLAG_MESSAGE: Record<DoorFlag, string> = {
+  refunded_before_night: "Refunded before tonight — admitted, flagged for review",
+  not_in_cache: "Not in the list on this device — admitted, flagged for review",
+};
+
+/** Every distinct way a response can fail to be an outcome, told apart. */
+function serverFaultMessage(status: number): string {
+  if (status === 401) return "Session expired — sign in again to keep scanning";
+  if (status === 403) return "This account is not allowed to check people in";
+  if (status === 503) return "The scan was not written to the record — scan again";
+  if (status >= 500) return "The server could not complete this scan";
+  return `The server answered in a way this app does not understand (HTTP ${status})`;
+}
+
+function formatClock(iso: string): string | null {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * FIX-04a, in one function: the door states a **fact** — who recorded the entry
+ * and when — and never a verdict.
+ *
+ * No word here names a cause. Whether a repeat read was a double read, two
+ * devices or a second ticket for the same holder is classified afterwards, over
+ * `door_scan_events`, never on a phone held in front of the person it would be a
+ * verdict about (src/lib/door/outcome.ts:23-31). If a future edit adds a cause
+ * word to this string, that requirement has been broken.
+ *
+ * An absent moment or an absent operator is said out loud rather than filled in:
+ * a blank where a fact is promised is the same silent failure in a smaller box.
+ */
+function recordedFact(
+  at: string | null | undefined,
+  operatorLabel: string | null | undefined
+): string {
+  const clock = at && at.trim() !== "" ? formatClock(at) : null;
+  const when = clock ? `Recorded at ${clock}` : "Recorded earlier (time not on record)";
+  const label = operatorLabel && operatorLabel.trim() !== "" ? operatorLabel.trim() : null;
+  return label ? `${when} by ${label}` : `${when} (operator not on record)`;
+}
+
+/**
+ * The ticket id inside a scanned token, for the **cache lookup only**.
+ *
+ * The signature is not discarded: the whole scanned string travels to
+ * `checkInLocally` as the token (FIX-10, checkin-store.ts:101-102) and the route
+ * re-verifies it on sync. This only derives the id the composite cache key
+ * needs. The previous version cut the token at the call site and kept only the
+ * left half, which is why a queued admission used to be indistinguishable from
+ * a hand-typed identifier. Cut at the **last** dot, as `verifyTicketToken` does.
+ */
+function ticketIdFromToken(token: string): string {
+  const cut = token.lastIndexOf(".");
+  return cut === -1 ? token : token.slice(0, cut);
+}
+
+/**
+ * Readers for a response body.
+ *
+ * `isDoorOutcome` is deliberately narrow — it checks the discriminant and stops
+ * (src/lib/door/outcome.ts:153-163) — so every other field is unverified data.
+ * Reading them off the raw body rather than off the narrowed type keeps that
+ * honest: `/api/membership/verify` really can answer `at: null` and `by: null`
+ * where the union promises strings.
+ */
+function readString(body: unknown, key: string): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  const value = (body as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function readSubjectLabel(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  const subject = (body as { subject?: unknown }).subject;
+  return readString(subject, "label");
+}
+
+function readOperatorLabel(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  const by = (body as { by?: unknown }).by;
+  return readString(by, "operatorLabel");
+}
+
+function readFlags(body: unknown): DoorFlag[] {
+  if (typeof body !== "object" || body === null) return [];
+  const flags = (body as { flags?: unknown }).flags;
+  if (!Array.isArray(flags)) return [];
+  return flags.filter(
+    (f): f is DoorFlag =>
+      typeof f === "string" &&
+      Object.prototype.hasOwnProperty.call(FLAG_MESSAGE, f)
+  );
+}
+
+function flagSentence(flags: DoorFlag[]): string {
+  return flags.map((f) => FLAG_MESSAGE[f]).join(" · ");
+}
+
+/** Why an entry could never be recorded, in words a member of staff can act on. */
+const FAILURE_REASON_MESSAGE: Record<string, string> = {
+  invalid_signature: "the code was not issued by us",
+  unknown_code: "nothing matched this code",
+  wrong_night: "the code was for another night",
+  no_party_selected: "no party was selected when it was scanned",
+  unexpected_response: "the server never accepted it",
+};
+
+function failureSentence(reason: string): string {
+  return FAILURE_REASON_MESSAGE[reason] ?? `it failed as "${reason}"`;
+}
+
+/**
+ * How a failed entry is described on screen.
+ *
+ * The store's record key is `partyId:subjectType:subjectId`, and for a
+ * membership entry that subject id **is the membership code** — a credential.
+ * Rendering the raw key would put it on a screen and in a screenshot, so this
+ * shows the kind, the moment it was scanned, and a short id only where the id
+ * is not itself a way in (T-31-11-04). No email and no membership code appears.
+ */
+function failedEntryLabel(entry: FailedCheckin): string {
+  const kind =
+    entry.type === "membership"
+      ? "Membership"
+      : entry.type === "guest"
+        ? "Guest list"
+        : "Ticket";
+  const when = formatClock(entry.scannedAt);
+  const shortId =
+    entry.type === "membership" ? null : entry.subjectId.slice(0, 8);
+  return [kind, shortId, when ? `scanned ${when}` : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function notValidSentence(body: unknown): string {
+  const reason = readString(body, "reason");
+  return reason !== null &&
+    Object.prototype.hasOwnProperty.call(NOT_VALID_MESSAGE, reason)
+    ? NOT_VALID_MESSAGE[reason as DoorNotValidReason]
+    : UNRECOGNISED_REASON_MESSAGE;
+}
+
+/** Why a refresh was declined, in plain words, one sentence per reason. */
+function mergeRefusalSentence(
+  refusal: Extract<MergeResult, { applied: false }>
+): string {
+  switch (refusal.reason) {
+    case "empty_payload":
+      return `The attendee list was NOT refreshed: the server returned an empty list while this device holds ${refusal.cached}. The list on this device was kept.`;
+    case "payload_smaller_than_cache":
+      return `The attendee list was NOT refreshed: the server returned ${refusal.received} people while this device holds ${refusal.cached} and still has entries to report. The list on this device was kept.`;
+  }
+}
+
 type FilterTab = "all" | "not_arrived" | "checked_in";
+
+/**
+ * A line that stays on the screen until the next successful refresh.
+ *
+ * Not a toast. The person holding the phone may be looking at a queue rather
+ * than at the screen, and with no error tracking anywhere in this project that
+ * screen is the only observer a failed refresh has.
+ */
+interface CacheNotice {
+  key: string;
+  tone: "warn" | "error";
+  text: string;
+}
+
+/** What the queue looks like right now, and whether it could be read at all. */
+interface QueueCounts {
+  pending: number;
+  failed: number;
+  blocked: number;
+  /** IndexedDB did not answer. Zero and "unknown" are opposite facts. */
+  unreadable: boolean;
+}
 
 interface Attendee {
   ticketId: string | null;
@@ -41,6 +268,13 @@ interface Attendee {
   tierName: string | null;
 }
 
+/** Per-party diagnostics from `/api/tickets/attendance` (plan 31-06). Optional: an older API does not send them. */
+interface AttendanceDiagnostics {
+  refundCollisions: number;
+  duplicateRefundRows: number;
+  refundEvidenceUnavailable: boolean;
+}
+
 interface AttendanceEvent {
   partyId: string;
   partyTitle: string;
@@ -50,6 +284,7 @@ interface AttendanceEvent {
   totalTickets: number;
   guestListCount: number;
   checkedIn: number;
+  diagnostics?: AttendanceDiagnostics;
   attendees: Attendee[];
 }
 
@@ -58,11 +293,19 @@ interface ScanRecord {
   type: "ticket" | "membership" | "guest";
   name: string;
   ticketType?: string;
-  status: "success" | "error";
+  /**
+   * The same three states the flash shows, so the history and the screen never
+   * disagree about what happened. `already_recorded` also covers a flagged
+   * admission — amber means *admitted, look at this afterwards*, and `canUndo`
+   * carries whether there is anything to reverse, which is a separate question.
+   */
+  status: ScanFlashType;
   reason?: string;
   timestamp: number;
   undone?: boolean;
   canUndo: boolean;
+  /** For a local reversal while the radio is off: `partyId:subjectType:subjectId`. */
+  localKey?: string;
 }
 
 export default function ScannerClient() {
@@ -72,8 +315,7 @@ export default function ScannerClient() {
   const [loadingParties, setLoadingParties] = useState(true);
 
   // Scanner & attendee state (scoped to selected party)
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | ScanFlashType>("idle");
   const [attendance, setAttendance] = useState<AttendanceEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("not_arrived");
@@ -83,7 +325,7 @@ export default function ScannerClient() {
 
   // Flash overlay state
   const [flash, setFlash] = useState<{
-    type: "success" | "error";
+    type: ScanFlashType;
     title: string;
     subtitle?: string;
   } | null>(null);
@@ -100,9 +342,54 @@ export default function ScannerClient() {
 
   // Online/offline state
   const [isOnline, setIsOnline] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
 
-  // Track online/offline status + pending count
+  // The queue, in three numbers plus "could not be read at all"
+  const [queue, setQueue] = useState<QueueCounts>({
+    pending: 0,
+    failed: 0,
+    blocked: 0,
+    unreadable: false,
+  });
+  // What the last refresh could not do. Persistent, never a toast.
+  const [cacheNotices, setCacheNotices] = useState<CacheNotice[]>([]);
+
+  // The list behind the "could not be recorded" chip. A number with no way to
+  // see what it counts is a number nobody trusts, and FIX-08 is about the count
+  // meaning something.
+  const [failedEntries, setFailedEntries] = useState<FailedCheckin[] | null>(null);
+  const [blockedResult, setBlockedResult] = useState<string | null>(null);
+
+  /** The camera did not start. Its own line, because it is not a cache problem. */
+  const [cameraFault, setCameraFault] = useState<string | null>(null);
+
+  /**
+   * This install's id, resolved once and held.
+   *
+   * `door_scan_events.device_id` is NOT NULL and the `two_devices`
+   * classification is impossible without it, so it travels with every scan and
+   * every undo. Read once into a ref rather than per scan: `getDeviceId()` opens
+   * IndexedDB, and the door cannot wait on that between two people.
+   */
+  const deviceIdRef = useRef<string | null>(null);
+
+  const refreshQueueCounts = useCallback(async () => {
+    try {
+      const [pending, failed, blocked] = await Promise.all([
+        getPendingCount(),
+        getFailedCount(),
+        getBlockedCount(),
+      ]);
+      setQueue({ pending, failed, blocked, unreadable: false });
+    } catch (error) {
+      // Zero and "unknown" are opposite facts. Rendering 0 for an unreadable
+      // store tells the operator the queue is empty, which is the silent
+      // failure this whole plan exists to remove.
+      console.error("scanner:queue_counts_unavailable", error);
+      setQueue((prev) => ({ ...prev, unreadable: true }));
+    }
+  }, []);
+
+  // Track online/offline status + the queue counters
   useEffect(() => {
     setIsOnline(navigator.onLine);
 
@@ -114,17 +401,21 @@ export default function ScannerClient() {
     // Setup sync listeners (online event, visibility change)
     const cleanupSync = setupSyncListeners();
 
-    // Update pending count periodically
-    const updatePending = async () => {
-      try {
-        const count = await getPendingCount();
-        setPendingCount(count);
-      } catch {
-        // IndexedDB not available
-      }
-    };
-    updatePending();
-    const interval = setInterval(updatePending, 5000);
+    getDeviceId()
+      .then((id) => {
+        deviceIdRef.current = id;
+      })
+      .catch((error) => {
+        // Not fatal — the routes fall back to "unknown". The cost is real and
+        // is stated here rather than discovered later: rows written by this
+        // device can then never be classified `two_devices`.
+        console.error("scanner:device_id_unavailable", error);
+      });
+
+    // The counters already refreshed on a 5 s interval regardless of
+    // connectivity; only the rendering was gated on being offline.
+    refreshQueueCounts();
+    const interval = setInterval(refreshQueueCounts, 5000);
 
     return () => {
       window.removeEventListener("online", goOnline);
@@ -132,7 +423,7 @@ export default function ScannerClient() {
       cleanupSync();
       clearInterval(interval);
     };
-  }, []);
+  }, [refreshQueueCounts]);
 
   // Fetch all parties for party selector
   const fetchParties = useCallback(async () => {
@@ -154,41 +445,164 @@ export default function ScannerClient() {
   const fetchAttendance = useCallback(
     async (search?: string) => {
       if (!selectedPartyId) return;
+
+      let res: Response;
       try {
         const params = new URLSearchParams();
         params.set("partyId", selectedPartyId);
         if (search) params.set("search", search);
-        const res = await fetch(`/api/tickets/attendance?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          const events = data.events ?? [];
-          const eventData = events[0] ?? null;
-          setAttendance(eventData);
-
-          // Cache attendees in IndexedDB for offline (only full list, not search-filtered)
-          if (eventData && !search) {
-            // NOTE (31-05): `mergeAttendees` returns a refusal as a value when a
-            // payload would shrink the cache. Rendering it is plan 31-11's task;
-            // until then the value is dropped here, exactly as before.
-            mergeAttendees(selectedPartyId, eventData.attendees).catch(() => {});
-            // Also pre-cache all members for offline membership verification
-            fetch("/api/membership/list")
-              .then((r) => r.ok ? r.json() : null)
-              .then((d) => d?.members && cacheMembers(d.members))
-              .catch(() => {});
-          }
-
-          // Piggyback sync on successful fetch
-          syncPendingCheckins().then(async () => {
-            const count = await getPendingCount();
-            setPendingCount(count);
-          }).catch(() => {});
+        res = await fetch(`/api/tickets/attendance?${params}`);
+      } catch (error) {
+        // Being offline is not a fault — the cached list is what the door runs
+        // on, and the Offline pill already says so. Being online and unable to
+        // reach the server is a different fact and gets its own line.
+        if (navigator.onLine) {
+          console.error("scanner:attendance_unreachable", error);
+          setCacheNotices([
+            {
+              key: "reach",
+              tone: "warn",
+              text: "The server could not be reached to refresh the list. The list already on this device is being used.",
+            },
+          ]);
         }
-      } catch {
-        // silently fail — offline mode will use cached data
+        return;
       }
+
+      if (!res.ok) {
+        // Plan 31-06 turned an unreadable attendee list into a 500 where it used
+        // to be an empty list at HTTP 200. Those are opposite facts — "nobody is
+        // on tonight" against "the list could not be read" — and this is the
+        // only place either becomes visible to the person at the door.
+        let detail: string | null = null;
+        try {
+          detail = readString(await res.json(), "error");
+        } catch {
+          detail = null;
+        }
+        console.error("scanner:attendance_failed", { status: res.status, detail });
+        setCacheNotices([
+          {
+            key: "list",
+            tone: "error",
+            text: detail
+              ? `The attendee list was NOT refreshed: ${detail}. The list already on this device is being used.`
+              : `The attendee list was NOT refreshed (HTTP ${res.status}). The list already on this device is being used.`,
+          },
+        ]);
+        return;
+      }
+
+      const notices: CacheNotice[] = [];
+      let eventData: AttendanceEvent | null = null;
+      try {
+        const data = await res.json();
+        const events: AttendanceEvent[] = data.events ?? [];
+        eventData = events[0] ?? null;
+        setAttendance(eventData);
+      } catch (error) {
+        console.error("scanner:attendance_unparseable", error);
+        setCacheNotices([
+          {
+            key: "list",
+            tone: "error",
+            text: "The attendee list came back in a shape this app does not understand. The list already on this device is being used.",
+          },
+        ]);
+        return;
+      }
+
+      // Plan 31-06's per-party diagnostics. They were returned in the body and
+      // nothing rendered them; a number nobody reads is not observability.
+      const diagnostics = eventData?.diagnostics;
+      if (diagnostics) {
+        if (diagnostics.refundEvidenceUnavailable) {
+          notices.push({
+            key: "refund-evidence",
+            tone: "warn",
+            text: "Refund evidence could not be read for this party: a ticket refunded before tonight will be admitted, but it will not be flagged at the door.",
+          });
+        }
+        if (diagnostics.refundCollisions > 0) {
+          notices.push({
+            key: "refund-collisions",
+            tone: "warn",
+            text: `${diagnostics.refundCollisions} refund(s) name a ticket that is still live — that refund did not complete. The live ticket is being used.`,
+          });
+        }
+        if (diagnostics.duplicateRefundRows > 0) {
+          notices.push({
+            key: "refund-duplicates",
+            tone: "warn",
+            text: `${diagnostics.duplicateRefundRows} ticket(s) carry more than one approved refund; the earliest moment is the one being used.`,
+          });
+        }
+      }
+
+      // Cache attendees in IndexedDB for offline (only full list, not search-filtered)
+      if (eventData && !search) {
+        // FIX-06 becomes observable here. `mergeAttendees` returns its refusal
+        // as a **value** (checkin-store.ts:429-438); this call site used to drop
+        // it, so the guard protected the cache and said nothing to the person
+        // holding the phone.
+        try {
+          const result = await mergeAttendees(selectedPartyId, eventData.attendees);
+          if (!result.applied) {
+            notices.push({
+              key: "merge",
+              tone: "error",
+              text: mergeRefusalSentence(result),
+            });
+          }
+        } catch (error) {
+          console.error("scanner:merge_failed", error);
+          notices.push({
+            key: "merge",
+            tone: "error",
+            text: "This device could not update its offline list. Scanning continues from what it already holds.",
+          });
+        }
+
+        // `cacheMembers` is **not** fire-and-forget any more, and that is a
+        // decision with a reason: its failure does have a consequence for a
+        // scan. Offline, an unknown membership code is refused (see
+        // `membershipOffline`), so a stale roster turns a member who joined
+        // recently into a red screen in front of a queue. A failure that can
+        // produce a false refusal has to reach the person who can work around
+        // it.
+        try {
+          const membersRes = await fetch("/api/membership/list");
+          if (!membersRes.ok) {
+            throw new Error(`HTTP ${membersRes.status}`);
+          }
+          const membersBody = await membersRes.json();
+          if (!Array.isArray(membersBody?.members)) {
+            throw new Error("no members array in payload");
+          }
+          await cacheMembers(membersBody.members);
+        } catch (error) {
+          console.error("scanner:member_roster_failed", error);
+          notices.push({
+            key: "members",
+            tone: "error",
+            text: "The member list on this device was NOT refreshed. With the radio off, a member who joined recently may not be recognised — check them in from the list rather than refusing them.",
+          });
+        }
+      }
+
+      setCacheNotices(notices);
+
+      // Piggyback sync on a successful fetch
+      try {
+        await syncPendingCheckins();
+      } catch (error) {
+        // The drain reports its own buckets and never throws by design; if it
+        // does, the queue is untouched and the counters below still say so.
+        console.error("scanner:sync_failed", error);
+      }
+      await refreshQueueCounts();
     },
-    [selectedPartyId]
+    [selectedPartyId, refreshQueueCounts]
   );
 
   // Initial party load
@@ -205,9 +619,11 @@ export default function ScannerClient() {
     return () => clearTimeout(timer);
   }, [selectedPartyId, searchQuery, fetchAttendance]);
 
-  // Refresh attendance after successful scan
+  // Refresh attendance after a scan that changed, or revealed, the record.
+  // `already_recorded` is included: the server knows something this device's
+  // list does not, and the list is what the operator reads next.
   useEffect(() => {
-    if (status === "success" && selectedPartyId) {
+    if ((status === "success" || status === "already_recorded") && selectedPartyId) {
       fetchAttendance(searchQuery || undefined);
     }
   }, [status, fetchAttendance, searchQuery, selectedPartyId]);
@@ -254,28 +670,54 @@ export default function ScannerClient() {
       }
     }
 
-    initScanner().catch(() => {});
+    // A camera that never starts used to fail into nothing: a blank box, no
+    // sentence, and a member of staff at the door with no idea whether to wait
+    // or to switch to the list. A denied permission and a camera already held by
+    // another app are the two common causes, and both are recoverable — but only
+    // by someone who has been told.
+    initScanner().catch((error) => {
+      console.error("scanner:camera_unavailable", error);
+      setCameraFault(
+        "The camera did not start. Check the camera permission for this site, close any other app using it, or check people in from the list below."
+      );
+    });
 
     return () => {
       scannerInstanceRef.current = null;
       videoTrackRef.current = null;
       setTorchOn(false);
       setTorchAvailable(false);
+      setCameraFault(null);
       if (qrcode) {
-        qrcode.stop().catch(() => {});
+        // Teardown only. A failure here has no consequence for a scan or a
+        // record, so it is logged under its own category and not put on screen.
+        qrcode.stop().catch((error) => {
+          console.error("scanner:camera_stop_failed", error);
+        });
       }
     };
   }, [showScanner]);
 
+  /**
+   * The flash and the haptic, fired together and **before** any network
+   * confirmation (`checkin-offline.md`, gate *feedback immediato*): the operator
+   * has a queue in front of them and does not wait for a round trip.
+   *
+   * Three patterns for three states — one long pulse, a long-then-short pair, a
+   * short-short burst (`src/utils/haptics.ts`). It is the channel that works
+   * when the phone is not being looked at, and the channel that does nothing at
+   * all on iOS, which is why colour and icon carry the same distinction.
+   */
   const showFlash = useCallback(
-    (type: "success" | "error", title: string, subtitle?: string) => {
+    (type: ScanFlashType, title: string, subtitle?: string) => {
       if (type === "success") {
         vibrateSuccess();
-        setStatus("success");
+      } else if (type === "already_recorded") {
+        vibrateAlreadyRecorded();
       } else {
         vibrateError();
-        setStatus("error");
       }
+      setStatus(type);
       setFlash({ type, title, subtitle });
     },
     []
@@ -307,6 +749,50 @@ export default function ScannerClient() {
     setScanHistory((prev) => [record, ...prev].slice(0, 5));
   }, []);
 
+  /** Open, or close, the list of entries that could never be recorded. */
+  const toggleFailedEntries = useCallback(async () => {
+    if (failedEntries !== null) {
+      setFailedEntries(null);
+      return;
+    }
+    try {
+      setFailedEntries(await getFailedCheckins());
+    } catch (error) {
+      console.error("scanner:failed_list_unavailable", error);
+      setFailedEntries([]);
+      setQueue((prev) => ({ ...prev, unreadable: true }));
+    }
+  }, [failedEntries]);
+
+  /**
+   * Put the held entries back in the queue and drain.
+   *
+   * A staff session expiring at 02:00 turns every queued entry into a 401.
+   * Blocked entries are deliberately never retried (sync-manager.ts:128-131), so
+   * without this they would wait for a timer that does not exist: this is the
+   * one action that gets the night's queue moving again, and the chip is the
+   * only place it is offered.
+   */
+  const handleRetryBlocked = useCallback(async () => {
+    setBlockedResult("Retrying…");
+    try {
+      const counters = await retryBlockedAfterSignIn();
+      await refreshQueueCounts();
+      setBlockedResult(
+        `Released ${counters.unblocked} · recorded ${counters.synced} · still waiting ${counters.retried} · could not be recorded ${counters.failed} · still held ${counters.blocked}`
+      );
+    } catch (error) {
+      console.error("scanner:retry_blocked_failed", error);
+      setBlockedResult("The retry could not run on this device — nothing changed");
+    }
+  }, [refreshQueueCounts]);
+
+  const markRecordUndone = useCallback((record: ScanRecord) => {
+    setScanHistory((prev) =>
+      prev.map((s) => (s === record ? { ...s, undone: true, canUndo: false } : s))
+    );
+  }, []);
+
   const handleUndoCheckIn = useCallback(
     async (record: ScanRecord) => {
       if (!record.canUndo || record.undone) return;
@@ -314,13 +800,60 @@ export default function ScannerClient() {
       const confirmMsg = `Undo check-in for ${record.name}?`;
       if (!window.confirm(confirmMsg)) return;
 
+      // With the radio off the reversal cannot reach the server, and the entry
+      // it would reverse is still sitting in the queue. Dropping the queue entry
+      // locally is the whole of the undo in that case: leaving it there means
+      // the admission is reported on the next drain and the reversal a member of
+      // staff performed at the door never happened. `checkin-offline.md` calls
+      // the undo *«il percorso piu' semplice per far rientrare qualcuno»* — an
+      // undo that silently does nothing is worse than one that refuses out loud.
+      if (!navigator.onLine) {
+        if (!record.localKey) {
+          showFlash(
+            "error",
+            "This entry cannot be undone offline",
+            "It was recorded on the server. Undo it once the signal is back."
+          );
+          return;
+        }
+        try {
+          await undoCheckInLocally(record.localKey);
+          markRecordUndone(record);
+          showFlash("error", "Undone on this device", `${record.name} — not reported`);
+          await refreshQueueCounts();
+        } catch (error) {
+          console.error("scanner:local_undo_failed", { key: record.localKey, error });
+          showFlash(
+            "error",
+            "The reversal could not be written to this device",
+            "The check-in still stands — try again"
+          );
+        }
+        return;
+      }
+
       try {
-        const body: { ticketId?: string; guestListEntryId?: string; attendanceId?: string } =
+        const body: {
+          ticketId?: string;
+          guestListEntryId?: string;
+          attendanceId?: string;
+          partyId?: string;
+          deviceId?: string;
+        } =
           record.type === "guest"
             ? { guestListEntryId: record.id }
             : record.type === "membership"
               ? { attendanceId: record.id }
               : { ticketId: record.id };
+
+        // `door_scan_events.party_id` is NOT NULL and an Event Pass carries no
+        // party of its own (`party_id IS NULL` is a real, sold product), so the
+        // reversal must name the night it happened at — the undo route requires
+        // it and answers 400 without it (undo/route.ts:138-155). `deviceId`
+        // travels for the same reason it travels with a scan: without it the row
+        // can never be classified `two_devices`.
+        if (selectedPartyId) body.partyId = selectedPartyId;
+        if (deviceIdRef.current) body.deviceId = deviceIdRef.current;
 
         const res = await fetch("/api/tickets/checkin/undo", {
           method: "POST",
@@ -329,323 +862,599 @@ export default function ScannerClient() {
         });
 
         if (res.ok) {
-          setScanHistory((prev) =>
-            prev.map((s) =>
-              s === record ? { ...s, undone: true, canUndo: false } : s
-            )
-          );
-          vibrateError();
+          markRecordUndone(record);
+          // Red on purpose, and it is not a refusal of the code: at the door it
+          // means *this person is no longer admitted*, which is the fact the
+          // operator has just created.
           showFlash("error", "Check-in undone", record.name);
           fetchAttendance(searchQuery || undefined);
+          return;
         }
-      } catch {
-        // silently fail
+
+        // A failed undo used to be swallowed whole: the row stayed checked in,
+        // the history said nothing, and the operator had no way to know.
+        let detail: string | null = null;
+        try {
+          detail = readString(await res.json(), "error");
+        } catch {
+          detail = null;
+        }
+        console.error("scanner:undo_failed", { status: res.status, detail });
+        showFlash(
+          "error",
+          "The check-in was NOT undone",
+          detail ?? serverFaultMessage(res.status)
+        );
+      } catch (error) {
+        console.error("scanner:undo_unreachable", error);
+        showFlash(
+          "error",
+          "The check-in was NOT undone",
+          "The server could not be reached — the check-in still stands"
+        );
       }
     },
-    [showFlash, fetchAttendance, searchQuery]
+    [
+      showFlash,
+      fetchAttendance,
+      searchQuery,
+      selectedPartyId,
+      markRecordUndone,
+      refreshQueueCounts,
+    ]
   );
 
-  const handleVerify = async (code: string) => {
+  // ── The door's three answers ───────────────────────────────────────────────
+  //
+  // One vocabulary for both paths. Online the answer is the route's `DoorOutcome`
+  // body; offline it is derived from this device's cache. Which path produced it
+  // changes the evidence that was available, never the three things a member of
+  // staff can be told — that is the whole of FIX-04, and it is why the two blocks
+  // below resolve through the same three names.
+
+  /** A refusal: one of the four reasons, one sentence each, red. */
+  function refuse(
+    reason: DoorNotValidReason,
+    recordId: string,
+    type: ScanRecord["type"] = "ticket",
+    subtitle?: string
+  ) {
+    showFlash("error", NOT_VALID_MESSAGE[reason], subtitle);
+    addScanRecord({
+      id: recordId,
+      type,
+      name: "Unknown",
+      status: "error",
+      reason: NOT_VALID_MESSAGE[reason],
+      timestamp: Date.now(),
+      canUndo: false,
+    });
+  }
+
+  /**
+   * The server answered, and its answer was not one of the three outcomes.
+   *
+   * Deliberately **not** the one shared connection message this replaces: a
+   * 500, a 503, an expired session and a dead radio are four different facts,
+   * and the single catch they used to share made all four read the same. Named
+   * by shape rather than by string on purpose — the assertion for this fix is a
+   * grep over the whole file, so quoting the old wording here would break it,
+   * exactly as it did once in plan 31-07. The status is classified in the same
+   * order the sync manager uses (sync-manager.ts:122-175), so the screen and the
+   * queue never disagree about what a response meant.
+   */
+  function reportServerFault(
+    status: number,
+    body: unknown,
+    recordId: string,
+    type: ScanRecord["type"]
+  ) {
+    const message = serverFaultMessage(status);
+    const detail = readString(body, "error");
+    console.error("scanner:unexpected_response", { status, detail, type });
+    showFlash("error", message, detail ?? undefined);
+    addScanRecord({
+      id: recordId,
+      type,
+      name: "Unknown",
+      status: "error",
+      reason: message,
+      timestamp: Date.now(),
+      canUndo: false,
+    });
+  }
+
+  /** The IndexedDB read or write itself failed. Its own sentence — the cache is not the network. */
+  function reportStoreFault(recordId: string, type: ScanRecord["type"], error: unknown) {
+    console.error("scanner:store_failure", { type, error });
+    showFlash(
+      "error",
+      "This device could not read its own list",
+      "Check the person in from the list on screen"
+    );
+    addScanRecord({
+      id: recordId,
+      type,
+      name: "Unknown",
+      status: "error",
+      reason: "This device could not read its own list",
+      timestamp: Date.now(),
+      canUndo: false,
+    });
+  }
+
+  /**
+   * A scanned ticket, with the radio on.
+   *
+   * Returns `"network_failed"` when the request never reached a server — the one
+   * cause that may fall through to the cache, and the only thing the old catch
+   * was actually written for.
+   */
+  async function ticketOnline(
+    code: string,
+    partyId: string
+  ): Promise<"handled" | "network_failed"> {
+    const ticketId = ticketIdFromToken(code);
+
+    let res: Response;
     try {
-      if (TICKET_TOKEN_PATTERN.test(code)) {
-        const ticketIdFromQR = code.split(".")[0];
+      res = await fetch("/api/tickets/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: code,
+          partyId,
+          // Without it the row is written as `device_id: "unknown"` and can
+          // never be classified `two_devices` (checkin/route.ts:251-256).
+          deviceId: deviceIdRef.current ?? undefined,
+          source: "online",
+        }),
+      });
+    } catch {
+      return "network_failed";
+    }
 
-        // Offline flow: check IndexedDB cache
-        // A scan without a selected party has no meaning — the record key is
-        // party-scoped, so the party is a precondition, not a filter.
-        if (!navigator.onLine && selectedPartyId) {
-          try {
-            const attendee = await findAttendee(
-              selectedPartyId,
-              "ticket",
-              ticketIdFromQR
-            );
-            if (attendee && !attendee.checkedIn) {
-              // Found and not checked in — check in locally
-              await checkInLocally(selectedPartyId, "ticket", ticketIdFromQR, {
-                // FIX-10: the full signed string, exactly as scanned.
-                token: code,
-                name: attendee.name,
-              });
-              const subtitle = [
-                attendee.tierName,
-                attendee.ticketType === "guest_list" ? "Guest List" : null,
-                "Offline",
-              ].filter(Boolean).join(" · ") || "Offline";
-              showFlash("success", attendee.name, subtitle);
-              addScanRecord({
-                id: ticketIdFromQR,
-                type: attendee.ticketType === "guest_list" ? "guest" : "ticket",
-                name: attendee.name,
-                ticketType: attendee.tierName || undefined,
-                status: "success",
-                timestamp: Date.now(),
-                canUndo: true,
-              });
-              // Update pending count
-              getPendingCount().then(setPendingCount).catch(() => {});
-            } else if (attendee && attendee.checkedIn) {
-              const time = attendee.checkedInAt
-                ? `at ${formatCheckinTime(attendee.checkedInAt)}`
-                : "";
-              showFlash("error", "Already checked in", `${attendee.name}${time ? ` ${time}` : ""}`);
-              addScanRecord({
-                id: ticketIdFromQR,
-                type: "ticket",
-                name: attendee.name,
-                status: "error",
-                reason: "Already checked in",
-                timestamp: Date.now(),
-                canUndo: false,
-              });
-            } else {
-              showFlash("error", "Ticket not found (offline)");
-              addScanRecord({
-                id: ticketIdFromQR,
-                type: "ticket",
-                name: "Unknown",
-                status: "error",
-                reason: "Not in cache",
-                timestamp: Date.now(),
-                canUndo: false,
-              });
-            }
-          } catch {
-            showFlash("error", "Offline check-in error");
-          }
-          return;
-        }
+    let parsed: unknown = null;
+    try {
+      parsed = await res.json();
+    } catch {
+      parsed = null;
+    }
 
-        // Online flow: POST to /api/tickets/checkin
-        const res = await fetch("/api/tickets/checkin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: code, partyId: selectedPartyId }),
-        });
-        const data = await res.json();
+    // Transport first, in the same order as the drain's classifier: an expired
+    // session and a failed write are facts about the server, not verdicts about
+    // the code that was scanned.
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      reportServerFault(res.status, parsed, ticketId, "ticket");
+      return "handled";
+    }
 
-        if (data.valid) {
-          const subtitle = [data.tier_name, data.ticket_type === "guest_list" ? "Guest List" : null]
-            .filter(Boolean)
-            .join(" · ") || undefined;
-          showFlash("success", data.member_name, subtitle);
-          addScanRecord({
-            id: ticketIdFromQR,
-            type: data.ticket_type === "guest_list" ? "guest" : "ticket",
-            name: data.member_name,
-            ticketType: data.tier_name || undefined,
-            status: "success",
-            timestamp: Date.now(),
-            canUndo: true,
-          });
-          // Update IndexedDB cache (without adding to pending queue — already synced online)
-          if (selectedPartyId) {
-            markCheckedInLocally(selectedPartyId, "ticket", ticketIdFromQR).catch(
-              () => {}
-            );
-          }
-        } else if (data.status === "wrong_event") {
-          showFlash(
-            "error",
-            `Ticket for ${data.party_title || data.event_title}`,
-            data.member_name
-          );
-          addScanRecord({
-            id: ticketIdFromQR,
-            type: "ticket",
-            name: data.member_name || "Unknown",
-            status: "error",
-            reason: `Wrong event: ${data.party_title || data.event_title}`,
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        } else if (data.status === "already_checked_in") {
-          const time = data.checked_in_at
-            ? `Checked in at ${formatCheckinTime(data.checked_in_at)}`
-            : undefined;
-          showFlash("error", "Already checked in", `${data.member_name}${time ? ` · ${time}` : ""}`);
-          addScanRecord({
-            id: ticketIdFromQR,
-            type: "ticket",
-            name: data.member_name || "Unknown",
-            status: "error",
-            reason: "Already checked in",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        } else if (data.status === "not_found") {
-          showFlash("error", "Ticket not found");
-          addScanRecord({
-            id: ticketIdFromQR,
-            type: "ticket",
-            name: "Unknown",
-            status: "error",
-            reason: "Not found",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        } else if (data.status === "invalid_signature") {
-          showFlash("error", "Invalid QR code");
-          addScanRecord({
-            id: code,
-            type: "ticket",
-            name: "Unknown",
-            status: "error",
-            reason: "Invalid QR",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        } else {
-          showFlash("error", "Check-in failed");
-          addScanRecord({
-            id: code,
-            type: "ticket",
-            name: "Unknown",
-            status: "error",
-            reason: "Check-in failed",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        }
-      } else if (MEMBERSHIP_PATTERN.test(code) || BARE_MEMBERSHIP_PATTERN.test(code)) {
-        // Extract membership code from QR URL or bare code
-        let membershipCode: string;
-        if (MEMBERSHIP_PATTERN.test(code)) {
-          try {
-            const url = new URL(code);
-            membershipCode = url.searchParams.get("code") || code;
-          } catch {
-            membershipCode = code;
-          }
-        } else {
-          membershipCode = code;
-        }
+    if (!isDoorOutcome(parsed)) {
+      reportServerFault(res.status, parsed, ticketId, "ticket");
+      return "handled";
+    }
 
-        // Offline membership flow: check IndexedDB cache
-        if (!navigator.onLine && selectedPartyId) {
-          try {
-            const member = await findMember(membershipCode);
-            if (member) {
-              await checkInMemberLocally(selectedPartyId, membershipCode);
-              showFlash("success", member.fullName, "Member · Offline");
-              addScanRecord({
-                id: membershipCode,
-                type: "membership",
-                name: member.fullName,
-                status: "success",
-                timestamp: Date.now(),
-                canUndo: true,
-              });
-              getPendingCount().then(setPendingCount).catch(() => {});
-            } else {
-              showFlash("error", "Member not found (offline)");
-              addScanRecord({
-                id: membershipCode,
-                type: "membership",
-                name: "Unknown",
-                status: "error",
-                reason: "Not in cache",
-                timestamp: Date.now(),
-                canUndo: false,
-              });
-            }
-          } catch {
-            showFlash("error", "Offline check-in error");
-          }
-          return;
-        }
+    switch (parsed.outcome) {
+      case "recorded": {
+        const flags = readFlags(parsed);
+        const flagged = flags.length > 0;
+        const label = readSubjectLabel(parsed) ?? readString(parsed, "member_name");
+        const tier = readString(parsed, "tier_name");
+        const isGuestList = readString(parsed, "ticket_type") === "guest_list";
+        const subtitle = flagged
+          ? flagSentence(flags)
+          : [tier, isGuestList ? "Guest List" : null].filter(Boolean).join(" · ") ||
+            undefined;
 
-        const res = await fetch("/api/membership/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: membershipCode, partyId: selectedPartyId }),
-        });
-        const data = await res.json();
-
-        if (data.valid && data.status === "checked_in") {
-          showFlash("success", data.member_name, "Member");
-          addScanRecord({
-            id: data.attendance_id,
-            type: "membership",
-            name: data.member_name,
-            status: "success",
-            timestamp: Date.now(),
-            canUndo: true,
-          });
-          fetchAttendance(searchQuery || undefined);
-        } else if (data.valid && data.status === "already_checked_in") {
-          const time = data.checked_in_at
-            ? formatCheckinTime(data.checked_in_at)
-            : "";
-          showFlash("error", "Already checked in", `${data.member_name}${time ? ` \u00b7 Checked in at ${time}` : ""}`);
-          addScanRecord({
-            id: membershipCode,
-            type: "membership",
-            name: data.member_name,
-            status: "error",
-            reason: "Already checked in",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        } else {
-          showFlash("error", "Member not found");
-          addScanRecord({
-            id: membershipCode,
-            type: "membership",
-            name: "Unknown",
-            status: "error",
-            reason: "Member not found",
-            timestamp: Date.now(),
-            canUndo: false,
-          });
-        }
-      } else {
-        showFlash("error", "QR code not recognized");
+        // Amber for a flagged admission: the person is admitted either way, and
+        // the colour says *look at this afterwards*, never *stop*.
+        showFlash(
+          flagged ? "already_recorded" : "success",
+          label ?? (flagged ? "Admitted" : "Ticket holder"),
+          subtitle
+        );
         addScanRecord({
-          id: code,
+          id: ticketId,
+          type: isGuestList ? "guest" : "ticket",
+          name: label ?? "Admitted",
+          ticketType: tier ?? undefined,
+          status: flagged ? "already_recorded" : "success",
+          reason: flagged ? flagSentence(flags) : undefined,
+          timestamp: Date.now(),
+          canUndo: true,
+        });
+
+        // The cache follows the server, without queueing anything: the entry is
+        // already on the record. A failure here costs a later amber flag instead
+        // of a later amber flag — no admission and no refusal turns on it — so it
+        // is logged under its own category rather than put on the screen.
+        markCheckedInLocally(partyId, "ticket", ticketId, {
+          at: readString(parsed, "at") ?? undefined,
+        }).catch((error) => {
+          console.error("scanner:cache_mark_failed", { ticketId, partyId, error });
+        });
+        return "handled";
+      }
+
+      case "already_recorded": {
+        // FIX-04a: the holder's label, then the fact — a time and an operator.
+        // No cause word: this screen is read in front of the person it would be
+        // a verdict about.
+        const label =
+          readSubjectLabel(parsed) ?? readString(parsed, "member_name") ?? "Ticket holder";
+        const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
+        showFlash("already_recorded", label, fact);
+        addScanRecord({
+          id: ticketId,
           type: "ticket",
-          name: "Unknown",
-          status: "error",
-          reason: "QR not recognized",
+          name: label,
+          status: "already_recorded",
+          reason: fact,
           timestamp: Date.now(),
           canUndo: false,
         });
+        return "handled";
       }
-    } catch {
-      // Network error — try offline fallback for ticket tokens
-      if (TICKET_TOKEN_PATTERN.test(code) && selectedPartyId) {
-        const ticketIdFromQR = code.split(".")[0];
-        try {
-          const attendee = await findAttendee(
-            selectedPartyId,
-            "ticket",
-            ticketIdFromQR
-          );
-          if (attendee && !attendee.checkedIn) {
-            await checkInLocally(selectedPartyId, "ticket", ticketIdFromQR, {
-              token: code,
-              name: attendee.name,
-            });
-            showFlash("success", attendee.name, "Offline");
-            addScanRecord({
-              id: ticketIdFromQR,
-              type: "ticket",
-              name: attendee.name,
-              status: "success",
-              timestamp: Date.now(),
-              canUndo: true,
-            });
-            getPendingCount().then(setPendingCount).catch(() => {});
-            return;
-          }
-        } catch {
-          // IndexedDB also failed
+
+      case "not_valid": {
+        const sentence = notValidSentence(parsed);
+        const holder = readString(parsed, "member_name");
+        const night = readString(parsed, "party_title") ?? readString(parsed, "event_title");
+        showFlash(
+          "error",
+          sentence,
+          readString(parsed, "reason") === "wrong_night" && night
+            ? `That code belongs to ${night}`
+            : (holder ?? undefined)
+        );
+        addScanRecord({
+          id: ticketId,
+          type: "ticket",
+          name: holder ?? "Unknown",
+          status: "error",
+          reason: sentence,
+          timestamp: Date.now(),
+          canUndo: false,
+        });
+        return "handled";
+      }
+    }
+  }
+
+  /**
+   * A scanned ticket, from this device's own memory of the night.
+   *
+   * The same three outcomes, derived locally. The signature cannot be checked
+   * here — `TICKET_SIGNING_SECRET` is server-side only and shipping it to a
+   * staff phone would make every phone a ticket forge — so `not_valid` is
+   * locally reachable only for a string that is not shaped like one of our
+   * codes, for a code cached under a different night, and for no party selected.
+   */
+  async function ticketOffline(code: string, partyId: string) {
+    const ticketId = ticketIdFromToken(code);
+
+    try {
+      const cached = await findAttendee(partyId, "ticket", ticketId);
+
+      if (cached) {
+        if (cached.checkedIn) {
+          const fact = recordedFact(cached.checkedInAt, cached.checkedInBy);
+          showFlash("already_recorded", cached.name, fact);
+          addScanRecord({
+            id: ticketId,
+            type: cached.ticketType === "guest_list" ? "guest" : "ticket",
+            name: cached.name,
+            status: "already_recorded",
+            reason: fact,
+            timestamp: Date.now(),
+            canUndo: false,
+          });
+          return;
         }
+
+        await checkInLocally(partyId, "ticket", ticketId, {
+          // FIX-10: the full signed string, exactly as scanned. The id above was
+          // derived for the lookup; nothing here discards the signature.
+          token: code,
+          name: cached.name,
+        });
+
+        // A refund known at download time produces the same admit-and-flag
+        // locally as the server produces online (FIX-09).
+        const flagged = Boolean(cached.refundedAt);
+        const subtitle = flagged
+          ? `${FLAG_MESSAGE.refunded_before_night} · Offline`
+          : [
+              cached.tierName,
+              cached.ticketType === "guest_list" ? "Guest List" : null,
+              "Offline",
+            ]
+              .filter(Boolean)
+              .join(" · ");
+
+        showFlash(flagged ? "already_recorded" : "success", cached.name, subtitle);
+        addScanRecord({
+          id: ticketId,
+          type: cached.ticketType === "guest_list" ? "guest" : "ticket",
+          name: cached.name,
+          ticketType: cached.tierName || undefined,
+          status: flagged ? "already_recorded" : "success",
+          reason: flagged ? FLAG_MESSAGE.refunded_before_night : undefined,
+          timestamp: Date.now(),
+          canUndo: true,
+          localKey: attendeeKey(partyId, "ticket" satisfies DoorSubjectType, ticketId),
+        });
+        await refreshQueueCounts();
+        return;
       }
-      showFlash("error", "Connection error");
+
+      // In the cache, but under another night. Opposite of "not in the cache at
+      // all", and the only reason the `by-subject` index exists.
+      const elsewhere = await findBySubject(ticketId);
+      if (elsewhere.length > 0) {
+        refuse("wrong_night", ticketId);
+        return;
+      }
+
+      // ── The branch that looks like a hole and is a decision ─────────────────
+      //
+      // Offline, a well-formed but uncached token is **admitted and flagged**,
+      // never refused. Refusing here refuses a valid guest whose ticket was
+      // bought after this device downloaded the list — a false refusal, in front
+      // of a queue, on data they cannot argue with, and the door's asymmetry says
+      // that is the worse of the two errors by a wide margin.
+      //
+      // The forgery window is real and bounded, and it is accepted rather than
+      // hidden (T-31-11-01): it needs a `uuid.64-hex` string to get this far, the
+      // entry is flagged on this screen immediately, and the moment the signal
+      // returns the route re-verifies the HMAC and the scan lands in the night's
+      // review list as `invalid_signature`. The alternative is shipping the
+      // signing secret to every staff phone, which would turn each one into a
+      // ticket forge.
+      await checkInLocally(partyId, "ticket", ticketId, { token: code });
+      showFlash("already_recorded", "Admitted", `${FLAG_MESSAGE.not_in_cache} · Offline`);
+      addScanRecord({
+        id: ticketId,
+        type: "ticket",
+        name: "Not in tonight's list",
+        status: "already_recorded",
+        reason: FLAG_MESSAGE.not_in_cache,
+        timestamp: Date.now(),
+        canUndo: true,
+        localKey: attendeeKey(partyId, "ticket" satisfies DoorSubjectType, ticketId),
+      });
+      await refreshQueueCounts();
+    } catch (error) {
+      reportStoreFault(ticketId, "ticket", error);
+    }
+  }
+
+  /** A membership code, with the radio on. */
+  async function membershipOnline(
+    membershipCode: string,
+    partyId: string
+  ): Promise<"handled" | "network_failed"> {
+    let res: Response;
+    try {
+      res = await fetch("/api/membership/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: membershipCode,
+          partyId,
+          deviceId: deviceIdRef.current ?? undefined,
+          source: "online",
+        }),
+      });
+    } catch {
+      return "network_failed";
+    }
+
+    let parsed: unknown = null;
+    try {
+      parsed = await res.json();
+    } catch {
+      parsed = null;
+    }
+
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      reportServerFault(res.status, parsed, membershipCode, "membership");
+      return "handled";
+    }
+
+    if (!isDoorOutcome(parsed)) {
+      reportServerFault(res.status, parsed, membershipCode, "membership");
+      return "handled";
+    }
+
+    // This route's `subject` carries no label; the display name is the legacy
+    // `member_name`, which is additive for one release.
+    const memberName = readString(parsed, "member_name") ?? "Member";
+
+    switch (parsed.outcome) {
+      case "recorded": {
+        showFlash("success", memberName, "Member");
+        addScanRecord({
+          // The undo addresses the attendance row, not the member.
+          id: readString(parsed, "attendance_id") ?? membershipCode,
+          type: "membership",
+          name: memberName,
+          status: "success",
+          timestamp: Date.now(),
+          canUndo: readString(parsed, "attendance_id") !== null,
+        });
+        return "handled";
+      }
+
+      case "already_recorded": {
+        const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
+        showFlash("already_recorded", memberName, fact);
+        addScanRecord({
+          id: membershipCode,
+          type: "membership",
+          name: memberName,
+          status: "already_recorded",
+          reason: fact,
+          timestamp: Date.now(),
+          canUndo: false,
+        });
+        return "handled";
+      }
+
+      case "not_valid": {
+        const sentence = notValidSentence(parsed);
+        showFlash("error", sentence);
+        addScanRecord({
+          id: membershipCode,
+          type: "membership",
+          name: "Unknown",
+          status: "error",
+          reason: sentence,
+          timestamp: Date.now(),
+          canUndo: false,
+        });
+        return "handled";
+      }
+    }
+  }
+
+  /**
+   * A membership code, from the roster this device downloaded.
+   *
+   * **A code the roster does not know is refused here, and a ticket in the same
+   * position is admitted.** The two are not inconsistent. A ticket token is
+   * HMAC-signed, so an uncached one still had to be a `uuid.64-hex` string and
+   * the server re-checks the signature on sync — a bounded window. A membership
+   * QR carries no signature at all (checkin-store.ts:29-32) and the code space
+   * is generated with `Math.random()` (`src/utils/qr.ts:49`, open defect QR-01),
+   * so admitting an unknown one offline would be an unbounded hole rather than a
+   * bounded one, with nothing on the far side able to catch it.
+   *
+   * The cost is a real false refusal for a member who joined after the roster was
+   * downloaded — which is why a failed roster refresh is now a banner on this
+   * screen, and why the door runbook's answer is to check that person in from
+   * the list rather than to re-scan.
+   */
+  async function membershipOffline(membershipCode: string, partyId: string) {
+    try {
+      const member = await findMember(membershipCode);
+      if (!member) {
+        refuse(
+          "unknown_code",
+          membershipCode,
+          "membership",
+          "Not in the member list on this device — check them in from the list instead"
+        );
+        return;
+      }
+
+      const result = await checkInMemberLocally(partyId, membershipCode);
+      if (result.alreadyRecorded) {
+        const fact = recordedFact(result.at, THIS_DEVICE_LABEL);
+        showFlash("already_recorded", member.fullName, fact);
+        addScanRecord({
+          id: membershipCode,
+          type: "membership",
+          name: member.fullName,
+          status: "already_recorded",
+          reason: fact,
+          timestamp: Date.now(),
+          canUndo: false,
+        });
+        return;
+      }
+
+      showFlash("success", member.fullName, "Member · Offline");
+      addScanRecord({
+        id: membershipCode,
+        type: "membership",
+        name: member.fullName,
+        status: "success",
+        timestamp: Date.now(),
+        canUndo: true,
+        localKey: result.key,
+      });
+      await refreshQueueCounts();
+    } catch (error) {
+      reportStoreFault(membershipCode, "membership", error);
+    }
+  }
+
+  /** The membership code inside a QR URL, or the bare code. */
+  function extractMembershipCode(code: string): string {
+    if (!MEMBERSHIP_PATTERN.test(code)) return code;
+    try {
+      return new URL(code).searchParams.get("code") || code;
+    } catch {
+      return code;
+    }
+  }
+
+  const handleVerify = async (code: string) => {
+    try {
+      // A scan without a party has no meaning: the record key is party-scoped and
+      // a presence filed against the wrong night corrupts two nights' data
+      // (`checkin-offline.md`, gate *identita' del party*).
+      if (!selectedPartyId) {
+        refuse("no_party_selected", code);
+        return;
+      }
+
+      if (TICKET_TOKEN_PATTERN.test(code)) {
+        if (!navigator.onLine) {
+          await ticketOffline(code, selectedPartyId);
+          return;
+        }
+        const result = await ticketOnline(code, selectedPartyId);
+        // The request never reached a server. This — and only this — is what the
+        // old single catch existed for, and it is the only cause that may fall
+        // through to the cache.
+        if (result === "network_failed") {
+          await ticketOffline(code, selectedPartyId);
+        }
+        return;
+      }
+
+      if (MEMBERSHIP_PATTERN.test(code) || BARE_MEMBERSHIP_PATTERN.test(code)) {
+        const membershipCode = extractMembershipCode(code);
+        if (!navigator.onLine) {
+          await membershipOffline(membershipCode, selectedPartyId);
+          return;
+        }
+        const result = await membershipOnline(membershipCode, selectedPartyId);
+        if (result === "network_failed") {
+          await membershipOffline(membershipCode, selectedPartyId);
+        }
+        return;
+      }
+
+      // Not shaped like anything this door issues. Local, and safe to refuse:
+      // no valid holder can land here.
+      refuse("unknown_code", code);
+    } catch (error) {
+      // The genuine last resort. Every branch above handles its own failures
+      // with its own sentence, so anything arriving here is a cause this plan
+      // did not foresee — and it must not read like one that was. It also has to
+      // show *something*: the scanner is paused until a flash is dismissed, so a
+      // silent throw here would freeze the camera with a queue in front of it.
+      console.error("scanner:unexpected", error);
+      showFlash(
+        "error",
+        "The scanner hit an unexpected failure",
+        "Scan again — nothing was recorded"
+      );
     }
   };
 
+  /**
+   * The *Check in* button beside a guest-list name. Online only — it has no
+   * offline branch and never had one.
+   *
+   * Every outcome now reaches the screen. It used to write into a `message`
+   * state that **nothing rendered**: a 409, a 500 and a dead radio all set a
+   * string nobody could see, which is the newsletter form's defect
+   * (`meta-gates.md`) reproduced in a second place.
+   */
   const handleGuestCheckIn = async (guestListEntryId: string) => {
     try {
       const res = await fetch("/api/tickets/attendance", {
@@ -654,30 +1463,53 @@ export default function ScannerClient() {
         body: JSON.stringify({ guestListEntryId }),
       });
 
+      let parsed: unknown = null;
+      try {
+        parsed = await res.json();
+      } catch {
+        parsed = null;
+      }
+
       if (res.ok) {
-        const data = await res.json();
-        setStatus("success");
-        setMessage(`${data.name || "Guest"} -- Guest List`);
+        const name = readString(parsed, "name") ?? "Guest";
+        showFlash("success", name, "Guest List");
         addScanRecord({
           id: guestListEntryId,
           type: "guest",
-          name: data.name || "Guest",
+          name,
           ticketType: "Guest List",
           status: "success",
           timestamp: Date.now(),
           canUndo: true,
         });
         fetchAttendance(searchQuery || undefined);
-      } else if (res.status === 409) {
-        setStatus("error");
-        setMessage("Already checked in");
-      } else {
-        setStatus("error");
-        setMessage("Check-in failed");
+        return;
       }
-    } catch {
-      setStatus("error");
-      setMessage("Connection error");
+
+      // This route already answers the contract on its conflict (plan 31-06):
+      // 409 with `outcome: "already_recorded"`, `at` and `by`.
+      if (res.status === 409) {
+        const name = readString(parsed, "name") ?? "Guest";
+        const fact = recordedFact(readString(parsed, "at"), readOperatorLabel(parsed));
+        showFlash("already_recorded", name, fact);
+        addScanRecord({
+          id: guestListEntryId,
+          type: "guest",
+          name,
+          status: "already_recorded",
+          reason: fact,
+          timestamp: Date.now(),
+          canUndo: false,
+        });
+        return;
+      }
+
+      reportServerFault(res.status, parsed, guestListEntryId, "guest");
+    } catch (error) {
+      // The one place this string survives, and the only cause it now covers:
+      // the request never reached a server.
+      console.error("scanner:guest_checkin_unreachable", error);
+      showFlash("error", "Connection error", "The guest was not checked in");
     }
   };
 
@@ -690,20 +1522,23 @@ export default function ScannerClient() {
     setFlash(null);
     setStatus("idle");
     setScanHistory([]);
+    setCacheNotices([]);
+    setFailedEntries(null);
+    setBlockedResult(null);
     isProcessingRef.current = false;
     // Sync any pending check-ins before switching party
-    syncPendingCheckins().then(async () => {
-      const count = await getPendingCount();
-      setPendingCount(count);
-    }).catch(() => {});
+    syncPendingCheckins()
+      .catch((error) => {
+        console.error("scanner:sync_failed", error);
+      })
+      .finally(() => {
+        refreshQueueCounts();
+      });
     fetchParties();
   };
 
   function formatCheckinTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatClock(iso) ?? "--:--";
   }
 
   function formatScanTime(ts: number) {
@@ -878,7 +1713,12 @@ export default function ScannerClient() {
                   <h1 className="text-lg font-bold truncate">
                     {selectedParty?.partyTitle || "Check-in"}
                   </h1>
-                  {/* Online/Offline status indicator */}
+                  {/* Online/Offline status indicator — connectivity, and only
+                      connectivity. It keeps `yellow-500` for Offline, which is
+                      precisely why the third scan state is amber and not yellow:
+                      the two must not read as one signal in a dark room. The
+                      queue count used to live inside this ternary and is now
+                      below, outside it. */}
                   {isOnline ? (
                     <span className="shrink-0 flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
@@ -887,7 +1727,7 @@ export default function ScannerClient() {
                   ) : (
                     <span className="shrink-0 flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
-                      Offline{pendingCount > 0 ? ` (${pendingCount})` : ""}
+                      Offline
                     </span>
                   )}
                 </div>
@@ -929,6 +1769,91 @@ export default function ScannerClient() {
             QR Scan
           </button>
         </div>
+
+        {/*
+          The queue, rendered OUTSIDE the Online/Offline ternary above.
+
+          This is the whole of FIX-08's surface. The pending count used to be
+          rendered only inside the offline branch of that pill — invisible while
+          the device was online, which is exactly when a stuck queue matters and
+          exactly when it can be drained. Classifying the queue without fixing
+          this left the number meaning something that nobody could see, and with
+          no error tracking anywhere in this project the person holding the phone
+          is the only observer a failed sync has.
+        */}
+        {(queue.unreadable ||
+          queue.pending > 0 ||
+          queue.failed > 0 ||
+          queue.blocked > 0) && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {queue.pending > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                Pending ({queue.pending})
+              </span>
+            )}
+            {queue.failed > 0 && (
+              <button
+                onClick={toggleFailedEntries}
+                className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500 active:scale-95 transition-transform"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                Could not be recorded ({queue.failed})
+              </button>
+            )}
+            {queue.blocked > 0 && (
+              <button
+                onClick={handleRetryBlocked}
+                className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-500 active:scale-95 transition-transform"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Sign in again to record {queue.blocked}{" "}
+                {queue.blocked === 1 ? "entry" : "entries"}
+              </button>
+            )}
+            {queue.unreadable && (
+              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                This device cannot read its own queue
+              </span>
+            )}
+          </div>
+        )}
+
+        {blockedResult && (
+          <p className="mb-3 text-[10px] text-muted">{blockedResult}</p>
+        )}
+
+        {/* What the failed count actually counts. A number with no way to see
+            behind it is a number nobody trusts. No email and no membership code
+            is rendered here — see `failedEntryLabel`. */}
+        {failedEntries !== null && (
+          <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-red-400 mb-2">
+              Could not be recorded
+            </p>
+            {failedEntries.length === 0 ? (
+              <p className="text-[11px] text-muted">
+                Nothing to show — the list could not be read, or it is empty.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {failedEntries.map((entry) => (
+                  <li key={entry.key} className="text-[11px] text-muted">
+                    <span className="text-foreground">
+                      {failedEntryLabel(entry)}
+                    </span>{" "}
+                    — {failureSentence(entry.reason)}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-[10px] text-muted">
+              These stay on this device. Sort them out from the attendee list, or
+              in the night&apos;s review.
+            </p>
+          </div>
+        )}
 
         {/* Progress bar for selected party */}
         {attendance && (
@@ -1027,6 +1952,46 @@ export default function ScannerClient() {
       </div>
 
       <div className="px-6">
+        {/*
+          What the last refresh could not do — above the scanner, and NOT a
+          toast.
+
+          The person holding the phone may be looking at a queue rather than at
+          the screen, so a message that disappears on its own is a message that
+          was never delivered. Each line stays until a refresh succeeds and
+          replaces the whole set. `mergeAttendees` refuses a payload that would
+          shrink the cache and returns that refusal as a value
+          (checkin-store.ts:429-438); this is where the value becomes something a
+          human sees, which is the difference between FIX-06 being implemented
+          and FIX-06 being done.
+        */}
+        {cameraFault && (
+          <div
+            className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-400"
+            role="status"
+            aria-live="polite"
+          >
+            {cameraFault}
+          </div>
+        )}
+
+        {cacheNotices.length > 0 && (
+          <div className="mb-4 space-y-2" role="status" aria-live="polite">
+            {cacheNotices.map((notice) => (
+              <div
+                key={notice.key}
+                className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+                  notice.tone === "error"
+                    ? "border-red-500/40 bg-red-500/10 text-red-400"
+                    : "border-yellow-500/40 bg-yellow-500/10 text-yellow-500"
+                }`}
+              >
+                {notice.text}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
           <div className="mb-4 rounded-xl border border-card-border bg-card p-4">
@@ -1071,8 +2036,14 @@ export default function ScannerClient() {
             {scanHistory.map((record, i) => {
               const isUndone = record.undone;
               const isSuccess = record.status === "success" && !isUndone;
+              // The same amber as the flash: admitted-and-flagged, or already
+              // recorded. Never red, because neither is a refusal.
+              const isFlagged = record.status === "already_recorded" && !isUndone;
               const isError = record.status === "error";
-              const canTap = isSuccess && record.canUndo;
+              // A flagged admission is still an admission, so it stays undoable.
+              // The old `isSuccess && canUndo` would have taken that away from
+              // exactly the entries most likely to need it.
+              const canTap = record.canUndo && !isUndone;
 
               return (
                 <button
@@ -1115,6 +2086,20 @@ export default function ScannerClient() {
                           d="m4.5 12.75 6 6 9-13.5"
                         />
                       </svg>
+                    ) : isFlagged ? (
+                      <svg
+                        className="h-4 w-4 text-amber-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                        />
+                      </svg>
                     ) : isError ? (
                       <svg
                         className="h-4 w-4 text-red-500"
@@ -1145,11 +2130,9 @@ export default function ScannerClient() {
                     </span>
                     {(record.ticketType || record.reason) && (
                       <span className="text-[10px] text-muted truncate block">
-                        {isError
-                          ? record.reason
-                          : isUndone
-                            ? "Undone"
-                            : record.ticketType}
+                        {isUndone
+                          ? "Undone"
+                          : (record.reason ?? record.ticketType)}
                       </span>
                     )}
                   </div>
