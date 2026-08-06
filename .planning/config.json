@@ -9,5 +9,5 @@
     "verifier": true,
     "_auto_chain_active": false
   },
-  "granularity": "fine"
+  "granularity": "medium"
 }
