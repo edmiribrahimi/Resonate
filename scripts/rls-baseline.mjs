@@ -27,6 +27,20 @@
  *   1  a check failed — an implausible measurement, a refused write
  *   2  the environment is wrong — a missing variable, an unknown flag
  *
+ * WHY THE PERSONA PROBES CANNOT USE `read_only: true`. B2 and B3 impersonate a
+ * subject with `set local role`, and that statement is REFUSED under the API's
+ * read-only flag with `42501: permission denied to set role "authenticated"`
+ * (verified 2026-08-06, and again by this plan). So the probes run in a
+ * READ-WRITE transaction and the safety does not come from the API at all: it
+ * comes from the trailing `rollback;` on every probe string, asserted before a
+ * single byte reaches the network, and from re-reading all 20 row counts
+ * afterwards and asserting they are unchanged. Two independent clauses,
+ * reported separately — because satisfying one says nothing about the other.
+ *
+ * Everything that does NOT switch role — the policy dump, the advisors, the
+ * schema reads, the row-count re-read — still uses `read_only: true`, which is
+ * a hard guarantee (an INSERT under it fails `25006`).
+ *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC
  * (CLAUDE.md Guardrail 5). The access token, the project reference and the
  * Supabase URL are read here and are never printed and never written into an
@@ -77,7 +91,7 @@ const ARTEFACT_KEY_ORDER = [
 ];
 
 /** The artefacts this script knows how to capture. */
-const KNOWN_ARTEFACTS = ['B1', 'B5'];
+const KNOWN_ARTEFACTS = ['B1', 'B2', 'B3', 'B5'];
 
 /**
  * ── Pre-registered plausibility floors ────────────────────────────────────
@@ -459,6 +473,328 @@ async function captureB1(target, { phasePoint }) {
   };
 }
 
+// ── personas ───────────────────────────────────────────────────────────────
+
+/**
+ * ── The eleven personas (phase decision D-11) ─────────────────────────────
+ *
+ * The full 3×3 role × status grid, plus `authenticated/no-profile`, plus
+ * `anon`. The grid is the MINIMUM that can distinguish P1 from P3: they
+ * disagree on exactly one pair, `organizer/pending`, who may insert a ticket
+ * tier but not a venue. Drop a row of the grid and that asymmetry — the one
+ * CAP-03 must reproduce rather than resolve — becomes invisible.
+ *
+ * `authenticated/no-profile` is not padding either. The middleware's
+ * `?? "member"` default and the NULL-versus-false behaviour of
+ * `is_admin_or_organizer()` for a missing profile row are both BEHAVIOUR, and
+ * neither is observable with any other persona.
+ *
+ * A persona that does not exist on a target is recorded `absent`, never
+ * omitted — an omitted row is indistinguishable from a row that agreed.
+ */
+const PERSONA_ROLES = ['master', 'organizer', 'member'];
+const PERSONA_STATUSES = ['approved', 'pending', 'rejected'];
+const PERSONA_ANON = 'anon';
+const PERSONA_NO_PROFILE = 'authenticated/no-profile';
+const PERSONA_LABELS = [
+  PERSONA_ANON,
+  PERSONA_NO_PROFILE,
+  ...PERSONA_ROLES.flatMap((role) => PERSONA_STATUSES.map((status) => `${role}/${status}`)),
+].sort(compareStrings);
+
+/**
+ * Which personas a target is REQUIRED to offer. An absent persona that was
+ * expected is exit 1, because a matrix quietly missing its most interesting
+ * rows is the failure mode `verify-persona.mjs:225-233` refuses.
+ *
+ * Production holds 4 profiles — 1 master/approved and 3 member/approved. There
+ * is no organizer and no non-approved row, which is precisely why plan 32-04
+ * exists: only a seeded container can carry the other seven.
+ */
+const EXPECTED_PERSONAS = {
+  production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master/approved', 'member/approved'],
+};
+
+/** A subject uuid is embedded in a SQL literal; refuse anything that is not one. */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+
+function assertUuid(value, what) {
+  if (!UUID_SHAPE.test(String(value ?? ''))) {
+    throw new Error(`${what} is not a uuid — refusing to build SQL from it`);
+  }
+  return value;
+}
+
+/**
+ * The nine role × status personas, resolved to the LOWEST id in each cell so
+ * the choice is deterministic across runs.
+ *
+ * **The uuid is used and discarded: only the label reaches the artefact.**
+ * `.planning/` is tracked and this repository is PUBLIC (CLAUDE.md Guardrail
+ * 5) — a member's uuid is a member identifier, and publishing one is
+ * irreversible. Every resolved uuid is registered with `redact()` so it cannot
+ * reach an error message either.
+ */
+const PERSONA_SQL = `
+select role, status, (array_agg(id order by id))[1]::text as subject
+  from public.profiles
+ where role in ('master','organizer','member')
+   and status in ('approved','pending','rejected')
+ group by role, status
+`;
+
+async function resolvePersonas(target) {
+  const resolved = new Map();
+
+  // `anon` needs no subject: it is impersonated by the claims role alone.
+  resolved.set(PERSONA_ANON, { subject: null, dbRole: 'anon' });
+
+  // `authenticated/no-profile` needs no data, so it is available on EVERY
+  // target: a uuid that is asserted not to exist in `public.profiles`.
+  let orphan = null;
+  for (let attempt = 0; attempt < 3 && orphan === null; attempt += 1) {
+    const candidate = crypto.randomUUID();
+    const [row] = await target.query(
+      `select count(*)::int as n from public.profiles where id = '${assertUuid(candidate, 'candidate')}'::uuid`,
+      { readOnly: true }
+    );
+    if (row?.n === 0) orphan = candidate;
+  }
+  if (orphan === null) {
+    throw new Error('could not generate a uuid absent from public.profiles in three attempts');
+  }
+  registerSecret(orphan);
+  resolved.set(PERSONA_NO_PROFILE, { subject: orphan, dbRole: 'authenticated' });
+
+  for (const row of await target.query(PERSONA_SQL, { readOnly: true })) {
+    const label = `${row.role}/${row.status}`;
+    if (!PERSONA_LABELS.includes(label)) continue;
+    registerSecret(row.subject);
+    resolved.set(label, { subject: assertUuid(row.subject, label), dbRole: 'authenticated' });
+  }
+
+  return resolved;
+}
+
+/**
+ * One persona transaction: claims, role, the body, `rollback;`.
+ *
+ * The claims statement is written as `… is not null` on purpose. The Supabase
+ * query endpoint returns the LAST result set that has rows, and a bare
+ * `select set_config(...)` returns the claims JSON — which carries the subject
+ * uuid. Reducing it to a boolean means the uuid cannot come back in a response
+ * at all, so it cannot be written by a later reader who trusts the response.
+ */
+function personaTransaction({ subject, dbRole }, body) {
+  const claims =
+    subject === null ? '{"role":"anon"}' : `{"sub":"${assertUuid(subject, 'subject')}","role":"authenticated"}`;
+  return [
+    'begin;',
+    `select set_config('request.jwt.claims', '${claims}', true) is not null as claims_set;`,
+    `set local role ${dbRole};`,
+    body,
+    'rollback;',
+  ].join('\n');
+}
+
+// ── the table set every persona artefact is measured over ──────────────────
+
+/**
+ * The RLS-enabled tables in `public`, with their primary-key columns.
+ *
+ * Read from `pg_catalog`, NOT from `information_schema`. Under
+ * `read_only: true` the query endpoint runs as `supabase_read_only_user`, and
+ * `information_schema.table_constraints` filters by privilege — it returns
+ * ZERO rows for that user, so an `information_schema` key lookup would report
+ * "no primary key" for all 20 tables. Measured, not assumed.
+ */
+const TABLE_SQL = `
+select rel.relname as table_name,
+       array_to_string(array_agg(att.attname order by k.ord), ',') as pk_columns
+  from pg_constraint con
+  join pg_class rel on rel.oid = con.conrelid
+  join pg_namespace n on n.oid = rel.relnamespace
+  cross join lateral unnest(con.conkey) with ordinality as k(attnum, ord)
+  join pg_attribute att on att.attrelid = rel.oid and att.attnum = k.attnum
+ where n.nspname = 'public' and con.contype = 'p' and rel.relkind = 'r' and rel.relrowsecurity
+ group by rel.relname
+`;
+
+/** Every RLS-enabled table in `public`, whether or not it has a primary key. */
+const RLS_TABLE_SQL = `
+select c.relname as table_name
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+`;
+
+let tablesPromise = null;
+
+async function getTables(target) {
+  if (!tablesPromise) {
+    tablesPromise = (async () => {
+      const all = (await target.query(RLS_TABLE_SQL, { readOnly: true })).map((r) => r.table_name);
+      const keyed = await target.query(TABLE_SQL, { readOnly: true });
+      const byName = new Map(keyed.map((r) => [r.table_name, String(r.pk_columns).split(',')]));
+
+      // A fingerprint without a stable key is not a fingerprint — it is a
+      // number that happens to be the same. Refuse rather than pretend.
+      const unkeyed = all.filter((name) => !byName.has(name)).sort(compareStrings);
+      if (unkeyed.length) {
+        throw new Error(
+          `these RLS-enabled tables report no primary key: ${unkeyed.join(', ')}. ` +
+            'A fingerprint needs a stable key. Nothing was written.'
+        );
+      }
+      if (all.length < FLOOR_RLS_ENABLED_TABLES) {
+        throw new Error(
+          `implausible measurement: ${all.length} RLS-enabled tables, floor is ${FLOOR_RLS_ENABLED_TABLES} ` +
+            '(measured 2026-08-06). Nothing was written. Investigate the database — do not lower the floor.'
+        );
+      }
+
+      return all
+        .sort(compareStrings)
+        .map((name) => ({ table: name, pkColumns: byName.get(name) }));
+    })();
+  }
+  return tablesPromise;
+}
+
+/** `id::text` — or, for a composite key, the columns joined by a separator. */
+function pkExpression(pkColumns) {
+  return pkColumns.map((c) => `"${c}"::text`).join(` || '|' || `);
+}
+
+/**
+ * All 20 row counts in one privileged read-only round trip.
+ *
+ * Read as the API's own role, NOT under a persona: this is the ground truth
+ * the B3 rollback guarantee compares against, and a count filtered by a policy
+ * would compare a policy against itself.
+ */
+async function readRowCounts(target, tables) {
+  const sql = `select ${tables
+    .map((t) => `(select count(*)::int from public."${t.table}") as "${t.table}"`)
+    .join(',\n       ')}`;
+  const [row] = await target.query(sql, { readOnly: true });
+  const counts = {};
+  for (const t of tables) counts[t.table] = row?.[t.table] ?? null;
+  return counts;
+}
+
+// ── B2 — the persona read matrix ───────────────────────────────────────────
+
+/**
+ * For every persona and every RLS table: how many rows are visible, and a
+ * fingerprint of WHICH rows they are.
+ *
+ * The count alone is too weak — a policy can change which rows it shows
+ * without changing how many — so the row is `count` AND the md5 of the sorted
+ * primary keys. The md5 is what makes the artefact publishable: it identifies
+ * a row set without naming a single row.
+ *
+ * `vacuous` is the honesty flag. `count = 0` fingerprints as `d41d8cd9…`, the
+ * md5 of the empty string, and two empty sides agree for a reason that has
+ * nothing to do with the policy. Pitfall 3 names that fingerprint as the
+ * warning sign; marking it lets the comparator report how much of the matrix
+ * proved nothing, instead of counting it as agreement.
+ *
+ * Reads cannot write, so all 20 tables are batched into ONE transaction per
+ * persona and the request count stays at eleven. The one-probe-per-request
+ * rule applies to B3, where a statement could write.
+ */
+function buildB2Body(tables) {
+  return `${tables
+    .map(
+      (t) =>
+        `select '${t.table}' as "table", count(*)::int as "count", ` +
+        `md5(coalesce(string_agg(${pkExpression(t.pkColumns)}, ',' order by ${pkExpression(t.pkColumns)}), '')) as pk_md5 ` +
+        `from public."${t.table}"`
+    )
+    .join('\nunion all\n')};`;
+}
+
+async function captureB2(target, { phasePoint, targetName }) {
+  const { postgresVersion } = await getFacts(target);
+  const tables = await getTables(target);
+  const personas = await resolvePersonas(target);
+
+  const expected = EXPECTED_PERSONAS[targetName] ?? [];
+  const missing = expected.filter((label) => !personas.has(label));
+  if (missing.length) {
+    throw new Error(
+      `these personas were expected on target "${targetName}" and are absent: ${missing.join(', ')}. ` +
+        'Nothing was written — a matrix missing the personas it exists to measure is not evidence.'
+    );
+  }
+
+  const body = buildB2Body(tables);
+  const rows = [];
+
+  for (const label of PERSONA_LABELS) {
+    const persona = personas.get(label);
+    if (!persona) {
+      // Absent, never omitted. A null count is vacuous by definition: it
+      // proves nothing, and must not be read as agreement.
+      for (const t of tables) {
+        rows.push({ persona: label, table: t.table, count: null, pk_md5: null, vacuous: true });
+      }
+      continue;
+    }
+    const measured = await target.query(personaTransaction(persona, body), { readOnly: false });
+    const byTable = new Map(measured.map((r) => [r.table, r]));
+    for (const t of tables) {
+      const r = byTable.get(t.table);
+      if (!r) throw new Error(`persona ${label} returned no row for table ${t.table} — the read is broken`);
+      rows.push({
+        persona: label,
+        table: t.table,
+        count: r.count,
+        pk_md5: r.pk_md5,
+        vacuous: r.count === 0,
+      });
+    }
+    say(`      ${label}: ${tables.length} tables read`);
+  }
+
+  const sorted = sortRows(rows, ['persona', 'table']);
+
+  // The whole-matrix refusal. If every cell is vacuous the capture measured
+  // nothing, and a later comparison would pass for the worst possible reason.
+  if (sorted.every((r) => r.vacuous)) {
+    throw new Error(
+      'implausible measurement: every cell of the read matrix is vacuous. Nothing was written. ' +
+        'Either the impersonation is not taking effect or the target holds no data.'
+    );
+  }
+
+  const path = writeArtefact({
+    artefact: 'B2',
+    slug: 'reads',
+    target: target.name,
+    postgresVersion,
+    phasePoint,
+    rows: sorted,
+    trailing: {
+      personas: PERSONA_LABELS.map((label) => ({
+        persona: label,
+        resolved: personas.has(label),
+      })),
+    },
+  });
+
+  const present = PERSONA_LABELS.filter((label) => personas.has(label)).length;
+  return {
+    path,
+    rowCount: sorted.length,
+    detail: `${present}/${PERSONA_LABELS.length} personas resolved, ${tables.length} tables, ${
+      sorted.filter((r) => r.vacuous).length
+    } vacuous cells`,
+  };
+}
+
 // ── B5 — the independent advisor oracle ────────────────────────────────────
 
 /**
@@ -616,12 +952,13 @@ console.log('\nrls-baseline — phase 32 evidence harness\n');
 
 const failures = [];
 
-const CAPTURES = { B1: captureB1, B5: captureB5 };
+const CAPTURES = { B1: captureB1, B2: captureB2, B5: captureB5 };
 
 for (const id of options.only) {
   try {
     const { path, rowCount, detail } = await CAPTURES[id](target, {
       phasePoint: options.phasePoint,
+      targetName: options.target,
     });
     say(`  ✓ ${id} → ${relative(ROOT, path)} (${rowCount} rows${detail ? `, ${detail}` : ''})`);
   } catch (error) {
