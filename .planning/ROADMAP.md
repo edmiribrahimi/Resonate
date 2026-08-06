@@ -147,7 +147,7 @@ Plans:
 
 **Wave 6** *(blocked on 32-06)*
 
-- [ ] 32-07-PLAN.md — The policy cutover: 45 predicate call sites replaced in place
+- [x] 32-07-PLAN.md — The policy cutover: 45 predicate call sites replaced in place
 - [x] 32-08-PLAN.md — The resolver, the middleware's four rules, and one reference conversion
 
 **Wave 7** *(blocked on 32-07)*
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 7/11 | In Progress|  |
+| 32. Capability Model in the Database | 8/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
