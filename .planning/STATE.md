@@ -24,20 +24,29 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 31 — Live Defects at the Door and the Bar
+**Current Focus:** Phase 32 — Capability Model in the Database
 
 ## Current Position
 
-Phase: 31 (Live Defects at the Door and the Bar) — EXECUTED, NOT VERIFIED
-Plan: 13 of 13
-Status: Ready to execute
-        Four blocking checkpoints remain open — all four need a human, a device or
-        a real database. `31-VALIDATION.md` keeps `nyquist_compliant: false`
-        deliberately: the file:line evidence is complete, the manual and
-        observable evidence is not executed.
+Phase: 32 (Capability Model in the Database) — PLANNED, READY TO EXECUTE
+Plan: 0 of 11 executed
+Status: 11 plans across 9 waves on branch
+        `gsd/phase-32-capability-model-in-the-database`, which forks the phase 31
+        branch. Plan-checker: VERIFICATION PASSED, 0 blockers, 2 warnings — both
+        closed before execution.
+        Only waves 1 and 6 parallelise; the rest is genuinely sequential, because
+        the baseline must be captured and committed **before the first migration
+        file exists**. A baseline taken after the change is not a baseline.
 Last activity: 2026-08-06 -- Phase 32 planning complete
 
-Progress: [██████████] 13/13 plans executed · 0/4 manual checkpoints closed
+**Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
+`gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
+checkpoints is now closed (the migration is applied); three remain, plus the RLS
+half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
+deliberately.
+
+Progress: phase 31 — 13/13 plans executed, 1/4 checkpoints closed ·
+          phase 32 — 11 plans, 0 executed
 
 ## Decisions
 
@@ -109,19 +118,31 @@ because no event is published — which is precisely why the rule is safe now.
 
 **Manual work owed, batched by the owner's choice** — see `31-VERIFICATION.md`:
 
-1. Apply `supabase/migrations/20260805120000_door_scan_events.sql` from the
-   Supabase dashboard (the CLI is not installed here), then confirm a logged-in
-   member reads zero rows from `door_scan_events`
-
+1. ~~Apply the phase 31 migration~~ — **DONE 2026-08-06.** Applied through the
+   Supabase Management API's migrations endpoint (`SUPABASE_ACCESS_TOKEN` is in
+   `.env.local`; the CLI is still not installed), recorded as version
+   `20260806111113`, eight structural observations verified. **Doing it revealed a
+   third foreign key to `tickets` that no plan had seen — `pending_purchases`, the
+   SumUp payment record — still `NO ACTION` and blocking the refund's delete. The
+   migration was corrected before being applied.**
+   **Still owed:** confirm a logged-in member reads **zero rows** from
+   `door_scan_events`. The Management API bypasses RLS, so no query of mine can
+   settle it — only a real member session can.
 2. The `apis` cache check on a phone, production build
 3. The dark-room amber-versus-yellow legibility check
 4. The door pass — six scans, radio off, plus the IndexedDB v2→v3 upgrade on a
    device that already holds a v2 database
 
-**Next step:** `/gsd-plan-phase 32` (Capability Model in the Database). Note the
-command form: GSD is installed as user skills here, so it is `/gsd-…` with a
-hyphen — the `gsd:` plugin namespace does not exist on this machine, though GSD's
-own generated text uses it.
+**Migrations can now be applied from here.** `POST /v1/projects/{ref}/database/migrations`
+with the access token — the migrations endpoint, **not** `/database/query`, so the
+project's migration history stays truthful. Note a pre-existing drift found while
+doing it: `20260508000000_drink_token_active_state.sql` is applied in production
+but absent from the history (its content was verified present). Repairing that is
+the owner's call; `PUT` on the same endpoint upserts without applying.
+
+**Next step:** `/gsd-execute-phase 32`. Note the command form: GSD is installed as
+user skills here, so it is `/gsd-…` with a hyphen — the `gsd:` plugin namespace
+does not exist on this machine, though GSD's own generated text uses it.
 
 ---
 *State initialized: 2026-03-10 — v1.5 roadmap 2026-08-05*
