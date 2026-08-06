@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "verify:persona": "node scripts/verify-persona.mjs"
+    "verify:persona": "node scripts/verify-persona.mjs",
+    "baseline:rls": "node scripts/rls-baseline.mjs"
   },
   "dependencies": {
     "@react-email/components": "^1.0.8",
