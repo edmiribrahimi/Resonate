@@ -152,7 +152,7 @@ Plans:
 
 **Wave 7** *(blocked on 32-07)*
 
-- [ ] 32-09-PLAN.md — CAP-06: the 26-row review and the wrapping migration
+- [x] 32-09-PLAN.md — CAP-06: the 26-row review and the wrapping migration
 
 **Wave 8** *(blocked on 32-08, 32-09)*
 
@@ -316,7 +316,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
-| 32. Capability Model in the Database | 8/11 | In Progress|  |
+| 32. Capability Model in the Database | 9/11 | In Progress|  |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
