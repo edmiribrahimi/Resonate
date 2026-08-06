@@ -92,6 +92,21 @@ ever the IndexedDB half.
 parameterised with `Database`, so no column name in any query is checked by the
 build. This narrows what a green build means everywhere, not only in phase 31.
 
+**Working rule, set by the owner on 2026-08-06.** During construction, a
+verification checkpoint is deferred unless its outcome changes *what we write*.
+Applying the migration was necessary immediately — the refund probe's result
+decided a clause of the migration itself, and phases 32+ write against that
+schema. Checks that merely validate an already-made, easily reversible choice —
+a colour read in the dark, a cache bucket on a phone, a door pass — are collected
+and run at the end. **Deferred is not verified:** this file and
+`31-VERIFICATION.md` must keep saying which of the two each one is.
+
+*One exception to watch:* a check whose failure destroys **data** rather than code
+stops being deferrable once that data exists. The IndexedDB v2→v3 upgrade must be
+exercised **before the first real night**, not at some abstract end of
+construction. Today no staff phone holds a v2 database with real check-ins,
+because no event is published — which is precisely why the rule is safe now.
+
 **Manual work owed, batched by the owner's choice** — see `31-VERIFICATION.md`:
 1. Apply `supabase/migrations/20260805120000_door_scan_events.sql` from the
    Supabase dashboard (the CLI is not installed here), then confirm a logged-in
