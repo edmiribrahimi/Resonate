@@ -40,14 +40,16 @@ requirement's own section**. A green build is not allowed to stand in for it.
 | `npm run build` on the merged branch | **PASS** — `next build --webpack`, every route emitted |
 | Service worker produced by the build | **YES**, 53,166 bytes at `public/sw.js`, containing the door's four route patterns |
 | Refund probe (both DDL claims) | **EXECUTED**, both CONFIRMED — throwaway PostgreSQL 16.14 container, destroyed |
-| 31-04 migration applied to a throwaway container | **YES**, and verified structurally — seven observations below |
-| 31-04 migration applied to any **real** database | **NO** |
+| 31-04 migration applied to a throwaway container | **YES**, and verified structurally |
+| 31-04 migration applied to the **production** database | **YES — 2026-08-06**, via the Management API migrations endpoint, recorded as version `20260806111113`. Eight structural observations verified below |
+| A third foreign key to `tickets` found by doing it | **`pending_purchases`** — the SumUp payment record, still `NO ACTION`, reproducing Probe B on a table no plan had looked at. Corrected **before** applying |
+| Code paths that write to `door_scan_events` | **still never executed.** The table exists; the behaviour is unobserved |
 | The door pass — production build, phone, radio off | **NOT EXECUTED** |
-| Blocking checkpoints still open | **four** (31-01 Task 3, 31-04 Task 3, 31-11 Task 4, 31-13 Task 2) |
+| Blocking checkpoints | **one closed** (31-04 Task 3), **three open** (31-01 Task 3, 31-11 Task 4, 31-13 Task 2), **plus** 31-04's RLS half, which the Management API cannot close because it bypasses RLS |
 
-Everything written under **observable** and **manual** below inherits from row
-six: no code path that writes to `door_scan_events` has ever run against a
-database anybody will use.
+Everything written under **observable** and **manual** below still stands
+unexecuted. The schema now exists in production, which removes the reason those
+observations were impossible — it does not make them done.
 
 ---
 
@@ -736,9 +738,70 @@ container carries no Supabase auth layer, so a member session does not exist the
 to test with. That observation remains owed, and it is the one that matters most:
 the policy is the boundary, and the redirect is not.
 
-**The migration is NOT applied to any real database.** Every code path in this
-phase that writes to `door_scan_events` — `checkin/route.ts:310`,
-`undo/route.ts:215`, `membership/verify/route.ts:169` — has never run.
+**The migration WAS applied to the production database on 2026-08-06.** *(This
+paragraph previously read "NOT applied to any real database" — superseded, and the
+history is left visible rather than rewritten.)*
+
+Applied through the Supabase Management API's migrations endpoint
+(`POST /v1/projects/{ref}/database/migrations`) rather than `/database/query`,
+**so the migration is recorded in the project's migration history** — registered
+as version `20260806111113`, name `door_scan_events`, bringing the total to 32.
+The endpoint choice matters: `/database/query` would have executed the SQL while
+leaving the history unaware, and a later `supabase db push` would have tried to
+apply it again.
+
+Eight structural observations were made against production immediately after,
+each one recorded here because it is the evidence, not the summary of it:
+
+| # | Observation | Result |
+|---|---|---|
+| 1 | `door_scan_events` exists, `relrowsecurity` | `true` |
+| 2 | Policies on the table | exactly one — `door_scan_events_select_admin`, `SELECT`. **No `_select_master`**, as FIX-12 requires |
+| 3 | Columns matching `%name%` or `%email%` | none |
+| 4 | `pg_constraint` foreign keys to `public.tickets` | **all four** `SET NULL` — `door_scan_events`, `guest_list_entries`, `pending_purchases`, `ticket_refunds` |
+| 5 | `ticket_refunds.ticket_id` nullable | `YES` — the `NOT NULL` drop preceded the FK change, as the statement order required |
+| 6 | `attendances` | gained `party_id`, plus `attendances_event_user_unique`, `attendances_party_user_unique`, `idx_attendances_party` |
+| 7 | The four `CHECK` constraints | match `src/lib/door/outcome.ts` literally — 3 outcomes, 8 causes, 3 subject types, 2 sources |
+| 8 | Migration history | `20260806111113 door_scan_events` present |
+
+**A third foreign key was found by doing this, and it was not in any plan.**
+`pg_constraint` on the live database reported **three** foreign keys to
+`public.tickets`, not two. The refund probe had run against a throwaway database
+built from the repository's own DDL, where `pending_purchases` does not appear —
+so no amount of care on that container could have surfaced it. `pending_purchases`
+is the **SumUp payment record**, and `webhooks/sumup/route.ts:81` writes
+`ticket_id` onto the row when it marks a purchase completed; the live table
+already held a populated row. Left as `NO ACTION` it reproduced Probe B exactly,
+on a different table: the refund's delete raises `23503`, the ticket survives, the
+refund cannot complete. The migration was corrected **before** being applied — it
+was not yet applied, so correcting it was legitimate; correcting an applied
+migration would not have been. Verified on a throwaway container first, then in
+production.
+
+**The version recorded (`20260806111113`) does not match the file name
+(`20260805120000`).** This is harmless and was checked rather than assumed: every
+`ADD COLUMN` in the file carries `IF NOT EXISTS`, every `CREATE POLICY` is
+preceded by `DROP POLICY IF EXISTS`, and no `CREATE` is unguarded — the migration
+is **idempotent**, so a future `supabase db push` re-applying it changes nothing.
+
+**A pre-existing history drift was found and is NOT repaired.** The repository
+holds 33 migration files; 31 were registered before this one. The unregistered one
+is `20260508000000_drink_token_active_state.sql` — and its **content is present in
+production** (verified: `activate_drink_token`, `deactivate_drink_token` and
+`redeem_drink_token` all exist and return `boolean`, and `drink_tokens_status_check`
+admits `'active'`). So it was applied by hand without being recorded. This is a
+history gap, not a schema gap, and repairing it is a decision for the project
+owner — the Management API's `PUT .../database/migrations` upserts an entry
+without applying, which is the tool for it.
+
+**What the application does NOT prove.** Every code path that writes to
+`door_scan_events` — `checkin/route.ts:310`, `undo/route.ts:215`,
+`membership/verify/route.ts:169` — now has a table to write into, but **still has
+never run**. The schema exists; the behaviour is unobserved. And the RLS
+observation that matters most remains owed: the Management API connects with
+privileges that **bypass RLS**, so a query of mine returning rows would prove
+nothing about the boundary. Only a logged-in member session can establish that
+`door_scan_events` returns zero rows to someone who is not staff.
 
 ---
 
@@ -761,16 +824,17 @@ Full protocol and literal output: `31-REFUND-PROBE.md`, which is closed.
 
 ---
 
-## The four open blocking checkpoints
+## The blocking checkpoints — one closed, three open
 
-None of these has been run, and none of their outcomes has been assumed.
+None of the open ones has been run, and none of their outcomes has been assumed.
 
-| Plan | Task | What it needs | Why it blocks |
+| Plan | Task | What it needs | Status |
 |---|---|---|---|
-| **31-01** | Task 3 | A production build on a phone: confirm the `"apis"` Cache Storage bucket no longer holds the door's routes | An empty bucket was previously indistinguishable from *no service worker at all*. The worker now builds, so this check finally means something — and it still has not been done |
-| **31-04** | Task 3 | Applying the migration to the real database | The green build is a **false positive** for this question: the types come from `src/types/database.ts`, not from the database. Code compiled against a table that does not exist fails at the first request |
-| **31-11** | Task 4 | A dark room, amber against the Offline yellow, the three states told apart by icon and vibration | Colour is not the only channel by design; whether that holds has never been observed |
-| **31-13** | Task 2 | The whole door pass — production build, phone, radio physically off, two devices | Everything under **manual** and **observable** in this document depends on it |
+| **31-04** | Task 3 | Applying the migration to the real database | ✅ **CLOSED 2026-08-06.** Applied via the Management API migrations endpoint, recorded as `20260806111113`, eight structural observations verified above. **The RLS half is still owed** — see below |
+| **31-01** | Task 3 | A production build on a phone: confirm the `"apis"` Cache Storage bucket no longer holds the door's routes | ⬜ open. An empty bucket was previously indistinguishable from *no service worker at all*. The worker now builds, so this check finally means something — and it still has not been done |
+| **31-11** | Task 4 | A dark room, amber against the Offline yellow, the three states told apart by icon and vibration | ⬜ open. Colour is not the only channel by design; whether that holds has never been observed |
+| **31-13** | Task 2 | The whole door pass — production build, phone, radio physically off, two devices | ⬜ open. Everything under **manual** and **observable** in this document depends on it |
+| **31-04** | RLS half | A logged-in member session reading `door_scan_events` and getting zero rows | ⬜ open, and it cannot be closed from here: the Management API bypasses RLS, so a query returning rows would prove nothing. Only a real member session establishes that the policy — not a redirect — is the boundary |
 
 ---
 

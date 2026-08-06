@@ -13,8 +13,10 @@ evidence: 31-VERIFICATION.md
 > **`nyquist_compliant` stays `false`, deliberately.** The **file:line** half of
 > this contract is complete and recorded in `31-VERIFICATION.md`. The **manual**
 > and **observable** halves are **not executed**: the door pass has not been run,
-> and plan 31-04's migration is not applied to any real database, so every code
-> path that writes to `door_scan_events` has never executed. The requirements
+> and although plan 31-04's migration WAS applied to production on 2026-08-06
+> (Management API, version `20260806111113`), no code path that writes to
+> `door_scan_events` has executed against it yet — the table exists, the
+> behaviour is unobserved. The requirements
 > whose evidence is still missing are FIX-01 (observable half), FIX-02 (manual
 > half), FIX-03, FIX-04, FIX-04a, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10
 > (manual half), both FIX-11 rows, and FIX-12. FIX-13 is complete.
