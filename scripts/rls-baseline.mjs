@@ -795,6 +795,526 @@ async function captureB2(target, { phasePoint, targetName }) {
   };
 }
 
+// ── B3 — the persona write matrix ──────────────────────────────────────────
+
+/**
+ * ── The payload table ─────────────────────────────────────────────────────
+ *
+ * B3 is the ONLY artefact that can baseline a `WITH CHECK` clause: no read
+ * ever touches one, and four of this phase's five inherited predicates (P3 on
+ * `artists`/`venues`, P5 on `event_media`/`rsvps`) live there. Without it the
+ * phase cannot tell a preserved rule from a widened one on those four tables.
+ *
+ * One entry per RLS-enabled table: the `INSERT` column list with a minimal
+ * valid value expression, and the column an `UPDATE` sets to its own current
+ * value. **The harness refuses to run B3 if any enumerated table has no entry**
+ * — `verify-persona.mjs`'s refusal pattern applied to coverage, because a write
+ * matrix that silently skips a table is a matrix that cannot fail.
+ *
+ * Two conventions carry the meaning:
+ *
+ *   - `auth.uid()` is used for every column that names the SUBJECT — `user_id`,
+ *     `added_by`, `uploaded_by`, `requested_by`, `operator_id`. The ownership
+ *     predicates (`auth.uid() = user_id`) are what those columns exist for, and
+ *     a fixed literal would turn every persona's probe into a refusal for the
+ *     wrong reason.
+ *   - `{{table}}` is a foreign key, substituted with the lowest existing id of
+ *     the referenced table, resolved ONCE with a privileged read. Resolving it
+ *     inside the persona transaction — as the plan first proposed — would run
+ *     the sub-select under that persona's READ policies, so `master` and
+ *     `member` would be probing different rows and the matrix would stop being
+ *     a matrix. Where the referenced table is empty the nil uuid is used and
+ *     the insert fails `23503`, which D-19 records as inconclusive rather than
+ *     hiding.
+ *
+ * **No `UPDATE` column here is a monotone guard.** `venue_reveal_email_sent`,
+ * `rsvps.venue_reveal_sent`, `tickets.venue_reveal_sent` and every payment
+ * status column are deliberately absent: `meta-gates.md` allows a change to
+ * make a one-way switch harder to trip, never easier, and a probe has no
+ * business near one even inside a rolled-back transaction.
+ */
+const PROBE_TEXT = `'rls-baseline-probe'`;
+
+const PROBE_PAYLOADS = {
+  // A name and a slug, both unique; the sentinel collides with no real row.
+  artists: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
+  // A check-in belongs to an event and to the subject checking in.
+  attendances: {
+    insert: { columns: ['event_id', 'user_id'], values: ['{{events}}', 'auth.uid()'] },
+    update: 'checked_in_at',
+  },
+  // Both columns are foreign keys and together the primary key; production
+  // holds no discount code, so this one is expected to fail 23503.
+  discount_code_tiers: {
+    insert: { columns: ['discount_code_id', 'tier_id'], values: ['{{discount_codes}}', '{{ticket_tiers}}'] },
+    update: 'tier_id',
+  },
+  // A code hangs off a party; type and amount are constrained by CHECKs.
+  discount_codes: {
+    insert: {
+      columns: ['party_id', 'code', 'discount_type', 'discount_amount'],
+      values: ['{{event_parties}}', PROBE_TEXT, `'fixed'`, '1'],
+    },
+    update: 'code',
+  },
+  // Every text column is CHECK-constrained; these are the allowed literals.
+  door_scan_events: {
+    insert: {
+      columns: [
+        'party_id',
+        'event_id',
+        'subject_type',
+        'outcome',
+        'scanned_at',
+        'operator_id',
+        'device_id',
+        'source',
+      ],
+      values: [
+        '{{event_parties}}',
+        '{{events}}',
+        `'membership'`,
+        `'not_valid'`,
+        'now()',
+        'auth.uid()',
+        PROBE_TEXT,
+        `'online'`,
+      ],
+    },
+    update: 'device_id',
+  },
+  // A menu line: an event, a name, a non-negative price.
+  drink_items: {
+    insert: { columns: ['event_id', 'name', 'price'], values: ['{{events}}', PROBE_TEXT, '0'] },
+    update: 'name',
+  },
+  // `items` is jsonb and NOT NULL; an empty array is the minimal valid value.
+  drink_orders: {
+    insert: {
+      columns: ['event_id', 'sumup_checkout_id', 'total_amount', 'items'],
+      values: ['{{events}}', PROBE_TEXT, '0', `'[]'::jsonb`],
+    },
+    update: 'sumup_checkout_id',
+  },
+  // A token belongs to an order; `token` and `status` have defaults.
+  drink_tokens: {
+    insert: {
+      columns: ['order_id', 'event_id', 'drink_name', 'price'],
+      values: ['{{drink_orders}}', '{{events}}', PROBE_TEXT, '0'],
+    },
+    update: 'drink_name',
+  },
+  // `type` is CHECK-constrained to photo|video; `uploaded_by` is the subject —
+  // this is the P5 (`status = approved`) surface, so the owner column matters.
+  event_media: {
+    insert: {
+      columns: ['event_id', 'url', 'type', 'uploaded_by'],
+      values: ['{{events}}', `'https://example.invalid/rls-baseline-probe'`, `'photo'`, 'auth.uid()'],
+    },
+    update: 'caption',
+  },
+  // A party needs its event, a title and a start time. `venue_secret` defaults
+  // to false, so nothing here creates a row that could later be revealed.
+  event_parties: {
+    insert: { columns: ['event_id', 'title', 'time'], values: ['{{events}}', PROBE_TEXT, `'18:00'::time`] },
+    update: 'description',
+  },
+  // `slug` is unique; `is_published` defaults to false, so the probe row would
+  // not be publicly visible even if it survived — and it does not.
+  events: {
+    insert: { columns: ['slug', 'title', 'date'], values: [PROBE_TEXT, PROBE_TEXT, 'current_date'] },
+    update: 'description',
+  },
+  // `added_by` references `profiles` and is NOT NULL: the subject adds the guest.
+  guest_list_entries: {
+    insert: {
+      columns: ['event_id', 'first_name', 'last_name', 'added_by'],
+      values: ['{{events}}', PROBE_TEXT, PROBE_TEXT, 'auth.uid()'],
+    },
+    update: 'error_message',
+  },
+  // One unique column. `.invalid` is the reserved TLD — it can reach no inbox.
+  newsletter_subscribers: {
+    insert: { columns: ['email'], values: [`'rls-baseline-probe@example.invalid'`] },
+    update: 'unsubscribed_at',
+  },
+  // A checkout the subject started, against an existing tier.
+  pending_purchases: {
+    insert: {
+      columns: ['event_id', 'tier_id', 'user_id', 'sumup_checkout_id'],
+      values: ['{{events}}', '{{ticket_tiers}}', 'auth.uid()', PROBE_TEXT],
+    },
+    update: 'error_message',
+  },
+  // `id` references auth.users, so a fresh uuid can never satisfy the FK — but
+  // no INSERT policy exists on `profiles` at all, so RLS refuses first (42501)
+  // and the cell is conclusive. `full_name` is the update column deliberately:
+  // `role` and `status` are the privilege-escalation surface and belong to
+  // CAP-06's dedicated probe, not to a generic matrix cell.
+  profiles: {
+    insert: {
+      columns: ['id', 'email', 'full_name', 'membership_code'],
+      values: ['gen_random_uuid()', `'rls-baseline-probe@example.invalid'`, PROBE_TEXT, `'RSN-PROBE00'`],
+    },
+    update: 'full_name',
+  },
+  // The P5 surface: `rsvps_insert_approved` needs `auth.uid() = user_id` AND
+  // status approved, so the subject column must be `auth.uid()` or the cell
+  // would refuse for the wrong reason.
+  rsvps: {
+    insert: {
+      columns: ['event_id', 'user_id', 'party_id'],
+      values: ['{{events}}', 'auth.uid()', '{{event_parties}}'],
+    },
+    update: 'reminder_sent',
+  },
+  // `requested_by` is the subject; `amount` is NOT NULL.
+  ticket_refunds: {
+    insert: { columns: ['requested_by', 'amount'], values: ['auth.uid()', '0'] },
+    update: 'admin_note',
+  },
+  // A tier needs an event, a name and a non-negative price.
+  ticket_tiers: {
+    insert: { columns: ['event_id', 'name', 'price'], values: ['{{events}}', PROBE_TEXT, '0'] },
+    update: 'name',
+  },
+  // No INSERT policy exists on `tickets` either — tickets are minted by
+  // `reserve_ticket()`, a SECURITY DEFINER function — so every persona refuses.
+  tickets: {
+    insert: {
+      columns: ['event_id', 'user_id', 'amount_paid'],
+      values: ['{{events}}', 'auth.uid()', '0'],
+    },
+    update: 'sumup_transaction_code',
+  },
+  // The named evidence cell: member → 42501, master → ok:1.
+  venues: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
+};
+
+/** The tables a `{{placeholder}}` may point at. */
+const PROBE_REFERENCE_TABLES = [
+  'discount_codes',
+  'drink_orders',
+  'event_parties',
+  'events',
+  'profiles',
+  'ticket_tiers',
+];
+
+const PROBE_VERBS = ['delete', 'insert', 'update'];
+
+/**
+ * The token no probe string may contain, in any casing. The guard below is the
+ * only place in this file that is allowed to name it.
+ */
+const FORBIDDEN_PROBE_TOKEN = /\bcommit\b/i;
+
+/** A key that matches no row, used when a table is empty. */
+const NO_SUCH_KEY = 'rls-baseline-no-such-key';
+
+const SQLSTATE_IN_ERROR = /ERROR:\s+([0-9A-Z]{5}):/;
+
+/**
+ * The lowest existing id of each referenced table, read ONCE with the
+ * privileged role so every persona probes the same row.
+ */
+async function resolveProbeReferences(target) {
+  const sql = PROBE_REFERENCE_TABLES.map(
+    (t) => `select '${t}' as "table", min("id"::text) as ref from public."${t}"`
+  ).join('\nunion all\n');
+  const rows = await target.query(sql, { readOnly: true });
+  const refs = {};
+  for (const row of rows) {
+    const value = row.ref ?? NIL_UUID;
+    if (row.ref) registerSecret(row.ref);
+    refs[row.table] = value;
+  }
+  for (const t of PROBE_REFERENCE_TABLES) {
+    if (!(t in refs)) refs[t] = NIL_UUID;
+  }
+  return refs;
+}
+
+/**
+ * The lowest existing primary key of every table, as the same text expression
+ * B2 fingerprints with — so a composite key needs no special case.
+ */
+async function resolveProbeKeys(target, tables) {
+  const sql = tables
+    .map((t) => `select '${t.table}' as "table", min(${pkExpression(t.pkColumns)}) as key from public."${t.table}"`)
+    .join('\nunion all\n');
+  const rows = await target.query(sql, { readOnly: true });
+  const keys = {};
+  for (const row of rows) {
+    if (row.key) registerSecret(row.key);
+    keys[row.table] = row.key ?? NO_SUCH_KEY;
+  }
+  return keys;
+}
+
+function substituteReferences(expression, refs) {
+  return expression.replace(/\{\{([a-z_]+)\}\}/g, (_, table) => {
+    if (!(table in refs)) throw new Error(`probe payload references unknown table "${table}"`);
+    return `'${refs[table]}'::uuid`;
+  });
+}
+
+/**
+ * The probe body.
+ *
+ * A plpgsql block rather than `… returning 1`, and the reason is a real
+ * confound: Postgres applies the SELECT policy to a `RETURNING` clause, so a
+ * row a `WITH CHECK` allowed but a `USING` hid would be reported as a refusal.
+ * That would measure the read policy inside the write matrix. `GET DIAGNOSTICS`
+ * reads the affected-row count without asking to see anything, and the block
+ * runs as the impersonated role, so RLS applies exactly as it would to the
+ * bare statement.
+ */
+function wrapProbe(statement) {
+  return [
+    'do $probe$ declare affected_rows integer; begin',
+    `  ${statement}`,
+    '  get diagnostics affected_rows = row_count;',
+    `  perform set_config('rls_probe.affected', affected_rows::text, true);`,
+    'end $probe$;',
+    `select current_setting('rls_probe.affected')::int as affected;`,
+  ].join('\n');
+}
+
+function buildProbeStatement({ verb, table, pkColumns, payload, refs, key }) {
+  const where = `(${pkExpression(pkColumns)}) = '${key}'`;
+  if (verb === 'insert') {
+    const columns = payload.insert.columns.map((c) => `"${c}"`).join(', ');
+    const values = payload.insert.values.map((v) => substituteReferences(v, refs)).join(', ');
+    return `insert into public."${table}" (${columns}) values (${values});`;
+  }
+  if (verb === 'update') {
+    return `update public."${table}" set "${payload.update}" = "${payload.update}" where ${where};`;
+  }
+  return `delete from public."${table}" where ${where};`;
+}
+
+/**
+ * ── The rollback guarantee, clause 1 of 2 ─────────────────────────────────
+ *
+ * Every probe string must end in `rollback;` and must not contain the token
+ * that would make a probe permanent, in any casing. Checked over the WHOLE
+ * probe list before a single byte reaches the network, so a bad string can
+ * never be the one that gets sent while the guard is still deciding.
+ *
+ * This is one of two independent clauses, reported separately — the shape
+ * `verify-persona.mjs:319-356` uses for check F, because satisfying one
+ * condition says nothing about the other.
+ */
+function assertProbesRollBack(probes) {
+  const offenders = [];
+  for (const probe of probes) {
+    const label = `${probe.persona}/${probe.table}/${probe.verb}`;
+    if (!/rollback;$/.test(probe.sql)) offenders.push(`${label}: does not end in a rollback`);
+    if (FORBIDDEN_PROBE_TOKEN.test(probe.sql)) offenders.push(`${label}: contains the forbidden token`);
+  }
+  if (offenders.length) {
+    throw new Error(
+      `${offenders.length} probe string(s) failed the rollback guarantee and NOTHING was sent:\n` +
+        offenders.map((o) => `        ${o}`).join('\n')
+    );
+  }
+  return probes.length;
+}
+
+/**
+ * ── The rollback guarantee, clause 2 of 2 ─────────────────────────────────
+ *
+ * Re-read all 20 row counts and assert each equals the count read before the
+ * run. This is the only thing standing between a probe and a permanent write,
+ * and it runs whether the capture succeeded or failed — a run that aborted
+ * halfway is exactly when a row is most likely to have been left behind.
+ */
+async function assertRowCountsUnchanged(target, tables, before) {
+  const after = await readRowCounts(target, tables);
+  const moved = tables
+    .map((t) => t.table)
+    .filter((name) => before[name] !== after[name])
+    .sort(compareStrings);
+  if (moved.length) {
+    throw new Error(
+      `ROW COUNTS MOVED on: ${moved
+        .map((n) => `${n} ${before[n]} → ${after[n]}`)
+        .join(', ')}. A probe was not rolled back. Investigate the database immediately.`
+    );
+  }
+  return tables.length;
+}
+
+/** `ok:<n>` or the SQLSTATE alone — never the message, which can carry a value. */
+function probeSqlstate(error) {
+  const message = String(error?.message ?? '');
+  if (!message.startsWith('[management-api/query] HTTP 400')) return null;
+  const match = SQLSTATE_IN_ERROR.exec(message);
+  return match ? match[1] : null;
+}
+
+/**
+ * D-19 — a result outside `{ok:*, 42501}` is recorded with
+ * `conclusive_for_rls: false`. It still must be identical before and after; it
+ * simply proves less. And an `ok:0` on a table that holds no rows at all is
+ * inconclusive for the same reason: nothing was there to refuse.
+ */
+function isConclusiveForRls(result, verb, globalRowCount) {
+  if (result === '42501') return true;
+  if (!result.startsWith('ok:')) return false;
+  if (verb === 'insert') return true;
+  return globalRowCount > 0;
+}
+
+async function captureB3(target, { phasePoint, targetName }) {
+  const { postgresVersion } = await getFacts(target);
+  const tables = await getTables(target);
+  const personas = await resolvePersonas(target);
+
+  const expected = EXPECTED_PERSONAS[targetName] ?? [];
+  const missingPersonas = expected.filter((label) => !personas.has(label));
+  if (missingPersonas.length) {
+    throw new Error(
+      `these personas were expected on target "${targetName}" and are absent: ${missingPersonas.join(', ')}. ` +
+        'Nothing was written.'
+    );
+  }
+
+  // Coverage refusal, before anything else: a payload table that has drifted
+  // from the schema produces a matrix that cannot fail.
+  const enumerated = tables.map((t) => t.table);
+  const missingPayloads = enumerated.filter((name) => !(name in PROBE_PAYLOADS)).sort(compareStrings);
+  if (missingPayloads.length) {
+    throw new Error(
+      `PROBE_PAYLOADS has no entry for: ${missingPayloads.join(', ')}. Nothing was written — a write ` +
+        'matrix that silently skips a table is a matrix that cannot fail.'
+    );
+  }
+  const stalePayloads = Object.keys(PROBE_PAYLOADS)
+    .filter((name) => !enumerated.includes(name))
+    .sort(compareStrings);
+  if (stalePayloads.length) {
+    throw new Error(
+      `PROBE_PAYLOADS names tables that are not RLS-enabled tables of this target: ${stalePayloads.join(', ')}. ` +
+        'Nothing was written — the payload table has drifted from the schema.'
+    );
+  }
+
+  const refs = await resolveProbeReferences(target);
+  const keys = await resolveProbeKeys(target, tables);
+
+  const rowCountsBefore = await readRowCounts(target, tables);
+
+  // Build EVERY probe string first, then check them all, then send.
+  const probes = [];
+  for (const label of PERSONA_LABELS) {
+    const persona = personas.get(label);
+    if (!persona) continue;
+    for (const t of tables) {
+      for (const verb of PROBE_VERBS) {
+        const statement = buildProbeStatement({
+          verb,
+          table: t.table,
+          pkColumns: t.pkColumns,
+          payload: PROBE_PAYLOADS[t.table],
+          refs,
+          key: keys[t.table],
+        });
+        probes.push({
+          persona: label,
+          table: t.table,
+          verb,
+          sql: personaTransaction(persona, wrapProbe(statement)),
+        });
+      }
+    }
+  }
+
+  const checked = assertProbesRollBack(probes);
+  say(`      clause 1/2: ${checked} probe strings end in a rollback and carry no forbidden token`);
+
+  const rows = [];
+  let sent = 0;
+  try {
+    for (const probe of probes) {
+      let result;
+      try {
+        const [row] = await target.query(probe.sql, { readOnly: false });
+        result = `ok:${row?.affected ?? 0}`;
+      } catch (error) {
+        const sqlstate = probeSqlstate(error);
+        // A failure that is not a SQL refusal is a BROKEN MEASUREMENT, not a
+        // result. Writing it would be the silent failure `meta-gates.md`
+        // forbids: an unreachable API would look like a database that denies.
+        if (!sqlstate) throw error;
+        result = sqlstate;
+      }
+      sent += 1;
+      rows.push({
+        persona: probe.persona,
+        table: probe.table,
+        verb: probe.verb,
+        result,
+        conclusive_for_rls: isConclusiveForRls(result, probe.verb, rowCountsBefore[probe.table] ?? 0),
+      });
+      if (sent % 60 === 0) say(`      ${sent}/${probes.length} probes sent`);
+    }
+  } finally {
+    const rechecked = await assertRowCountsUnchanged(target, tables, rowCountsBefore);
+    say(`      clause 2/2: ${rechecked}/${tables.length} row counts re-read and unchanged after ${sent} probes`);
+  }
+
+  // Absent personas are recorded, never omitted.
+  for (const label of PERSONA_LABELS) {
+    if (personas.has(label)) continue;
+    for (const t of tables) {
+      for (const verb of PROBE_VERBS) {
+        rows.push({ persona: label, table: t.table, verb, result: 'absent', conclusive_for_rls: false });
+      }
+    }
+  }
+
+  const sorted = sortRows(rows, ['persona', 'table', 'verb']);
+
+  // A matrix where every cell refuses, or every cell succeeds, is not
+  // measuring RLS — it is measuring a connection.
+  const refusals = sorted.filter((r) => r.result === '42501').length;
+  const successes = sorted.filter((r) => r.result.startsWith('ok:')).length;
+  if (refusals === 0 || successes === 0) {
+    throw new Error(
+      `implausible measurement: ${refusals} refusals and ${successes} successes. Nothing was written — ` +
+        'a matrix with none of one kind is not measuring row-level security.'
+    );
+  }
+
+  const path = writeArtefact({
+    artefact: 'B3',
+    slug: 'writes',
+    target: target.name,
+    postgresVersion,
+    phasePoint,
+    rows: sorted,
+    trailing: {
+      rollback_guarantee: {
+        probe_strings_checked: checked,
+        every_string_ends_in_rollback: true,
+        no_string_carries_the_forbidden_token: true,
+        row_counts_rechecked: tables.length,
+        row_counts_unchanged: true,
+      },
+    },
+  });
+
+  return {
+    path,
+    rowCount: sorted.length,
+    detail: `${sent} probes sent, ${refusals} refusals, ${successes} successes, ${
+      sorted.filter((r) => r.conclusive_for_rls === false).length
+    } inconclusive`,
+  };
+}
+
 // ── B5 — the independent advisor oracle ────────────────────────────────────
 
 /**
@@ -952,7 +1472,7 @@ console.log('\nrls-baseline — phase 32 evidence harness\n');
 
 const failures = [];
 
-const CAPTURES = { B1: captureB1, B2: captureB2, B5: captureB5 };
+const CAPTURES = { B1: captureB1, B2: captureB2, B3: captureB3, B5: captureB5 };
 
 for (const id of options.only) {
   try {
