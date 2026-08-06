@@ -21,6 +21,13 @@
  * Usage:
  *   npm run baseline:rls
  *   npm run baseline:rls -- --only=B1 --target=production --phase-point=pre
+ *   npm run baseline:rls -- --target=container --only=B1,B2,B3
+ *
+ * This file is BOTH a CLI and a module. `scripts/rls-baseline-container.mjs`
+ * imports `captureB1`, `captureB2` and `captureB3` from here and runs them
+ * against a throwaway PostgreSQL 17.6 container, so the capture logic exists
+ * once. Everything below the `main` guard runs only when this file is the
+ * entry point.
  *
  * Exit codes, copied from `verify-persona.mjs`:
  *   0  every requested artefact was captured and written
@@ -94,6 +101,15 @@ const ARTEFACT_KEY_ORDER = [
 const KNOWN_ARTEFACTS = ['B1', 'B2', 'B3', 'B5'];
 
 /**
+ * The targets this script can reach. `production` is the Management API;
+ * `container` is a throwaway PostgreSQL 17.6 built by
+ * `scripts/rls-baseline-container.mjs` from this repository's own SQL, which is
+ * loaded lazily so that a production capture never touches Docker and a
+ * container capture never reads a Supabase credential.
+ */
+const KNOWN_TARGETS = ['production', 'container'];
+
+/**
  * ── Pre-registered plausibility floors ────────────────────────────────────
  *
  * All three numbers were MEASURED against the production database on
@@ -126,7 +142,7 @@ const MEASURED_AUTH_RLS_INITPLAN = 26;
 /** Values that must never reach stdout, stderr or an artefact. */
 const SECRETS = [];
 
-function registerSecret(value) {
+export function registerSecret(value) {
   if (typeof value === 'string' && value.length >= 4) SECRETS.push(value);
 }
 
@@ -143,7 +159,7 @@ function redact(text) {
   return out;
 }
 
-function say(message) {
+export function say(message) {
   console.log(redact(message));
 }
 
@@ -261,7 +277,7 @@ function createManagementApiTarget({ token, projectRef }) {
 // ── determinism helpers ────────────────────────────────────────────────────
 
 /** Codepoint comparison. `localeCompare` would make the artefact machine-dependent. */
-function compareStrings(a, b) {
+export function compareStrings(a, b) {
   const left = a === null || a === undefined ? '' : String(a);
   const right = b === null || b === undefined ? '' : String(b);
   if (left < right) return -1;
@@ -337,16 +353,22 @@ function capturedAtDate() {
 // ── artefact writing ───────────────────────────────────────────────────────
 
 /**
- * The pre-phase capture is the unsuffixed file, so that
+ * The pre-phase capture on production is the unsuffixed file, so that
  * `32-BASELINE-policies.json` is always the thing every later capture is
  * compared against, and a later capture never overwrites it by accident.
+ *
+ * The container's capture carries `.container` before the extension. The two
+ * targets measure different things — production is the schema truth, the
+ * container is the persona truth (phase decision D-22) — so they must never
+ * land on the same filename. Each artefact also carries its own `target` key,
+ * so a file that gets moved still says what it is.
  */
-function artefactPath(slug, phasePoint) {
+function artefactPath(slug, phasePoint, targetSuffix = '') {
   const suffix = phasePoint === 'pre' ? '' : `.${phasePoint}`;
-  return `${BASELINE_DIR}/32-BASELINE-${slug}${suffix}.json`;
+  return `${BASELINE_DIR}/32-BASELINE-${slug}${targetSuffix}${suffix}.json`;
 }
 
-function writeArtefact({ artefact, slug, target, postgresVersion, phasePoint, rows, trailing }) {
+function writeArtefact({ artefact, slug, target, postgresVersion, phasePoint, rows, trailing, targetSuffix }) {
   const payload = {};
   const values = {
     artefact,
@@ -360,7 +382,7 @@ function writeArtefact({ artefact, slug, target, postgresVersion, phasePoint, ro
   if (trailing) for (const [key, value] of Object.entries(trailing)) payload[key] = value;
 
   mkdirSync(BASELINE_DIR, { recursive: true });
-  const path = artefactPath(slug, phasePoint);
+  const path = artefactPath(slug, phasePoint, targetSuffix ?? '');
   writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   return path;
 }
@@ -399,24 +421,35 @@ select
   version() as pg_version
 `;
 
-/** One facts read per run, shared by every artefact captured in that run. */
-let factsPromise = null;
+/**
+ * One facts read per target per run, shared by every artefact captured in that
+ * run.
+ *
+ * Keyed by the TARGET, not by the module. A single process can now hold both a
+ * production target and a container target, and a module-level cache would hand
+ * production's numbers to the container — a mix-up that would look like
+ * agreement.
+ */
+const factsByTarget = new WeakMap();
 
 async function getFacts(target) {
-  if (!factsPromise) {
-    factsPromise = target.query(FACTS_SQL, { readOnly: true }).then((rows) => {
-      const row = rows[0] ?? {};
-      return {
-        policyCount: row.policy_count,
-        rlsEnabledTables: row.rls_enabled_tables,
-        postgresVersion: reducePostgresVersion(row.pg_version),
-      };
-    });
+  if (!factsByTarget.has(target)) {
+    factsByTarget.set(
+      target,
+      target.query(FACTS_SQL, { readOnly: true }).then((rows) => {
+        const row = rows[0] ?? {};
+        return {
+          policyCount: row.policy_count,
+          rlsEnabledTables: row.rls_enabled_tables,
+          postgresVersion: reducePostgresVersion(row.pg_version),
+        };
+      })
+    );
   }
-  return factsPromise;
+  return factsByTarget.get(target);
 }
 
-async function captureB1(target, { phasePoint }) {
+export async function captureB1(target, { phasePoint }) {
   const facts = await getFacts(target);
   const { postgresVersion, rlsEnabledTables } = facts;
 
@@ -455,6 +488,7 @@ async function captureB1(target, { phasePoint }) {
     artefact: 'B1',
     slug: 'policies',
     target: target.name,
+    targetSuffix: target.artefactSuffix ?? '',
     postgresVersion,
     phasePoint,
     rows,
@@ -492,11 +526,11 @@ async function captureB1(target, { phasePoint }) {
  * A persona that does not exist on a target is recorded `absent`, never
  * omitted — an omitted row is indistinguishable from a row that agreed.
  */
-const PERSONA_ROLES = ['master', 'organizer', 'member'];
-const PERSONA_STATUSES = ['approved', 'pending', 'rejected'];
+export const PERSONA_ROLES = ['master', 'organizer', 'member'];
+export const PERSONA_STATUSES = ['approved', 'pending', 'rejected'];
 const PERSONA_ANON = 'anon';
 const PERSONA_NO_PROFILE = 'authenticated/no-profile';
-const PERSONA_LABELS = [
+export const PERSONA_LABELS = [
   PERSONA_ANON,
   PERSONA_NO_PROFILE,
   ...PERSONA_ROLES.flatMap((role) => PERSONA_STATUSES.map((status) => `${role}/${status}`)),
@@ -510,9 +544,15 @@ const PERSONA_LABELS = [
  * Production holds 4 profiles — 1 master/approved and 3 member/approved. There
  * is no organizer and no non-approved row, which is precisely why plan 32-04
  * exists: only a seeded container can carry the other seven.
+ *
+ * The container is required to offer **all eleven**. That is the reason it
+ * exists: `organizer/pending` — the one pair where P1 and P3 disagree — cannot
+ * be measured anywhere else, and a container that quietly failed to seed it
+ * would produce a matrix indistinguishable from production's.
  */
 const EXPECTED_PERSONAS = {
   production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master/approved', 'member/approved'],
+  container: [...PERSONA_LABELS],
 };
 
 /** A subject uuid is embedded in a SQL literal; refuse anything that is not one. */
@@ -520,7 +560,7 @@ const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
-function assertUuid(value, what) {
+export function assertUuid(value, what) {
   if (!UUID_SHAPE.test(String(value ?? ''))) {
     throw new Error(`${what} is not a uuid — refusing to build SQL from it`);
   }
@@ -629,11 +669,14 @@ select c.relname as table_name
  where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
 `;
 
-let tablesPromise = null;
+/** Keyed by target, for the same reason `factsByTarget` is. */
+const tablesByTarget = new WeakMap();
 
-async function getTables(target) {
-  if (!tablesPromise) {
-    tablesPromise = (async () => {
+export async function getTables(target) {
+  if (!tablesByTarget.has(target)) {
+    tablesByTarget.set(
+      target,
+      (async () => {
       const all = (await target.query(RLS_TABLE_SQL, { readOnly: true })).map((r) => r.table_name);
       const keyed = await target.query(TABLE_SQL, { readOnly: true });
       const byName = new Map(keyed.map((r) => [r.table_name, String(r.pk_columns).split(',')]));
@@ -657,13 +700,14 @@ async function getTables(target) {
       return all
         .sort(compareStrings)
         .map((name) => ({ table: name, pkColumns: byName.get(name) }));
-    })();
+      })()
+    );
   }
-  return tablesPromise;
+  return tablesByTarget.get(target);
 }
 
 /** `id::text` — or, for a composite key, the columns joined by a separator. */
-function pkExpression(pkColumns) {
+export function pkExpression(pkColumns) {
   return pkColumns.map((c) => `"${c}"::text`).join(` || '|' || `);
 }
 
@@ -695,11 +739,26 @@ async function readRowCounts(target, tables) {
  * primary keys. The md5 is what makes the artefact publishable: it identifies
  * a row set without naming a single row.
  *
- * `vacuous` is the honesty flag. `count = 0` fingerprints as `d41d8cd9…`, the
- * md5 of the empty string, and two empty sides agree for a reason that has
- * nothing to do with the policy. Pitfall 3 names that fingerprint as the
- * warning sign; marking it lets the comparator report how much of the matrix
- * proved nothing, instead of counting it as agreement.
+ * `vacuous` is the honesty flag, and what it means became sharper the moment a
+ * SEEDED target existed. `count = 0` fingerprints as `d41d8cd9…`, the md5 of
+ * the empty string, and Pitfall 3 names that fingerprint as the warning sign.
+ * But a zero has two very different causes:
+ *
+ *   - **the table holds no rows at all** — then two captures agree for a reason
+ *     that has nothing to do with any policy, and the cell proves nothing;
+ *   - **the table holds rows and the persona sees none of them** — then the
+ *     zero IS the policy, and it is one of the strongest cells in the matrix.
+ *
+ * On production the two coincide, because thirteen of the twenty tables are
+ * empty. On the container they never coincide, because the seed guarantees
+ * every table at least two rows. So `vacuous` is `count = 0` **and** the table
+ * globally empty — the same rule D-19 already applies to an `ok:0` in B3.
+ * Marking a real refusal as vacuous would discard exactly the evidence the
+ * container exists to produce.
+ *
+ * The global counts are read once with the privileged role and carried in the
+ * `table_row_counts` trailing key, so the judgement can be audited from the
+ * artefact instead of taken on trust.
  *
  * Reads cannot write, so all 20 tables are batched into ONE transaction per
  * persona and the request count stays at eleven. The one-probe-per-request
@@ -716,7 +775,7 @@ function buildB2Body(tables) {
     .join('\nunion all\n')};`;
 }
 
-async function captureB2(target, { phasePoint, targetName }) {
+export async function captureB2(target, { phasePoint, targetName }) {
   const { postgresVersion } = await getFacts(target);
   const tables = await getTables(target);
   const personas = await resolvePersonas(target);
@@ -729,6 +788,10 @@ async function captureB2(target, { phasePoint, targetName }) {
         'Nothing was written — a matrix missing the personas it exists to measure is not evidence.'
     );
   }
+
+  // The privileged, unfiltered row count per table — the ground truth that
+  // separates "the table was empty" from "the policy showed nothing".
+  const globalCounts = await readRowCounts(target, tables);
 
   const body = buildB2Body(tables);
   const rows = [];
@@ -753,7 +816,9 @@ async function captureB2(target, { phasePoint, targetName }) {
         table: t.table,
         count: r.count,
         pk_md5: r.pk_md5,
-        vacuous: r.count === 0,
+        // A zero on a table that HOLDS rows is the policy refusing, and that is
+        // evidence. Only a zero on a globally empty table proves nothing.
+        vacuous: r.count === 0 && (globalCounts[t.table] ?? 0) === 0,
       });
     }
     say(`      ${label}: ${tables.length} tables read`);
@@ -774,6 +839,7 @@ async function captureB2(target, { phasePoint, targetName }) {
     artefact: 'B2',
     slug: 'reads',
     target: target.name,
+    targetSuffix: target.artefactSuffix ?? '',
     postgresVersion,
     phasePoint,
     rows: sorted,
@@ -782,6 +848,10 @@ async function captureB2(target, { phasePoint, targetName }) {
         persona: label,
         resolved: personas.has(label),
       })),
+      // Why each vacuous cell is vacuous, auditable from the file itself.
+      table_row_counts: Object.fromEntries(
+        [...tables].map((t) => t.table).sort(compareStrings).map((name) => [name, globalCounts[name] ?? null])
+      ),
     },
   });
 
@@ -833,9 +903,9 @@ async function captureB2(target, { phasePoint, targetName }) {
  * make a one-way switch harder to trip, never easier, and a probe has no
  * business near one even inside a rolled-back transaction.
  */
-const PROBE_TEXT = `'rls-baseline-probe'`;
+export const PROBE_TEXT = `'rls-baseline-probe'`;
 
-const PROBE_PAYLOADS = {
+export const PROBE_PAYLOADS = {
   // A name and a slug, both unique; the sentinel collides with no real row.
   artists: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
   // A check-in belongs to an event and to the subject checking in.
@@ -992,7 +1062,7 @@ const PROBE_PAYLOADS = {
 };
 
 /** The tables a `{{placeholder}}` may point at. */
-const PROBE_REFERENCE_TABLES = [
+export const PROBE_REFERENCE_TABLES = [
   'discount_codes',
   'drink_orders',
   'event_parties',
@@ -1052,7 +1122,7 @@ async function resolveProbeKeys(target, tables) {
   return keys;
 }
 
-function substituteReferences(expression, refs) {
+export function substituteReferences(expression, refs) {
   return expression.replace(/\{\{([a-z_]+)\}\}/g, (_, table) => {
     if (!(table in refs)) throw new Error(`probe payload references unknown table "${table}"`);
     return `'${refs[table]}'::uuid`;
@@ -1146,8 +1216,18 @@ async function assertRowCountsUnchanged(target, tables, before) {
   return tables.length;
 }
 
-/** `ok:<n>` or the SQLSTATE alone — never the message, which can carry a value. */
+/**
+ * `ok:<n>` or the SQLSTATE alone — never the message, which can carry a value.
+ *
+ * Two targets, two ways of learning the SQLSTATE, and both must be exact. The
+ * container target attaches `error.sqlstate` (`pg` calls it `code`); the
+ * Management API only ever gives prose, so its SQLSTATE is parsed out of an
+ * HTTP 400 body and out of nothing else. Anything that is neither is a BROKEN
+ * MEASUREMENT and the caller rethrows it — an unreachable target must never be
+ * recorded as a database that denies.
+ */
 function probeSqlstate(error) {
+  if (typeof error?.sqlstate === 'string' && /^[0-9A-Z]{5}$/.test(error.sqlstate)) return error.sqlstate;
   const message = String(error?.message ?? '');
   if (!message.startsWith('[management-api/query] HTTP 400')) return null;
   const match = SQLSTATE_IN_ERROR.exec(message);
@@ -1167,7 +1247,7 @@ function isConclusiveForRls(result, verb, globalRowCount) {
   return globalRowCount > 0;
 }
 
-async function captureB3(target, { phasePoint, targetName }) {
+export async function captureB3(target, { phasePoint, targetName }) {
   const { postgresVersion } = await getFacts(target);
   const tables = await getTables(target);
   const personas = await resolvePersonas(target);
@@ -1292,6 +1372,7 @@ async function captureB3(target, { phasePoint, targetName }) {
     artefact: 'B3',
     slug: 'writes',
     target: target.name,
+    targetSuffix: target.artefactSuffix ?? '',
     postgresVersion,
     phasePoint,
     rows: sorted,
@@ -1378,7 +1459,7 @@ async function fetchInvariants(target) {
   };
 }
 
-async function captureB5(target, { phasePoint }) {
+export async function captureB5(target, { phasePoint }) {
   const { postgresVersion } = await getFacts(target);
 
   const performance = await fetchAdvisor(target, 'performance');
@@ -1400,6 +1481,7 @@ async function captureB5(target, { phasePoint }) {
     artefact: 'B5',
     slug: 'advisors',
     target: target.name,
+    targetSuffix: target.artefactSuffix ?? '',
     postgresVersion,
     phasePoint,
     rows,
@@ -1444,8 +1526,18 @@ function parseArgs(argv) {
     }
   }
 
-  if (options.target !== 'production') {
-    fail(`FATAL: unknown target "${options.target}". This plan implements "production" only.`, 2);
+  if (!KNOWN_TARGETS.includes(options.target)) {
+    fail(
+      `FATAL: unknown target "${options.target}". Known: ${KNOWN_TARGETS.join(', ')}.`,
+      2
+    );
+  }
+  if (options.target === 'container' && options.only.includes('B5')) {
+    fail(
+      'FATAL: B5 is the Supabase advisor and has no container equivalent. Ask for --only=B1,B2,B3 ' +
+        'on the container, and capture B5 against production. Nothing was measured.',
+      2
+    );
   }
   if (!options.only.length) {
     fail('FATAL: --only was given with no artefact id. Nothing was measured.', 2);
@@ -1462,35 +1554,70 @@ function parseArgs(argv) {
   return options;
 }
 
-// ── main ───────────────────────────────────────────────────────────────────
-
-const options = parseArgs(process.argv.slice(2));
-const environment = loadEnvironment();
-const target = createManagementApiTarget(environment);
-
-console.log('\nrls-baseline — phase 32 evidence harness\n');
-
-const failures = [];
-
 const CAPTURES = { B1: captureB1, B2: captureB2, B3: captureB3, B5: captureB5 };
 
-for (const id of options.only) {
-  try {
-    const { path, rowCount, detail } = await CAPTURES[id](target, {
+/**
+ * Runs the requested captures against an already-built target and returns the
+ * ids that failed. Shared by this file's CLI and by the container runner, so
+ * neither can drift into reporting a capture differently from the other.
+ */
+export async function runCaptures(target, { only, phasePoint, targetName }) {
+  const failed = [];
+  for (const id of only) {
+    try {
+      const { path, rowCount, detail } = await CAPTURES[id](target, { phasePoint, targetName });
+      say(`  ✓ ${id} → ${relative(ROOT, path)} (${rowCount} rows${detail ? `, ${detail}` : ''})`);
+    } catch (error) {
+      say(`  ✗ ${id} — ${error.message}`);
+      failed.push(id);
+    }
+  }
+  return failed;
+}
+
+// ── main ───────────────────────────────────────────────────────────────────
+
+/**
+ * Everything above is importable; nothing above runs on import. Without this
+ * guard, `import { captureB1 } from './rls-baseline.mjs'` would demand a
+ * Supabase access token and start capturing production — which is exactly what
+ * the container target must never do.
+ */
+const invokedDirectly = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly) {
+  const options = parseArgs(process.argv.slice(2));
+
+  console.log('\nrls-baseline — phase 32 evidence harness\n');
+
+  let failures = [];
+
+  if (options.target === 'container') {
+    // Loaded here and nowhere else: this import pulls in `pg` and shells out to
+    // Docker, and a production capture must do neither.
+    const { withContainer } = await import('./rls-baseline-container.mjs');
+    await withContainer(async ({ target }) => {
+      failures = await runCaptures(target, {
+        only: options.only,
+        phasePoint: options.phasePoint,
+        targetName: options.target,
+      });
+    });
+  } else {
+    const environment = loadEnvironment();
+    const target = createManagementApiTarget(environment);
+    failures = await runCaptures(target, {
+      only: options.only,
       phasePoint: options.phasePoint,
       targetName: options.target,
     });
-    say(`  ✓ ${id} → ${relative(ROOT, path)} (${rowCount} rows${detail ? `, ${detail}` : ''})`);
-  } catch (error) {
-    say(`  ✗ ${id} — ${error.message}`);
-    failures.push(id);
   }
+
+  console.log('');
+
+  if (failures.length) {
+    fail(`FAILED ${failures.length}/${options.only.length}: ${failures.join(' · ')}\n`, 1);
+  }
+
+  say(`${options.only.length}/${options.only.length} captured.\n`);
 }
-
-console.log('');
-
-if (failures.length) {
-  fail(`FAILED ${failures.length}/${options.only.length}: ${failures.join(' · ')}\n`, 1);
-}
-
-say(`${options.only.length}/${options.only.length} captured.\n`);
