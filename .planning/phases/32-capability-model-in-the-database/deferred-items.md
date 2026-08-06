@@ -78,3 +78,38 @@ Already handled inside `scripts/rls-baseline.mjs` (the key lookup reads
 `pg_catalog`). Recorded here because any later plan that reads schema metadata
 through this endpoint will hit the same wall, and the symptom looks like a
 broken database rather than a privilege filter.
+
+---
+
+## D-32-C — `CLAUDE.md` Guardrail 3 is wrong about `supabase/schema.sql`
+
+**Found:** plan `32-04`, task 1, while working out what the container must be
+built from, on 2026-08-06.
+
+**The claim.** `CLAUDE.md` Environment Guardrail 3 states that
+`supabase/schema.sql` contains *«zero `ENABLE ROW LEVEL SECURITY` e zero
+`CREATE POLICY`»*, and concludes that all RLS lives in the migrations.
+
+**What is actually there.** `grep -c 'create policy\|CREATE POLICY'` returns
+**37**; `grep -ic 'enable row level security'` returns **11**.
+
+**Why the guardrail still points the right way.** Its *conclusion* holds and is
+the important half: the migrations are the source of truth for what is applied,
+and `schema.sql` has drifted. This plan measured how far — the file was updated
+alongside five migrations up to phase 26 and then abandoned, so it is neither
+the pre-migration base nor the current schema, and it cannot be replayed
+against the migration chain (see `baseline/README.md` § F2). Reading it and
+concluding "there is no RLS" would be an error; reading it and concluding "this
+is the schema" is now a *different* error, and the guardrail warns against
+neither precisely.
+
+**Why it is deferred.** `CLAUDE.md` is the persona. `ai-engineering.md` requires
+that any change to it carry a semantic-version bump, a `.claude/CHANGELOG.md`
+entry, a cross-domain coherence review and a green `npm run verify:persona` — a
+piece of work with its own gates, and one this phase has no business doing
+inside a plan about capability policies. Two agents touching the persona in
+parallel must be sequenced, not parallelised.
+
+**Decision owed to the owner:** correct Guardrail 3 in its own change, stating
+what `schema.sql` *is* — a partially-maintained snapshot that is neither the
+base nor the current schema — rather than only what it lacks.
