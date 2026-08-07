@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import {
+  DOOR_UNRESOLVED_STATUS,
+  requireDoorOperator,
+} from "@/lib/door/require-operator";
 import type { DoorScanEvent } from "@/types/database";
 
 /**
@@ -23,46 +26,36 @@ const UUID_PATTERN =
 type ScanEventInsert = Omit<DoorScanEvent, "id">;
 
 /**
- * Role **and** status, the same guard the check-in route applies.
+ * Who may reverse an admission is the same question as who may make one.
  *
- * Deliberately identical: an operator who may not admit someone must not be able
- * to reverse an admission either, and the two routes diverging on that is a hole
- * that would only be found by someone looking for it.
+ * The local `verifyOrganizerRole()` that used to sit here has been replaced by
+ * `requireDoorOperator()` — `door.operate`, **role alone**, the same function
+ * `checkin/route.ts` calls. That identity used to be a promise kept by two
+ * copies of one predicate; it is now a fact, because there is one predicate.
+ * An operator who may not admit someone must not be able to reverse an
+ * admission either, and two routes drifting apart on that is a hole only
+ * someone looking for it would find.
+ *
+ * `checkin-offline.md`, gate *annullamento limitato*: the undo stays recorded
+ * with who did it and when — see `operator_id` below, now taken from the JWT
+ * subject rather than from a second call to the Auth server.
  */
-async function verifyOrganizerRole() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
-    return { error: "Forbidden", status: 403 };
-  }
-
-  // Role decides the door; status does not. Identical to `checkin/route.ts`,
-  // deliberately — see the reasoning there. Staff always get in (owner decision,
-  // 2026-08-06), and the promotion path now approves the account when it grants
-  // the role. These four door routes must never diverge on this.
-  return { user, profile };
-}
 
 export async function POST(request: Request) {
   try {
-    const auth = await verifyOrganizerRole();
-    if ("error" in auth) {
+    // Once per handler — `cache()` does not memoise in a Route Handler.
+    const auth = await requireDoorOperator();
+    if (!auth.ok) {
+      // 401 and 403 keep their existing body and code; `unresolved` adds a
+      // third, distinct answer at 503 (retryable per `sync-manager.ts:141`).
       return NextResponse.json(
-        { success: false, error: auth.error },
+        {
+          success: false,
+          error: auth.error,
+          ...(auth.kind === "unresolved"
+            ? { status: DOOR_UNRESOLVED_STATUS }
+            : {}),
+        },
         { status: auth.status }
       );
     }
@@ -202,7 +195,7 @@ export async function POST(request: Request) {
         recorded_at: now,
         // The operator who performed the **undo**, not the one who admitted.
         // Who admitted survives on the ticket, below.
-        operator_id: auth.user.id,
+        operator_id: auth.userId,
         device_id: deviceId,
         source: "online",
         // No code was read: an undo is pressed, not scanned.

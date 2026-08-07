@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { DOOR_HTTP } from "@/lib/door/outcome";
+import {
+  DOOR_UNRESOLVED_STATUS,
+  requireDoorOperator,
+} from "@/lib/door/require-operator";
 import type {
   DoorNotValidReason,
   DoorScanOutcomeKind,
@@ -79,33 +83,36 @@ export async function GET(request: Request) {
 // POST — door check-in: verify member + record attendance for selected party
 export async function POST(request: Request) {
   try {
-    // Verify authenticated user with admin/organizer role
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // May this person work the door tonight? `door.operate`, role alone — the
+    // same one function the other three door routes ask, resolved ONCE because
+    // `cache()` does not memoise inside a Route Handler.
+    //
+    // The local copy this replaces read `userProfile.role`, not `profile.role`.
+    // That naming is why the criterion-3 assertion for this phase is
+    // variable-agnostic: `grep -c 'profile.role !== '` scored **0** on this file
+    // whether the dead code was still sitting here or not.
+    const auth = await requireDoorOperator();
+    if (!auth.ok) {
+      // 401 and 403 keep the exact bodies they had — `{valid:false, status}`
+      // with no `error` field. `unresolved` is the new third case and carries
+      // one, because the staff member holding the phone has to be able to tell
+      // "we could not check" from "you are not allowed".
+      if (auth.kind === "unresolved") {
+        return NextResponse.json(
+          {
+            valid: false,
+            status: DOOR_UNRESOLVED_STATUS,
+            error: auth.error,
+          },
+          { status: auth.status }
+        );
+      }
       return NextResponse.json(
-        { valid: false, status: "unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const { data: userProfile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (
-      !userProfile ||
-      (userProfile.role !== "master" && userProfile.role !== "organizer")
-    ) {
-      return NextResponse.json(
-        { valid: false, status: "forbidden" },
-        { status: 403 }
+        {
+          valid: false,
+          status: auth.kind === "unauthenticated" ? "unauthorized" : "forbidden",
+        },
+        { status: auth.status }
       );
     }
 
@@ -133,8 +140,12 @@ export async function POST(request: Request) {
     const serviceClient = getServiceClient();
     // Who is holding the phone. Server-derived from the session, never from the
     // body — the service client below bypasses RLS, so every value it writes is
-    // either server-derived or explicitly validated above.
-    const operatorId = user.id;
+    // either server-derived or explicitly validated above. It now comes from
+    // `auth.uid()` inside the JWT, verified by Postgres, rather than from a
+    // separate round trip to the Auth server. Non-null by the type on the
+    // `ok: true` arm: an attendance row with no operator is an unattributed
+    // admission.
+    const operatorId = auth.userId;
 
     /**
      * Append one row to the night's record, before returning anything.

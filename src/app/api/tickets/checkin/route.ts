@@ -1,7 +1,10 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import {
+  DOOR_UNRESOLVED_STATUS,
+  requireDoorOperator,
+} from "@/lib/door/require-operator";
 import { verifyTicketToken } from "@/utils/qr";
 import { partyStartInstant } from "@/utils/datetime";
 import {
@@ -110,47 +113,26 @@ type ScanEventInsert = Omit<DoorScanEvent, "id">;
 /**
  * Role decides the door. Status does not.
  *
- * `access-gating.md` gate *due assi* still holds — role and status are
- * independent axes — but at the door they are not both gates. **Staff always get
- * in**, decided by the project owner on 2026-08-06, and the reason is the
- * asymmetry this whole phase is built on: a staff member refused by the scanner
- * at two in the morning cannot admit anyone at all, which is worse than the hole
- * a status check would close.
+ * The predicate that used to live here as `verifyOrganizerRole()` is now
+ * `requireDoorOperator()` in `@/lib/door/require-operator`, asking the
+ * `door.operate` capability — **role alone**, exactly as before. The owner
+ * decision of 2026-08-06 is unchanged and is written out in full in that
+ * module: staff always get in, because a staff member refused by the scanner at
+ * two in the morning cannot admit anyone at all, and the hole a status check
+ * would have closed is closed at its source in `updateMemberRole`
+ * (src/app/(admin)/admin/members/actions.ts).
  *
- * The hole it would have closed is now closed at its source instead:
- * `updateMemberRole` (src/app/(admin)/admin/members/actions.ts) sets
- * `status = 'approved'` when it grants the organizer role, because granting
- * staff rights to an unapproved account was a contradiction in the promotion
- * path, not a signal to act on at the door.
+ * What changed is that there is now **one** copy instead of four. The three
+ * other door routes — `undo`, `membership/verify`, `attendance` — plus
+ * `membership/list` call the same function, so they can no longer diverge: the
+ * same person refused by one scanner and admitted by another, on the same
+ * night, is undiagnosable with no error tracking anywhere in this repository.
  *
- * The three other door routes — `undo`, `membership/verify`, `attendance` —
- * check role alone as well. They must stay identical: the same person refused by
- * one scanner and admitted by another, on the same night, is undiagnosable with
- * no error tracking anywhere in this repository.
+ * And the scan is one round trip **cheaper**. The old predicate cost
+ * `auth.getUser()` plus a `profiles` select before a code could resolve;
+ * `public.my_access_context()` derives the subject from `auth.uid()` inside the
+ * JWT and needs neither.
  */
-async function verifyOrganizerRole() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
-    return { error: "Forbidden", status: 403 };
-  }
-
-  return { user, profile };
-}
 
 /** The legacy `status` string for an outcome, and whether the old bundle reads it as green. */
 function legacyStatusFor(outcome: DoorOutcome): { valid: boolean; status: string } {
@@ -163,17 +145,53 @@ function legacyStatusFor(outcome: DoorOutcome): { valid: boolean; status: string
 
 export async function POST(request: Request) {
   try {
-    const auth = await verifyOrganizerRole();
-    if ("error" in auth) {
+    // Resolved ONCE, into a local. `cache()` does not memoise inside a Route
+    // Handler (measured — three calls, three executions), so a second call here
+    // would be a second network round trip before a scan resolves.
+    const auth = await requireDoorOperator();
+    if (!auth.ok) {
+      // The 401 and the 403 keep the exact body and code they have always had.
+      // `unresolved` is the third case and is deliberately neither: it says the
+      // permission could not be *looked up*, which is not the same statement as
+      // "not permitted", and 503 puts it in the sync manager's retryable bucket
+      // (`sync-manager.ts:141`) rather than its blocked one (`:131`).
       return NextResponse.json(
         {
           valid: false,
-          status: auth.status === 401 ? "unauthorized" : "forbidden",
+          status:
+            auth.kind === "unauthenticated"
+              ? "unauthorized"
+              : auth.kind === "forbidden"
+                ? "forbidden"
+                : DOOR_UNRESOLVED_STATUS,
           error: auth.error,
         },
         { status: auth.status }
       );
     }
+
+    /**
+     * Who is holding the phone, hoisted out of the tagged union deliberately.
+     *
+     * `respond()` below is a nested **function declaration**, and TypeScript
+     * drops the `auth.ok` narrowing inside one — declarations are hoisted, so
+     * the compiler cannot know the guard ran first. That is why the code this
+     * replaces reached for a non-null assertion at that same line: the `!` was
+     * paying for this exact limitation, not for a genuinely nullable subject.
+     *
+     * (Written without spelling the old expression out. The standing assertion
+     * for this file is a literal `grep -c` for it, and a comment quoting the
+     * token would make that check fail on a correct file — the same
+     * self-invalidating shape this plan already guards against on
+     * `requires_approved`.)
+     *
+     * A `const` captured after the guard carries the narrowed `string` into the
+     * closure with no assertion at all, which is the point — `operator_id` is
+     * NOT NULL and an unattributed admission is a door override nobody can
+     * review (`ACCESS-MODEL-DECISIONS.md` §5). One name, one fact, used by both
+     * writes below.
+     */
+    const operatorId: string = auth.userId;
 
     let body: CheckinRequestBody;
     try {
@@ -298,7 +316,10 @@ export async function POST(request: Request) {
         cause: row.cause,
         scanned_at: scannedAt,
         recorded_at: new Date().toISOString(),
-        operator_id: auth.user!.id,
+        // Non-null by the type on the `ok: true` arm — no `!` assertion, and no
+        // second call to the Auth server to obtain it. Same subject, same JWT,
+        // verified by Postgres instead.
+        operator_id: operatorId,
         device_id: deviceId,
         source,
         token_fingerprint: tokenFingerprint,
@@ -587,7 +608,7 @@ export async function POST(request: Request) {
       .update({
         checked_in: true,
         checked_in_at: checkedInAt,
-        checked_in_by: auth.user.id,
+        checked_in_by: operatorId,
       })
       .eq("id", ticketId);
 
