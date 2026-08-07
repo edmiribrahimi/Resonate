@@ -1,10 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import EditArtistButton from "@/components/artists/EditArtistButton";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function ArtistPage({
@@ -15,10 +15,11 @@ export default async function ArtistPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Read role/status from middleware headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role and status come from the session, not from a request header. Neither
+  // changes what this page fetches or shows about an artist; `role` decides
+  // whether the edit affordance below is drawn, and `status` only reaches the
+  // nav. See the comment on that affordance for why the predicate is untouched.
+  const { role, status } = await getAccessContext();
 
   // Fetch artist
   const { data: artist } = await supabase
@@ -76,7 +77,27 @@ export default async function ArtistPage({
             {artist.name}
           </h1>
 
-          {/* Edit button for admin/organizer */}
+          {/* Edit affordance for master/organizer.
+              The predicate is deliberately UNCHANGED — only its source moved.
+
+              It decides whether a button is DRAWN, and drawing is not
+              protecting: `access-gating.md`, gate *coerenza
+              navigazione/permessi*, requires every hidden entry to have its
+              own server-side check. This one does. The modal calls
+              `updateArtist`, which re-checks identity and role inside itself
+              at `src/app/(organizer)/organizer/artists/actions.ts:125-137`,
+              and the write is refused again by RLS —
+              `artists_update_organizer` asks the catalogue-manage capability
+              (`supabase/migrations/20260807010000_policies_to_capabilities.sql:82-85`),
+              which is granted with `requires_approved = true`
+              (`20260807000000_capability_model.sql:399-400`).
+
+              So the button's predicate is WIDER than the write it leads to: a
+              PENDING organizer sees it, the action lets them through, and RLS
+              stops them. Narrowing the button to the capability would be an
+              improvement — and improving a verdict is still changing one,
+              which CAP-05 criterion 4 forbids in this phase. Phase 34
+              (STAFF-03) owns both ends and changes them together. */}
           {(role === "master" || role === "organizer") && (
             <EditArtistButton artist={artist} />
           )}
@@ -147,7 +168,10 @@ export default async function ArtistPage({
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
