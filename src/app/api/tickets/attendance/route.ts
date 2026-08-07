@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getPostHogServer } from "@/lib/posthog/server";
 import {
@@ -7,29 +6,30 @@ import {
   type DoorOutcome,
   type DoorSubjectType,
 } from "@/lib/door/outcome";
+import {
+  DOOR_UNRESOLVED_STATUS,
+  requireDoorOperator,
+  type DoorAuth,
+} from "@/lib/door/require-operator";
 
-async function verifyOrganizerRole() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
-    return { error: "Forbidden", status: 403 };
-  }
-
-  return { user, profile };
+/**
+ * The refusal body for this route's envelope, which is `{ error }` and nothing
+ * else. Written once because both handlers below refuse identically — and the
+ * point of this plan is that the door's routes cannot answer differently from
+ * one another about the same person on the same night.
+ *
+ * Takes the already-resolved verdict rather than resolving again: `cache()` does
+ * not memoise inside a Route Handler, so a second `requireDoorOperator()` call
+ * would be a second network round trip before the door gets its list.
+ */
+function refuse(auth: Extract<DoorAuth, { ok: false }>) {
+  return NextResponse.json(
+    {
+      error: auth.error,
+      ...(auth.kind === "unresolved" ? { status: DOOR_UNRESOLVED_STATUS } : {}),
+    },
+    { status: auth.status }
+  );
 }
 
 /**
@@ -198,13 +198,10 @@ export async function GET(request: Request) {
   const search = searchParams.get("search")?.trim().toLowerCase() || "";
   const partyIdFilter = searchParams.get("partyId");
 
-  const auth = await verifyOrganizerRole();
-  if ("error" in auth) {
-    return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
-    );
-  }
+  // Once per handler. This is the request the door makes before the radio goes
+  // off, so a round trip saved here is a round trip saved on a weak signal.
+  const auth = await requireDoorOperator();
+  if (!auth.ok) return refuse(auth);
 
   const serviceClient = getServiceClient();
   const today = new Date().toISOString().split("T")[0];
@@ -526,13 +523,9 @@ export async function GET(request: Request) {
  * Updates guest_list_entries status to 'checked_in', and records when and by whom.
  */
 export async function POST(request: Request) {
-  const auth = await verifyOrganizerRole();
-  if ("error" in auth) {
-    return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
-    );
-  }
+  // Once per handler, same as the GET.
+  const auth = await requireDoorOperator();
+  if (!auth.ok) return refuse(auth);
 
   let body: { guestListEntryId?: string };
   try {
@@ -660,7 +653,7 @@ export async function POST(request: Request) {
     .update({
       status: "checked_in",
       checked_in_at: now,
-      checked_in_by: auth.user.id,
+      checked_in_by: auth.userId,
       updated_at: now,
     })
     .eq("id", guestListEntryId);
@@ -678,7 +671,7 @@ export async function POST(request: Request) {
 
   const posthog = getPostHogServer();
   posthog.capture({
-    distinctId: auth.user.id,
+    distinctId: auth.userId,
     event: "guest_list_checkin",
     properties: {
       guest_list_entry_id: guestListEntryId,
