@@ -1,10 +1,11 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import MemberTable from "@/components/admin/MemberTable";
 import StaffNav from "@/components/staff/StaffNav";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 
 // Extract referrer name from Supabase join result
@@ -19,16 +20,22 @@ function extractReferrerName(referrer: unknown): string | null {
 }
 
 export default async function AdminMembersPage() {
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity and reachability come from the session, not from three request
+  // headers an attacker can set.
+  const { capabilities, userId, role, status } = await getAccessContext();
 
-  // Defense in depth: middleware already blocks non-master, but verify here too
-  if (role !== "master") {
+  // Defense in depth behind the middleware — and now the SAME question the
+  // middleware asks for `/admin/*`, of the same authority. Never a role list:
+  // a fourth role arrives in phase 34.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
+  // resolver answers `string | null`. Same cast the header read already made,
+  // from a better source. Phase 34 (STAFF-03) owns these props.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   // Fetch all profiles with referral data via self-referencing join
   const supabase = await createClient();
@@ -55,7 +62,7 @@ export default async function AdminMembersPage() {
             </p>
           </div>
         </div>
-        <MobileNav role={role} status={status} />
+        <MobileNav role={navRole} status={navStatus} />
       </div>
     );
   }
@@ -81,18 +88,40 @@ export default async function AdminMembersPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1} className="px-6">
+        {/*
+          `userId` is `string | null` from the resolver; the identity header
+          this replaces was read as `headersList.get(...) || ""`. `?? ""` is
+          the null handling here, chosen by reading the consumer, not guessed:
+
+          `currentUserId` is used at ONE place — `MemberTable.tsx:173`,
+          `if (member.id === currentUserId)` — to draw "--" instead of the
+          actions cell on the viewer's OWN row. Its false branch grants a UI
+          affordance, not a permission: the authoritative self-protection is
+          server-side and independent of this prop
+          (`admin/members/actions.ts:109` throws "Cannot change own role" on
+          `memberId === user.id`, with `user` from `supabase.auth.getUser()`).
+
+          So the `null == null` regression `ownsOrIsMaster` exists to prevent
+          cannot arise here: `member.id` is a non-null `profiles` primary key,
+          so neither `""` nor `null` ever equals it, and `===` does not coerce.
+          `?? ""` therefore reproduces today's behaviour in every reachable
+          case, including the degraded one where the migration has not been
+          applied and `user_id` is absent on a real session. Widening the prop
+          would edit a component shared with the organizer members page, which
+          belongs to another plan.
+        */}
         <MemberTable
           members={members}
-          currentUserId={userId}
+          currentUserId={userId ?? ""}
           showActions={true}
           callerRole="master"
         />
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

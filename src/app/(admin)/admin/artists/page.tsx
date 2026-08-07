@@ -1,20 +1,31 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import StaffNav from "@/components/staff/StaffNav";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminArtistsPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const { capabilities, role, status } = await getAccessContext();
 
-  if (role !== "master") {
+  // `ADMIN_ACCESS`, not `CATALOGUE_MANAGE`, despite the matching word: this is
+  // the master-only catalogue LISTING inside `/admin`, and the question it asks
+  // is reachability of the admin area — verbatim the middleware's own rule for
+  // `/admin/*`. `catalogue.manage` is granted to organizers AND requires an
+  // approved status, so it would both widen (an organizer would reach a
+  // master-only page) and narrow (a `pending` master would not).
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
+  // resolver answers `string | null`. Same cast the header read already made,
+  // from a better source. Phase 34 (STAFF-03) owns these props.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   const supabase = await createClient();
   const { data: artists } = await supabase
@@ -28,7 +39,7 @@ export default async function AdminArtistsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav role={navRole} context="admin" />
 
       <div className="px-6">
         {!artists || artists.length === 0 ? (
@@ -63,7 +74,7 @@ export default async function AdminArtistsPage() {
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

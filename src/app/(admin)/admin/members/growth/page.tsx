@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +7,8 @@ import StaffNav from "@/components/staff/StaffNav";
 import MemberGrowthChart from "@/components/analytics/MemberGrowthChart";
 import GrowthSummaryCard from "@/components/analytics/GrowthSummaryCard";
 import { fetchMemberGrowth } from "@/lib/analytics/member-queries";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function MemberGrowthPage({
@@ -15,13 +16,20 @@ export default async function MemberGrowthPage({
 }: {
   searchParams: Promise<{ granularity?: string }>;
 }) {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const { capabilities, role, status } = await getAccessContext();
 
-  if (role !== "master") {
+  // The SAME question the middleware asks for `/admin/*`, of the same
+  // authority, instead of a role read out of a request header. Never a role
+  // list: a fourth role arrives in phase 34.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
+  // resolver answers `string | null`. Same cast the header read already made,
+  // from a better source. Phase 34 (STAFF-03) owns these props.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   const { granularity: granularityParam } = await searchParams;
   const granularity: "weekly" | "monthly" =
@@ -38,7 +46,7 @@ export default async function MemberGrowthPage({
         </header>
       </AnimatedSection>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1} className="px-6 space-y-4">
         {/* Granularity toggle */}
@@ -74,7 +82,7 @@ export default async function MemberGrowthPage({
         </div>
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
