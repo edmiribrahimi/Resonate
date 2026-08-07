@@ -1,8 +1,96 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { CAP } from "@/lib/capabilities/keys";
+import { getAccessContext } from "@/lib/capabilities/server";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/utils/slugify";
+
+/**
+ * The catalogue gate, asked once instead of twice — and `staff.manage`, not
+ * `catalogue.manage`, ON PURPOSE.
+ *
+ * ── The key was chosen by the owner, and this is what the choice preserves ────
+ *
+ * `createArtist` and `updateArtist` used to read `profiles.role` and refuse
+ * anything outside `{organizer, master}` — **role only, status ignored**. The
+ * RLS policies on `public.artists`, by contrast, gate on `catalogue.manage`,
+ * which carries `requires_approved = true`
+ * (`supabase/migrations/20260807000000_capability_model.sql:399-400`).
+ *
+ * The two layers disagree, deliberately, and the disagreement is measured: an
+ * `organizer`/`pending` caller PASSES this gate and is then refused by the
+ * database with `42501`. That asymmetry is named twice in
+ * `32-CARRY-FORWARD.md` and re-observed in `33-01-SUMMARY.md`. This phase's
+ * contract is that behaviour does not change, so the key here is the one whose
+ * predicate is byte-equal to the deleted code: `staff.manage`, granted to
+ * `master` and `organizer` with `requires_approved = false` (same migration,
+ * lines 392-393). Reproduce the asymmetry; do not tidy it.
+ *
+ * **This is not the two keys collapsing.** `catalogue.manage` keeps its own
+ * grants, keeps `requires_approved = true`, and keeps guarding the tables — it
+ * is still the thing that actually refuses a pending organizer here. What
+ * changed is only *where the role half of the question is asked*: a session-
+ * derived capability instead of a `public.profiles` round trip.
+ *
+ * Moving this call site to `CAP.CATALOGUE_MANAGE` is a live option and a real
+ * improvement — it would refuse a pending organizer in the action, with a
+ * sentence, instead of leaking a `42501` out of a write. It is deferred rather
+ * than declined, and the reason it is deferred is that it is the ONE change in
+ * this phase that a user could see. See `33-10-SUMMARY.md`.
+ *
+ * ── Why it is a local function and not an import ──────────────────────────────
+ *
+ * Its natural home is `src/lib/capabilities/guards.ts`, beside
+ * `ownsOrIsMaster`. That file belongs to another plan executing in parallel, so
+ * hoisting it there is a follow-up, not this commit. It is deliberately NOT
+ * exported: every export of a `"use server"` module is a public endpoint, and a
+ * gate is not one.
+ *
+ * ── Resolve once ─────────────────────────────────────────────────────────────
+ *
+ * `cache()` does NOT memoise inside a Server Action body — measured, three
+ * calls ran the body three times (`src/lib/capabilities/server.ts:103-121`). So
+ * this resolves `getAccessContext()` exactly once and hands the caller back the
+ * one thing it may still need. Never call it a second time in the same action.
+ *
+ * ── Two categories, never one ────────────────────────────────────────────────
+ *
+ * "You may not" and "I do not know who you are" throw different strings. This
+ * project has no error tracking, and a `catch` that collapses causes is the
+ * recorded newsletter defect (`meta-gates.md`). Note that Next REDACTS the
+ * message of an error thrown out of a Server Action in a production build, so
+ * these strings exist for `next dev` and for the server log — a client that
+ * needs to branch on the category must carry it as a tagged value decided by
+ * position, never by parsing this text.
+ *
+ * @throws `forbidden.staff_manage_required` — the answer is no.
+ * @throws `capabilities.identity_missing` — a capability resolved but the
+ *         payload carried no `user_id`, which means
+ *         `20260808000000_access_context_user_id.sql` has not been applied.
+ *         Refusing is strictly safer than the `!` this line replaces: no
+ *         Supabase client in this repository carries a `Database` generic, so
+ *         `string | null` would have compiled green all the way into
+ *         `created_by`.
+ */
+async function assertStaffManage(): Promise<{ userId: string }> {
+  const { capabilities, userId } = await getAccessContext();
+
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
+    throw new Error("forbidden.staff_manage_required");
+  }
+
+  if (!userId) {
+    console.error(
+      "[capabilities.identity_missing] a caller holds staff.manage but " +
+        "my_access_context() returned no user_id. This is NOT a refusal on " +
+        "the merits — the migration adding user_id has not been applied."
+    );
+    throw new Error("capabilities.identity_missing");
+  }
+
+  return { userId };
+}
 
 /**
  * Search artists by name (case-insensitive, partial match).
@@ -38,26 +126,7 @@ export async function checkArtistExists(name: string) {
  */
 export async function createArtist(formData: FormData) {
   const supabase = await createClient();
-
-  // Verify role
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "organizer" && profile.role !== "master")) {
-    throw new Error("Forbidden: only organizers can create artist profiles");
-  }
+  const { userId } = await assertStaffManage();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) {
@@ -94,7 +163,7 @@ export async function createArtist(formData: FormData) {
       soundcloud_url: soundcloudUrl,
       spotify_url: spotifyUrl,
       website_url: websiteUrl,
-      created_by: user.id,
+      created_by: userId,
     })
     .select("id, slug")
     .single();
@@ -116,25 +185,7 @@ export async function createArtist(formData: FormData) {
  */
 export async function updateArtist(artistId: string, formData: FormData) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "organizer" && profile.role !== "master")) {
-    throw new Error("Forbidden: only organizers can update artist profiles");
-  }
+  await assertStaffManage();
 
   const bio = (formData.get("bio") as string)?.trim() || null;
   const photoUrl = (formData.get("photo_url") as string)?.trim() || null;
