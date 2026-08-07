@@ -1,8 +1,79 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { CAP } from "@/lib/capabilities/keys";
+import { getAccessContext } from "@/lib/capabilities/server";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/utils/slugify";
+
+/**
+ * The catalogue gate, asked once instead of twice — and `staff.manage`, not
+ * `catalogue.manage`, ON PURPOSE.
+ *
+ * The twin of the function of the same name in
+ * `src/app/(organizer)/organizer/artists/actions.ts`, which carries the full
+ * reasoning. In short: the deleted code read `profiles.role` and refused
+ * anything outside `{organizer, master}` — **role only, status ignored** —
+ * while the RLS policies on `public.venues` gate on `catalogue.manage`, which
+ * carries `requires_approved = true`. The two layers disagree deliberately, and
+ * an `organizer`/`pending` caller PASSES here and is refused by the database
+ * with `42501`. `staff.manage` is the key whose predicate is byte-equal to the
+ * deleted line (`20260807000000_capability_model.sql:392-393`), so the measured
+ * asymmetry survives untouched.
+ *
+ * **The two keys are not collapsed.** `catalogue.manage` keeps its grants, its
+ * `requires_approved = true`, and its policies on this table. Only the role
+ * half of the question moved off a `public.profiles` round trip.
+ *
+ * ── The venue-secrecy check, since this file writes addresses ────────────────
+ *
+ * `createVenue` and `updateVenue` write `venues.address` and
+ * `venues.google_maps_url`. Nothing here touches `venue_reveal_sent`, the
+ * per-ticket / per-RSVP entitlement, or the reveal cron, and the set of callers
+ * who may write an address is byte-identical before and after — `staff.manage`
+ * holders, exactly the `{organizer, master}` of the deleted line. The monotone
+ * one-way switch is not made easier to trip, in either direction, by this
+ * change. The one direction the gate moved at all is stricter: a caller with no
+ * resolvable identity is now refused explicitly rather than reaching a `!`.
+ *
+ * ── Why it is a local function and not an import ──────────────────────────────
+ *
+ * Its natural home is `src/lib/capabilities/guards.ts`, which belongs to
+ * another plan executing in parallel; hoisting it is a follow-up, not this
+ * commit. It is deliberately NOT exported — every export of a `"use server"`
+ * module is a public endpoint, and a gate is not one.
+ *
+ * ── Resolve once ─────────────────────────────────────────────────────────────
+ *
+ * `cache()` does NOT memoise inside a Server Action body (measured;
+ * `src/lib/capabilities/server.ts:103-121`). One resolve per invocation, and
+ * the caller reuses the returned local.
+ *
+ * @throws `forbidden.staff_manage_required` — the answer is no.
+ * @throws `capabilities.identity_missing` — the payload carried no `user_id`.
+ *         A distinct category on purpose: it is not a refusal on the merits.
+ *         Next redacts both messages in a production build, so a client that
+ *         must branch on the category carries it as a tagged value decided by
+ *         position, never by parsing this text.
+ */
+async function assertStaffManage(): Promise<{ userId: string }> {
+  const { capabilities, userId } = await getAccessContext();
+
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
+    throw new Error("forbidden.staff_manage_required");
+  }
+
+  if (!userId) {
+    console.error(
+      "[capabilities.identity_missing] a caller holds staff.manage but " +
+        "my_access_context() returned no user_id. This is NOT a refusal on " +
+        "the merits — the migration adding user_id has not been applied."
+    );
+    throw new Error("capabilities.identity_missing");
+  }
+
+  return { userId };
+}
 
 /**
  * Search venues by name (case-insensitive, partial match).
@@ -38,26 +109,7 @@ export async function checkVenueExists(name: string) {
  */
 export async function createVenue(formData: FormData) {
   const supabase = await createClient();
-
-  // Verify role
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "organizer" && profile.role !== "master")) {
-    throw new Error("Forbidden: only organizers can create venue profiles");
-  }
+  const { userId } = await assertStaffManage();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) {
@@ -94,7 +146,7 @@ export async function createVenue(formData: FormData) {
       photo_url: photoUrl,
       instagram_url: instagramUrl,
       website_url: websiteUrl,
-      created_by: user.id,
+      created_by: userId,
     })
     .select("id, slug")
     .single();
@@ -116,25 +168,7 @@ export async function createVenue(formData: FormData) {
  */
 export async function updateVenue(venueId: string, formData: FormData) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "organizer" && profile.role !== "master")) {
-    throw new Error("Forbidden: only organizers can update venue profiles");
-  }
+  await assertStaffManage();
 
   const bio = (formData.get("bio") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim() || null;
