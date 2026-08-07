@@ -382,16 +382,33 @@ export interface RoleCapability {
 /**
  * What `public.my_access_context()` returns. Exactly one row, always.
  *
+ * `user_id` is the caller's own `auth.uid()` — the `sub` of the JWT Postgres
+ * already verified to authenticate the request. It was added by
+ * `supabase/migrations/20260808000000_access_context_user_id.sql` so that the
+ * ten sites deciding `events.created_by === <me>` can stop reading an
+ * attacker-supplied `x-user-id` header. It is null only for a caller with no
+ * session, which the `REVOKE … FROM anon` makes unreachable through the granted
+ * path — so a null here on a signed-in caller means the migration has not been
+ * applied, and every consumer refuses on it rather than guessing.
+ *
  * `role` and `status` are null when the subject has no profile row — which is
  * also the case in which `capabilities` is empty.
  *
- * **No new caller may branch on `role` or `status`.** They are in this payload
- * only so the middleware can keep injecting the two `x-user-*` headers that 46
- * files still read, at one round trip instead of two. Every new decision asks
- * `capabilities`.
+ * **No new caller may branch on `role` or `status`.** They survive in this
+ * payload for exactly two client components — `MobileNav` and `StaffNav` — which
+ * take both as props and cannot import the data-access layer, so a Server
+ * Component parent must resolve them and pass them down. Phase 34 (STAFF-03)
+ * converts those two to capabilities and owns removing these fields. Every new
+ * decision asks `capabilities`.
+ *
+ * (The figure "46 files" previously written here was wrong: the measured count
+ * of files reading `x-user-role` / `x-user-status` is **44**, and phase 33 takes
+ * it to **0**. See the supersession note in
+ * `20260808000000_access_context_user_id.sql`.)
  */
 export interface AccessContext {
   capabilities: CapabilityKey[];
+  user_id: string | null;
   role: UserRole | null;
   status: UserStatus | null;
 }
