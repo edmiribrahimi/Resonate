@@ -32,7 +32,10 @@ findings:
   warning: 6
   info: 2
   total: 10
-status: issues_found
+critical_closed: 2
+critical_open: 0
+blocking_closed: 2026-08-07
+status: blocking_closed
 ---
 
 # Phase 33: Code Review Report
@@ -483,3 +486,176 @@ tracked and this repository is public.
 _Reviewed: 2026-08-07_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_
+
+---
+
+# Blocking findings closed
+
+**Closed: 2026-08-07.** Both critical findings only. The six warnings and two
+info items are untouched and remain open. No migration, no RLS policy, nothing
+under `supabase/`, and nothing in `middleware.ts` was modified — the strip stays
+armed and the injection stays deleted.
+
+## CR-02 — closed
+
+**Commit:** `37d75ea`
+
+**What was wrong, restated in one line.** A failed `SELECT` on
+`guest_list_entries` fell through to `entries ?? []` and rendered the ordinary
+empty state, so *"this event has no guests"* and *"I could not read the guest
+list"* shared a pixel — at the door, in front of a queue, with no error tracking
+anywhere to contradict the screen.
+
+**What the fix does.**
+
+1. `fetchGuestList` now returns a tagged `GuestListReadResult` —
+   `{ ok: true, entries }` or `{ ok: false, reason: "lookup_failed", code }`.
+   The outcome is decided by **position**: the `ok: false` object is constructed
+   inside the `if (error)` branch and the `ok: true` object after it. Nothing
+   re-derives the outcome from a message. That constraint is not stylistic —
+   Next redacts Server Action error text in a production build, so a
+   `message.startsWith(...)` test works in `next dev` and silently stops working
+   in production. Phase 32 hit exactly that.
+2. A **refusal still throws**; only the **lookup** failure is tagged. *"You may
+   not read this list"* and *"I could not read this list"* stay different
+   categories, as the four categories of `verifyOrganizerAccess` already do.
+3. Both rendering surfaces read `error` and branch on it, and render
+   `GuestListUnavailable` instead of an empty list.
+
+**A finding inside the finding: `fetchGuestList` has no in-repo caller.** It is
+exported from a `"use server"` module, so it is reachable only as a public POST
+endpoint — which is why phase 33 gated it. The screens a person at the door
+actually sees are the two pages, and **each carried the same defect
+independently**, in its own inline service-client read. Fixing only the action
+would have produced a tagged value that nothing in this repository reads. Both
+pages were therefore fixed with it.
+
+**What a person at the door now sees.** Where the list would have appeared:
+a red-bordered panel reading *"The guest list could not be loaded"*, then *"This
+is **not** an empty guest list — the read failed. Do not turn anyone away on the
+strength of this screen"*, then the instruction to reload, fall back to the
+scanner or the ticket, and report the error category. The category is shown so
+that two different failures produce two different reports rather than one shrug.
+This is the observable effect `meta-gates.md` requires where a log line reaches
+nobody.
+
+**Mutation proof — action.** Reverting the failure branch to `return []` was
+applied and **asserted present in the source** at `actions.ts:341` before
+measuring. `tsc` — the same artefact `npm run build` measures — then fired
+`TS2322: Type 'never[]' is not assignable to type 'GuestListReadResult'`. The
+old defect is now a compile error. Restored, and the restoration asserted.
+
+**Mutation proof — render branch, and its honest negative result.** Removing the
+branch from the organizer page (that is, restoring the CR-02 defect on the
+surface that renders) was applied and asserted, and `tsc` reported **zero**
+errors on that file. **No automated check guards the render branch.** Recorded
+rather than glossed: its guarantee is the manual procedure below.
+
+**Manual procedure (written, because there is no test runner).**
+1. Sign in as an organizer who owns an event that HAS guest-list entries.
+2. Open `/organizer/events/<id>/guest-list`. Observe the list renders.
+3. Break the read deliberately — rename `guest_list_entries` in the `.from(...)`
+   call to a table that does not exist. Reload.
+4. **Observe:** the red panel, not an empty list. The error category is printed.
+   The server log carries `[guest_list.lookup_failed] … This is NOT an empty
+   list.`
+5. Repeat steps 2–4 at `/admin/events/<id>/guest-list` as master.
+6. Restore the table name, reload, confirm the list returns.
+7. Separately, open the guest-list page of an event with genuinely zero
+   entries and confirm it still shows the ordinary empty state — the two must
+   not have converged in the other direction.
+
+## CR-01 — closed
+
+**Commit:** `5b70357`
+
+**Which of the two permitted resolutions was taken, and why.** The gate now asks
+`CAP.CATALOGUE_MANAGE`. The condition attached to that option — showing from the
+grant rows that it does not change who is admitted through this path today — was
+measured before choosing, from
+`supabase/migrations/20260807000000_capability_model.sql`:
+
+| key | master | organizer | lines |
+|---|---|---|---|
+| `staff.manage` | `requires_approved = false` | `false` | 392-393 |
+| `catalogue.manage` | `requires_approved = true` | `true` | 399-400 |
+
+The set of callers whose write **succeeds** is byte-identical before and after:
+
+- `organizer` / `approved` — wrote before, writes now.
+- `master` / `approved` — wrote before, writes now.
+- `organizer` / `pending` — refused before by RLS policy P3 with `42501`,
+  refused now by the action. Never wrote in either world.
+- `master` whose status is not `approved` — refused by P3 in both worlds, since
+  **P3 carries `requires_approved = true` for master too**. This is the case
+  easiest to get wrong when reasoning about the swap, so it is stated
+  explicitly.
+
+So this is not the narrowing that criterion 4 forbids: nobody who could write is
+refused, nobody refused could write. Only the **point** of refusal moved, from
+the database to the action — the one direction `meta-gates.md` permits without
+authorisation, because a gate may only become harder to trip.
+
+**What this buys, in terms of the hazard the finding named.** The refusal no
+longer depends on which Supabase client these two files happen to use. Before,
+one `createClient()` → `getServiceClient()` edit on `updateVenue` — a plausible
+fix for an unrelated RLS-visibility bug — would have left nothing refusing an
+unapproved organizer on a path that writes `venues.address`. That is now a
+second line of defence rather than the only one.
+
+**What did not change.** `ticket_tiers`, events and guest list keep
+`staff.manage`. The two keys are not collapsed; `catalogue.manage` keeps its
+grants and its policies. Nothing touches `venue_reveal_sent`, the per-ticket /
+per-RSVP entitlement, or the reveal cron, so the monotone switch is untouched.
+
+**The warning at the call sites.** All four (`createVenue`, `updateVenue`,
+`createArtist`, `updateArtist`) now carry a comment on the `createClient()` line
+itself stating that it is the cookie client on purpose, that `getServiceClient()`
+bypasses every row-level policy, and that swapping it leaves the gate as the only
+refusal on a venue-address write path.
+
+**Mutation proof, and its honest negative result.** Reverting the key to
+`CAP.STAFF_MANAGE` was applied and **asserted present in the source** at
+`venues/actions.ts:71` before measuring; `tsc` then reported **zero** errors on
+that file. **No automated check guards the key choice.**
+`npm run verify:capabilities`, which is the check that would, refused to run in
+this environment — `FATAL: missing environment variable(s):
+SUPABASE_ACCESS_TOKEN, NEXT_PUBLIC_SUPABASE_URL. Nothing was measured.` — so it
+is reported as not run rather than as passed. The guarantee here is the grant
+rows read directly from the migration, plus the procedure below. Restored, and
+the restoration asserted at both files.
+
+**Manual procedure (written, because there is no test runner).**
+1. Sign in as an `organizer` whose `profiles.status` is `pending`.
+2. Open `/organizer/venues` and attempt to edit a venue address.
+3. **Observe:** the refusal arrives from the action, before the write. It is no
+   longer an RLS error string leaking `42501` out of an `UPDATE`.
+4. Repeat as an `organizer` / `approved`: the edit succeeds exactly as before.
+5. Repeat both at `/organizer/artists`.
+6. Confirm the cell that must NOT move: an `organizer` / `pending` inserting a
+   `ticket_tiers` row still succeeds — that path keeps `staff.manage`.
+7. When credentials are available, run `npm run baseline:container` and
+   `npm run baseline:compare` and confirm `organizer/pending · venues · update`
+   still reads refused and `organizer/pending · ticket_tiers · insert` still
+   reads `ok:1`.
+
+## Verification run
+
+- `npm run build` — **green**, after both fixes.
+- `npx tsc --noEmit` — used as the mutation oracle; results above.
+- `npm run verify:capabilities` — **not run**: no credentials in this
+  environment. Reported, not assumed.
+- No test runner exists for the product. Nothing here is claimed as verified
+  because tests pass.
+
+## Carried forward, not fixed here
+
+- The six warnings (`WR-01`…) and two info items remain **open**.
+- Neither of the two gaps proved by mutation has an automated check: the
+  guest-list **render branch** and the **capability key** at the four catalogue
+  call sites are both compile-green when broken. A mechanical check for either —
+  for instance, asserting that the key a TypeScript gate asks matches the key the
+  policy on the same table asks — would be a new verification script and was out
+  of scope for this pass. It is the highest-value automation this phase surfaced.
+- `verifyOrganizerAccess` still reads ownership through the service client. That
+  is pre-existing, documented in place with its evidence, and untouched.
