@@ -1,14 +1,16 @@
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { getAccessContext } from "@/lib/capabilities/server";
 import GalleryClient from "./GalleryClient";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function GalleryPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role and status come from the session, not from a request header. Neither
+  // gates anything here — the media query below filters on `status =
+  // "approved"` (the moderation state of the row, not the viewer's) and is
+  // unchanged. Both values go to MobileNav, a "use client" component.
+  const { role, status } = await getAccessContext();
 
   const supabase = await createClient();
 
@@ -66,7 +68,10 @@ export default async function GalleryPage() {
         <GalleryClient groups={groups} />
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
