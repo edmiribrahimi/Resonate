@@ -1,7 +1,9 @@
-import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
 import { updateEvent } from "@/app/(organizer)/organizer/events/actions";
@@ -14,13 +16,22 @@ interface EditEventPageProps {
 export default async function EditEventPage({ params }: EditEventPageProps) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity from the session, not from an inbound header.
+  //
+  // This page renders `venue_secret`, `venue_secret_hint` and the reveal settings
+  // of every party, so the two gates below are the only thing between an address
+  // and a browser. `venue_reveal_sent` is monotone (`meta-gates.md`): a reveal
+  // cannot be undone, so neither gate may become easier to pass. Neither does —
+  // see the ownership note below for the truth table.
+  const ctx = await getAccessContext();
 
-  // Defense in depth: verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // `MobileNav` is a `"use client"` component that still takes role and status as
+  // props; phase 34 (STAFF-03) converts it. No decision on this page reads them.
+  const navRole = ctx.role as UserRole | null;
+  const navStatus = ctx.status as UserStatus | null;
+
+  // Defense in depth: may this person reach the organizer area at all.
+  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
@@ -37,8 +48,14 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     notFound();
   }
 
-  // Organizer (not master) can only edit their own events
-  if (role === "organizer" && event.created_by !== userId) {
+  // Ownership — one call, never a re-inlined comparison.
+  //
+  // Nobody gains sight of a venue by this change. Master: refused-or-admitted
+  // identically, only sooner (step 1, before the row is read). Organizer: admitted
+  // only on `created_by === auth.uid()`, where the old line compared against a
+  // header the client could send. Row with a null `created_by`: refused, as before
+  // — and refused by a stated rule instead of by `null !== ""` happening to differ.
+  if (!ownsOrIsMaster(ctx, event.created_by)) {
     redirect("/organizer/events");
   }
 
@@ -130,7 +147,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
         </Link>
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

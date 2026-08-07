@@ -1,7 +1,9 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import { classifyNight } from "@/lib/door/classify";
 import { partyStartInstant, partyEndInstant } from "@/utils/datetime";
@@ -35,8 +37,12 @@ import type {
  * Per-night operational data, and it must never be served from a cache.
  * `nextjs-architecture.md` gate *cache esplicita*: a surface showing per-user or
  * operational data declares itself uncacheable rather than inheriting a default.
- * The page already reads `headers()`, so this is belt and braces — and the belt
- * is the part a future refactor can remove by accident.
+ *
+ * It used to be belt and braces: the page read `headers()` directly, which is
+ * itself a dynamic API. Phase 33 removed that read, and the implicit opt-out now
+ * comes from `cookies()` inside `getAccessContext()` — one import further away and
+ * therefore one refactor easier to lose. So this line is no longer redundant, and
+ * the reason it must stay is written here rather than assumed.
  */
 export const dynamic = "force-dynamic";
 
@@ -56,20 +62,29 @@ export default async function DoorReviewPage({
   const { id: eventId } = await params;
   const query = await searchParams;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
-
-  // Defense in depth: verify organizer or master access.
+  // Identity from the session, not from an inbound header.
   //
-  // These headers are trustworthy because FIX-01 made the middleware delete any
-  // inbound copy before setting its own (`src/lib/supabase/middleware.ts`). But
-  // this is the **interface** layer — it decides where somebody may go. What
+  // The previous form read the middleware's headers, and FIX-01 made those
+  // trustworthy by deleting any inbound copy before setting its own. That was a
+  // guarantee held by a different file; this one is held by the JWT — the context
+  // answers about `auth.uid()`, which no client can send.
+  const ctx = await getAccessContext();
+
+  // `MobileNav` and `ReviewListClient` are both `"use client"` and both still take
+  // `role` as a prop — the second uses it for an interface affordance (the
+  // technical view, offered to a master), which is why it is a prop and not a
+  // decision. Phase 34 (STAFF-03) converts both. Nothing on this page branches on
+  // these values.
+  const navRole = ctx.role as UserRole | null;
+  const navStatus = ctx.status as UserStatus | null;
+
+  // Defense in depth: may this person reach the organizer area at all.
+  //
+  // This is the **interface** layer — it decides where somebody may go. What
   // decides what they may read is `door_scan_events_select_admin`, and this
   // surface needs both: the redirect alone would leave the night readable
   // through the API by anyone holding the anonymous key.
-  if (role !== "organizer" && role !== "master") {
+  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
@@ -91,13 +106,16 @@ export default async function DoorReviewPage({
     redirect("/organizer/events");
   }
 
-  // Verify ownership (organizer owns event OR user is master).
+  // Ownership — one call, never a re-inlined comparison.
   //
   // Recorded honestly: the RLS policy is `is_admin_or_organizer()` and is **not**
   // per-event. Per-night scoping of an organizer arrives in Phase 35, and the
   // migration says so (`20260805120000_door_scan_events.sql:151-156`). Until
-  // then this check is the only per-event boundary there is.
-  if (role === "organizer" && event.created_by !== userId) {
+  // then this check is the only per-event boundary there is — which is exactly
+  // why it must not be a transcription. `ownsOrIsMaster` refuses a null identity
+  // and an unowned row explicitly; the comparison written out here would compare
+  // `null !== null` and admit.
+  if (!ownsOrIsMaster(ctx, event.created_by)) {
     redirect("/organizer/events");
   }
 
@@ -240,14 +258,14 @@ export default async function DoorReviewPage({
           unclassified={unclassified}
           total={total}
           operatorLabels={operatorLabels}
-          role={role}
+          role={navRole}
           nightStartIso={nightStart ? nightStart.toISOString() : null}
           nightEndIso={nightEnd ? nightEnd.toISOString() : null}
           readError={readError}
         />
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
