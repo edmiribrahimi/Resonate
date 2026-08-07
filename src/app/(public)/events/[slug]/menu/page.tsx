@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { Inter } from "next/font/google";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
-import type { UserRole, DrinkItem } from "@/types/database";
+import type { UserRole, UserStatus, DrinkItem } from "@/types/database";
 import GuestTokenDisplay from "./GuestTokenDisplay";
 // Login/signup invite for guests temporarily disabled — re-enable by
 // restoring this import and the <GuestLoginBanner /> render below.
@@ -44,17 +45,31 @@ export default async function MenuPage({
   const { slug } = await params;
   const { order: orderIdFromUrl } = await searchParams;
 
-  // Service client for public data (no RLS restriction)
+  // Service client for public data (no RLS restriction). RETAINED, and which
+  // client reads what is unchanged by this conversion: the page must render for
+  // a logged-out visitor, and `events` / `event_parties` / `drink_items` are
+  // not readable by `anon` under RLS. `access-gating.md`, gate *service role*:
+  // a service-role read bypasses every policy, so on this path THE CODE IS THE
+  // ONLY BOUNDARY — there is no second one behind it. That is precisely why
+  // `canManage` below must be decided from the session and never from an
+  // inbound header, which any client can send.
   const serviceClient = getServiceClient();
 
-  // Check auth for QR code / management visibility
+  // Identity, role, status and capabilities from the SESSION. One round trip,
+  // memoised by `cache()` for this render. `userId` is the caller's own
+  // `auth.uid()`, derived inside Postgres from the JWT, and is `string | null`
+  // — never `""`. It replaces the `supabase.auth.getUser()` call that used to
+  // stand here purely to learn who the visitor was.
+  //
+  // An anonymous visitor is a NORMAL case, not a failure: `my_access_context()`
+  // is granted to `authenticated` only, so `anon` is refused with 42501 and the
+  // resolver answers the empty context (no capabilities, null identity).
+  const { capabilities, userId, role, status } = await getAccessContext();
+  const isAuthenticated = userId !== null;
+
+  // The cookie-bound client stays: the drink-token read below is per-user and
+  // must remain under RLS.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const headersList = await headers();
-  const role = headersList.get("x-user-role") as UserRole | null;
-  const status = headersList.get("x-user-status") as import("@/types/database").UserStatus | null;
 
   // Fetch event by slug (must be published)
   const { data: event } = await serviceClient
@@ -68,8 +83,14 @@ export default async function MenuPage({
     notFound();
   }
 
-  // Determine if the user can manage drinks
-  const canManage = role === "master" || role === "organizer";
+  // Determine if the user can manage drinks — from the session, never from a
+  // header. `staff.manage` is byte-equal to the
+  // `role === "master" || role === "organizer"` it replaces (role only, status
+  // ignored), so no role's reach changes: a pending organizer who manages this
+  // menu today still manages it. `admin.access` would have narrowed it to
+  // master and `catalogue.manage` would have required an approved status —
+  // both are verdict changes and neither is this plan's.
+  const canManage = capabilities.has(CAP.STAFF_MANAGE);
 
   // Fetch parties for this event
   const { data: parties } = await serviceClient
@@ -109,11 +130,16 @@ export default async function MenuPage({
 
   // Fetch authenticated user's drink tokens for this event
   let userTokens: { id: string; drink_name: string; price: number; token: string; status: "purchased" | "redeemed"; redeemed_at: string | null }[] = [];
-  if (user) {
+  // `userId` narrows to `string` inside this guard, so the filter below can
+  // never receive a null. There is no `user?.id === x` comparison anywhere on
+  // this page — the only identity use is this query filter — so the
+  // `null === null` admission that the nullable identity introduces elsewhere
+  // has no site here.
+  if (userId) {
     const { data: tokens } = await supabase
       .from("drink_tokens")
       .select("id, drink_name, price, token, status, redeemed_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("event_id", event.id)
       .order("created_at", { ascending: true });
     userTokens = (tokens ?? []) as typeof userTokens;
@@ -138,7 +164,7 @@ export default async function MenuPage({
       </div>
 
       <div
-        className={`mx-auto max-w-lg px-4 ${user ? "pb-24" : "pb-8"} ${
+        className={`mx-auto max-w-lg px-4 ${isAuthenticated ? "pb-24" : "pb-8"} ${
           event.cover_image ? "-mt-12 relative z-10" : "pt-8"
         }`}
       >
@@ -151,8 +177,10 @@ export default async function MenuPage({
             </div>
           )}
 
-          {/* Login/signup banner temporarily disabled */}
-          {/* {!user && (
+          {/* Login/signup banner temporarily disabled. `user` no longer exists
+              on this page — the identity is `userId` / `isAuthenticated` — so
+              the disabled block below is kept compilable-on-re-enable. */}
+          {/* {!isAuthenticated && (
             <div className="mt-6">
               <GuestLoginBanner slug={slug} />
             </div>
@@ -168,7 +196,7 @@ export default async function MenuPage({
             parties={partyList}
             drinksByParty={drinksByParty}
             canManage={canManage}
-            isAuthenticated={!!user}
+            isAuthenticated={isAuthenticated}
           />
         ) : (
           <div className="mt-6 rounded-xl border border-card-border bg-card p-6 text-center">
@@ -180,7 +208,7 @@ export default async function MenuPage({
         </AnimatedSection>
 
         {/* Drink tokens */}
-        {user ? (
+        {isAuthenticated ? (
           userTokens.length > 0 && (
             <div className="mt-6">
               <UserTokenDisplay tokens={userTokens} />
@@ -198,7 +226,17 @@ export default async function MenuPage({
 
       {/* MobileNav hidden for guests so they don't navigate away from the
           menu and lose track of their tokens. */}
-      {user && <MobileNav role={role} status={status} />}
+      {/* `role` / `status` are PRESENTATION here — they choose which nav
+          entries `MobileNav` draws, nothing more. They keep their form and
+          only their source changed. The cast is at the page boundary because
+          `MobileNav` is a `"use client"` component that cannot import the
+          resolver; phase 34 (STAFF-03) owns converting the nav itself. */}
+      {isAuthenticated && (
+        <MobileNav
+          role={role as UserRole | null}
+          status={status as UserStatus | null}
+        />
+      )}
     </div>
   );
 }
