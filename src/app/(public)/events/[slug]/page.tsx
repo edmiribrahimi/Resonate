@@ -1,10 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
@@ -123,15 +124,32 @@ export default async function EventDetailPage({
   } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role, status and capabilities from the SESSION, not from an inbound header.
+  const { capabilities, role, status } = await getAccessContext();
+
+  // ⚠️ VENUE SECRECY. These two keep their `role` / `status` form and only
+  // their SOURCE changed — and that is deliberate, because they are NOT merely
+  // presentational. Besides :490 and :637 they are passed into
+  // `isVenueVisible` (:511, :513), which decides whether a SECRET VENUE
+  // ADDRESS is rendered: `isMasterRole` short-circuits it to visible (:76) and
+  // `isApproved` opens the two time-and-ticket branches (:84, :86).
+  //
+  // `venue_reveal_sent` is a MONOTONE one-way switch (meta-gates.md), so the
+  // only admissible direction here is "no easier to trip". Keeping the exact
+  // predicates and moving the source from a forgeable header to the session is
+  // strictly non-widening: nobody who could not see an address before can see
+  // one now. Converting either of these to a capability key would be a VERDICT
+  // change on a reveal path and is explicitly out of this plan's scope.
   const isApproved = status === "approved";
   const isMasterRole = role === "master";
 
-  // Fetch event by slug — admin/organizer can see drafts too
-  const canSeeDrafts = isMasterRole || role === "organizer";
+  // Fetch event by slug — admin/organizer can see drafts too. This NARROWS THE
+  // QUERY below, so it is a data-access decision and becomes a capability
+  // question. It governs `is_published` and NOTHING ELSE — it is not an input
+  // to `isVenueVisible`, which is the one expression that governs the venue.
+  // `staff.manage` is byte-equal to the `isMasterRole || role === "organizer"`
+  // it replaces, so no role's reach changes.
+  const canSeeDrafts = capabilities.has(CAP.STAFF_MANAGE);
   const eventQuery = supabase
     .from("events")
     .select("id, slug, title, description, date, venue_secret, lineup, cover_image, is_published, early_access_until, created_by")
@@ -706,7 +724,12 @@ export default async function EventDetailPage({
         </AnimatedSection>
       </div>
 
-      <MobileNav role={role} status={status} />
+      {/* Presentation. Cast at the page boundary because MobileNav is a client
+          component; phase 34 (STAFF-03) owns the nav vocabulary. */}
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
