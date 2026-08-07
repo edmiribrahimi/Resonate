@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import MobileNav from "@/components/layout/MobileNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -12,10 +12,11 @@ export default async function AttendancePage() {
 
   if (!user) redirect("/login");
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // A pure nav-prop read: `role` and `status` are PRESENTATION here — nothing
+  // on this page branches on them, and no capability key belongs in this file.
+  // Only their source changed, from an inbound header to the session. The
+  // route itself stays gated by the middleware on `membership.card.view`.
+  const { role, status } = await getAccessContext();
 
   // TODO: fetch attendance records from Supabase
   const attendances: { event_title: string; date: string }[] = [];
@@ -59,7 +60,10 @@ export default async function AttendancePage() {
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
