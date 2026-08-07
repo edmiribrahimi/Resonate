@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-capabilities.mjs — the four declarations of one capability set, checked.
+ * verify-capabilities.mjs — one capability set, five sides, checked.
  *
  * WHY THIS EXISTS, and it is the same reason `verify-persona.mjs` grew its
  * check G: a set that is written down in more than one place, with nothing
@@ -23,7 +23,7 @@
  * compile error** — and a denial is the failure that happens in front of a
  * queue. That is CAP-01 evidence (iii), and it is the gap this script closes.
  *
- * THE FOUR SIDES (phase decision D-33):
+ * THE FIRST FOUR SIDES (phase decision D-33):
  *
  *   TS      the values of the `CAP` object in `src/lib/capabilities/keys.ts`,
  *           read from the FILE rather than imported, so this script does not
@@ -45,12 +45,27 @@
  * key — Phase 34 owns the decision, and four of the eight keys gate tables
  * rather than routes.
  *
+ * THE FIFTH SIDE (phase decision D-02, added by plan 43-02):
+ *
+ *   GRANT   `select role, capability, requires_approved from
+ *           private.role_capabilities` — the rows themselves, compared against a
+ *           declaration pre-registered in this file: every (role × capability)
+ *           pair of the cross product is either a grant carrying its
+ *           `requires_approved`, or a refusal, which is expressed in the database
+ *           as the ABSENCE of a row. This side exists because a wrong grant row
+ *           had no automated detector anywhere in this repository, and because
+ *           the most dangerous shape of mistake — a refusal written as a
+ *           `granted = false` row — would GRANT the capability, the resolver's
+ *           `EXISTS` having no `granted` column in it (:209-216 of the model
+ *           migration).
+ *
  * WHAT A GREEN MEANS, AND WHAT IT DOES NOT. It means the four declarations name
- * the same strings. It does not mean a capability is granted to the right
- * roles, and it does not mean a policy is correct — `private.role_capabilities`
- * is not read here at all. Same distinction `verify-persona.mjs` draws between
- * coherence and correctness, and it has to be kept or the command becomes a
- * stamp.
+ * the same strings, AND that every role holds exactly the set of capabilities
+ * that was declared for it, with the `requires_approved` that was declared. It
+ * still does not mean a policy is correct: which subjects a predicate admits is
+ * measured by `npm run baseline:rls`, not here, and nothing in this file reads a
+ * profile. Same distinction `verify-persona.mjs` draws between coherence and
+ * correctness, and it has to be kept or the command becomes a stamp.
  *
  * Zero new dependencies. Node built-ins, plus the baseline harness's own
  * environment loader and Management API target — reused rather than rewritten,
@@ -62,14 +77,16 @@
  *   npm run verify:capabilities -- --target=container
  *
  * Exit codes, the three this repository's scripts already use:
- *   0  the four sets agree (warnings do not change this)
+ *   0  the five sides agree (warnings do not change this)
  *   1  a comparison failed, or a side measured EMPTY
  *   2  the environment is wrong — a missing variable, an unknown flag, no
  *      Docker daemon. Nothing was measured, so nothing failed.
  *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (CLAUDE.md
- * Guardrail 5). This script prints capability keys and policy names, which are
- * design; it reads no row of `profiles`; it writes no artefact; and every
+ * Guardrail 5). This script prints capability keys, policy names and grant rows
+ * — all three are design, and a grant row is three columns of design: a role
+ * label, a catalogue key and a boolean. It reads no row of `profiles`, so no
+ * member and no staff member is named or counted; it writes no artefact; and every
  * string that could have come back from the network is printed through the
  * harness's `say()`, which redacts the token, the project reference and the
  * Supabase URL. It calls `query()` and never `get()`: the Management API's
@@ -102,6 +119,221 @@ const SRC_DIR = `${ROOT}/src`;
  * means one was removed, and something is still asking for it.
  */
 const EXPECTED_KEY_COUNT = 8;
+
+/**
+ * ── The pre-registered grant declaration (phase decision D-02) ─────────────
+ *
+ * Every (role × capability) pair of the cross product, declared as one of two
+ * things and never as silence:
+ *
+ *   a GRANT — the `requires_approved` value the row must carry, `true` or `false`
+ *   a REFUSAL — the string `REFUSED`, which means **no row at all**
+ *
+ * MEASURED on 2026-08-07 against
+ * `supabase/migrations/20260807000000_capability_model.sql:390-423`. Written
+ * here, not derived from `private.role_capabilities`, for the reason
+ * `EXPECTED_KEY_COUNT` states above and `rls-baseline.mjs:113-130` states about
+ * its floors: a check that reads its expectation off the thing it is checking
+ * cannot fail.
+ *
+ * **If this trips, look at the capability model, not at this constant.** A pair
+ * that changed here without a plan behind it is the check being edited to agree
+ * with the defect it exists to find.
+ *
+ * WHY A REFUSAL IS AN ABSENCE AND NOT A COLUMN. The obvious alternative — a
+ * `granted boolean` on `private.role_capabilities`, with `granted = false` rows
+ * — is this phase's silent-widening trap, and it is worth naming before somebody
+ * proposes it in good faith. The resolver at
+ * `20260807000000_capability_model.sql:209-216` is:
+ *
+ *     select exists (
+ *       select 1 from public.profiles p
+ *       join private.role_capabilities rc on rc.role = p.role
+ *       where p.id = (select auth.uid())
+ *         and rc.capability = p_capability
+ *         and (not rc.requires_approved or p.status = 'approved')
+ *     );
+ *
+ * There is no `granted` in that `EXISTS`. A `granted = false` row therefore
+ * **GRANTS** the capability — the refusal would read as an explicit denial to a
+ * human and as a permission to Postgres, in every one of the 45 policy call
+ * sites at once. So the refusal is declared HERE, in this constant, and the
+ * database expresses it as the absence of a row. Do not add a `granted` column
+ * without editing that resolver in the same migration; do not add one at all
+ * while this constant exists to carry the meaning.
+ *
+ * The totals below are asserted as numbers, not only stated: a pair added to
+ * this constant without a decision fails the arithmetic instead of sliding in.
+ */
+const ROLE_GRANTS = {
+  master: {
+    'staff.manage': false,
+    'master.manage': false,
+    'catalogue.manage': true,
+    'membership.active': true,
+    'admin.access': false,
+    'organizer.access': false,
+    // ── D-06, and this paragraph is the point of the two lines below ──────
+    //
+    // `door.operate`'s `requires_approved` is `false` on BOTH grants, and it
+    // must stay false. Once ROLE-02's `role ⇒ approved` constraint exists this
+    // flag will LOOK redundant and somebody will propose flipping it as
+    // tidying. That is the ROADMAP's declared **"trap to refuse"**
+    // (`.planning/ROADMAP.md:235-241`), and the migration says the same thing at
+    // `20260807000000_capability_model.sql:415`: *"These two rows must not
+    // become true."*
+    //
+    // The two guard DIFFERENT things. The constraint protects the database; this
+    // row protects the night from the day the constraint is relaxed for one
+    // special case. And the asymmetry that decides it is unchanged: refusing a
+    // valid staff member at the door, in front of a queue, is worse than the
+    // alternative — the first error happens in front of people, the second does
+    // not.
+    //
+    // A reader who arrived here to remove the flag has now met the reason before
+    // the value. Assertion 2 of side 5 fails on a flipped flag and names this.
+    'door.operate': false,
+    'membership.card.view': true,
+  },
+  organizer: {
+    'staff.manage': false,
+    // Refused: P2/P4 is master alone, and `master.manage` is what "reserved to
+    // the master role" means. A row here would hand an organizer the deletion
+    // of events, artists and venues.
+    'master.manage': 'REFUSED',
+    'catalogue.manage': true,
+    'membership.active': true,
+    // Refused: the middleware rule for `/admin/*` other than the scanner is
+    // `role = master`. An organizer reaches `/organizer/*`, not `/admin/*`.
+    'admin.access': 'REFUSED',
+    'organizer.access': false,
+    // D-06 — see the paragraph on `master.door.operate` above. This is the row
+    // that matters at the door: an organizer whose status is still `pending`
+    // must be able to scan.
+    'door.operate': false,
+    'membership.card.view': true,
+  },
+  member: {
+    'staff.manage': 'REFUSED',
+    'master.manage': 'REFUSED',
+    'catalogue.manage': 'REFUSED',
+    'membership.active': true,
+    'admin.access': 'REFUSED',
+    'organizer.access': 'REFUSED',
+    // Refused, and this is the pair mutation A injects: a `member` with a
+    // `door.operate` row works the door. Nothing else in the model would say no.
+    'door.operate': 'REFUSED',
+    'membership.card.view': true,
+  },
+};
+
+/**
+ * The arithmetic, pre-registered beside the declaration it counts.
+ *
+ * 24 pairs = 3 roles × 8 capabilities. 16 grants, matching the migration's own
+ * claim at `20260807000000_capability_model.sql:386` (*"Sixteen grant rows"*)
+ * and `43-RESEARCH.md` § A.2's count of 2+1+2+3+1+2+2+3. 8 refusals, which is
+ * every pair the migration does NOT insert.
+ *
+ * Asserted rather than described: a role or a capability added to `ROLE_GRANTS`
+ * without a decision for each of its counterparts fails here first, before any
+ * database is read.
+ */
+const EXPECTED_PAIR_COUNT = 24;
+const EXPECTED_GRANT_COUNT = 16;
+const EXPECTED_REFUSAL_COUNT = 8;
+
+/** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
+const REFUSED = 'REFUSED';
+
+/** The roles `ROLE_GRANTS` decides for, in declaration order. */
+const DECLARED_ROLES = Object.keys(ROLE_GRANTS);
+
+/**
+ * The ONE place a (role, capability) pair becomes a Map key.
+ *
+ * One function, called by every half of every comparison below, and it is not
+ * fastidiousness. Writing the same template literal in three places produced,
+ * while this side was being written, a run in which all 24 pairs were reported
+ * unaccounted and all 16 grants reported missing — with a declaration that was
+ * entirely correct. The separators had drifted apart by one invisible
+ * character, which no diff and no review shows. A comparison whose two halves
+ * build their own keys is comparing its own typing, not the thing it measures;
+ * this is the same lesson as the four sides themselves, one level down.
+ *
+ * `::` rather than a space: neither a role label nor a capability key can
+ * contain it, so two distinct pairs cannot collide on one key, and the
+ * separator is visible in a failure message.
+ */
+function pairKey(role, capability) {
+  return `${role}::${capability}`;
+}
+
+/**
+ * Flattens `ROLE_GRANTS` into one entry per pair, and checks its own arithmetic
+ * before anything is measured.
+ *
+ * Each entry keeps its `role` and `capability` as FIELDS rather than as a key
+ * to be split apart later. The key is an implementation detail of the Map; a
+ * failure message that re-derives a role by splitting that key is one invisible
+ * character away from printing `undefined` at the reader, which is how this
+ * function was first written and what `pairKey` above records.
+ *
+ * This runs at module scope on purpose: it reads no database, no file and no
+ * network, so there is no reason to defer it, and the earliest possible failure
+ * is the one a reader can act on. A declaration that does not add up is not a
+ * weaker expectation — it is a different one than the one that was reviewed.
+ */
+function flattenDeclaration() {
+  const grants = new Map(); // pairKey -> { role, capability, requiresApproved }
+  const refusals = new Map(); // pairKey -> { role, capability }
+  const malformed = [];
+
+  for (const [role, byCapability] of Object.entries(ROLE_GRANTS)) {
+    for (const [capability, value] of Object.entries(byCapability)) {
+      const pair = pairKey(role, capability);
+      if (value === REFUSED) refusals.set(pair, { role, capability });
+      else if (typeof value === 'boolean')
+        grants.set(pair, { role, capability, requiresApproved: value });
+      else
+        malformed.push(
+          `ROLE_GRANTS.${role}["${capability}"] is ${JSON.stringify(value)} — a pair is either ` +
+            `a boolean requires_approved (a grant) or the string "${REFUSED}" (no row at all).`
+        );
+    }
+  }
+
+  const total = grants.size + refusals.size;
+  const problems = [...malformed];
+  if (total !== EXPECTED_PAIR_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${total} pairs, expected ${EXPECTED_PAIR_COUNT} ` +
+        `(${DECLARED_ROLES.length} roles × ${EXPECTED_KEY_COUNT} capabilities).`
+    );
+  if (grants.size !== EXPECTED_GRANT_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${grants.size} grants, expected ${EXPECTED_GRANT_COUNT}.`
+    );
+  if (refusals.size !== EXPECTED_REFUSAL_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${refusals.size} refusals, expected ${EXPECTED_REFUSAL_COUNT}.`
+    );
+
+  if (problems.length)
+    refuse(
+      'the pre-registered grant declaration does not add up, so nothing below it is the ' +
+        'expectation that was reviewed:\n  - ' +
+        problems.join('\n  - ') +
+        '\nA role or a capability added without a decision for each of its counterparts fails ' +
+        'here. Look at the capability model and at phase decision D-02, NOT at the totals. ' +
+        'Nothing was measured against any database.',
+      1
+    );
+
+  return { grants, refusals };
+}
+
+const DECLARATION = flattenDeclaration();
 
 /** The targets this script can reach, borrowed from the baseline harness. */
 const KNOWN_TARGETS = ['production', 'container'];
@@ -388,6 +620,34 @@ async function readCatalogue(target) {
 }
 
 /**
+ * The grant rows, read from whichever database the target points at.
+ *
+ * This is the read the header of this file said for two phases did not happen.
+ * It is three columns and no member row: `role` is one of three design labels,
+ * `capability` is a catalogue key, `requires_approved` is a flag. Nothing here
+ * identifies a person, which is what keeps this script printable in a public
+ * repository (CLAUDE.md Guardrail 5).
+ *
+ * `read_only: true` for the same mechanical reason as `readCatalogue`.
+ */
+async function readGrants(target) {
+  const rows = await target.query(
+    `select role, capability, requires_approved
+       from private.role_capabilities
+      order by role, capability`,
+    { readOnly: true }
+  );
+  return rows.map((r) => ({
+    role: String(r.role),
+    capability: String(r.capability),
+    // The Management API renders booleans as JSON booleans and the container
+    // target through `pg` as JS booleans; both are compared as booleans here so
+    // a string "false" can never read as truthy.
+    requiresApproved: r.requires_approved === true || r.requires_approved === 'true',
+  }));
+}
+
+/**
  * Every capability key a live policy asks for, with the policies that ask.
  *
  * Read from `pg_policies` — Postgres's own re-print of the APPLIED policy —
@@ -461,14 +721,22 @@ async function run(target, targetLabel) {
   const dbKeys = [...new Set(await readCatalogue(target))].sort();
   const { keys: policyKeys, policyRows, callSites } = await readPolicyKeys(target);
   const { resolved: srcKeys, unresolved, commentOnly, fileCount } = readSourceReferences(memberToKey);
+  const grantRows = await readGrants(target);
 
   // ── the refusal, before any comparison ──────────────────────────────────
   //
   // An empty side makes every comparison below vacuously green, and a check
   // that cannot fail is not a check. This is the same refusal as
   // `verify-persona.mjs:225-233` and `rls-baseline.mjs`'s floors, and it is
-  // stated as four independent clauses so the message names WHICH side was
+  // stated as five independent clauses so the message names WHICH side was
   // empty rather than reporting "something is wrong".
+  //
+  // The GRANT clause is the one that matters most, and it is the least
+  // intuitive: an empty `private.role_capabilities` denies EVERYTHING —
+  // `has_capability` answers false for every subject and every key — while a
+  // side-5 that only compared rows it found would report every grant missing
+  // and every refusal honoured. Reporting the emptiness is the honest answer;
+  // reporting "8 refusals confirmed" would be true and useless.
   const empty = [];
   if (tsKeys.length === 0) empty.push(`TS — ${capObject.reason ?? 'no keys parsed'}`);
   if (dbKeys.length === 0) empty.push('DB — private.capabilities returned no rows');
@@ -476,10 +744,15 @@ async function run(target, targetLabel) {
     empty.push(`POLICY — no policy in ${policyRows} rows of pg_policies calls has_capability`);
   if (srcKeys.size === 0)
     empty.push(`SRC — no CAP. reference found in ${fileCount} files under src/`);
+  if (grantRows.length === 0)
+    empty.push(
+      'GRANT — private.role_capabilities returned no rows, so every role holds NOTHING and ' +
+        'every comparison of a grant below would report a loss rather than a mismatch'
+    );
   if (empty.length) {
     say('');
     refuse(
-      `${empty.length} of the four sides measured EMPTY, so every comparison below would be ` +
+      `${empty.length} of the five sides measured EMPTY, so every comparison below would be ` +
         'vacuously green:\n  - ' +
         empty.join('\n  - ') +
         '\nA check that cannot fail is not a check. Nothing is asserted.',
@@ -491,7 +764,7 @@ async function run(target, targetLabel) {
   say(
     `      TS ${tsKeys.length} · DB ${dbKeys.length} · POLICY ${policyKeys.size} ` +
       `(${callSites} call sites in ${policyRows} policies) · SRC ${srcKeys.size} ` +
-      `(${fileCount} files walked)\n`
+      `(${fileCount} files walked) · GRANT ${grantRows.length} rows\n`
   );
 
   // ── the pre-registered count ────────────────────────────────────────────
@@ -607,6 +880,129 @@ async function run(target, targetLabel) {
     );
   }
 
+  // ── 5 · the grant rows versus the pre-registered declaration (D-02) ──────
+  //
+  // Assertion 1 — "the side is not empty" — is the GRANT clause of the refusal
+  // above, before any comparison, for the reason stated there. The three below
+  // are the comparisons, and each message ends by naming what was NOT measured,
+  // on the shape of `scripts/container/seed.mjs:317-324`: a failure that does
+  // not say what it leaves unknown invites the reader to assume the rest is
+  // fine.
+  //
+  // PROVED BY MUTATION, 2026-08-08 (`ai-engineering.md`, gate *prova per
+  // mutazione*). A check never shown to fail proves nothing, and this project
+  // has a recorded incident of a green read from a mutation that had not
+  // applied — so each mutation below was confirmed applied, by `git status
+  // --porcelain` or `git diff --stat`, BEFORE its result was read:
+  //
+  //   A  a scratch migration inserting ('member','door.operate',false) —
+  //      the widening. Container only. Exit 1, naming member × door.operate.
+  //   B  a scratch migration deleting ('organizer','door.operate') — the loss
+  //      that shows up at the door. Container only. Exit 1, naming the pair.
+  //   C  the member × door.operate entry removed from ROLE_GRANTS. Exit 1 from
+  //      the arithmetic guard; with the two totals lowered to match — the shape
+  //      of somebody making the check agree with the edit — exit 1 again, this
+  //      time from assertion 4, naming the pair as UNACCOUNTED.
+  //
+  // Both targets were 5/5 green before any mutation and after every revert, and
+  // no scratch migration survived the task. The messages are quoted verbatim in
+  // `.planning/phases/43-role-model-account-creation/43-02-SUMMARY.md`.
+  {
+    const { grants, refusals } = DECLARATION;
+    const problems = [];
+
+    // Built with `pairKey`, the same function the declaration used — see its
+    // comment for why that matters more than it looks.
+    const foundByPair = new Map(); // pairKey -> requires_approved, as read
+    for (const row of grantRows)
+      foundByPair.set(pairKey(row.role, row.capability), row.requiresApproved);
+
+    // ── assertion 2 · every declared grant has its row, with its flag ──────
+    for (const [pair, { role, capability, requiresApproved: declared }] of grants) {
+      if (!foundByPair.has(pair)) {
+        problems.push(
+          `${role} × ${capability} is a DECLARED GRANT with NO ROW in ` +
+            'private.role_capabilities — THE ROLE SILENTLY LOST A CAPABILITY. ' +
+            (capability === 'door.operate'
+              ? 'This one is the door: the loss shows up as a refusal in front of a queue, at ' +
+                'two in the morning, on a phone. '
+              : '') +
+            'Whether any OTHER source would still grant it was not measured — ' +
+            'private.has_capability has exactly one source today, so there is none.'
+        );
+        continue;
+      }
+      const found = foundByPair.get(pair);
+      if (found !== declared)
+        problems.push(
+          `${role} × ${capability} has requires_approved = ${found}, declared ${declared} — ` +
+            'THE PREDICATE CHANGED. ' +
+            (capability === 'door.operate'
+              ? 'This is the ROADMAP\'s "trap to refuse" (.planning/ROADMAP.md:235-241) and the ' +
+                'migration\'s own "These two rows must not become true" ' +
+                '(20260807000000_capability_model.sql:415). The role constraint protects the ' +
+                'database; this flag protects the night from the day the constraint is relaxed ' +
+                'for one special case. '
+              : '') +
+            'Which subjects this now admits or refuses was not measured — this side reads the ' +
+            'rows, never a profile.'
+        );
+    }
+
+    // ── assertion 3 · every declared refusal has NO row ────────────────────
+    for (const [pair, { role, capability }] of refusals) {
+      if (!foundByPair.has(pair)) continue;
+      problems.push(
+        `${role} × ${capability} is a DECLARED REFUSAL but HAS A ROW in ` +
+          `private.role_capabilities (requires_approved = ${foundByPair.get(pair)}) — ` +
+          'THIS IS A WIDENING. private.has_capability matches on (role, capability) alone ' +
+          '(20260807000000_capability_model.sql:209-216): there is no `granted` column in that ' +
+          'EXISTS, so the row GRANTS the capability whatever it was meant to express. Every ' +
+          `${role} now holds "${capability}" in every policy and every caller that asks for it, ` +
+          'at once. Which policies those are was not measured here — side 2 lists the keys ' +
+          'policies ask for, and src/ asks for more.'
+      );
+    }
+
+    // ── assertion 4 · no pair is unaccounted, in either direction ──────────
+    const declaredRoles = new Set(DECLARED_ROLES);
+    for (const role of DECLARED_ROLES)
+      for (const key of dbKeys) {
+        const pair = pairKey(role, key);
+        if (grants.has(pair) || refusals.has(pair)) continue;
+        problems.push(
+          `${role} × ${key} is UNACCOUNTED: the catalogue holds "${key}" and ROLE_GRANTS ` +
+            `decides nothing for ${role}. A capability minted without a decision for each role ` +
+            'is exactly what D-02 forbids — "considered and refused" must be distinguishable ' +
+            'from "forgotten", and silence is the second. Whether the database has a row for ' +
+            'this pair was not measured, because there is nothing to compare it against.'
+        );
+      }
+    for (const row of grantRows)
+      if (!declaredRoles.has(row.role))
+        problems.push(
+          `a row grants ${row.role} × ${row.capability}, and ROLE_GRANTS decides nothing for ` +
+            `the role "${row.role}" — AN UNDECLARED ROLE HOLDS CAPABILITIES. Add the role to ` +
+            'ROLE_GRANTS with a decision for every catalogue key, in the plan that introduces ' +
+            'it. Nothing about what that role can reach was measured: this side can only ' +
+            'compare against a declaration, and there is none.'
+        );
+
+    if (problems.length)
+      problems.push(
+        'Look at the capability model and at the migration that changed it, NOT at ROLE_GRANTS. ' +
+          'Editing the declaration to agree with the database is editing the detector to agree ' +
+          'with what it was built to detect.'
+      );
+
+    check(
+      '5 · every role holds exactly the declared set of capabilities',
+      problems,
+      `${grants.size} grants and ${refusals.size} refusals over ${DECLARED_ROLES.length} roles × ` +
+        `${dbKeys.length} keys, both directions, ${grantRows.length} rows read`
+    );
+  }
+
   // Not a comparison — a measurement worth printing, because the coverage of
   // the two consuming sides is the thing Phase 34 will act on.
   notes.push(
@@ -626,7 +1022,7 @@ const invokedDirectly = process.argv[1] && resolve(process.argv[1]) === fileURLT
 if (invokedDirectly) {
   const options = parseArgs(process.argv.slice(2));
 
-  console.log('\nverify-capabilities — the four declarations of one capability set\n');
+  console.log('\nverify-capabilities — one capability set, five sides\n');
 
   try {
     if (options.target === 'container') {
@@ -656,18 +1052,20 @@ if (invokedDirectly) {
   }
 
   say(
-    '\n  Note: this asserts that the four declarations name the same keys. It does NOT assert' +
-      '\n  that a capability is granted to the right roles — private.role_capabilities is not' +
-      '\n  read here — and it does not assert that any policy is correct.\n'
+    '\n  Note: this asserts that the four declarations name the same keys, AND that every role' +
+      '\n  holds exactly the capabilities declared for it in ROLE_GRANTS, with the declared' +
+      '\n  requires_approved — private.role_capabilities IS read here, since plan 43-02. It does' +
+      '\n  NOT assert that any policy is correct: which subjects a predicate admits is measured' +
+      '\n  by npm run baseline:rls, and no profile row is read by this script.\n'
   );
 
   if (failures.length) {
-    say(`FAILED ${failures.length}/4: ${failures.join(' · ')}\n`);
+    say(`FAILED ${failures.length}/5: ${failures.join(' · ')}\n`);
     process.exit(1);
   }
   say(
     warnings.length
-      ? `4/4 green, ${warnings.length} warning(s) — see above.\n`
-      : '4/4 green, 0 warnings.\n'
+      ? `5/5 green, ${warnings.length} warning(s) — see above.\n`
+      : '5/5 green, 0 warnings.\n'
   );
 }
