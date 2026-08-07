@@ -9,6 +9,7 @@
     "lint": "eslint",
     "verify:persona": "node scripts/verify-persona.mjs",
     "verify:capabilities": "node scripts/verify-capabilities.mjs",
+    "verify:no-header-identity": "node scripts/verify-no-header-identity.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
