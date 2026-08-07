@@ -888,6 +888,25 @@ async function run(target, targetLabel) {
   // on the shape of `scripts/container/seed.mjs:317-324`: a failure that does
   // not say what it leaves unknown invites the reader to assume the rest is
   // fine.
+  //
+  // PROVED BY MUTATION, 2026-08-08 (`ai-engineering.md`, gate *prova per
+  // mutazione*). A check never shown to fail proves nothing, and this project
+  // has a recorded incident of a green read from a mutation that had not
+  // applied — so each mutation below was confirmed applied, by `git status
+  // --porcelain` or `git diff --stat`, BEFORE its result was read:
+  //
+  //   A  a scratch migration inserting ('member','door.operate',false) —
+  //      the widening. Container only. Exit 1, naming member × door.operate.
+  //   B  a scratch migration deleting ('organizer','door.operate') — the loss
+  //      that shows up at the door. Container only. Exit 1, naming the pair.
+  //   C  the member × door.operate entry removed from ROLE_GRANTS. Exit 1 from
+  //      the arithmetic guard; with the two totals lowered to match — the shape
+  //      of somebody making the check agree with the edit — exit 1 again, this
+  //      time from assertion 4, naming the pair as UNACCOUNTED.
+  //
+  // Both targets were 5/5 green before any mutation and after every revert, and
+  // no scratch migration survived the task. The messages are quoted verbatim in
+  // `.planning/phases/43-role-model-account-creation/43-02-SUMMARY.md`.
   {
     const { grants, refusals } = DECLARATION;
     const problems = [];
