@@ -208,6 +208,54 @@ export function scan() {
   return { files, scanned, hits };
 }
 
+/**
+ * Assertion B — the strip is ARMED, as LIVE CODE.
+ *
+ * Assertion A (the census above) exempts the middleware, so by construction it
+ * can say nothing about the three lines that do the actual work. This is the
+ * check for those three lines, and it exists because the property it guards is
+ * the one thing a green census cannot imply.
+ *
+ * Two failure modes, and the filter is what separates them from a pass:
+ *
+ *   1. The lines are COMMENTED OUT. `scripts/probe-forged-identity.sh` comments
+ *      out exactly these three lines as its positive control and restores them
+ *      afterwards. An unfiltered `grep -c` counts the commented copies and
+ *      reports 3 — a green from a disarmed guard, produced by a botched
+ *      restore, on the only remaining protection against a future reader.
+ *   2. A `set` comes back. That is worse than a missing `delete`, because it
+ *      manufactures a value that looks authoritative to whoever reads it.
+ *
+ * The filter drops any line whose first non-space character begins a comment
+ * (`//`, `*`, `/*`). It is deliberately crude: a header name inside a string
+ * literal on a comment-shaped line is not a thing this file has ever contained,
+ * and a crude filter that is obviously correct beats a parser that is subtly
+ * not. (`scripts/verify-capabilities.mjs` is the cautionary case — WR-07: a
+ * string literal containing an apostrophe defeats its parser, and one exists at
+ * `src/app/(auth)/register/page.tsx:13`.)
+ */
+export const EXPECTED_DELETES = 3;
+
+export function stripCounts(source) {
+  const live = source
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line));
+  const count = (needle) =>
+    live.filter((line) => line.includes(needle)).length;
+  return {
+    deletes: count(`requestHeaders.delete("${HEADER_NEEDLE}`),
+    sets: count(`requestHeaders.set("${HEADER_NEEDLE}`),
+  };
+}
+
+function inspectStrip() {
+  const counts = stripCounts(readFileSync(`${ROOT}/${EXEMPT_PATH}`, 'utf8'));
+  return {
+    ...counts,
+    ok: counts.deletes === EXPECTED_DELETES && counts.sets === 0,
+  };
+}
+
 // ── the run ────────────────────────────────────────────────────────────────
 
 /**
@@ -270,18 +318,48 @@ if (invokedDirectly) {
 
   console.log(`  scanned  : ${scanned.length} files under src/`);
   console.log(`  exempt   : ${EXEMPT_PATH} — the ONLY file permitted to name these headers,`);
-  console.log('             because it is the only file permitted to SET them.');
+  console.log('             because it is the only file permitted to DELETE them. After plan');
+  console.log('             33-14 NOTHING may set them, and assertion B below enforces that.');
   console.log(`  needle   : "${HEADER_NEEDLE}", literal substring, matched case-insensitively.`);
   console.log('             Comments are COUNTED, not filtered — see decision 3 in this file.\n');
 
-  if (hits.length === 0) {
-    console.log(`  ✓ no file outside ${EXEMPT_PATH} names an identity header.\n`);
+  const strip = inspectStrip();
+  console.log(
+    `  strip    : ${strip.deletes} live delete(s), ${strip.sets} live set(s) in ${EXEMPT_PATH}` +
+      ` (comments filtered)\n`
+  );
+
+  if (hits.length === 0 && strip.ok) {
+    console.log(`  ✓ A. no file outside ${EXEMPT_PATH} names an identity header.`);
+    console.log(
+      `  ✓ B. the strip is ARMED: exactly ${EXPECTED_DELETES} live deletes, no live set.\n`
+    );
     console.log(
       '  This says nothing about whether the middleware strip works at runtime — that is\n' +
         '  scripts/probe-forged-identity.sh — and nothing about whether anything is authorised\n' +
         '  correctly. The middleware is UX; RLS is the security boundary.\n'
     );
     process.exit(0);
+  }
+
+  if (!strip.ok) {
+    console.log('  ✗ B. THE STRIP IS NOT ARMED.\n');
+    console.log(
+      `      expected: ${EXPECTED_DELETES} live \`requestHeaders.delete("${HEADER_NEEDLE}…")\` and 0 live\n` +
+        `                \`requestHeaders.set("${HEADER_NEEDLE}…")\` in ${EXEMPT_PATH}\n` +
+        `      measured: ${strip.deletes} delete(s), ${strip.sets} set(s)\n`
+    );
+    console.log(
+      '      Comment lines are filtered BEFORE counting, and that is load-bearing. An\n' +
+        '      unfiltered count reads 3 for a middleware whose three delete lines were left\n' +
+        '      COMMENTED OUT by a botched restore after a positive-control mutation — a green\n' +
+        '      from a disarmed guard, on the one line that protects every future reader.\n'
+    );
+    console.log(
+      '      A live `set` is worse than a missing `delete`: it manufactures a value that\n' +
+        '      looks authoritative. Nothing may set these names again.\n'
+    );
+    if (hits.length === 0) process.exit(1);
   }
 
   const byFile = new Map();

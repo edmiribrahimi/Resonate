@@ -72,11 +72,17 @@ export async function updateSession(request: NextRequest) {
   // is granted to `authenticated` and revoked from `anon`, so an anonymous
   // request must not call it at all rather than call it and be refused.
   //
-  // `role` and `status` survive as values only because the header-injection
-  // block below still needs them — 46 files read x-user-role / x-user-status,
-  // and replacing that transport is a later phase. No decision here reads them.
-  let role: string | null = null;
-  let status: string | null = null;
+  // The middleware no longer keeps `role` and `status` as values at all. It
+  // used to, for one reason only: the header-injection block that stood below
+  // needed them. Phase 33 deleted that block, and with it the last consumer.
+  // No decision in this file has ever read them.
+  //
+  // They DO still travel in the `my_access_context()` payload, and that is not
+  // an oversight. `MobileNav` and `StaffNav` are `"use client"` components that
+  // take `role` and `status` as props and cannot import the DAL, so a parent
+  // Server Component resolves them and passes them down. Removing the two
+  // fields from the payload is STAFF-03 in phase 34, not this phase — doing it
+  // here would turn a transport swap into a nav redesign.
   let capabilities = new Set<string>();
   let capabilitiesResolveFailed = false;
 
@@ -98,16 +104,13 @@ export async function updateSession(request: NextRequest) {
 
     const context = data as {
       capabilities?: unknown;
-      role?: string | null;
-      status?: string | null;
     } | null;
 
-    // The same `?? "member"` / `?? "pending"` defaults, in the same place. An
-    // authenticated user with no profile row is still a pending member, and
-    // the capability set for that subject is the empty set — which produces
-    // the same verdict on all four rules by a different mechanism.
-    role = context?.role ?? "member";
-    status = context?.status ?? "pending";
+    // An authenticated user with no profile row is a pending member, and the
+    // capability set for that subject is the empty set — which produces the
+    // same verdict on all four rules below as the `?? "member"` / `?? "pending"`
+    // defaults did, by a different mechanism. The defaults themselves are now
+    // redundant here: nothing in this file consumes `role` or `status`.
     capabilities = new Set(
       Array.isArray(context?.capabilities)
         ? (context.capabilities as string[])
@@ -123,6 +126,17 @@ export async function updateSession(request: NextRequest) {
   const bounceToDashboard = () => {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    // WR-04. This project has no error tracking, so a response header nothing
+    // reads and a log nobody watches are the same thing: the user saw an
+    // ordinary bounce and could not tell an infrastructure fault from a
+    // permissions refusal. `meta-gates.md` requires an OBSERVABLE effect, not a
+    // log line. The search param carries the boolean the middleware already
+    // computed — this is transport, not error handling, and no try/catch was
+    // added to produce it. The response header stays as well: it costs nothing
+    // and it is the only signal available on the non-redirect path below.
+    if (capabilitiesResolveFailed) {
+      url.searchParams.set("access", "unavailable");
+    }
     const response = NextResponse.redirect(url);
     if (capabilitiesResolveFailed) {
       response.headers.set(CAPABILITY_DIAGNOSTIC_HEADER, "1");
@@ -196,17 +210,31 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // --- Header injection ---
-  // Create new request headers with role/status/id for downstream Server Components
+  // --- Inbound identity-header hygiene ---
   const requestHeaders = new Headers(request.headers);
 
-  // An inbound x-user-* header is attacker-supplied input: the client can send
-  // whatever it likes. These are cleared unconditionally BEFORE the branch
-  // below, because a request that is not authenticated used to carry the
-  // client's own value straight through to the Server Components and server
-  // actions that read it — including the SumUp refund path, which gates on
-  // x-user-role and then uses a service-role client that bypasses every RLS
-  // policy. Only this middleware may set them.
+  // These three lines no longer protect any reader. After phase 33 nothing
+  // under src/ reads an identity header — `npm run verify:no-header-identity`
+  // asserts it, case-insensitively, and this file is the only one the assertion
+  // exempts. They stay anyway, and deliberately.
+  //
+  // An inbound identity header is attacker-supplied input: the client can send
+  // whatever it likes. Deleting it costs three lines and manufactures nothing.
+  // What they now prevent is a FUTURE reader — the next person who writes
+  // `headers().get(...)` for one of these names, from muscle memory or by
+  // copying a pattern out of this file's own git history, would otherwise
+  // receive attacker input with no protection at all.
+  //
+  // The injection that used to sit eleven lines below was removed in the same
+  // change, and the asymmetry is the whole point: a header nobody reads that
+  // something still MANUFACTURES is a trap, because the manufactured value
+  // looks authoritative. A header nobody reads that nothing manufactures and
+  // that we delete on the way in is a guard.
+  //
+  // Identity now comes from `public.my_access_context()` via
+  // `src/lib/capabilities/server.ts`. Middleware is UX; RLS is the security
+  // boundary — this deletion is neither, it is input hygiene, and nothing here
+  // substitutes for a row-level policy.
   requestHeaders.delete("x-user-role");
   requestHeaders.delete("x-user-status");
   requestHeaders.delete("x-user-id");
@@ -215,12 +243,6 @@ export async function updateSession(request: NextRequest) {
   // could assert "the capability lookup failed" to a downstream reader would be
   // handing it a forged excuse.
   requestHeaders.delete(CAPABILITY_DIAGNOSTIC_HEADER);
-
-  if (user) {
-    requestHeaders.set("x-user-role", role ?? "member");
-    requestHeaders.set("x-user-status", status ?? "pending");
-    requestHeaders.set("x-user-id", user.id);
-  }
 
   // Create response with injected headers
   const finalResponse = NextResponse.next({

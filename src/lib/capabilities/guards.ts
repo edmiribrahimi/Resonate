@@ -37,7 +37,8 @@
  *
  * ── The null-identity trap, which is the reason this file exists ─────────────
  *
- * The old sites read `headersList.get("x-user-id") || ""`. An absent identity
+ * The old sites read the injected identity header with a `|| ""` fallback. An
+ * absent identity
  * therefore became `""`, and `created_by !== ""` refused — correctly, but by
  * accident. `AccessContextResult.userId` is honestly typed `string | null`, so
  * a naive transcription of `created_by !== userId` compares `null !== null` and

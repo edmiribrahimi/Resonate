@@ -15,7 +15,21 @@ import ManagementSection from "@/components/account/ManagementSection";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole, UserStatus } from "@/types/database";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // WR-04. `?access=unavailable` is set by `bounceToDashboard()` in
+  // `src/lib/supabase/middleware.ts` when — and only when — the capability
+  // lookup itself failed. It is NOT a refusal: a refusal bounces here with no
+  // param at all. Keeping the two distinguishable is the whole point; the
+  // recorded newsletter defect collapsed a network fault, a missing key and an
+  // already-subscribed address into one "Qualcosa è andato storto" and made all
+  // three undebuggable for the user and for whoever maintains it.
+  const accessUnavailable =
+    (await searchParams).access === "unavailable";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -202,6 +216,21 @@ export default async function DashboardPage() {
       </AnimatedSection>
 
       <AnimatedSection delay={0.1} className="flex flex-col gap-4 px-6">
+        {accessUnavailable && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-200">
+              We couldn&apos;t check your permissions just now
+            </p>
+            <p className="mt-1 text-sm text-amber-100/80">
+              This is a temporary problem on our side, not a decision about your
+              account. Nothing has changed about what you have access to. Please
+              try again in a moment.
+            </p>
+          </div>
+        )}
         {isPendingOrRejected ? (
           <>
             {/* Pending / Rejected state */}
