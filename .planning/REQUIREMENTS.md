@@ -48,7 +48,7 @@ Three rules override any requirement below that appears to contradict them:
 - [ ] **CAP-02**: A capability that exists in the database but is not assigned to a route fails the production build
 - [x] **CAP-03**: Existing role behaviour is reproduced exactly by the new model — a master, an organizer and a member can do neither more nor less than before this milestone
 - [x] **CAP-04**: A per-night grant takes effect immediately, without waiting for a session or token to refresh
-- [ ] **CAP-05**: No surface derives permission from a request header; identity comes from the session
+- [x] **CAP-05**: No surface derives permission from a request header; identity comes from the session
 - [x] **CAP-06**: Every existing row-level policy is reviewed for the performance pattern that re-evaluates the current user per row
 
 ### Role Model
@@ -195,7 +195,7 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | CAP-03 | Phase 32 | Complete |
 | CAP-04 | Phase 32 | Complete |
 | CAP-06 | Phase 32 | Complete |
-| CAP-05 | Phase 33 | Pending |
+| CAP-05 | Phase 33 | Complete |
 | ROLE-01 | Phase 43 | Pending |
 | ROLE-02 | Phase 43 | Pending |
 | ROLE-03 | Phase 43 | Pending |
