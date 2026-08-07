@@ -1,8 +1,9 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
@@ -18,13 +19,35 @@ interface PageProps {
 export default async function AdminTicketTiersPage({ params }: PageProps) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  //
+  // This page reads buyer identities and pending refunds through
+  // `getServiceClient()` (below), which bypasses every row-level policy. On
+  // that path THE CODE IS THE ONLY BOUNDARY — there is no RLS behind a
+  // service-role read to catch a mistake, so this line is not defence in depth,
+  // it is the defence. It is emphatically NOT a claim that a page check
+  // substitutes for RLS anywhere else: it is the statement that here there is
+  // no RLS to substitute for.
+  //
+  // What changed: the branch leading to that read used to be selected by a
+  // value the client puts in a header, held only by three lines of middleware.
+  // It is now selected by an answer Postgres computed from the caller's own
+  // verified JWT. The service client itself is unchanged.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
 

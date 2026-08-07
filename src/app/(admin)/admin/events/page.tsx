@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import EventList from "@/components/events/EventList";
@@ -9,14 +10,25 @@ import StaffNav from "@/components/staff/StaffNav";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminEventsPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  // Defense in depth: verify master access
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  // The middleware asks the same question for `/admin/*`; this is defence in
+  // depth, not a substitute for it — and neither is a substitute for RLS.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> / <StaffNav> as props: the source
+  // changed, the consumer did not. Nothing here branches on them. The cast
+  // narrows `string | null` to the union those client components declare;
+  // phase 34 (STAFF-03) owns converting them to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
   const { data: rawEvents, error } = await supabase

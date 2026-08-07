@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import RevenueCard from "@/components/analytics/RevenueCard";
@@ -30,14 +31,24 @@ export default async function AdminAnalyticsPage({
 }) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  // Defense in depth: verify master access
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  // Defence in depth behind the middleware's `/admin/*` rule — and neither is
+  // a substitute for RLS, which is what actually bounds these reads.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
 

@@ -1,8 +1,9 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import GuestListClient from "@/app/(organizer)/organizer/events/[id]/guest-list/GuestListClient";
 import type { UserRole, UserStatus, GuestListEntry } from "@/types/database";
@@ -14,14 +15,35 @@ interface PageProps {
 export default async function AdminGuestListPage({ params }: PageProps) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  // Defense in depth: verify master access
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  //
+  // This page reads `guest_list_entries` through `getServiceClient()` (below),
+  // which bypasses every row-level policy. On that path THE CODE IS THE ONLY
+  // BOUNDARY: there is no RLS behind a service-role read, so this line is not
+  // defence in depth, it is the defence. It does NOT substitute for RLS
+  // anywhere else; here there is no RLS to substitute for. A guest-list entry
+  // is an unpaid admission, so the list of who holds one is exactly the sort of
+  // thing that must not widen by accident.
+  //
+  // What changed: the branch leading to that read used to be selected by a
+  // value the client puts in a header. It is now selected by an answer Postgres
+  // computed from the caller's own verified JWT. The service client itself is
+  // unchanged.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
 

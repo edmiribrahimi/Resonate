@@ -1,19 +1,31 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
 import { createEvent } from "@/app/(organizer)/organizer/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminNewEventPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  // `createEvent` re-verifies inside itself: a page-level check does not
+  // extend to a Server Action, which is its own entry point.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   return (
     <div className="min-h-dvh pb-24">
