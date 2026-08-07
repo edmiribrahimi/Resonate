@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getAccessContext } from "@/lib/capabilities/server";
+import type { AccessContextResult } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/email";
 import { MemberApprovedEmail } from "@/emails/member-approved";
@@ -41,60 +43,69 @@ async function sendRejectionEmail(email: string, fullName: string) {
   });
 }
 
-// Master-only verification (for role management, deactivate, reactivate)
-async function verifyMaster(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+// =============================================================================
+// TWO functions, and they are NOT duplicates. Do not merge them.
+// =============================================================================
+//
+// Their bodies are now four lines each and differ in exactly one: the
+// capability key. That is what will tempt the next reader who runs `diff` on
+// them into folding one into the other. It is also the whole point.
+//
+//   verifyMaster            -> CAP.MASTER_MANAGE  -> master ONLY
+//   verifyAdminOrOrganizer  -> CAP.STAFF_MANAGE   -> master AND organizer
+//
+// Merging them onto STAFF_MANAGE hands every organizer the power to change
+// another member's role, which is precisely the ceiling
+// `.planning/ACCESS-MODEL-DECISIONS.md` §6 puts in place: an organizer may
+// promote staff -> organizer, an organizer may NOT create a master, because a
+// self-replicating power must not reach the top. Merging them onto
+// MASTER_MANAGE goes the other way and takes approve/reject away from every
+// organizer. Neither direction is a tidy-up; both are verdict changes.
+//
+// EQUIVALENCE, MEASURED against `private.role_capabilities`
+// (`20260807000000_capability_model.sql`):
+//
+//   deleted test                                   grant rows                    requires_approved
+//   role !== "master"                              ('master','master.manage')    false      :396
+//   role !== "master" && role !== "organizer"      ('master','staff.manage')     false      :392
+//                                                  ('organizer','staff.manage')  false      :393
+//
+// Both deleted tests read a `select("role")`. `status` was never fetched, so it
+// could not be part of either predicate — which is why both map to grants with
+// `requires_approved = false`, and why neither maps to `catalogue.manage`
+// (`requires_approved = true`, :399-400). `member` is not `approved`: two axes,
+// and only one of them was ever being read here.
+//
+// WHY `master.manage` AND NOT `admin.access`. The two resolve to the same
+// predicate today — master alone, status ignored — so picking by predicate is
+// invisible. They are different QUESTIONS. `master.manage` asks "is this a
+// reserved operation", and `CAP_DESCRIPTIONS["master.manage"]` names *changing
+// another member's role or status* by hand. `admin.access` asks "may they reach
+// the admin area", and the two part company in phase 34, when the admin and
+// organizer trees collapse into one surface.
 
-  if (authError || !user) {
-    throw new Error("Not authenticated");
+/** Master-only: role management, deactivate, reactivate. */
+async function verifyMaster(): Promise<AccessContextResult> {
+  const ctx = await getAccessContext();
+  if (!ctx.capabilities.has(CAP.MASTER_MANAGE)) {
+    throw new Error("forbidden.master_manage_required");
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error("Profile not found");
-  }
-
-  if (profile.role !== "master") {
-    throw new Error("Forbidden: only master can change roles");
-  }
-
-  return user;
+  // A real subject, or nothing happens. Attribution (§5) requires every
+  // approval, rejection and promotion to record WHO — so an action must never
+  // proceed on a null identity. It sits here rather than at each call site
+  // because seven call sites are seven chances to omit it.
+  if (!ctx.userId) throw new Error("capabilities.resolve_failed: no_subject");
+  return ctx;
 }
 
-// Master or organizer verification (for approve/reject operations)
-async function verifyAdminOrOrganizer(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
+/** Master or organizer: approve / reject. */
+async function verifyAdminOrOrganizer(): Promise<AccessContextResult> {
+  const ctx = await getAccessContext();
+  if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
+    throw new Error("forbidden.staff_manage_required");
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error("Profile not found");
-  }
-
-  if (profile.role !== "master" && profile.role !== "organizer") {
-    throw new Error("Forbidden: only master or organizer can approve/reject members");
-  }
-
-  return user;
+  if (!ctx.userId) throw new Error("capabilities.resolve_failed: no_subject");
+  return ctx;
 }
 
 // --- Master-only actions (existing) ---
@@ -103,10 +114,9 @@ export async function updateMemberRole(
   memberId: string,
   newRole: "organizer" | "member"
 ) {
-  const supabase = await createClient();
-  const user = await verifyMaster(supabase);
+  const ctx = await verifyMaster();
 
-  if (memberId === user.id) {
+  if (memberId === ctx.userId) {
     throw new Error("Cannot change own role");
   }
 
@@ -142,10 +152,9 @@ export async function updateMemberRole(
 }
 
 export async function deactivateMember(memberId: string) {
-  const supabase = await createClient();
-  const user = await verifyMaster(supabase);
+  const ctx = await verifyMaster();
 
-  if (memberId === user.id) {
+  if (memberId === ctx.userId) {
     throw new Error("Cannot deactivate yourself");
   }
 
@@ -164,8 +173,7 @@ export async function deactivateMember(memberId: string) {
 }
 
 export async function reactivateMember(memberId: string) {
-  const supabase = await createClient();
-  await verifyMaster(supabase);
+  await verifyMaster();
 
   const serviceClient = getServiceClient();
   const { error } = await serviceClient
@@ -184,8 +192,7 @@ export async function reactivateMember(memberId: string) {
 // --- Approve/Reject actions (master + organizer) ---
 
 export async function approveMember(memberId: string) {
-  const supabase = await createClient();
-  await verifyAdminOrOrganizer(supabase);
+  await verifyAdminOrOrganizer();
 
   const serviceClient = getServiceClient();
 
@@ -218,8 +225,7 @@ export async function approveMember(memberId: string) {
 }
 
 export async function rejectMember(memberId: string) {
-  const supabase = await createClient();
-  await verifyAdminOrOrganizer(supabase);
+  await verifyAdminOrOrganizer();
 
   const serviceClient = getServiceClient();
 
@@ -252,8 +258,7 @@ export async function rejectMember(memberId: string) {
 }
 
 export async function bulkApproveMember(memberIds: string[]) {
-  const supabase = await createClient();
-  await verifyAdminOrOrganizer(supabase);
+  await verifyAdminOrOrganizer();
 
   if (memberIds.length === 0) {
     throw new Error("No members selected");
@@ -297,8 +302,7 @@ export async function bulkApproveMember(memberIds: string[]) {
 }
 
 export async function bulkRejectMember(memberIds: string[]) {
-  const supabase = await createClient();
-  await verifyAdminOrOrganizer(supabase);
+  await verifyAdminOrOrganizer();
 
   if (memberIds.length === 0) {
     throw new Error("No members selected");
