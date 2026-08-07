@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import QRCode from "qrcode";
 import { formatTime } from "@/utils/formatTime";
 import { generateTicketToken } from "@/utils/qr";
@@ -26,10 +26,11 @@ export default async function TicketPage({
     redirect("/login");
   }
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role and status come from the session, not from a request header. Nothing
+  // below reads either: the ticket is fetched by `.eq("user_id", user.id)` and
+  // the venue line renders `event_parties.venue_text` for the holder of that
+  // ticket, exactly as before. This conversion touches neither.
+  const { role, status } = await getAccessContext();
 
   // Fetch ticket with joins including party data
   const { data: ticket } = await supabase
@@ -208,7 +209,10 @@ export default async function TicketPage({
         </Link>
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
