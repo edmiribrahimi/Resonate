@@ -1,0 +1,1617 @@
+{
+  "artefact": "B2",
+  "target": "management-api",
+  "postgres_version": "17.6",
+  "captured_at": "2026-08-07",
+  "phase_point": "33-post",
+  "rows": [
+    {
+      "persona": "anon",
+      "table": "artists",
+      "count": 7,
+      "pk_md5": "0c19595889aed6a9c26a35e94c28cd30",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_code_tiers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_codes",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_items",
+      "count": 10,
+      "pk_md5": "8990dae5775efb5f86b3d1cc7411b8f7",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_parties",
+      "count": 3,
+      "pk_md5": "adc11d986c3b9e1f22edc8d7c3ddae23",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "63b8fba1fe49b56cb7fb814e4b1a6fb2",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "profiles",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_tiers",
+      "count": 1,
+      "pk_md5": "c6667402730947e14cbe030c683602e2",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "venues",
+      "count": 5,
+      "pk_md5": "60566fa9d51b97270794deccf0d95f87",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "artists",
+      "count": 7,
+      "pk_md5": "0c19595889aed6a9c26a35e94c28cd30",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_code_tiers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_codes",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_items",
+      "count": 10,
+      "pk_md5": "8990dae5775efb5f86b3d1cc7411b8f7",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_parties",
+      "count": 3,
+      "pk_md5": "adc11d986c3b9e1f22edc8d7c3ddae23",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "63b8fba1fe49b56cb7fb814e4b1a6fb2",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "profiles",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_tiers",
+      "count": 1,
+      "pk_md5": "c6667402730947e14cbe030c683602e2",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "venues",
+      "count": 5,
+      "pk_md5": "60566fa9d51b97270794deccf0d95f87",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "artists",
+      "count": 7,
+      "pk_md5": "0c19595889aed6a9c26a35e94c28cd30",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_code_tiers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_codes",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_items",
+      "count": 10,
+      "pk_md5": "8990dae5775efb5f86b3d1cc7411b8f7",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_tokens",
+      "count": 16,
+      "pk_md5": "666663060d83ca89e4f05c3357bc39e8",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_parties",
+      "count": 3,
+      "pk_md5": "adc11d986c3b9e1f22edc8d7c3ddae23",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "63b8fba1fe49b56cb7fb814e4b1a6fb2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "guest_list_entries",
+      "count": 1,
+      "pk_md5": "6f21aecb00f9a60fa14139ede0304d84",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "profiles",
+      "count": 4,
+      "pk_md5": "d128a95d459cf6845782751d05edb723",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_tiers",
+      "count": 1,
+      "pk_md5": "c6667402730947e14cbe030c683602e2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "tickets",
+      "count": 1,
+      "pk_md5": "74b8591d0c07886bf92415c8f380b5bd",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "venues",
+      "count": 5,
+      "pk_md5": "60566fa9d51b97270794deccf0d95f87",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "artists",
+      "count": 7,
+      "pk_md5": "0c19595889aed6a9c26a35e94c28cd30",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_code_tiers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_codes",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_items",
+      "count": 10,
+      "pk_md5": "8990dae5775efb5f86b3d1cc7411b8f7",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_parties",
+      "count": 3,
+      "pk_md5": "adc11d986c3b9e1f22edc8d7c3ddae23",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "63b8fba1fe49b56cb7fb814e4b1a6fb2",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "49685d9262121704bf5e57cf73c9a1c5",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_tiers",
+      "count": 1,
+      "pk_md5": "c6667402730947e14cbe030c683602e2",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "venues",
+      "count": 5,
+      "pk_md5": "60566fa9d51b97270794deccf0d95f87",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "artists",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "attendances",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_code_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_codes",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "door_scan_events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_items",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_orders",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_tokens",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_media",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_parties",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "events",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "guest_list_entries",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "newsletter_subscribers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "pending_purchases",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "profiles",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "rsvps",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_refunds",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_tiers",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "tickets",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "venues",
+      "count": null,
+      "pk_md5": null,
+      "vacuous": true
+    }
+  ],
+  "personas": [
+    {
+      "persona": "anon",
+      "resolved": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "resolved": true
+    },
+    {
+      "persona": "master/approved",
+      "resolved": true
+    },
+    {
+      "persona": "master/pending",
+      "resolved": false
+    },
+    {
+      "persona": "master/rejected",
+      "resolved": false
+    },
+    {
+      "persona": "member/approved",
+      "resolved": true
+    },
+    {
+      "persona": "member/pending",
+      "resolved": false
+    },
+    {
+      "persona": "member/rejected",
+      "resolved": false
+    },
+    {
+      "persona": "organizer/approved",
+      "resolved": false
+    },
+    {
+      "persona": "organizer/pending",
+      "resolved": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "resolved": false
+    }
+  ],
+  "table_row_counts": {
+    "artists": 7,
+    "attendances": 0,
+    "discount_code_tiers": 0,
+    "discount_codes": 0,
+    "door_scan_events": 0,
+    "drink_items": 10,
+    "drink_orders": 28,
+    "drink_tokens": 16,
+    "event_media": 0,
+    "event_parties": 3,
+    "events": 2,
+    "guest_list_entries": 1,
+    "newsletter_subscribers": 0,
+    "pending_purchases": 6,
+    "profiles": 4,
+    "rsvps": 0,
+    "ticket_refunds": 0,
+    "ticket_tiers": 1,
+    "tickets": 1,
+    "venues": 5
+  }
+}
