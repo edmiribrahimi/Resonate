@@ -422,6 +422,8 @@ export async function seedContainer(admin) {
     }
   }
 
+  await assertConstraintObject(admin);
+  await assertForbiddenWritesRefused(admin);
   await assertProbeRowSatisfiesTheRule(admin);
 
   // ── every other table, two rows, two owners ──────────────────────────────
@@ -484,6 +486,181 @@ export async function seedContainer(admin) {
   }
 
   return assertDiscriminating(admin, allTables, owners, personas);
+}
+
+/**
+ * ── Assertion 1: the container enforces the same object production does ───
+ *
+ * The restore above is `NOT VALID`, and that leaves the container holding a
+ * constraint that is not byte-for-byte production's: `convalidated` is `false`
+ * here and `true` there (measured on production, `43-MEASUREMENTS.md`
+ * measurement 2, where all four live CHECKs are validated).
+ *
+ * **No capture would notice.** B1 dumps policies, B2 and B3 fingerprint persona
+ * visibility, and not one of the three reads `pg_constraint`. A container
+ * enforcing a subtly different object than production, with every comparator
+ * green, is exactly the failure `seed.mjs`'s own header calls a green screen
+ * rather than evidence. So the difference is asserted here, deliberately, and
+ * printed on every run.
+ *
+ * The comparison is against `renderedDef` — a rendering MEASURED once and pinned
+ * — never against the migration's source text, because Postgres re-prints a
+ * predicate in its own normal form (`role not in (…)` comes back as
+ * `role <> ALL (ARRAY[…])`). And the tolerance is exactly one enumerated
+ * alternative, `NOT_VALID_SUFFIX`, never a wildcard: `rls-baseline-compare.mjs`
+ * enumerates its alternatives for the same reason, since a comparison with a
+ * wildcard in it has stopped being able to fail.
+ */
+async function assertConstraintObject(admin) {
+  const { name, present, renderedDef } = ROLE_IMPLIES_APPROVED;
+
+  if (!present) {
+    say(
+      `      skipped: ${name} is declared absent, so the constraint read-back measured nothing ` +
+        '(plan 43-06 flips `present`)'
+    );
+    return;
+  }
+
+  const observed = await readRoleImpliesApproved(admin);
+  if (!observed) {
+    throw new Error(
+      `"${name}" is not on public.profiles after the restore. The \`finally\` that re-adds it did not ` +
+        'run, or it ran and did not take. Every assertion about ROLE-02 below this line would pass by ' +
+        'having nothing to test. Nothing was measured.'
+    );
+  }
+
+  if (!renderedDef) {
+    throw new Error(
+      `ROLE_IMPLIES_APPROVED.renderedDef is null while \`present\` is true. Postgres renders the ` +
+        'constraint as:\n' +
+        `        ${observed.def}\n` +
+        'Pin that string (minus the trailing marker) in the declaration — measured, never composed. ' +
+        'Until it is pinned, nothing compares the container\'s constraint with production\'s.'
+    );
+  }
+
+  const expected = `${renderedDef}${NOT_VALID_SUFFIX}`;
+  if (observed.def !== expected) {
+    throw new Error(
+      `"${name}" is not the object this file declares.\n` +
+        `        expected: ${expected}\n` +
+        `        observed: ${observed.def}\n` +
+        'One of the two is wrong: either the migration changed the predicate without the declaration ' +
+        'following it, or the restore in this file drifted from the migration. Editing `renderedDef` ' +
+        'to match is only correct if the migration genuinely changed — otherwise it silences the one ' +
+        'check that can tell the container from production. Nothing about ROLE-02 was measured.'
+    );
+  }
+
+  if (observed.convalidated !== false) {
+    throw new Error(
+      `"${name}" came back convalidated=${observed.convalidated} in the container, and the restore is ` +
+        'written NOT VALID. Either the restore lost its NOT VALID — in which case it should have ' +
+        'failed outright on the four seeded rows — or something validated it afterwards. Nothing ' +
+        'about ROLE-02 was measured.'
+    );
+  }
+
+  say(`      ${name} restored: ${observed.def}`);
+  say(
+    '      convalidated=false here, true in production — the price of the NOT VALID restore, and no ' +
+      'capture reads pg_constraint, which is why it is asserted rather than compared'
+  );
+}
+
+/**
+ * ── Assertion 2: the rule actually refuses ────────────────────────────────
+ *
+ * **This is ROLE-02's ONLY automated detector in this repository**
+ * (`43-VALIDATION.md`). There is no test runner for this product (CLAUDE.md
+ * Guardrail 1), B1/B2/B3 do not read `pg_constraint`, and no comparator watches
+ * a write get refused. Whoever is about to delete this function is deleting the
+ * only mechanical evidence that D-04 is enforced at all; after that, the rule is
+ * a line in a migration that somebody believes.
+ *
+ * The four writes are the four states D-05 keeps seedable — the same four,
+ * deliberately, so that the seed both demonstrates they can be created with the
+ * rule relaxed and demonstrates they cannot be created with it in force.
+ *
+ * WHAT IS ASSERTED, AND WHY NOT THE MESSAGE. The branch is SQLSTATE `23514`
+ * (`43-MEASUREMENTS.md` measurement 5), plus the constraint's own name from the
+ * error's CONSTRAINT NAME field: a `23514` raised by `profiles_status_check` or
+ * `profiles_approved_via_check` would otherwise be a green for the wrong reason.
+ * The predicate is checked before the foreign key to `auth.users` fires, so the
+ * refusal is the CHECK's and not the FK's — `[VERIFIED: postgres:17.6,
+ * ExecConstraints runs before the AFTER-row referential trigger]`, and the
+ * constraint-name assertion is what keeps that measured rather than assumed.
+ *
+ * WHAT IS DELIBERATELY NOT PRINTED. `error.detail` on this table carries
+ * `Failing row contains (…)` — every column of the offending row, membership
+ * code included (`43-MEASUREMENTS.md` measurement 5). Here the row is synthetic,
+ * but the habit of printing that field is the one that publishes a door
+ * credential the day the same shape appears in product code. Code and
+ * constraint name only.
+ */
+async function assertForbiddenWritesRefused(admin) {
+  const { name, present } = ROLE_IMPLIES_APPROVED;
+
+  if (!present) {
+    say(
+      `      skipped: ${name} is declared absent, so the four forbidden writes were not attempted and ` +
+        'ROLE-02 has no automated evidence in this run'
+    );
+    return;
+  }
+
+  const { rows: before } = await admin.query('select count(*)::int as n from public.profiles');
+
+  const wrong = [];
+  for (const row of FORBIDDEN_WRITES) {
+    let error = null;
+    try {
+      await admin.query(
+        `insert into public.profiles (id, email, full_name, membership_code, role, status)
+         values ($1::uuid, $2, $3, $4, $5, $6)`,
+        [row.id, row.email, row.fullName, row.membershipCode, row.role, row.status]
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    if (!error) {
+      wrong.push(`${row.label}: the insert SUCCEEDED`);
+      continue;
+    }
+    if (error.code !== '23514') {
+      wrong.push(`${row.label}: SQLSTATE ${error.code ?? 'none'} (expected 23514)`);
+      continue;
+    }
+    if (error.constraint !== name) {
+      wrong.push(`${row.label}: 23514 from "${error.constraint ?? 'unnamed'}" (expected "${name}")`);
+      continue;
+    }
+    say(`      refused ${row.label.padEnd(19)} 23514 ${error.constraint}`);
+  }
+
+  if (wrong.length) {
+    throw new Error(
+      `the rule "${name}" did not refuse every write it forbids: ${wrong.join('; ')}. This is ` +
+        "ROLE-02's only automated detector, so a failure here means the phase's central rule is not " +
+        'enforced — or is enforced by a different constraint than the one declared. Do not relax the ' +
+        'expectation to get past it. Nothing about ROLE-02 was measured.'
+    );
+  }
+
+  const { rows: after } = await admin.query('select count(*)::int as n from public.profiles');
+  if (after[0].n !== before[0].n) {
+    throw new Error(
+      `public.profiles held ${before[0].n} rows before the four forbidden writes and ${after[0].n} ` +
+        'after. A refused insert must write nothing, so at least one of them was refused after ' +
+        'landing — which would mean the grid, the fingerprints and the write matrix are all measuring ' +
+        'a database with a row nobody intended. Nothing was measured.'
+    );
+  }
+
+  say(`      4/4 forbidden writes refused, profiles still ${after[0].n} rows`);
 }
 
 /**
