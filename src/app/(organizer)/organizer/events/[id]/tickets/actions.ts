@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  assertEventOwnership,
+  assertStaffManage,
+} from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -14,64 +19,33 @@ function getServiceClient() {
 }
 
 /**
- * Verify that the current user is an organizer or master.
- * Returns the authenticated user and whether they are the master.
+ * The local `verifyOrganizer` and `verifyEventOwnership` are GONE, not unused.
+ * They were byte-identical to the pair in
+ * `src/app/(organizer)/organizer/events/actions.ts` except for one error string
+ * each, and both now live once in `@/lib/capabilities/guards`.
+ *
+ * **The shape every action below follows, and why the order matters.**
+ *
+ *   const supabase = await createClient();
+ *   const ctx = await assertStaffManage();          // resolve ONCE
+ *   await assertEventOwnership(supabase, eventId, ctx);
+ *
+ * `assertStaffManage()` is called **exactly once per invocation** and its
+ * context is threaded onward. `cache()` does not memoise inside a Server Action
+ * body (measured — see `@/lib/capabilities/server`), so a second call is a
+ * second full round trip that no build and no fast connection will reveal.
+ *
+ * The ownership read still uses `supabase`, the cookie client, exactly as
+ * `verifyEventOwnership` did — RLS applies to it, and this conversion changes
+ * who may call, never what a call can see.
+ *
+ * **`isMaster` is now `ctx.capabilities.has(CAP.MASTER_MANAGE)`, and that is a
+ * measured equivalence, not a rename.** The grant table
+ * (`20260807000000_capability_model.sql:395`) holds exactly one row for the key,
+ * `('master', 'master.manage', false)` — role `master`, status ignored — which
+ * is byte-equal to the `profile.role === "master"` it replaces. So the
+ * service-client branch below is taken by exactly the same callers as before.
  */
-async function verifyOrganizer(
-  supabase: Awaited<ReturnType<typeof createClient>>
-) {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error("Profile not found");
-  }
-
-  if (profile.role !== "organizer" && profile.role !== "master") {
-    throw new Error("Forbidden: only organizers can manage ticket tiers");
-  }
-
-  return { user, isMaster: profile.role === "master" };
-}
-
-/**
- * Verify ownership of an event. Throws if the user is not the owner
- * and is not the master admin.
- */
-async function verifyEventOwnership(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  eventId: string,
-  userId: string,
-  isMaster: boolean
-) {
-  if (isMaster) return; // Master can manage any event
-
-  const { data: event, error } = await supabase
-    .from("events")
-    .select("created_by")
-    .eq("id", eventId)
-    .single();
-
-  if (error || !event) {
-    throw new Error("Event not found");
-  }
-
-  if (event.created_by !== userId) {
-    throw new Error("Forbidden: you can only manage tiers for your own events");
-  }
-}
 
 // =============================================================
 // Server Actions
@@ -82,9 +56,9 @@ async function verifyEventOwnership(
  */
 export async function createTier(eventId: string, partyId: string | null, formData: FormData) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Validate inputs
   const name = (formData.get("name") as string)?.trim();
@@ -113,7 +87,9 @@ export async function createTier(eventId: string, partyId: string | null, formDa
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client.from("ticket_tiers").insert({
     event_id: eventId,
@@ -146,9 +122,9 @@ export async function updateTier(
   formData: FormData
 ) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Validate inputs
   const name = (formData.get("name") as string)?.trim();
@@ -177,7 +153,9 @@ export async function updateTier(
   const expires_at = expiresAtRaw ? new Date(expiresAtRaw).toISOString() : null;
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client
     .from("ticket_tiers")
@@ -197,12 +175,14 @@ export async function updateTier(
  */
 export async function deleteTier(tierId: string, eventId: string) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Check ticket count -- tiers with existing sales cannot be deleted
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { count, error: countError } = await client
     .from("tickets")
@@ -243,9 +223,9 @@ export async function createDiscountCode(
   formData: FormData
 ) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
@@ -287,7 +267,9 @@ export async function createDiscountCode(
   }
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { data: discountCode, error } = await client
     .from("discount_codes")
@@ -338,9 +320,9 @@ export async function updateDiscountCode(
   formData: FormData
 ) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Validate inputs
   const code = (formData.get("code") as string)?.trim();
@@ -381,7 +363,9 @@ export async function updateDiscountCode(
     }
   }
 
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client
     .from("discount_codes")
@@ -443,11 +427,13 @@ export async function deleteDiscountCode(
   eventId: string
 ) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   // Check if discount code has been used on any tickets
   const { count, error: countError } = await client

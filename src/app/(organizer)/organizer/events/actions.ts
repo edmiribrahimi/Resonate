@@ -8,6 +8,11 @@ import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 import { menuCloseInstant } from "@/utils/datetime";
+import {
+  assertEventOwnership,
+  assertStaffManage,
+} from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
@@ -19,64 +24,43 @@ function getServiceClient() {
 }
 
 /**
- * Verify that the current user is an organizer or master.
- * Returns the authenticated user and whether they are the master.
+ * The local `verifyOrganizer` and `verifyEventOwnership` are GONE, not unused,
+ * and so is the fifth, INLINE copy of the ownership check that used to live in
+ * `reorderDrinkItems`. All of them are now one definition in
+ * `@/lib/capabilities/guards`.
+ *
+ * **The shape every gated action below follows:**
+ *
+ *   const supabase = await createClient();
+ *   const ctx = await assertStaffManage();          // resolve ONCE
+ *   await assertEventOwnership(supabase, eventId, ctx);
+ *
+ * `assertStaffManage()` is called **exactly once per invocation**. `cache()`
+ * does not memoise inside a Server Action body (measured — see
+ * `@/lib/capabilities/server`), so asking twice is two full round trips that
+ * neither `npm run build` nor a fast connection will show you.
+ *
+ * The ownership read still uses `supabase`, the cookie client, exactly as
+ * `verifyEventOwnership` did: RLS applies to it. This conversion changes who
+ * may call, never what a call can see. The `getServiceClient()` uses further
+ * down (the master write branch, `pending_purchases`, `drink_orders`,
+ * `drink_items` reordering, the token RPCs) are untouched for the same reason.
+ *
+ * **`isMaster` became `ctx.capabilities.has(CAP.MASTER_MANAGE)`, and that is a
+ * measured equivalence, not a rename.** The grant table
+ * (`20260807000000_capability_model.sql:395`) holds exactly one row for the key,
+ * `('master', 'master.manage', false)` — role `master`, status ignored — byte-
+ * equal to the `profile.role === "master"` it replaces. The service-client
+ * branch is therefore taken by exactly the same callers as before.
+ *
+ * **What is NOT gated here, stated rather than left to be discovered.**
+ * `getDrinkItems` below has no gate, and it must not acquire one: it is reached
+ * from `src/app/(public)/events/[slug]/menu/page.tsx`, the customer-facing
+ * drinks menu. The phase-32 container read matrix measures `drink_items` as
+ * **2 of 2 rows readable by `anon`** — the menu works *because* RLS permits an
+ * anonymous read, and `assertStaffManage()` on it would refuse every guest
+ * standing at the bar. Its boundary is that RLS policy, deliberately.
  */
-async function verifyOrganizer(
-  supabase: Awaited<ReturnType<typeof createClient>>
-) {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error("Profile not found");
-  }
-
-  if (profile.role !== "organizer" && profile.role !== "master") {
-    throw new Error("Forbidden: only organizers can manage events");
-  }
-
-  return { user, isMaster: profile.role === "master" };
-}
-
-/**
- * Verify ownership of an event. Throws if the user is not the owner
- * and is not the master admin.
- */
-async function verifyEventOwnership(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  eventId: string,
-  userId: string,
-  isMaster: boolean
-) {
-  if (isMaster) return; // Master can manage any event
-
-  const { data: event, error } = await supabase
-    .from("events")
-    .select("created_by")
-    .eq("id", eventId)
-    .single();
-
-  if (error || !event) {
-    throw new Error("Event not found");
-  }
-
-  if (event.created_by !== userId) {
-    throw new Error("Forbidden: you can only manage your own events");
-  }
-}
 
 interface PartyInput {
   id?: string;
@@ -242,7 +226,17 @@ function revalidateEventPaths(slug?: string) {
  */
 export async function createEvent(formData: FormData) {
   const supabase = await createClient();
-  const { user } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
+
+  // Narrowed ONCE, here, rather than with a `!` at the `created_by` write below.
+  // `assertStaffManage()` throws unless the caller holds `staff.manage`, which
+  // implies an authenticated subject — but TypeScript does not know that, and
+  // `ACCESS-MODEL-DECISIONS.md` §5 makes attribution a requirement. A `!` that
+  // turned out to be wrong would write a null into an ownership column and
+  // nothing in this project would report it: there is no error tracking.
+  if (!ctx.userId) {
+    throw new Error("capabilities.resolve_failed: no_subject");
+  }
 
   const data = validateEventData(formData);
 
@@ -270,7 +264,7 @@ export async function createEvent(formData: FormData) {
       lineup: data.lineup,
       cover_image: data.cover_image,
       is_published: false,
-      created_by: user.id,
+      created_by: ctx.userId,
     })
     .select()
     .single();
@@ -317,14 +311,16 @@ export async function createEvent(formData: FormData) {
  */
 export async function updateEvent(eventId: string, formData: FormData) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   const data = validateEventData(formData);
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client
     .from("events")
@@ -440,9 +436,9 @@ export async function updateEvent(eventId: string, formData: FormData) {
  */
 export async function deleteEvent(eventId: string) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Fetch slug before deletion for path revalidation
   const { data: event } = await supabase
@@ -452,7 +448,9 @@ export async function deleteEvent(eventId: string) {
     .single();
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client.from("events").delete().eq("id", eventId);
 
@@ -469,12 +467,14 @@ export async function deleteEvent(eventId: string) {
  */
 export async function publishEvent(eventId: string) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client
     .from("events")
@@ -501,12 +501,14 @@ export async function publishEvent(eventId: string) {
  */
 export async function unpublishEvent(eventId: string) {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  await verifyEventOwnership(supabase, eventId, user.id, isMaster);
+  await assertEventOwnership(supabase, eventId, ctx);
 
   // Use service-role client for master (bypasses RLS ownership check)
-  const client = isMaster ? getServiceClient() : supabase;
+  const client = ctx.capabilities.has(CAP.MASTER_MANAGE)
+    ? getServiceClient()
+    : supabase;
 
   const { error } = await client
     .from("events")
@@ -834,7 +836,7 @@ export async function addDrinkItem(
   partyId?: string
 ): Promise<DrinkItem> {
   const supabase = await createClient();
-  await verifyOrganizer(supabase);
+  await assertStaffManage();
 
   // Get next sort_order scoped to party
   let sortQuery = supabase
@@ -879,7 +881,7 @@ export async function updateDrinkItem(
   data: { name?: string; price?: number; is_available?: boolean }
 ): Promise<void> {
   const supabase = await createClient();
-  await verifyOrganizer(supabase);
+  await assertStaffManage();
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (data.name !== undefined) updates.name = data.name.trim();
@@ -903,7 +905,7 @@ export async function updateDrinkItem(
  */
 export async function removeDrinkItem(itemId: string): Promise<void> {
   const supabase = await createClient();
-  await verifyOrganizer(supabase);
+  await assertStaffManage();
 
   const { error } = await supabase
     .from("drink_items")
@@ -927,19 +929,15 @@ export async function reorderDrinkItems(
   ids: string[]
 ): Promise<{ success: true }> {
   const supabase = await createClient();
-  const { user, isMaster } = await verifyOrganizer(supabase);
+  const ctx = await assertStaffManage();
 
-  // Organizer-only: must own the event
-  if (!isMaster) {
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select("created_by")
-      .eq("id", eventId)
-      .single();
-    if (eventError || !event || event.created_by !== user.id) {
-      throw new Error("Forbidden: not your event");
-    }
-  }
+  // This was the FIFTH copy of the ownership check — inline rather than named,
+  // with the master case as an `if (!isMaster)` wrapper instead of a
+  // short-circuit. Same truth table, a third shape. It is now the one shared
+  // definition, which also gains the null-`created_by` refusal the inline form
+  // never had: `event.created_by !== user.id` with a null owner and a real user
+  // refused by luck, and would have ADMITTED had both been null.
+  await assertEventOwnership(supabase, eventId, ctx);
 
   if (ids.length === 0) return { success: true };
 
