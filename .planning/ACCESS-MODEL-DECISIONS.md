@@ -125,6 +125,27 @@ the most dangerous (`.claude/rules/meta-gates.md`, monotone guards).
 Repairing it yields a clean recovery path **without** a permanently live second
 administrator.
 
+## 12. Manual verification is deferred to the end of the build, deliberately
+
+**Owner decision, 2026-08-06:** phase 32's fourteen manual checks
+(`32-HUMAN-UAT.md`, all `pending`) are **not** run now. The build continues
+through phases 33, 43, 35 and 34, and everything is verified by hand at the end.
+
+Recorded because it is a decision with a price, not an oversight. The concern was
+raised and the owner decided against it, which closes it.
+
+**The price, stated once so nobody re-derives it in surprise:** phases 33, 43, 35
+and 34 all build on phase 32's capability model. If one of those fourteen checks
+is red, whatever was built on top of it is built on a wrong foundation, and the
+rework is proportional to how much was built. The two that carry the most:
+
+- **the door** — a `pending` organizer must be able to load `/admin/scanner`;
+- **CAP-04** — a permission change must take effect on the next request
+  (procedure M-01, five timestamps).
+
+`32-HUMAN-UAT.md` stays `status: partial` and keeps surfacing in
+`/gsd:progress` and `/gsd:audit-uat` until it is closed.
+
 ## 11. "A staff role implies approved" becomes a database rule, not a convention
 
 **Owner decision, 2026-08-06:** an account holding a staff role
