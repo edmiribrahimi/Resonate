@@ -135,8 +135,9 @@ import type { CapabilityKey } from "./keys";
  * and `@/lib/capabilities/guards`, which is where that distinction is made safe.
  *
  * `role` and `status` are still here, and the reason has changed. It is no
- * longer the header injection at `src/lib/supabase/middleware.ts:135-139`
- * (measured: **44** files read `x-user-role` / `x-user-status`, not 46, and
+ * longer the header injection in `src/lib/supabase/middleware.ts`, which plan
+ * 33-14 deleted outright
+ * (measured: **44** files read the injected role/status headers, not 46, and
  * phase 33 takes that count to **0**). It is `MobileNav` and `StaffNav` — two
  * `"use client"` components that take `role` and `status` as props and
  * therefore cannot import this module. Next.js's own guidance for that case is
@@ -164,7 +165,8 @@ export interface AccessContextResult {
  * is nobody to answer about" is a correct answer, and it is the empty set.
  *
  * `userId` is **`null`, deliberately not `""`**. The eleven surfaces this phase
- * replaces read `headersList.get("x-user-id") || ""`, and an empty string is a
+ * replaces read the injected identity header with a `|| ""` fallback, and an
+ * empty string is a
  * value that happens to compare unequal to every real id — which made those
  * sites refuse for an accidental reason rather than a stated one. `null` is the
  * honest answer to "who is this", and every consumer refuses on it explicitly:

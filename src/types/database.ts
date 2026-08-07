@@ -386,7 +386,7 @@ export interface RoleCapability {
  * already verified to authenticate the request. It was added by
  * `supabase/migrations/20260808000000_access_context_user_id.sql` so that the
  * ten sites deciding `events.created_by === <me>` can stop reading an
- * attacker-supplied `x-user-id` header. It is null only for a caller with no
+ * attacker-supplied identity header. It is null only for a caller with no
  * session, which the `REVOKE … FROM anon` makes unreachable through the granted
  * path — so a null here on a signed-in caller means the migration has not been
  * applied, and every consumer refuses on it rather than guessing.
@@ -401,8 +401,8 @@ export interface RoleCapability {
  * converts those two to capabilities and owns removing these fields. Every new
  * decision asks `capabilities`.
  *
- * (The figure "46 files" previously written here was wrong: the measured count
- * of files reading `x-user-role` / `x-user-status` is **44**, and phase 33 takes
+ * (The file count previously written here was wrong — it read 46: the measured count
+ * of files reading the injected role/status headers is **44**, and phase 33 takes
  * it to **0**. See the supersession note in
  * `20260808000000_access_context_user_id.sql`.)
  */
