@@ -32,11 +32,15 @@ decisions:
   - "D-33-03-C: requireMaster() stays at the head of every exported action (T-33-12), even though the middleware answers the same question"
   - "D-33-03-D: the money-path criterion-2 row stays OWED as a direct observation — evidence is routed to 33-12 and 33-14"
   - "D-33-03-E: requestRefund deliberately NOT converted — it is an ownership check, not a staff gate"
+  - "D-33-03-F: the two live-session steps are NOT executed, under owner decision 12 — recorded as owed, never as done"
+human_verification_owed: 2
+deferred_findings:
+  - "the /login?redirect= vs ?next= mismatch — pre-existing, confirmed with file:line, not fixed here"
 metrics:
-  duration: "~75 min"
+  duration: "~85 min"
   completed: 2026-08-07
-  tasks: 2 of 3 (task 3 is a blocking human checkpoint)
-  commits: 2
+  tasks: 3 of 3 (task 3 closed as far as it can go without a live session)
+  commits: 3
 requirements: [CAP-05]
 ---
 
@@ -47,13 +51,28 @@ request header — and the checkpoint step that was supposed to demonstrate it w
 **measured to be incapable of firing**, so it is recorded as a coupling check and
 the criterion-2 evidence is routed elsewhere.
 
-## Status: CHECKPOINT REACHED — steps 1 and 2 owed
+## Status: complete, with two human-verification items OWED
 
-Tasks 1 and 2 are complete and committed. Task 3 is a `checkpoint:human-verify`
-with `gate="blocking"`. Every step of its procedure that does not require a real
-signed-in session was **executed** and is recorded below with its verbatim
-result. Steps 1 and 2 need a `master` and an `organizer` session and are the only
-things outstanding.
+Tasks 1 and 2 are complete and committed. Task 3 was a `checkpoint:human-verify`
+with `gate="blocking"`; the owner resolved it and it is now closed **as far as it
+can go without a live session**.
+
+Every step of its procedure that does not require a signed-in session was
+**executed** and is recorded below with its verbatim result — steps 3, 4 and 5.
+Steps 1 and 2 require a real `master` and a real `organizer` session and were
+**not executed**. They are written out as human-verification items under
+*Manual verification owed* below, in the form `32-HUMAN-UAT.md` uses.
+
+**Why they were not executed, stated plainly so nothing downstream assumes
+them:** an agent has no live authenticated session, and there is no test runner
+for this product (`CLAUDE.md` Guardrail 1) — so there is no mechanism by which
+this plan could have produced that evidence. Nothing was substituted for them.
+Under **owner decision 12** (`.planning/ACCESS-MODEL-DECISIONS.md:128`, *"manual
+verification is deferred to the end of the build, deliberately"*), they are
+deferred with their price stated rather than skipped.
+
+**33-14's gate must INHERIT these two, not assume them.** `32-VERIFICATION.md`
+set the precedent that deferred is not verified.
 
 ## What was built
 
@@ -61,7 +80,7 @@ things outstanding.
 |---|------|--------|-------|
 | 1 | The SumUp surface — admin/finance | `fb630bd` | `src/app/(admin)/admin/finance/actions.ts`, `page.tsx` |
 | 2 | The three refund predicates | `8bff48d` | `src/app/(public)/tickets/refund-actions.ts` |
-| 3 | Manual verification | — | **blocking checkpoint, steps 1–2 owed** |
+| 3 | Manual verification | `b98beb9` + this update | steps 3–5 **executed**; steps 1–2 **owed**, under owner decision 12 |
 
 ### Task 1 — `admin/finance`
 
@@ -232,24 +251,55 @@ matches `sumup` / `refundTransaction` / `getServiceClient` on **three comment
 lines and no code line**; the only changed code is inside `requireMaster()` and
 the import block.
 
-### Steps 1 and 2 — OWED, and they are the blocking ones
+### Steps 1 and 2 — NOT EXECUTED. See *Manual verification owed*.
 
-These need real sessions and cannot be automated:
+## Manual verification owed
 
-1. **A master still reaches the money.** Sign in as `master`, open
-   `/admin/finance`. **Expect:** the transaction list loads with real SumUp rows
-   — not an empty state, not a redirect. *(Criterion 4.)*
-2. **An organizer is still bounced.** Sign in as `organizer`, same URL.
-   **Expect:** redirect to `/dashboard`, exactly as before this phase.
-   *(Criterion 4.)*
+**Two items, neither executed.** They are criterion-4 evidence — *no role's reach
+moved* — and they are the only outstanding work in this plan. Written in the form
+`32-HUMAN-UAT.md` uses so they can be lifted straight into the phase UAT.
 
-To reproduce the environment: `rm -rf .next && npm run build && PORT=3017 npm run start`
-(3007 and 3000/3002 were occupied). Note that this worktree has **no
-`.env.local`** of its own — one was copied in for the probes and **deleted
-afterwards**; `.env*` is gitignored, and `git status --porcelain` is empty.
+Environment for both: `npm run build && PORT=3017 npm run start`. Port 3007 was
+held by another parallel plan's server and 3000/3002 by Docker, which is why 3017.
+This worktree has **no `.env.local`** of its own — one was copied in for the
+probes and **deleted afterwards** (`.env*` is gitignored; the tree is clean), so
+whoever runs these must supply the environment.
 
-If 1, 2 or 5 differs from its expected result, **STOP** — a money surface has
-moved and this phase is not allowed to move it.
+### 1. F-01 — a master still reaches the money 💶
+
+- **role:** `master` (any status — `admin.access` has `requires_approved = false`)
+- **steps:** sign in as that account; open `http://localhost:3017/admin/finance`
+- **expected:** the transaction list loads with **real SumUp rows** — not an
+  empty state, not a redirect, not a "Newsletter not configured"-shaped notice
+  pointing at the wrong system
+- **evidence if it fails:** `src/app/(admin)/admin/finance/actions.ts`
+  `requireMaster()`, and the grant row
+  `supabase/migrations/20260807000000_capability_model.sql:408`
+  (`'master', 'admin.access', false`)
+- **stop condition:** *if 1 or 2 diverge, STOP: a money surface has moved, and
+  this phase does not have permission to move one.*
+- **result:** [not executed — no live session available to an agent]
+
+### 2. F-02 — an organizer is still bounced from the money 💶
+
+- **role:** `organizer`, any status
+- **steps:** sign in as that account; open the same URL,
+  `http://localhost:3017/admin/finance`
+- **expected:** redirected to `/dashboard`, **exactly as before this phase** —
+  and NOT to the transaction list. An organizer reaching the SumUp surface would
+  be a widening of access, which criterion 4 forbids.
+- **evidence if it fails:** no row grants `admin.access` to `organizer` in
+  `…capability_model.sql`; a pass here would mean the key resolved to the wrong
+  predicate
+- **stop condition:** *if 1 or 2 diverge, STOP: a money surface has moved, and
+  this phase does not have permission to move one.*
+- **result:** [not executed — no live session available to an agent]
+
+> **These are OWED, not done.** Nothing in this plan substitutes for them. Steps
+> 3 and 4 above were executed and are recorded as what they are — a coupling
+> check whose blindness was measured, and one measurement of the threat model —
+> and neither is evidence that F-01 or F-02 would pass. **Plan 33-14's gate
+> inherits both.**
 
 ## The criterion-2 row for the money path stays OWED
 
@@ -269,17 +319,47 @@ in two other places:
 `32-VERIFICATION.md` set the precedent that a deliberate "owed" beats an unearned
 green.
 
-## Questions raised for the owner — not decided here
+## Question raised for the owner — not decided here
 
-1. **Should moving money be reserved to `master`?** `staff.manage` keeps refunds
-   available to an organizer, which is exactly today's rule. Narrowing it to
-   master is a defensible product position and would be a **real** access change,
-   so it is not this phase's to take (criterion 4). It needs a decision.
-2. **`/admin/finance` bounces to `/login?redirect=…`, but the login page reads
-   `?next=`.** Observed during step 3, in both the pre- and post-conversion
-   builds. Pre-existing, in `middleware.ts` — **not this plan's file**, not
-   touched, and reported rather than fixed. Worth confirming whether the
-   post-login return actually works on this route.
+**Should moving money be reserved to `master`?**
+
+The current rule, **stated as measured** rather than as an impression:
+`staff.manage` is granted to `master` and to `organizer`, both with
+`requires_approved = false`
+(`supabase/migrations/20260807000000_capability_model.sql:392-393`). So **an
+organizer can process a refund today**, of any status, and that was equally true
+before this plan — the predicate replaced was byte-equal.
+
+Reserving money to `master` is a defensible product position. It is also a
+**real** access change, which criterion 4 forbids this phase from making: every
+role must still reach exactly the surfaces it reached before. Recorded for the
+owner; **not implemented**, and no line of this plan moves in that direction.
+
+## Deferred finding — a real pre-existing defect, confirmed
+
+**`/admin/finance` bounces to `/login?redirect=…`, but the login page reads
+`?next=`. The post-login return is broken on every gated route.**
+
+Observed during step 3, in **both** the pre- and post-conversion builds, so it
+predates this phase and this plan neither causes nor worsens it. Confirmed in the
+code, not inferred from the observation:
+
+| Evidence | What it says |
+|---|---|
+| `src/lib/supabase/middleware.ts:149` | `url.searchParams.set("redirect", pathname);` — the bounce writes **`redirect`** |
+| `src/app/(auth)/login/page.tsx:11` | `const nextUrl = searchParams.get("next") \|\| "";` — the login page reads **`next`** |
+| measured, step 3 | `307 → http://localhost:3017/login?redirect=%2Fadmin%2Ffinance` |
+
+The two never meet, so `nextUrl` is `""` and a user bounced from `/admin/finance`
+— or from any other gated route — does not come back to where they were after
+signing in. The project's own notes already record *"Login page reads `?next=`
+param (NOT `?redirect=`)"*, which is the same fact from the other direction.
+
+**Not fixed here, deliberately.** It is in `middleware.ts`, which is not this
+plan's file, and a redirect-parameter change touches **every gated route** — it
+belongs in its own change with its own verification, not smuggled into a money
+conversion. This is `meta-gates.md`'s cross-domain rule applied to a tempting
+one-line fix.
 
 ## Deviations from Plan
 
@@ -308,6 +388,16 @@ green.
    (`.eq("user_id", user.id)` read under RLS), not a staff gate. It reads no
    header and no role column. Recorded in the file's own comment so a later
    reader does not "finish the job".
+6. **The blocking checkpoint was resolved by the owner, not by execution.** Steps
+   1 and 2 were **not run and nothing was substituted for them**, under decision
+   12 (`.planning/ACCESS-MODEL-DECISIONS.md:128`). They are recorded as F-01 and
+   F-02 above with role, URL, steps, expected result and the stop condition
+   verbatim, so they can be lifted into the phase UAT unchanged.
+7. **`rm -rf .next` was used before each build and was unnecessary.** This
+   worktree's `.next` is one this agent built itself, never a cache inherited
+   from another tree — that hazard belongs to the orchestrator after a merge.
+   The extra clean cost build time and changed no result; noted so the rest of
+   the wave skips it.
 
 ## Deferred / noted, not fixed here
 
@@ -316,7 +406,11 @@ green.
   per-file measurement above is deterministic and is what this plan owes. The
   gate belongs to 33-14.
 - The baseline capture and comparator were not run, per the wave-2 instruction.
-- The `?redirect=` / `?next=` mismatch above.
+- The `?redirect=` / `?next=` mismatch — written up as its own deferred finding
+  above, with `file:line` confirmation on both halves.
+- **F-01 and F-02**, the two human-verification items above. They are the
+  substantive debt of this plan and are listed here so nothing downstream reads
+  their absence as a pass.
 - Pre-existing `npm run lint` state is untouched and unrelated.
 
 ## Known Stubs
@@ -337,4 +431,11 @@ gates are narrower-or-equal to what they replace for every real subject.
 - `src/app/(public)/tickets/refund-actions.ts` — FOUND (modified)
 - commit `fb630bd` — FOUND in `git log`
 - commit `8bff48d` — FOUND in `git log`
+- commit `b98beb9` — FOUND in `git log`
+- `.planning/ACCESS-MODEL-DECISIONS.md:128` (decision 12) — FOUND, cited
+- `src/lib/supabase/middleware.ts:149` (`"redirect"`) — FOUND, cited
+- `src/app/(auth)/login/page.tsx:11` (`"next"`) — FOUND, cited
 - working tree clean; no `.env.local` left behind; no probe server left listening
+- STATE.md, ROADMAP.md and `deferred-items.md` — **not modified**, verified by
+  `git status` and by the diff touching only this plan's three source files and
+  this summary
