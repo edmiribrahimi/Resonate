@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(gsd-sdk *)",
+      "Bash(node /Users/etiesse/.claude/get-shit-done/bin/gsd-tools.cjs *)",
+
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run verify:persona)",
+      "Bash(npm run verify:capabilities)",
+      "Bash(npm run baseline:rls)",
+      "Bash(npm run baseline:rls -- *)",
+      "Bash(npm run baseline:container)",
+      "Bash(npm run baseline:container -- *)",
+      "Bash(rm -rf .next)",
+
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git rev-parse *)",
+      "Bash(git rev-list *)",
+      "Bash(git merge-base *)",
+      "Bash(git ls-files *)",
+      "Bash(git check-ignore *)",
+      "Bash(git show-ref *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git config --file .gitmodules *)",
+      "Bash(git worktree list *)",
+      "Bash(git worktree list)",
+      "Bash(git hook run pre-commit)",
+
+      "Bash(git merge worktree-agent-*)",
+      "Bash(git worktree remove /Users/etiesse/Resonate/.claude/worktrees/*)",
+      "Bash(git worktree unlock /Users/etiesse/Resonate/.claude/worktrees/*)",
+      "Bash(git worktree prune)",
+      "Bash(git branch -D worktree-agent-*)"
+    ],
+    "ask": [
+      "Bash(git push *)"
+    ]
+  }
+}
