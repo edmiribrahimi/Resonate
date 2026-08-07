@@ -35,9 +35,26 @@ type StatusTab = "all" | "pending" | "approved" | "rejected";
 
 // Badge components
 function RoleBadge({ role }: { role: UserRole }) {
+  // `Record<UserRole, string>` is the ONE site in `src/` that widening
+  // `UserRole` breaks, and finding it corrects a prediction: `43-PATTERNS.md`
+  // § 21 expected the fourth role to produce **no** new build errors, on the
+  // reasoning that seventeen call sites cast `role as UserRole` and a cast
+  // stops the compiler checking. That is true of the seventeen — it is not
+  // true of a mapped type, which TypeScript checks for exhaustiveness. So the
+  // count is one, not zero, and it was measured rather than predicted.
+  //
+  // The entry below is added by plan 43-05 because `npm run build` is this
+  // repository's only automatic gate (`CLAUDE.md` Guardrail 1) and leaving it
+  // red would block the deploy of every later plan in the phase. The COLOUR is
+  // provisional: zinc, deliberately the same neutral as `member`, because
+  // `staff` grants nothing a member lacks (D-14) and a distinct colour would
+  // suggest a power the role does not have. Plan 43-14 owns the interface and
+  // may choose otherwise — that is an interface decision, and this is only the
+  // repair that keeps the build honest.
   const colors: Record<UserRole, string> = {
     master: "bg-purple-500/20 text-purple-400 border-purple-500/30",
     organizer: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    staff: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
     member: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
   };
 

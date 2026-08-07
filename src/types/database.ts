@@ -17,7 +17,20 @@ import type {
 // which imports nothing, and are read from here.
 import type { CapabilityKey } from "@/lib/capabilities/keys";
 
-export type UserRole = "master" | "organizer" | "member";
+// `staff` is the fourth role (phase 43, D-01), and the measured consequence of
+// adding it here is the opposite of what a reader expects: **this widening
+// produces no new build errors.** Seventeen of the twenty-one sites that
+// enumerate a role write `role as UserRole` on a value read from the database,
+// and a cast tells the compiler to stop checking — so the switches, the
+// filters and the badge maps that now need a fourth branch are invisible to
+// `npm run build`. The only compile-detectable site is `updateMemberRole`'s
+// parameter type (`src/app/(admin)/admin/members/actions.ts:113-115`), widened
+// deliberately by plan 43-09.
+//
+// The list to walk is `43-RESEARCH.md` § G.1; plan 43-14 walks its interface
+// half. Do not read a green build as evidence that the four-role model is
+// wired — it is evidence of the casts.
+export type UserRole = "master" | "organizer" | "staff" | "member";
 export type UserStatus = "pending" | "approved" | "rejected";
 export type AccessType = "free_public" | "free_rsvp" | "paid";
 
