@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -15,13 +16,25 @@ interface DrinksPageProps {
 export default async function AdminDrinksPage({ params }: DrinksPageProps) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  // Defence in depth behind the middleware's `/admin/*` rule — and neither is
+  // a substitute for RLS, which is what bounds the reads below (both this page
+  // and `getDrinkItems` use the cookie-bound client, so policies still apply).
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
   const { data: event, error } = await supabase

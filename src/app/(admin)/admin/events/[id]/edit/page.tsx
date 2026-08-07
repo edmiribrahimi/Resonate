@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
 import { updateEvent } from "@/app/(organizer)/organizer/events/actions";
@@ -14,13 +15,31 @@ interface EditEventPageProps {
 export default async function AdminEditEventPage({ params }: EditEventPageProps) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const {
+    capabilities,
+    role: rawRole,
+    status: rawStatus,
+  } = await getAccessContext();
 
-  if (role !== "master") {
+  // Reachability, decided from the session rather than from a request header.
+  //
+  // This gate does NOT extend to `boundUpdateEvent` below. Next.js is explicit
+  // that a page-level authentication check does not cover the Server Actions
+  // defined inside it — an action is its own entry point, POSTable directly.
+  // No second gate is added here on purpose: `boundUpdateEvent` delegates to
+  // `updateEvent`, which calls `verifyOrganizer` and then
+  // `verifyEventOwnership` inside itself (`(organizer)/organizer/events/
+  // actions.ts:318-322`, verified — not assumed). Adding a check here would
+  // create a NEW refusal path on a surface whose behaviour must not change.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // role/status still flow to <MobileNav> as props: the source changed, the
+  // consumer did not. Nothing here branches on them. Phase 34 (STAFF-03) owns
+  // converting the nav to capabilities.
+  const role = rawRole as UserRole | null;
+  const status = rawStatus as UserStatus | null;
 
   const supabase = await createClient();
   const { data: event, error } = await supabase
