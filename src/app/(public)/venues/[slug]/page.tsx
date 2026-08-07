@@ -36,13 +36,64 @@ export default async function VenuePage({
     notFound();
   }
 
-  // Fetch published events where at least one party has this venue_id
+  // Fetch published events where at least one party has this venue_id.
+  //
+  // This filter is a page-level MITIGATION, not a fix. `meta-gates.md` is
+  // explicit that the security boundary is RLS, never a page: the rows dropped
+  // below stay readable outside this page, so nothing here makes them private.
+  // The real fix is the RLS narrowing on `event_parties` scheduled for phase
+  // 37; this only stops the public venue page from putting a still-secret
+  // party's event next to this venue's address. Calling it a fix is how the
+  // real fix stops happening.
+  //
+  // Predicate: a party at THIS venue withholds its event iff
+  //   venue_secret === true && venue_reveal_email_sent !== true
+  // `venue_secret` is `boolean NOT NULL DEFAULT false`
+  // (`supabase/migrations/20260226400000_party_lineup_venue_secret.sql:6`);
+  // `venue_reveal_email_sent` is `boolean DEFAULT false` and NULLABLE
+  // (`supabase/migrations/20260305200000_venue_reveal_on_purchase.sql:10`),
+  // set to `true` only after the reveal mail has gone out
+  // (`src/app/api/cron/venue-reveal/route.ts:112,176`). So anything other than
+  // an explicit `true` counts as "the reveal has not fired" — `venue-secrecy.md`,
+  // gate *default chiuso*: when the reveal state is not determinable, hide.
+  // This code only READS that flag; the monotone switch is untouched and
+  // nothing here can make it easier to trip.
+  //
+  // Edge cases, all decided towards withholding — withholding costs
+  // visibility, which is recoverable, and the other direction is not:
+  //  - the event has further parties at other venues: irrelevant, only the
+  //    party that links THIS venue is considered;
+  //  - two parties at this same venue, one still secret and one revealed: the
+  //    event is withheld, even though the revealed one may already name this
+  //    venue elsewhere;
+  //  - a past event whose party was never marked revealed (the cron may never
+  //    have run for old rows): withheld. The cost is a shorter history on this
+  //    page. No date-based exemption is added: a second predicate keyed on the
+  //    date would fail open every time a date is wrong.
   const { data: partyLinks } = await supabase
     .from("event_parties")
-    .select("event_id")
+    .select("event_id, venue_secret, venue_reveal_email_sent")
     .eq("venue_id", venue.id);
 
-  const eventIds = [...new Set((partyLinks ?? []).map((p: { event_id: string }) => p.event_id))];
+  type PartyLink = {
+    event_id: string;
+    venue_secret: boolean | null;
+    venue_reveal_email_sent: boolean | null;
+  };
+
+  const links = (partyLinks ?? []) as PartyLink[];
+
+  const withheldEventIds = new Set(
+    links
+      .filter((p) => p.venue_secret === true && p.venue_reveal_email_sent !== true)
+      .map((p) => p.event_id)
+  );
+
+  const eventIds = [
+    ...new Set(
+      links.map((p) => p.event_id).filter((id) => !withheldEventIds.has(id))
+    ),
+  ];
 
   let events: { id: string; slug: string; title: string; date: string; cover_image: string | null }[] = [];
   if (eventIds.length > 0) {
