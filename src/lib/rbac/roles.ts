@@ -7,6 +7,11 @@ export type { UserRole, UserStatus };
 export const ROLES = {
   MASTER: "master",
   ORGANIZER: "organizer",
+  // The fourth role (phase 43, D-01). It grants exactly one thing — entry to a
+  // night through the membership card, permanently — and no work permission.
+  // Work permissions come from Phase 35's per-night assignment and expire with
+  // the night (D-03).
+  STAFF: "staff",
   MEMBER: "member",
 } as const;
 
@@ -62,6 +67,14 @@ const NAV_ITEMS: NavItem[] = [
     hideWhenAuth: false,
   },
   {
+    // `roles` stays `["master", "organizer"]` after the fourth role landed, and
+    // that is CORRECT AS-IS rather than an omission. D-02 refuses
+    // `door.operate` to `staff`, so the Check-in tab must not appear for it;
+    // and the middleware refuses `/admin/scanner` independently, which is what
+    // actually protects the route — hiding a nav item is not protecting it
+    // (`access-gating.md`, gate *coerenza navigazione/permessi*). Adding
+    // `"staff"` here would show a tab that leads to a redirect, which is the
+    // worst of both: a promise at the door that the server then breaks.
     href: "/admin/scanner",
     label: "Check-in",
     icon: "qrcode",
@@ -90,6 +103,12 @@ const NAV_ITEMS: NavItem[] = [
  * - Approved member: Events, Gallery, Account (3 tabs)
  * - Organizer (approved): Events, Gallery, Check-in, Account (4 tabs)
  * - Master (approved): Events, Gallery, Check-in, Account (4 tabs)
+ * - Staff (always approved, see D-04): Events, Gallery, Account (3 tabs)
+ *
+ * The staff line needs no code: the three tabs it sees come from the
+ * `roles: null` entries, and Check-in is excluded by the role restriction that
+ * was already there. That is exactly D-01 — the role is a way back in through
+ * the membership card, not a back office.
  */
 export function getVisibleNavItems(
   role: UserRole | null,

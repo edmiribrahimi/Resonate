@@ -56,7 +56,7 @@ create table public.profiles (
   email text not null,
   full_name text not null,
   membership_code text unique not null,
-  role text not null default 'member' check (role in ('master', 'organizer', 'member')),
+  role text not null default 'member' check (role in ('master', 'organizer', 'staff', 'member')),
   status text not null default 'approved' check (status in ('pending', 'approved', 'rejected')),
   referred_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now(),

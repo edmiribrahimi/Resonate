@@ -213,6 +213,63 @@ const ROLE_GRANTS = {
     'door.operate': false,
     'membership.card.view': true,
   },
+  // ── The fourth role, added by plan 43-05 with its migration ───────────────
+  //
+  // Declared in the same commit as `20260808000500_staff_role.sql`, which is the
+  // only order in which this side means anything: a declaration written after
+  // the rows it checks has been fitted to them.
+  //
+  // Two grants and SIX refusals, and the six are the mechanism D-02 asks for.
+  // `staff` is the role most likely to be quietly widened, because every one of
+  // the six looks reasonable in isolation — a staff member who works the door
+  // "obviously" needs `door.operate`, one who manages a guest list "obviously"
+  // needs `staff.manage`. Without this list, a capability that is silently
+  // absent is indistinguishable from a capability that was considered and
+  // refused, and in six months nobody can tell which of the two they are looking
+  // at. Listed here, the difference is readable, and adding a row makes this
+  // side exit 1 naming the pair.
+  //
+  // The decision itself is D-03: work permissions are NOT granted by the role.
+  // They come from Phase 35's per-night assignment and expire with the night.
+  staff: {
+    // Refused (D-03). The broad staff surface — events, parties, tickets,
+    // tiers, drinks, guest lists, media moderation — is 34 policies wide and
+    // permanent. A role that carried it would hand every past collaborator the
+    // whole back office for ever.
+    'staff.manage': 'REFUSED',
+    // Refused (D-03). P2/P4 is master alone: deletion of events, artists and
+    // venues.
+    'master.manage': 'REFUSED',
+    // Refused (D-03). The artists/venues write surface belongs to the organizer
+    // definition, not to someone who worked a night.
+    'catalogue.manage': 'REFUSED',
+    // D-14 — every account is a member of the community, and refusing this would
+    // make `staff` the only role that cannot RSVP to a night. It does NOT weaken
+    // D-03: `member` already holds this exact grant with this exact flag, so
+    // `staff` is levelled up TO member, not up FROM it.
+    'membership.active': true,
+    // Refused (D-03). `/admin/*` other than the scanner is `role = master`.
+    'admin.access': 'REFUSED',
+    // Refused (D-03). `/organizer/*` is the organizer area; `staff` has no
+    // organizer surface, and `NAV_ITEMS` shows it none.
+    'organizer.access': 'REFUSED',
+    // Refused (D-03), and this is the load-bearing one. Working the door is the
+    // per-night assignment of Phase 35, granted for one night and expiring with
+    // it — not a property of having once been staff. A row here would let the
+    // door of one night open every later night.
+    //
+    // If a later phase DOES grant it, it inherits the treatment of the two rows
+    // above: `requires_approved = false`, for the reason written beside
+    // `master.door.operate`. Refusing a valid staff member in front of a queue
+    // is worse than the alternative.
+    'door.operate': 'REFUSED',
+    // D-01 — THE ONE THING THE ROLE GRANTS. Entry through the membership card,
+    // permanently, including for someone who worked a single date.
+    // `requires_approved = true` like every other role's card grant; plan
+    // 43-06's `role ⇒ approved` rule then makes that flag always satisfied for
+    // a staff account rather than a gate it can fail.
+    'membership.card.view': true,
+  },
   member: {
     'staff.manage': 'REFUSED',
     'master.manage': 'REFUSED',
@@ -230,18 +287,25 @@ const ROLE_GRANTS = {
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 24 pairs = 3 roles × 8 capabilities. 16 grants, matching the migration's own
- * claim at `20260807000000_capability_model.sql:386` (*"Sixteen grant rows"*)
- * and `43-RESEARCH.md` § A.2's count of 2+1+2+3+1+2+2+3. 8 refusals, which is
- * every pair the migration does NOT insert.
+ * 32 pairs = 4 roles × 8 capabilities. 18 grants: the sixteen the capability
+ * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
+ * rows"*) plus the two `20260808000500_staff_role.sql` adds. 14 refusals — the
+ * eight that were already every pair the first migration does NOT insert, plus
+ * the six `staff` refusals of D-02.
+ *
+ * These three numbers moved from 24/16/8 on 2026-08-08 because the MODEL gained
+ * a role, which is the one legitimate reason to touch them. Lowering a total to
+ * make a run pass is the failure this constant exists to catch, and it has a
+ * recorded shape: mutation C of plan 43-02 did exactly that in two steps and was
+ * caught by assertion 4 after slipping past the arithmetic.
  *
  * Asserted rather than described: a role or a capability added to `ROLE_GRANTS`
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
-const EXPECTED_PAIR_COUNT = 24;
-const EXPECTED_GRANT_COUNT = 16;
-const EXPECTED_REFUSAL_COUNT = 8;
+const EXPECTED_PAIR_COUNT = 32;
+const EXPECTED_GRANT_COUNT = 18;
+const EXPECTED_REFUSAL_COUNT = 14;
 
 /** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
 const REFUSED = 'REFUSED';
@@ -736,7 +800,7 @@ async function run(target, targetLabel) {
   // `has_capability` answers false for every subject and every key — while a
   // side-5 that only compared rows it found would report every grant missing
   // and every refusal honoured. Reporting the emptiness is the honest answer;
-  // reporting "8 refusals confirmed" would be true and useless.
+  // reporting "14 refusals confirmed" would be true and useless.
   const empty = [];
   if (tsKeys.length === 0) empty.push(`TS — ${capObject.reason ?? 'no keys parsed'}`);
   if (dbKeys.length === 0) empty.push('DB — private.capabilities returned no rows');
