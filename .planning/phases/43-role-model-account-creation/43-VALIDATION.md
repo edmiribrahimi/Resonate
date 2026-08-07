@@ -50,16 +50,73 @@ created: 2026-08-07
 
 ## Per-Task Verification Map
 
-*To be populated by the planner: one row per task, citing the requirement, the
-detection command from the map below, and whether the detector already exists or
-is a Wave 0 gap. A task whose only verification is `npm run build` must say so
-explicitly — the table below records exactly what that does not prove.*
+Filled at planning time, one row per task across the fifteen plans. **A row whose
+only automated command is `npm run build` says so explicitly** — the tables below
+record exactly what that does not prove: not that a migration applied, not that a
+column name is real, not that a capability key is spelled correctly, and not that
+`role` is handled anywhere it is enumerated.
+
+`M-…` names a written manual procedure. `M-12` lives in `32-HUMAN-UAT.md`; every
+`M-43-…` is written by plan 43-15 and may be **executed** later under the owner's
+batching rule — but *deferred is not verified*, and this table keeps the two apart.
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Detector Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-----------------|--------|
-| — | — | — | — | — | — | — | ⬜ to be filled at planning |
+| 43-01-T1 | 43-01 | 1 | ROLE-02 (D-15, D-06) | manual, blocking | `grep` asserts M-12 no longer reads `[pending]` | ✅ M-12 exists | ⬜ |
+| 43-01-T2 | 43-01 | 1 | ROLE-02 (D-04) | measurement | `grep` over `43-MEASUREMENTS.md` + address-shape refusal | ✅ Management API, read-only | ⬜ |
+| 43-01-T3 | 43-01 | 1 | ROLE-02 (D-04) | measurement | `grep -c "23514"` over `43-MEASUREMENTS.md` | ✅ one guarded live probe | ⬜ |
+| 43-02-T1 | 43-02 | 1 | ROLE-01 (D-02, D-06) | static | `node --check scripts/verify-capabilities.mjs` | ➕ built here | ⬜ |
+| 43-02-T2 | 43-02 | 1 | ROLE-01 (D-02) | assertion | `npm run verify:capabilities` → `5/5 green`, both targets | ➕ built here (Wave 0) | ⬜ |
+| 43-02-T3 | 43-02 | 1 | ROLE-01 (D-02) | mutation proof | three mutations each observed exiting 1 | ➕ built here | ⬜ |
+| 43-03-T1 | 43-03 | 2 | ROLE-03 (D-05) | assertion | `npm run baseline:container -- --seed-only --report` | ➕ built here (Wave 0) | ⬜ |
+| 43-03-T2 | 43-03 | 2 | ROLE-02 (D-04) | assertion | same run: four `23514`s + `pg_get_constraintdef` read-back | ➕ built here — **ROLE-02's only automated detector** | ⬜ |
+| 43-03-T3 | 43-03 | 2 | ROLE-03 (D-05) | mutation proof | scratch migration + `--seed-only --report`, two negative controls | ➕ built here | ⬜ |
+| 43-04-T1 | 43-04 | 2 | ACCT-03 (D-23) | build-only + manual | `npm run build`; `grep -rn "updateUser"` → 2 hits. **Build proves compilation only** | ❌ semantics manual (M-43-03) | ⬜ |
+| 43-04-T2 | 43-04 | 2 | ACCT-03 | build-only + manual | `npm run build`; `npm run verify:no-header-identity`. **Allow-list cases are written observations, not tests** | ❌ manual | ⬜ |
+| 43-04-T3 | 43-04 | 2 | ACCT-03 (D-23) | manual, blocking | none — a real inbox and a deployed build | ❌ M-43-03 | ⬜ |
+| 43-05-T1 | 43-05 | 3 | ROLE-01 (D-01, D-02, D-14) | container | `npm run baseline:container -- --smoke` | ✅ | ⬜ |
+| 43-05-T2 | 43-05 | 3 | ROLE-01 (D-02, D-14) | assertion | `npm run verify:capabilities -- --target=container` → `5/5 green` | ➕ 43-02's fifth side | ⬜ |
+| 43-05-T3 | 43-05 | 3 | ROLE-01 | schema apply, blocking | `baseline:compare --before-point=33-final --after-point=43-05` → zero defects | ✅ comparator | ⬜ |
+| 43-06-T1 | 43-06 | 4 | ROLE-02 (D-04, D-06) | static | `grep -rn "role_implies_approved" src/` → 0; re-measured row count | ✅ | ⬜ |
+| 43-06-T2 | 43-06 | 4 | ROLE-03 (D-05) | assertion | `npm run baseline:container -- --seed-only --report` → 9 of 9 cells, four `23514`s | ➕ 43-03's seam | ⬜ |
+| 43-06-T3 | 43-06 | 4 | ROLE-02 (D-04) | schema apply, blocking | `baseline:compare --before-point=43-05 --after-point=43-06`; by-hand refusal in production | ✅ + manual | ⬜ |
+| 43-07-T1 | 43-07 | 5 | ACCT-04 (D-11, D-18, D-19, D-22) | container | `npm run baseline:container -- --smoke`; policy/`search_path`/`revoke` greps | ✅ | ⬜ |
+| 43-07-T2 | 43-07 | 5 | ACCT-04 (D-22) | build + assertion | `npm run build` (`CAP_DESCRIPTIONS` totality is genuinely proved); `verify:capabilities` `5/5` | ✅ | ⬜ |
+| 43-07-T3 | 43-07 | 5 | ACCT-04 | schema apply, blocking | `baseline:compare --before-point=43-06 --after-point=43-07`; `has_function_privilege` → false | ✅ 22 append-only cells | ⬜ |
+| 43-08-T1 | 43-08 | 6 | ROLE-01, ROLE-03 (D-01, D-05) | assertion | `--seed-only --report` → 12 grid cells, six refused writes | ➕ built here (Wave 0) | ⬜ |
+| 43-08-T2 | 43-08 | 6 | ROLE-01 (D-02, D-14) | re-baseline | `baseline:compare --before-point=43-07 --after-point=43-08`; staff ≡ member cell-for-cell | ✅ + a one-off comparison | ⬜ |
+| 43-09-T1 | 43-09 | 6 | ROLE-02 (D-04) | build-only | `npm run build`; `grep` no branch on message text. **Build proves compilation only — not the RPC name, not an argument order** | ❌ M-43-04 | ⬜ |
+| 43-09-T2 | 43-09 | 6 | ACCT-04, ACCT-01 (D-11, D-21, D-07) | build-only | `npm run build`; `verify:no-header-identity`; `grep` no `"master"` target | ❌ M-43-08, M-43-07 | ⬜ |
+| 43-09-T3 | 43-09 | 6 | ACCT-04 | build-only | `npm run build`; `grep` no asserted count. **The harness never proves an act was recorded** | ❌ M-43-08 | ⬜ |
+| 43-10-T1 | 43-10 | 7 | ACCT-05 (D-13) | build-only | `npm run build`; migration greps for no CHECK and no FK | ❌ M-43-10 | ⬜ |
+| 43-10-T2 | 43-10 | 7 | ACCT-05 (D-13, D-17) | build-only | `npm run build`; `profiles` query count in `verify/route.ts` unchanged | ❌ M-43-10 | ⬜ |
+| 43-10-T3 | 43-10 | 7 | ACCT-05 | schema apply, blocking | `baseline:compare --before-point=43-08 --after-point=43-10` → zero defects; one real scan | ✅ + manual | ⬜ |
+| 43-11-T1 | 43-11 | 7 | ACCT-01, ACCT-02, ACCT-04 (D-07, D-08, D-09, D-20) | build-only | `npm run build`; greps for no sleep, no env fallback, no `qr.ts` generator | ❌ M-43-01, M-43-07 | ⬜ |
+| 43-11-T2 | 43-11 | 7 | ACCT-03 (D-10) | static | `grep` finds no interpolated password and no `ɘ` in the template | ✅ static half | ⬜ |
+| 43-11-T3 | 43-11 | 7 | ACCT-01 | build-only | `npm run build`; notice-cause greps | ❌ M-43-01 | ⬜ |
+| 43-12-T1 | 43-12 | 8 | ROLE-04 (D-12, D-16, D-22) | container | `--smoke`; greps: no address, `search_path`, `revoke`, `'system'` | ✅ applies | ⬜ |
+| 43-12-T2 | 43-12 | 8 | ROLE-04 (D-16) | build-only | `npm run build`; `grep` no direct role write left in the route | ❌ M-43-05, M-43-06 | ⬜ |
+| 43-12-T3 | 43-12 | 8 | ROLE-04 | schema apply, blocking | none automated — four cases run by hand, master count never zero | ❌ M-43-06, **the phase's highest-consequence check** | ⬜ |
+| 43-13-T1 | 43-13 | 8 | ACCT-05 (D-17) | build-only | `npm run build`; `deleteObjectStore` count unchanged | ❌ M-43-11 | ⬜ |
+| 43-13-T2 | 43-13 | 8 | ACCT-05 (D-17) | build-only | `npm run build`; `refuse(` call-site count unchanged | ❌ M-43-11 | ⬜ |
+| 43-13-T3 | 43-13 | 8 | ACCT-05 (D-17) | manual, blocking | none — a device at v3 with a queued scan. **Not deferrable** (`.planning/STATE.md`) | ❌ M-43-11 | ⬜ |
+| 43-14-T1 | 43-14 | 9 | ROLE-01, ROLE-02, ACCT-05 (D-01, D-04, D-13) | build-only | `npm run build`; `grep` no `e.message` rendered. **One of twenty-one role sites errors at compile time** | ❌ M-43-04, M-43-10 | ⬜ |
+| 43-14-T2 | 43-14 | 9 | ACCT-04 (D-19, D-22) | build-only | `npm run build`; `grep` no service client on the read surface | ❌ M-43-09 (a real member session) | ⬜ |
+| 43-15-T1 | 43-15 | 10 | all nine | documentation | procedure-count and address-shape greps | n/a — writing, not detecting | ⬜ |
+| 43-15-T2 | 43-15 | 10 | ROLE-01, ROLE-03, ACCT-04 | comparison | `baseline:compare --before-point=33-final --after-point=43-final` | ✅ | ⬜ |
+| 43-15-T3 | 43-15 | 10 | all nine | documentation | this table, reconciled against what was observed | n/a | ⬜ |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky ·
+Detector: ✅ exists · ➕ built by this phase · ❌ manual only*
+
+### Sampling continuity
+
+No three consecutive tasks lack an automated verify. The longest run of
+build-only tasks is **43-11-T1 → 43-11-T3**, and it is broken by 43-11-T2's
+static assertion and closed by 43-12-T1's container run in the following wave.
+Every plan that changes DDL, a policy, a grant row or the seed carries its own
+`baseline:container` **and** `baseline:compare` — 43-05, 43-06, 43-07, 43-08 and
+43-10 — so the maximum feedback latency stays one plan.
 
 ---
 

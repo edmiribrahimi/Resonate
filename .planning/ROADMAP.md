@@ -242,8 +242,54 @@ of a queue, is worse than the alternative.
 
 *Source: `.planning/ACCESS-MODEL-DECISIONS.md`, decisions 1, 2, 4, 6, 7, 8, 10, 11.*
 
-**Plans**: TBD
+**Plans**: 15 plans, in 10 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 43-01-PLAN.md — [BLOCKING] M-12 while the state it needs still exists, production's row shape, and the shape of a refusal
+- [ ] 43-02-PLAN.md — verify-capabilities gains a fifth side: every role × capability pair is a declared grant or a declared refusal
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 43-03-PLAN.md — the harness keeps its four forbidden personas: the seed-time relaxation and the assertions that make ROLE-02 measurable
+- [ ] 43-04-PLAN.md — the set-password surface the invitation will land on, and the redirect it must not be able to leave
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 43-05-PLAN.md — the fourth role lands: both role CHECKs, two grant rows, six declared refusals — applied and observed
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 43-06-PLAN.md — `role ⇒ approved` as a database rule, and the harness that still seeds what it forbids — applied and observed
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 43-07-PLAN.md — the register: one append-only table for five acts, with a system actor and an atomic write — applied and observed
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 43-08-PLAN.md — `staff` joins the write matrix: the deliberate re-baseline, and staff proved equal to member cell for cell
+- [ ] 43-09-PLAN.md — the six acts write the register in one transaction, and a refused write becomes a value
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 43-10-PLAN.md — the seat cost made readable: `attendances.entry_role` and the roster payload — applied and observed
+- [ ] 43-11-PLAN.md — account creation: the action, the Italian invitation carrying a link, and the form
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 43-12-PLAN.md — `MASTER_EMAIL` demotes as well as promotes, bounded so it can never empty itself — applied and observed
+- [ ] 43-13-PLAN.md — the door's store gains a field without stranding a queued scan, exercised on a real device
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 43-14-PLAN.md — the members surface learns the fourth role, stops swallowing refusals, and the register gets its reader
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 43-15-PLAN.md — the evidence: eleven written procedures, the whole-of-phase comparison, and an honest coverage claim
 
 ### Phase 35: Per-Night Assignments
 
