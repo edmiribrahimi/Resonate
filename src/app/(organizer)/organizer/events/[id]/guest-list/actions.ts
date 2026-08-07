@@ -1,39 +1,92 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
 import { processGuestEntry } from "@/lib/guest-list/process-entry";
 import { getPostHogServer } from "@/lib/posthog/server";
-import type { UserRole } from "@/types/database";
+import {
+  assertEventOwnership,
+  assertStaffManage,
+} from "@/lib/capabilities/guards";
 
 /**
  * Verify the caller is an organizer or master who owns the event.
  * Returns the authenticated user's ID.
+ *
+ * ── What was deleted from this body, and why it mattered ─────────────────────
+ *
+ * It used to derive **both** the role and the identity from the two request
+ * headers the proxy injects. Those are INBOUND headers: a client can send
+ * whatever it likes, and only `src/lib/supabase/middleware.ts` may legitimately
+ * set them, so every read elsewhere trusted a proxy that runs before rather
+ * than a session. Both now come from `my_access_context()`, which is
+ * `auth.uid()` and the caller's own grants, verified by Postgres.
+ *
+ * (The header names are deliberately not spelled here: the CAP-05 burn-down
+ * meter, `npm run verify:no-header-identity`, counts comment-shaped mentions
+ * toward its verdict on purpose, and a documentation line is not a reason to
+ * keep a file on it.)
+ *
+ * **The identity is load-bearing, not convenient.** It is what `added_by`
+ * records on a guest-list row. `ticketing-payments.md`, gate *guest list*: *«Un
+ * ingresso in guest list e' un ingresso non pagato … Ogni percorso che aggiunge
+ * nomi va tracciato con chi lo ha fatto.»* Under `ACCESS-MODEL-DECISIONS.md` §5
+ * that attribution is a requirement, so it is narrowed to a non-null `string`
+ * here, once, by an explicit throw — never by a `!` at the insert.
+ *
+ * ── The ownership read still uses the SERVICE client. Read this before ────────
+ * ── "simplifying" it. ────────────────────────────────────────────────────────
+ *
+ * `getServiceClient()` bypasses every row-level policy. That is what this call
+ * site has always used. The two sibling implementations
+ * (`organizer/events/actions.ts`, `organizer/events/[id]/tickets/actions.ts`)
+ * read the same column through the cookie client, where RLS applies. **They
+ * agree today. They are not equivalent**, and they can disagree the moment the
+ * `events` SELECT policy narrows — for a caller whose RLS would have refused
+ * the read, the cookie client answers "no row" where the service client answers
+ * the truth.
+ *
+ * `assertEventOwnership` takes the client as an argument precisely so that
+ * difference is **one legible line here** rather than a third copy of the
+ * function. Moving this to the cookie client is a real improvement with its own
+ * evidence burden, and the evidence is one target out of two: the phase-32
+ * **container** read matrix shows `organizer/approved`, `/pending` and
+ * `/rejected` each reading **2 of 2** `events` rows through RLS, so the swap
+ * would be equivalent there — but the **production** matrix leaves `organizer/*`
+ * `resolved: false`, because no such account exists on that target, and the two
+ * targets' `events` fixtures already differ (container `anon` reads 0,
+ * production `anon` reads 2). Carried forward with that evidence attached, not
+ * decided here. Criterion 4 asks that every role reach exactly the surfaces it
+ * reached before; a client swap is not that change.
+ *
+ * ── Four failure categories, decided by POSITION ─────────────────────────────
+ *
+ *   `forbidden.staff_manage_required`      — assertStaffManage
+ *   `capabilities.resolve_failed: …`       — the resolver, or no_subject below
+ *   `forbidden.not_event_owner`            — assertEventOwnership
+ *   `event.lookup_failed: <code>`          — assertEventOwnership, no answer
+ *
+ * Which one you got is decided by **which line threw**, never by parsing a
+ * message. No `catch` here flattens them.
+ *
+ * ⚠️ `access-gating.md`, gate *service role*: a service client must never be
+ * reachable from untrusted input. `eventId` **is** untrusted input — it arrives
+ * from a client on a Server Action, which is a public POST endpoint. That is
+ * exactly why this check exists, and it runs **before any write** at every call
+ * site: verified by reading each one (`addGuest`, `removeGuest`,
+ * `fetchGuestList`), where it is the first statement of the body.
  */
 async function verifyOrganizerAccess(eventId: string): Promise<string> {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const userId = headersList.get("x-user-id") || "";
+  const ctx = await assertStaffManage();
 
-  if (role !== "organizer" && role !== "master") {
-    throw new Error("Forbidden: organizer or master access required");
+  if (!ctx.userId) {
+    throw new Error("capabilities.resolve_failed: no_subject");
   }
 
-  if (role === "organizer") {
-    const serviceClient = getServiceClient();
-    const { data: event } = await serviceClient
-      .from("events")
-      .select("created_by")
-      .eq("id", eventId)
-      .single();
+  // The SERVICE client, deliberately and unchanged. See the note above.
+  await assertEventOwnership(getServiceClient(), eventId, ctx);
 
-    if (!event || event.created_by !== userId) {
-      throw new Error("Forbidden: you do not own this event");
-    }
-  }
-
-  return userId;
+  return ctx.userId;
 }
 
 /**
@@ -212,8 +265,38 @@ export async function removeGuest(entryId: string, eventId: string) {
 
 /**
  * Fetch guest list entries for an event (used by the page server component).
+ *
+ * ⚠️ **The gate below was ADDED, and it is a behaviour change — declared, not
+ * slipped in.** This function is exported from a `"use server"` module, which
+ * makes it a public POST endpoint with a convenient signature, not a private
+ * helper of the page that imports it (`nextjs-architecture.md`, gate *server
+ * action autorizzata*: being imported by a protected page does not protect it).
+ * It took an attacker-chosen `eventId` straight to a **service client**, which
+ * bypasses every row-level policy, and returned every guest's first name, last
+ * name and email address. Any authenticated caller could read any event's guest
+ * list. `access-gating.md`, gate *service role*, forbids exactly that reach.
+ *
+ * Who is refused now who was not before: everyone without `staff.manage`, and
+ * any organizer who does not own the event. Nobody legitimate — both real
+ * callers are staff surfaces (`organizer/…/guest-list/page.tsx` and
+ * `admin/…/guest-list/page.tsx`), whose users hold `staff.manage` and either own
+ * the event or are master. The change moves the guard in the harder-to-trip
+ * direction only, which is the sole direction `meta-gates.md` permits without
+ * explicit authorisation.
+ *
+ * It costs nothing on the page: `cache()` DOES memoise within one render, so
+ * this shares the round trip with the page's own resolution. (It would not, in
+ * a Server Action body — see `@/lib/capabilities/server`.)
+ *
+ * A refusal here throws rather than returning `[]`. An empty guest list and a
+ * refused read must not look the same: this project has no error tracking, and
+ * a list that silently renders empty is the recorded newsletter defect with a
+ * different face. The `console.error` + `return []` below is the *lookup*
+ * failure path and is pre-existing; it is flagged in the summary, not widened.
  */
 export async function fetchGuestList(eventId: string) {
+  await verifyOrganizerAccess(eventId);
+
   const serviceClient = getServiceClient();
 
   const { data: entries, error } = await serviceClient
