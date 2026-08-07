@@ -133,11 +133,17 @@ const ROLE_IMPLIES_APPROVED = {
   present: false,
   /**
    * `pg_get_constraintdef(oid)` as production would render it — i.e. WITHOUT
-   * the trailing marker a `NOT VALID` constraint carries. Measured, then pinned.
-   * Null until plan 43-03 task 3 measured it; see the assertion for how the one
-   * legitimate difference is enumerated rather than wildcarded.
+   * the trailing marker a `NOT VALID` constraint carries.
+   *
+   * MEASURED 2026-08-08 in `postgres:17.6`, against a throwaway migration
+   * carrying `predicate` above verbatim, and COPIED from the run rather than
+   * composed: Postgres re-prints `role not in (…)` as `role <> ALL (ARRAY[…])`,
+   * so a hand-written expectation would have been wrong in a way that looks
+   * right. See `assertConstraintObject` for how the one legitimate difference
+   * from production is enumerated rather than wildcarded.
    */
-  renderedDef: null,
+  renderedDef:
+    "CHECK (((role <> ALL (ARRAY['master'::text, 'organizer'::text, 'staff'::text])) OR (status = 'approved'::text)))",
 };
 
 /**
@@ -372,8 +378,19 @@ export async function seedContainer(admin) {
   // DEFERRABLE, `NOT VALID` still refuses every new violating insert, and
   // neither SECURITY DEFINER, nor superuser, nor `session_replication_role =
   // 'replica'` bypasses it. Drop-and-restore is the only option that works.
+  // `relaxed` is not decoration. The restore below lives in a `finally`, and an
+  // exception thrown from a `finally` REPLACES the exception from the `try` —
+  // so a restore attempted when no drop happened would report
+  //   constraint "profiles_role_implies_approved" for relation "profiles" already exists
+  // in place of the seed's real failure. Measured: that is exactly what this
+  // harness printed while plan 43-03 task 3 was proving the drop necessary. A
+  // path that swallows a distinguishable cause into a misleading message is the
+  // pattern `meta-gates.md` forbids, so the restore is bound to the drop having
+  // actually run rather than to the declaration.
+  let relaxed = false;
   if (ROLE_IMPLIES_APPROVED.present) {
     await admin.query(`alter table public.profiles drop constraint "${ROLE_IMPLIES_APPROVED.name}"`);
+    relaxed = true;
   }
 
   // ── the nine personas ────────────────────────────────────────────────────
@@ -412,7 +429,7 @@ export async function seedContainer(admin) {
     // constraint is `convalidated = false` where production's is `true`, and no
     // capture would notice — B1 dumps policies, B2/B3 fingerprint personas, and
     // none of the three reads `pg_constraint`. See `assertConstraintObject`.
-    if (ROLE_IMPLIES_APPROVED.present) {
+    if (relaxed) {
       await admin.query(
         `alter table public.profiles
            add constraint "${ROLE_IMPLIES_APPROVED.name}"
