@@ -2011,9 +2011,13 @@ section is required.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does `staff` hold `membership.active`?** (§ A.3)
+> All seven were closed on 2026-08-07 and recorded as locked decisions in
+> `43-CONTEXT.md` — four by the owner, three under the discretion that file
+> grants. The closing decision is named beside each. Nothing here is still open.
+
+1. **Does `staff` hold `membership.active`?** — **RESOLVED → D-14** (owner): granted, `requires_approved = true`. The upload ROLE-01 refuses is the per-night work upload of Phase 35, not the member-level contribution. (§ A.3)
    - Known: it is the eighth catalogue capability; D-02 lists seven; it is granted
      to all three existing roles with `requires_approved = true`; it gates *upload
      event media, rsvp*.
@@ -2024,14 +2028,14 @@ section is required.
      and note explicitly that it does not violate D-03. Confirm with the owner —
      it is a capability grant, therefore Critical.
 
-2. **Does the door override belong in the new register or in `door_scan_events`?** (§ D.4)
+2. **Does the door override belong in the new register or in `door_scan_events`?** — **RESOLVED → D-18**: it stays in `door_scan_events`. An override does not change who someone is, and that table already records operator, device, outcome and `is_undo`. (§ D.4)
    - Known: `ACCESS-MODEL-DECISIONS.md` §5 lists it with the other four acts.
      `door_scan_events` already records outcome, operator, device, `is_undo`.
    - Unclear: whether an override is a *membership* act or a *door* act.
    - Recommendation: answer now in one sentence. Two registers holding overlapping
      truths is worse than either.
 
-3. **May an organizer create an `organizer` directly, or only promote to it?** (§ C.4)
+3. **May an organizer create an `organizer` directly, or only promote to it?** — **RESOLVED → D-20**: directly. The two-step is no barrier, since whoever can promote reaches the same end state, and forcing it would write two register rows for one act. The master ceiling of D-07 is unchanged. Related finding **D-21**: promotion is master-only today (`actions.ts:117` calls `verifyMaster()`), so widening it is work this phase must do. (§ C.4)
    - Known: D-07 says *"an `organizer` may promote a staff member to `organizer`"* —
      promote, not create.
    - Unclear: whether direct creation as `organizer` is intended. Functionally it
@@ -2041,7 +2045,7 @@ section is required.
      to the implementation means the answer is whichever the first plan happened
      to write.
 
-4. **May a `pending` organizer read the register?** (§ D.5)
+4. **May a `pending` organizer read the register?** — **RESOLVED → D-19**: no. Reading requires an **approved** staff role. The register is not gated on `staff.manage` (`requires_approved = false`), and that flag is not flipped, because the door depends on it. Plan 43-07 implements this as a ninth capability `register.read` with `requires_approved = true`. (§ D.5)
    - Known: `staff.manage` carries `requires_approved = false`
      (`20260807000000:392-393`), so gating on it admits a `pending` organizer. That
      asymmetry is deliberate and measured (`32-CARRY-FORWARD.md` hard constraint 2).
@@ -2051,7 +2055,7 @@ section is required.
      true`) is the existing key with that shape. Do **not** flip `staff.manage`'s
      flag: `20260807000000:415` and `32-CARRY-FORWARD.md` both forbid it.
 
-5. **What happens to `MASTER_EMAIL` when it names an account that does not exist?** (§ E.4)
+5. **What happens to `MASTER_EMAIL` when it names an account that does not exist?** — **RESOLVED → D-16** (owner): it demotes nobody. Demotion is conditional on the named account existing and having acquired `master`, the reconciliation never leaves zero masters, and the unmatched case must have an observable effect rather than a log. Related: **D-22**, `actor_kind`, because a reconciliation-driven act has no human author. (§ E.4)
    - Known: today nothing happens. After D-12 a naive reconciliation would demote
      the incumbent and leave zero masters.
    - Unclear: whether demotion should require the new master to exist first.
@@ -2059,7 +2063,7 @@ section is required.
      the recovery path into a lockout, and the recovery path is what D-12 repairs.
      This is Critical and needs the owner.
 
-6. **Is `attendances.entry_role` worth its cost on the offline path?** (§ F.2, § G.4)
+6. **Is `attendances.entry_role` worth its cost on the offline path?** — **RESOLVED → D-17** (owner): yes, taken completely, including the offline path — the column, the role in the roster payload, and the IndexedDB version bump. The upgrade must be exercised inside this phase, and it may not strand a queued scan. (§ F.2, § G.4)
    - Known: online it is one word in an existing `select` and one field in an
      existing `insert`. Offline the store holds no role, so it needs either a
      roster-payload change plus an IndexedDB version bump, or a sync-time lookup
@@ -2071,7 +2075,7 @@ section is required.
      rather than discovering it mid-phase. `.planning/STATE.md` warns that an
      IndexedDB upgrade must be exercised before the first real night.
 
-7. **When does `32-HUMAN-UAT.md` M-12 run?** (§ E.0)
+7. **When does `32-HUMAN-UAT.md` M-12 run?** — **RESOLVED → D-15** (owner): before the constraint migration, as the first plan of the phase and `[BLOCKING]`. Plan 43-01 owns it, and 43-06 refuses to apply the constraint while M-12 still reads `[pending]`. Taken knowing the state is a database anomaly rather than a reachable persona: what it buys is dated evidence for the day D-06's trap is proposed. (§ E.0)
    - Known: it needs an `organizer/pending` account in production; D-04 forbids
      that state; the owner deferred all fourteen checks and named M-12 first.
    - Unclear: nothing technical. This is a decision.
