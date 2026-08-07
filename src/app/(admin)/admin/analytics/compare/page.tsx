@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +10,8 @@ import {
   fetchEventComparison,
   fetchAllEvents,
 } from "@/lib/analytics/comparison-queries";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 
 interface PageProps {
@@ -20,14 +21,19 @@ interface PageProps {
 export default async function AdminEventComparisonPage({
   searchParams,
 }: PageProps) {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const { capabilities, role, status } = await getAccessContext();
 
-  // Defense in depth: verify master access
-  if (role !== "master") {
+  // Defense in depth behind the middleware — and now the SAME question the
+  // middleware asks for `/admin/*`, of the same authority. Never a role list.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
+  // resolver answers `string | null`. Same cast the header read already made,
+  // from a better source. Phase 34 (STAFF-03) owns these props.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   const params = await searchParams;
   const selectedIds =
@@ -67,7 +73,7 @@ export default async function AdminEventComparisonPage({
         </header>
       </AnimatedSection>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1}>
         <div className="px-6 space-y-6">
@@ -115,7 +121,7 @@ export default async function AdminEventComparisonPage({
         </div>
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

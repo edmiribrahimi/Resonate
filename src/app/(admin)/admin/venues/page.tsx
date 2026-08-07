@@ -1,20 +1,31 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import StaffNav from "@/components/staff/StaffNav";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminVenuesPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const { capabilities, role, status } = await getAccessContext();
 
-  if (role !== "master") {
+  // This page renders `venues.address`, so who passes this gate is a venue
+  // question as well as an access one. The set is unchanged: master before,
+  // master after — `admin.access` is the middleware's own rule for `/admin/*`.
+  // `CATALOGUE_MANAGE` is refused here for the same reason as on the artists
+  // page, and here it would additionally widen ADDRESS visibility to every
+  // approved organizer. Nothing about `venue_reveal_sent` is touched.
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
+  // resolver answers `string | null`. Same cast the header read already made,
+  // from a better source. Phase 34 (STAFF-03) owns these props.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   const supabase = await createClient();
   const { data: venues } = await supabase
@@ -28,7 +39,7 @@ export default async function AdminVenuesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav role={navRole} context="admin" />
 
       <div className="px-6">
         {!venues || venues.length === 0 ? (
@@ -68,7 +79,7 @@ export default async function AdminVenuesPage() {
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
