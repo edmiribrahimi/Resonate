@@ -1,8 +1,10 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
@@ -18,28 +20,62 @@ interface PageProps {
 export default async function TicketTiersPage({ params }: PageProps) {
   const { id: eventId } = await params;
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity from the session, not from an inbound header.
+  const ctx = await getAccessContext();
 
-  // Defense in depth: verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // `MobileNav` is a `"use client"` component that still takes role and status as
+  // props; phase 34 (STAFF-03) converts it. No decision on this page reads them.
+  const navRole = ctx.role as UserRole | null;
+  const navStatus = ctx.status as UserStatus | null;
+
+  // Defense in depth: may this person reach the organizer area at all.
+  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
   const supabase = await createClient();
 
-  // Verify event ownership (organizer can only manage own events, master can manage all)
-  if (role === "organizer") {
+  // Verify event ownership. This page differs from its six siblings: the
+  // ownership row is fetched **only** when it is needed, so a master pays no
+  // round trip. That is preserved deliberately — asking `ownsOrIsMaster`
+  // unconditionally would be correct and would add a Supabase read for every
+  // master on every visit, changing no verdict. The whole reason the guard's
+  // first line is the master branch is so a caller can skip the read.
+  //
+  // `MASTER_MANAGE` and not `ADMIN_ACCESS`: the question is "may this person
+  // manage an event they do not own" — the reserved-operation question
+  // (`keys.ts:55`). This is not the admin area.
+  if (!ctx.capabilities.has(CAP.MASTER_MANAGE)) {
     const { data: event, error } = await supabase
       .from("events")
       .select("created_by")
       .eq("id", eventId)
       .single();
 
-    if (error || !event || event.created_by !== userId) {
+    // "I could not find out" — kept as its own arm, on its own line. It shares a
+    // destination with the refusal below today, and that is the point: separate
+    // conditions can be given different destinations later, a collapsed one
+    // cannot. The two causes are indistinguishable to the person redirected, and
+    // this project has no error tracking, so the log line below is a diagnosis
+    // aid and NOT an observable effect — saying otherwise would be the recorded
+    // newsletter defect with a category attached (`meta-gates.md`).
+    if (error) {
+      console.error("tickets:ownership_lookup_failed", {
+        eventId,
+        code: error.code,
+      });
+      redirect("/organizer/events");
+    }
+
+    // "There is no such row" — distinct from both of the others.
+    if (!event) {
+      redirect("/organizer/events");
+    }
+
+    // "You may not" — the one call, never a re-inlined comparison. Inside this
+    // branch the master line can only be false, so what it decides here is the
+    // identity refusal, the unowned-row refusal, and then the comparison.
+    if (!ownsOrIsMaster(ctx, event.created_by)) {
       redirect("/organizer/events");
     }
   }
@@ -371,7 +407,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
         )}
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
