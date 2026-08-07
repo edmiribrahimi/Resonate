@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: ready_to_plan
-stopped_at: Phase 33 complete (14/14) — ready to discuss Phase 43
-last_updated: 2026-08-07T19:55:11.417Z
-last_activity: 2026-08-07 -- Phase 33 execution started
+status: executing
+stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+last_updated: "2026-08-07T22:46:53.129Z"
+last_activity: 2026-08-07 -- Phase 43 planning complete
 progress:
   total_phases: 13
-  completed_phases: 2
-  total_plans: 38
-  completed_plans: 102
-  percent: 15
+  completed_phases: 3
+  total_plans: 53
+  completed_plans: 38
+  percent: 23
 ---
 
 # State: Resonate
@@ -30,14 +30,14 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 Phase: 43
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
         `gsd/phase-32-capability-model-in-the-database`, which forks the phase 31
         branch. Plan-checker: VERIFICATION PASSED, 0 blockers, 2 warnings — both
         closed before execution.
         Only waves 1 and 6 parallelise; the rest is genuinely sequential, because
         the baseline must be captured and committed **before the first migration
         file exists**. A baseline taken after the change is not a baseline.
-Last activity: 2026-08-07
+Last activity: 2026-08-07 -- Phase 43 planning complete
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
