@@ -8,9 +8,87 @@ import { sendEmail } from "@/lib/email";
 import { RefundApprovedEmail } from "@/emails/refund-approved";
 import { RefundRejectedEmail } from "@/emails/refund-rejected";
 import { render } from "@react-email/render";
+import { CAP } from "@/lib/capabilities/keys";
+import { getAccessContext } from "@/lib/capabilities/server";
+
+/**
+ * The staff gate on this file's three refund actions, stated once.
+ *
+ * `approveRefund`, `rejectRefund` and `adminRefund` each opened with an
+ * `auth.getUser()` followed by a read of the caller's own role column out of
+ * `public.profiles`, and refused anyone who was neither master nor organizer.
+ * Three copies of one rule, each costing two round trips. Each now resolves the
+ * access context once and asks one capability.
+ *
+ * The predicate and the column read are deliberately NOT spelled as literals
+ * anywhere in this file: the phase gate counts them with `grep`, and a doc
+ * comment that quotes them keeps this file inside a count that exists to
+ * measure how many files still *perform* them. That has already happened once
+ * in this project — `src/types/database.ts` took the header census from 46 to
+ * 47 by mentioning the header in a comment (33-01-SUMMARY.md).
+ *
+ * ── The question, and why `staff.manage` answers it ──────────────────────────
+ *
+ * The question is *"may this person operate the staff surfaces, of which
+ * tickets and refunds are one"*. That is `staff.manage`, whose own description
+ * names tickets, and whose predicate is role ∈ {master, organizer} with status
+ * ignored (`requires_approved = false`,
+ * `20260807000000_capability_model.sql:392-393`) — **byte-equal to the
+ * predicate it replaces**. No role's reach moves.
+ *
+ * Two keys were rejected, and the reason is the verdict each would change:
+ *
+ *   - `admin.access` is granted to `master` alone, so it would **narrow** the
+ *     gate and lock an organizer out of a refund they can perform today;
+ *   - `catalogue.manage` requires an approved status, so it would lock out a
+ *     `pending` organizer — the other axis, and the same kind of silent scope
+ *     change (`access-gating.md`, gate *due assi*).
+ *
+ * Both would be scope changes disguised as a refactor.
+ *
+ * ── The product question this deliberately does NOT answer ───────────────────
+ *
+ * Whether moving money should be reserved to `master` is a defensible product
+ * position, and it is not this phase's to take: this conversion is required to
+ * leave every role reaching exactly the surfaces it reached before. It is
+ * raised for the owner in `33-03-SUMMARY.md`, not implemented here.
+ *
+ * ── Resolve ONCE, and why that is a rule rather than a preference ────────────
+ *
+ * `cache()` does **not** memoise inside a Server Action body — measured, three
+ * calls ran the body three times, identically in `next dev` and in a production
+ * build (`src/lib/capabilities/server.ts`, *Memoisation, and its limit*). So
+ * each action destructures `getAccessContext()` once into a local and reuses
+ * it. A second awaited capability call in the same invocation would be a second
+ * round trip, invisible to `npm run build`.
+ *
+ * ── `userId` carries attribution, and the refusal is what makes it non-null ──
+ *
+ * `requested_by` and `processed_by` used to receive `user.id` from
+ * `supabase.auth.getUser()`. They now receive `userId` from the resolved
+ * context: the same subject, derived from the same JWT, verified by Postgres
+ * instead of by a second round trip to the Auth server. `userId` is
+ * `string | null` and never `""`, so the `if (!userId) throw` below is not
+ * ceremony — it is what makes every attribution write downstream non-null
+ * (`ACCESS-MODEL-DECISIONS.md` §5).
+ *
+ * ── The failure shape is preserved exactly ───────────────────────────────────
+ *
+ * These actions threw before and throw after, with the same two messages. They
+ * are not converted to a tagged result: that pattern is for a category a client
+ * must branch on, and no client of these three does. A resolve failure throws
+ * its own distinct `capabilities.resolve_failed:` category and is never
+ * collapsed into "Forbidden".
+ */
 
 /**
  * User requests a refund for their ticket.
+ *
+ * NOT converted, deliberately: this is not a staff gate. The `auth.getUser()`
+ * below anchors an **ownership** check — `.eq("user_id", user.id)` on the
+ * ticket, read under row-level security — which is a different question from
+ * "may this person operate the staff surfaces". It reads no header and no
+ * `profiles.role`, so it is outside this plan's conversion.
  */
 export async function requestRefund(ticketId: string, reason: string) {
   const supabase = await createClient();
@@ -73,24 +151,15 @@ export async function requestRefund(ticketId: string, reason: string) {
  * Processes refund via SumUp and deletes the ticket.
  */
 export async function approveRefund(refundId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // One resolve for this invocation. See the block comment above
+  // `requestRefund` for the key choice and for why it is resolved once.
+  const { capabilities, userId } = await getAccessContext();
 
-  if (authError || !user) {
+  if (!userId) {
     throw new Error("Not authenticated");
   }
 
-  // Verify admin/organizer role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
     throw new Error("Forbidden");
   }
 
@@ -143,7 +212,7 @@ export async function approveRefund(refundId: string) {
       .from("ticket_refunds")
       .update({
         status: "approved",
-        processed_by: user.id,
+        processed_by: userId,
         sumup_status: null,
         processed_at: freeProcessedAt,
         refunded_ticket_id: ticket.id,
@@ -215,7 +284,7 @@ export async function approveRefund(refundId: string) {
       await serviceClient
         .from("ticket_refunds")
         .update({
-          processed_by: user.id,
+          processed_by: userId,
           sumup_status: "failed",
           processed_at: new Date().toISOString(),
         })
@@ -232,7 +301,7 @@ export async function approveRefund(refundId: string) {
     .from("ticket_refunds")
     .update({
       status: "approved",
-      processed_by: user.id,
+      processed_by: userId,
       sumup_status: sumupStatus,
       processed_at: processedAt,
       refunded_ticket_id: ticket.id,
@@ -329,24 +398,15 @@ export async function approveRefund(refundId: string) {
  * Admin/organizer rejects a refund request.
  */
 export async function rejectRefund(refundId: string, adminNote?: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // One resolve for this invocation. See the block comment above
+  // `requestRefund` for the key choice and for why it is resolved once.
+  const { capabilities, userId } = await getAccessContext();
 
-  if (authError || !user) {
+  if (!userId) {
     throw new Error("Not authenticated");
   }
 
-  // Verify admin/organizer role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
     throw new Error("Forbidden");
   }
 
@@ -367,7 +427,7 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
     .from("ticket_refunds")
     .update({
       status: "rejected",
-      processed_by: user.id,
+      processed_by: userId,
       admin_note: adminNote?.trim() || null,
       processed_at: new Date().toISOString(),
     })
@@ -424,24 +484,15 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
  * Admin/organizer initiates a direct refund (no user request needed).
  */
 export async function adminRefund(ticketId: string, reason?: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // One resolve for this invocation. See the block comment above
+  // `requestRefund` for the key choice and for why it is resolved once.
+  const { capabilities, userId } = await getAccessContext();
 
-  if (authError || !user) {
+  if (!userId) {
     throw new Error("Not authenticated");
   }
 
-  // Verify admin/organizer role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
     throw new Error("Forbidden");
   }
 
@@ -483,8 +534,10 @@ export async function adminRefund(ticketId: string, reason?: string) {
     .from("ticket_refunds")
     .insert({
       ticket_id: ticketId,
-      requested_by: user.id,
-      processed_by: user.id,
+      // Both attribution columns take the resolved subject. `userId` is
+      // non-null here because of the refusal at the head of this action.
+      requested_by: userId,
+      processed_by: userId,
       reason: reason?.trim() || null,
       amount: ticket.amount_paid,
       status: "approved",
