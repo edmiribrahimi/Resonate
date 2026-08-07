@@ -23,15 +23,20 @@ unsynced check-in) turns from a rare race into the normal case the moment live
 updates are switched on. Then the capability model is defined **in the
 database**, once, so that a page, a server action and a row-level policy all ask
 the same question of the same definition; the server data-access layer is built
-on top of it and header trust ends there; only then do the duplicated route trees
-collapse into one, because per-night assignments, the format model and the design
-conversion would otherwise each be built twice. The door is never bundled with
-the routing work: a redirect needs a network the door is designed not to need, so
-its address moves in a step of its own, verified on a device with the network
-off. The design track runs last, and the scanner is the last surface it touches —
-a visual regression there is a safety issue, not a cosmetic one.
+on top of it and header trust ends there; the fourth role and account creation
+land next, then per-night assignments, and **only then** do the duplicated route
+trees collapse into one — so the collapse is built once, against four roles and
+assignments that already exist, rather than once for three roles and again
+afterwards. The format model and the design conversion follow the collapse for
+the same reason. The door is never bundled with the routing work: a redirect
+needs a network the door is designed not to need, so its address moves in a step
+of its own, verified on a device with the network off. The design track runs
+last, and the scanner is the last surface it touches — a visual regression there
+is a safety issue, not a cosmetic one.
 
-**Milestone numbering continues from v1.4:** phases run 31 → 42.
+**Milestone numbering continues from v1.4:** phases run 31 → 43. Phase 43 was
+added on 2026-08-06, after 34 and 35 had already been numbered and cited; it
+executes between 33 and 35, not at the end. See the note below.
 
 ## Phases
 
@@ -42,11 +47,31 @@ a visual regression there is a safety issue, not a cosmetic one.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+> **This list is in execution order, and execution order is NOT numerically
+> ascending. That is deliberate.**
+>
+> **A phase number is an identity, not a position.** Phase 43 was added on
+> 2026-08-06, when 34 and 35 were already numbered and already cited by twelve
+> committed documents — citations that bind requirement IDs to phase numbers
+> (*"Phase 34's CAP-02"*), one of them inside the closed verification record of a
+> completed phase. Renumbering would make a closed record false, and a record is
+> corrected only when it was wrong when written, never to match a decision taken
+> afterwards. So the numbers stay fixed and **order is expressed by position in
+> this list and by `Depends on`** — nowhere else.
+>
+> **Why the order moved (owner decision, 2026-08-06):** phase 34 collapses the
+> admin and organizer trees into one capability-driven surface. Building it
+> before the fourth role and before per-night assignments exist would mean
+> building it once for three roles, and again for four roles plus assignments.
+>
+> Execution order: **33 → 43 → 35 → 34 → 36 → 37 → …**
+
 - [x] **Phase 31: Live Defects at the Door and the Bar** - Correct the nine defects present in production today, before anything is built on top of them (completed 2026-08-06)
 - [x] **Phase 32: Capability Model in the Database** - One definition of every permission, evaluated identically by pages, actions and row-level policies (completed 2026-08-06)
 - [ ] **Phase 33: Server Data-Access Layer** - Identity and capability resolved from the session in one server-only place; no surface trusts a request header
-- [ ] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched
+- [ ] **Phase 43: Role Model & Account Creation** - The fourth role grants entry and nothing else; master and organizer create accounts, and every act that changes who someone is is recorded with its author
 - [ ] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit
+- [ ] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched
 - [ ] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format
 - [ ] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
@@ -56,6 +81,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
 
 ## Phase Details
+
+*Sections below are in execution order, matching the checklist above.*
 
 ### Phase 31: Live Defects at the Door and the Bar
 
@@ -176,17 +203,44 @@ Plans:
 
 **Plans**: TBD
 
-### Phase 34: One Work Surface
+### Phase 43: Role Model & Account Creation
 
-**Goal**: The duplicated admin and organizer route trees become a single work surface that shows the viewer what they are entitled to see, with old addresses still working — and with the door deliberately left where it is.
+**Goal**: The four roles exist with `staff` granting entry and nothing else; master and organizer create accounts, and every act that changes who someone is, is recorded with its author.
 **Depends on**: Phase 33
-**Requirements**: CAP-02, STAFF-01, STAFF-02, STAFF-03
+**Requirements**: ROLE-01, ROLE-02, ROLE-03, ROLE-04, ACCT-01, ACCT-02, ACCT-03, ACCT-04, ACCT-05
 **Success Criteria** (what must be TRUE):
 
-  1. Each work surface exists at one address and renders according to what the viewer is entitled to see, not according to which tree they arrived from
-  2. Addresses under the previous `/admin/*` and `/organizer/*` prefixes land on the new surface through permanent redirects, so links and bookmarks already sent still work
-  3. A navigation entry appears only where the matching server-side check also passes — typing the address of a hidden entry is refused, not rendered
-  4. A capability that exists in the database but is mapped to no route fails the production build
+  1. A fourth role `staff` exists and grants exactly one thing — entry to a night via the membership card — and no ability to upload, scan or manage anything
+  2. An account holding a staff role (`master`, `organizer`, `staff`) is `approved` **by database rule**, not by four call sites each remembering; a write that would leave a staff role unapproved is refused by the database
+  3. The baseline harness can still create the four states that rule forbids (`organizer/pending`, `organizer/rejected`, `master/pending`, `master/rejected`), so the container keeps the detection power that caught phase 32's only serious defect
+  4. `master` and `organizer` can create an account; the created account is valid for entry immediately, and the message it receives carries a link to set a password, never a password
+  5. Creating an account appears in the same register as an ordinary approval, with the same author and timestamp — as do promotion, rejection and deactivation
+  6. An organizer may promote a staff member to organizer and may not create a master
+  7. `MASTER_EMAIL` demotes as well as promotes: changing it does not leave a past master holding master
+  8. A free staff entry is recorded in the night's attendance like any other entry
+
+**The cost of criterion 2, which is real and is paid deliberately.** The
+constraint makes four personas unrepresentable — `organizer/pending`,
+`organizer/rejected`, `master/pending`, `master/rejected` — and **those four
+personas are the only reason phase 32 caught its worst defect.** When plan 32-07
+deliberately collapsed two capabilities, the policy catalogue passed it and
+production's write matrix would have passed it in silence; only the container's
+write matrix caught it — **sixteen cells, every one of them belonging to those
+four personas.** So criterion 3 is not a convenience: the harness must keep the
+ability to seed those states (drop the constraint while seeding, restore it
+afterwards), or this phase buys a real rule at the price of the only net that has
+already caught something. Whoever implements the constraint owns that, and it is
+not optional.
+
+**The trap to refuse when it comes.** Once the constraint exists,
+`door.operate`'s `requires_approved = false` will **look** redundant, and someone
+will propose removing it as tidying. **It must not be removed.** The constraint
+protects the database; the door's setting protects the night from the day the
+constraint is relaxed for one special case. The two guard different things, and
+the asymmetry is unchanged: refusing a valid staff member at the door, in front
+of a queue, is worse than the alternative.
+
+*Source: `.planning/ACCESS-MODEL-DECISIONS.md`, decisions 1, 2, 4, 6, 7, 8, 10, 11.*
 
 **Plans**: TBD
 **UI hint**: yes
@@ -194,7 +248,7 @@ Plans:
 ### Phase 35: Per-Night Assignments
 
 **Goal**: What a person can do on one night is granted for that night alone — separate from their account-wide role, and separate from public credit, which grants nothing.
-**Depends on**: Phase 34
+**Depends on**: Phase 43
 **Requirements**: ASSIGN-01, ASSIGN-02, ASSIGN-03, ASSIGN-04, ASSIGN-05, ASSIGN-06, ASSIGN-07, ASSIGN-08
 **Success Criteria** (what must be TRUE):
 
@@ -203,6 +257,21 @@ Plans:
   3. Nobody can grant an assignment to themselves
   4. Undoing a check-in is refused for a person assigned only to the door for that night, and allowed for an organizer
   5. A dj or photographer credit can be created for a person who has no account, grants access to no tool, and creates no account
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 34: One Work Surface
+
+**Goal**: The duplicated admin and organizer route trees become a single work surface that shows the viewer what they are entitled to see, with old addresses still working — and with the door deliberately left where it is.
+**Depends on**: Phase 35
+**Requirements**: CAP-02, STAFF-01, STAFF-02, STAFF-03
+**Success Criteria** (what must be TRUE):
+
+  1. Each work surface exists at one address and renders according to what the viewer is entitled to see, not according to which tree they arrived from
+  2. Addresses under the previous `/admin/*` and `/organizer/*` prefixes land on the new surface through permanent redirects, so links and bookmarks already sent still work
+  3. A navigation entry appears only where the matching server-side check also passes — typing the address of a hidden entry is refused, not rendered
+  4. A capability that exists in the database but is mapped to no route fails the production build
 
 **Plans**: TBD
 **UI hint**: yes
@@ -313,13 +382,16 @@ Plans:
 
 ## Progress
 
+*Rows are in execution order, not numeric order — see the note under Phases.*
+
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 0/TBD | Not started | - |
-| 34. One Work Surface | 0/TBD | Not started | - |
+| 43. Role Model & Account Creation | 0/TBD | Not started | - |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
+| 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
@@ -337,6 +409,9 @@ These were decided by the project owner and are not re-opened at plan time:
 | Live freshness uses a **push channel**, not polling — with a mandatory full reload on every reconnection and an infrequent safety reload underneath | Phase 38 |
 | Undoing a check-in requires a **supervising capability**; a person assigned to the door for one night cannot undo unless they are also an organizer | Phase 35 |
 | The venue reveal stays scheduled **plus** a manual path for master and organizer, behind confirmation and recorded | Phase 37 |
+| A staff role **implies `approved`, enforced by the database** — and the baseline harness keeps the ability to seed the four personas that rule forbids | Phase 43 |
+| `door.operate` keeps `requires_approved = false`; it is not redundant with the constraint above and is not removed as tidying | Phase 43 |
+| **Phase numbers are identity, not position.** No phase is renumbered to match an ordering decision taken after it was cited | All phases |
 | The interface stays **English only** — no translation work in this milestone | All phases |
 
 ## Ordering Constraints
@@ -344,10 +419,11 @@ These were decided by the project owner and are not re-opened at plan time:
 Not preferences — each one has a failure mode behind it.
 
 - **Live defects first.** They exist in production today and are independent of the new architecture. The attendee-cache merge fix (FIX-05, FIX-06) must land before Phase 38: the live channel's whole purpose is to run that refresh constantly, which turns a rare race into the normal case.
-- **Database before application.** The capability definition (32) exists before the data-access layer (33) calls it, before the route map (34) maps to it, before assignment policies (35) reuse it, and before the channel authorisation (38) reuses it a third time. One definition, three callers, only works if the definition comes first.
-- **Route collapse before assignments, formats and design.** Otherwise each is built twice, once per duplicated tree — the exact cost the collapse exists to remove.
+- **Database before application.** The capability definition (32) exists before the data-access layer (33) calls it, before the role model (43) adds a fourth role to it, before assignment policies (35) reuse it, before the route map (34) maps to it, and before the channel authorisation (38) reuses it a third time. One definition, several callers, only works if the definition comes first.
+- **The role model and assignments before the route collapse.** Phase 34 renders one surface from what the viewer is entitled to. Built before the fourth role (43) and before per-night assignments (35) exist, it would be built once for three roles and again for four roles plus assignments — the same "build it twice" cost the collapse exists to remove, relocated rather than avoided.
+- **Route collapse before formats and design.** Otherwise each is built twice, once per duplicated tree — the exact cost the collapse exists to remove.
 - **The door is not part of routing.** Its address moves in Phase 39, alone, because a redirect needs a network the door is designed not to need.
 - **The scanner is converted last** (42), and only after the door's behavioural corrections (31, 39) have shipped and been used at a real night.
 
 ---
-*Last updated: 2026-08-05 — milestone v1.5 roadmap created*
+*Last updated: 2026-08-06 — Phase 43 added (role model and account creation); execution order set to 33 → 43 → 35 → 34 → 36 → …, with no phase renumbered*

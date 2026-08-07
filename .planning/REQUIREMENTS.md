@@ -51,6 +51,27 @@ Three rules override any requirement below that appears to contradict them:
 - [ ] **CAP-05**: No surface derives permission from a request header; identity comes from the session
 - [x] **CAP-06**: Every existing row-level policy is reviewed for the performance pattern that re-evaluates the current user per row
 
+### Role Model
+
+Decided by the project owner on 2026-08-06 and recorded in
+`.planning/ACCESS-MODEL-DECISIONS.md` (decisions 1, 2, 10, 11).
+
+- [ ] **ROLE-01**: A fourth role `staff` exists and grants exactly one thing — entry to a night through the membership card — and no ability to upload, scan or manage anything
+- [ ] **ROLE-02**: An account holding a staff role (`master`, `organizer`, `staff`) is `approved` **by database rule**, not by each call site remembering: a write that would leave a staff role unapproved is refused by the database
+- [ ] **ROLE-03**: The baseline harness keeps the ability to seed the four states that rule forbids — `organizer/pending`, `organizer/rejected`, `master/pending`, `master/rejected` — because those four personas are the only reason phase 32's write matrix caught its worst defect
+- [ ] **ROLE-04**: `MASTER_EMAIL` demotes as well as promotes — changing it does not leave a past master still holding `master`, so the recovery path stops being an undeclared one-way switch
+
+### Account Creation
+
+Decided by the project owner on 2026-08-06 and recorded in
+`.planning/ACCESS-MODEL-DECISIONS.md` (decisions 4, 5, 6, 7, 8).
+
+- [ ] **ACCT-01**: Only a `master` and an `organizer` can create an account, and neither can create a `master`; an organizer may promote a staff member to organizer, so the ceiling on a self-replicating power holds for creation and promotion alike
+- [ ] **ACCT-02**: A created account is valid for entry immediately — the person can enter a night with their membership card without ever having logged in
+- [ ] **ACCT-03**: The message a created account receives carries a **link to set a password, never a password** — a password sent by email lives in that inbox forever
+- [ ] **ACCT-04**: Creating an account is recorded in the **same register as an ordinary approval**, with the same author and timestamp — as are promotion, rejection and deactivation
+- [ ] **ACCT-05**: A free staff entry is recorded in the night's attendance like any other entry, so a permanent free entry never makes the night's numbers wrong
+
 ### Unified Work Surface
 
 - [ ] **STAFF-01**: Each work surface exists once, not once per role, and shows what the viewer is entitled to see
@@ -128,6 +149,7 @@ Deferred, tracked, not in this roadmap.
 | **QR-01** | Access-granting codes are generated with a cryptographic source | Independent of this milestone; still true, still open |
 | **RATE-01** | Endpoints that answer "valid / not valid" are rate limited | Independent; no rate limiting exists anywhere today |
 | **OBS-01** | A production failure reaches a human without someone noticing the effect first | No error tracking exists; deliberately out of this milestone |
+| **ASSOC-01** | Whether an approved member is also an association member, once the association exists | Dated 2026-08-06 and to be re-opened, not inherited: it stops being a product choice and becomes a legal statement |
 
 ## Out of Scope
 
@@ -136,6 +158,9 @@ Deferred, tracked, not in this roadmap.
 | Translating the interface | The interface stays English — decided this milestone, and consistent with the visual materials |
 | Rethinking navigation structure | Navigation changes **form** by device, not structure; restructuring is a different project |
 | A custom role builder | Under ten people; named roles plus per-night assignments cover every case raised |
+| One role per trade (`staff_photo`, `staff_door`, …) | Every new trade would be a schema change and every permission added by hand per trade — the scattered-predicate disorder phase 32 removed. Work permissions come from the per-night assignment instead |
+| A second standing master account | A spare key, not a second set carried daily: the recovery path is `MASTER_EMAIL` repaired (ROLE-04), not a permanently live second administrator |
+| Expiring staff accounts automatically | Deactivation is manual; the seat cost is made visible by recording staff entries in attendance (ACCT-05) instead |
 | Realtime presence indicators | Freshness is the requirement, not knowing who else is watching |
 | Auto-creating accounts for credited artists | An account is membership in a gated community — that gate is not opened to print a name |
 | Redesigning scanner interaction | Colour, contrast and type only; behaviour is a safety surface |
@@ -144,7 +169,11 @@ Deferred, tracked, not in this roadmap.
 ## Traceability
 
 Every v1.5 requirement maps to exactly one phase. Phase numbering continues from
-v1.4 (last phase: 30) — this milestone runs 31 → 42.
+v1.4 (last phase: 30) — this milestone runs 31 → 43.
+
+**Phase 43 was added on 2026-08-06 and executes between 33 and 35.** Its number
+is higher because numbers are identity, not position: no phase was renumbered.
+Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `ROADMAP.md`.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -167,6 +196,15 @@ v1.4 (last phase: 30) — this milestone runs 31 → 42.
 | CAP-04 | Phase 32 | Complete |
 | CAP-06 | Phase 32 | Complete |
 | CAP-05 | Phase 33 | Pending |
+| ROLE-01 | Phase 43 | Pending |
+| ROLE-02 | Phase 43 | Pending |
+| ROLE-03 | Phase 43 | Pending |
+| ROLE-04 | Phase 43 | Pending |
+| ACCT-01 | Phase 43 | Pending |
+| ACCT-02 | Phase 43 | Pending |
+| ACCT-03 | Phase 43 | Pending |
+| ACCT-04 | Phase 43 | Pending |
+| ACCT-05 | Phase 43 | Pending |
 | CAP-02 | Phase 34 | Pending |
 | STAFF-01 | Phase 34 | Pending |
 | STAFF-02 | Phase 34 | Pending |
@@ -211,4 +249,9 @@ v1.4 (last phase: 30) — this milestone runs 31 → 42.
 | DS-04 | Phase 42 | Pending |
 | RESP-05 | Phase 42 | Pending |
 
-**Coverage:** 57 / 57 mapped. No orphans, no requirement assigned twice.
+**Coverage:** 71 / 71 mapped. No orphans, no requirement assigned twice.
+
+> The previous figure read *57 / 57*. It was already wrong when written — 62
+> requirements were defined at the time, and the table listed 62 rows. Corrected
+> here, with the nine new ones, to 71: a count is corrected when it was wrong at
+> the time it was written.
