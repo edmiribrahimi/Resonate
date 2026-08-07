@@ -125,6 +125,73 @@ the most dangerous (`.claude/rules/meta-gates.md`, monotone guards).
 Repairing it yields a clean recovery path **without** a permanently live second
 administrator.
 
+## 11. "A staff role implies approved" becomes a database rule, not a convention
+
+**Owner decision, 2026-08-06:** an account holding a staff role
+(`master`, `organizer`, and `staff` when it lands) is **always** `approved`.
+An organizer awaiting approval is not a state this product will ever have.
+
+### Why this is a change, even though the behaviour already holds
+
+Measured across every path that writes `role` or `status`:
+
+| Path | Writes |
+|---|---|
+| promote to organizer (`updateMemberRole`) | role **and** `status = 'approved'` |
+| deactivate (`deactivateMember`) | `status = 'rejected'` **and** `role = 'member'` |
+| reject (`rejectMember`) | `status = 'rejected'` **and** `role = 'member'` |
+| reactivate (`reactivateMember`) | `status = 'approved'` only |
+| `MASTER_EMAIL` promotion | `role = 'master'`, `status = 'approved'` |
+| the 2026-02-24 RBAC migration | role `organizer`, status defaulted `approved` |
+
+So `organizer/pending` and `organizer/rejected` are **already unreachable
+through the application** — the two rejection paths demote as well as reject.
+
+**But nothing states the rule.** It holds because four separate functions each
+remember to do the right thing. There is no constraint. The fifth function
+breaks it, and five new paths are arriving: account creation by an organizer,
+the `staff` role, per-night assignments, phase 33's rewrite of authorisation
+across 44 files, and phase 34's single work surface.
+
+A rule enforced in four places is a convention. This decision makes it true by
+construction.
+
+### THE COST, WHICH IS REAL AND MUST BE PAID DELIBERATELY
+
+Phase 32's container seeds **eleven personas**, four of which are
+`organizer/pending`, `organizer/rejected`, `master/pending`, `master/rejected`.
+
+A `CHECK` constraint makes those four **unrepresentable**.
+
+**Those same four personas are the ONLY reason phase 32 caught its worst
+defect.** When plan 32-07 deliberately collapsed `catalogue.manage` into
+`staff.manage` — the exact mistake that hands an unapproved organizer powers
+they do not have — the policy catalogue passed it, production's write matrix
+would have passed it in silence, and only the container's write matrix caught
+it: **sixteen cells, every one of them belonging to those four personas.**
+
+**Therefore the harness must keep the ability to seed those states** — drop the
+constraint while seeding, restore it afterwards — or this decision buys a real
+rule at the price of the only net that has already caught something. Whoever
+implements the constraint owns that, and it is not optional.
+
+### The trap to refuse when it comes
+
+Once the constraint exists, it will look as though `door.operate`'s
+`requires_approved = false` is redundant, and someone will propose removing it
+as tidying.
+
+**Refuse.** The constraint protects the database. The door's setting protects
+the night from the day the constraint is relaxed for one special case. The two
+guard different things, and the asymmetry is unchanged: refusing a valid staff
+member at the door, in front of a queue, is worse than the alternative.
+
+### Where this work lives
+
+**Not in phase 33** — that phase's subject is where identity is resolved, not
+what states exist. It belongs with the work that introduces the `staff` role and
+account creation, which has **no phase on the roadmap yet** (see below).
+
 ---
 
 ## Roadmap consequence
@@ -137,6 +204,32 @@ three roles and again for four roles plus assignments.
 Phase 33 (server data-access layer) is unaffected and still comes first — it is
 where identity and capability are resolved in one server-only place, which both
 34 and 35 need.
+
+**`ROADMAP.md` still records the old order** (`Phase 35 — Depends on: Phase 34`).
+The contradiction is deliberate and flagged rather than silently patched:
+reordering two phases inside a third phase's workflow is exactly the change that
+enters sideways. It must be done with its own action, **before phase 34 is
+planned** — not before phase 33 is executed.
+
+### A gap: four decisions have no phase to live in
+
+Decisions 1, 2, 4, 6, 7 and 11 above describe work that **is not on the roadmap
+at all**:
+
+- adding the fourth role `staff` (schema constraint + its rows in
+  `private.role_capabilities` + a decision per capability)
+- account creation by `master` and `organizer`, with the invitation link
+- the attribution register (who created, promoted, approved, assigned, overrode
+  — and when)
+- the `role ⇒ approved` constraint of decision 11, with the harness change it
+  forces
+
+Phase 35 covers per-night assignments, phase 34 the single surface; **none of
+them covers the above.** Left unplaced, this work will be absorbed piecemeal
+into whichever phase is open when it becomes urgent — which is how a phase stops
+being able to say what it changed.
+
+**Owed: a phase for the role model and account creation, placed before phase 34.**
 
 ## What this does NOT settle
 
