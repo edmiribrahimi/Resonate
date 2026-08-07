@@ -205,11 +205,13 @@ Phase 33 (server data-access layer) is unaffected and still comes first — it i
 where identity and capability are resolved in one server-only place, which both
 34 and 35 need.
 
-**`ROADMAP.md` still records the old order** (`Phase 35 — Depends on: Phase 34`).
-The contradiction is deliberate and flagged rather than silently patched:
-reordering two phases inside a third phase's workflow is exactly the change that
-enters sideways. It must be done with its own action, **before phase 34 is
-planned** — not before phase 33 is executed.
+**Applied to `ROADMAP.md` on 2026-08-06, in an action of its own** — reordering
+two phases inside a third phase's workflow is exactly the change that enters
+sideways, so it was not done while phase 33 was open. Execution order is now
+**33 → 43 → 35 → 34 → 36 → …**, expressed by position and by `Depends on`.
+**No phase was renumbered**: 34 and 35 are cited by committed documents, one of
+them a closed verification record, and a number is an identity rather than a
+position.
 
 ### A gap: four decisions have no phase to live in
 
@@ -229,7 +231,10 @@ them covers the above.** Left unplaced, this work will be absorbed piecemeal
 into whichever phase is open when it becomes urgent — which is how a phase stops
 being able to say what it changed.
 
-**Owed: a phase for the role model and account creation, placed before phase 34.**
+**Delivered 2026-08-06: `Phase 43 — Role Model & Account Creation`**, placed in
+`ROADMAP.md` immediately after phase 33 and before phase 34, carrying decisions
+1, 2, 4, 6, 7, 8, 10 and 11 as `ROLE-01…04` and `ACCT-01…05` in
+`REQUIREMENTS.md`.
 
 ## What this does NOT settle
 
