@@ -1,7 +1,9 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import RevenueCard from "@/components/analytics/RevenueCard";
@@ -27,13 +29,21 @@ export default async function OrganizerAnalyticsPage({
 }) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity from the session, not from an inbound header. `my_access_context()`
+  // answers about `auth.uid()` inside the JWT, so nothing a client can send
+  // reaches the ownership decision below.
+  const ctx = await getAccessContext();
 
-  // Defense in depth: verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // `MobileNav` is a `"use client"` component that still takes role and status
+  // as props; phase 34 (STAFF-03) converts it to capabilities and owns removing
+  // these two fields. The cast is at this boundary on purpose — the context types
+  // them honestly as `string | null` and no decision on this page reads them.
+  const navRole = ctx.role as UserRole | null;
+  const navStatus = ctx.status as UserStatus | null;
+
+  // Defense in depth: may this person reach the organizer area at all.
+  // Role only, status ignored — the same question `middleware.ts` asks.
+  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
@@ -50,8 +60,13 @@ export default async function OrganizerAnalyticsPage({
     redirect("/organizer/events");
   }
 
-  // Verify ownership (organizer owns event OR user is master)
-  if (role === "organizer" && event.created_by !== userId) {
+  // Verify ownership — one call, never a re-inlined comparison. `ownsOrIsMaster`
+  // answers master first (without reading the row), then refuses a null identity
+  // and a row owned by nobody, and only then compares. Writing the inequality out
+  // here would compare `null` against `null` on an unowned row and ADMIT — which
+  // is why the expression is not spelled out even in this comment, the same
+  // discipline `review/page.tsx` applies to the service client's name.
+  if (!ownsOrIsMaster(ctx, event.created_by)) {
     redirect("/organizer/events");
   }
 
@@ -113,7 +128,7 @@ export default async function OrganizerAnalyticsPage({
         </div>
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

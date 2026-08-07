@@ -1,8 +1,10 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { ownsOrIsMaster } from "@/lib/capabilities/guards";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import SalesDashboard from "@/components/events/SalesDashboard";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -14,13 +16,16 @@ export default async function OrganizerSalesPage({
 }) {
   const { id: eventId } = await params;
 
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity from the session, not from an inbound header.
+  const ctx = await getAccessContext();
 
-  // Defense in depth: verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // `MobileNav` is a `"use client"` component that still takes role and status as
+  // props; phase 34 (STAFF-03) converts it. No decision on this page reads them.
+  const navRole = ctx.role as UserRole | null;
+  const navStatus = ctx.status as UserStatus | null;
+
+  // Defense in depth: may this person reach the organizer area at all.
+  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
@@ -37,8 +42,16 @@ export default async function OrganizerSalesPage({
     redirect("/organizer/events");
   }
 
-  // Verify ownership (organizer owns event OR user is master)
-  if (role === "organizer" && event.created_by !== userId) {
+  // Ownership — one call, never a re-inlined comparison.
+  //
+  // This page later reads `tickets` and `profiles` with the **service-role
+  // client**, which bypasses every row-level policy (`access-gating.md`, gate
+  // *service role*), and ships buyer names and email addresses into a client
+  // component. On that path this `if` is the only boundary there is. The client is
+  // retained unchanged by this conversion — the phase converts who decides, not
+  // who reads — and the statement is recorded here because `meta-gates.md`
+  // requires it in writing.
+  if (!ownsOrIsMaster(ctx, event.created_by)) {
     redirect("/organizer/events");
   }
 
@@ -197,7 +210,7 @@ export default async function OrganizerSalesPage({
         />
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
