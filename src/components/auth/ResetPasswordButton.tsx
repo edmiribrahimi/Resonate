@@ -16,8 +16,21 @@ export default function ResetPasswordButton() {
       return;
     }
 
+    // The loop this cures, so nobody restores the old value as a
+    // simplification: until now this link pointed at `/dashboard`. Following it
+    // signed the person in and put them on a page with **no password field** —
+    // and the only remedy offered there was this same button, sending the same
+    // link back to the same place. `supabase.auth.updateUser({ password })`
+    // existed nowhere in `src/` (D-23), so "Reset Password" could not reset a
+    // password.
+    //
+    // It aims at the callback rather than straight at `/set-password` because
+    // the callback is what exchanges the code for a session
+    // (`src/app/api/auth/callback/route.ts`); landing directly on the surface
+    // would land there with no session. `next=/set-password` is on that route's
+    // allow-list.
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/set-password`,
     });
 
     setStatus(error ? "error" : "sent");
