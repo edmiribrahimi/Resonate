@@ -1,6 +1,7 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import MemberTable from "@/components/admin/MemberTable";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -17,16 +18,36 @@ function extractReferrerName(referrer: unknown): string | null {
 }
 
 export default async function OrganizerMembersPage() {
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
-  const userId = headersList.get("x-user-id") || "";
+  // Identity comes from the session, not from an inbound request header.
+  const { capabilities, userId, role, status } = await getAccessContext();
 
-  // Defense in depth: middleware already blocks, but verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // The question is "may this person reach the organizer area" —
+  // `organizer.access`, the same one the middleware asks for `/organizer/*`.
+  // This redirect decides reachability only; what a row of `profiles` may be
+  // read or written is decided by the row-level policies, and the member
+  // actions this table calls re-check on their own.
+  if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The resolver types these `string | null` deliberately, so that no decision
+  // can branch on them. They are not a decision here: they are props for a
+  // `"use client"` nav that cannot import the DAL. Phase 34 (STAFF-03) converts
+  // that nav and this pass-through goes with it.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
+
+  // `userId` is now `string | null`; `MemberTable.currentUserId` is `string`.
+  // `?? ""` is behaviour-identical here, and that was checked rather than
+  // assumed: the prop is read at exactly one place — `MemberTable.tsx:173`,
+  // `member.id === currentUserId` — where a MATCH *suppresses* the action cell
+  // on the viewer's own row. A null-vs-null match would therefore refuse more,
+  // never admit more, and it cannot happen anyway: `member.id` is a non-null
+  // `profiles` primary key, so neither `""` nor `null` can ever equal it. The
+  // widened prop is not written because `MemberTable` is shared with the admin
+  // members page, which another plan converts; changing its signature from here
+  // would edit a file this plan does not own.
+  const currentUserId = userId ?? "";
 
   // Fetch all profiles with referral data via self-referencing join
   const supabase = await createClient();
@@ -51,7 +72,7 @@ export default async function OrganizerMembersPage() {
             </p>
           </div>
         </div>
-        <MobileNav role={role} status={status} />
+        <MobileNav role={navRole} status={navStatus} />
       </div>
     );
   }
@@ -78,13 +99,13 @@ export default async function OrganizerMembersPage() {
       <div className="px-6">
         <MemberTable
           members={members}
-          currentUserId={userId}
+          currentUserId={currentUserId}
           showActions={true}
           callerRole="organizer"
         />
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
