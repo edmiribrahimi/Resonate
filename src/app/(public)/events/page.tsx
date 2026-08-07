@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 import EventTabs from "./EventTabs";
 
@@ -25,10 +26,11 @@ interface EventCard {
 }
 
 export default async function EventsPage() {
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role, status and capabilities from the SESSION. Resolved here, OUTSIDE the
+  // try/catch below, on purpose: a resolver failure must reach Next's error
+  // boundary rather than be turned into an empty event list by that catch.
+  // `role` and `status` are presentation — they choose MobileNav's entries.
+  const { capabilities, role, status } = await getAccessContext();
 
   let upcoming: EventCard[] = [];
   let past: EventCard[] = [];
@@ -37,8 +39,22 @@ export default async function EventsPage() {
     const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
 
-    // Admin/organizer see drafts too
-    const canSeeDrafts = role === "master" || role === "organizer";
+    // Admin/organizer see drafts too. This NARROWS A QUERY, so it is a
+    // data-access decision and becomes a capability question. `staff.manage`
+    // is byte-equal to the `role === "master" || role === "organizer"` it
+    // replaces, so no role's reach changes.
+    //
+    // MEASURED, and quoted rather than re-derived (33-RESEARCH.md): forging a
+    // master identity header on this page returns the SAME two event slugs as
+    // an anonymous request — AND STILL DOES WITH THE MIDDLEWARE STRIP REMOVED
+    // — because RLS on `public.events` refuses unpublished rows to `anon`
+    // regardless of what `canSeeDrafts` decides. So this conversion closes a
+    // COUPLING, not a hole, and `/events` IS NOT A VALID CRITERION-2 PROBE:
+    // it reports "no difference" because it cannot see one. That is the D-32-I
+    // shape — a probe never shown to fire proves nothing — and it is written
+    // here so the next person does not verify the phase against this page and
+    // collect a meaningless green.
+    const canSeeDrafts = capabilities.has(CAP.STAFF_MANAGE);
 
     const query = supabase
       .from("events")
@@ -134,7 +150,13 @@ export default async function EventsPage() {
         <EventTabs upcoming={upcoming} past={past} />
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      {/* Presentation only. Cast at the page boundary because MobileNav is a
+          client component and cannot import the resolver; phase 34 (STAFF-03)
+          owns the nav vocabulary. */}
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }

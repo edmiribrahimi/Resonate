@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
@@ -158,11 +158,21 @@ export default async function DashboardPage() {
   });
   const sortedTickets = [...upcomingTickets, ...pastTickets];
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // Role and status from the SESSION. Only the source changed.
+  const { role, status } = await getAccessContext();
 
+  // Both expressions KEEP THEIR FORM, deliberately. Neither redirects and
+  // neither narrows a query: `isStaff` draws a shortcut block and
+  // `isPendingOrRejected` draws a notice — they decide what this page RENDERS,
+  // which makes them presentation under this phase's contract.
+  //
+  // `isStaff` looks like an obvious candidate for the staff-manage capability
+  // question, and leaving it alone is the correct call: it gates a NAVIGATION
+  // AFFORDANCE, and
+  // phase 34 (STAFF-03 — "a navigation entry appears only where the matching
+  // server-side check also passes") rewrites that whole family at once against
+  // four roles. Converting one member of the family here means paying for the
+  // redesign twice, and the route is already gated upstream.
   const isStaff = role === "master" || role === "organizer";
   const isPendingOrRejected = status === "pending" || status === "rejected";
 
@@ -373,7 +383,10 @@ export default async function DashboardPage() {
         )}
       </AnimatedSection>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }

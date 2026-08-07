@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/capabilities/server";
 import MembershipCardView from "@/components/membership/MembershipCardView";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MobileNav from "@/components/layout/MobileNav";
@@ -14,10 +14,12 @@ export default async function MembershipCardPage() {
 
   if (!user) redirect("/login");
 
-  // Read role and status from middleware-injected headers
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  // A pure nav-prop read: `role` and `status` are PRESENTATION here — nothing
+  // on this page branches on them, and no capability key belongs in this file.
+  // Only their source changed. The `profile?.status` read below (:45) that
+  // gates the referral link comes from this page's own `profiles` select, not
+  // from a header, and is deliberately left alone.
+  const { role, status } = await getAccessContext();
 
   const fullName = user.user_metadata?.full_name || "Member";
 
@@ -64,7 +66,10 @@ export default async function MembershipCardPage() {
         </div>
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav
+        role={role as UserRole | null}
+        status={status as UserStatus | null}
+      />
     </div>
   );
 }
