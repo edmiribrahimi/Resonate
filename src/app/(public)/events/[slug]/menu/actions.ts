@@ -2,31 +2,53 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import { menuCloseInstant } from "@/utils/datetime";
 
 /**
  * Update menu_closes_at for a party. Only master/organizer can do this.
+ *
+ * **`staff.manage`, and the equivalence was measured.** The deleted predicate
+ * read `role in (master, organizer)` off a `select("role")` — `status` was never
+ * fetched, so it could not be part of the test. `private.role_capabilities`
+ * grants `staff.manage` to `master` and to `organizer` with
+ * `requires_approved = false` on both rows
+ * (`20260807000000_capability_model.sql:392-393`): the same predicate, row for
+ * row. `CAP_DESCRIPTIONS["staff.manage"]` names *parties* and *drinks* by hand.
+ * `catalogue.manage` was rejected — it carries `requires_approved = true`
+ * (`:399-400`) and would refuse a pending organizer who can set this today.
+ *
+ * **The gate runs BEFORE the service-client write, and that order is the whole
+ * point.** `partyId` is untrusted client input and the write below uses the
+ * service-role client, which bypasses every row-level policy
+ * (`access-gating.md`, gate *service role*). On this path the code IS the
+ * security boundary — there is no RLS behind it to catch a caller the gate let
+ * through. The service client is retained deliberately: an organizer has no RLS
+ * write permission on `event_parties`, so the write cannot be done as the
+ * caller.
+ *
+ * `menu_closes_at` is money-adjacent: it decides when drink tokens stop being
+ * purchasable and when the one-hour redeem grace period starts
+ * (`purchaseDrinksGuest` and `redeemDrinkTokenGuest` below). This change touches
+ * *who may set it*, never the value written nor the `end_time` fallback nor the
+ * grace window.
  */
 export async function updateMenuClosesAt(
   partyId: string,
   menuClosesAt: string | null
 ): Promise<{ success: boolean }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const ctx = await getAccessContext();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  // Two causes, kept distinguishable (`meta-gates.md`, zero silent failures).
+  // An anonymous caller resolves to the empty capability set and would be
+  // refused below anyway, but "nobody is here" is not "this person may not".
+  if (!ctx.userId) throw new Error("Not authenticated");
 
-  if (!profile || (profile.role !== "master" && profile.role !== "organizer")) {
-    throw new Error("Not authorized");
+  if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
+    throw new Error("forbidden.staff_manage_required");
   }
 
   const serviceClient = getServiceClient();
