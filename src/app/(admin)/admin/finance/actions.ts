@@ -1,15 +1,70 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { sumup, refundTransaction } from "@/lib/sumup";
 import { getServiceClient } from "@/lib/supabase/service";
-import type { UserRole } from "@/types/database";
+import { CAP } from "@/lib/capabilities/keys";
+import { getAccessContext } from "@/lib/capabilities/server";
 
+/**
+ * The gate on the SumUp surface — asked of the session, not of the transport.
+ *
+ * ── There is no second boundary behind this file ─────────────────────────────
+ *
+ * `access-gating.md` states the rule the rest of the repository lives by: the
+ * middleware decides where someone may *go*, row-level security decides what
+ * they may *read*. **Neither half applies here.** Every action below operates
+ * through `getServiceClient()`, which bypasses every row-level policy by
+ * construction, and through the SumUp API, which has no policies at all. So on
+ * this file the code IS the security boundary, and this function is the whole
+ * of it. That is why it reads the session rather than a header, and why it is
+ * repeated at the head of every exported action below.
+ *
+ * ── The question this asks, and why this key answers it ──────────────────────
+ *
+ * The question is *"may this person reach the finance surface of the admin
+ * area"*. `admin.access` is exactly that question, and it is the same question
+ * `src/lib/supabase/middleware.ts:172-177` already asks of `/admin/*` — so the
+ * two gates in front of this file now ask one question of one authority,
+ * instead of one asking the database and the other asking a request header.
+ *
+ * `master.manage` was rejected: it asks *"is this a reserved operation"*, a
+ * different question about the same people **today**. Three of the eight keys
+ * resolve to the same predicate right now (`keys.ts:38-45`), so choosing by
+ * predicate rather than by question is invisible until a later phase separates
+ * them.
+ *
+ * ── Why the verdict does not move for anybody ────────────────────────────────
+ *
+ * `admin.access` is granted to `master` alone with `requires_approved = false`
+ * (`20260807000000_capability_model.sql:408`), which is `role !== "master"`
+ * inverted for every real subject — a master of any status holds it, an
+ * organizer or a member of any status does not. For a caller with no session
+ * `getAccessContext()` returns the anonymous context: an empty set, so the
+ * redirect fires, and the middleware turns `/dashboard` into `/login`. The old
+ * code read `null` from the header and redirected to the same place by the same
+ * two hops. **This conversion narrows nothing and widens nothing.** It removes
+ * a dependency on a transport.
+ *
+ * ── Why this stays at the head of every exported action ──────────────────────
+ *
+ * It is tempting to read the paragraph above as making the in-action call
+ * redundant, since the middleware already asks the same question of the same
+ * authority. It is not. A Server Function is a POST to its host route, and
+ * Next's own guidance is explicit: *"Always verify authentication and
+ * authorization inside each Server Function rather than relying on Proxy
+ * alone."* A matcher change, or a refactor that moves one of these functions to
+ * a route outside `/admin`, silently removes the proxy coverage — and behind
+ * this file there is no RLS to catch what gets through. That is threat T-33-12.
+ *
+ * A failure to resolve throws rather than falling through to a refusal: an
+ * empty capability set would refuse a master exactly the way it refuses a
+ * member, and this project has no error tracking to tell the two apart
+ * (`src/lib/capabilities/server.ts`, `meta-gates.md`).
+ */
 async function requireMaster() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  if (role !== "master") {
+  const { capabilities } = await getAccessContext();
+  if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
 }
