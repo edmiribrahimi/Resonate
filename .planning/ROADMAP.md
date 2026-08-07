@@ -248,8 +248,8 @@ of a queue, is worse than the alternative.
 Plans:
 **Wave 1**
 
-- [ ] 43-01-PLAN.md — [BLOCKING] M-12 while the state it needs still exists, production's row shape, and the shape of a refusal
-- [ ] 43-02-PLAN.md — verify-capabilities gains a fifth side: every role × capability pair is a declared grant or a declared refusal
+- [x] 43-01-PLAN.md — [BLOCKING] M-12 while the state it needs still exists, production's row shape, and the shape of a refusal
+- [x] 43-02-PLAN.md — verify-capabilities gains a fifth side: every role × capability pair is a declared grant or a declared refusal
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 0/TBD | Not started | - |
+| 43. Role Model & Account Creation | 2/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
