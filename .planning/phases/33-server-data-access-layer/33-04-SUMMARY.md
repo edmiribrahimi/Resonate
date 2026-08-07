@@ -3,7 +3,9 @@ phase: 33-server-data-access-layer
 plan: 04
 subsystem: checkin-offline
 tags: [door, capabilities, dal, checkin, offline, round-trips]
-status: awaiting-checkpoint
+status: complete
+human_verification: owed
+human_verification_ref: "ACCESS-MODEL-DECISIONS.md decision 12 — manual verification deferred to the end of the build, deliberately, with its price written down"
 requires:
   - "33-01 (getAccessContext().userId, AccessContextResult)"
 provides:
@@ -37,11 +39,12 @@ decisions:
   - "D-33-04-C: membership/list asks door.operate, not staff.manage — identical predicate today, a statement about phase 35"
   - "D-33-04-D: the subject id is captured into a const before respond() is declared; TypeScript drops narrowing inside a hoisted function declaration, which is what the old `!` was paying for"
   - "D-33-04-E: no capability gate added to the scanner page — it has never had one, and a second refusal path in front of the door is not defence in depth"
+  - "D-33-04-F: task 4's six manual steps are recorded as human-verification items OWED, per ACCESS-MODEL-DECISIONS.md decision 12 — deferred, not skipped, and not substituted"
 metrics:
-  duration: "~55 min (tasks 1-3; task 4 is a pending checkpoint)"
+  duration: "~55 min (code); manual verification deferred by owner decision"
   completed: 2026-08-07
-  tasks: 3 of 4
-  commits: 3
+  tasks: 3 executed, 1 deferred as owed
+  commits: 4
 requirements: [CAP-05]
 ---
 
@@ -49,8 +52,11 @@ requirements: [CAP-05]
 
 The five door routes now ask one function — `requireDoorOperator()`, asking
 `door.operate`, **role alone** — and a scan costs one Supabase round trip
-instead of two. **Task 4 is a blocking human-verify checkpoint and has not been
-executed: the door is not signed off until it is.**
+instead of two. **Task 4's six manual steps were NOT executed. They are recorded
+below as human-verification items owed**, per `ACCESS-MODEL-DECISIONS.md`
+decision 12: manual verification is deferred to the end of the build,
+deliberately, with its price written down. Deferred is not done, and nothing was
+substituted for it.
 
 ## What was built
 
@@ -59,7 +65,19 @@ executed: the door is not signed off until it is.**
 | 1 | the one door authorisation | `5046510` | `src/lib/door/require-operator.ts` |
 | 2 | the four door routes + the roster route | `ef73564` | `checkin/route.ts`, `checkin/undo/route.ts`, `tickets/attendance/route.ts`, `membership/verify/route.ts`, `membership/list/route.ts` |
 | 3 | the scanner page, presentation only | `64871c0` | `src/app/(admin)/admin/scanner/page.tsx` |
-| 4 | **verify by hand, including offline** | — | **CHECKPOINT — NOT RUN** |
+| 4 | verify by hand, including offline | — | **DEFERRED — owed, see § Human verification owed** |
+| — | this summary | `e354d35` + this commit | `33-04-SUMMARY.md` |
+
+## Carried forward — index
+
+Three findings the owner is carrying past this plan. Each is written out where
+it belongs in the body; this is the index so none is lost in a long file.
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| 1 | `ScannerClient.tsx:81-87` builds the headline from the HTTP status, so an authorisation refusal reads as a failed write. Zero-silent-failures, at the door. **Do not fix inside this phase.** | § *Carried forward 1* | none in wave 2 |
+| 2 | `select("role")` was **vacuous on 2 of 5 files** — third instance of a spelling-anchored check in this phase | § *Carried forward 2* | phase discipline |
+| 3 | The meter base is **102 / 47**, not 98 / 45 — wave 1's own explanatory comments moved it | § *Carried forward 3* | **33-14** |
 
 ## The door still gates on ROLE ALONE
 
@@ -84,6 +102,13 @@ The unfiltered count is **1** because the module's own comment explains
 is load-bearing rather than decorative, and it proves the assertion cannot be
 defeated by documenting the decision it protects.
 
+**This is the shape the rest of the phase is being held to** (owner, on reading
+this summary): a check that returns **0 for the right reason**, with the run
+that makes it return non-zero performed alongside it. A green with no
+demonstrated way to go red is not evidence — this phase's planning already
+removed five checks that could not fail, and wave 1 found a sixth inside its own
+instrument.
+
 ## The HTTP code for `unresolved`, and the bucket that justifies it
 
 **503**, read out of `src/lib/offline/sync-manager.ts`'s classification table
@@ -99,7 +124,9 @@ defeated by documenting the decision it protects.
 `door_scan_events` insert fails, so the drain's handling of it is exercised
 rather than new.
 
-## The observable effect — and the named gap
+## CARRIED FORWARD 1 — the observable effect, and `ScannerClient.tsx`'s wrong headline
+
+**Owner is carrying this forward. Not fixed here, deliberately.**
 
 `checkin-offline.md`, gate *il fallimento va visto*: with no error tracking in
 this repository, an error path must show itself to the staff present. The
@@ -120,10 +147,29 @@ the headline, which is not what happened, with the true sentence below it. The
 staff member is not told "not authorised" — which is the failure this outcome
 exists to prevent — but the headline is still wrong.
 
+**At 02:00, in front of a queue, the headline is what gets read.** This is a
+zero-silent-failures problem in the place this project cares about most: the
+headline names a cause that did not occur, and the true one is a size smaller,
+underneath.
+
 `ScannerClient.tsx` is **not** in this plan's `files_modified` and belongs to no
 plan in this wave, so it was not edited. **This is shipped as a named gap, not
-silently.** The one-line fix is a fourth branch in `serverFaultMessage` keyed on
-`body.status === "capability_unresolved"` rather than on the HTTP code.
+silently, and it must not be fixed opportunistically:** changing what the door
+displays is a behaviour change outside this phase's contract, and it needs its
+own verification **at the door**, not a green build.
+
+The shape of the eventual fix, for whoever owns it: a branch in
+`serverFaultMessage` keyed on `body.status === "capability_unresolved"` rather
+than on the HTTP code — which means threading the body into that function, since
+today it receives only the status.
+
+| Field | Value |
+|---|---|
+| File | `src/app/(admin)/admin/scanner/ScannerClient.tsx` |
+| Wrong headline built at | `:81-87` (`serverFaultMessage`) |
+| True reason relegated to detail at | `:946-965` (`reportServerFault` → `showFlash`) |
+| Owner | none in wave 2 — carried forward |
+| Do not | fix it inside this phase |
 
 ## Round trips: one fewer before a scan, one more before a refusal
 
@@ -132,12 +178,18 @@ silently.** The one-line fix is a fourth branch in `serverFaultMessage` keyed on
 | Authorised scan | `auth.getUser()` + `profiles` select = **2** | `my_access_context()` rpc = **1** |
 | Signed-out refusal | `auth.getUser()` = **1** | rpc (42501) + `auth.getUser()` = **2** |
 
-The scan — the thing that happens in front of a queue, on a phone, on a bad
-signal — is one round trip cheaper. The **refusal** path costs one more, because
-`getAccessContext` separates "anonymous" from "the GRANT to `authenticated` has
-gone" by asking who is calling (`server.ts:211-225`). Stated rather than
-buried: it is the correct trade, since nobody is standing in a queue waiting for
-a 401, but it is a real regression on that path and it was not free.
+**The admit path costs one round trip FEWER. The refusal path costs one MORE.**
+Stated plainly rather than buried, because the second half is a real regression
+and it was not free: `getAccessContext` separates "anonymous" from "the GRANT to
+`authenticated` has gone" by asking who is calling (`server.ts:211-225`), and
+that question is a second call.
+
+**The trade is the right way round, and that is the whole justification.** At
+the door the *admit* path is the one that runs on a failing network, on a staff
+phone, with somebody standing there — and it is the one that got cheaper. Nobody
+is waiting in a queue for a 401; a refusal that takes two round trips instead of
+one costs a person who is not being let in anyway. If the asymmetry were
+reversed, this conversion would be wrong even with identical totals.
 
 `requireDoorOperator()` is called **once per handler**, into a local.
 `attendance/route.ts` calls it twice *in the file* — once in `GET`, once in
@@ -185,22 +237,34 @@ verified because tests pass.** What was actually run:
 | comment-filtered status assertion on the new module | **0** (unfiltered **1** — control) |
 | `npm run verify:no-header-identity` | **100 lines / 46 files, exit 1** — expected, 33-14 owns the gate |
 
-### The meter, measured on this tree
+### CARRIED FORWARD 3 — the meter base is 102 / 47, not 98 / 45. **For 33-14.**
 
 | Point | Lines | Files |
 |---|---|---|
-| base `05212034` | 102 | 47 |
-| after this plan | 100 | 46 |
+| base `05212034` | **102** | **47** |
+| after this plan | **100** | **46** |
+| carried-forward briefing said | 98 | 45 |
 
 The scanner page's 2 lines are the whole delta, confirmed by
 `git show 05212034:…/scanner/page.tsx | grep -c 'x-user-'` → **2**. The four
 door routes contributed **0** to the meter before and after: they never read a
 header, which is exactly what `33-RESEARCH.md` § *The door* said.
 
-⚠️ **The carried-forward figure of 98 hits / 45 files does not match this tree.**
-Measured here the base is 102/47. Not smoothed over — whichever number 33-14
-asserts against must be re-measured on the merged tree, or its gate will fail
-for an arithmetic reason and be read as a conversion defect.
+**Why the base moved, and it is not a regression.** Wave 1 wrote comment-shaped
+mentions of the header names while explaining what it was replacing — e.g.
+`src/lib/capabilities/server.ts:139` and `:167`, `src/lib/capabilities/guards.ts:40`,
+`src/types/database.ts:389` and `:405`. The meter counts those, and says so
+itself: *"5 comment-shaped … the label is presentational; both count toward the
+verdict."* Documenting the conversion raised the number the conversion is
+measured by.
+
+**Two sibling plans reconciled to 102/47 independently; this one makes three.**
+
+⚠️ **33-14 must assert against 102/47, not 98/45.** If it does not, its gate
+fails for an arithmetic reason and will be read as a conversion defect on a tree
+where every conversion is correct — which is the most expensive kind of false
+negative this phase can produce, because the reflex is to go looking for a
+missing conversion that does not exist.
 
 ### Mutation proofs — every check below was broken on purpose first
 
@@ -220,18 +284,32 @@ pattern catches it and the variable-anchored one reports a green. The route it
 would have gone green on is `membership/verify` — the one that decides whether a
 membership card is honoured at the door.
 
-### A check that could not fail, found and replaced
+### CARRIED FORWARD 2 — a check that could not fail. **Third instance of this shape in the phase.**
 
 The plan's task-2 assertion `grep -rc 'select("role")'` is **vacuous on 2 of the
 5 files**: `checkin/route.ts` and `checkin/undo/route.ts` wrote
 `select("role, status")`, so that literal scored **0 on both before the change,
-while the code was still there**. The broader `select("role` form scored **1 on
-all five** before and **0 on all five** after, and is the one that carries
-meaning. Both are reported above; the vacuous one is recorded so it is not
-inherited as evidence.
+while the code was still there**.
 
-This is the same shape as D-32-C and as the sixth check wave 1 found inside its
-own instrument. It is now the third instance in this phase.
+| Pattern | Before | After | Meaningful? |
+|---|---|---|---|
+| `select("role")` — the plan's literal | 0, 0, 1, 1, 1 | 0/5 | **no** — blind on `checkin` and `undo` |
+| `select("role` — the broader form | 1/5 | 0/5 | **yes** — the one kept |
+
+The broader form is the one reported as evidence. The vacuous one is recorded
+here so it is not inherited as evidence by a later plan reading this summary.
+
+**Three instances of the same shape in this phase now:**
+
+1. **D-32-C** — `grep -c 'CREATE POLICY' supabase/schema.sql` → 0 because the
+   file is lower-case. That zero became a false guardrail in `CLAUDE.md`.
+2. **Wave 1's sixth check**, found inside its own instrument.
+3. **This one** — and the near-miss below it, where a comment quoting
+   `auth.user!` made a correct file fail its own assertion.
+
+The lesson is one sentence: **a pattern anchored on a spelling measures the
+spelling, not the fact.** Ask of every check what input would make it fail, and
+run that input.
 
 ## Deviations from Plan
 
@@ -279,63 +357,147 @@ never reaches the page. And where the middleware's redirect is invisible, the
 error boundary is at least visible. **Recorded rather than hidden, because it is
 the door.**
 
-## Manual verification still owed — TASK 4, BLOCKING
+## Human verification owed — TASK 4
 
-**Not executed. The plan is not signed off.** This is the only evidence that
-will ever exist for this change (`CLAUDE.md` Guardrail 1), and it must be
-written down as it is run.
+**None of the seven items below was executed. They are OWED, not done.** Nothing
+was substituted for them and no result was inferred from a build, a grep or a
+type. Per `ACCESS-MODEL-DECISIONS.md` decision 12, manual verification is
+deferred to the end of the build, deliberately, with its price written down.
+This section is that price, itemised.
 
-**Why steps 4 and 6 were not automated here, honestly:** this worktree has no
-`.env.local` (ignored files do not travel into a worktree), so a locally started
-server cannot reach Supabase. A run without it would answer 503 from a broken
-client instead of the real 401, and recording that as evidence would be a
-fabricated observation. Separately, pointing a local server at **production**
-Supabase and POSTing to `/api/tickets/checkin` risks writing rows into a real
-night's `door_scan_events` record. Neither was done.
+There is no test runner for this product (`CLAUDE.md` Guardrail 1), so **these
+observations are the only evidence that will ever exist for this change**. Each
+must be written into its `result:` line as it is run — recorded, not remembered.
 
-Run from the main checkout, which has `.env.local`:
-`rm -rf .next && npm run build && PORT=3007 npm run start`
+**Setup, once:** from the main checkout (which has `.env.local`),
+`npm run build && PORT=3007 npm run start`.
 
-1. **A `pending` organizer still works the door.** Sign in as `role = organizer`,
-   `status = pending`. Open `/admin/scanner`. **Expect:** the scanner loads, no
-   bounce to `/dashboard`. Scan a valid ticket code. **Expect:** admitted.
-   **If this fails, a status check has crept in and the phase must stop.**
-2. **The four routes agree.** Same `pending` organizer session; call
-   `/api/tickets/checkin`, `/api/tickets/checkin/undo`,
-   `/api/tickets/attendance`, `/api/membership/verify` with a minimal body.
-   **Expect:** none returns 403.
-3. **An approved `member` is still refused, with 403** on all four, same body
-   strings as before this phase.
-4. **No session is still 401** — not 403 — on all four:
-   ```
-   for p in /api/tickets/checkin /api/tickets/checkin/undo /api/membership/verify; do
-     curl -s -o /dev/null -w "$p %{http_code}\n" -X POST "http://localhost:3007$p" \
-       -H 'content-type: application/json' --data '{}'
-   done
-   curl -s -o /dev/null -w "/api/tickets/attendance %{http_code}\n" \
-     "http://localhost:3007/api/tickets/attendance"
-   ```
-5. **The offline path is unchanged.** Scanner open, device in airplane mode (or
-   devtools offline). Scan a code. **Expect:** queued exactly as before —
-   `src/lib/offline/` was not touched by this plan. Restore the network and
-   confirm the queue drains.
-6. **A forged header changes nothing.** Signed out:
-   ```
-   curl -s -o /dev/null -w "%{http_code}\n" -X POST \
-     http://localhost:3007/api/tickets/checkin \
-     -H 'x-user-role: master' -H 'x-user-id: 00000000-0000-0000-0000-000000000000' \
-     -H 'content-type: application/json' --data '{}'
-   ```
-   **Expect:** 401, identical to the same call without the headers.
-   ⚠️ Record as a **coupling check, not criterion-2 evidence**: these four routes
-   never read a header, so the result is identical before and after this plan.
-   Criterion 2 is carried by 33-12's positive-controlled probe and 33-14's census.
+### Why two of these were not automated — reasons, not apologies
 
-**Additionally worth observing while the network is off (not in the plan, but it
-is the door):** confirm the queue's *blocked* counter behaves as before, since
-`unresolved` now answers 503 → `retry`, where a 401/403 would have been
-`blocked`. A 503 must **not** appear in the "sign in again to record N entries"
-banner.
+Steps D-04 and D-06 are `curl` calls and would normally be automation, not human
+work. Both were declined here, and both refusals are the domain applied
+correctly:
+
+1. **A local server without `.env.local` answers 503 from a broken client
+   instead of the real 401.** Ignored files do not travel into a git worktree,
+   so this worktree has none. Running the calls anyway would have produced a
+   **fabricated observation** — a status code generated by a missing environment
+   variable, recorded as though it were the door refusing an anonymous caller.
+   In a repository whose only evidence is written observations, a fabricated one
+   is worse than a missing one, because the missing one is visibly missing.
+2. **Pointing a local server at production Supabase and POSTing to
+   `/api/tickets/checkin` risks writing rows into a real night's
+   `door_scan_events` record.** Signed out it should 401 before any write — but
+   "should" is what is being tested. Contaminating the night's record to verify
+   the thing that protects the night's record is not a trade worth making.
+
+### D-01 — a `pending` organizer still works the door 🚪 **run this one first**
+
+> **Step 1 is the one that decides the phase:** a `pending` organizer opens
+> `/admin/scanner` and admits a ticket. If that fails, a status check has crept
+> in and the phase stops.
+
+- **role:** `organizer`, status `pending` — this persona does not exist in
+  production; creating it is part of the test (same as phase 32's M-12)
+- **url:** `http://localhost:3007/admin/scanner`
+- **steps:** sign in as that account → open the URL → scan or paste a valid
+  ticket code for tonight's party
+- **expected:** the scanner **LOADS** (no bounce to `/dashboard`), and the code
+  is **admitted**
+- **evidence if it fails:**
+  `supabase/migrations/20260807000000_capability_model.sql:416-417`, the two
+  grant rows commented *"These two rows must not become true."*
+- **stop condition:** if this fails, **stop the phase**. A status check has
+  entered `door.operate`, and a pending organizer is locked out of the door in
+  front of a queue.
+- **result:** [pending]
+
+### D-02 — the four door routes agree with one another
+
+- **role:** the same `pending` organizer session from D-01
+- **steps:** call each of `/api/tickets/checkin`, `/api/tickets/checkin/undo`,
+  `/api/tickets/attendance`, `/api/membership/verify` with a minimal body
+- **expected:** **none returns 403**
+- **why:** the failure this guards is *"the same person refused by one scanner
+  and admitted by another, on the same night"* — undiagnosable with no error
+  tracking. After this plan there is one predicate, so agreement should be
+  structural; this observes that it is.
+- **result:** [pending]
+
+### D-03 — an approved `member` is still refused, with 403
+
+- **role:** `member`, status `approved`
+- **steps:** call the same four routes
+- **expected:** **403 on all four**, with the same body strings as before this
+  phase
+- **result:** [pending]
+
+### D-04 — no session is still 401, not 403
+
+- **role:** signed out
+- **steps:**
+  ```
+  for p in /api/tickets/checkin /api/tickets/checkin/undo /api/membership/verify; do
+    curl -s -o /dev/null -w "$p %{http_code}\n" -X POST "http://localhost:3007$p" \
+      -H 'content-type: application/json' --data '{}'
+  done
+  curl -s -o /dev/null -w "/api/tickets/attendance %{http_code}\n" \
+    "http://localhost:3007/api/tickets/attendance"
+  ```
+- **expected:** **401** on all four — **not** 403. The distinction is preserved
+  deliberately: `sync-manager.ts:131` files both as `blocked`, so the bucket does
+  not change, but the code is observable to anyone reading the network tab at the
+  door.
+- **not automated because:** see reason 1 above — no `.env.local` in the worktree
+- **result:** [pending]
+
+### D-05 — the offline path is unchanged 📴 **the one that must be done on a phone**
+
+- **role:** any account holding `door.operate`
+- **steps:** open the scanner → put the device in airplane mode (or devtools
+  offline) → scan a code → restore the network
+- **expected:** the scan is **queued exactly as before**, and the queue **drains**
+  when the network returns. `src/lib/offline/` was not touched by this plan.
+- **also observe, and this one is new:** a 503 must **NOT** appear in the *"Sign
+  in again to record N entries"* banner. `unresolved` answers 503 →
+  `sync-manager.ts:141` → `retry`, where a 401/403 would have gone to `blocked`
+  (`:131`). If a 503 shows up in the blocked counter, the classification is
+  wrong and a resolve failure is being held behind a sign-in that would not fix
+  it.
+- **result:** [pending]
+
+### D-06 — a forged header changes nothing at the door
+
+- **role:** signed out
+- **steps:**
+  ```
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+    http://localhost:3007/api/tickets/checkin \
+    -H 'x-user-role: master' -H 'x-user-id: 00000000-0000-0000-0000-000000000000' \
+    -H 'content-type: application/json' --data '{}'
+  ```
+- **expected:** **401**, identical to the same call without the headers
+- ⚠️ **record as a coupling check, NOT criterion-2 evidence:** these four routes
+  never read a header in the first place (`33-RESEARCH.md` § *The door*), so the
+  result is identical before and after this plan. Criterion 2 is carried by
+  33-12's positive-controlled probe and 33-14's census.
+- **not automated because:** see reasons 1 and 2 above
+- **result:** [pending]
+
+### D-07 — the fourth outcome, seen by the person holding the phone
+
+- **role:** any account holding `door.operate`
+- **steps:** revoke `EXECUTE` on `public.my_access_context()` inside a
+  transaction → attempt a scan → observe the screen → **roll back**
+- **expected:** the scanner shows something **other than a refusal**. Today, per
+  the named gap above, the headline will read *"The scan was not written to the
+  record — scan again"* and the true sentence
+  (`DOOR_UNRESOLVED_ERROR`) will be the detail line beneath it.
+- **why it is here:** this is the mutation proof for the `unresolved` arm — the
+  one path in this plan whose value is entirely in what a human sees at 02:00,
+  and therefore the one that cannot be proved by a type or a grep. It also
+  measures the size of carried-forward gap 1.
+- **result:** [pending]
 
 ## Success criteria
 
@@ -344,8 +506,11 @@ banner.
 | 1 | One function authorises the door, used by all five routes | **met** — 5/5 |
 | 2 | `door.operate`, role alone, no status test — asserted comment-filtered | **met**, with the filter's positive control |
 | 3 | 401, 403 and a distinct third outcome, the third in a retryable bucket | **met** — 503, `sync-manager.ts:141` |
-| 4 | A scan performs one Supabase round trip for authorisation, not two | **met** by construction; observation belongs to task 4 |
-| 5 | A `pending` organizer loads the scanner and admits a ticket | **NOT OBSERVED — task 4** |
+| 4 | A scan performs one Supabase round trip for authorisation, not two | **met** by construction — one `requireDoorOperator()` per handler, asserted |
+| 5 | A `pending` organizer loads the scanner and admits a ticket | **NOT OBSERVED — owed as D-01** |
+
+Criterion 5 is the only one not met, and it is not met because it was deferred,
+not because it failed. **It is the criterion that decides the phase.**
 
 ## Known Stubs
 
@@ -364,7 +529,7 @@ added), T-33-84 (variable-agnostic assertion, **proven by mutation**).
 
 No new network endpoint, no new auth path, no schema change.
 
-## Self-Check
+## Self-Check — files and commits
 
 - `src/lib/door/require-operator.ts` — FOUND
 - `src/app/api/tickets/checkin/route.ts` — FOUND (modified)
@@ -375,6 +540,9 @@ No new network endpoint, no new auth path, no schema change.
 - `src/app/(admin)/admin/scanner/page.tsx` — FOUND (modified)
 - commits `5046510`, `ef73564`, `64871c0` — FOUND in `git log`
 
-## Self-Check: PASSED (for tasks 1-3)
+## Self-Check: PASSED
 
-Task 4 is an unexecuted blocking checkpoint. **This plan is not complete.**
+Tasks 1-3 executed, verified and committed. Task 4's seven observations are
+**owed** — recorded above with role, URL, steps and what must be observed, each
+with a `result: [pending]` line to be filled in when it is run. Deferred by
+owner decision 12; deferred is not done, and nothing was substituted for it.
