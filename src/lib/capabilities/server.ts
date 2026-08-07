@@ -99,6 +99,26 @@
  * No file in `src/` imported `cache` from `react` before this one, so the
  * memoisation was measured rather than assumed; the observation is recorded in
  * `32-08-SUMMARY.md`.
+ *
+ * **And the half that was missing, measured in phase 33's research: `cache()`
+ * does NOT memoise inside a Server Action body, and does NOT memoise inside a
+ * Route Handler.** Three calls to `getAccessContext()` executed the underlying
+ * function ONCE in a Server Component render and THREE TIMES in each of the
+ * other two — identically in `next dev` and in a `next build --webpack`
+ * production build. So the instruction differs by context, and it is an
+ * instruction, not advice:
+ *
+ *   - In a page or layout: `hasCapability()` may be called freely; it is one
+ *     round trip for the whole render.
+ *   - In a **Server Action** or a **Route Handler**: destructure
+ *     `getAccessContext()` **once** into a local and reuse the local. Never
+ *     call `hasCapability()` twice, and never call it beside a
+ *     `getAccessContext()` — each is a full round trip.
+ *
+ * This is undocumented Next.js behaviour, not a guarantee. **Re-measure it on
+ * any Next.js minor upgrade**; if it silently starts memoising everywhere the
+ * instruction becomes merely redundant, and if it silently stops memoising in
+ * renders the cost multiplies across 42 surfaces with nothing to report it.
  */
 
 import { cache } from "react";
@@ -108,14 +128,29 @@ import type { CapabilityKey } from "./keys";
 /**
  * What `public.my_access_context()` returns, one row, always.
  *
- * `role` and `status` are in the payload for one consumer only — the header
- * injection at `src/lib/supabase/middleware.ts:135-139`, which 46 files still
- * read. **No new caller may branch on them.** They are removed from the payload
- * by the phase that deletes that transport. Every new decision asks
- * `capabilities`.
+ * `userId` is the caller's own `auth.uid()`, added to the payload by
+ * `supabase/migrations/20260808000000_access_context_user_id.sql`. It reads
+ * second, right after `capabilities`, because it is identity and identity reads
+ * first. It is **`string | null`, never `""`** — see `ANONYMOUS_CONTEXT` below,
+ * and `@/lib/capabilities/guards`, which is where that distinction is made safe.
+ *
+ * `role` and `status` are still here, and the reason has changed. It is no
+ * longer the header injection at `src/lib/supabase/middleware.ts:135-139`
+ * (measured: **44** files read `x-user-role` / `x-user-status`, not 46, and
+ * phase 33 takes that count to **0**). It is `MobileNav` and `StaffNav` — two
+ * `"use client"` components that take `role` and `status` as props and
+ * therefore cannot import this module. Next.js's own guidance for that case is
+ * to resolve in a parent Server Component and pass the values down as props,
+ * which is exactly what the converted pages do. Converting those two components
+ * to consume capabilities is **phase 34 (STAFF-03)**, and that phase owns
+ * removing these two fields from the payload.
+ *
+ * **No new caller may branch on `role` or `status`.** A page passing them to a
+ * nav is not branching. Every decision asks `capabilities`.
  */
 export interface AccessContextResult {
   capabilities: Set<CapabilityKey>;
+  userId: string | null;
   role: string | null;
   status: string | null;
 }
@@ -127,9 +162,17 @@ export interface AccessContextResult {
  * `authenticated` and revoked from `anon` (same migration, section 5), so an
  * anonymous request is refused by design with `42501`. "Refused because there
  * is nobody to answer about" is a correct answer, and it is the empty set.
+ *
+ * `userId` is **`null`, deliberately not `""`**. The eleven surfaces this phase
+ * replaces read `headersList.get("x-user-id") || ""`, and an empty string is a
+ * value that happens to compare unequal to every real id — which made those
+ * sites refuse for an accidental reason rather than a stated one. `null` is the
+ * honest answer to "who is this", and every consumer refuses on it explicitly:
+ * see `ownsOrIsMaster` in `@/lib/capabilities/guards`.
  */
 const ANONYMOUS_CONTEXT: AccessContextResult = {
   capabilities: new Set<CapabilityKey>(),
+  userId: null,
   role: null,
   status: null,
 };
@@ -197,6 +240,7 @@ export const getAccessContext = cache(
 
     const payload = data as {
       capabilities?: unknown;
+      user_id?: unknown;
       role?: unknown;
       status?: unknown;
     };
@@ -205,8 +249,17 @@ export const getAccessContext = cache(
       throw new Error("capabilities.resolve_failed: malformed_capabilities");
     }
 
+    // `user_id` is mapped exactly as `role` and `status` are, and on purpose
+    // there is NO fallback here. Reaching for `supabase.auth.getUser()` when
+    // the key is absent would restore the round trip the migration exists to
+    // avoid — and it would restore it on the very paths where `cache()` does
+    // not save you (a Server Action, a Route Handler). An absent `user_id` on
+    // an authenticated caller means the migration has not been applied; the
+    // answer is `null`, and every consumer refuses on `null`. Nothing degrades
+    // into a permissive answer.
     return {
       capabilities: new Set(payload.capabilities as CapabilityKey[]),
+      userId: typeof payload.user_id === "string" ? payload.user_id : null,
       role: typeof payload.role === "string" ? payload.role : null,
       status: typeof payload.status === "string" ? payload.status : null,
     };
@@ -216,8 +269,11 @@ export const getAccessContext = cache(
 /**
  * Ask one capability question about the current session.
  *
- * Reads the memoised context, so several questions in one render cost one round
- * trip. Takes no user identifier, for the reason above.
+ * Reads the memoised context, so several questions in one **render** cost one
+ * round trip. In a Server Action or a Route Handler there is no memoisation:
+ * each call is a full round trip, so resolve `getAccessContext()` once into a
+ * local instead (see *Memoisation, and its limit* above). Takes no user
+ * identifier, for the reason above.
  *
  * A `false` here is a refusal. A failure to resolve is a throw — the caller
  * never has to wonder which one it got, which is the whole point.
