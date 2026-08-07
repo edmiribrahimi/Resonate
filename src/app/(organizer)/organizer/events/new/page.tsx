@@ -1,20 +1,29 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
 import { createEvent } from "@/app/(organizer)/organizer/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function NewEventPage() {
-  const headersList = await headers();
-  const role = (headersList.get("x-user-role") as UserRole) || null;
-  const status = (headersList.get("x-user-status") as UserStatus) || null;
+  const { capabilities, role, status } = await getAccessContext();
 
-  // Defense in depth: verify organizer or master access
-  if (role !== "organizer" && role !== "master") {
+  // The question is "may this person reach the organizer area" —
+  // `organizer.access`, the same one the middleware asks for `/organizer/*`.
+  // Reaching this form is not permission to create an event: `createEvent` is a
+  // server action, therefore a public endpoint, and re-checks on its own.
+  if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
+
+  // The resolver types these `string | null` deliberately, so that no decision
+  // can branch on them. They are not a decision here: they are props for a
+  // `"use client"` nav that cannot import the DAL. Phase 34 (STAFF-03) converts
+  // that nav and this pass-through goes with it.
+  const navRole = role as UserRole | null;
+  const navStatus = status as UserStatus | null;
 
   return (
     <div className="min-h-dvh pb-24">
@@ -45,7 +54,7 @@ export default async function NewEventPage() {
         <EventForm action={createEvent} submitLabel="Create Event" />
       </div>
 
-      <MobileNav role={role} status={status} />
+      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
