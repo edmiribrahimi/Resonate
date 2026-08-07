@@ -3,12 +3,13 @@ status: partial
 phase: 32-capability-model-in-the-database
 source: [32-VERIFICATION.md]
 started: 2026-08-06
-updated: 2026-08-06
+updated: 2026-08-08
 ---
 
 ## Current Test
 
-[awaiting human testing — start with M-12, the door]
+[M-12 closed 2026-08-08 on the phase-32 container, capability leg only — see its
+entry. The remaining thirteen await human testing; M-01 is the phase gate.]
 
 ## Tests
 
@@ -17,7 +18,13 @@ role: organizer, status pending — **this persona does not exist in production;
 steps: sign in as that account, visit `/admin/scanner`
 expected: the page LOADS. A bounce means `door.operate` acquired a status check and a pending organizer is locked out of the door in front of a queue — the single most dangerous regression in this phase.
 evidence if it fails: `supabase/migrations/20260807000000_capability_model.sql:416-417`, the two grant rows commented "These two rows must not become true."
-result: [pending]
+result: PASS (capability resolution) — 2026-08-08. Impersonating the seeded `organizer` / `pending` persona, `public.my_access_context()` — the same SECURITY DEFINER function the middleware calls at `src/lib/supabase/middleware.ts:88` — returned `capabilities = [door.operate, organizer.access, staff.manage]`. `door.operate` resolves TRUE for an organizer whose access was never approved.
+
+- **Run BEFORE the `role ⇒ approved` constraint of phase 43 (D-15).** After plan 43-06 the `organizer` / `pending` state is no longer representable, and this check cannot be repeated in that form.
+- **Measured on the phase-32 container, NOT on production.** Reason: `organizer/pending` does not exist in production — `scripts/rls-baseline-container.mjs:5-12` records that production holds one `master/approved` and three `member/approved` rows and no non-approved row at all — so running this against production would have required *creating* that row, and every row in `public.profiles` carries a `membership_code` (the `handle_new_user` trigger inserts one regardless of role or status), while `src/app/api/membership/list/route.ts:52-54` filters the door roster on neither role nor status. A created row is therefore a door credential for as long as it lives. The container is also **repeatable**: it can be re-measured after 43-06 to demonstrate that the state has become unrepresentable — which is precisely the evidence D-06 will need to cite.
+- **The browser leg was NOT executed.** The container proves capability resolution in SQL; it does not prove that `/admin/scanner` renders. That second leg is decided by `src/lib/supabase/middleware.ts:170-186`, where `/admin/scanner` is tested *before* the general `/admin` branch — an ordering the code comment itself declares load-bearing. That leg is **deduced from the code, not observed**. Closing it would require a real sign-in on `/admin/scanner` as a never-approved organizer, which is not executable today without creating that row in production.
+- Control that makes the measurement able to fail: `member/approved` resolved `door.operate = false` in the same run. Had it resolved true, the impersonation would not have been taking effect and the subject's TRUE would have meant nothing.
+- Incidental confirmation: the same persona also resolves `staff.manage`, which is exactly the hazard phase 43's D-19 names — the register must not be gated on `staff.manage`, because it would admit an organizer whose access was never approved.
 
 ### 2. M-01 — CAP-04, a permission change takes effect on the next request ⚠️ the phase gate
 role: owner, with a signed-in `member` account and the Supabase SQL editor
@@ -83,11 +90,17 @@ note: the mutation proof covered the server action boundary and the server-rende
 ## Summary
 
 total: 14
-passed: 0
+passed: 1
 issues: 0
-pending: 14
+pending: 13
 skipped: 0
 blocked: 0
+
+M-12's PASS covers the capability-resolution leg only; its rendering leg is
+deduced from the middleware's ordering, not observed. Counted as passed because
+the dangerous outcome — `door.operate` having acquired a status check — is
+excluded by measurement; the residue is recorded in its entry rather than in
+this count.
 
 ## Gaps
 
