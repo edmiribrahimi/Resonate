@@ -7,37 +7,43 @@ import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/utils/slugify";
 
 /**
- * The catalogue gate, asked once instead of twice — and `staff.manage`, not
- * `catalogue.manage`, ON PURPOSE.
+ * The catalogue gate. It asks `catalogue.manage` — the key the RLS policies on
+ * `public.artists` ask, and the key this module's own documentation describes.
  *
- * ── The key was chosen by the owner, and this is what the choice preserves ────
+ * ── CR-01: the contradiction this resolves ───────────────────────────────────
  *
- * `createArtist` and `updateArtist` used to read `profiles.role` and refuse
- * anything outside `{organizer, master}` — **role only, status ignored**. The
- * RLS policies on `public.artists`, by contrast, gate on `catalogue.manage`,
- * which carries `requires_approved = true`
- * (`supabase/migrations/20260807000000_capability_model.sql:399-400`).
+ * It used to ask `CAP.STAFF_MANAGE` while `keys.ts:90-91` documented these same
+ * operations as *"Create and edit artists and venues. Requires an approved
+ * status as well as the role."* The code and its own documentation said
+ * opposite things, and the phase's stated contract (`guards.ts:127-131`) is
+ * that the TypeScript gate and the row-level gate *"ask the same key of the
+ * same authority"*. They asked different keys.
  *
- * The two layers disagree, deliberately, and the disagreement is measured: an
- * `organizer`/`pending` caller PASSES this gate and is then refused by the
- * database with `42501`. That asymmetry is named twice in
- * `32-CARRY-FORWARD.md` and re-observed in `33-01-SUMMARY.md`. This phase's
- * contract is that behaviour does not change, so the key here is the one whose
- * predicate is byte-equal to the deleted code: `staff.manage`, granted to
- * `master` and `organizer` with `requires_approved = false` (same migration,
- * lines 392-393). Reproduce the asymmetry; do not tidy it.
+ * ── Why this is not a widening, and not a narrowing — MEASURED ───────────────
  *
- * **This is not the two keys collapsing.** `catalogue.manage` keeps its own
- * grants, keeps `requires_approved = true`, and keeps guarding the tables — it
- * is still the thing that actually refuses a pending organizer here. What
- * changed is only *where the role half of the question is asked*: a session-
- * derived capability instead of a `public.profiles` round trip.
+ * From `supabase/migrations/20260807000000_capability_model.sql`:
  *
- * Moving this call site to `CAP.CATALOGUE_MANAGE` is a live option and a real
- * improvement — it would refuse a pending organizer in the action, with a
- * sentence, instead of leaking a `42501` out of a write. It is deferred rather
- * than declined, and the reason it is deferred is that it is the ONE change in
- * this phase that a user could see. See `33-10-SUMMARY.md`.
+ *   staff.manage       master false, organizer false   (lines 392-393)
+ *   catalogue.manage   master true,  organizer true    (lines 399-400)
+ *
+ * The set of callers whose write SUCCEEDS is byte-identical before and after.
+ * An `organizer`/`pending` was already refused — by RLS policy P3, which asks
+ * `catalogue.manage` with `requires_approved = true`, and answered `42501`. A
+ * `master` whose status is not `approved` was refused by the same policy, for
+ * the same reason: P3 carries `requires_approved = true` for master too. Nobody
+ * who could write before is refused now, and nobody who was refused before can
+ * write now.
+ *
+ * What changed is **where** the refusal happens: in the action, with a
+ * sentence, instead of leaking a `42501` out of a write. That is the direction
+ * `meta-gates.md` permits without authorisation — a gate may only become harder
+ * to trip — and it removes the hazard CR-01 named: the refusal no longer
+ * depends on which Supabase client this file happens to use.
+ *
+ * `staff.manage` keeps its own grants and its own call sites (`ticket_tiers`,
+ * events, guest list). The two keys are not collapsed; they were swapped here
+ * because only one of them is the question these four writes are actually
+ * asking.
  *
  * ── Why it is a local function and not an import ──────────────────────────────
  *
@@ -64,7 +70,7 @@ import { slugify } from "@/utils/slugify";
  * needs to branch on the category must carry it as a tagged value decided by
  * position, never by parsing this text.
  *
- * @throws `forbidden.staff_manage_required` — the answer is no.
+ * @throws `forbidden.catalogue_manage_required` — the answer is no.
  * @throws `capabilities.identity_missing` — a capability resolved but the
  *         payload carried no `user_id`, which means
  *         `20260808000000_access_context_user_id.sql` has not been applied.
@@ -73,16 +79,19 @@ import { slugify } from "@/utils/slugify";
  *         `string | null` would have compiled green all the way into
  *         `created_by`.
  */
-async function assertStaffManage(): Promise<{ userId: string }> {
+async function assertCatalogueManage(): Promise<{ userId: string }> {
   const { capabilities, userId } = await getAccessContext();
 
-  if (!capabilities.has(CAP.STAFF_MANAGE)) {
-    throw new Error("forbidden.staff_manage_required");
+  // catalogue.manage — requires_approved = true. This is the key the P3 RLS
+  // policies on `artists` and `venues` ask. Do NOT substitute staff.manage:
+  // it is requires_approved = false and admits a pending organizer.
+  if (!capabilities.has(CAP.CATALOGUE_MANAGE)) {
+    throw new Error("forbidden.catalogue_manage_required");
   }
 
   if (!userId) {
     console.error(
-      "[capabilities.identity_missing] a caller holds staff.manage but " +
+      "[capabilities.identity_missing] a caller holds catalogue.manage but " +
         "my_access_context() returned no user_id. This is NOT a refusal on " +
         "the merits — the migration adding user_id has not been applied."
     );
@@ -122,11 +131,18 @@ export async function checkArtistExists(name: string) {
 }
 
 /**
- * Create an artist profile. Only organizers/master can call this.
+ * Create an artist profile. Approved organizers and master only.
  */
 export async function createArtist(formData: FormData) {
+  // ⚠️ `createClient()` — the COOKIE client, on purpose. Under it the P3 RLS
+  // policy on `artists` is a second, independent refusal of an unapproved
+  // caller. `getServiceClient()` bypasses every row-level policy, so swapping
+  // it here would leave `assertCatalogueManage()` below as the ONLY thing
+  // refusing one. That is survivable today only because the gate now asks
+  // `catalogue.manage` (CR-01); it was NOT survivable before, when the gate
+  // asked `staff.manage` and this line was the whole defence. Do not swap it.
   const supabase = await createClient();
-  const { userId } = await assertStaffManage();
+  const { userId } = await assertCatalogueManage();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) {
@@ -181,11 +197,14 @@ export async function createArtist(formData: FormData) {
 }
 
 /**
- * Update an artist profile. Only organizers/master can call this.
+ * Update an artist profile. Approved organizers and master only.
  */
 export async function updateArtist(artistId: string, formData: FormData) {
+  // ⚠️ `createClient()` — the COOKIE client, on purpose. See `createArtist`:
+  // under the service client the P3 RLS policy stops applying and the gate
+  // below becomes the only refusal. Do not swap it.
   const supabase = await createClient();
-  await assertStaffManage();
+  await assertCatalogueManage();
 
   const bio = (formData.get("bio") as string)?.trim() || null;
   const photoUrl = (formData.get("photo_url") as string)?.trim() || null;

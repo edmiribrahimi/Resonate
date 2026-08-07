@@ -7,34 +7,39 @@ import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/utils/slugify";
 
 /**
- * The catalogue gate, asked once instead of twice — and `staff.manage`, not
- * `catalogue.manage`, ON PURPOSE.
+ * The catalogue gate. It asks `catalogue.manage` — the key the RLS policies on
+ * `public.venues` ask, and the key this module's own documentation describes.
  *
- * The twin of the function of the same name in
+ * The twin of `assertCatalogueManage` in
  * `src/app/(organizer)/organizer/artists/actions.ts`, which carries the full
- * reasoning. In short: the deleted code read `profiles.role` and refused
- * anything outside `{organizer, master}` — **role only, status ignored** —
- * while the RLS policies on `public.venues` gate on `catalogue.manage`, which
- * carries `requires_approved = true`. The two layers disagree deliberately, and
- * an `organizer`/`pending` caller PASSES here and is refused by the database
- * with `42501`. `staff.manage` is the key whose predicate is byte-equal to the
- * deleted line (`20260807000000_capability_model.sql:392-393`), so the measured
- * asymmetry survives untouched.
+ * CR-01 reasoning and the measured grant rows. In short: this gate used to ask
+ * `CAP.STAFF_MANAGE` (`requires_approved = false`) while `keys.ts:90-91`
+ * documented these operations as requiring an approved status. Code and
+ * documentation contradicted each other, and the safety rested on an
+ * undocumented coincidence — the cookie client below, under which RLS policy P3
+ * refused an unapproved organizer with `42501`.
  *
- * **The two keys are not collapsed.** `catalogue.manage` keeps its grants, its
- * `requires_approved = true`, and its policies on this table. Only the role
- * half of the question moved off a `public.profiles` round trip.
+ * Measured from `20260807000000_capability_model.sql`: `staff.manage` grants
+ * master/organizer at `false` (392-393), `catalogue.manage` grants the same two
+ * roles at `true` (399-400). The set of callers whose write SUCCEEDS is
+ * byte-identical before and after — an unapproved organizer was refused then by
+ * the database and is refused now by the action; a master whose status is not
+ * `approved` is refused by P3 in both worlds, since P3 carries
+ * `requires_approved = true` for master too. Only the point of refusal moved,
+ * and it moved earlier, which is the only direction `meta-gates.md` permits
+ * without authorisation.
  *
  * ── The venue-secrecy check, since this file writes addresses ────────────────
  *
  * `createVenue` and `updateVenue` write `venues.address` and
- * `venues.google_maps_url`. Nothing here touches `venue_reveal_sent`, the
- * per-ticket / per-RSVP entitlement, or the reveal cron, and the set of callers
- * who may write an address is byte-identical before and after — `staff.manage`
- * holders, exactly the `{organizer, master}` of the deleted line. The monotone
- * one-way switch is not made easier to trip, in either direction, by this
- * change. The one direction the gate moved at all is stricter: a caller with no
- * resolvable identity is now refused explicitly rather than reaching a `!`.
+ * `venues.google_maps_url` — this is a venue-secret WRITE surface. Nothing here
+ * touches `venue_reveal_sent`, the per-ticket / per-RSVP entitlement, or the
+ * reveal cron, so the monotone one-way switch is untouched. The set of callers
+ * who may write an address does not widen: it is `{organizer, master}` with an
+ * approved status, in both worlds, and the gate is now strictly harder to trip
+ * than it reads today because it no longer depends on which Supabase client
+ * this file happens to use. A caller with no resolvable identity is refused
+ * explicitly rather than reaching a `!`.
  *
  * ── Why it is a local function and not an import ──────────────────────────────
  *
@@ -49,23 +54,27 @@ import { slugify } from "@/utils/slugify";
  * `src/lib/capabilities/server.ts:103-121`). One resolve per invocation, and
  * the caller reuses the returned local.
  *
- * @throws `forbidden.staff_manage_required` — the answer is no.
+ * @throws `forbidden.catalogue_manage_required` — the answer is no.
  * @throws `capabilities.identity_missing` — the payload carried no `user_id`.
  *         A distinct category on purpose: it is not a refusal on the merits.
  *         Next redacts both messages in a production build, so a client that
  *         must branch on the category carries it as a tagged value decided by
  *         position, never by parsing this text.
  */
-async function assertStaffManage(): Promise<{ userId: string }> {
+async function assertCatalogueManage(): Promise<{ userId: string }> {
   const { capabilities, userId } = await getAccessContext();
 
-  if (!capabilities.has(CAP.STAFF_MANAGE)) {
-    throw new Error("forbidden.staff_manage_required");
+  // catalogue.manage — requires_approved = true. This is the key the P3 RLS
+  // policies on `artists` and `venues` ask. Do NOT substitute staff.manage:
+  // it is requires_approved = false and admits a pending organizer to a
+  // surface that writes `venues.address`.
+  if (!capabilities.has(CAP.CATALOGUE_MANAGE)) {
+    throw new Error("forbidden.catalogue_manage_required");
   }
 
   if (!userId) {
     console.error(
-      "[capabilities.identity_missing] a caller holds staff.manage but " +
+      "[capabilities.identity_missing] a caller holds catalogue.manage but " +
         "my_access_context() returned no user_id. This is NOT a refusal on " +
         "the merits — the migration adding user_id has not been applied."
     );
@@ -105,11 +114,22 @@ export async function checkVenueExists(name: string) {
 }
 
 /**
- * Create a venue profile. Only organizers/master can call this.
+ * Create a venue profile. Approved organizers and master only.
+ *
+ * This writes `venues.address` and `venues.google_maps_url` — a venue-secret
+ * write surface (`venue-secrecy.md`).
  */
 export async function createVenue(formData: FormData) {
+  // ⚠️ `createClient()` — the COOKIE client, on purpose. Under it the P3 RLS
+  // policy on `venues` is a second, independent refusal of an unapproved
+  // caller. `getServiceClient()` bypasses every row-level policy, so swapping
+  // it here would leave `assertCatalogueManage()` below as the ONLY thing
+  // refusing one — on the path that writes a venue address. That is survivable
+  // today only because the gate now asks `catalogue.manage` (CR-01); it was NOT
+  // survivable before, when the gate asked `staff.manage` and this line was the
+  // whole defence. Do not swap it.
   const supabase = await createClient();
-  const { userId } = await assertStaffManage();
+  const { userId } = await assertCatalogueManage();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) {
@@ -164,11 +184,18 @@ export async function createVenue(formData: FormData) {
 }
 
 /**
- * Update a venue profile. Only organizers/master can call this.
+ * Update a venue profile. Approved organizers and master only.
+ *
+ * This writes `venues.address` and `venues.google_maps_url` — a venue-secret
+ * write surface (`venue-secrecy.md`).
  */
 export async function updateVenue(venueId: string, formData: FormData) {
+  // ⚠️ `createClient()` — the COOKIE client, on purpose. See `createVenue`:
+  // under the service client the P3 RLS policy stops applying and the gate
+  // below becomes the only refusal on a path that writes a venue address.
+  // Do not swap it.
   const supabase = await createClient();
-  await assertStaffManage();
+  await assertCatalogueManage();
 
   const bio = (formData.get("bio") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim() || null;
