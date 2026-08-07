@@ -7,6 +7,7 @@ import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import GuestListClient from "./GuestListClient";
+import GuestListUnavailable from "@/components/guest-list/GuestListUnavailable";
 import type { UserRole, UserStatus, GuestListEntry } from "@/types/database";
 
 interface PageProps {
@@ -58,12 +59,28 @@ export default async function GuestListPage({ params }: PageProps) {
 
   const serviceClient = getServiceClient();
 
-  // Fetch guest list entries
-  const { data: entries } = await serviceClient
+  // Fetch guest list entries.
+  //
+  // ⚠️ `error` is read, and it is NOT collapsed into `entries ?? []` (CR-02).
+  // `[]` is a valid answer on this read — "this event has no guests" — so a
+  // transient failure that fell through to `?? []` rendered as an empty list,
+  // and this repository has no error tracking to contradict it. At 01:40 at the
+  // door that screen turns away a guest who IS on the list, and
+  // `checkin-offline.md` names the false refusal as the worse of the two
+  // failures. The outcome below is decided by POSITION — `error` truthy or not —
+  // never by inspecting a message.
+  const { data: entries, error: entriesError } = await serviceClient
     .from("guest_list_entries")
     .select("*")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
+
+  if (entriesError) {
+    console.error(
+      `[guest_list.lookup_failed] could not read guest_list_entries for ` +
+        `${eventId}: ${entriesError.code ?? "unknown"}. This is NOT an empty list.`
+    );
+  }
 
   // Fetch event parties for the party selector dropdown
   const { data: parties } = await supabase
@@ -89,11 +106,15 @@ export default async function GuestListPage({ params }: PageProps) {
       </header>
 
       <div className="px-6">
-        <GuestListClient
-          entries={guestEntries}
-          parties={partyList}
-          eventId={eventId}
-        />
+        {entriesError ? (
+          <GuestListUnavailable code={entriesError.code ?? "unknown"} />
+        ) : (
+          <GuestListClient
+            entries={guestEntries}
+            parties={partyList}
+            eventId={eventId}
+          />
+        )}
       </div>
 
       <MobileNav role={navRole} status={navStatus} />

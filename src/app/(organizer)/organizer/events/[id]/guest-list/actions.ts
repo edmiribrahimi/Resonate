@@ -8,6 +8,7 @@ import {
   assertEventOwnership,
   assertStaffManage,
 } from "@/lib/capabilities/guards";
+import type { GuestListEntry } from "@/types/database";
 
 /**
  * Verify the caller is an organizer or master who owns the event.
@@ -291,10 +292,36 @@ export async function removeGuest(entryId: string, eventId: string) {
  * A refusal here throws rather than returning `[]`. An empty guest list and a
  * refused read must not look the same: this project has no error tracking, and
  * a list that silently renders empty is the recorded newsletter defect with a
- * different face. The `console.error` + `return []` below is the *lookup*
- * failure path and is pre-existing; it is flagged in the summary, not widened.
+ * different face.
+ *
+ * ── The lookup failure no longer answers `[]` (CR-02) ────────────────────────
+ *
+ * It used to `console.error` and `return []`. `[]` is a **valid answer** on this
+ * signature — "this event has no guests" — so a transient `SELECT` failure was
+ * indistinguishable from an empty list, and `meta-gates.md` records that with no
+ * error tracking in this repository the `console.error` reached nobody. At the
+ * door that reads as *«nessuno in lista»*, and `checkin-offline.md` names the
+ * false refusal — the one that happens in front of a queue — as the worse of the
+ * two failures.
+ *
+ * The outcome is now a **tagged result decided by POSITION**: the `ok: false`
+ * object is built inside the `if (error)` branch and the `ok: true` object after
+ * it. Nothing downstream may re-derive the outcome by inspecting a message —
+ * Next redacts Server Action error text in a production build, so a string test
+ * works in `next dev` and silently stops working in production. Same discipline
+ * as the four categories of `verifyOrganizerAccess` above.
+ *
+ * A **refusal** still throws; only the **lookup** failure is tagged. The two are
+ * different categories and are kept apart: "you may not read this list" is not
+ * "I could not read this list".
  */
-export async function fetchGuestList(eventId: string) {
+export type GuestListReadResult =
+  | { ok: true; entries: GuestListEntry[] }
+  | { ok: false; reason: "lookup_failed"; code: string };
+
+export async function fetchGuestList(
+  eventId: string
+): Promise<GuestListReadResult> {
   await verifyOrganizerAccess(eventId);
 
   const serviceClient = getServiceClient();
@@ -306,9 +333,13 @@ export async function fetchGuestList(eventId: string) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Failed to fetch guest list:", error);
-    return [];
+    const code = error.code ?? "unknown";
+    console.error(
+      `[guest_list.lookup_failed] could not read guest_list_entries for ` +
+        `${eventId}: ${code}. This is NOT an empty list.`
+    );
+    return { ok: false, reason: "lookup_failed", code };
   }
 
-  return entries ?? [];
+  return { ok: true, entries: (entries ?? []) as GuestListEntry[] };
 }
