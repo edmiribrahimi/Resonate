@@ -103,6 +103,194 @@ const SRC_DIR = `${ROOT}/src`;
  */
 const EXPECTED_KEY_COUNT = 8;
 
+/**
+ * ── The pre-registered grant declaration (phase decision D-02) ─────────────
+ *
+ * Every (role × capability) pair of the cross product, declared as one of two
+ * things and never as silence:
+ *
+ *   a GRANT — the `requires_approved` value the row must carry, `true` or `false`
+ *   a REFUSAL — the string `REFUSED`, which means **no row at all**
+ *
+ * MEASURED on 2026-08-07 against
+ * `supabase/migrations/20260807000000_capability_model.sql:390-423`. Written
+ * here, not derived from `private.role_capabilities`, for the reason
+ * `EXPECTED_KEY_COUNT` states above and `rls-baseline.mjs:113-130` states about
+ * its floors: a check that reads its expectation off the thing it is checking
+ * cannot fail.
+ *
+ * **If this trips, look at the capability model, not at this constant.** A pair
+ * that changed here without a plan behind it is the check being edited to agree
+ * with the defect it exists to find.
+ *
+ * WHY A REFUSAL IS AN ABSENCE AND NOT A COLUMN. The obvious alternative — a
+ * `granted boolean` on `private.role_capabilities`, with `granted = false` rows
+ * — is this phase's silent-widening trap, and it is worth naming before somebody
+ * proposes it in good faith. The resolver at
+ * `20260807000000_capability_model.sql:209-216` is:
+ *
+ *     select exists (
+ *       select 1 from public.profiles p
+ *       join private.role_capabilities rc on rc.role = p.role
+ *       where p.id = (select auth.uid())
+ *         and rc.capability = p_capability
+ *         and (not rc.requires_approved or p.status = 'approved')
+ *     );
+ *
+ * There is no `granted` in that `EXISTS`. A `granted = false` row therefore
+ * **GRANTS** the capability — the refusal would read as an explicit denial to a
+ * human and as a permission to Postgres, in every one of the 45 policy call
+ * sites at once. So the refusal is declared HERE, in this constant, and the
+ * database expresses it as the absence of a row. Do not add a `granted` column
+ * without editing that resolver in the same migration; do not add one at all
+ * while this constant exists to carry the meaning.
+ *
+ * The totals below are asserted as numbers, not only stated: a pair added to
+ * this constant without a decision fails the arithmetic instead of sliding in.
+ */
+const ROLE_GRANTS = {
+  master: {
+    'staff.manage': false,
+    'master.manage': false,
+    'catalogue.manage': true,
+    'membership.active': true,
+    'admin.access': false,
+    'organizer.access': false,
+    // ── D-06, and this paragraph is the point of the two lines below ──────
+    //
+    // `door.operate`'s `requires_approved` is `false` on BOTH grants, and it
+    // must stay false. Once ROLE-02's `role ⇒ approved` constraint exists this
+    // flag will LOOK redundant and somebody will propose flipping it as
+    // tidying. That is the ROADMAP's declared **"trap to refuse"**
+    // (`.planning/ROADMAP.md:235-241`), and the migration says the same thing at
+    // `20260807000000_capability_model.sql:415`: *"These two rows must not
+    // become true."*
+    //
+    // The two guard DIFFERENT things. The constraint protects the database; this
+    // row protects the night from the day the constraint is relaxed for one
+    // special case. And the asymmetry that decides it is unchanged: refusing a
+    // valid staff member at the door, in front of a queue, is worse than the
+    // alternative — the first error happens in front of people, the second does
+    // not.
+    //
+    // A reader who arrived here to remove the flag has now met the reason before
+    // the value. Assertion 2 of side 5 fails on a flipped flag and names this.
+    'door.operate': false,
+    'membership.card.view': true,
+  },
+  organizer: {
+    'staff.manage': false,
+    // Refused: P2/P4 is master alone, and `master.manage` is what "reserved to
+    // the master role" means. A row here would hand an organizer the deletion
+    // of events, artists and venues.
+    'master.manage': 'REFUSED',
+    'catalogue.manage': true,
+    'membership.active': true,
+    // Refused: the middleware rule for `/admin/*` other than the scanner is
+    // `role = master`. An organizer reaches `/organizer/*`, not `/admin/*`.
+    'admin.access': 'REFUSED',
+    'organizer.access': false,
+    // D-06 — see the paragraph on `master.door.operate` above. This is the row
+    // that matters at the door: an organizer whose status is still `pending`
+    // must be able to scan.
+    'door.operate': false,
+    'membership.card.view': true,
+  },
+  member: {
+    'staff.manage': 'REFUSED',
+    'master.manage': 'REFUSED',
+    'catalogue.manage': 'REFUSED',
+    'membership.active': true,
+    'admin.access': 'REFUSED',
+    'organizer.access': 'REFUSED',
+    // Refused, and this is the pair mutation A injects: a `member` with a
+    // `door.operate` row works the door. Nothing else in the model would say no.
+    'door.operate': 'REFUSED',
+    'membership.card.view': true,
+  },
+};
+
+/**
+ * The arithmetic, pre-registered beside the declaration it counts.
+ *
+ * 24 pairs = 3 roles × 8 capabilities. 16 grants, matching the migration's own
+ * claim at `20260807000000_capability_model.sql:386` (*"Sixteen grant rows"*)
+ * and `43-RESEARCH.md` § A.2's count of 2+1+2+3+1+2+2+3. 8 refusals, which is
+ * every pair the migration does NOT insert.
+ *
+ * Asserted rather than described: a role or a capability added to `ROLE_GRANTS`
+ * without a decision for each of its counterparts fails here first, before any
+ * database is read.
+ */
+const EXPECTED_PAIR_COUNT = 24;
+const EXPECTED_GRANT_COUNT = 16;
+const EXPECTED_REFUSAL_COUNT = 8;
+
+/** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
+const REFUSED = 'REFUSED';
+
+/** The roles `ROLE_GRANTS` decides for, in declaration order. */
+const DECLARED_ROLES = Object.keys(ROLE_GRANTS);
+
+/**
+ * Flattens `ROLE_GRANTS` into one entry per pair, and checks its own arithmetic
+ * before anything is measured.
+ *
+ * This runs at module scope on purpose: it reads no database, no file and no
+ * network, so there is no reason to defer it, and the earliest possible failure
+ * is the one a reader can act on. A declaration that does not add up is not a
+ * weaker expectation — it is a different one than the one that was reviewed.
+ */
+function flattenDeclaration() {
+  const grants = new Map(); // `${role} ${capability}` -> requires_approved
+  const refusals = new Set(); // `${role} ${capability}`
+  const malformed = [];
+
+  for (const [role, byCapability] of Object.entries(ROLE_GRANTS)) {
+    for (const [capability, value] of Object.entries(byCapability)) {
+      const pair = `${role} ${capability}`;
+      if (value === REFUSED) refusals.add(pair);
+      else if (typeof value === 'boolean') grants.set(pair, value);
+      else
+        malformed.push(
+          `ROLE_GRANTS.${role}["${capability}"] is ${JSON.stringify(value)} — a pair is either ` +
+            `a boolean requires_approved (a grant) or the string "${REFUSED}" (no row at all).`
+        );
+    }
+  }
+
+  const total = grants.size + refusals.size;
+  const problems = [...malformed];
+  if (total !== EXPECTED_PAIR_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${total} pairs, expected ${EXPECTED_PAIR_COUNT} ` +
+        `(${DECLARED_ROLES.length} roles × ${EXPECTED_KEY_COUNT} capabilities).`
+    );
+  if (grants.size !== EXPECTED_GRANT_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${grants.size} grants, expected ${EXPECTED_GRANT_COUNT}.`
+    );
+  if (refusals.size !== EXPECTED_REFUSAL_COUNT)
+    problems.push(
+      `ROLE_GRANTS declares ${refusals.size} refusals, expected ${EXPECTED_REFUSAL_COUNT}.`
+    );
+
+  if (problems.length)
+    refuse(
+      'the pre-registered grant declaration does not add up, so nothing below it is the ' +
+        'expectation that was reviewed:\n  - ' +
+        problems.join('\n  - ') +
+        '\nA role or a capability added without a decision for each of its counterparts fails ' +
+        'here. Look at the capability model and at phase decision D-02, NOT at the totals. ' +
+        'Nothing was measured against any database.',
+      1
+    );
+
+  return { grants, refusals };
+}
+
+const DECLARATION = flattenDeclaration();
+
 /** The targets this script can reach, borrowed from the baseline harness. */
 const KNOWN_TARGETS = ['production', 'container'];
 
