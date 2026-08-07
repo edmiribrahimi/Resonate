@@ -253,8 +253,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 43-03-PLAN.md — the harness keeps its four forbidden personas: the seed-time relaxation and the assertions that make ROLE-02 measurable
-- [ ] 43-04-PLAN.md — the set-password surface the invitation will land on, and the redirect it must not be able to leave
+- [x] 43-03-PLAN.md — the harness keeps its four forbidden personas: the seed-time relaxation and the assertions that make ROLE-02 measurable
+- [x] 43-04-PLAN.md — the set-password surface the invitation will land on, and the redirect it must not be able to leave
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 2/15 | In Progress|  |
+| 43. Role Model & Account Creation | 4/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
