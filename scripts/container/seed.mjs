@@ -129,8 +129,13 @@ const ROLE_IMPLIES_APPROVED = {
   name: 'profiles_role_implies_approved',
   /** Exactly as plan 43-06's migration writes it. */
   predicate: "role not in ('master','organizer','staff') or status = 'approved'",
-  /** Flipped to `true` by plan 43-06, in the same commit as the migration. */
-  present: false,
+  /**
+   * Flipped to `true` by plan 43-06, in the same commit as the migration
+   * `supabase/migrations/20260808001000_role_implies_approved.sql`, exactly as
+   * the paragraph above requires. From here on the assertions below are live:
+   * they read the real constraint, not a scratch one.
+   */
+  present: true,
   /**
    * `pg_get_constraintdef(oid)` as production would render it — i.e. WITHOUT
    * the trailing marker a `NOT VALID` constraint carries.
