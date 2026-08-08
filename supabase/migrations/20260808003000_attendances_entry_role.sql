@@ -1,0 +1,181 @@
+-- One column on the night's record: what an entry WAS, at the door
+-- Phase 43, Plan 10: ACCT-05 (D-13), with D-17 written beside the line it
+-- constrains
+--
+-- Changes:
+-- 1. public.attendances — one nullable `text` column, `entry_role`
+--
+-- One change, and still `BEGIN; ... COMMIT;`, for the reason
+-- `supabase-data.md` gives rather than for symmetry with the four-part file
+-- before it: a single `ALTER TABLE` is already atomic in PostgreSQL, so the
+-- transaction here buys nothing at apply time and buys something at READ time —
+-- it says, to whoever opens this file next and adds a second statement, that
+-- the two belong together. A migration that grew a second statement outside a
+-- transaction is how a table ends up half-migrated.
+--
+-- =============================================================================
+-- WHY THIS COLUMN EXISTS AT ALL — and why it is not the requirement it serves
+-- =============================================================================
+-- ACCT-05 is already structurally TRUE and this migration does not make it
+-- true. The attendance insert at `src/app/api/membership/verify/route.ts` has
+-- no role branch and no status branch, so a `staff` account scanning its
+-- membership card already produces a row identical in shape to any member's.
+-- The free entry is COUNTED today, with no new code.
+--
+-- What it is not is READABLE. Target venues hold 150–300 people and each
+-- `staff` account is a permanent free entry, so after two seasons that is a
+-- standing block of seats given away months in advance
+-- (`ACCESS-MODEL-DECISIONS.md` §8: *uncounted entries make the night's numbers
+-- wrong exactly where they are relied on*). To answer *how many of tonight's
+-- 180 were free staff entries* the entries must be DISTINGUISHABLE, and the
+-- existing record cannot distinguish them: `door_scan_events.subject_type`
+-- (`20260805120000_door_scan_events.sql`, section 1) tells a membership scan
+-- from a ticket scan, never a staff member's card from an approved member's —
+-- both are `'membership'`.
+--
+-- =============================================================================
+-- DECISION 1 — nullable, and NO DEFAULT: what happens to the rows already there
+-- =============================================================================
+-- `supabase-data.md`, gate *default sulle righe esistenti*: a column added to a
+-- populated table changes rows that already exist, and what happens to them is
+-- declared here rather than inferred later.
+--
+-- There is no backfill and there must not be one. Every attendance row written
+-- before this migration carries NULL, and
+--
+--     NULL MEANS "WRITTEN BEFORE THIS COLUMN EXISTED".
+--     NULL DOES NOT MEAN "THIS ENTRY WAS AN ORDINARY MEMBER".
+--
+-- The two are not the same sentence and conflating them puts a FABRICATED
+-- number in a night report — one that reads as measured. It is exactly the
+-- distinction `20260805120000_door_scan_events.sql` draws for
+-- `ticket_refunds.refunded_ticket_id`: on a row written before that migration
+-- the NULL means *unknown*, not *none*, and no report may count it as the
+-- second.
+--
+-- A backfill would be the tempting thing and it would be the dishonest thing.
+-- The only value available to a backfill is the CURRENT role of the account,
+-- which is precisely the value decision 2 exists to refuse: it would write
+-- today's answer into last season's night and make it indistinguishable from
+-- something observed at the door.
+--
+-- No default, for the same reason. A default of `'member'` would make every
+-- future row that skipped the write claim to have been an ordinary member,
+-- which is the fabrication above with an automatic author.
+--
+-- THE THREE WAYS A NULL GETS HERE, since a row written after this migration can
+-- carry one too and the sentence above would otherwise read as if it could not:
+--
+--   1. the row predates this column — the paragraph above;
+--   2. a queued offline sync arrived carrying no role label at all. Plan 43-13
+--      makes the device send one; until it lands, every membership entry taken
+--      with the radio off syncs without a marker;
+--   3. a queued sync carried a label outside the closed role set. The door
+--      route writes NULL and ADMITS the person rather than refusing an entry
+--      over a report field.
+--
+-- All three are the SAME meaning — *not known at the door* — and none of them
+-- is *was an ordinary member*. There is exactly one reading of a NULL in this
+-- column and it is `unknown`.
+--
+-- =============================================================================
+-- DECISION 2 — no foreign key, and no join: evidence, not a pointer
+-- =============================================================================
+-- The value is evidence of WHAT WAS TRUE AT THE DOOR, not a pointer to what is
+-- true now. `public.profiles.role` is mutable — plan 43-09 gave six acts a
+-- writer for it — so an account demoted next month would, through a join, make
+-- LAST month's night report a different number. A report whose value changes
+-- after the night is not a report.
+--
+-- This is the same inversion of this repository's default that
+-- `20260805120000_door_scan_events.sql` made deliberately for the four
+-- evidence columns on `ticket_refunds`: no key pointing anywhere, because the
+-- entire point of the value is to survive the row it names. Here the row is not
+-- destroyed, it is EDITED, which is the quieter version of the same problem.
+--
+-- Consequence, stated so nobody has to rediscover it: `entry_role` and
+-- `profiles.role` are allowed to disagree, and a disagreement is not a defect.
+-- It is the record doing its job.
+--
+-- =============================================================================
+-- DECISION 3 — no CHECK on the role list, and where the closed set IS enforced
+-- =============================================================================
+-- A constraint tying this column to the four roles would be the FOURTH
+-- enumeration of the same list to widen every time the role set changes, after
+--
+--   1. the role constraint on `public.profiles` (`20260224_rbac_migration.sql`),
+--   2. the one on `private.role_capabilities`
+--      (`20260807000000_capability_model.sql`),
+--   3. the `UserRole` union in `src/types/database.ts`.
+--
+-- Phase 43 has just paid the cost of widening those three to add `staff` (plan
+-- 43-05). A fourth site would raise a runtime `23514` at the door — inside the
+-- attendance insert, in front of a queue — on the day somebody adds a fifth
+-- role and updates three places out of four. On this table that failure mode is
+-- unacceptable in a way it is not on `profiles`: refusing a valid guest is
+-- worse than admitting a duplicate (`checkin-offline.md`), and a `23514` here
+-- refuses.
+--
+-- The closed set is enforced WHERE THE VALUE IS WRITTEN instead —
+-- `src/app/api/membership/verify/route.ts`, which validates any client-supplied
+-- label against `ROLES` in `src/lib/rbac/roles.ts` — the runtime mirror of the
+-- `UserRole` union — and writes NULL rather than refusing an entry when it does
+-- not recognise one. That file is named here so the enforcement point is
+-- findable from the schema, since the schema no longer holds it.
+--
+-- The honest cost of this decision: an unconstrained `text` column can hold a
+-- value no reader can name. It is bounded by there being exactly one writer,
+-- and that writer validating.
+--
+-- =============================================================================
+-- DECISION 4 — a role label, not a boolean
+-- =============================================================================
+-- `is_free_staff_entry boolean` was the narrower option and it is the one that
+-- will be wrong later: a comped guest is also a free entry and is not staff, a
+-- future per-night door assignment (phase 35) is a third case, and each of them
+-- would need either another boolean or a reinterpretation of this one. A label
+-- answers *what was this entry* and lets the question be re-asked; a boolean
+-- answers one question asked in 2026 and freezes it.
+--
+-- =============================================================================
+-- RLS — considered, and deliberately unchanged. Middleware is not security.
+-- =============================================================================
+-- PostgreSQL's row-level security is ROW-level: a new column on an existing
+-- table is reachable by exactly the policies that already reach the row, with
+-- no further grant and no further refusal. `public.attendances` carries two,
+-- both left untouched:
+--
+--   * `attendances_select_own` — `(select auth.uid()) = user_id`
+--     (`20260807020000_wrap_auth_uid.sql`). A member can already read their own
+--     attendance rows and can now read their own `entry_role`. That is their
+--     own role label on their own presence: no other person's row becomes
+--     readable, and nothing about anybody else's role is exposed by it.
+--   * `attendances_all_admin` — `private.has_capability('staff.manage')`
+--     (`20260807010000_policies_to_capabilities.sql`). The night report is read
+--     through this one, by the roles that hold `staff.manage`. Unchanged.
+--
+-- So this migration adds no policy, and adding one would be the mistake:
+-- `PERMISSIVE` policies are OR'd, and a new policy on this table could only
+-- widen who reads the presences of the whole community.
+--
+-- =============================================================================
+-- NO INDEX, and why that is not an oversight of the lookup-column gate
+-- =============================================================================
+-- `supabase-data.md` asks for an index on every column used to find a SINGLE
+-- row. `entry_role` is not one: nothing looks a person up by it. Its reader is
+-- an aggregate over one night — group by `entry_role` where `party_id = …` —
+-- already narrowed by `idx_attendances_party`
+-- (`20260805120000_door_scan_events.sql`, section 3), over a party bounded by a
+-- venue that holds 150–300 people.
+--
+-- And an index here would be paid on the wrong side. Every row of this table is
+-- written by the door, one INSERT at a time, with a person standing in front of
+-- the phone; a low-cardinality index would add write cost to that path to speed
+-- up a report nobody reads at 2am. At the door a slow query is a queue.
+
+BEGIN;
+
+ALTER TABLE public.attendances
+  ADD COLUMN IF NOT EXISTS entry_role text;
+
+COMMIT;
