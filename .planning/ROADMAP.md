@@ -304,8 +304,44 @@ Plans:
   4. Undoing a check-in is refused for a person assigned only to the door for that night, and allowed for an organizer
   5. A dj or photographer credit can be created for a person who has no account, grants access to no tool, and creates no account
 
-**Plans**: TBD
+**Plans**: 14 plans, in 7 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 35-01-PLAN.md — Wave 0: the baseline before the first line of DDL, and the 6 + 5 migration queue as a blocking checkpoint
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 35-02-PLAN.md — `party_assignments` as a temporal record, the no-self-grant CHECK, the composite FK that makes only staff roles assignable, and the SQL night clock
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 35-03-PLAN.md — The resolver's second arm, null-safe, plus three new capability keys and the per-night `my_access_context` overload
+- [ ] 35-04-PLAN.md — The assignment acts in the existing register, the atomic writer, and D-18 rewritten with the right criterion
+- [ ] 35-05-PLAN.md — `party_credits`: the table without an account column, the publication gate on its reads, and the structural check for ASSIGN-07
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 35-06-PLAN.md — The harness: two probe payloads, the dedicated self-grant probe proved by mutation, and the seed's third axis
+- [ ] 35-07-PLAN.md — `hasCapability(key, { partyId })` and a door guard that resolves once and returns the supervision verdict
+- [ ] 35-08-PLAN.md — The assignment surface, and the single action that revokes then demotes when the database refuses
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 35-09-PLAN.md — The door register narrowed by assignment rather than by role, with the read set proved unshrunk
+- [ ] 35-10-PLAN.md — `doorAuth` on the payload the scanner already asks for, and a night list that only ever adds rows
+- [ ] 35-11-PLAN.md — Undo requires a supervising capability, with its status chosen by reading the drain's table
+- [ ] 35-12-PLAN.md — The drain judges at `scannedAt`: no queued scan is ever stranded
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 35-13-PLAN.md — The device: store v5, the verdict read from cache, and the offline undo that no longer bypasses supervision
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 35-14-PLAN.md — `35-HUMAN-UAT.md` written: eight procedures, the honest coverage declaration, and the deferred debt named
 
 ### Phase 34: One Work Surface
 
@@ -436,7 +472,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 0/TBD | Not started | - |
+| 35. Per-Night Assignments | 0/14 | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
