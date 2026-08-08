@@ -310,7 +310,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 35-01-PLAN.md — Wave 0: the baseline before the first line of DDL, and the 6 + 8 + 1 migration queue as a blocking checkpoint
+- [x] 35-01-PLAN.md — Wave 0: the baseline before the first line of DDL, and the 6 + 8 + 1 migration queue as a blocking checkpoint
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 0/14 | Not started | - |
+| 35. Per-Night Assignments | 1/21 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
