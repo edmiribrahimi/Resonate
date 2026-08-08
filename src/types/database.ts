@@ -112,6 +112,34 @@ export interface Attendance {
   // 2026-08-05; the correction is not an addition.
   checked_in_at: string | null;
   checked_in_by: string | null;
+  /**
+   * What this entry WAS, taken at the door and written at the door — phase 43,
+   * plan 10, ACCT-05/D-13 (`20260808003000_attendances_entry_role.sql`).
+   *
+   * Typed `string | null` and deliberately **not** `UserRole | null`, which
+   * would be the tidier line and the false one. The column has no CHECK (the
+   * migration says why: a fourth role enumeration would raise a `23514` inside
+   * the door's insert, in front of a queue), so the database can hold a label
+   * this union cannot name. A type that promised `UserRole` would be a type
+   * that lies, and `supabase-data.md` prefers an absent type to a lying one.
+   *
+   * NULL means **"written before this column existed"** — or, on a row written
+   * after it, "the door sent a label nobody could recognise". It never means
+   * "this entry was an ordinary member". A night report that counts NULLs as
+   * members prints a fabricated number.
+   *
+   * The value is denormalised at write time with no foreign key: it may
+   * disagree with `Profile.role` and the disagreement is the record working,
+   * not a defect.
+   *
+   * As plan 43-07 noted for the register, and for the same reason: **no
+   * Supabase client in this repository is parameterised with `Database`**
+   * (`src/lib/supabase/client.ts`, `server.ts`, `middleware.ts`, `service.ts`),
+   * so this field name is checked by nothing at any call site. A typo here and
+   * a typo in the insert would both compile, and the first thing that would
+   * notice either is a real scan at a real door.
+   */
+  entry_role: string | null;
 }
 
 export interface EventMedia {
