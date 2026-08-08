@@ -42,7 +42,7 @@
  * The fourth side exists because Phase 34's CAP-02 will fail the production
  * build for a capability mapped to no route. A key that nothing asks for today
  * is that failure arriving early, so it is reported as a WARNING naming the
- * key — Phase 34 owns the decision, and five of the nine keys gate tables
+ * key — Phase 34 owns the decision, and five of the twelve keys gate tables
  * rather than routes.
  *
  * THE FIFTH SIDE (phase decision D-02, added by plan 43-02):
@@ -114,6 +114,19 @@ const SRC_DIR = `${ROOT}/src`;
  * added in a plan, with its two grant rows and its policy, which is the only
  * legitimate reason this number moves.
  *
+ * Raised to TWELVE on 2026-08-08 by plan 35-03, which mints `door.supervise`,
+ * `media.upload` and `party.manage` in
+ * `supabase/migrations/20260809001000_assignment_resolver.sql` section 1 — the
+ * three keys `20260809000000_party_assignments.sql:340-342` already names as
+ * per-night assignable and that had no catalogue row to point at. Each arrives
+ * with a decision for all four roles, in this same commit.
+ *
+ * **Their CONSUMERS do not arrive with them, and that is visible rather than
+ * hidden.** Side 4 reports all three as keys nobody asks for until plans 35-07,
+ * 35-09, 35-11, 35-13, 35-16, 35-17 and 35-21 wire them. That warning is the
+ * point — it is Phase 34's CAP-02 failure arriving early and cheaply — and
+ * nothing here is adjusted to suppress it.
+ *
  * Written here, not derived from either side, for the reason
  * `rls-baseline.mjs:113-130` states about its floors: a check that reads its
  * expectation off the thing it is checking cannot fail.
@@ -123,7 +136,7 @@ const SRC_DIR = `${ROOT}/src`;
  * in a plan, with a grant row and a policy or a route to go with it. Eight
  * means one was removed, and something is still asking for it.
  */
-const EXPECTED_KEY_COUNT = 9;
+const EXPECTED_KEY_COUNT = 12;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -204,6 +217,23 @@ const ROLE_GRANTS = {
     // needs no further justification. `requires_approved = true` on BOTH grants
     // of this key: the register contains rejections.
     'register.read': true,
+    // ── ASSIGN-05, plan 35-03, and this is the SECOND pair of `false` rows ───
+    //
+    // `door.supervise` takes `requires_approved = false` on BOTH grants, and it
+    // takes it for the reason written beside `door.operate` above, not by
+    // imitation. Undoing a check-in is the action that CORRECTS a wrong refusal,
+    // so it is the action least able to afford a second way of failing at the
+    // door. Beside phase 43's `role ⇒ approved` constraint this flag will look
+    // redundant; the constraint protects the database, this flag protects the
+    // night from the day the constraint is relaxed for one special case.
+    // Assertion 2 fails on a flipped flag and names the pair.
+    'door.supervise': false,
+    // `true`, and the difference from the two rows above is not an
+    // inconsistency: neither of these happens in front of a queue, so the door's
+    // reason does not reach them and an account whose own access was never
+    // approved has no business on either.
+    'media.upload': true,
+    'party.manage': true,
   },
   organizer: {
     'staff.manage': false,
@@ -233,6 +263,14 @@ const ROLE_GRANTS = {
     // that keeps `door.operate` open in front of a queue. A ninth key was minted
     // instead.
     'register.read': true,
+    // ASSIGN-05, plan 35-03. `false` for the reason written beside
+    // `master.door.supervise`, and it is the row that matters at the door: an
+    // organizer whose status is still `pending` must be able to reverse a
+    // check-in they just made by mistake.
+    'door.supervise': false,
+    // `true` on both, plan 35-03. Neither is at the door.
+    'media.upload': true,
+    'party.manage': true,
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -295,6 +333,26 @@ const ROLE_GRANTS = {
     // night it was assigned to comes from Phase 35 and expires with that night;
     // this key would not expire with anything.
     'register.read': 'REFUSED',
+    // ── The three refusals plan 35-03 adds, and they are the phase's own test ─
+    //
+    // Refused (D-03). Working the door is the per-night assignment; SUPERVISING
+    // one is narrower still. A row here would let the supervision of one night
+    // reach every later night, which is the leak the assignment exists to stop.
+    'door.supervise': 'REFUSED',
+    // Refused (D-03), AND THIS IS THE ONE THAT PROVES THE MODEL WAS MEANT.
+    // Being `staff` does not confer the ability to upload a night's media. A
+    // photographer gets it from the ASSIGNMENT, for the night they worked, and
+    // it expires with that night. A row here would make every past collaborator
+    // an uploader to every future night, and the assignment would become a label
+    // on something that was already true.
+    //
+    // `20260808000500_staff_role.sql:125-136` wrote this refusal down before the
+    // key existed: *"the upload ROLE-01 refuses is Phase 35's per-night work
+    // upload"*. This line is that sentence acquiring a pair to be checked on.
+    'media.upload': 'REFUSED',
+    // Refused (D-03). A night's back office is a night's, and `staff` has no
+    // organizer surface at all — `NAV_ITEMS` shows it none.
+    'party.manage': 'REFUSED',
   },
   member: {
     'staff.manage': 'REFUSED',
@@ -315,26 +373,36 @@ const ROLE_GRANTS = {
     // table. There is deliberately no own-row policy either, so this refusal is
     // not routed around by `attendances_select_own`'s precedent.
     'register.read': 'REFUSED',
+    // Plan 35-03. Nothing grants any of the three. A member holding
+    // `door.supervise` would reverse check-ins; `media.upload` is refused
+    // because the member-level contribution is `membership.active`, which they
+    // already hold — the two are different questions and this line is what keeps
+    // them separable.
+    'door.supervise': 'REFUSED',
+    'media.upload': 'REFUSED',
+    'party.manage': 'REFUSED',
   },
 };
 
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 36 pairs = 4 roles × 9 capabilities. 20 grants: the sixteen the capability
+ * 48 pairs = 4 roles × 12 capabilities. 26 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
  * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
- * `20260808002000_membership_register.sql` adds for `register.read`. 16
- * refusals — the eight that were already every pair the first migration does NOT
- * insert, plus the six `staff` refusals of D-02, plus the two `register.read`
- * refusals of D-19 (`staff` and `member`).
+ * `20260808002000_membership_register.sql` adds for `register.read`, plus the
+ * six `20260809001000_assignment_resolver.sql` adds for the three per-night
+ * keys. 22 refusals — the eight that were already every pair the first migration
+ * does NOT insert, plus the six `staff` refusals of D-02, plus the two
+ * `register.read` refusals of D-19 (`staff` and `member`), plus the six the
+ * three per-night keys owe to `staff` and `member`.
  *
- * The three numbers have now moved twice, both times on 2026-08-08 and both
- * times because the MODEL changed, which is the one legitimate reason to touch
- * them:
+ * The three numbers have now moved three times, all on 2026-08-08 and all
+ * because the MODEL changed, which is the one legitimate reason to touch them:
  *
  *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
  *   32/18/14 → 36/20/16   plan 43-07, a ninth CAPABILITY
+ *   36/20/16 → 48/26/22   plan 35-03, THREE per-night CAPABILITIES
  *
  * Lowering a total to make a run pass is the failure this constant exists to
  * catch, and it has a recorded shape: mutation C of plan 43-02 did exactly that
@@ -344,9 +412,9 @@ const ROLE_GRANTS = {
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
-const EXPECTED_PAIR_COUNT = 36;
-const EXPECTED_GRANT_COUNT = 20;
-const EXPECTED_REFUSAL_COUNT = 16;
+const EXPECTED_PAIR_COUNT = 48;
+const EXPECTED_GRANT_COUNT = 26;
+const EXPECTED_REFUSAL_COUNT = 22;
 
 /** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
 const REFUSED = 'REFUSED';
@@ -975,7 +1043,7 @@ async function run(target, targetLabel) {
       problems.push(
         "Phase 34's CAP-02 will fail the production build for a capability mapped to no route. " +
           'This is that failure, arriving early and cheaply. It is a warning and not a failure ' +
-          'because Phase 34 owns the decision, and because five of the nine keys gate TABLES ' +
+          'because Phase 34 owns the decision, and because five of the twelve keys gate TABLES ' +
           'rather than routes.'
       );
     warn(
