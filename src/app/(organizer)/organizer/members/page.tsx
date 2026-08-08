@@ -97,11 +97,18 @@ export default async function OrganizerMembersPage() {
       </header>
 
       <div className="px-6">
+        {/*
+          `callerRole="organizer"` is gone since 2026-08-08. It was a literal,
+          not a fact from the session, and its only effect was to withhold the
+          Deactivate and Reactivate controls from this page. The owner decided
+          that an organizer may reverse a decision already taken about a person,
+          so those two acts now sit on the same gate as approve, reject and the
+          role changes — and this page draws them.
+        */}
         <MemberTable
           members={members}
           currentUserId={currentUserId}
           showActions={true}
-          callerRole="organizer"
         />
       </div>
 

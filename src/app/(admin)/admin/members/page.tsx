@@ -149,11 +149,19 @@ export default async function AdminMembersPage() {
           would edit a component shared with the organizer members page, which
           belongs to another plan.
         */}
+        {/*
+          `callerRole` is gone from this component since 2026-08-08. It was
+          passed here as the LITERAL "master" — never a fact read from the
+          session — and it decided one thing: whether the Deactivate and
+          Reactivate controls were drawn. The owner decision that widened those
+          two acts onto the same gate as the other four removed the question,
+          and `MemberTable.tsx` says why the prop was deleted rather than left
+          unused.
+        */}
         <MemberTable
           members={members}
           currentUserId={userId ?? ""}
           showActions={true}
-          callerRole="master"
         />
       </AnimatedSection>
 

@@ -83,11 +83,27 @@ interface MemberRow {
   referrer_name: string | null;
 }
 
+/**
+ * ── `callerRole` was REMOVED on 2026-08-08, and that is the point ────────────
+ *
+ * It existed to draw Deactivate and Reactivate for the master alone, mirroring
+ * a `verifyMaster` gate that no longer exists: the owner decided that an
+ * organizer may reverse a decision already taken about a person, and both acts
+ * moved onto the same gate as the other four (`admin/members/actions.ts`, which
+ * records that this supersedes T-43-09-02).
+ *
+ * With nothing left for it to decide, keeping the prop would have left a value
+ * named after a ROLE sitting in a component that no longer branches on one —
+ * the exact shape a later reader reads as a permission. Both call sites passed
+ * a LITERAL for it anyway (`"master"` on the admin page, `"organizer"` on the
+ * organizer page), so it never carried a fact about the session in the first
+ * place; the real question is asked by `getAccessContext()` on each page and
+ * again inside every action.
+ */
 interface MemberTableProps {
   members: MemberRow[];
   currentUserId: string;
   showActions: boolean;
-  callerRole: UserRole;
 }
 
 type StatusTab = "all" | "pending" | "approved" | "rejected";
@@ -262,17 +278,156 @@ function ActionButton({
   );
 }
 
+// =============================================================================
+// THE CONFIRMATION, and the exactly two acts that get one
+// =============================================================================
+//
+// Withdrawing an approved member's access, and readmitting a rejected one.
+// Those two, single and bulk alike. **Approving or rejecting a `pending`
+// request deliberately gets NO confirmation**: those are the ordinary daily
+// acts, and friction on them is pure cost.
+//
+// The reason is specific rather than general caution, and it was named by the
+// previous executor of this phase: *«un pulsante "Reject" su una riga di un
+// membro approvato ritira un accesso, e in questa tabella non esiste alcuna
+// conferma»*. Three facts compound:
+//
+//   * the table acts on several rows at once;
+//   * the two reversing controls now sit one cell away from the two ordinary
+//     ones, in the same column, in the same visual vocabulary;
+//   * the consequence of a misclick is that somebody silently loses access to a
+//     community whose whole value is the gate — and nobody tells them, so they
+//     find out at the door.
+//
+// ── It NAMES the act and the count. It never says "are you sure" ────────────
+//
+// One misread confirmation is worse than none, because it trains the reflex to
+// dismiss the next one. So every sentence below is specific: what happens, to
+// how many people, what the register will say, and whether anybody is told.
+// `nextjs-architecture.md`, gate *accessibilità al buio*: colour is never the
+// only channel — the words carry it.
+//
+// ── And it is NOT a permission ───────────────────────────────────────────────
+//
+// A Server Action is a public endpoint. This dialog stops a hand from slipping;
+// it stops nothing else, and the gate in `admin/members/actions.ts` remains the
+// only boundary.
+
+type ReversalKind = "withdraw" | "readmit";
+
+function reversalCopy(kind: ReversalKind, count: number, subject?: string) {
+  const people = count === 1 ? "1 person" : `${count} people`;
+  const accounts = count === 1 ? "1 account" : `${count} accounts`;
+
+  if (kind === "withdraw") {
+    return {
+      title: subject
+        ? `Withdraw access from ${subject}?`
+        : `Withdraw access from ${accounts}?`,
+      lines: [
+        `This removes ${people} from the community.`,
+        "They stop being able to sign in, their membership card stops working " +
+          "at the door, and any staff or organizer role they hold is removed.",
+        "It is recorded as a withdrawal — “deactivated” — " +
+          "with your name and the time. The register is append-only: the row " +
+          "cannot be edited or deleted afterwards.",
+        // The one sentence in this component that exists because of a decision
+        // taken elsewhere: this product has no message for a withdrawal, on
+        // purpose (see THE MAIL FOLLOWS THE ACT in `admin/members/actions.ts`).
+        // The operator pressing this button is the only person who can warn
+        // them, so the surface says so instead of leaving it to be discovered.
+        "Nobody is told. This product has no message written for a withdrawal, " +
+          "so a withdrawn member finds out at the door.",
+      ],
+      confirmLabel:
+        count === 1 ? "Withdraw access" : `Withdraw access from ${accounts}`,
+      variant: "deactivate" as const,
+      box: "border-red-500/40 bg-red-500/10",
+      title_: "text-red-300",
+    };
+  }
+
+  return {
+    title: subject ? `Readmit ${subject}?` : `Readmit ${accounts}?`,
+    lines: [
+      `This lets ${people} back into the community.`,
+      "They can sign in again and their membership card works at the door again.",
+      "It is recorded as a readmission — “reactivated” — " +
+        "with your name and the time.",
+      count === 1
+        ? "They receive a message saying their access is active again."
+        : "Each of them receives a message saying their access is active again.",
+      "A staff or organizer role is not restored by this: set it separately " +
+        "afterwards if they need one.",
+    ],
+    confirmLabel: count === 1 ? "Readmit" : `Readmit ${accounts}`,
+    variant: "reactivate" as const,
+    box: "border-green-500/40 bg-green-500/10",
+    title_: "text-green-300",
+  };
+}
+
+function ReversalConfirm({
+  kind,
+  count,
+  subject,
+  onConfirm,
+  onCancel,
+}: {
+  kind: ReversalKind;
+  /** How many people this reaches. Always rendered — never "these accounts". */
+  count: number;
+  /** The single subject's name, when the confirmation is about one row. */
+  subject?: string;
+  onConfirm: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const copy = reversalCopy(kind, count, subject);
+
+  return (
+    <div
+      role="alertdialog"
+      aria-label={copy.title}
+      className={`w-full rounded-2xl border p-3 ${copy.box}`}
+    >
+      <p className={`text-sm font-semibold ${copy.title_}`}>{copy.title}</p>
+      <ul className="mt-1 flex flex-col gap-1">
+        {copy.lines.map((line) => (
+          <li key={line} className="text-xs leading-relaxed text-muted">
+            {line}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* The spinner lives on the confirm button, and it is real:
+            `ActionButton` awaits the promise inside its transition. */}
+        <ActionButton
+          onClick={onConfirm}
+          label={copy.confirmLabel}
+          variant={copy.variant}
+        />
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-card-border px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-foreground"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Actions cell for a single member row
 function MemberActions({
   member,
   currentUserId,
-  callerRole,
 }: {
   member: MemberRow;
   currentUserId: string;
-  callerRole: UserRole;
 }) {
   const [notice, setNotice] = useState<ActionNotice | null>(null);
+  const [confirming, setConfirming] = useState<ReversalKind | null>(null);
 
   // Don't show actions for the user's own row
   if (member.id === currentUserId) {
@@ -310,28 +465,26 @@ function MemberActions({
   const changeRole = (to: "organizer" | "staff" | "member") => () =>
     handleAction(() => updateMemberRole(member.id, to));
 
-  // Who may reach WHICH CONTROL, stated once. Both a master and an organizer
-  // hold `staff.manage`, so both may approve, reject and change a role (D-21).
-  // Only the master holds `master.manage`, so only the master reaches the
-  // Deactivate and Reactivate controls — plan 43-09 widened `updateMemberRole`
-  // alone and left those two where they were, deliberately.
+  // ── Who may reach WHICH CONTROL: everybody who reaches this table ───────────
   //
-  // ── This is narrower than what the server permits, since 2026-08-08 ─────────
+  // There used to be a `callerRole` prop here and a `canWithdrawAccess =
+  // callerRole === "master"` derived from it, drawing Deactivate and Reactivate
+  // for the master alone. **Both are gone, by owner decision of 2026-08-08**,
+  // together with the `verifyMaster` gate they mirrored (see
+  // `admin/members/actions.ts`, which records that this supersedes T-43-09-02).
   //
-  // The name is about the two CONTROLS and no longer about the outcome. The
-  // owner repealed the rule that reserved the two status transitions to the
-  // master, so an organizer may now withdraw an approved account's access (with
-  // Reject) and readmit a rejected one (with Approve); the register names those
-  // `deactivated` and `reactivated` from the transition rather than from the
-  // function. This surface simply offers no control that reaches either, because
-  // Approve and Reject are drawn on `pending` rows only — WIDENING IT IS A
-  // PRODUCT DECISION AND IS NOT TAKEN HERE BY IMPLICATION.
+  // The prop is REMOVED rather than left unused on purpose. A prop named after
+  // a role that no longer decides anything is the exact thing a later reader
+  // mistakes for a permission — and `access-gating.md` (gate *coerenza
+  // navigazione/permessi*) is emphatic that hiding a control is not protecting
+  // an endpoint. The six member acts share one gate now; whoever reaches this
+  // table with `showActions` has already been asked the only question that
+  // counts, and every act re-asks it on its own.
   //
-  // This renders what is actually possible instead of what the widened union
-  // suggests: before plan 43-09 an organizer saw approve and reject and nothing
-  // else, so ACCT-01 — *an organizer may promote a staff member to organizer* —
-  // had no control anywhere on the surface.
-  const canWithdrawAccess = callerRole === "master";
+  // What is still drawn per ROW is the SUBJECT's state, not the caller's:
+  // nothing at all on the viewer's own row (rule 2) or on a master's row
+  // (rule 1), which is the affordance matching two refusals the server holds
+  // whatever this file draws.
 
   // Role changes are offered on APPROVED rows only, and that is a decision
   // rather than an oversight. Granting `staff` or `organizer` writes the role
@@ -343,18 +496,48 @@ function MemberActions({
   // convenient button.
   const canChangeRole = member.status === "approved";
 
-  // An organizer looking at a deactivated account has nothing to offer: role
-  // changes need an approved row and reactivation is the master's. Drawing an
-  // empty cell there would be indistinguishable from a cell that failed to
-  // render, so it draws the same "--" the other two suppressed cases draw.
-  const hasAnyAction =
-    canChangeRole ||
-    (canWithdrawAccess &&
-      (member.status === "approved" || member.status === "rejected")) ||
-    member.status === "pending";
+  // There used to be a `hasAnyAction` guard drawing "--" for the case with no
+  // control to offer — an organizer looking at a rejected account, whose only
+  // act would have been the master's Reactivate. That case no longer exists:
+  // every one of the three statuses now has at least one control for everybody
+  // who reaches this table (pending -> Approve/Reject, approved -> role changes
+  // + Withdraw, rejected -> Readmit). The guard is deleted rather than left
+  // permanently true, for the same reason `master_manage_required` was deleted
+  // from the notice map: a branch that can no longer be taken is where the next
+  // reader stops looking.
 
-  if (!hasAnyAction && !notice) {
-    return <span className="text-xs text-muted">--</span>;
+  // The confirmation REPLACES the buttons while it is open, so a second click
+  // aimed at the row cannot land on a different act than the one being
+  // confirmed.
+  if (confirming) {
+    return (
+      <div className="flex w-full flex-col gap-2">
+        <ReversalConfirm
+          kind={confirming}
+          count={1}
+          subject={member.full_name || member.email}
+          onCancel={() => setConfirming(null)}
+          onConfirm={async () => {
+            await handleAction(() =>
+              confirming === "withdraw"
+                ? deactivateMember(member.id)
+                : reactivateMember(member.id)
+            );
+            // Closed only after the act has answered, so the notice for a
+            // refusal is drawn by the branch below rather than by a component
+            // that has already unmounted.
+            setConfirming(null);
+          }}
+        />
+        {notice && (
+          <MemberActionNotice
+            kind={notice.kind}
+            detail={notice.detail}
+            compact
+          />
+        )}
+      </div>
+    );
   }
 
   return (
@@ -410,25 +593,32 @@ function MemberActions({
         </>
       )}
 
-      {/* Deactivate: approved non-master -> rejected. Master only. */}
-      {canWithdrawAccess && member.status === "approved" && (
+      {/* Withdraw: approved non-master -> rejected. Master AND organizer since
+          2026-08-08. Labelled after the OUTCOME and not after the function —
+          "Deactivate" named an API, "Withdraw access" names what the person
+          loses, and the register will call the act `deactivated` either way.
+          It asks first: this is one of the two reversing acts. */}
+      {member.status === "approved" && (
         <ActionButton
-          onClick={() => handleAction(() => deactivateMember(member.id))}
-          label="Deactivate"
+          onClick={async () => setConfirming("withdraw")}
+          label="Withdraw access"
           variant="deactivate"
         />
       )}
 
-      {/* Reactivate: rejected -> approved. Master only. */}
-      {canWithdrawAccess && member.status === "rejected" && (
+      {/* Readmit: rejected -> approved. Master AND organizer. Recorded as
+          `reactivated`. It asks first, and it is the act the owner decision of
+          2026-08-08 was actually about. */}
+      {member.status === "rejected" && (
         <ActionButton
-          onClick={() => handleAction(() => reactivateMember(member.id))}
-          label="Reactivate"
+          onClick={async () => setConfirming("readmit")}
+          label="Readmit"
           variant="reactivate"
         />
       )}
 
-      {/* Pending: Approve + Reject */}
+      {/* Pending: Approve + Reject — the two ORDINARY acts, and deliberately
+          the two without a confirmation. */}
       {member.status === "pending" && (
         <>
           <ActionButton
@@ -489,7 +679,6 @@ export default function MemberTable({
   members,
   currentUserId,
   showActions,
-  callerRole,
 }: MemberTableProps) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -498,7 +687,7 @@ export default function MemberTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
-  const [, startTransition] = useTransition();
+  const [bulkConfirm, setBulkConfirm] = useState<ReversalKind | null>(null);
 
   // Compute referral counts from loaded data (no extra query needed)
   const referralCounts = new Map<string, number>();
@@ -548,17 +737,50 @@ export default function MemberTable({
   // combined "free entries" figure would hide which of the two is growing.
   const staffCount = members.filter((m) => m.role === "staff").length;
 
-  const isPendingTab = statusTab === "pending";
+  // ── The batch, and the three tabs it now reaches ────────────────────────────
+  //
+  // It used to be the Pending tab alone. Approved and Rejected joined it with
+  // the owner decision of 2026-08-08, because the two reversing acts became
+  // ordinary and doing them one at a time is friction, not a boundary — the
+  // boundary is the gate on the action, which an authenticated organizer could
+  // already reach with a crafted request whatever this toolbar drew.
+  //
+  // The "All" tab deliberately has NO batch: a selection spanning three
+  // statuses would produce a mix of acts, and the confirmation could then only
+  // say something vague about "the selected rows". A confirmation that cannot
+  // name what it is about is the "are you sure" this component exists to avoid.
+  const BULK_TAB_STATUS: Partial<Record<StatusTab, UserStatus>> = {
+    pending: "pending",
+    approved: "approved",
+    rejected: "rejected",
+  };
+  const bulkStatus = BULK_TAB_STATUS[statusTab];
+  const isBulkTab = bulkStatus !== undefined;
 
-  // Bulk selection helpers
-  const pendingFiltered = filtered.filter((m) => m.status === "pending");
-  const allPendingSelected = pendingFiltered.length > 0 && pendingFiltered.every((m) => selectedIds.has(m.id));
+  /**
+   * A row this batch may be aimed at.
+   *
+   * The two exclusions match refusals the SERVER holds anyway (rule 1: no act
+   * reaches a master; rule 2: no act reaches its own author). They are here so
+   * that "select all" on the Approved tab does not silently include the master
+   * and the viewer and then report two refusals every single time — an
+   * affordance that always fails is noise, and noise is where a real refusal
+   * stops being read. It is not a permission: remove these two tests and the
+   * server still refuses both.
+   */
+  const isSelectable = (m: MemberRow) =>
+    m.status === bulkStatus && m.role !== "master" && m.id !== currentUserId;
+
+  const selectableFiltered = filtered.filter(isSelectable);
+  const allSelectableSelected =
+    selectableFiltered.length > 0 &&
+    selectableFiltered.every((m) => selectedIds.has(m.id));
 
   const toggleSelectAll = () => {
-    if (allPendingSelected) {
+    if (allSelectableSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(pendingFiltered.map((m) => m.id)));
+      setSelectedIds(new Set(selectableFiltered.map((m) => m.id)));
     }
   };
 
@@ -591,85 +813,102 @@ export default function MemberTable({
   // Plan 43-09 made the action report per subject; this renders it that way —
   // a batch where one subject failed says WHICH one, and the count shown is the
   // measured one and never `ids.length`.
-  const handleBulk = (
+  //
+  // It is `async` and RETURNS its promise, rather than firing a discarded
+  // `startTransition`. The transition it used to open was destructured as
+  // `const [, startTransition]` — the pending flag thrown away — so a batch over
+  // a dozen rows showed nothing at all while it ran, and the buttons stayed live
+  // for a second click on an act already in flight. That is the same dropped
+  // promise `ActionButton` was fixed for, one level up; the bulk buttons are
+  // `ActionButton`s now and await this.
+  const handleBulk = async (
     label: string,
     run: (ids: string[]) => Promise<MemberActResult<BulkActData>>
   ) => {
     const ids = Array.from(selectedIds);
     setBulkResult(null);
-    startTransition(async () => {
-      const base = { label, requested: ids.length };
-      try {
-        const result = await run(ids);
+    const base = { label, requested: ids.length };
 
-        // The whole batch was refused before any subject was touched — a
-        // capability fault, a refusal, or an empty selection. It is a different
-        // event from "some subjects failed" and it gets the cause's own notice
-        // rather than a line in a per-subject list.
-        if (!result.ok) {
-          setBulkResult({
-            ...base,
-            succeeded: 0,
-            failed: 0,
-            failures: [],
-            batchNotice: { kind: result.failure, detail: result.detail },
-          });
-          return;
-        }
+    try {
+      const result = await run(ids);
 
-        const { succeeded, failed, outcomes } = result.data;
-
-        const failures = outcomes
-          .filter((o) => !o.ok)
-          .map((o) => ({
-            subjectId: o.subjectId,
-            subject: subjectLabel(o.subjectId),
-            // The cause AND its detail. A per-subject outcome used to carry the
-            // cause alone; since CR-01 the act group can refuse one subject of a
-            // batch for several distinct reasons that all tag as `forbidden`,
-            // and the detail is what tells "it is the master" from "it is you".
-            // Since 2026-08-08 a subject can also come back `nothing_to_do` /
-            // `status_unchanged` — it already held the status — or
-            // `act_underivable`, each with its own sentence: a batch derives its
-            // act per subject, so it can refuse one row of five without
-            // shrinking the count. An absent detail still falls back to the
-            // cause's own sentence, which remains the honest answer rather than
-            // a borrowed one.
-            kind: (o.failure ?? "write_failed") as MemberNoticeKind,
-            detail: o.detail,
-          }));
-
-        setBulkResult({ ...base, succeeded, failed, failures });
-
-        // The refused subjects stay selected, so the retry is one click and not
-        // a re-hunt through the list. On a clean batch the selection clears.
-        setSelectedIds(
-          failed === 0 ? new Set() : new Set(failures.map((f) => f.subjectId))
-        );
-      } catch {
-        // No tag to read: the action never returned. Whether anything was
-        // written is unknown from here, and the notice says exactly that
-        // instead of guessing in either direction.
+      // The whole batch was refused before any subject was touched — a
+      // capability fault, a refusal, or an empty selection. It is a different
+      // event from "some subjects failed" and it gets the cause's own notice
+      // rather than a line in a per-subject list.
+      if (!result.ok) {
         setBulkResult({
           ...base,
           succeeded: 0,
           failed: 0,
           failures: [],
-          batchNotice: { kind: "transport_unavailable" },
+          batchNotice: { kind: result.failure, detail: result.detail },
         });
+        return;
       }
-    });
+
+      const { succeeded, failed, outcomes } = result.data;
+
+      const failures = outcomes
+        .filter((o) => !o.ok)
+        .map((o) => ({
+          subjectId: o.subjectId,
+          subject: subjectLabel(o.subjectId),
+          // The cause AND its detail. A per-subject outcome used to carry the
+          // cause alone; since CR-01 the act group can refuse one subject of a
+          // batch for several distinct reasons that all tag as `forbidden`,
+          // and the detail is what tells "it is the master" from "it is you".
+          // Since 2026-08-08 a subject can also come back `nothing_to_do` /
+          // `status_unchanged` — it already held the status — or
+          // `act_underivable`, each with its own sentence: a batch derives its
+          // act per subject, so it can refuse one row of five without
+          // shrinking the count. An absent detail still falls back to the
+          // cause's own sentence, which remains the honest answer rather than
+          // a borrowed one.
+          kind: (o.failure ?? "write_failed") as MemberNoticeKind,
+          detail: o.detail,
+        }));
+
+      setBulkResult({ ...base, succeeded, failed, failures });
+
+      // The refused subjects stay selected, so the retry is one click and not
+      // a re-hunt through the list. On a clean batch the selection clears.
+      setSelectedIds(
+        failed === 0 ? new Set() : new Set(failures.map((f) => f.subjectId))
+      );
+    } catch {
+      // No tag to read: the action never returned. Whether anything was
+      // written is unknown from here, and the notice says exactly that
+      // instead of guessing in either direction.
+      setBulkResult({
+        ...base,
+        succeeded: 0,
+        failed: 0,
+        failures: [],
+        batchNotice: { kind: "transport_unavailable" },
+      });
+    }
   };
 
+  // The two ORDINARY batches — pending requests decided. No confirmation.
   const handleBulkApprove = () => handleBulk("Approve", bulkApproveMember);
   const handleBulkReject = () => handleBulk("Reject", bulkRejectMember);
+
+  // The two REVERSING batches. They run the same two actions — the act name is
+  // derived per subject on the server, so a batch over approved rows records
+  // `deactivated` and a batch over rejected rows records `reactivated` — but
+  // they are labelled after what happens and they ask first.
+  const runBulkReversal = async (kind: ReversalKind) => {
+    if (kind === "withdraw") await handleBulk("Withdraw access", bulkRejectMember);
+    else await handleBulk("Readmit", bulkApproveMember);
+  };
 
   const toggleExpanded = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
   // Number of main table columns (for colSpan calculations)
-  const colCount = (isPendingTab ? 1 : 0) + 5 + (showActions ? 1 : 0) + 1; // +1 for chevron col
+  const colCount = (isBulkTab ? 1 : 0) + 5 + (showActions ? 1 : 0) + 1; // +1 for chevron col
 
   // Status tab active check
   const isActiveTab = (tab: StatusTab) => statusTab === tab;
@@ -737,6 +976,9 @@ export default function MemberTable({
               setStatusTab(tab);
               setSelectedIds(new Set());
               setExpandedId(null);
+              // A confirmation left open across a tab change would be asking
+              // about a selection that no longer exists.
+              setBulkConfirm(null);
             }}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
               isActiveTab(tab)
@@ -812,22 +1054,67 @@ export default function MemberTable({
         </p>
       ) : null}
 
-      {/* Bulk action toolbar */}
-      {isPendingTab && selectedIds.size > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+      {/* Bulk action toolbar — one set of controls per tab, because the act a
+          batch performs is decided by the status the selected rows hold. */}
+      {isBulkTab && selectedIds.size > 0 && !bulkConfirm && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
-          <button
-            onClick={handleBulkApprove}
-            className="rounded-md border border-green-500/40 px-3 py-1 text-xs font-medium text-green-400 transition-colors hover:bg-green-500/10"
-          >
-            Approve selected
-          </button>
-          <button
-            onClick={handleBulkReject}
-            className="rounded-md border border-red-500/40 px-3 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-          >
-            Reject selected
-          </button>
+
+          {/* Pending: the two ordinary acts, no confirmation. */}
+          {statusTab === "pending" && (
+            <>
+              <ActionButton
+                onClick={handleBulkApprove}
+                label="Approve selected"
+                variant="approve"
+              />
+              <ActionButton
+                onClick={handleBulkReject}
+                label="Reject selected"
+                variant="reject"
+              />
+            </>
+          )}
+
+          {/* Approved: the withdrawal. It asks first. */}
+          {statusTab === "approved" && (
+            <button
+              type="button"
+              onClick={() => setBulkConfirm("withdraw")}
+              className="rounded-md border border-red-500/40 px-3 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+            >
+              Withdraw access from selected
+            </button>
+          )}
+
+          {/* Rejected: the readmission. It asks first. */}
+          {statusTab === "rejected" && (
+            <button
+              type="button"
+              onClick={() => setBulkConfirm("readmit")}
+              className="rounded-md border border-green-500/40 px-3 py-1 text-xs font-medium text-green-400 transition-colors hover:bg-green-500/10"
+            >
+              Readmit selected
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* The batch confirmation REPLACES the toolbar while it is open, for the
+          same reason the row one replaces its buttons: a second click must not
+          be able to land on a different act than the one being confirmed. The
+          count it names is the live selection size. */}
+      {bulkConfirm && (
+        <div className="mb-4">
+          <ReversalConfirm
+            kind={bulkConfirm}
+            count={selectedIds.size}
+            onCancel={() => setBulkConfirm(null)}
+            onConfirm={async () => {
+              await runBulkReversal(bulkConfirm);
+              setBulkConfirm(null);
+            }}
+          />
         </div>
       )}
 
@@ -890,12 +1177,12 @@ export default function MemberTable({
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-card-border bg-card/50">
-                {/* Checkbox column: only on Pending tab */}
-                {isPendingTab && (
+                {/* Checkbox column: on the three single-status tabs */}
+                {isBulkTab && (
                   <th className="w-10 px-4 py-3">
                     <input
                       type="checkbox"
-                      checked={allPendingSelected}
+                      checked={allSelectableSelected}
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-card-border accent-accent"
                     />
@@ -920,10 +1207,10 @@ export default function MemberTable({
                     key={member.id}
                     member={member}
                     isExpanded={isExpanded}
-                    isPendingTab={isPendingTab}
+                    isBulkTab={isBulkTab}
+                    isSelectable={isSelectable(member)}
                     isSelected={selectedIds.has(member.id)}
                     showActions={showActions}
-                    callerRole={callerRole}
                     currentUserId={currentUserId}
                     referralCount={referralCounts.get(member.id) || 0}
                     colCount={colCount}
@@ -959,8 +1246,8 @@ export default function MemberTable({
               {/* Card header */}
               <div className="p-4">
                 <div className="flex items-start gap-3">
-                  {/* Checkbox on Pending tab */}
-                  {isPendingTab && member.status === "pending" && (
+                  {/* Checkbox on the three single-status tabs */}
+                  {isBulkTab && isSelectable(member) && (
                     <input
                       type="checkbox"
                       checked={selectedIds.has(member.id)}
@@ -1007,7 +1294,6 @@ export default function MemberTable({
                   <MemberActions
                     member={member}
                     currentUserId={currentUserId}
-                    callerRole={callerRole}
                   />
                 </div>
               )}
@@ -1028,10 +1314,10 @@ export default function MemberTable({
 function MemberRowDesktop({
   member,
   isExpanded,
-  isPendingTab,
+  isBulkTab,
+  isSelectable,
   isSelected,
   showActions,
-  callerRole,
   currentUserId,
   referralCount,
   colCount,
@@ -1040,10 +1326,10 @@ function MemberRowDesktop({
 }: {
   member: MemberRow;
   isExpanded: boolean;
-  isPendingTab: boolean;
+  isBulkTab: boolean;
+  isSelectable: boolean;
   isSelected: boolean;
   showActions: boolean;
-  callerRole: UserRole;
   currentUserId: string;
   referralCount: number;
   colCount: number;
@@ -1056,9 +1342,9 @@ function MemberRowDesktop({
         className={`border-b border-card-border/50 transition-colors hover:bg-card/30 ${isExpanded ? "bg-card/20" : ""}`}
       >
         {/* Checkbox */}
-        {isPendingTab && (
+        {isBulkTab && (
           <td className="w-10 px-4 py-3">
-            {member.status === "pending" ? (
+            {isSelectable ? (
               <input
                 type="checkbox"
                 checked={isSelected}
@@ -1092,11 +1378,7 @@ function MemberRowDesktop({
         </td>
         {showActions && (
           <td className="px-4 py-3">
-            <MemberActions
-              member={member}
-              currentUserId={currentUserId}
-              callerRole={callerRole}
-            />
+            <MemberActions member={member} currentUserId={currentUserId} />
           </td>
         )}
       </tr>

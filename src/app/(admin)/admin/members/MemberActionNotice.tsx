@@ -188,7 +188,7 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 };
 
 /**
- * `forbidden` is one tag covering eleven distinct refusals, and telling a person
+ * `forbidden` is one tag covering nine distinct refusals, and telling a person
  * only "you do not have permission" would collapse them exactly as the recorded
  * newsletter defect collapses its three causes.
  *
@@ -198,18 +198,28 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
  * inside a batch, so each has to arrive at this file as a VALUE — which is why
  * `BulkSubjectOutcome` gained a `detail`.
  *
- * ── TWO CAUSES WERE REMOVED HERE, and removing them was the point ────────────
+ * ── THREE CAUSES WERE REMOVED HERE, and removing them was the point ──────────
  *
  * `withdrawal_is_master_only` and `restoration_is_master_only` drew the
  * reserved-transition rule, **repealed by owner decision on 2026-08-08**: an
  * organizer may reject an approved member and may readmit a rejected one, so
  * the server no longer produces either detail and neither sentence could ever
- * be drawn again. They are deleted rather than left in place, because a handled
- * cause is where a later reader stops looking — plan 43-09 found two `catch`
- * blocks that had gone unreachable and 43-14 found a comment denying the defect
- * beside it. `readmission_before_role_change` below is not their replacement: it
- * refuses a DOOR (a role change that would silently readmit) and names the two
- * steps that do the same thing honestly.
+ * be drawn again.
+ *
+ * `master_manage_required` followed them on the same date, for the same reason
+ * one step later: `verifyMaster` no longer exists in
+ * `admin/members/actions.ts`. The owner decision widened `deactivateMember` and
+ * `reactivateMember` onto `staff.manage` — superseding T-43-09-02 — so nothing
+ * in the member acts can produce that detail any more, and its sentence
+ * (*«reserved to the master»*) would have been the third thing on this surface
+ * telling a reader something that had stopped being true.
+ *
+ * All three are deleted rather than left in place, because a handled cause is
+ * where a later reader stops looking — plan 43-09 found two `catch` blocks that
+ * had gone unreachable and 43-14 found a comment denying the defect beside it.
+ * `readmission_before_role_change` below is not their replacement: it refuses a
+ * DOOR (a role change that would silently readmit) and names the two steps that
+ * do the same thing honestly.
  *
  * Every key below is a `detail` literal chosen by `admin/members/actions.ts`
  * — a value, not a message, and therefore safe to branch on and safe to render.
@@ -217,24 +227,15 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   staff_manage_required: {
     tone: "refusal",
-    title: "This session cannot approve, reject or change a role",
+    title:
+      "This session cannot decide, reverse or change anything about a member",
     body:
-      "Nothing was attempted. Approving, rejecting and changing a role are " +
-      "reserved to a master or an organizer. If you believe you are one of " +
-      "those, sign out and back in: the answer came from the capability " +
-      "model, not from this page.",
-  },
-  master_manage_required: {
-    tone: "refusal",
-    title: "The Deactivate and Reactivate controls are reserved to the master",
-    body:
-      "Nothing was attempted. This is about these two CONTROLS and no longer " +
-      "about the outcome they produce: since 2026-08-08 an organizer may " +
-      "withdraw an approved account's access with Reject, and may readmit a " +
-      "rejected one with Approve — the register records those as deactivated " +
-      "and reactivated, named after what happened rather than after which " +
-      "button was used. So this refusal is a boundary of these two entry " +
-      "points, not of what an organizer is allowed to decide.",
+      "Nothing was attempted. Approving, rejecting, withdrawing an access, " +
+      "readmitting somebody and changing a role are all reserved to a master " +
+      "or an organizer — one gate for the six acts since 2026-08-08, when the " +
+      "owner decided that an organizer may reverse a decision already taken " +
+      "about a person. If you believe you are one of those, sign out and back " +
+      "in: the answer came from the capability model, not from this page.",
   },
   subject_is_master: {
     tone: "refusal",

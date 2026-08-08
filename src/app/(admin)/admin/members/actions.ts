@@ -11,6 +11,7 @@ import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/email";
 import { MemberApprovedEmail } from "@/emails/member-approved";
 import { MemberRejectedEmail } from "@/emails/member-rejected";
+import { MemberReactivatedEmail } from "@/emails/member-reactivated";
 import { AccountInvitationEmail } from "@/emails/account-invitation";
 
 // Service-role client for operations that need to bypass RLS
@@ -63,6 +64,50 @@ async function sendApprovalEmail(email: string, fullName: string) {
   await sendEmail({
     to: email,
     subject: "Welcome to Resonate - You're Approved!",
+    html,
+  });
+}
+
+/**
+ * The readmission message — written on 2026-08-08, for an act that until then
+ * had no message at all.
+ *
+ * The gap was NAMED by the previous fix rather than discovered later: *«in
+ * questo progetto non esiste alcun messaggio per una riammissione ne' per un
+ * ritiro d'accesso. Una persona riammessa non viene informata.»* That was
+ * tolerable while readmission was a rare master-only act. The owner decision of
+ * 2026-08-08 makes it ordinary, and `community-membership.md` (gate *il tempo di
+ * attesa e' una promessa*: **il silenzio e' una risposta, ed e' la peggiore**)
+ * is why an ordinary act that tells nobody is a defect rather than a saving.
+ *
+ * **It is a NEW template and not `MemberApprovedEmail` reused.** That mail says
+ * *«You're In»*, *«Your membership has been approved»* and *«start inviting
+ * friends with your personal referral link»* — the words of a first welcome. To
+ * somebody who was already inside, was excluded and is now coming back, those
+ * words are wrong, and a mail is not recallable (`comms-analytics.md`, gate *una
+ * mail non si richiama*).
+ *
+ * IDEMPOTENT BY CONSTRUCTION, per recipient and not per batch: this is called
+ * only where the DERIVED act is `reactivated`, which requires a real
+ * `rejected -> approved` transition. A second attempt on an already-approved
+ * account is refused as `status_unchanged` before any mail is considered.
+ *
+ * Throws on a missing app URL for the same reason `sendApprovalEmail` does: a
+ * readmission whose link points at a host this project does not own is worse
+ * than a readmission with no link, and the throw becomes one distinguishable
+ * `[members.email_failed] … app_url` line.
+ */
+async function sendReadmissionEmail(email: string, fullName: string) {
+  const appUrl = readAppUrl();
+  if (!appUrl) throw new Error("app_url_missing");
+  const html = await render(
+    MemberReactivatedEmail({ memberName: fullName || "ciao", loginUrl: appUrl })
+  );
+  await sendEmail({
+    to: email,
+    // Italian, like the body and like `account-invitation` —
+    // `comms-analytics.md`, gate *template in italiano*.
+    subject: "Il tuo accesso a re:sonate è di nuovo attivo",
     html,
   });
 }
@@ -303,55 +348,66 @@ function writeFailure(
 }
 
 // =============================================================================
-// TWO functions, and they are NOT duplicates. Do not merge them.
+// ONE gate for every member act — and it used to be TWO. Read why before
+// re-splitting it.
 // =============================================================================
 //
-// Their bodies are now a handful of lines each and differ in exactly one: the
-// capability key. That is what will tempt the next reader who runs `diff` on
-// them into folding one into the other — or into parameterising the key, which
-// is the same fold wearing an argument. It is also the whole point.
+// There was a `verifyMaster` here, on `CAP.MASTER_MANAGE`, guarding
+// `deactivateMember` and `reactivateMember`, with a long comment forbidding the
+// merge. **It is gone, by OWNER DECISION of 2026-08-08**, and the old rationale
+// is replaced below rather than deleted, because a rationale that vanishes is a
+// rationale that gets re-derived wrongly.
 //
-//   verifyMaster            -> CAP.MASTER_MANAGE  -> master ONLY
+//   verifyMaster            -> CAP.MASTER_MANAGE  -> master ONLY        (REMOVED)
 //   verifyAdminOrOrganizer  -> CAP.STAFF_MANAGE   -> master AND organizer
 //
-// Merging them onto STAFF_MANAGE hands every organizer the power to change
-// another member's role, which is precisely the ceiling
-// `.planning/ACCESS-MODEL-DECISIONS.md` §6 puts in place: an organizer may
-// promote staff -> organizer, an organizer may NOT create a master, because a
-// self-replicating power must not reach the top. Merging them onto
-// MASTER_MANAGE goes the other way and takes approve/reject away from every
-// organizer. Neither direction is a tidy-up; both are verdict changes.
+// ── What the old rationale said, and what supersedes it ─────────────────────
+//
+// Plan 43-09's threat register, **T-43-09-02** (*«the promotion widening
+// carrying deactivate and reactivate with it»*), asserted the opposite of what
+// this file now does: *«Only `updateMemberRole` moves to
+// `verifyAdminOrOrganizer`; the other two keep `verifyMaster`, and an acceptance
+// criterion asserts it.»* That assertion was an AGENT's, and it was right for
+// its own day.
+//
+// **The owner was asked, in plain product terms, who may reverse a decision
+// already taken about a person — readmit somebody who was rejected, or exclude
+// somebody who was approved — and chose: an organizer may do everything.** That
+// decision supersedes T-43-09-02. Keeping the two acts on `master.manage` while
+// the SAME transitions were reachable through `approveMember` and
+// `rejectMember` (which the same owner decision opened) is not a boundary: it is
+// CR-01's shape again — *a restriction reachable through a sibling with a wider
+// gate is not a restriction* — with the sides swapped. The narrow gate was not
+// protecting the outcome, it was only deciding which button produced it.
+//
+// So all six acts now sit on ONE gate, and the ceiling that D-07 actually cares
+// about is held where it always was and is untouched by this: `WritableRole`
+// has no `'master'` (source), `isWritableRole` re-tests it against the wire, and
+// rule 1 below refuses every act aimed at a subject who holds `master`.
 //
 // EQUIVALENCE, MEASURED against `private.role_capabilities`
 // (`20260807000000_capability_model.sql`):
 //
-//   deleted test                                   grant rows                    requires_approved
-//   role !== "master"                              ('master','master.manage')    false      :396
+//   test                                           grant rows                    requires_approved
 //   role !== "master" && role !== "organizer"      ('master','staff.manage')     false      :392
 //                                                  ('organizer','staff.manage')  false      :393
 //
-// Both deleted tests read a `select("role")`. `status` was never fetched, so it
-// could not be part of either predicate — which is why both map to grants with
-// `requires_approved = false`, and why neither maps to `catalogue.manage`
+// The deleted test read a `select("role")`. `status` was never fetched, so it
+// could not be part of the predicate — which is why it maps to grants with
+// `requires_approved = false`, and why it does not map to `catalogue.manage`
 // (`requires_approved = true`, :399-400). `member` is not `approved`: two axes,
 // and only one of them was ever being read here.
 //
-// WHY `master.manage` AND NOT `admin.access`. The two resolve to the same
-// predicate today — master alone, status ignored — so picking by predicate is
-// invisible. They are different QUESTIONS. `master.manage` asks "is this a
-// reserved operation", and `CAP_DESCRIPTIONS["master.manage"]` names *changing
-// another member's role or status* by hand. `admin.access` asks "may they reach
-// the admin area", and the two part company in phase 34, when the admin and
-// organizer trees collapse into one surface.
+// **`CAP.MASTER_MANAGE` still exists** and is still asked elsewhere
+// (`organizer/events/**`, `organizer/events/[id]/tickets/**`). What was removed
+// is this file's use of it, not the key.
 //
 // ── What changed, and what did not ───────────────────────────────────────────
 //
-// These two used to THROW on both outcomes. They now RETURN a refusal and
-// still THROW when the lookup itself failed, and that asymmetry is the position
-// the tag is read from: a throw out of `getAccessContext()` is
-// `capabilities_unavailable`, a returned `{ok:false}` is `forbidden`. The
-// VERDICTS are byte-identical to before — same key, same capability, same
-// answer for every persona.
+// This used to THROW on both outcomes. It now RETURNS a refusal and still
+// THROWS when the lookup itself failed, and that asymmetry is the position the
+// tag is read from: a throw out of `getAccessContext()` is
+// `capabilities_unavailable`, a returned `{ok:false}` is `forbidden`.
 
 /**
  * A resolved actor: the access context, with the subject NARROWED to non-null.
@@ -370,27 +426,20 @@ type GuardOutcome =
   | { ok: true; ctx: ActorContext }
   | { ok: false; failure: "forbidden"; detail: string };
 
-/** Master-only: deactivate, reactivate. */
-async function verifyMaster(): Promise<GuardOutcome> {
-  const ctx = await getAccessContext();
-  if (!ctx.capabilities.has(CAP.MASTER_MANAGE)) {
-    return { ok: false, failure: "forbidden", detail: "master_manage_required" };
-  }
-  // A real subject, or nothing happens. Attribution (§5) requires every
-  // approval, rejection and promotion to record WHO — so an action must never
-  // proceed on a null identity. It sits here rather than at each call site
-  // because eight call sites are eight chances to omit it.
-  //
-  // It THROWS rather than returning `forbidden`, on purpose: a resolver that
-  // produced no subject did not refuse anybody, it failed. The throw lands in
-  // `guarded`'s first catch and is reported as `capabilities_unavailable`,
-  // which is the cause an operator can act on.
-  const { userId } = ctx;
-  if (!userId) throw new Error("capabilities.resolve_failed: no_subject");
-  return { ok: true, ctx: { ...ctx, userId } };
-}
-
-/** Master or organizer: approve / reject / role changes within the ceiling. */
+/**
+ * Master or organizer: approve, reject, readmit, withdraw, change a role within
+ * the ceiling, create an account.
+ *
+ * The `userId` check is a real subject, or nothing happens. Attribution (§5)
+ * requires every approval, rejection and promotion to record WHO — so an action
+ * must never proceed on a null identity. It sits here rather than at each call
+ * site because eight call sites are eight chances to omit it.
+ *
+ * It THROWS rather than returning `forbidden`, on purpose: a resolver that
+ * produced no subject did not refuse anybody, it failed. The throw lands in
+ * `guarded`'s first catch and is reported as `capabilities_unavailable`, which
+ * is the cause an operator can act on.
+ */
 async function verifyAdminOrOrganizer(): Promise<GuardOutcome> {
   const ctx = await getAccessContext();
   if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
@@ -576,12 +625,18 @@ async function recordAct(
 // =============================================================================
 //
 // Six acts write `public.profiles.role` and `.status` through
-// `record_membership_act`, behind TWO gates:
+// `record_membership_act`, behind ONE gate since the owner decision of
+// 2026-08-08:
 //
-//   verifyMaster            -> master.manage -> deactivateMember, reactivateMember
 //   verifyAdminOrOrganizer  -> staff.manage  -> approveMember, rejectMember,
+//                                               deactivateMember, reactivateMember,
 //                                               updateMemberRole, the two bulks,
 //                                               createAccount
+//
+// The `master.manage` pair that used to guard `deactivateMember` and
+// `reactivateMember` is gone — see the gate section above for the owner
+// decision that supersedes T-43-09-02, and why keeping it would have been
+// CR-01's own shape with the sides swapped.
 //
 // CR-01 of `43-REVIEW.md` found the two gates reaching the SAME WRITES.
 // `rejectMember` performs, byte for byte, the `UPDATE` of the master-only
@@ -715,17 +770,31 @@ async function recordAct(
 //      was, so it derives nothing and refuses nothing — `member` and `approved`
 //      are two axes (`access-gating.md`, gate *due assi*).
 //
-//   ── What the surface offers, which is now NARROWER than what the server
-//      permits ─────────────────────────────────────────────────────────────────
+//   ── What the surface offers, now that it has caught up ──────────────────────
 //
-//   `MemberTable.tsx` offers Approve and Reject only on a `pending` row, the
-//   bulk pair only on the pending tab, and Deactivate / Reactivate only to a
-//   master. Under the repealed rule 3 that surface and this server agreed. They
-//   no longer do: an organizer may now perform a withdrawal or a readmission
-//   here, and has no control on the surface that reaches one. **Widening the
-//   surface is a product decision and is not taken by implication in this
-//   file** — hiding a control was never a boundary (a Server Action is a public
-//   endpoint), and it is not one now either.
+//   Until 2026-08-08 `MemberTable.tsx` offered Approve and Reject only on a
+//   `pending` row and Deactivate / Reactivate only to a master, so an organizer
+//   had **no control that reached a readmission or a withdrawal** and the owner
+//   decision existed only at this layer. It does not any more: Deactivate is
+//   drawn on every `approved` row and Reactivate on every `rejected` row, for
+//   master and organizer alike, singly and in a batch from the Approved and
+//   Rejected tabs.
+//
+//   Two things that widening did NOT do, said here because they are what a
+//   reader is likeliest to assume:
+//
+//     * **it granted nothing.** The gate is the boundary; the control is the
+//       affordance. Everything the surface now offers was already reachable by
+//       an authenticated organizer with a crafted POST — a Server Action is a
+//       public endpoint with a convenient signature
+//       (`nextjs-architecture.md`). Exposing it protects nothing and hides
+//       nothing; it only stops requiring a technical hand to perform an act the
+//       owner permitted.
+//     * **it did not put a confirmation on the ordinary acts.** Approving or
+//       rejecting a `pending` request is the daily work and friction there is
+//       pure cost. The two REVERSING controls confirm, naming the act and how
+//       many people it reaches, because they sit one cell away from the ordinary
+//       pair and a misclick on them costs somebody their access silently.
 //
 //   FOR A BULK ACT, a refused subject becomes an OUTCOME and is never dropped.
 //   43-14's contract is one distinguishable sentence per cause, and
@@ -819,6 +888,95 @@ function planStatusAct(
   }
 
   return { ok: true, act };
+}
+
+// =============================================================================
+// THE MAIL FOLLOWS THE ACT, NOT THE DOOR — one table, four acts, three messages
+// =============================================================================
+//
+// The rule was already stated inside `approveMember` and `rejectMember` on
+// 2026-08-08; this is it made STRUCTURAL, because two of the four status acts
+// were still deciding by function name. `reactivateMember` sent nothing at all,
+// and `deactivateMember` sent nothing at all — which meant the same transition
+// recorded under the same act name told the member two different things
+// depending on which button an operator pressed. The register stopped being
+// named after the door; the inbox had not.
+//
+//   act            message                     why
+//   ─────────────  ──────────────────────────  ────────────────────────────────
+//   approved       MemberApprovedEmail         an application accepted
+//   rejected       MemberRejectedEmail         an application refused
+//   reactivated    MemberReactivatedEmail      access restored — NEW, 2026-08-08
+//   deactivated    (nothing, deliberately)     see below
+//
+// ── WHY A WITHDRAWAL SENDS NOTHING, and why that is a decision and not a gap
+//    left open ────────────────────────────────────────────────────────────────
+//
+// A readmission message is OPERATIVE: *you can sign in again, your card works at
+// the door again*. There is no judgement in it, and the facts are not in
+// dispute — which is why writing it here was reasonable.
+//
+// A withdrawal message is not operative, it is a VERDICT about a person, and
+// `community-membership.md` (gate *un rifiuto e' una comunicazione, non uno
+// stato*) says that text must be *«scritto una volta, con cura, e usato sempre
+// lo stesso — e non deve spiegare piu' di quanto si e' disposti a difendere»*.
+// Whoever owns the community's voice writes it; an agent inventing it would be
+// writing the brand at the owner's place, which is the failure
+// `sound-manifesto.md` names by name.
+//
+// **The cost of that silence is real and is named rather than hidden: a
+// withdrawn member is told nothing and finds out AT THE DOOR**, in front of a
+// queue, with a card that stops working. That is the worst place in this product
+// to learn anything (`checkin-offline.md`'s asymmetry, on the other side of the
+// scanner). So the withdrawal confirmation in `MemberTable.tsx` says this in
+// words to the operator pressing the button — the one person who can warn them —
+// and the open item belongs to the owner, not to this file.
+//
+// ── Idempotency: per recipient, never per batch ─────────────────────────────
+//
+// `comms-analytics.md`, gate *una mail non si richiama*. Every send below is
+// keyed on the DERIVED act, which requires a real transition: a second attempt
+// on an account that already holds the target status is refused as
+// `status_unchanged` before a message is considered. There is no path that mails
+// twice for one transition.
+
+type ActMailer = (email: string, fullName: string) => Promise<void>;
+
+/**
+ * `Record<StatusAct, ActMailer | null>` and not a `Partial<...>`: the compiler
+ * then forces the next act added to `StatusAct` to make a decision here, and
+ * `null` is a decision written down. A missing key would be an omission that
+ * reads exactly like the deliberate silence above.
+ */
+const MAIL_FOR_ACT: Record<StatusAct, ActMailer | null> = {
+  approved: sendApprovalEmail,
+  rejected: sendRejectionEmail,
+  reactivated: sendReadmissionEmail,
+  deactivated: null,
+};
+
+/**
+ * Reads the contact and sends the message this ACT calls for, if there is one.
+ *
+ * Fire-and-forget with its own log category, exactly as the two calls it
+ * replaces: the act itself already landed and its register row is written, so a
+ * provider failure must not turn a recorded act into a returned failure. It is
+ * called only after a successful write, so nothing is read for an act that did
+ * not happen.
+ */
+async function notifySubject(
+  action: string,
+  serviceClient: ServiceClient,
+  memberId: string,
+  act: StatusAct
+): Promise<void> {
+  const mail = MAIL_FOR_ACT[act];
+  if (!mail) return;
+  const member = await readContact(serviceClient, memberId);
+  if (!member?.email) return;
+  mail(member.email, member.full_name).catch((err) =>
+    logEmailFailure(action, memberId, err)
+  );
 }
 
 /**
@@ -1069,12 +1227,45 @@ export async function updateMemberRole(
   });
 }
 
-// --- Master-only actions: deactivate, reactivate (D-21: these do NOT widen) ---
+// --- The two REVERSING acts: withdraw an access, restore one ---
+//
+// ── THIS PAIR WIDENED ON 2026-08-08. Read this before assuming it did not ────
+//
+// Both called `verifyMaster()` until that date. Both now call
+// `verifyAdminOrOrganizer()`, so **an organizer may withdraw an approved
+// account's access and readmit a rejected one** through their own controls.
+//
+// **This SUPERSEDES T-43-09-02** — plan 43-09's threat-register entry, which
+// asserted *«Only `updateMemberRole` moves to `verifyAdminOrOrganizer`; the
+// other two keep `verifyMaster`, and an acceptance criterion asserts it»*, with
+// an acceptance criterion behind it. That assertion is not deleted and pretended
+// away: it was an AGENT's decision, correct on its own day, and it is overruled
+// by the OWNER's decision of 2026-08-08 — asked who may reverse a decision
+// already taken about a person, the owner chose that an organizer may do
+// everything.
+//
+// Why the narrow gate was not worth keeping even on its own terms: the SAME two
+// transitions were already reachable under the wide gate through
+// `approveMember` and `rejectMember`, which the same owner decision opened. A
+// master-only restriction reachable through a sibling with a wider gate is not a
+// restriction — that sentence is CR-01's finding, and keeping `verifyMaster`
+// here would have reproduced its exact shape with the sides swapped. What the
+// narrow gate actually decided was not the outcome but which BUTTON produced it,
+// and the register already stopped being named after the button.
+//
+// **What did NOT move with it**, and this is the part that must stay true:
+//
+//   * rule 1 — no act reaches a subject who holds `master`. Without it an
+//     organizer demotes the master and the product has no master at all,
+//     unrecoverable from inside the product. It is CR-01's repair and it is
+//     untouched;
+//   * rule 2 — no act reaches its own author;
+//   * `WritableRole` still has no `'master'`, in the source and on the wire.
 
 export async function deactivateMember(
   memberId: string
 ): Promise<MemberActResult<ActRecorded>> {
-  return guarded("deactivateMember", verifyMaster, async (ctx) => {
+  return guarded("deactivateMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
 
     // Rules 1 and 2.
@@ -1084,13 +1275,12 @@ export async function deactivateMember(
     });
     if (!subject.ok) return subject;
 
-    // Rule 3: the act is DERIVED, in the master-only pair exactly as under the
-    // wide gate. This function is named after a withdrawal and usually performs
-    // one, but pointed at a `pending` account it decides an open application —
-    // and then the act is `rejected`, because that is what happened. The
-    // surface offers this control on `approved` rows only; a Server Action is a
-    // public endpoint, so "usually" is not a guarantee to name a register row
-    // after.
+    // Rule 3: the act is DERIVED here exactly as everywhere else. This function
+    // is named after a withdrawal and usually performs one, but pointed at a
+    // `pending` account it decides an open application — and then the act is
+    // `rejected`, because that is what happened. The surface offers this
+    // control on `approved` rows only; a Server Action is a public endpoint, so
+    // "usually" is not a guarantee to name a register row after.
     const plan = planStatusAct("deactivateMember", subject.status, STATUS_REJECTED);
     if (!plan.ok) return plan;
 
@@ -1106,7 +1296,18 @@ export async function deactivateMember(
       status: "rejected",
     });
 
-    if (result.ok) revalidatePath("/admin/members");
+    if (!result.ok) return result;
+
+    // The mail follows the ACT — so a `pending` subject refused through this
+    // door receives the rejection message, and a real withdrawal
+    // (`deactivated`) receives nothing. Before 2026-08-08 this function sent
+    // nothing in either case, which meant the same transition told the member
+    // two different things depending on which button was pressed. See
+    // THE MAIL FOLLOWS THE ACT above, including why `deactivated` is silent.
+    await notifySubject("deactivateMember", serviceClient, memberId, plan.act);
+
+    revalidatePath("/admin/members");
+    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -1114,7 +1315,7 @@ export async function deactivateMember(
 export async function reactivateMember(
   memberId: string
 ): Promise<MemberActResult<ActRecorded>> {
-  return guarded("reactivateMember", verifyMaster, async (ctx) => {
+  return guarded("reactivateMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
 
     // Rules 1 and 2 — the self-check 43-09 added here is now the group's, held
@@ -1137,7 +1338,21 @@ export async function reactivateMember(
       status: STATUS_APPROVED,
     });
 
-    if (result.ok) revalidatePath("/admin/members");
+    if (!result.ok) return result;
+
+    // The mail follows the ACT. This function used to send NOTHING, and that
+    // was the gap the previous fix named out loud: *«una persona riammessa non
+    // viene informata»*. It now sends `MemberReactivatedEmail` on a real
+    // readmission and the ordinary approval message when this door happened to
+    // decide an open application instead.
+    //
+    // The role is deliberately NOT restored — a readmission moves the status
+    // axis only (`access-gating.md`, gate *due assi*) — and the message does not
+    // promise one.
+    await notifySubject("reactivateMember", serviceClient, memberId, plan.act);
+
+    revalidatePath("/admin/members");
+    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -1177,26 +1392,12 @@ export async function approveMember(
     // member can see which of the two happened, so it is the last place the
     // function's name should be what decides.
     //
-    // `MemberApprovedEmail` is *«Welcome to Resonate — You're Approved!»*: the
-    // wording of an application being accepted, and it is sent for the act it
-    // was written for. A READMISSION sends nothing, which is exactly what
-    // `reactivateMember` has always done for the same transition — so no path
-    // that existed before this change had its mail altered, and no path gained
-    // one that was written for a different event.
-    //
-    // NAMED RATHER THAN LEFT AS AN ABSENCE: there is no message in this project
-    // for a readmission or for a withdrawal. A person let back in is told
-    // nothing, and `community-membership.md` (gate *un rifiuto e' una
-    // comunicazione, non uno stato*) is the reason that is a gap worth writing
-    // down rather than a saving.
-    if (plan.act === "approved") {
-      const member = await readContact(serviceClient, memberId);
-      if (member?.email) {
-        sendApprovalEmail(member.email, member.full_name).catch((err) =>
-          logEmailFailure("approveMember", memberId, err)
-        );
-      }
-    }
+    // `MemberApprovedEmail` is *«You're In»*: the wording of an application
+    // being accepted, and it is sent for the act it was written for. A
+    // READMISSION is `MemberReactivatedEmail`, written on 2026-08-08 precisely
+    // so that this branch is not forced to choose between the wrong words and
+    // silence.
+    await notifySubject("approveMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
     revalidatePath("/organizer/members");
@@ -1245,18 +1446,11 @@ export async function rejectMember(
 
     if (!result.ok) return result;
 
-    // The mail follows the act, not the door — see `approveMember` for the
-    // whole reasoning. `MemberRejectedEmail` is written for an application that
-    // was refused; a WITHDRAWAL sends nothing, which is what `deactivateMember`
-    // has always done for that transition.
-    if (plan.act === "rejected") {
-      const member = await readContact(serviceClient, memberId);
-      if (member?.email) {
-        sendRejectionEmail(member.email, member.full_name).catch((err) =>
-          logEmailFailure("rejectMember", memberId, err)
-        );
-      }
-    }
+    // The mail follows the act, not the door — see THE MAIL FOLLOWS THE ACT
+    // above. `MemberRejectedEmail` is written for an application that was
+    // refused; a WITHDRAWAL sends nothing, and that silence is a decision with
+    // a named cost rather than an oversight.
+    await notifySubject("rejectMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
     revalidatePath("/organizer/members");
@@ -1332,16 +1526,7 @@ async function runBulk(
    */
   write: { role?: string | null; status: string },
   /** The `detail` a self-aimed subject carries in THIS batch. One per act. */
-  selfDetail: string,
-  /**
-   * The derived act whose subjects receive the mail — the one that decides an
-   * OPEN application, `approved` for the approve batch and `rejected` for the
-   * reject batch. A subject whose act came out `reactivated` or `deactivated`
-   * is mailed nothing, exactly as the single acts and the master-only pair do:
-   * this project has no message written for either transition.
-   */
-  mailOn: StatusAct,
-  sendMail: (email: string, fullName: string) => Promise<void>
+  selfDetail: string
 ): Promise<MemberActResult<BulkActData>> {
   // Read once, named `requested`, and used ONLY as the denominator of a report.
   // The success count below never touches it — that is the whole difference
@@ -1354,8 +1539,18 @@ async function runBulk(
 
   const serviceClient = getServiceClient();
   const outcomes: BulkSubjectOutcome[] = [];
-  /** The subjects whose DERIVED act is the one the mail was written for. */
-  const mailIds: string[] = [];
+  /**
+   * The subjects that were actually written, GROUPED BY THE ACT THEY DERIVED.
+   *
+   * It used to be one flat list against a single `mailOn` act, which was only
+   * honest while three of the four acts sent nothing. A batch over mixed prior
+   * statuses records a mix of act names — some `approved`, some `reactivated` —
+   * and each of those has its own message now, so a single list would send the
+   * wrong words to whichever half was not the one the batch was named after.
+   * That is the door outranking the transition in the one place the member can
+   * see it, which is the whole thing the 2026-08-08 naming rule removed.
+   */
+  const mailIdsByAct = new Map<StatusAct, string[]>();
 
   for (const subjectId of memberIds) {
     // THE ACT GROUP, per subject. Both bulks are gated on `staff.manage`, so
@@ -1415,7 +1610,11 @@ async function runBulk(
         : { subjectId, ok: false, failure: result.failure, detail: result.detail }
     );
 
-    if (result.ok && plan.act === mailOn) mailIds.push(subjectId);
+    if (result.ok) {
+      const list = mailIdsByAct.get(plan.act);
+      if (list) list.push(subjectId);
+      else mailIdsByAct.set(plan.act, [subjectId]);
+    }
   }
 
   const succeededIds = outcomes.filter((o) => o.ok).map((o) => o.subjectId);
@@ -1434,32 +1633,39 @@ async function runBulk(
     );
   }
 
-  // The mail goes only to the subjects whose act actually landed AND whose
-  // derived act is the one this message was written for. Approving nobody and
+  // The mail goes only to the subjects whose act actually landed, and each one
+  // receives the message written for THEIR derived act. Approving nobody and
   // mailing them anyway is the same lie as the asserted count, told to the
-  // member instead of the operator; mailing *«You're Approved!»* to somebody
-  // who was readmitted is the door outranking the transition in the one place
-  // the member can see it.
-  if (mailIds.length > 0) {
+  // member instead of the operator; mailing *«You're In»* to somebody who was
+  // readmitted is the door outranking the transition in the one place the
+  // member can see it.
+  //
+  // A batch of five can therefore send three approvals, two readmissions and no
+  // withdrawal notice at all — and that is exactly the mix the register records
+  // for it.
+  for (const [act, ids] of mailIdsByAct) {
+    const mail = MAIL_FOR_ACT[act];
+    if (!mail || ids.length === 0) continue;
+
     const { data: members } = await serviceClient
       .from("profiles")
       .select("id, email, full_name")
-      .in("id", mailIds);
+      .in("id", ids);
 
-    if (members && members.length > 0) {
-      // Sequential (fire-and-forget) to respect Resend rate limits.
-      (async () => {
-        for (const m of members) {
-          if (m.email) {
-            try {
-              await sendMail(m.email, m.full_name);
-            } catch (err) {
-              logEmailFailure(action, m.id, err);
-            }
+    if (!members || members.length === 0) continue;
+
+    // Sequential (fire-and-forget) to respect Resend rate limits.
+    (async () => {
+      for (const m of members) {
+        if (m.email) {
+          try {
+            await mail(m.email, m.full_name);
+          } catch (err) {
+            logEmailFailure(action, m.id, err);
           }
         }
-      })().catch((err) => logEmailFailure(action, "batch", err));
-    }
+      }
+    })().catch((err) => logEmailFailure(action, "batch", err));
   }
 
   if (succeeded > 0) {
@@ -1479,9 +1685,7 @@ export async function bulkApproveMember(
       ctx,
       memberIds,
       { status: STATUS_APPROVED },
-      "self_approve",
-      "approved",
-      sendApprovalEmail
+      "self_approve"
     )
   );
 }
@@ -1498,9 +1702,7 @@ export async function bulkRejectMember(
       // it is what keeps a rejected organizer compatible with
       // `profiles_role_implies_approved`.
       { role: "member", status: STATUS_REJECTED },
-      "self_reject",
-      "rejected",
-      sendRejectionEmail
+      "self_reject"
     )
   );
 }
