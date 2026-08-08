@@ -4,7 +4,7 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
-last_updated: "2026-08-07T22:50:00.242Z"
+last_updated: "2026-08-08T03:36:32.262Z"
 last_activity: 2026-08-07 -- Phase 43 execution started
 progress:
   total_phases: 13
