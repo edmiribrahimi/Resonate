@@ -6,13 +6,35 @@
 -- 1. private.capabilities / private.role_capabilities — THREE new keys —
 --    `door.supervise`, `media.upload`, `party.manage` — with twelve decisions
 --    behind them: six grants, and six refusals that are the ABSENCE of a row
+-- 2. private.has_capability(text, uuid) — re-issued with a SECOND ARM: the
+--    per-night assignment, read from `public.party_assignments`, and switched
+--    OFF when no night is named
 --
--- One change, ONE transaction, and even alone it is not divisible: a key in the
--- catalogue whose grant rows did not land is a permission nobody holds and every
--- caller can ask for, and a grant row whose catalogue key did not land cannot
--- exist at all (`private.role_capabilities.capability` references
--- `private.capabilities(key)`). So `BEGIN; ... COMMIT;` is not decoration here
--- either.
+-- Two changes, ONE transaction, and neither half stands alone:
+--
+--   * the keys without the arm are three catalogue rows nothing can ever
+--     satisfy — the only source that would answer `true` for them is the arm,
+--     since none of the three is conferred by any role for a night;
+--   * the arm without the keys reads a table whose
+--     `party_assignments_capability_assignable` names four keys of which the
+--     catalogue holds one, so the second source could only ever resolve
+--     `door.operate` — a per-night model with three quarters of its vocabulary
+--     missing, which reads as working;
+--   * and a key in the catalogue whose grant rows did not land is a permission
+--     nobody holds and every caller can ask for, while a grant row whose
+--     catalogue key did not land cannot exist at all
+--     (`private.role_capabilities.capability` references
+--     `private.capabilities(key)`).
+--
+-- So `BEGIN; ... COMMIT;` is not decoration here either.
+--
+-- THIS FILE CHANGES NO POLICY. Not one of the seventy row-level policies is
+-- touched, added or removed — and that is the entire reason the second source
+-- goes into the resolver's body instead of beside them. Every one of those
+-- predicates already calls this function, so the arm reaches all of them at
+-- once, with no widening on any table the phase did not intend
+-- (`35-RESEARCH.md` § Pitfall 4). The assertion is not left as a claim: B1 after
+-- this file must be byte-identical to the `35-02` capture.
 --
 -- The template for this file is `20260808002000_membership_register.sql`
 -- section 1 — the previous phase minting a key, with its grant rows, its
@@ -198,5 +220,143 @@ ON CONFLICT (role, capability) DO NOTHING;
 -- it, so the resolver's first arm finds no profile
 -- (`20260807000000_capability_model.sql:55-57`) and — from the next section of
 -- this same file — the second arm finds no assignment.
+
+-- =============================================================================
+-- 3. private.has_capability — the second arm, and the line that is ASSIGN-01
+-- =============================================================================
+--
+-- The resolver was written with this edit in mind and says so:
+-- `20260807000000_capability_model.sql:201-208` reads *"A second source — a
+-- per-night assignment — is added by a later phase as another arm of this same
+-- OR, by editing this body. No policy and no caller changes when it lands."*
+-- and *"`p_party_id` is accepted and unused today, deliberately."* This is that
+-- phase, and the promise is kept literally: same name, same argument list, same
+-- volatility class, same `SECURITY DEFINER`, same empty `search_path` — so
+-- every existing call site is untouched and the `EXECUTE` privileges survive
+-- the replacement.
+--
+-- ── THE FIRST ARM IS REPRODUCED BYTE FOR BYTE ───────────────────────────────
+--
+-- Not paraphrased and not improved. It is the predicate seventy policies are
+-- currently measured against, and the captured B2/B3 matrices are the evidence
+-- that they admit who they admit. A re-worded arm would make every one of those
+-- cells a claim again.
+--
+-- ── THE NULL GUARD IS THE FIRST CONDITION, AND IT IS NOT DEFENSIVE ──────────
+--
+-- **It is ASSIGN-01**, which promises that an assignment gives somebody a
+-- night's tools *"without changing what they can do on any other night"*.
+--
+-- The seventy live policies call this function with ONE argument, so
+-- `p_party_id` is `NULL` in every one of them. Without the guard the arm would
+-- be a rule about the whole database: an equality against a NULL night is `NULL`
+-- and not `false`, so the shape that looks tolerant — coalescing the argument
+-- with the row's own night column, which a reader may propose as "match any
+-- night when none is asked for" — makes ONE night's assignment resolve `true`
+-- EVERYWHERE, on every table, for ever (`35-RESEARCH.md` § Pitfall 1). That is
+-- the exact opposite of what the assignment is for, and it would arrive
+-- silently: no error, no failed build, no changed policy text.
+--
+-- (The guard and the wrong shape are DESCRIBED here rather than written out.
+-- The plan's own check for this file asserts that the guard appears once and
+-- before the night comparison, so a paragraph quoting either literally would be
+-- the only match and the check would have to be read around — which is a check
+-- that gets ignored the third time it goes red. Same choice, for the same
+-- reason, as `20260809000000_party_assignments.sql` made for the zone offsets.)
+--
+-- THE ALARM THAT WOULD MEAN THIS LINE IS WRONG, written down so it is
+-- recognised rather than reasoned about: a cell of the B3 write matrix moving on
+-- a table this phase never touched.
+--
+-- ── `now() < pa.ends_at` IS ASSIGN-02, ON THE SIDE THAT DECIDES ─────────────
+--
+-- `now()` is the SERVER's clock. There is no argument a caller can send to move
+-- it and no device setting that reaches it — which is the whole difference
+-- between this line and an expiry evaluated on a phone. The device's own copy of
+-- a deadline decides what it DRAWS; this decides what is permitted
+-- (`src/app/api/membership/verify/route.ts:412`, *"a device clock is evidence,
+-- never authority"*). `now()` is left unqualified deliberately: `pg_catalog` is
+-- searched implicitly even under `search_path = ''`, and it is the one schema a
+-- caller cannot shadow.
+--
+-- ── `pa.revoked_at is null` IS ASSIGN-03 ───────────────────────────────────
+--
+-- A revocation UPDATES the row; it never deletes it
+-- (`20260809000000_party_assignments.sql:214-220`), because the offline drain
+-- has to be able to ask *"was this live at 01:40?"* at 03:00. So the arm must
+-- EXCLUDE revoked rows rather than expect them to be absent — an arm written on
+-- the assumption that a revoked assignment has disappeared keeps resolving
+-- `true` after every revocation this product performs.
+--
+-- ── WHY THIS ARM READS NEITHER `requires_approved` NOR `status` ─────────────
+--
+-- The next reader will ask, so: it is not an omission.
+--
+-- `party_assignments_live_role_present` and the composite key
+-- `party_assignments_assignee_role_fk` together mean that only a `master`, an
+-- `organizer` or a `staff` account can hold a LIVE assignment, checked by the
+-- database on every write including the service client's. Beside phase 43's
+-- `profiles_role_implies_approved` — applied to production on 2026-08-08 — every
+-- account holding one of those three roles IS `approved`, as a rule of the
+-- database rather than as a habit of the writer. So the question *what if the
+-- assignee is pending* does not need an answer here: it cannot arise.
+--
+-- AND A STATUS TEST HERE WOULD BE A NEW WAY TO REFUSE SOMEBODY AT THE DOOR. It
+-- would add a second, independent condition that a valid assignee could fail —
+-- for a state that the structure already forbids — and refusing a valid member
+-- of staff in front of a queue is the failure this project holds to be the worse
+-- of the two (`CLAUDE.md`, operating principle 3). The right place for the rule
+-- is the constraint that makes the bad state unreachable, and it is already
+-- there.
+
+CREATE OR REPLACE FUNCTION private.has_capability(
+  p_capability text,
+  p_party_id   uuid default null
+) RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  -- ARM 1 — the role grant. Byte-identical to
+  -- `20260807000000_capability_model.sql:209-216`.
+  select exists (
+    select 1
+    from public.profiles p
+    join private.role_capabilities rc on rc.role = p.role
+    where p.id = (select auth.uid())
+      and rc.capability = p_capability
+      and (not rc.requires_approved or p.status = 'approved')
+  )
+  -- ARM 2 — the per-night assignment. A subject holds a capability if ANY
+  -- source says so, and this is the second and last source today.
+  or exists (
+    select 1
+    from public.party_assignments pa
+    -- ASSIGN-01, and it is the FIRST condition on purpose. Every existing
+    -- caller passes no night, so this is what keeps one night's assignment
+    -- from becoming a permission everywhere. See the paragraph above.
+    where p_party_id is not null
+      and pa.party_id = p_party_id
+      and pa.user_id = (select auth.uid())
+      and pa.capability = p_capability
+      -- ASSIGN-03: a revocation is a row that was updated, never one that was
+      -- removed.
+      and pa.revoked_at is null
+      -- ASSIGN-02, on the server's clock, which no device can move.
+      and now() < pa.ends_at
+  );
+$$;
+
+-- Re-issued rather than assumed. `CREATE OR REPLACE` keeps the existing ACL
+-- because the signature is unchanged, so this line repairs nothing on THIS
+-- database — it is here for the other one: an environment replaying these files
+-- from empty must reach the same exposure boundary without depending on a
+-- retention rule nobody read. `anon` is included for the reason stated at
+-- `20260807000000_capability_model.sql:219-223`: a policy predicate runs with
+-- the QUERYING role's privileges, and 47 of the live policies apply to
+-- `{public}`. For `anon`, `auth.uid()` is null, both arms find nothing, and the
+-- privilege buys a correct `false` rather than access.
+GRANT EXECUTE ON FUNCTION private.has_capability(text, uuid) TO authenticated, anon;
 
 COMMIT;
