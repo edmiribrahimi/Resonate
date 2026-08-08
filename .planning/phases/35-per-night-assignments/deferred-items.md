@@ -66,16 +66,41 @@ che deve leggere, questo file, e il `35-02-SUMMARY.md`.
 
 ---
 
-## 2. [segnalazione, fuori fase] Un path morto nell'indice della persona
+## 2. [RITIRATA — l'affermazione era falsa] «Un path morto nell'indice della persona»
 
-**Trovata da:** `35-PATTERNS.md` (correzioni a RESEARCH.md), riconfermata qui.
+**Affermata da:** `35-PATTERNS.md` (sezione correzioni a RESEARCH.md), ripetuta
+qui in buona fede senza essere verificata.
 
-Il glob `src/components/scanner/**` compare nell'indice di `CLAUDE.md` e nella
-tabella di `meta-gates.md`, ma **quella directory non esiste**: il componente
-vive in `src/app/(admin)/admin/scanner/ScannerClient.tsx`.
+**Il contenuto dell'affermazione:** che il glob `src/components/scanner/**`,
+presente nell'indice di `CLAUDE.md` e nella tabella di `meta-gates.md`, puntasse
+a una directory inesistente.
 
-E' materia di `ai-engineering.md`, controllo **A** (path morti), **fuori scopo
-per la fase 35**. Un gate agganciato a un path inesistente e' indistinguibile da
-un gate assente, con l'aggravante che sembra presidiato.
+**Verificato il 2026-08-08, e l'affermazione non regge:**
 
-**Nessuna azione presa in questa fase.** Va aperta come voce propria.
+```
+$ ls -d src/components/scanner && ls src/components/scanner
+src/components/scanner
+ScanFlash.tsx
+
+$ npm run verify:persona
+  ✓ A · nessun path dichiarato e' morto
+      58 glob su 1339 file
+```
+
+La directory **esiste** e contiene `ScanFlash.tsx`. Il controllo **A** —
+esattamente il controllo che avrebbe dovuto fallire se la voce fosse stata vera —
+e' verde su tutti e 58 i glob. Nessun path morto esiste. E' vero, e non
+contraddittorio, che `ScannerClient.tsx` viva altrove
+(`src/app/(admin)/admin/scanner/`): entrambi i glob dell'indice sono vivi, e
+coprono due file diversi.
+
+**Nessuna azione da aprire. Non aprire una voce «sanare il path morto»:
+sanerebbe qualcosa che funziona.**
+
+**Perche' questa riga resta invece di essere cancellata.** L'affermazione ha
+attraversato tre documenti — RESEARCH, PATTERNS, e questo — senza che nessuno la
+provasse, ed e' arrivata dentro `.planning/`, che e' **tracciato e pubblicato**.
+Cancellarla lascerebbe le altre due copie in circolazione senza smentita.
+E' il `Gate hallucination` di `ai-engineering.md` nella sua forma tipica: un
+fatto plausibile, ereditato per citazione, che nessuno ha misurato. La riga
+resta come smentita, con il comando che chiunque puo' rieseguire.

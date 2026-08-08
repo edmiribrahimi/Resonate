@@ -314,7 +314,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 35-02-PLAN.md — `party_assignments` as a temporal record, the no-self-grant CHECK, the composite FK that makes only staff roles assignable, and the SQL night clock
+- [x] 35-02-PLAN.md — `party_assignments` as a temporal record, the no-self-grant CHECK, the composite FK that makes only staff roles assignable, and the SQL night clock
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 1/21 | In Progress|  |
+| 35. Per-Night Assignments | 2/21 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
