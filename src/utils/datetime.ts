@@ -100,6 +100,24 @@ export function partyStartInstant(date: string, time: string | null): Date {
  * conversion inlined at a call site is the defect this module exists to
  * prevent**, so if a caller needs a boundary this file does not yet expose,
  * add it here rather than computing it there.
+ *
+ * ── The one variant that is allowed to exist, and why ────────────────────────
+ *
+ * There is a second implementation of this rule, on purpose:
+ * **`public.party_end_instant(date, time)`**, created by
+ * `supabase/migrations/20260809000000_party_assignments.sql`. It applies the
+ * same crossing-midnight test to the same declared Turin hour, before the same
+ * `Europe/Rome` conversion.
+ *
+ * It exists because phase 35 asks *"is this night over yet"* from inside RLS
+ * policy bodies and from a `SECURITY DEFINER` writer — places where TypeScript
+ * does not reach, and where accepting a boundary computed by the caller would
+ * hand the answer to the session being checked.
+ *
+ * **Changing one of the two without the other is the defect**, and it is worth
+ * naming because that divergence would not fail loudly: no build breaks, no
+ * error is raised, and this repository has no test runner. It would move a
+ * window — which is exactly the failure this module was centralised to end.
  */
 export function partyEndInstant(date: string, endTime: string): Date {
   return nightBoundaryInstant(date, endTime);

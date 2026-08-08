@@ -1202,6 +1202,81 @@ export const PROBE_PAYLOADS = {
     insert: { columns: ['email'], values: [`'rls-baseline-probe@example.invalid'`] },
     update: 'unsubscribed_at',
   },
+  // Per-night assignments (plan 35-02). RLS on, and **no INSERT, UPDATE or
+  // DELETE policy at all**, deliberately (`20260809000000_party_assignments.sql`,
+  // section 3f): the only writer is the `SECURITY DEFINER` function of plan
+  // 35-04. So every cell of this row is expected to refuse `42501` for EVERY
+  // persona including `master/approved` — the same shape as `membership_acts`,
+  // `profiles` and `tickets`.
+  //
+  // WHICH OF THE TWO SUBJECT COLUMNS TAKES `auth.uid()` — the question
+  // `35-PATTERNS.md` § 13 raised and the plan did not close, answered here.
+  //
+  // This table has TWO columns naming a subject, `user_id` and `assigned_by`,
+  // and `party_assignments_no_self_grant` refuses the row when they are equal
+  // (ASSIGN-04). The convention above — `auth.uid()` for every subject column —
+  // cannot be applied to both: it would report `23514` for every persona, which
+  // is a refusal for the WRONG REASON and the one failure this payload table's
+  // header warns about. Table constraints are evaluated before the RLS
+  // `WITH CHECK`, so a constraint violation hides the policy decision entirely.
+  //
+  // `user_id` takes `{{profiles}}`, not `auth.uid()`, and that is deliberate:
+  // there is no ownership predicate on a WRITE here for `auth.uid()` to satisfy.
+  // The only policy that reads it is a SELECT policy and no INSERT can reach it,
+  // because this table has no write policy at all.
+  //
+  // `assigned_by` is the awkward one, because the SEED and the PROBE want
+  // opposite things from it. The seed inserts real rows as the superuser, with
+  // RLS bypassed, so it needs a value that satisfies the foreign key to
+  // `auth.users`; the probe needs a value that is NON-NULL for every persona
+  // (including `anon`, whose `auth.uid()` is null → `23502`) and NEVER equal to
+  // `user_id` (including `master/approved`, which IS the lowest profile id that
+  // `{{profiles}}` resolves to in a probe → `23514`).
+  //
+  //   coalesce(nullif(auth.uid(), {{profiles}}), '35000002-…'::uuid)
+  //
+  // does both. In the seed `auth.uid()` becomes the owning persona's id and
+  // `{{profiles}}` the row's referenced persona — never the same one — so the
+  // fallback is not reached and the foreign key is satisfied by a real account.
+  // In the probe the fallback catches exactly the two personas that would
+  // otherwise refuse for the wrong reason, with an id in the phase-35 identity
+  // space (`scripts/container/seed.mjs:241-247`: first group `35000002` — phase
+  // 35, plan 02 — an id no real account holds). It never has to satisfy the
+  // foreign key there, because RLS refuses before the key is checked — the same
+  // property the `profiles` payload relies on with its `gen_random_uuid()` id.
+  //
+  // If the fallback were ever reached in the seed, the run fails LOUDLY with
+  // `23503` naming the key. That is the acceptable direction: a refused run, not
+  // a green matrix built on a row that is not what it claims to be.
+  //
+  // `assignee_role` is `'master'` because `party_assignments_live_role_present`
+  // requires a LIVE row to carry a staff role, and both rows the seed inserts
+  // point at `PERSONA_ROLES[0]` — which `scripts/container/seed.mjs:741-749`
+  // pins as `master` and warns against reordering. Seeding LIVE rows rather than
+  // revoked ones is the point: it is the only place in this harness where the
+  // composite key `(user_id, assignee_role) → public.profiles (id, role)` is
+  // actually exercised, so a legitimate assignment being insertable is measured
+  // instead of assumed.
+  //
+  // `granted_at` is the update column: the three columns that decide whether an
+  // assignment is LIVE — `ends_at`, `revoked_at`, `revoked_by` — are deliberately
+  // absent for the same reason the monotone guards are absent from every other
+  // payload here. A probe has no business near a column that widens a door
+  // permission, even inside a transaction that rolls back.
+  party_assignments: {
+    insert: {
+      columns: ['party_id', 'user_id', 'capability', 'assignee_role', 'assigned_by', 'ends_at'],
+      values: [
+        '{{event_parties}}',
+        '{{profiles}}',
+        `'door.operate'`,
+        `'master'`,
+        `coalesce(nullif(auth.uid(), {{profiles}}), '35000002-0000-4000-8000-000000000001'::uuid)`,
+        'now()',
+      ],
+    },
+    update: 'granted_at',
+  },
   // A checkout the subject started, against an existing tier.
   pending_purchases: {
     insert: {
