@@ -1,0 +1,191 @@
+-- A staff role implies an approved account — enforced by the database
+-- Phase 43, Plan 06: criterion 2 of the phase (D-04, ROLE-02)
+--
+-- Changes:
+-- 1. public.profiles — add the named CHECK `profiles_role_implies_approved`:
+--    `role NOT IN ('master','organizer','staff') OR status = 'approved'`
+--
+-- One statement, one transaction. `BEGIN; ... COMMIT;` is not decoration even
+-- for a single `ALTER TABLE`: the file is the unit that gets applied, and a
+-- reader who copies this shape for a two-statement successor inherits the right
+-- default rather than the convenient one.
+--
+-- WHAT THE RULE MEANS. Phase 43 decision D-04: an account holding a staff role
+-- (`master`, `organizer`, `staff`) is `approved` **by database rule**, not by a
+-- convention that four separate functions each remembered.
+-- `src/app/(admin)/admin/members/actions.ts:130-148` writes that convention out
+-- in prose — role and status are written together on promotion, and demotion
+-- does NOT revoke approval, because `member` and `approved` are different axes
+-- (`access-gating.md`, gate *due assi*). This constraint does not replace that
+-- reasoning; it replaces the requirement that every future call site reproduce
+-- it. `member` may still be `pending`, `approved` or `rejected` — the rule
+-- constrains one direction only.
+--
+-- NOTE ON `staff`. The predicate names four values but forbids only three.
+-- `staff` is added to `role`'s own CHECK by `20260808000500_staff_role.sql`,
+-- which must therefore be applied BEFORE this file — which is why this file's
+-- prefix sorts after it. If the ordering were ever inverted the result would not
+-- be an error, it would be worse: this constraint would silently protect a value
+-- the column cannot yet hold.
+
+BEGIN;
+
+-- =============================================================================
+-- EXISTING ROWS — measured, not assumed
+-- =============================================================================
+-- `43-MEASUREMENTS.md` measurement 1, first measured 2026-08-08 and **re-run
+-- immediately before this file was written**, on the same date, read-only
+-- through the Management API:
+--
+--   select role, status, count(*) from public.profiles
+--    where role in ('master','organizer','staff') and status <> 'approved'
+--    group by role, status;                                        -> [] (zero rows)
+--
+--   select count(*) total, count(*) filter (where status='approved') approved,
+--          count(*) filter (where role in ('master','organizer','staff')) staff_roles
+--     from public.profiles;      -> total 4, approved 4, staff_roles 1
+--
+-- The totals were read separately because an empty group-by is also what an
+-- empty table returns, and the two must be distinguishable.
+--
+-- CONSEQUENCE, and it is the whole reason this paragraph exists: **zero rows
+-- violate the predicate, so the constraint is added VALIDATED.** Postgres scans
+-- every existing row against it as part of this statement, and every one of them
+-- passes. Nothing is grandfathered and nothing is exempt.
+--
+-- WHY THE ALTERNATIVE WOULD HAVE BEEN A DEFECT. `NOT VALID` is the reflex when
+-- an `ADD CONSTRAINT` might fail, and it would have been wrong twice here.
+-- `43-RESEARCH.md` § B.1b measured that a `NOT VALID` CHECK **freezes** every
+-- pre-existing violating row against any future UPDATE — including an update to
+-- a column the rule does not mention, such as an email change through
+-- `20260225140000_sync_email_change.sql`. And with zero violating rows it would
+-- have bought nothing except leaving the phase's central rule unenforced against
+-- exactly the rows it was written for. Had the re-measured count been non-zero,
+-- this file would not exist yet: the decision per account is the owner's.
+--
+-- `NOT VALID` DOES appear once in this phase, and it is not this file. The
+-- container harness (`scripts/container/seed.mjs`) restores this constraint
+-- `NOT VALID` after seeding — see the last section below, and note that its
+-- `convalidated` therefore reads `false` where production's reads `true`.
+
+-- =============================================================================
+-- WHY A CHECK AND NOT A TRIGGER
+-- =============================================================================
+-- A future reader will propose a trigger, and the reason will be a good one: a
+-- trigger can raise a message a person can read, where a CHECK raises `23514`
+-- and a constraint name. The answer is that un-bypassability is the entire value
+-- of D-04, and it was measured rather than assumed. `43-RESEARCH.md` § B.1, in a
+-- `postgres:17.6` container:
+--
+--   * `SECURITY DEFINER` — does NOT bypass a CHECK; DOES let a trigger be
+--     circumvented by code running as the definer.
+--   * superuser — does NOT bypass a CHECK.
+--   * `session_replication_role = 'replica'` — does NOT bypass a CHECK; DOES
+--     disable ordinary triggers, in one session-local statement.
+--   * `ALTER TABLE ... DISABLE TRIGGER` — available to the table **owner**, not
+--     only to a superuser. `43-MEASUREMENTS.md` measurement 4 read that owner:
+--     `postgres`, which is the role migrations are applied as. So a single line
+--     inside any future migration would switch a trigger off while leaving it
+--     visible in the schema — a reader would see enforcement that is not
+--     running.
+--
+-- A CHECK has no equivalent one-line off switch. Relaxing it requires an
+-- explicit `DROP CONSTRAINT`, which is visible in the migration that does it and
+-- detectable by re-reading `pg_constraint`. The trigger alternative is therefore
+-- recorded as **considered and refused**, not overlooked.
+--
+-- WHY THE NAME IS EXPLICIT. An inline `CHECK (...)` in a column definition would
+-- be auto-named — and since `profiles_role_check` already exists, a second one
+-- would land as `profiles_role_check1`, with **both** enforced and neither
+-- greppable by intent. Measured in `postgres:17.6`. The seed asserts against
+-- this exact name; see below.
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_role_implies_approved
+  CHECK (role NOT IN ('master', 'organizer', 'staff') OR status = 'approved');
+
+COMMENT ON CONSTRAINT profiles_role_implies_approved ON public.profiles IS
+  'D-04 / ROLE-02: a staff role (master, organizer, staff) implies status = approved. '
+  'One direction only — member may hold any status. Added VALIDATED, zero violating rows measured 2026-08-08. '
+  'Relaxed only by scripts/container/seed.mjs while seeding, and restored NOT VALID there.';
+
+-- =============================================================================
+-- THE TRAP TO REFUSE — `door.operate` keeps `requires_approved = false`
+-- =============================================================================
+-- Quoted from `.planning/ROADMAP.md`, phase 43:
+--
+--   "Once the constraint exists, `door.operate`'s `requires_approved = false`
+--    will **look** redundant, and someone will propose removing it as tidying.
+--    **It must not be removed.** The constraint protects the database; the
+--    door's setting protects the night from the day the constraint is relaxed
+--    for one special case. The two guard different things, and the asymmetry is
+--    unchanged: refusing a valid staff member at the door, in front of a queue,
+--    is worse than the alternative."
+--
+-- The two rows are `('master','door.operate',false)` and
+-- `('organizer','door.operate',false)`, declared at
+-- `20260807000000_capability_model.sql:415` under the comment *"These two rows
+-- must not become true."* `staff` deliberately holds no `door.operate` row at
+-- all (D-02, `20260808000500_staff_role.sql`).
+--
+-- This file does not touch them, and D-06 is the decision that says a later file
+-- must not either. Stated concretely, because "defence in depth" is too vague to
+-- act on: the day someone adds `... OR role = 'x'` to the predicate above for
+-- one legitimate special case, `requires_approved = false` is what keeps the
+-- door open while that exception exists. A flag that looks redundant on the day
+-- it is written is the only kind that is still there on the day it is needed.
+--
+-- Both rows were read back from production, by hand, on 2026-08-08, immediately
+-- before this file was written: both still `false`, no `staff` row.
+-- `scripts/verify-capabilities.mjs` pins them on every run.
+
+-- =============================================================================
+-- THE SEAM — and why it is not a workaround
+-- =============================================================================
+-- `scripts/container/seed.mjs` DROPS this constraint by name before its persona
+-- loop and restores it `NOT VALID` in the `finally` afterwards. It has to: four
+-- of the nine seeded personas — `organizer/pending`, `organizer/rejected`,
+-- `master/pending`, `master/rejected` — become unrepresentable the moment this
+-- rule exists, and the restore therefore runs against rows that violate it.
+-- That `NOT VALID` is the container's, not production's, and it is the single
+-- enumerated difference between the two objects.
+--
+-- Those four personas are **not test debris**. When plan 32-07 deliberately
+-- collapsed two capabilities, the policy catalogue passed it and production's
+-- write matrix would have passed it in silence; only the container's write
+-- matrix caught it — sixteen cells, every one of them belonging to those four
+-- personas (D-05, ROLE-03). Deleting them to make this constraint tidier would
+-- buy a real rule at the price of the only net in this repository that has
+-- already caught something.
+--
+-- Having restored the constraint, the seed then watches it refuse the four
+-- writes it forbids — four `23514`s under this exact name, with the row count
+-- unchanged. That assertion is **ROLE-02's only automated detector**: there is
+-- no test runner for this product (`CLAUDE.md` Guardrail 1), and no baseline
+-- capture reads `pg_constraint`.
+--
+-- ANYONE RENAMING THIS CONSTRAINT must rename it in `scripts/container/seed.mjs`
+-- too — the declaration there is pre-registered and asserted against reality, so
+-- the seed refuses the run rather than passing by having nothing to test.
+--
+-- NO APPLICATION-TIER COPY OF THIS RULE IS ADDED, deliberately.
+-- `updateMemberRole` already writes role and status together; a fifth function
+-- remembering is precisely the defect D-04 exists to abolish, and
+-- `43-RESEARCH.md` § Anti-Patterns names it first. All ten write paths to
+-- `public.profiles` were re-read on 2026-08-08 and every one already satisfies
+-- the predicate: promotion writes `{role, status:'approved'}`, demotion writes
+-- `{role}` alone, reject and deactivate write `{status:'rejected', role:'member'}`
+-- in a single statement, approve and reactivate write `{status:'approved'}`, the
+-- auth callback writes `{role:'master', status:'approved'}`, guest-list entry
+-- writes `{status:'approved'}`, and `handle_new_user()` inserts `role='member'`.
+--
+-- WHEN A REFUSAL IS HANDLED IN APPLICATION CODE, branch on `error.code ===
+-- '23514'` and never on a parsed message: Next redacts a Server Action's message
+-- in a production build (`src/lib/capabilities/server.ts:59-63`). And never log
+-- or return `error.details` — on this table PostgREST puts the ENTIRE failing
+-- row there, membership code and email address included
+-- (`43-MEASUREMENTS.md` measurement 5). This constraint makes CHECK violations
+-- an ordinary event on the members page rather than a rare one, so the habit
+-- matters more here than it did yesterday.
+
+COMMIT;
