@@ -30,6 +30,12 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  *    there is nothing to carry, not because the code was discarded. Written
  *    down rather than papered over.
  *
+ * A fifth, from version 4: **the upgrade callback is cumulative, and no step
+ * may undo an earlier one.** Each version is its own `oldVersion <` block doing
+ * only its own work, because the one-shot rebuild that served version 3 would
+ * have destroyed the queue of any device hopping from 3 to 4 — rows for people
+ * who paid, on a phone that is offline and cannot be audited.
+ *
  * Two limits that remain, unchanged and deliberate:
  * - Tickets bought after the list was downloaded are not in the cache. Offline
  *   they are admitted and flagged, never refused — refusing a valid guest
@@ -39,10 +45,22 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  */
 
 const DB_NAME = "resonate-checkin";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 /** The `meta` key under which this install's device id lives. */
 const DEVICE_ID_KEY = "deviceId";
+
+/**
+ * The `meta` key marking that this device's roster was cached before members
+ * carried a role.
+ *
+ * Set by the version-4 step and cleared by the first {@link cacheMembers} that
+ * actually sees a role. It exists so a device that upgrades mid-season does not
+ * spend the night queueing admissions with no marker while believing it knows:
+ * the scanner reads it and refreshes the roster through the call it already
+ * makes.
+ */
+const ROSTER_PREDATES_ROLE_KEY = "rosterPredatesRole";
 
 /**
  * How many times a queued entry may be retried before it is recorded as failed.
@@ -90,6 +108,20 @@ export interface MemberRecord {
   membershipCode: string;
   userId: string;
   fullName: string;
+  /**
+   * The role the roster carried at the moment this record was cached.
+   *
+   * **Optional, and `undefined` means "this device does not know" — never
+   * "member".** A record cached by a release before the roster carried a role
+   * has none, and inventing `member` there would turn an absence of knowledge
+   * into a claim. It is the same distinction `attendances.entry_role` carries as
+   * NULL on the other side of the wire (plan 43-10): `unknown`, not a default.
+   *
+   * Typed `string` and not `UserRole`: the roster arrives from `fetch` as JSON,
+   * so nothing here can guarantee the closed set. The server validates it
+   * against `ROLES` on sync, and an unrecognised label writes NULL **and admits**.
+   */
+  role?: string;
 }
 
 /** A scan that has happened and has not yet been reported. */
@@ -111,6 +143,15 @@ export interface PendingCheckin {
    */
   state: "pending" | "blocked";
   lastAttemptAt?: string;
+  /**
+   * The role the roster held **at the door**, for a membership entry.
+   *
+   * Absent on every entry queued before this release, and absent whenever the
+   * roster on this device did not carry a role. Absent is sent as absent — the
+   * sync omits the field entirely rather than substituting a value, and the
+   * route writes NULL and admits. A queued entry is never dropped for lacking it.
+   */
+  entryRole?: string;
 }
 
 /** A scan that can never succeed. Never deleted — a lost entry and a synced one are indistinguishable to a counter. */
@@ -293,76 +334,126 @@ function getDB(): Promise<IDBPDatabase<CheckinDB>> {
 
   dbPromise = openDB<CheckinDB>(DB_NAME, DB_VERSION, {
     async upgrade(db, oldVersion, _newVersion, tx) {
-      if (oldVersion >= 3) return;
-
-      // ── The route taken for the rekey, stated because a reader needs to know
-      // the copy happened before the delete ─────────────────────────────────
-      // IndexedDB cannot change a store's `keyPath` in place, and it cannot
-      // hold two stores under one name. So:
-      //   1. READ every legacy row into memory — this is the copy;
-      //   2. only then `deleteObjectStore` the legacy stores;
-      //   3. re-create them under the SAME final names with `keyPath: "key"`;
-      //   4. write the rekeyed rows back.
-      // Never `deleteObjectStore` before the copy: those rows are attendance
-      // records for people who paid, and some of them are on a device that is
-      // offline right now and cannot be audited. If any step throws, the whole
-      // `versionchange` transaction aborts and rolls back as a unit (W3C
-      // IndexedDB: an aborted transaction undoes every change it made), so the
-      // version-2 stores survive intact.
+      // ── Why the shape of this callback changed ───────────────────────────
+      // Until version 4 this callback was a single one-shot rebuild guarded by
+      // an early return from "anything at or above 3", and a second version
+      // could not be expressed inside it: every path through the body destroys
+      // and re-creates the attendee and queue stores, so a v3 → v4 hop would
+      // have run that destruction again — on a device holding queued
+      // admissions for people who paid, offline right now and impossible to
+      // audit. `checkin-offline.md`: an upgrade that strands a queued scan is
+      // unacceptable.
       //
-      // Only `idb` promises are awaited in here — `getAll`, `get`, `put`. One
-      // await on anything else would let the transaction close mid-migration,
-      // and there is no test runner in this repository that could catch it.
+      // So the callback is now **cumulative steps**, each guarded by its own
+      // `oldVersion` comparison and each doing only its own work. A device at
+      // v2 runs both steps in order; a device at v3 runs only the second.
 
-      const legacy = legacyStores(tx);
-      const upgradedAt = new Date().toISOString();
+      if (oldVersion < 3) {
+        // ── The route taken for the rekey, stated because a reader needs to know
+        // the copy happened before the delete ───────────────────────────────
+        // IndexedDB cannot change a store's `keyPath` in place, and it cannot
+        // hold two stores under one name. So:
+        //   1. READ every legacy row into memory — this is the copy;
+        //   2. only then `deleteObjectStore` the legacy stores;
+        //   3. re-create them under the SAME final names with `keyPath: "key"`;
+        //   4. write the rekeyed rows back.
+        // Never `deleteObjectStore` before the copy: those rows are attendance
+        // records for people who paid, and some of them are on a device that is
+        // offline right now and cannot be audited. If any step throws, the whole
+        // `versionchange` transaction aborts and rolls back as a unit (W3C
+        // IndexedDB: an aborted transaction undoes every change it made), so the
+        // version-2 stores survive intact.
+        //
+        // Only `idb` promises are awaited in here — `getAll`, `get`, `put`. One
+        // await on anything else would let the transaction close mid-migration,
+        // and there is no test runner in this repository that could catch it.
 
-      // ── 1. Copy: read everything out, before any store is destroyed ──────
-      const hadMeta = db.objectStoreNames.contains("meta");
-      const hadAttendees = db.objectStoreNames.contains("attendees");
-      const hadPending = db.objectStoreNames.contains("pendingCheckins");
+        const legacy = legacyStores(tx);
+        const upgradedAt = new Date().toISOString();
 
-      const legacyAttendees: LegacyAttendee[] = hadAttendees
-        ? await legacy.objectStore("attendees").getAll()
-        : [];
-      const legacyPending: LegacyPending[] = hadPending
-        ? await legacy.objectStore("pendingCheckins").getAll()
-        : [];
-      const carriedDeviceId = hadMeta
-        ? (await tx.objectStore("meta").get(DEVICE_ID_KEY))?.value
-        : undefined;
+        // ── 1. Copy: read everything out, before any store is destroyed ────
+        const hadMeta = db.objectStoreNames.contains("meta");
+        const hadAttendees = db.objectStoreNames.contains("attendees");
+        const hadPending = db.objectStoreNames.contains("pendingCheckins");
 
-      // ── 2. Delete, strictly after the copy above ─────────────────────────
-      if (hadAttendees) db.deleteObjectStore("attendees");
-      if (hadPending) db.deleteObjectStore("pendingCheckins");
+        const legacyAttendees: LegacyAttendee[] = hadAttendees
+          ? await legacy.objectStore("attendees").getAll()
+          : [];
+        const legacyPending: LegacyPending[] = hadPending
+          ? await legacy.objectStore("pendingCheckins").getAll()
+          : [];
+        const carriedDeviceId = hadMeta
+          ? (await tx.objectStore("meta").get(DEVICE_ID_KEY))?.value
+          : undefined;
 
-      // ── 3. Re-create under the final names, with the composite key ───────
-      const attendees = db.createObjectStore("attendees", { keyPath: "key" });
-      attendees.createIndex("by-party", "partyId");
-      attendees.createIndex("by-subject", "subjectId");
-      db.createObjectStore("pendingCheckins", { keyPath: "key" });
-      if (!db.objectStoreNames.contains("failedCheckins")) {
-        db.createObjectStore("failedCheckins", { keyPath: "key" });
+        // ── 2. Delete, strictly after the copy above ───────────────────────
+        if (hadAttendees) db.deleteObjectStore("attendees");
+        if (hadPending) db.deleteObjectStore("pendingCheckins");
+
+        // ── 3. Re-create under the final names, with the composite key ─────
+        const attendees = db.createObjectStore("attendees", { keyPath: "key" });
+        attendees.createIndex("by-party", "partyId");
+        attendees.createIndex("by-subject", "subjectId");
+        db.createObjectStore("pendingCheckins", { keyPath: "key" });
+        if (!db.objectStoreNames.contains("failedCheckins")) {
+          db.createObjectStore("failedCheckins", { keyPath: "key" });
+        }
+        if (!db.objectStoreNames.contains("members")) {
+          db.createObjectStore("members", { keyPath: "membershipCode" });
+        }
+        if (!hadMeta) {
+          db.createObjectStore("meta", { keyPath: "key" });
+        }
+
+        // ── 4. Write the rekeyed rows back ─────────────────────────────────
+        const deviceId = carriedDeviceId ?? newDeviceId();
+        await tx
+          .objectStore("meta")
+          .put({ key: DEVICE_ID_KEY, value: deviceId });
+
+        const attendeeStore = tx.objectStore("attendees");
+        for (const row of legacyAttendees) {
+          await attendeeStore.put(rekeyAttendee(row, upgradedAt));
+        }
+
+        const pendingStore = tx.objectStore("pendingCheckins");
+        for (const entry of legacyPending) {
+          await pendingStore.put(rekeyPending(entry, deviceId));
+        }
       }
-      if (!db.objectStoreNames.contains("members")) {
-        db.createObjectStore("members", { keyPath: "membershipCode" });
-      }
-      if (!hadMeta) {
-        db.createObjectStore("meta", { keyPath: "key" });
-      }
 
-      // ── 4. Write the rekeyed rows back ───────────────────────────────────
-      const deviceId = carriedDeviceId ?? newDeviceId();
-      await tx.objectStore("meta").put({ key: DEVICE_ID_KEY, value: deviceId });
-
-      const attendeeStore = tx.objectStore("attendees");
-      for (const row of legacyAttendees) {
-        await attendeeStore.put(rekeyAttendee(row, upgradedAt));
-      }
-
-      const pendingStore = tx.objectStore("pendingCheckins");
-      for (const entry of legacyPending) {
-        await pendingStore.put(rekeyPending(entry, deviceId));
+      if (oldVersion < 4) {
+        // ── Version 4: a step that migrates nothing, on purpose ────────────
+        // A reader will expect a migration to migrate, so here is what this
+        // one does **not** do: it creates no object store, it destroys none,
+        // and it rewrites no row. Nothing is stranded because nothing is
+        // touched — which is the whole property this step was written to have.
+        //
+        // It can afford that because `role` is an **optional** field on records
+        // in a store that already exists, and IndexedDB holds records without a
+        // schema: an existing member row without a role is a valid member row,
+        // and one written after this release simply carries a field more. No
+        // structural change is required and none is made.
+        //
+        // The version number is still bumped, deliberately (D-17): it is the
+        // only versioned marker that the roster's shape changed, and it is what
+        // gives the flag below a moment to be written exactly once per device.
+        //
+        // The rule from the step above holds here too and is repeated rather
+        // than assumed: **only `idb` promises are awaited inside this
+        // callback**. One await on anything else would let the `versionchange`
+        // transaction close mid-migration, and there is no test runner in this
+        // repository that could catch it.
+        //
+        // On a database created from nothing this flag is also written, and it
+        // is not wrong: an empty roster carries no role either, so the sentence
+        // "no member cached on this device carries a role" is true in both
+        // cases, and the consequence is identical — one roster refresh that was
+        // going to happen anyway.
+        await tx.objectStore("meta").put({
+          key: ROSTER_PREDATES_ROLE_KEY,
+          value: "true",
+        });
       }
     },
   });
@@ -689,10 +780,21 @@ export interface LocalMemberCheckinResult {
  * one device produce two entries instead of one overwriting the other.
  * `token` is `null` because a membership QR is a plain URL — there is no
  * signature to carry, and that is a weaker proof than a ticket's.
+ *
+ * `entryRole` is what the roster on this device said **at the moment of the
+ * scan**, and it is optional in the strong sense: a device whose roster has no
+ * role queues the admission all the same, with the field absent. It is a label,
+ * never a permission — nothing here reads it to decide anything, and the door's
+ * verdict is taken before it is written.
+ *
+ * When an entry for this key is already queued, the existing one is kept whole,
+ * role included: the marker belongs to the first admission, the one that took a
+ * place. It is the same rule the route applies on its duplicate branch.
  */
 export async function checkInMemberLocally(
   partyId: string,
-  membershipCode: string
+  membershipCode: string,
+  entryRole?: string
 ): Promise<LocalMemberCheckinResult> {
   const db = await getDB();
   const deviceId = await getDeviceId();
@@ -713,6 +815,9 @@ export async function checkInMemberLocally(
       deviceId,
       attempts: 0,
       state: "pending",
+      // Absent stays absent. A placeholder would be a value the report cannot
+      // tell apart from a real one.
+      ...(entryRole ? { entryRole } : {}),
     });
   }
   await tx.done;
@@ -934,24 +1039,78 @@ export async function bumpAttempts(key: string): Promise<BumpResult> {
  *
  * It does not clear: the roster is the device's only way to resolve a
  * membership code offline, and emptying it during a refresh is the same defect
- * as emptying the attendee cache, in a different store.
+ * as emptying the attendee cache, in a different store. That property is
+ * unchanged here, and this plan did not weaken it.
+ *
+ * **The parameter type is load-bearing.** This function writes the record field
+ * by field, so a field the type does not name is a field that is silently
+ * dropped — and because the roster arrives from `fetch` as JSON, TypeScript
+ * raises nothing when that happens. Before this plan `role` was exactly that:
+ * present in the payload since plan 43-10, discarded here without a trace, and
+ * a green build said nothing. Anything added to the roster payload from now on
+ * has to be added in **both** places or it does not reach the device.
  */
 export async function cacheMembers(
-  members: Array<{ id: string; full_name: string; membership_code: string }>
+  members: Array<{
+    id: string;
+    full_name: string;
+    membership_code: string;
+    /** Optional on the wire: an older deployment does not send it. */
+    role?: string;
+  }>
 ): Promise<number> {
   const db = await getDB();
-  const tx = db.transaction("members", "readwrite");
+  // `meta` joins the scope so the flag below is cleared in the same transaction
+  // that made it false. Two transactions could leave the roster refreshed and
+  // the flag still set, which would cost one extra refresh — harmless, but the
+  // single transaction costs nothing and cannot disagree with itself.
+  const tx = db.transaction(["members", "meta"], "readwrite");
+  const store = tx.objectStore("members");
   let merged = 0;
+  let sawRole = false;
   for (const m of members) {
-    await tx.store.put({
+    const role = typeof m.role === "string" && m.role.length > 0 ? m.role : undefined;
+    if (role) sawRole = true;
+    await store.put({
       membershipCode: m.membership_code,
       userId: m.id,
       fullName: m.full_name,
+      // Written only when the payload carried one. An absent role is left
+      // absent rather than stored as an empty string: `undefined` here means
+      // "this device does not know", and "" would be a value that looks like an
+      // answer.
+      ...(role ? { role } : {}),
     });
     merged++;
   }
+  // Cleared only when a role was actually seen. A roster served by a deployment
+  // that predates plan 43-10 carries none, and clearing the flag on it would
+  // declare the device up to date on the strength of a refresh that changed
+  // nothing.
+  if (sawRole) {
+    await tx.objectStore("meta").delete(ROSTER_PREDATES_ROLE_KEY);
+  }
   await tx.done;
   return merged;
+}
+
+/**
+ * Whether this device's roster was cached before members carried a role.
+ *
+ * Read by the scanner on open. `true` is not a reason to refuse anybody and is
+ * never rendered as one: it only means the next roster refresh matters more
+ * than usual, because until it happens every membership admission queues with
+ * no marker.
+ *
+ * A device that cannot answer the question is treated as **not** predating —
+ * the caller then behaves exactly as it did before this plan, which is the
+ * conservative direction here: the roster refresh it already performs still
+ * runs.
+ */
+export async function rosterPredatesRole(): Promise<boolean> {
+  const db = await getDB();
+  const flag = await db.get("meta", ROSTER_PREDATES_ROLE_KEY);
+  return flag?.value === "true";
 }
 
 /** Look up a member by membership code in the offline roster. */
