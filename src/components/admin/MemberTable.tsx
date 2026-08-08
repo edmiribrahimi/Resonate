@@ -11,6 +11,38 @@ import {
   bulkApproveMember,
   bulkRejectMember,
 } from "@/app/(admin)/admin/members/actions";
+import type {
+  MemberActFailure,
+  MemberActResult,
+} from "@/app/(admin)/admin/members/actions";
+
+/**
+ * One notice per cause — PROVISIONAL, and owned by plan 43-14.
+ *
+ * Plan 43-09 changed the eight member acts from throwing to returning a tagged
+ * result, which made every `catch` in this file unreachable: without the lines
+ * below a refused act would have drawn *nothing at all*, which is the silent
+ * failure `meta-gates.md` forbids and, worse, the one that reads as success.
+ * So this map is the repair that keeps the change honest, not an interface
+ * decision — 43-14 owns the wording, the placement and the styling.
+ *
+ * The rule the six share: a failure is never drawn as "nothing happened", and
+ * no two causes collapse into one sentence. The recorded precedent being
+ * avoided is the newsletter form's "Qualcosa è andato storto"
+ * (`.planning/codebase/CONCERNS.md`).
+ */
+const FAILURE_NOTICE: Record<MemberActFailure, string> = {
+  capabilities_unavailable:
+    "Permission check failed — nothing was attempted. This is a fault, not a refusal: try again, and report it if it persists.",
+  forbidden: "You do not have permission to perform this action.",
+  // The sentence written in plan 43-09 for the day the constraint of 43-06
+  // fires. It names WHERE the refusal came from on purpose.
+  constraint_refused:
+    "This account holds a staff role, and a staff role must be approved — the write was refused by the database, not by this screen.",
+  subject_not_found: "This account no longer exists. Reload the list.",
+  write_failed: "The write failed. Nothing was changed.",
+  nothing_to_do: "Nothing to do — the request asked for no change.",
+};
 
 interface MemberRow {
   id: string;
@@ -196,11 +228,17 @@ function MemberActions({
     return <span className="text-xs text-muted">--</span>;
   }
 
-  const handleAction = async (action: () => Promise<{ success: boolean }>) => {
+  const handleAction = async (
+    action: () => Promise<MemberActResult<unknown>>
+  ) => {
     setError(null);
     try {
-      await action();
+      const result = await action();
+      if (!result.ok) setError(FAILURE_NOTICE[result.failure]);
     } catch (e) {
+      // Still here: a Server Action can fail before its body runs (a network
+      // fault, a redacted framework error). The tagged result covers the
+      // failures the action itself can name; this covers the ones it cannot.
       setError(e instanceof Error ? e.message : "Action failed");
     }
   };
@@ -331,6 +369,7 @@ export default function MemberTable({
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   // Compute referral counts from loaded data (no extra query needed)
@@ -388,29 +427,33 @@ export default function MemberTable({
     });
   };
 
-  const handleBulkApprove = () => {
+  // A batch used to clear the selection and say nothing, whatever happened.
+  // It now reports what actually happened, per subject — plan 43-09.
+  const handleBulk = (
+    label: string,
+    run: (ids: string[]) => Promise<MemberActResult<{ count: number }>>
+  ) => {
     const ids = Array.from(selectedIds);
+    setBulkNotice(null);
     startTransition(async () => {
       try {
-        await bulkApproveMember(ids);
+        const result = await run(ids);
+        if (!result.ok) {
+          setBulkNotice(`${label}: ${FAILURE_NOTICE[result.failure]}`);
+          return;
+        }
+        setBulkNotice(`${label}: ${result.data.count} of ${ids.length} done.`);
         setSelectedIds(new Set());
-      } catch {
-        // Individual row errors are more actionable; silently clear here
+      } catch (e) {
+        setBulkNotice(
+          `${label}: ${e instanceof Error ? e.message : "Action failed"}`
+        );
       }
     });
   };
 
-  const handleBulkReject = () => {
-    const ids = Array.from(selectedIds);
-    startTransition(async () => {
-      try {
-        await bulkRejectMember(ids);
-        setSelectedIds(new Set());
-      } catch {
-        // Individual row errors are more actionable; silently clear here
-      }
-    });
-  };
+  const handleBulkApprove = () => handleBulk("Approve", bulkApproveMember);
+  const handleBulkReject = () => handleBulk("Reject", bulkRejectMember);
 
   const toggleExpanded = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -526,6 +569,13 @@ export default function MemberTable({
             Reject selected
           </button>
         </div>
+      )}
+
+      {/* The batch's own outcome. Rendered OUTSIDE the toolbar above, which
+          disappears with the selection it clears — a notice inside it would be
+          unmounted by the very success it was reporting. */}
+      {bulkNotice && (
+        <p className="mb-4 text-sm text-yellow-400">{bulkNotice}</p>
       )}
 
       {/* Desktop table - hidden on small screens */}
