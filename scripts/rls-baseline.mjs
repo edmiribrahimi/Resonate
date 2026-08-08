@@ -1112,6 +1112,39 @@ export const PROBE_PAYLOADS = {
     },
     update: 'error_message',
   },
+  // The register of acts on a member's role and status (plan 43-07). It has RLS
+  // on and **no INSERT, UPDATE or DELETE policy at all**, deliberately
+  // (`20260808002000_membership_register.sql`, section 3): the only writer is
+  // `public.record_membership_act`, which runs as its definer. So every cell of
+  // this row of the matrix is expected to refuse `42501` for EVERY persona
+  // including `master/approved` — the same shape as `profiles` and `tickets`,
+  // and it is the assertion that proves "append-only by construction" rather
+  // than merely stating it.
+  //
+  // WHY `actor_kind = 'system'` AND NO `actor_id`, where the convention above
+  // says a subject column takes `auth.uid()`. There is no ownership predicate
+  // on this table for `auth.uid()` to satisfy, and the table-level CHECK
+  // `membership_acts_actor_attributed` refuses `kind = 'user'` with a null
+  // actor. Postgres evaluates table constraints BEFORE the RLS `WITH CHECK`, so
+  // a payload carrying `auth.uid()` would report `23514` instead of `42501` for
+  // every persona whose `auth.uid()` is null — a refusal for the wrong reason,
+  // which is the one failure this payload table's header warns about. A `system`
+  // act is a legitimate row shape and satisfies the constraint unconditionally.
+  //
+  // `subject_label` takes a code-shaped sentinel and not the generic probe
+  // string, because that column is documented as a membership code and never an
+  // address; same sentinel shape as the `profiles` payload's `membership_code`.
+  //
+  // `note` is the update column: it is the only column here that is neither
+  // evidence of what was true then nor part of the attribution, so a probe
+  // touching it cannot be read as an attempt to rewrite an act.
+  membership_acts: {
+    insert: {
+      columns: ['act', 'subject_label', 'actor_kind'],
+      values: [`'created'`, `'RSN-PROBE00'`, `'system'`],
+    },
+    update: 'note',
+  },
   // One unique column. `.invalid` is the reserved TLD — it can reach no inbox.
   newsletter_subscribers: {
     insert: { columns: ['email'], values: [`'rls-baseline-probe@example.invalid'`] },

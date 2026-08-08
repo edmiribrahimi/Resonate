@@ -42,7 +42,7 @@
  * The fourth side exists because Phase 34's CAP-02 will fail the production
  * build for a capability mapped to no route. A key that nothing asks for today
  * is that failure arriving early, so it is reported as a WARNING naming the
- * key — Phase 34 owns the decision, and four of the eight keys gate tables
+ * key — Phase 34 owns the decision, and five of the nine keys gate tables
  * rather than routes.
  *
  * THE FIFTH SIDE (phase decision D-02, added by plan 43-02):
@@ -109,16 +109,21 @@ const SRC_DIR = `${ROOT}/src`;
  *
  * MEASURED on 2026-08-06 against `supabase/migrations/20260807000000_capability_model.sql`
  * section 7 and against `src/lib/capabilities/keys.ts`: eight rows, eight keys.
+ * Raised to NINE on 2026-08-08 by plan 43-07, which mints `register.read` in
+ * `supabase/migrations/20260808002000_membership_register.sql` section 1 — a key
+ * added in a plan, with its two grant rows and its policy, which is the only
+ * legitimate reason this number moves.
+ *
  * Written here, not derived from either side, for the reason
  * `rls-baseline.mjs:113-130` states about its floors: a check that reads its
  * expectation off the thing it is checking cannot fail.
  *
- * **If this trips, look at the capability model, not at this constant.** Nine
+ * **If this trips, look at the capability model, not at this constant.** Ten
  * keys means a capability was added — which is a design decision that belongs
- * in a plan, with a grant row and a policy or a route to go with it. Seven
+ * in a plan, with a grant row and a policy or a route to go with it. Eight
  * means one was removed, and something is still asking for it.
  */
-const EXPECTED_KEY_COUNT = 8;
+const EXPECTED_KEY_COUNT = 9;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -194,6 +199,11 @@ const ROLE_GRANTS = {
     // the value. Assertion 2 of side 5 fails on a flipped flag and names this.
     'door.operate': false,
     'membership.card.view': true,
+    // D-19, plan 43-07. `master.manage`'s own description names *"changing
+    // another member's role or status"*, so reading the record of those changes
+    // needs no further justification. `requires_approved = true` on BOTH grants
+    // of this key: the register contains rejections.
+    'register.read': true,
   },
   organizer: {
     'staff.manage': false,
@@ -212,6 +222,17 @@ const ROLE_GRANTS = {
     // must be able to scan.
     'door.operate': false,
     'membership.card.view': true,
+    // D-19, plan 43-07. D-07 lets an organizer create and promote, and an actor
+    // who cannot see the register cannot check their own work
+    // (`community-membership.md`, gate *chi decide è tracciato*).
+    //
+    // THE `true` IS THE POINT OF THE KEY EXISTING. Gating the register on
+    // `staff.manage` — whose flag is `false` — would have admitted an organizer
+    // whose own access was never approved, to a table that holds rejections. The
+    // "tidy" repair of flipping that flag is refused: it is the same `false`
+    // that keeps `door.operate` open in front of a queue. A ninth key was minted
+    // instead.
+    'register.read': true,
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -269,6 +290,11 @@ const ROLE_GRANTS = {
     // 43-06's `role ⇒ approved` rule then makes that flag always satisfied for
     // a staff account rather than a gate it can fail.
     'membership.card.view': true,
+    // Refused (D-03, D-19). THE REGISTER HOLDS REJECTIONS, and reading a season
+    // of them is not a night's work. Whatever a staff account may do on the
+    // night it was assigned to comes from Phase 35 and expires with that night;
+    // this key would not expire with anything.
+    'register.read': 'REFUSED',
   },
   member: {
     'staff.manage': 'REFUSED',
@@ -281,31 +307,46 @@ const ROLE_GRANTS = {
     // `door.operate` row works the door. Nothing else in the model would say no.
     'door.operate': 'REFUSED',
     'membership.card.view': true,
+    // Refused (D-19), and this is the refusal that decides what `rejected` MEANS.
+    // A member holding this key would read the register — including their own
+    // rejection row — which turns `rejected` from a state into a communication.
+    // `community-membership.md`, gate *un rifiuto è una comunicazione, non uno
+    // stato*: that wording is chosen once, with care, and is not leaked from a
+    // table. There is deliberately no own-row policy either, so this refusal is
+    // not routed around by `attendances_select_own`'s precedent.
+    'register.read': 'REFUSED',
   },
 };
 
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 32 pairs = 4 roles × 8 capabilities. 18 grants: the sixteen the capability
+ * 36 pairs = 4 roles × 9 capabilities. 20 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
- * rows"*) plus the two `20260808000500_staff_role.sql` adds. 14 refusals — the
- * eight that were already every pair the first migration does NOT insert, plus
- * the six `staff` refusals of D-02.
+ * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
+ * `20260808002000_membership_register.sql` adds for `register.read`. 16
+ * refusals — the eight that were already every pair the first migration does NOT
+ * insert, plus the six `staff` refusals of D-02, plus the two `register.read`
+ * refusals of D-19 (`staff` and `member`).
  *
- * These three numbers moved from 24/16/8 on 2026-08-08 because the MODEL gained
- * a role, which is the one legitimate reason to touch them. Lowering a total to
- * make a run pass is the failure this constant exists to catch, and it has a
- * recorded shape: mutation C of plan 43-02 did exactly that in two steps and was
- * caught by assertion 4 after slipping past the arithmetic.
+ * The three numbers have now moved twice, both times on 2026-08-08 and both
+ * times because the MODEL changed, which is the one legitimate reason to touch
+ * them:
+ *
+ *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
+ *   32/18/14 → 36/20/16   plan 43-07, a ninth CAPABILITY
+ *
+ * Lowering a total to make a run pass is the failure this constant exists to
+ * catch, and it has a recorded shape: mutation C of plan 43-02 did exactly that
+ * in two steps and was caught by assertion 4 after slipping past the arithmetic.
  *
  * Asserted rather than described: a role or a capability added to `ROLE_GRANTS`
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
-const EXPECTED_PAIR_COUNT = 32;
-const EXPECTED_GRANT_COUNT = 18;
-const EXPECTED_REFUSAL_COUNT = 14;
+const EXPECTED_PAIR_COUNT = 36;
+const EXPECTED_GRANT_COUNT = 20;
+const EXPECTED_REFUSAL_COUNT = 16;
 
 /** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
 const REFUSED = 'REFUSED';
@@ -934,7 +975,7 @@ async function run(target, targetLabel) {
       problems.push(
         "Phase 34's CAP-02 will fail the production build for a capability mapped to no route. " +
           'This is that failure, arriving early and cheaply. It is a warning and not a failure ' +
-          'because Phase 34 owns the decision, and because four of the eight keys gate TABLES ' +
+          'because Phase 34 owns the decision, and because five of the nine keys gate TABLES ' +
           'rather than routes.'
       );
     warn(

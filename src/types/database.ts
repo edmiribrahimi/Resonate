@@ -11,11 +11,16 @@ import type {
   DoorScanCause,
   DoorScanSource,
 } from "@/lib/door/outcome";
-// The second import, same inverted direction and the same reason. The eight
+// The second import, same inverted direction and the same reason. The nine
 // capability keys are shared by a policy body, a catalogue row and every
 // TypeScript caller, so they are defined once in `@/lib/capabilities/keys`,
 // which imports nothing, and are read from here.
 import type { CapabilityKey } from "@/lib/capabilities/keys";
+// The third import, same inverted direction. The register's two vocabularies are
+// shared by a SQL `CHECK`, a stored procedure's arguments and every TypeScript
+// caller, so they are defined once in `@/lib/membership/acts`, which imports
+// nothing, and are read from here.
+import type { MembershipAct, MembershipActorKind } from "@/lib/membership/acts";
 
 // `staff` is the fourth role (phase 43, D-01), and the measured consequence of
 // adding it here is the opposite of what a reader expects: **this widening
@@ -353,6 +358,60 @@ export interface DoorScanEvent {
   token_fingerprint: string | null;
   /** A reversal is a further event, not an erasure of the admission. */
   is_undo: boolean;
+}
+
+/**
+ * One act on an account's role or status. Append-only.
+ *
+ * ── This interface protects NOTHING, and that has to be said here ────────────
+ *
+ * **No Supabase client in this repository is parameterised with `Database`**
+ * (`src/lib/supabase/client.ts:4`, `server.ts:7`, `middleware.ts:15`,
+ * `service.ts:4`), and this file declares no `Database` type at all. So the
+ * column names below are checked by nothing at any call site: a `select` naming
+ * `subject_lable` compiles, runs, and returns `undefined`. A reader who finds a
+ * typed interface next to a table will assume the queries are being held to it,
+ * and they are not — the interface documents the shape and satisfies
+ * `supabase-data.md`'s gate *tipi allineati* in the same commit as the DDL.
+ *
+ * ── What IS enforced, on each side separately ────────────────────────────────
+ *
+ * `act` and `actor_kind` are the two unions of `@/lib/membership/acts`, imported
+ * rather than re-declared, and mirrored by SQL `CHECK` constraints on
+ * `public.membership_acts`. `npm run build` holds the TypeScript half; the
+ * database refuses a row that disagrees with the SQL half. Nothing compares the
+ * two, which is why that module states the one-commit rule.
+ *
+ * `role_before` / `role_after` / `status_before` / `status_after` are plain
+ * `string`, deliberately, and NOT `UserRole` / `UserStatus`: they are evidence
+ * of what was true then. Typing them to the current enumerations would make the
+ * history of a retired role unrepresentable, and the migration refuses the same
+ * thing on the SQL side by giving them no CHECK.
+ *
+ * `subject_label` is a MEMBERSHIP CODE. Never an address, never a full name —
+ * this repository is public and a register row reaches artefacts.
+ */
+export interface MembershipActRow {
+  id: string;
+  act: MembershipAct;
+  /** NULL once the account is deleted. The act outlives its subject. */
+  subject_id: string | null;
+  /** The subject's membership code, denormalised so the row survives them. */
+  subject_label: string;
+  /** NULL for a `system` act, and only then — the table refuses the other three combinations. */
+  actor_id: string | null;
+  actor_kind: MembershipActorKind;
+  /** NULL means *this act did not touch that axis*, never *the value was null*. */
+  role_before: string | null;
+  role_after: string | null;
+  status_before: string | null;
+  status_after: string | null;
+  /** The server clock. A device clock is evidence, never authority. */
+  at: string;
+  /** Nullable and unwritten today: Phase 35's per-night assignment writes here. */
+  party_id: string | null;
+  /** Optional context, never a person's name or an address. */
+  note: string | null;
 }
 
 /**
