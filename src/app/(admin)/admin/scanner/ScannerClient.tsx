@@ -23,6 +23,7 @@ import {
   getFailedCount,
   getBlockedCount,
   getFailedCheckins,
+  rosterPredatesRole,
   THIS_DEVICE_LABEL,
   type FailedCheckin,
   type MergeResult,
@@ -372,6 +373,23 @@ export default function ScannerClient() {
    */
   const deviceIdRef = useRef<string | null>(null);
 
+  /**
+   * Whether the roster on this device was cached before members carried a role.
+   *
+   * Set by the version-4 upgrade, read once on open, and held in a ref so it can
+   * be consulted inside `fetchAttendance` without adding a dependency to it.
+   *
+   * **It is not a reason to refuse anybody and is never shown as one.** All it
+   * does is make the roster refresh this screen already performs run on a
+   * search-filtered fetch too, until one refresh has come back carrying roles —
+   * so a device that upgrades mid-season does not spend the night queueing
+   * admissions with no marker while believing it knows.
+   *
+   * Defaults to `false`, which is the behaviour this screen had before this
+   * plan: if the flag cannot be read, nothing is forced and nothing is lost.
+   */
+  const rosterPredatesRoleRef = useRef(false);
+
   const refreshQueueCounts = useCallback(async () => {
     try {
       const [pending, failed, blocked] = await Promise.all([
@@ -410,6 +428,20 @@ export default function ScannerClient() {
         // is stated here rather than discovered later: rows written by this
         // device can then never be classified `two_devices`.
         console.error("scanner:device_id_unavailable", error);
+      });
+
+    rosterPredatesRole()
+      .then((predates) => {
+        rosterPredatesRoleRef.current = predates;
+      })
+      .catch((error) => {
+        // Its own category, and no banner. The consequence of not knowing is
+        // that the roster refresh keeps the behaviour it had before this plan —
+        // it still runs on every unfiltered fetch — so nothing at the door
+        // changes and nobody is refused. Showing a line about a marker the
+        // operator cannot act on, while people wait, would be noise on the one
+        // screen that must stay readable.
+        console.error("scanner:roster_role_flag_unreadable", error);
       });
 
     // The counters already refreshed on a 5 s interval regardless of
@@ -562,7 +594,19 @@ export default function ScannerClient() {
             text: "This device could not update its offline list. Scanning continues from what it already holds.",
           });
         }
+      }
 
+      // The roster refresh, through the call it has always used — one fetch
+      // site, not a second one. What changed is only **when** it is allowed to
+      // run: a device whose roster predates the role field refreshes on a
+      // search-filtered fetch too, instead of waiting for the next unfiltered
+      // one. Until that refresh lands, every membership admission this device
+      // queues carries no marker, and the marker cannot be reconstructed later —
+      // it is what the roster said at the door, and only the door was there.
+      //
+      // Nothing here can refuse anybody: the outcome of this block is a cache
+      // and, on failure, the banner that already existed.
+      if (eventData && (!search || rosterPredatesRoleRef.current)) {
         // `cacheMembers` is **not** fire-and-forget any more, and that is a
         // decision with a reason: its failure does have a consequence for a
         // scan. Offline, an unknown membership code is refused (see
@@ -587,6 +631,21 @@ export default function ScannerClient() {
             tone: "error",
             text: "The member list on this device was NOT refreshed. With the radio off, a member who joined recently may not be recognised — check them in from the list rather than refusing them.",
           });
+        }
+
+        // Re-read rather than assume. `cacheMembers` clears the flag only when
+        // the payload actually carried a role, so a roster served by a
+        // deployment older than the field leaves it set — and the ref has to say
+        // the same thing the store says, or the next fetch would stop forcing a
+        // refresh the device still needs. Deliberately outside the try above: a
+        // failure to read the flag is not a failure to refresh the roster, and
+        // must not raise the banner that says it was.
+        if (rosterPredatesRoleRef.current) {
+          try {
+            rosterPredatesRoleRef.current = await rosterPredatesRole();
+          } catch (error) {
+            console.error("scanner:roster_role_flag_unreadable", error);
+          }
         }
       }
 
@@ -1348,7 +1407,17 @@ export default function ScannerClient() {
         return;
       }
 
-      const result = await checkInMemberLocally(partyId, membershipCode);
+      // The role travels with the entry from the moment the scan is taken, so
+      // what reaches `attendances.entry_role` is what the roster said **at the
+      // door** and not what the profile says hours later on sync. `member.role`
+      // is `undefined` on a device whose roster predates the field: the
+      // admission queues exactly the same, without a marker, and the door sees
+      // no difference — this line changes what is recorded, never who gets in.
+      const result = await checkInMemberLocally(
+        partyId,
+        membershipCode,
+        member.role
+      );
       if (result.alreadyRecorded) {
         const fact = recordedFact(result.at, THIS_DEVICE_LABEL);
         showFlash("already_recorded", member.fullName, fact);
