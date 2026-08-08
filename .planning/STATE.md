@@ -3,15 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+stopped_at: "Phase 43 executed end to end — 15 plans, 9 waves. Verification is
+  human_needed, NOT passed: six migrations are committed and UNAPPLIED, no code
+  is deployed, and 16 of 16 manual checks in 43-HUMAN-UAT.md are pending. Two of
+  them are time-sensitive — see that file's first section."
 last_updated: "2026-08-08T03:36:32.262Z"
-last_activity: 2026-08-07 -- Phase 43 execution started
+last_activity: 2026-08-08 -- Phase 43 executed; code review found and fixed 1 Critical (an organizer could demote the master via rejectMember); verification human_needed
 progress:
   total_phases: 13
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 53
-  completed_plans: 38
-  percent: 23
+  completed_plans: 53
+  percent: 31
 ---
 
 # State: Resonate
