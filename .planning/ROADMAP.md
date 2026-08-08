@@ -280,12 +280,12 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 43-12-PLAN.md — `MASTER_EMAIL` demotes as well as promotes, bounded so it can never empty itself — applied and observed
-- [ ] 43-13-PLAN.md — the door's store gains a field without stranding a queued scan, exercised on a real device
+- [x] 43-12-PLAN.md — `MASTER_EMAIL` demotes as well as promotes, bounded so it can never empty itself — applied and observed
+- [x] 43-13-PLAN.md — the door's store gains a field without stranding a queued scan, exercised on a real device
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 43-14-PLAN.md — the members surface learns the fourth role, stops swallowing refusals, and the register gets its reader
+- [x] 43-14-PLAN.md — the members surface learns the fourth role, stops swallowing refusals, and the register gets its reader
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 11/15 | In Progress|  |
+| 43. Role Model & Account Creation | 14/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
