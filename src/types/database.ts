@@ -436,10 +436,81 @@ export interface MembershipActRow {
   status_after: string | null;
   /** The server clock. A device clock is evidence, never authority. */
   at: string;
-  /** Nullable and unwritten today: Phase 35's per-night assignment writes here. */
+  /**
+   * Which night the act was about. Phase 35 writes it, for the acts `'assigned'`
+   * and `'unassigned'`; NULL on every act that is about the account itself.
+   *
+   * Both role pairs and both status pairs stay NULL on those two acts, and that
+   * is not an omission: an assignment moves neither axis. It grants a capability
+   * for one night — `public.party_assignments` holds that — and the register
+   * holds who did it and when.
+   */
   party_id: string | null;
   /** Optional context, never a person's name or an address. */
   note: string | null;
+}
+
+/**
+ * A row of `public.party_assignments` — phase 35's per-night assignment
+ * (`supabase/migrations/20260809000000_party_assignments.sql`).
+ *
+ * ── What this table is, in one sentence ──────────────────────────────────────
+ *
+ * One capability, granted to one account, for one night, by somebody, until a
+ * stated instant — and, if it was taken away, when and by whom. **A revocation
+ * updates this row; it never deletes it.**
+ *
+ * ── The honest limit, the same one `MembershipActRow` carries ────────────────
+ *
+ * None of the four Supabase clients is parameterised, so this interface
+ * DOCUMENTS the shape and does not make a query against it type-checked. The
+ * database refuses a row that disagrees with the five named constraints in that
+ * migration; `npm run build` cannot tell you that it agrees.
+ *
+ * No personal data. The type carries no name, no address and no membership code:
+ * an assignment is about a ROLE at a door, and this repository is public.
+ */
+export interface PartyAssignmentRow {
+  id: string;
+  /** The night. `ON DELETE CASCADE`: an assignment to a night that no longer exists cannot be resolved. */
+  party_id: string;
+  /** Who holds it. */
+  user_id: string;
+  /** One of the four assignable keys — never the whole capability catalogue. */
+  capability: string;
+  /**
+   * The role the holder carried when it was granted.
+   *
+   * **`null` means REVOKED**, never *we do not know*. The nullability is the
+   * mechanism, not a gap in the data: the composite foreign key
+   * `(user_id, assignee_role) → public.profiles (id, role)` is `MATCH SIMPLE`,
+   * so it is not enforced once this column is null — which is what frees the
+   * holder's role from a row that is no longer about anything. Read it as *this
+   * row constrains nobody any more*.
+   */
+  assignee_role: "master" | "organizer" | "staff" | null;
+  /** Who granted it. Never equal to `user_id` — the database refuses that with `23514`. */
+  assigned_by: string;
+  /** The server clock at the grant. */
+  granted_at: string;
+  /**
+   * When it stops. Computed AT THE GRANT from the night, **never sent by a
+   * client**: a device clock is evidence, never authority, and a boundary chosen
+   * by the caller is a permission window chosen by whoever is being checked.
+   */
+  ends_at: string;
+  /**
+   * **`null` means LIVE.**
+   *
+   * A revocation is an update of this column and of `revoked_by`, paired by
+   * `party_assignments_revocation_paired` — **never a `DELETE`**. The offline
+   * drain has to be able to ask *"was this live at `scannedAt`?"* after the
+   * revocation, because a phone that was at the door at 01:40 syncs at 03:00 and
+   * the answer must be about 01:40.
+   */
+  revoked_at: string | null;
+  /** Who revoked it. `null` while live, and `null` again if that account is later deleted. */
+  revoked_by: string | null;
 }
 
 /**
