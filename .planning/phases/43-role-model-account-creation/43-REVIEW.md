@@ -1008,6 +1008,244 @@ la stessa cosa.
 > decisione di prodotto di classe Critical e non e' stata presa qui per
 > implicazione.** Va portata al proprietario.
 
+> **CHIUSA il 2026-08-08 stesso, dal proprietario.** Vedi la sezione seguente:
+> i due gate sono stati allargati e i controlli esposti. La voce resta scritta
+> perche' e' il modo in cui la lacuna e' stata trovata, e cancellarla farebbe
+> sembrare che non ci sia mai stata.
+
+---
+
+## CR-01 — la decisione resa effettiva: gate allargati, controlli esposti — 2026-08-08
+
+> **Anche questa e' la DECISIONE DEL PROPRIETARIO del 2026-08-08**, la stessa
+> della sezione sopra, portata fino in fondo. La sezione precedente l'aveva
+> realizzata **solo al livello del server** e lo aveva dichiarato: *«un
+> organizer non ha oggi alcun controllo che raggiunga una riammissione o un
+> ritiro»*. Una decisione che non arriva a chi deve eseguirla non e' una
+> decisione presa: e' una decisione annunciata.
+
+Commit: `dd9d50a`.
+
+### 1. I due gate allargati — e cosa questo supersede
+
+| atto | gate prima | gate dopo |
+|---|---|---|
+| `deactivateMember` | `verifyMaster` (`master.manage`) | **`verifyAdminOrOrganizer`** (`staff.manage`) |
+| `reactivateMember` | `verifyMaster` (`master.manage`) | **`verifyAdminOrOrganizer`** (`staff.manage`) |
+
+I sei atti del gruppo stanno ora su **un solo gate**, lo stesso di
+`updateMemberRole`, `approveMember`, `rejectMember`, dei due bulk e di
+`createAccount`.
+
+**Questo supersede T-43-09-02.** Il registro delle minacce del piano 43-09
+asseriva l'opposto — *«Only `updateMemberRole` moves to
+`verifyAdminOrOrganizer`; the other two keep `verifyMaster`, and an acceptance
+criterion asserts it»* — con un criterio di accettazione dietro. **Quella era
+la decisione di un agente**, corretta nel suo giorno; la sostituisce la
+decisione del proprietario del 2026-08-08, e la sostituzione e' scritta nel
+codice accanto al vecchio razionale invece di cancellarlo.
+
+C'e' anche una ragione tecnica, e non e' secondaria: **le stesse due transizioni
+erano gia' raggiungibili sotto il gate largo**, da `approveMember` e
+`rejectMember`, che la medesima decisione aveva aperto. Un vincolo master-only
+raggiungibile attraverso un fratello con un gate piu' largo non e' un vincolo —
+e' esattamente la frase con cui CR-01 e' stato trovato, con i lati scambiati.
+Cio' che il gate stretto decideva non era l'esito, ma **quale pulsante lo
+producesse** — e il registro aveva gia' smesso di prendere il nome dal pulsante.
+
+`verifyMaster` non ha piu' chiamanti ed e' stato **rimosso**, e con lui il
+rifiuto `master_manage_required` e la sua frase in `MemberActionNotice.tsx`: e'
+la terza causa irraggiungibile eliminata invece di lasciata "gestita", per la
+ragione gia' registrata due volte in questa fase. **La chiave
+`CAP.MASTER_MANAGE` resta** e resta interrogata altrove
+(`organizer/events/**`): a sparire e' l'uso che ne faceva questo file.
+
+**Cio' che NON si e' mosso**, ed e' la parte che deve restare vera:
+
+1. **regola 1** — nessun atto raggiunge un soggetto che porta `master`. E' la
+   riparazione del Critical CR-01: senza, un organizer demolisce il master e il
+   prodotto resta senza alcun master, irrecuperabile dall'interno;
+2. **regola 2** — nessun atto raggiunge il proprio autore;
+3. `planStatusAct` e i rifiuti `act_underivable` / `status_unchanged` /
+   `readmission_before_role_change`;
+4. **`WritableRole` non ha guadagnato `'master'`**, ne' nel sorgente ne' sul
+   filo (`isWritableRole`).
+
+### 2. I controlli esposti, e a chi
+
+| controllo | dove | a chi | conferma |
+|---|---|---|---|
+| **Withdraw access** | ogni riga `approved` | master **e** organizer | **si** |
+| **Readmit** | ogni riga `rejected` | master **e** organizer | **si** |
+| Approve · Reject | righe `pending` | master e organizer (invariato) | **no** |
+| batch su Approved | scheda Approved | master e organizer | **si** |
+| batch su Rejected | scheda Rejected | master e organizer | **si** |
+| batch su Pending | scheda Pending (invariato) | master e organizer | **no** |
+
+I due pulsanti sono etichettati dall'**esito** e non dalla funzione:
+«Deactivate» nominava un'API, «Withdraw access» nomina cio' che la persona
+perde. Il registro scrive `deactivated` / `reactivated` in entrambi i casi,
+derivato dalla transizione.
+
+**Il prop `callerRole` e' stato rimosso**, non lasciato inutilizzato. Era un
+**letterale** a entrambe le chiamate — `"master"` sulla pagina admin,
+`"organizer"` su quella organizer — quindi non ha mai portato un fatto sulla
+sessione; e un valore che porta il nome di un ruolo dentro un componente che
+non ci ramifica piu' e' esattamente la forma che un lettore successivo scambia
+per un permesso (`access-gating.md`, gate *coerenza navigazione/permessi*).
+
+E' sparito anche il ramo `hasAnyAction` che disegnava «--»: ogni stato ha ora
+almeno un controllo, quindi era un ramo permanentemente vero.
+
+> **Allargare la superficie non concede nulla.** Tutto cio' che l'interfaccia
+> ora offre era gia' raggiungibile da un organizer autenticato con una richiesta
+> costruita a mano — una server action e' un endpoint pubblico con una firma
+> comoda. Esporre il controllo non protegge e non nasconde: smette solo di
+> richiedere una mano tecnica per un atto che il proprietario ha permesso.
+> **L'unico confine e' il gate sull'azione.**
+
+### 3. La conferma: cosa copre e cosa dice
+
+Copre **esattamente i due atti che ribaltano** — ritirare un accesso concesso,
+riammettere un rifiutato — **singoli e in batch**. Non copre approvare o
+rifiutare una richiesta `pending`: quelli sono gli atti ordinari quotidiani e
+l'attrito li' e' solo costo.
+
+Non e' una nuova decisione di prodotto ma una scelta dell'orchestratore, e la
+ragione e' specifica: l'esecutore precedente l'aveva nominata — *«un pulsante
+"Reject" su una riga di un membro approvato ritira un accesso, e in questa
+tabella non esiste alcuna conferma»*. Tre fatti si sommano: la tabella agisce
+su piu' righe insieme, i due atti che ribaltano stanno ora a una cella dai due
+ordinari, e la conseguenza di un clic sbagliato e' che qualcuno perde in
+silenzio l'accesso a una community il cui valore **e'** il cancello.
+
+**La conferma nomina l'atto e quante persone raggiunge.** Mai «are you sure»:
+una conferma letta male e' peggio di nessuna conferma, perche' allena il
+riflesso a scartare la prossima. Cio' che dice, per ciascuno dei due:
+
+**Ritiro** — «Withdraw access from *nome*?» / «Withdraw access from *N*
+accounts?»
+- rimuove *N* persone dalla community;
+- smettono di poter accedere, la tessera smette di funzionare alla porta, e
+  ogni ruolo staff o organizer viene tolto;
+- e' registrato come `deactivated`, con il tuo nome e l'ora — **e il registro e'
+  append-only: la riga non si modifica e non si cancella**;
+- **«Nobody is told»**: non esiste un messaggio per un ritiro, quindi chi lo
+  subisce **lo scopre alla porta**.
+
+**Riammissione** — «Readmit *nome*?» / «Readmit *N* accounts?»
+- rifa' entrare *N* persone; possono accedere e la tessera torna valida;
+- e' registrato come `reactivated`, con il tuo nome e l'ora;
+- **ciascuno riceve un messaggio** che dice che l'accesso e' di nuovo attivo;
+- **il ruolo non viene ripristinato**: va rimesso a parte se serve.
+
+La conferma **sostituisce** i pulsanti finche' e' aperta — nella riga e nella
+toolbar — cosi' un secondo clic non puo' finire su un atto diverso da quello in
+conferma. La scheda **All non ha batch**: una selezione su tre stati
+produrrebbe un misto di atti e la conferma potrebbe solo dire qualcosa di vago
+sulle «righe selezionate», che e' l'«are you sure» che questo componente esiste
+per evitare.
+
+Le caselle di selezione escludono la riga del **master** e la riga di **chi
+guarda**. Non e' un permesso — il server rifiuta entrambe comunque, regole 1 e
+2 — e' che un «seleziona tutto» sulla scheda Approved altrimenti riporterebbe
+due rifiuti ogni singola volta, e un avviso che compare sempre e' un avviso che
+si smette di leggere.
+
+### 4. Chi viene avvisato — deciso, non lasciato aperto
+
+La prima voce aperta della sezione precedente (*«non esiste alcun messaggio per
+una riammissione ne' per un ritiro»*) e' **chiusa in due direzioni diverse**, e
+l'asimmetria e' la decisione.
+
+| atto derivato | messaggio |
+|---|---|
+| `approved` | `MemberApprovedEmail` (invariato) |
+| `rejected` | `MemberRejectedEmail` (invariato) |
+| `reactivated` | **`MemberReactivatedEmail` — nuova, in italiano** |
+| `deactivated` | **nulla, di proposito** |
+
+**La riammissione manda un messaggio.** `community-membership.md`, gate *il
+tempo di attesa e' una promessa*: **il silenzio e' una risposta, ed e' la
+peggiore.** Una riammissione di cui nessuno viene informato e' una riammissione
+che non avviene — la persona non ha ragione di riprovare ad accedere.
+
+**Non e' `MemberApprovedEmail` riusata**, ed e' stato giudicato invece che
+assunto: quella mail dice *«You're In»*, *«Your membership has been approved»*,
+*«start inviting friends with your personal referral link»* — le parole di un
+primo benvenuto. A chi era gia' dentro, e' stato escluso e rientra, quelle
+parole sono sbagliate, e una mail non si richiama (`comms-analytics.md`). Il
+testo nuovo dice il **fatto operativo** e nient'altro: puoi accedere di nuovo,
+la tessera torna a funzionare alla porta, la password resta la tua. Non promette
+un ruolo, perche' una riammissione muove il solo asse dello stato.
+
+**Il ritiro non manda nulla, ed e' una decisione con un costo dichiarato.** Un
+messaggio di riammissione e' *operativo*; un messaggio di ritiro e' un
+**giudizio su una persona**, e `community-membership.md` (gate *un rifiuto e'
+una comunicazione, non uno stato*) vuole che quel testo sia *«scritto una volta,
+con cura, e usato sempre lo stesso — e non deve spiegare piu' di quanto si e'
+disposti a difendere»*. Lo scrive chi possiede la voce della community; un
+agente che lo inventasse scriverebbe il brand al posto di chi lo possiede.
+
+Il costo di quel silenzio **non e' nascosto**: chi perde l'accesso lo scopre
+**alla porta**, davanti alla fila, con una tessera che non funziona. Per questo
+la conferma lo dice all'operatore — l'unica persona nella catena che puo'
+avvisarlo. **Resta una voce aperta per il proprietario: scrivere, o decidere di
+non scrivere, il testo di un ritiro.**
+
+**La mail segue l'atto, non la porta — ora strutturalmente.** La regola era gia'
+scritta dentro `approveMember` e `rejectMember`; ora e' una tabella,
+`MAIL_FOR_ACT`, esaustiva su `StatusAct` (una chiave in piu' nel tipo e il
+compilatore pretende una decisione, e `null` e' una decisione scritta). Due
+conseguenze registrate:
+
+- `reactivateMember` e `deactivateMember` **non mandavano nulla in nessun caso**.
+  Ora `reactivateMember` puntato su un `pending` manda l'approvazione e
+  `deactivateMember` puntato su un `pending` manda il rifiuto — perche' e' cio'
+  che e' successo. Prima, la stessa transizione diceva al membro due cose
+  diverse a seconda del pulsante premuto;
+- `runBulk` **raggruppa per atto derivato** invece di avere un unico `mailOn`:
+  un lotto di cinque puo' mandare tre approvazioni e due riammissioni. Con una
+  lista sola, meta' del lotto avrebbe ricevuto le parole scritte per l'altra
+  meta'.
+
+Idempotenza per destinatario e non per lotto (`comms-analytics.md`, gate *una
+mail non si richiama*): ogni invio e' agganciato all'atto **derivato**, che
+richiede una transizione reale — un secondo tentativo su un account che gia'
+possiede lo stato e' `status_unchanged` prima che un messaggio venga
+considerato.
+
+### 5. L'asimmetria che resta, per decisione del proprietario
+
+La **seconda voce aperta** della sezione precedente **resta aperta e non e'
+stata toccata**: una riga `promoted` il cui `status_before` e' `pending` e'
+un'ammissione che il registro non nomina come tale. A metterla li' e' la
+decisione del proprietario del **2026-08-06**, che fa decidere alla promozione
+una domanda aperta. **E' l'unico caso in cui la porta ha ancora la precedenza
+sulla transizione, ed e' sanzionato dal proprietario: non si ribalta una
+decisione del proprietario per sistemare un corollario.**
+
+### 6. Verifica eseguita
+
+| comando | esito |
+|---|---|
+| `npm run build` | **exit 0** — `✓ Compiled successfully`, typecheck di Next incluso, 45 pagine generate |
+| `npx tsc --noEmit` | **exit 0** |
+| `npx eslint` sui file toccati | **exit 0**, zero problemi (il resto del repo ne ha di preesistenti) |
+| `npm run verify:capabilities -- --target=container` | **5/5 verde, 0 warning** — 9 chiavi, 20 grant e 16 rifiuti su 4 ruoli, container distrutto |
+| `MemberReactivatedEmail` | **renderizzata e riletta** in chiaro, **mai inviata** |
+
+**Cio' che quel verde NON prova** (Guardrail 1: non esiste alcun test runner per
+il prodotto): che i due gate allargati si comportino come previsto a runtime,
+che la conferma compaia e conti giusto, che `MAIL_FOR_ACT` mandi davvero la mail
+nuova su `reactivated` e niente su `deactivated`. **Evidenza manuale**, scritta
+come procedura **18** in `43-HUMAN-UAT.md`; la procedura **17** e' stata
+riscritta perche' verificava una superficie che non esiste piu'.
+
+**Nessuna migration applicata a produzione. Nessuna mail inviata a una casella
+vera. Nessuna sonda di scrittura su produzione** — le righe di
+`membership_acts` sopravvivono alla cancellazione del soggetto.
+
 ### Verifica eseguita
 
 | comando | esito |
