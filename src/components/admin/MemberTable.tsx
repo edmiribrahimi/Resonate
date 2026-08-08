@@ -12,6 +12,7 @@ import {
   bulkRejectMember,
 } from "@/app/(admin)/admin/members/actions";
 import type {
+  BulkActData,
   MemberActFailure,
   MemberActResult,
 } from "@/app/(admin)/admin/members/actions";
@@ -431,7 +432,7 @@ export default function MemberTable({
   // It now reports what actually happened, per subject — plan 43-09.
   const handleBulk = (
     label: string,
-    run: (ids: string[]) => Promise<MemberActResult<{ count: number }>>
+    run: (ids: string[]) => Promise<MemberActResult<BulkActData>>
   ) => {
     const ids = Array.from(selectedIds);
     setBulkNotice(null);
@@ -442,8 +443,32 @@ export default function MemberTable({
           setBulkNotice(`${label}: ${FAILURE_NOTICE[result.failure]}`);
           return;
         }
-        setBulkNotice(`${label}: ${result.data.count} of ${ids.length} done.`);
-        setSelectedIds(new Set());
+
+        const { succeeded, failed, outcomes } = result.data;
+
+        if (failed === 0) {
+          setBulkNotice(`${label}: ${succeeded} of ${ids.length} recorded.`);
+          setSelectedIds(new Set());
+          return;
+        }
+
+        // A partly-failed batch reports BOTH numbers and every distinct cause.
+        // The refused subjects stay selected, so the retry is one click and not
+        // a re-hunt through the list.
+        const causes = Array.from(
+          new Set(
+            outcomes
+              .filter((o) => !o.ok && o.failure)
+              .map((o) => FAILURE_NOTICE[o.failure as MemberActFailure])
+          )
+        );
+        setBulkNotice(
+          `${label}: ${succeeded} of ${ids.length} recorded, ${failed} refused. ` +
+            causes.join(" ")
+        );
+        setSelectedIds(
+          new Set(outcomes.filter((o) => !o.ok).map((o) => o.subjectId))
+        );
       } catch (e) {
         setBulkNotice(
           `${label}: ${e instanceof Error ? e.message : "Action failed"}`

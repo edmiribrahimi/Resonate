@@ -710,88 +710,163 @@ export async function rejectMember(
   });
 }
 
-export async function bulkApproveMember(
-  memberIds: string[]
-): Promise<MemberActResult<{ count: number }>> {
-  return guarded("bulkApproveMember", verifyAdminOrOrganizer, async () => {
-    if (memberIds.length === 0) {
-      return { ok: false, failure: "nothing_to_do", detail: "no_subjects_selected" };
-    }
+// =============================================================================
+// The two bulk acts — a count that is MEASURED, not asserted
+// =============================================================================
+//
+// Both used to be one statement over `.in()` returning
+// `{ success: true, count: memberIds.length }`. That count was **asserted from
+// the input**: it reported N successes because N ids were passed in, and it
+// would have reported N whatever the database did with them. `meta-gates.md`
+// calls that shape a silent failure, and it is the worst kind — it does not
+// look like an error, it looks like a receipt.
+//
+// Two failure modes made it concrete (`43-RESEARCH.md` § Pitfall 8):
+//
+//   * under `profiles_role_implies_approved`, ONE bad row fails the whole
+//     `.in()` statement, and the message names one id — so the operator is told
+//     nothing about the other N−1;
+//   * a future refactor that loops would keep the asserted count and report N
+//     successes for fewer.
+//
+// The register settles the shape by itself: `record_membership_act` writes ONE
+// row per subject, so a batch is a loop. `community-membership.md` (gate *chi
+// decide è tracciato*) requires the same thing from the other side — one act on
+// one member's status, recorded with who did it and when. A single register row
+// covering many subjects would not satisfy it.
+//
+// **A failed subject does not abort the rest**, and that is a decision. A batch
+// of approvals where one row is refused should approve the others: a caller
+// told WHICH one failed can act on it, a caller told "the batch failed" can
+// only start again and hope.
 
-    const serviceClient = getServiceClient();
+export type BulkSubjectOutcome = {
+  subjectId: string;
+  ok: boolean;
+  failure?: MemberActFailure;
+};
 
+export type BulkActData = {
+  /** Counted from the outcomes below. Never from the length of the input. */
+  succeeded: number;
+  failed: number;
+  outcomes: BulkSubjectOutcome[];
+};
+
+async function runBulk(
+  action: string,
+  ctx: ActorContext,
+  memberIds: string[],
+  act: MembershipAct,
+  write: { role?: string | null; status?: string | null },
+  sendMail: (email: string, fullName: string) => Promise<void>
+): Promise<MemberActResult<BulkActData>> {
+  // Read once, named `requested`, and used ONLY as the denominator of a report.
+  // The success count below never touches it — that is the whole difference
+  // between this function and the one it replaces.
+  const requested = memberIds.length;
+
+  if (requested === 0) {
+    return { ok: false, failure: "nothing_to_do", detail: "no_subjects_selected" };
+  }
+
+  const serviceClient = getServiceClient();
+  const outcomes: BulkSubjectOutcome[] = [];
+
+  for (const subjectId of memberIds) {
+    const result = await recordAct(action, serviceClient, {
+      subjectId,
+      act,
+      actorId: ctx.userId,
+      role: write.role ?? null,
+      status: write.status ?? null,
+    });
+
+    outcomes.push(
+      result.ok
+        ? { subjectId, ok: true }
+        : { subjectId, ok: false, failure: result.failure }
+    );
+  }
+
+  const succeededIds = outcomes.filter((o) => o.ok).map((o) => o.subjectId);
+  const succeeded = succeededIds.length;
+  const failed = outcomes.length - succeeded;
+
+  if (failed > 0) {
+    // Distinct from every single-act log line, and it carries the two numbers
+    // rather than a verdict. The observable effect for the operator is the
+    // notice `MemberTable.tsx` draws from the outcomes — this line is only the
+    // diagnosis, and in a project with no error tracking a log line alone would
+    // reach nobody.
+    console.error(
+      `[members.bulk_partial] ${action}: ${succeeded} recorded, ${failed} refused ` +
+        `of ${requested} requested`
+    );
+  }
+
+  // The mail goes only to the subjects whose act actually landed. Approving
+  // nobody and mailing them anyway is the same lie as the asserted count, told
+  // to the member instead of the operator.
+  if (succeeded > 0) {
     const { data: members } = await serviceClient
       .from("profiles")
       .select("id, email, full_name")
-      .in("id", memberIds);
+      .in("id", succeededIds);
 
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "approved" })
-      .in("id", memberIds);
-
-    if (error) return writeFailure("bulkApproveMember", error);
-
-    // Send approval emails sequentially (fire-and-forget) to respect Resend rate limits
     if (members && members.length > 0) {
+      // Sequential (fire-and-forget) to respect Resend rate limits.
       (async () => {
         for (const m of members) {
           if (m.email) {
             try {
-              await sendApprovalEmail(m.email, m.full_name);
+              await sendMail(m.email, m.full_name);
             } catch (err) {
-              logEmailFailure("bulkApproveMember", m.id, err);
+              logEmailFailure(action, m.id, err);
             }
           }
         }
-      })().catch((err) => logEmailFailure("bulkApproveMember", "batch", err));
+      })().catch((err) => logEmailFailure(action, "batch", err));
     }
+  }
 
+  if (succeeded > 0) {
     revalidatePath("/admin/members");
     revalidatePath("/organizer/members");
-    return { ok: true, data: { count: memberIds.length } };
-  });
+  }
+
+  return { ok: true, data: { succeeded, failed, outcomes } };
+}
+
+export async function bulkApproveMember(
+  memberIds: string[]
+): Promise<MemberActResult<BulkActData>> {
+  return guarded("bulkApproveMember", verifyAdminOrOrganizer, (ctx) =>
+    runBulk(
+      "bulkApproveMember",
+      ctx,
+      memberIds,
+      "approved",
+      { status: "approved" },
+      sendApprovalEmail
+    )
+  );
 }
 
 export async function bulkRejectMember(
   memberIds: string[]
-): Promise<MemberActResult<{ count: number }>> {
-  return guarded("bulkRejectMember", verifyAdminOrOrganizer, async () => {
-    if (memberIds.length === 0) {
-      return { ok: false, failure: "nothing_to_do", detail: "no_subjects_selected" };
-    }
-
-    const serviceClient = getServiceClient();
-
-    const { data: members } = await serviceClient
-      .from("profiles")
-      .select("id, email, full_name")
-      .in("id", memberIds);
-
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "rejected", role: "member" })
-      .in("id", memberIds);
-
-    if (error) return writeFailure("bulkRejectMember", error);
-
-    // Send rejection emails sequentially (fire-and-forget) to respect Resend rate limits
-    if (members && members.length > 0) {
-      (async () => {
-        for (const m of members) {
-          if (m.email) {
-            try {
-              await sendRejectionEmail(m.email, m.full_name);
-            } catch (err) {
-              logEmailFailure("bulkRejectMember", m.id, err);
-            }
-          }
-        }
-      })().catch((err) => logEmailFailure("bulkRejectMember", "batch", err));
-    }
-
-    revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
-    return { ok: true, data: { count: memberIds.length } };
-  });
+): Promise<MemberActResult<BulkActData>> {
+  return guarded("bulkRejectMember", verifyAdminOrOrganizer, (ctx) =>
+    runBulk(
+      "bulkRejectMember",
+      ctx,
+      memberIds,
+      "rejected",
+      // The demotion travels with the rejection, exactly as the single act does:
+      // it is what keeps a rejected organizer compatible with
+      // `profiles_role_implies_approved`.
+      { role: "member", status: "rejected" },
+      sendRejectionEmail
+    )
+  );
 }
