@@ -9,25 +9,52 @@ automated_evidence: 4
 observed_in_production: 0
 deployed: false
 migrations_committed: 6
-migrations_applied: 0
+migrations_applied: 6
+migrations_applied_on: 2026-08-08
+migrations_applied_how: "Supabase Management API, sei file in ordine, ognuno senza errore; stato post-applicazione verificato per query"
 manual_procedures_written: 16
-manual_procedures_executed: 0
+manual_procedures_executed: 2
 review_findings_open: 11
 verifier_measurements_run:
   - "npm run build → exit 0"
   - "npm run verify:no-header-identity → exit 0"
   - "npm run verify:persona → 7/7 verdi"
   - "npm run verify:capabilities --target=container → 5/5 verde, 0 warning, 44 migration applicate"
-  - "npm run verify:capabilities --target=production → FAILED 4/5 (misura della distanza dal deploy)"
+  - "npm run verify:capabilities --target=production → FAILED 4/5 (misura della distanza dal deploy, PRIMA dell'applicazione)"
+  - "2026-08-08, DOPO l'applicazione: npm run verify:capabilities --target=production → 5/5 verde, 0 warning · TS 9 · DB 9 · POLICY 5 (46 call site in 68 policy) · SRC 8 (242 file) · GRANT 20 righe · 20 grant e 16 rifiuti su 4 ruoli × 9 chiavi"
   - "npm run baseline:container -- --seed-only --report → 6/6 rifiuti 23514, 12/12 celle role×status"
   - "SELECT slug FROM public.events (sola lettura) → 2 slug, 0 violano [a-z0-9-]{1,80} — chiude IN-04"
+  - "2026-08-08, produzione: my_access_context() → {role,status,user_id,capabilities} — user_id PRESENTE, quindi 20260808000000 (fase 33) risulta applicata; private.has_capability esiste con l'argomento p_party_id"
+  - "2026-08-08, produzione: le sei migration della fase applicate in ordine, zero errori — vedi human_verification test 1"
 human_verification:
   - test: "Applicare le sei migration nell'ordine di 43-HUMAN-UAT.md, poi promuovere il build"
     expected: "Le sei applicano senza errore; il codice va dopo, mai prima"
     why_human: "Nessuno strumento del repo applica migration a produzione, e l'ordine e' l'unica cosa che rende eseguibili le altre quindici prove"
+    result: eseguita
+    executed_on: 2026-08-08
+    evidence: >-
+      Le sei applicate in ordine via Supabase Management API, ognuna senza errore.
+      Pre-volo: 4 profili (1 master/approved, 3 member/approved), zero righe che
+      violassero role => approved, nessun oggetto della fase gia' presente.
+      Post-stato verificato per query: profiles_role_check porta 'staff';
+      profiles_role_implies_approved esiste come
+      CHECK ((role <> ALL (ARRAY['master','organizer','staff'])) OR (status = 'approved'));
+      public.membership_acts presente; attendances.entry_role presente;
+      reconcile_master() e record_membership_act() presenti;
+      private.capabilities 8 -> 9; private.role_capabilities 16 -> 20.
+      Nessuna riga rifiutata, nessuna cancellata.
+      Il codice NON e' stato promosso: deployed resta false, e l'ordine
+      "migration prima, codice dopo" e' rispettato.
   - test: "Prima del deploy: rendere idempotente 20260808001000_role_implies_approved.sql (WR-04)"
     expected: "DROP CONSTRAINT IF EXISTS prima dell'ADD, come fa la migration sorella a :71-76"
     why_human: "Decisione del proprietario su un file di migration, in una fase che si applica a mano"
+    result: gia-soddisfatta
+    executed_on: 2026-08-08
+    evidence: >-
+      Nessuna modifica necessaria: il file committato porta gia'
+      DROP CONSTRAINT IF EXISTS profiles_role_implies_approved a :112-113,
+      prima dell'ADD a :115-116. La correzione era entrata in un commit
+      successivo della fase 43. Verificato leggendo il file prima di applicarlo.
   - test: "M-43-01 — un account appena creato entra alla porta prima di aver mai fatto login"
     expected: "Il codice tessera e' ammesso, l'ingresso e' registrato"
     why_human: "ACCT-02: serve una serata, un telefono e una scansione. Nessuno strumento di questo repository puo' raggiungerlo"
