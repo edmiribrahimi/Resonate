@@ -206,7 +206,7 @@ e' **la stessa cosa** vista da due piani diversi, e per questo porta due nomi.
 ### 1. M-43-11 — l'aggiornamento del telefono non deve perdere nessuna scansione
 
 ruolo: chi tiene il telefono alla porta (un account che puo' fare il check-in)
-serve prima: le cinque migration applicate. **I passi 1 e 2 vanno fatti PRIMA che il telefono carichi il codice nuovo**
+serve prima: le sei migration applicate. **I passi 1 e 2 vanno fatti PRIMA che il telefono carichi il codice nuovo**
 serve una mano tecnica: **si**, per leggere i numeri dentro il telefono e per il passo 9
 perche' non si puo' rimandare: `.planning/STATE.md` lo dice da mesi — l'aggiornamento del magazzino dentro il telefono va provato **prima della prima serata vera**, perche' se sbaglia distrugge dei dati, e i dati sono ammissioni di persone che hanno pagato
 
@@ -326,7 +326,7 @@ result: [pending]
 
 ---
 
-## Sessione 3 — mezz'ora al computer, dopo le cinque migration
+## Sessione 3 — mezz'ora al computer, dopo le sei migration
 
 Tutta questa sessione si fa da soli, con un browser, senza telefono e senza
 posta. **Usare un solo account di prova per tutte e quattro.**
@@ -334,7 +334,7 @@ posta. **Usare un solo account di prova per tutte e quattro.**
 ### 3. W-43-14-A — il quarto ruolo si trova, si conta e si concede
 
 ruolo: master
-serve prima: le cinque migration applicate e il codice deployato
+serve prima: le sei migration applicate e il codice deployato
 serve una mano tecnica: no
 
 passi:
@@ -384,7 +384,7 @@ result: [pending]
 ### 4. M-43-08 — cinque atti, un registro
 
 ruolo: master
-serve prima: le cinque migration applicate e il codice deployato
+serve prima: le sei migration applicate e il codice deployato
 serve una mano tecnica: no
 perche' esiste: nessuno strumento di questo progetto puo' vedere questa cosa. Gli
 strumenti sanno dire **chi ha il diritto di scrivere** nel registro; non sanno
@@ -419,7 +419,7 @@ result: [pending]
 ### 5. W-43-14-D — il registro si legge, e dice chi
 
 ruolo: master
-serve prima: le cinque migration applicate. Da fare **subito dopo** la prova 4, cosi' le righe da guardare ci sono gia'
+serve prima: le sei migration applicate. Da fare **subito dopo** la prova 4, cosi' le righe da guardare ci sono gia'
 serve una mano tecnica: no
 
 passi:
@@ -467,7 +467,7 @@ result: [pending]
 ### 6. W-43-14-C — un'operazione su piu' persone dice **quale** ha fallito
 
 ruolo: master
-serve prima: le cinque migration applicate e almeno tre richieste in attesa
+serve prima: le sei migration applicate e almeno tre richieste in attesa
 serve una mano tecnica: no
 
 passi:
@@ -508,7 +508,7 @@ mezz'ora, e produce l'account di prova che le sessioni 5 e 6 riusano.
 ### 7. M-43-03 — il link della mail imposta davvero una password
 
 ruolo: master (per creare), poi la persona che riceve il messaggio
-serve prima: le cinque migration applicate e il codice deployato. **Da fare sul sito vero, non su un computer di sviluppo**: le due cose si comportano diversamente proprio sul punto che conta
+serve prima: le sei migration applicate e il codice deployato. **Da fare sul sito vero, non su un computer di sviluppo**: le due cose si comportano diversamente proprio sul punto che conta
 serve una mano tecnica: **solo per il passo 7**
 perche' esiste: prima di questa fase quel link **non aveva un posto dove
 atterrare**. Portava a una dashboard che non ha nessun campo per la password, e
@@ -578,7 +578,7 @@ fila, la stessa sera. Usano l'account di prova della sessione 4.
 ### 8. M-43-01 — un account nuovo entra prima ancora di aver fatto il primo accesso
 
 ruolo: master (per creare), poi chi tiene il telefono
-serve prima: le cinque migration applicate, il codice deployato, una serata aperta, il telefono **con la rete**
+serve prima: le sei migration applicate, il codice deployato, una serata aperta, il telefono **con la rete**
 serve una mano tecnica: no
 perche' e' importante: e' la promessa che il messaggio d'invito fa — *«sei tra i
 membri in lista all'entrata da subito, anche prima di impostare la password»*.
@@ -648,7 +648,7 @@ result: [pending]
 ### 10. M-43-10 — un ingresso staff si vede nei numeri della serata, e si capisce
 
 ruolo: chi tiene il telefono, poi il master che legge i numeri
-serve prima: le cinque migration applicate, il codice deployato, una serata vera, un account con ruolo `staff`
+serve prima: le sei migration applicate, il codice deployato, una serata vera, un account con ruolo `staff`
 serve una mano tecnica: **si, per il primo passo**
 perche' esiste: un conteggio **non e' una prova di leggibilita'**. La domanda non
 e' «esiste la riga» ma «si riesce a rispondere alla domanda». Per questo
@@ -695,7 +695,7 @@ il risultato.
 ### 11. M-43-04 — un rifiuto del database dice una frase sua, non «qualcosa e' andato storto»
 
 ruolo: master, sul sito deployato
-serve prima: le cinque migration applicate
+serve prima: le sei migration applicate
 serve una mano tecnica: **si**
 perche' il computer di sviluppo non basta: e' il punto centrale. Su un computer
 di sviluppo i messaggi di errore arrivano interi; **sul sito vero vengono
@@ -729,7 +729,7 @@ result: [pending]
 ### 12. W-43-14-B — ogni rifiuto ha la **sua** frase
 
 ruolo: master, sul sito deployato (**non** su un computer di sviluppo, per la ragione della prova 11)
-serve prima: le cinque migration applicate
+serve prima: le sei migration applicate
 serve una mano tecnica: **si, dal passo 3**
 
 passi:
@@ -764,7 +764,7 @@ result: [pending]
 ### 13. M-43-07 — un organizer non arriva a `master`
 
 ruolo: **organizer** (serve una sessione con quel ruolo)
-serve prima: le cinque migration applicate e il codice deployato
+serve prima: le sei migration applicate e il codice deployato
 serve una mano tecnica: **si, dal passo 3**
 perche' esiste: e' il soffitto della fase. Un organizer puo' promuovere — e'
 voluto, altrimenti una persona sola diventa il collo di bottiglia della propria
@@ -897,7 +897,7 @@ result: [pending] — la meta' sul database di prova e' PASS (2026-08-08, piano 
 > fare, e vale per entrambi.
 
 ruolo: un account **member approved**, e un account **organizer**
-serve prima: le cinque migration applicate e il codice deployato
+serve prima: le sei migration applicate e il codice deployato
 serve una mano tecnica: **si, per il passo 2 — che e' l'unico che conta**
 perche' nessuno strumento di questo progetto puo' rispondere: gli strumenti
 amministrativi con cui e' stato misurato tutto il resto **scavalcano le regole di
