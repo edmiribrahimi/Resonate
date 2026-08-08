@@ -92,7 +92,15 @@ function resolveNext(raw: string | null): { path: string; refused: boolean } {
 
 /**
  * The value `?master=` carries when the reconciliation did not do its job, one
- * value per cause. `null` means it ran and there is nothing to say.
+ * value per cause.
+ *
+ * `null` means **no flag, no banner**, and it now covers two situations that are
+ * both correct and are kept apart in the LOG rather than in the URL: the
+ * reconciliation ran and there is nothing to say (`reconciled`, `unchanged`), or
+ * it could not run because this deploy is ahead of its database — see
+ * `SCHEMA_AHEAD_OF_DATABASE`. The second is an operator condition with its own
+ * log category and its own loud observable effect elsewhere; what it is not is a
+ * member's problem, and the member's dashboard is not where it belongs.
  *
  * There is no shared fallback string here on purpose. This project has a
  * recorded precedent for the opposite (`.planning/codebase/CONCERNS.md`: the
@@ -127,6 +135,51 @@ type MasterFlag =
  * still observable, only less precisely named.
  */
 const ZERO_MASTERS_SQLSTATE = "RS001";
+
+/**
+ * The codes that mean **this deploy is ahead of its database**, and nothing
+ * else.
+ *
+ * ── The window this closes, which is not hypothetical ────────────────────────
+ *
+ * The five migrations of phase 43 are applied BY HAND by the owner; pushing this
+ * branch deploys the CODE automatically. The gap between the two operations is a
+ * real interval on a real clock, and inside it `reconcile_master` does not exist
+ * in the database this build is talking to. Before this constant, every member's
+ * sign-in inside that window came back `?master=unavailable` and drew the amber
+ * banner on `/dashboard` — a fault notice, addressed to 150 people who cannot
+ * act on it, about an account that is not theirs, saying in as many words *"if
+ * you are not that person, there is nothing for you to do"*.
+ *
+ * That is not a degradation, it is a defect with a wide audience. A deployment
+ * that is ahead of its schema is an OPERATOR condition, and the person who can
+ * end it is the one holding the migration queue.
+ *
+ *   PGRST202  PostgREST: the function is not in the schema cache — the label
+ *             this project will actually meet, because the JS client speaks to
+ *             PostgREST and not to Postgres.
+ *   42883     PostgreSQL `undefined_function`, if the SQLSTATE reaches the
+ *             client instead.
+ *   42P01     PostgreSQL `undefined_relation` — the same statement about a table
+ *             the function reads, for a half-applied queue.
+ *
+ * All three are recognised rather than only the first, for the reason 43-09 gave
+ * about `P0002`: which label survives PostgREST is an ASSUMPTION here and not a
+ * measurement, and recognising three costs nothing while recognising one would
+ * leave the banner drawn on the label that actually arrives.
+ *
+ * ── WHY THIS IS NOT THE START OF DEFENSIVE ERROR-SWALLOWING ──────────────────
+ *
+ * `meta-gates.md` forbids collapsing distinct causes into one silence, and this
+ * set exists to do the opposite of that. Everything OUTSIDE it keeps the banner
+ * and its flag: `refused` (the zero-master guard aborted), `unavailable` (the
+ * call failed for a reason nobody has named), and the four outcome flags. The
+ * three codes here are the one cause that is (a) certain to be transient,
+ * (b) certain to affect every member equally, and (c) not actionable by any of
+ * them. They are separated OUT of `unavailable`, not folded INTO it, and they
+ * carry their own log category so the two are never one line in a log either.
+ */
+const SCHEMA_AHEAD_OF_DATABASE = new Set(["PGRST202", "42883", "42P01"]);
 
 /**
  * Reconcile who holds the master role against the deployment environment.
@@ -196,6 +249,30 @@ async function reconcileMaster(): Promise<MasterFlag | null> {
       code?: string | null;
       message?: string | null;
     };
+
+    // The deploy is ahead of its database. A NO-OP, with its OWN category — and
+    // deliberately no flag, so no member is shown a fault they are not the
+    // audience for and cannot end. See `SCHEMA_AHEAD_OF_DATABASE` above.
+    //
+    // The honest limit, said rather than implied: this repository has no error
+    // tracking (`meta-gates.md`, verified 2026-08-05), so this log line reaches
+    // nobody on its own. It does not have to. The state it describes is ALREADY
+    // observable to the only person who can act on it, loudly and by a different
+    // route: until the queue is applied, every act on `/admin/members` answers
+    // `write_failed` with its own notice, because `record_membership_act` is
+    // missing from the same database — and `/admin/members/register` is empty.
+    // The operator meets the failure the first time they try to do their job.
+    // What this branch removes is the audience that could do nothing about it.
+    if (code && SCHEMA_AHEAD_OF_DATABASE.has(code)) {
+      console.error(
+        `[auth.reconcile_master.schema_absent] reconcile_master is not in this ` +
+          `database — code=${code}. The deploy is ahead of its migration queue: ` +
+          `apply the phase 43 migrations. Nobody was promoted, nobody was ` +
+          `demoted, and no member was shown a notice.`
+      );
+      return null;
+    }
+
     console.error(
       `[auth.reconcile_master] refused code=${code ?? "none"} ${message ?? ""}`
     );
@@ -304,12 +381,16 @@ export async function GET(request: Request) {
         destination.searchParams.set("link", "refused");
       }
       // The reconciliation's failure is observable in the same shape, with one
-      // value per cause. Its honest limit is identical to `?link=refused`'s and
-      // to the middleware's `?access=unavailable`: **nothing renders it today**
-      // (WR-04, deferred). The URL itself is the observable effect — which is
-      // more than a `console.error` in a product with no error tracking, and
-      // less than a notice. Rendering it belongs to whichever plan next touches
-      // `/dashboard`.
+      // value per cause.
+      //
+      // A note this file carried is now WRONG and is corrected rather than left
+      // to mislead: it said *"nothing renders it today"*. It does.
+      // `dashboard/page.tsx:317-335` draws an amber banner on the PRESENCE of
+      // this parameter, and has since it was introduced. That is precisely why
+      // `reconcileMaster` no longer returns a flag when the function is simply
+      // absent from the database (WR-05): a flag set here is a banner shown to
+      // whoever just signed in, and during the window between deploying this
+      // build and applying its migrations that is every member, every login.
       if (masterFlag) {
         destination.searchParams.set("master", masterFlag);
       }
