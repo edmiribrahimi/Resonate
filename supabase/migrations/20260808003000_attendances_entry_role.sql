@@ -63,6 +63,21 @@
 -- future row that skipped the write claim to have been an ordinary member,
 -- which is the fabrication above with an automatic author.
 --
+-- THE THREE WAYS A NULL GETS HERE, since a row written after this migration can
+-- carry one too and the sentence above would otherwise read as if it could not:
+--
+--   1. the row predates this column — the paragraph above;
+--   2. a queued offline sync arrived carrying no role label at all. Plan 43-13
+--      makes the device send one; until it lands, every membership entry taken
+--      with the radio off syncs without a marker;
+--   3. a queued sync carried a label outside the closed role set. The door
+--      route writes NULL and ADMITS the person rather than refusing an entry
+--      over a report field.
+--
+-- All three are the SAME meaning — *not known at the door* — and none of them
+-- is *was an ordinary member*. There is exactly one reading of a NULL in this
+-- column and it is `unknown`.
+--
 -- =============================================================================
 -- DECISION 2 — no foreign key, and no join: evidence, not a pointer
 -- =============================================================================
