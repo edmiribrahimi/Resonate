@@ -20,6 +20,22 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // ── The flags that land HERE, and why they are read in one place ────────────
+  //
+  // `/dashboard` is where several degraded paths deposit the person, each
+  // carrying its reason in the URL. A flag that nothing renders is a **silent
+  // failure with a URL**: the person is bounced, the reason is right there in
+  // the address bar, and the screen says nothing. In a product with no error
+  // tracking that is the recorded newsletter defect wearing a query string —
+  // and worse than the newsletter's, because here the diagnosis already exists
+  // and is simply not drawn.
+  //
+  // So they are read together, drawn together, and each keeps its own sentence.
+  // No two collapse.
+  const params = await searchParams;
+  const readParam = (value: string | string[] | undefined) =>
+    typeof value === "string" ? value : null;
+
   // WR-04. `?access=unavailable` is set by `bounceToDashboard()` in
   // `src/lib/supabase/middleware.ts` when — and only when — the capability
   // lookup itself failed. It is NOT a refusal: a refusal bounces here with no
@@ -27,8 +43,45 @@ export default async function DashboardPage({
   // recorded newsletter defect collapsed a network fault, a missing key and an
   // already-subscribed address into one "Qualcosa è andato storto" and made all
   // three undebuggable for the user and for whoever maintains it.
-  const accessUnavailable =
-    (await searchParams).access === "unavailable";
+  //
+  // Contrary to a note carried forward from two other plans, this one **is**
+  // rendered, and has been since it was introduced — the banner is below. WR-04
+  // is closed on this surface.
+  const accessUnavailable = readParam(params.access) === "unavailable";
+
+  // `?link=refused` is set by `src/app/api/auth/callback/route.ts` (plan 43-04)
+  // when the `next` target of a sign-in link was not on its allow-list and the
+  // default was substituted. It always lands here, because the default IS this
+  // page.
+  //
+  // It matters more than it looks. The person followed a link that promised to
+  // take them somewhere — most often the page where a new account sets its
+  // password — and arrived at a dashboard instead. Without this notice the only
+  // thing they can conclude is that the link did not work, which is wrong: the
+  // link worked, and it is the destination that was refused. Somebody who has
+  // just been given an account and cannot find the password field will ask for
+  // a second invitation, and the second one will do exactly the same thing.
+  const linkRefused = readParam(params.link) === "refused";
+
+  // `?master=` is set by the auth callback when reconciling the configured
+  // master account did not go as expected at sign-in (plan 43-12).
+  //
+  // ── Why this one is drawn by PRESENCE and prints its raw value ─────────────
+  //
+  // The other two are matched against a value read from the code that sets it.
+  // This one is not: the emitting file belongs to another plan running in
+  // parallel and its value vocabulary was not readable from here. Inventing the
+  // values would be worse than not handling the flag at all — a renderer keyed
+  // on guessed strings stays mute AND looks handled, so the next reader stops
+  // looking.
+  //
+  // So the CATEGORY is named, which is known, and the exact value is printed
+  // verbatim, which is honest. It is the same rule this phase applies to an
+  // unrecognised failure detail on the members surface: name the category, show
+  // the word the server used, never invent a sentence for it. When 43-12's
+  // vocabulary is on record, this gains one sentence per value — and until then
+  // the flag is visible instead of mute.
+  const masterFlag = readParam(params.master);
 
   const supabase = await createClient();
   const {
@@ -176,18 +229,28 @@ export default async function DashboardPage({
   const { role, status } = await getAccessContext();
 
   // Both expressions KEEP THEIR FORM, deliberately. Neither redirects and
-  // neither narrows a query: `isStaff` draws a shortcut block and
+  // neither narrows a query: the first draws a shortcut block and
   // `isPendingOrRejected` draws a notice — they decide what this page RENDERS,
   // which makes them presentation under this phase's contract.
   //
-  // `isStaff` looks like an obvious candidate for the staff-manage capability
-  // question, and leaving it alone is the correct call: it gates a NAVIGATION
-  // AFFORDANCE, and
+  // ── This variable used to be called `isStaff`, and the name had become a lie
+  //
+  // The predicate is CORRECT and must not move. What broke is only its name:
+  // phase 43 adds a fourth role literally called `staff`, and a variable called
+  // `isStaff` that evaluates to **false** for the `staff` role is an invitation
+  // to a future reader to "fix" it — which would hand a `staff` account the
+  // management section, an affordance the access model refuses it. Measured in
+  // this phase, cell by cell: `staff` holds nothing a `member` does not, and it
+  // does not hold `door.operate`, `organizer.access`, `admin.access` or
+  // `staff.manage`. So the correct reading of this line is *"may this account
+  // reach the management tools"*, and it is now named that.
+  //
+  // Renaming rather than converting: this gates a NAVIGATION AFFORDANCE, and
   // phase 34 (STAFF-03 — "a navigation entry appears only where the matching
   // server-side check also passes") rewrites that whole family at once against
   // four roles. Converting one member of the family here means paying for the
   // redesign twice, and the route is already gated upstream.
-  const isStaff = role === "master" || role === "organizer";
+  const canReachManagementTools = role === "master" || role === "organizer";
   const isPendingOrRejected = status === "pending" || status === "rejected";
 
   return (
@@ -228,6 +291,46 @@ export default async function DashboardPage({
               This is a temporary problem on our side, not a decision about your
               account. Nothing has changed about what you have access to. Please
               try again in a moment.
+            </p>
+          </div>
+        )}
+
+        {linkRefused && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-200">
+              Your link worked — but it could not send you where it said
+            </p>
+            <p className="mt-1 text-sm text-amber-100/80">
+              You are signed in, and nothing is wrong with your account. The
+              page the link pointed at was not one we allow it to open, so you
+              were brought here instead. If you were opening an invitation in
+              order to set a password, ask whoever invited you to send it again
+              rather than reusing this one — a second copy of the same link will
+              land in the same place.
+            </p>
+          </div>
+        )}
+
+        {masterFlag && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-200">
+              A check on the owner account did not complete at sign-in
+            </p>
+            <p className="mt-1 text-sm text-amber-100/80">
+              You are signed in and your own access is unaffected. This concerns
+              the account that holds the top-level role, and it is shown rather
+              than logged because nothing in this product would tell anybody
+              otherwise. If you are not that person, there is nothing for you to
+              do; if you are, this is worth looking at before the next night.
+            </p>
+            <p className="mt-2 break-words font-mono text-xs text-amber-100/60">
+              {masterFlag}
             </p>
           </div>
         )}
@@ -404,8 +507,9 @@ export default async function DashboardPage({
               </div>
             </div>
 
-            {/* Management Tools — staff only */}
-            {isStaff && (
+            {/* Management Tools — master and organizer only. Deliberately NOT
+                the `staff` role: see the note beside the predicate above. */}
+            {canReachManagementTools && (
               <ManagementSection role={role as "master" | "organizer"} />
             )}
           </>

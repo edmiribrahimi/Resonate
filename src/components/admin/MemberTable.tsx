@@ -13,36 +13,47 @@ import {
 } from "@/app/(admin)/admin/members/actions";
 import type {
   BulkActData,
-  MemberActFailure,
   MemberActResult,
 } from "@/app/(admin)/admin/members/actions";
+import MemberActionNotice, {
+  type MemberNoticeKind,
+} from "@/app/(admin)/admin/members/MemberActionNotice";
 
 /**
- * One notice per cause — PROVISIONAL, and owned by plan 43-14.
+ * The notice copy plan 43-09 left here, marked provisional and assigned to this
+ * plan, now lives in `admin/members/MemberActionNotice.tsx` — one component,
+ * one notice per cause, refined by the action's `detail` where the detail means
+ * something different.
  *
- * Plan 43-09 changed the eight member acts from throwing to returning a tagged
- * result, which made every `catch` in this file unreachable: without the lines
- * below a refused act would have drawn *nothing at all*, which is the silent
- * failure `meta-gates.md` forbids and, worse, the one that reads as success.
- * So this map is the repair that keeps the change honest, not an interface
- * decision — 43-14 owns the wording, the placement and the styling.
+ * Nothing in this file reads a caught error's message property. Next redacts a
+ * thrown Server Action error in a production build, so a surface that branched
+ * on a message would work in `next dev` and stop working in the deployment
+ * where it matters; the category therefore travels as a VALUE. The one case
+ * where no value exists — the action never returned at all — has its own tag,
+ * `transport_unavailable`, and its own sentence.
  *
- * The rule the six share: a failure is never drawn as "nothing happened", and
- * no two causes collapse into one sentence. The recorded precedent being
- * avoided is the newsletter form's "Qualcosa è andato storto"
- * (`.planning/codebase/CONCERNS.md`).
+ * That absence is asserted by a grep, which is why the property is described
+ * here rather than written out: a check that counts its own explanation asserts
+ * nothing. Same trade, and the same reason, as `admin/members/actions.ts`.
  */
-const FAILURE_NOTICE: Record<MemberActFailure, string> = {
-  capabilities_unavailable:
-    "Permission check failed — nothing was attempted. This is a fault, not a refusal: try again, and report it if it persists.",
-  forbidden: "You do not have permission to perform this action.",
-  // The sentence written in plan 43-09 for the day the constraint of 43-06
-  // fires. It names WHERE the refusal came from on purpose.
-  constraint_refused:
-    "This account holds a staff role, and a staff role must be approved — the write was refused by the database, not by this screen.",
-  subject_not_found: "This account no longer exists. Reload the list.",
-  write_failed: "The write failed. Nothing was changed.",
-  nothing_to_do: "Nothing to do — the request asked for no change.",
+type ActionNotice = { kind: MemberNoticeKind; detail?: string };
+
+/**
+ * What a batch actually did, as opposed to what it was asked to do.
+ *
+ * `requested` is kept apart from `succeeded` on purpose and is only ever a
+ * denominator. The shape this replaces reported `count: memberIds.length` — a
+ * receipt written from the input, which would have said "12 approved" whatever
+ * the database did with the twelve.
+ */
+type BulkResult = {
+  label: string;
+  requested: number;
+  succeeded: number;
+  failed: number;
+  failures: { subjectId: string; subject: string; kind: MemberNoticeKind }[];
+  /** Set when the batch was refused as a whole, before any subject was touched. */
+  batchNotice?: ActionNotice;
 };
 
 interface MemberRow {
@@ -76,18 +87,35 @@ function RoleBadge({ role }: { role: UserRole }) {
   // true of a mapped type, which TypeScript checks for exhaustiveness. So the
   // count is one, not zero, and it was measured rather than predicted.
   //
-  // The entry below is added by plan 43-05 because `npm run build` is this
-  // repository's only automatic gate (`CLAUDE.md` Guardrail 1) and leaving it
-  // red would block the deploy of every later plan in the phase. The COLOUR is
-  // provisional: zinc, deliberately the same neutral as `member`, because
-  // `staff` grants nothing a member lacks (D-14) and a distinct colour would
-  // suggest a power the role does not have. Plan 43-14 owns the interface and
-  // may choose otherwise — that is an interface decision, and this is only the
-  // repair that keeps the build honest.
+  // ── The `staff` appearance, decided here rather than left provisional ──────
+  //
+  // Plan 43-05 added the entry to keep the build green and left the COLOUR
+  // provisional — zinc, byte-identical to `member` — declaring the interface
+  // decision this plan's. Both halves of its reasoning are kept, and they pull
+  // in opposite directions:
+  //
+  //   * `staff` must NOT borrow the colour vocabulary of power. Measured cell
+  //     by cell in plan 43-08 across 21 tables × 3 verbs: `staff` grants
+  //     **nothing** a `member` does not already have, and it holds no
+  //     `door.operate` row. Purple and blue say "this account can do more";
+  //     for `staff` that would be a lie the interface tells before anybody
+  //     reads a word.
+  //   * `staff` must still be FINDABLE at a glance. D-13's seat cost is only
+  //     visible if a staff row can be picked out of a list, and a badge that
+  //     is pixel-for-pixel a `member` badge makes the eye do work the surface
+  //     should be doing.
+  //
+  // So: the same neutral family, and a **dashed** border instead of a solid
+  // one. Dashed reads as conditional rather than as elevated, which is exactly
+  // what the role is — the permanent half is free entry through the membership
+  // card, and the work permissions come from the per-night assignment and
+  // expire with the night (`ACCESS-MODEL-DECISIONS.md` §§2-3). The legend
+  // beside the counts says this in words, because a border style is not an
+  // explanation.
   const colors: Record<UserRole, string> = {
     master: "bg-purple-500/20 text-purple-400 border-purple-500/30",
     organizer: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    staff: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+    staff: "bg-zinc-500/10 text-zinc-300 border-zinc-400/60 border-dashed",
     member: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
   };
 
@@ -133,18 +161,35 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-// Action button with loading state
+/**
+ * Action button with loading state.
+ *
+ * ── Two defects fixed here, both of them silent ───────────────────────────────
+ *
+ * `onClick` used to be typed `() => void` while every call site passed
+ * `() => handleAction(...)`, which is `async`. So the returned promise was
+ * dropped: the `startTransition` finished before the act had begun, the spinner
+ * flashed for a frame and the button re-enabled itself while a write was still
+ * in flight — which invites a second click on an act that is already running.
+ * The type is now `() => Promise<void>` and the call is **awaited** inside the
+ * transition, so the pending state is the real one.
+ *
+ * The same dropped promise also made this component's own `try/catch` dead
+ * code — a rejection could never reach it — and with it the local error line
+ * that used to render the caught error's message. Both are gone: the parent
+ * owns the notice, because a refusal needs more room than a cell and because
+ * that message is redacted in a production build.
+ */
 function ActionButton({
   onClick,
   label,
   variant,
 }: {
-  onClick: () => void;
+  onClick: () => Promise<void>;
   label: string;
   variant: "promote" | "demote" | "deactivate" | "reactivate" | "approve" | "reject";
 }) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const variantStyles: Record<string, string> = {
     promote: "border-blue-500/40 text-blue-400 hover:bg-blue-500/10",
@@ -156,13 +201,11 @@ function ActionButton({
   };
 
   const handleClick = () => {
-    setError(null);
+    // Awaited: see the note above. `handleAction` already reports every outcome
+    // through the parent's notice and never rejects, so there is deliberately
+    // no `catch` here to swallow one.
     startTransition(async () => {
-      try {
-        onClick();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Action failed");
-      }
+      await onClick();
     });
   };
 
@@ -200,9 +243,6 @@ function ActionButton({
           label
         )}
       </button>
-      {error && (
-        <span className="mt-1 text-xs text-red-400">{error}</span>
-      )}
     </div>
   );
 }
@@ -217,14 +257,19 @@ function MemberActions({
   currentUserId: string;
   callerRole: UserRole;
 }) {
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ActionNotice | null>(null);
 
   // Don't show actions for the user's own row
   if (member.id === currentUserId) {
     return <span className="text-xs text-muted">--</span>;
   }
 
-  // Don't show role actions for other masters (shouldn't exist, but defense)
+  // Don't show role actions for other masters (shouldn't exist, but defense).
+  //
+  // Hiding is NOT refusing, and the server knows it: `updateMemberRole` reads
+  // the subject's current role and returns `forbidden` / `subject_is_master`
+  // for one, added by plan 43-09 when the gate widened to organizers. This
+  // branch is the affordance; that check is the boundary.
   if (member.role === "master") {
     return <span className="text-xs text-muted">--</span>;
   }
@@ -232,65 +277,115 @@ function MemberActions({
   const handleAction = async (
     action: () => Promise<MemberActResult<unknown>>
   ) => {
-    setError(null);
+    setNotice(null);
     try {
       const result = await action();
-      if (!result.ok) setError(FAILURE_NOTICE[result.failure]);
-    } catch (e) {
-      // Still here: a Server Action can fail before its body runs (a network
-      // fault, a redacted framework error). The tagged result covers the
-      // failures the action itself can name; this covers the ones it cannot.
-      setError(e instanceof Error ? e.message : "Action failed");
+      if (!result.ok) setNotice({ kind: result.failure, detail: result.detail });
+    } catch {
+      // Still reachable, and the only case with no tag to read: a Server Action
+      // can fail before its body runs — a lost connection, a framework error
+      // Next has already redacted. The caught value is deliberately not
+      // inspected: its message is redacted in a production build, so reading it
+      // would produce a sentence that is informative in `next dev` and useless
+      // where it matters.
+      setNotice({ kind: "transport_unavailable" });
     }
   };
 
-  // Organizer can only approve/reject pending members
-  if (callerRole === "organizer") {
-    if (member.status !== "pending") {
-      return <span className="text-xs text-muted">--</span>;
-    }
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <ActionButton
-          onClick={() => handleAction(() => approveMember(member.id))}
-          label="Approve"
-          variant="approve"
-        />
-        <ActionButton
-          onClick={() => handleAction(() => rejectMember(member.id))}
-          label="Reject"
-          variant="reject"
-        />
-        {error && (
-          <span className="w-full text-xs text-red-400">{error}</span>
-        )}
-      </div>
-    );
+  const changeRole = (to: "organizer" | "staff" | "member") => () =>
+    handleAction(() => updateMemberRole(member.id, to));
+
+  // Who may do what, stated once. Both a master and an organizer hold
+  // `staff.manage`, so both may approve, reject and change a role (D-21). Only
+  // the master holds `master.manage`, so only the master may withdraw an access
+  // already granted — plan 43-09 widened `updateMemberRole` alone and left
+  // `deactivateMember` / `reactivateMember` where they were, deliberately.
+  //
+  // This renders what is actually possible instead of what the widened union
+  // suggests: before this plan an organizer saw approve and reject and nothing
+  // else, so ACCT-01 — *an organizer may promote a staff member to organizer* —
+  // had no control anywhere on the surface.
+  const canWithdrawAccess = callerRole === "master";
+
+  // Role changes are offered on APPROVED rows only, and that is a decision
+  // rather than an oversight. Granting `staff` or `organizer` writes the role
+  // and `approved` in one statement (43-09), so offering it on a `pending` row
+  // would approve somebody through a control labelled "promote" — the register
+  // would then hold `promoted` where the history needs `approved`.
+  // `community-membership.md`, gate *nessuna corsia grigia*: every way in that
+  // skips the approval path is an exception, and an exception must not be the
+  // convenient button.
+  const canChangeRole = member.status === "approved";
+
+  // An organizer looking at a deactivated account has nothing to offer: role
+  // changes need an approved row and reactivation is the master's. Drawing an
+  // empty cell there would be indistinguishable from a cell that failed to
+  // render, so it draws the same "--" the other two suppressed cases draw.
+  const hasAnyAction =
+    canChangeRole ||
+    (canWithdrawAccess &&
+      (member.status === "approved" || member.status === "rejected")) ||
+    member.status === "pending";
+
+  if (!hasAnyAction && !notice) {
+    return <span className="text-xs text-muted">--</span>;
   }
 
-  // Master sees all actions
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {/* Promote: member + approved -> organizer */}
-      {member.role === "member" && member.status === "approved" && (
-        <ActionButton
-          onClick={() => handleAction(() => updateMemberRole(member.id, "organizer"))}
-          label="Promote"
-          variant="promote"
-        />
+      {/* member -> staff, or member -> organizer */}
+      {canChangeRole && member.role === "member" && (
+        <>
+          <ActionButton
+            onClick={changeRole("staff")}
+            label="Make staff"
+            variant="promote"
+          />
+          <ActionButton
+            onClick={changeRole("organizer")}
+            label="Make organizer"
+            variant="promote"
+          />
+        </>
       )}
 
-      {/* Demote: organizer -> member */}
-      {member.role === "organizer" && (
-        <ActionButton
-          onClick={() => handleAction(() => updateMemberRole(member.id, "member"))}
-          label="Demote"
-          variant="demote"
-        />
+      {/* staff -> organizer, or staff -> member. Taking `staff` away is what
+          releases the permanent free seat D-13 counts. */}
+      {canChangeRole && member.role === "staff" && (
+        <>
+          <ActionButton
+            onClick={changeRole("organizer")}
+            label="Make organizer"
+            variant="promote"
+          />
+          <ActionButton
+            onClick={changeRole("member")}
+            label="Remove staff"
+            variant="demote"
+          />
+        </>
       )}
 
-      {/* Deactivate: approved non-master -> rejected */}
-      {member.status === "approved" && (
+      {/* organizer -> staff, or organizer -> member. Two steps down and not
+          one, because they are different outcomes: the first keeps the free
+          entry, the second does not. */}
+      {canChangeRole && member.role === "organizer" && (
+        <>
+          <ActionButton
+            onClick={changeRole("staff")}
+            label="Make staff"
+            variant="demote"
+          />
+          <ActionButton
+            onClick={changeRole("member")}
+            label="Make member"
+            variant="demote"
+          />
+        </>
+      )}
+
+      {/* Deactivate: approved non-master -> rejected. Master only. */}
+      {canWithdrawAccess && member.status === "approved" && (
         <ActionButton
           onClick={() => handleAction(() => deactivateMember(member.id))}
           label="Deactivate"
@@ -298,8 +393,8 @@ function MemberActions({
         />
       )}
 
-      {/* Reactivate: rejected -> approved */}
-      {member.status === "rejected" && (
+      {/* Reactivate: rejected -> approved. Master only. */}
+      {canWithdrawAccess && member.status === "rejected" && (
         <ActionButton
           onClick={() => handleAction(() => reactivateMember(member.id))}
           label="Reactivate"
@@ -323,8 +418,14 @@ function MemberActions({
         </>
       )}
 
-      {error && (
-        <span className="w-full text-xs text-red-400">{error}</span>
+      {notice && (
+        <span className="w-full">
+          <MemberActionNotice
+            kind={notice.kind}
+            detail={notice.detail}
+            compact
+          />
+        </span>
       )}
     </div>
   );
@@ -370,7 +471,7 @@ export default function MemberTable({
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [bulkNotice, setBulkNotice] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
   const [, startTransition] = useTransition();
 
   // Compute referral counts from loaded data (no extra query needed)
@@ -402,6 +503,25 @@ export default function MemberTable({
   const organizerCount = members.filter((m) => m.role === "organizer").length;
   const pendingCount = members.filter((m) => m.status === "pending").length;
 
+  // ── The count D-13 exists to make readable ──────────────────────────────────
+  //
+  // A filter alone does not satisfy it. `ACCESS-MODEL-DECISIONS.md` §8: staff
+  // accounts do not expire, so each one is a **permanent free entry** against a
+  // venue that holds 150–300 people — *"after two seasons that is a standing
+  // block of seats given away months in advance rather than that night"*. A
+  // number that has to be assembled by hand is a number nobody assembles, and
+  // this is the surface where the accounts are created.
+  //
+  // Counted over `members`, never over `filtered`: a total that moved with the
+  // search box would answer a different question from the one it appears to
+  // answer, and would read as a fall in the seat cost every time somebody typed
+  // a name.
+  //
+  // Organizers are counted separately and are NOT added in. They also enter
+  // free, but they are a different decision with a different reason, and one
+  // combined "free entries" figure would hide which of the two is growing.
+  const staffCount = members.filter((m) => m.role === "staff").length;
+
   const isPendingTab = statusTab === "pending";
 
   // Bulk selection helpers
@@ -428,51 +548,80 @@ export default function MemberTable({
     });
   };
 
+  // How a refused subject is named on screen.
+  //
+  // The name, or the address the table already shows beside it. **Never the
+  // membership code**: it is the door's only credential
+  // (`api/membership/list/route.ts`), it is not otherwise rendered here, and a
+  // batch report is exactly the kind of thing that ends up in a screenshot.
+  // Nothing in this report shows a value the row above it does not already.
+  const subjectLabel = (subjectId: string) => {
+    const row = members.find((m) => m.id === subjectId);
+    if (!row) return "an account no longer in this list";
+    return row.full_name || row.email;
+  };
+
   // A batch used to clear the selection and say nothing, whatever happened.
-  // It now reports what actually happened, per subject — plan 43-09.
+  // Plan 43-09 made the action report per subject; this renders it that way —
+  // a batch where one subject failed says WHICH one, and the count shown is the
+  // measured one and never `ids.length`.
   const handleBulk = (
     label: string,
     run: (ids: string[]) => Promise<MemberActResult<BulkActData>>
   ) => {
     const ids = Array.from(selectedIds);
-    setBulkNotice(null);
+    setBulkResult(null);
     startTransition(async () => {
+      const base = { label, requested: ids.length };
       try {
         const result = await run(ids);
+
+        // The whole batch was refused before any subject was touched — a
+        // capability fault, a refusal, or an empty selection. It is a different
+        // event from "some subjects failed" and it gets the cause's own notice
+        // rather than a line in a per-subject list.
         if (!result.ok) {
-          setBulkNotice(`${label}: ${FAILURE_NOTICE[result.failure]}`);
+          setBulkResult({
+            ...base,
+            succeeded: 0,
+            failed: 0,
+            failures: [],
+            batchNotice: { kind: result.failure, detail: result.detail },
+          });
           return;
         }
 
         const { succeeded, failed, outcomes } = result.data;
 
-        if (failed === 0) {
-          setBulkNotice(`${label}: ${succeeded} of ${ids.length} recorded.`);
-          setSelectedIds(new Set());
-          return;
-        }
+        const failures = outcomes
+          .filter((o) => !o.ok)
+          .map((o) => ({
+            subjectId: o.subjectId,
+            subject: subjectLabel(o.subjectId),
+            // A per-subject outcome carries the cause and no detail; the notice
+            // falls back to the cause's own sentence, which is the honest
+            // answer rather than a borrowed one.
+            kind: (o.failure ?? "write_failed") as MemberNoticeKind,
+          }));
 
-        // A partly-failed batch reports BOTH numbers and every distinct cause.
+        setBulkResult({ ...base, succeeded, failed, failures });
+
         // The refused subjects stay selected, so the retry is one click and not
-        // a re-hunt through the list.
-        const causes = Array.from(
-          new Set(
-            outcomes
-              .filter((o) => !o.ok && o.failure)
-              .map((o) => FAILURE_NOTICE[o.failure as MemberActFailure])
-          )
-        );
-        setBulkNotice(
-          `${label}: ${succeeded} of ${ids.length} recorded, ${failed} refused. ` +
-            causes.join(" ")
-        );
+        // a re-hunt through the list. On a clean batch the selection clears.
         setSelectedIds(
-          new Set(outcomes.filter((o) => !o.ok).map((o) => o.subjectId))
+          failed === 0 ? new Set() : new Set(failures.map((f) => f.subjectId))
         );
-      } catch (e) {
-        setBulkNotice(
-          `${label}: ${e instanceof Error ? e.message : "Action failed"}`
-        );
+      } catch {
+        // No tag to read: the action never returned. Whether anything was
+        // written is unknown from here, and the notice says exactly that
+        // instead of guessing in either direction.
+        setBulkResult({
+          ...base,
+          succeeded: 0,
+          failed: 0,
+          failures: [],
+          batchNotice: { kind: "transport_unavailable" },
+        });
       }
     });
   };
@@ -495,7 +644,7 @@ export default function MemberTable({
   return (
     <div>
       {/* Count summary */}
-      <div className="mb-6 flex flex-wrap gap-4 text-sm text-muted">
+      <div className="mb-2 flex flex-wrap gap-4 text-sm text-muted">
         <span>
           <span className="font-semibold text-foreground">{totalMembers}</span>{" "}
           members total
@@ -504,11 +653,45 @@ export default function MemberTable({
           <span className="font-semibold text-blue-400">{organizerCount}</span>{" "}
           organizers
         </span>
+        <button
+          type="button"
+          onClick={() => {
+            setRoleFilter("staff");
+            setStatusTab("all");
+          }}
+          className="underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+        >
+          <span className="font-semibold text-zinc-300">{staffCount}</span> staff
+        </button>
         <span>
           <span className="font-semibold text-yellow-400">{pendingCount}</span>{" "}
           pending
         </span>
       </div>
+
+      {/*
+        The legend, and it is not decoration.
+
+        A staff badge is drawn in the same neutral as a member badge with a
+        dashed border — near enough to say "this grants nothing extra", distinct
+        enough to be found in a list. A border style cannot say WHY, so this
+        sentence does, on the surface where staff accounts are created and where
+        the seat cost is decided.
+
+        `staff` grants exactly one thing (`ACCESS-MODEL-DECISIONS.md` §2), and
+        it is not a work permission: it was measured cell by cell in this phase
+        and it holds nothing a member does not. Whoever runs the door tonight
+        holds that from the night's own assignment, which expires with the
+        night — never from this column.
+      */}
+      <p className="mb-6 text-xs text-muted/80">
+        A <span className="font-medium text-zinc-300">staff</span> account can do
+        nothing a member cannot. What it holds is free entry to every night
+        through the membership card, permanently and without expiry — so each one
+        is a standing seat at a venue that holds 150–300 people. Working the door
+        or a gallery comes from the night&apos;s own assignment and ends with the
+        night.
+      </p>
 
       {/* Status tabs */}
       <div className="mb-4 flex flex-wrap gap-2">
@@ -549,9 +732,26 @@ export default function MemberTable({
             onChange={(e) => setRoleFilter(e.target.value)}
             className="rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
           >
+            {/*
+              Four options, in rank order.
+
+              The missing `staff` option was a real defect rather than an
+              omission of tidiness: a staff account could not be filtered for,
+              so the count D-13 exists to make visible had to be assembled by
+              eye. It was also invisible to `npm run build` — of twenty-one
+              role-enumeration sites in this repository exactly ONE produces a
+              compile error, because seventeen cast `role as UserRole` and a
+              cast stops the compiler looking (`43-RESEARCH.md` § G.1).
+
+              And this list is a convenience, not a ceiling. What a role change
+              may write is `WritableRole` in `admin/members/actions.ts`, held
+              again at runtime against the request body; adding `master` here
+              would add an option the server refuses, never a capability.
+            */}
             <option value="all">All roles</option>
             <option value="master">Master</option>
             <option value="organizer">Organizer</option>
+            <option value="staff">Staff</option>
             <option value="member">Member</option>
           </select>
           {/* Hide status dropdown when a specific status tab is active */}
@@ -599,8 +799,53 @@ export default function MemberTable({
       {/* The batch's own outcome. Rendered OUTSIDE the toolbar above, which
           disappears with the selection it clears — a notice inside it would be
           unmounted by the very success it was reporting. */}
-      {bulkNotice && (
-        <p className="mb-4 text-sm text-yellow-400">{bulkNotice}</p>
+      {bulkResult && (
+        <div className="mb-4 flex flex-col gap-2">
+          {bulkResult.batchNotice ? (
+            // Refused as a whole: nobody was touched. Its own notice, because
+            // "the batch was refused" and "two of nine subjects were refused"
+            // are different events with different next steps.
+            <MemberActionNotice
+              kind={bulkResult.batchNotice.kind}
+              detail={bulkResult.batchNotice.detail}
+              subject={bulkResult.label}
+            />
+          ) : (
+            <>
+              {/* Both numbers, always — and the first one is MEASURED from the
+                  outcomes, never taken from how many rows were selected. */}
+              <p
+                className={`text-sm ${
+                  bulkResult.failed > 0 ? "text-amber-200" : "text-foreground"
+                }`}
+              >
+                {bulkResult.label}:{" "}
+                <span className="font-semibold">{bulkResult.succeeded}</span> of{" "}
+                {bulkResult.requested} recorded
+                {bulkResult.failed > 0 ? (
+                  <>
+                    ,{" "}
+                    <span className="font-semibold">{bulkResult.failed}</span>{" "}
+                    refused. The refused rows are still selected.
+                  </>
+                ) : (
+                  "."
+                )}
+              </p>
+
+              {/* One line per refused subject, naming WHO. A caller told which
+                  one failed can act on it; a caller told "the batch failed" can
+                  only start again and hope. */}
+              {bulkResult.failures.map((f) => (
+                <MemberActionNotice
+                  key={f.subjectId}
+                  kind={f.kind}
+                  subject={f.subject}
+                />
+              ))}
+            </>
+          )}
+        </div>
       )}
 
       {/* Desktop table - hidden on small screens */}

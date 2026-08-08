@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
@@ -86,6 +87,28 @@ export default async function AdminMembersPage() {
       <AnimatedSection>
         <header className="px-6 pt-12 pb-6">
           <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
+          {/*
+            The way into the register.
+
+            D-11 records every act; without a way in, the recording is a table
+            nobody opens. `community-membership.md`, gate *chi decide è
+            tracciato*: the simplest path to let somebody in is the one that
+            must be made VISIBLE — and it is this page that holds both of them,
+            the create form and the approve buttons.
+
+            The link is drawn unconditionally, and the reasoning is the same as
+            the one written above the create form: this page already refused
+            anybody without `admin.access`, the register page re-asks for
+            `register.read` on its own, and what may actually be READ is decided
+            by `membership_acts_select_register_read`. A hidden link protects
+            nothing; a shown link that leads to a refusal costs a redirect.
+          */}
+          <Link
+            href="/admin/members/register"
+            className="mt-2 inline-block text-sm text-muted underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+          >
+            Membership acts &rarr;
+          </Link>
         </header>
       </AnimatedSection>
 
