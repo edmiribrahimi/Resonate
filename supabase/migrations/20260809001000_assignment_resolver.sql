@@ -9,8 +9,11 @@
 -- 2. private.has_capability(text, uuid) — re-issued with a SECOND ARM: the
 --    per-night assignment, read from `public.party_assignments`, and switched
 --    OFF when no night is named
+-- 3. public.my_access_context(uuid) — an OVERLOAD, not a change of signature:
+--    the same payload as the argument-less version, with the capabilities
+--    resolved ON THAT NIGHT
 --
--- Two changes, ONE transaction, and neither half stands alone:
+-- Three changes, ONE transaction, and no half stands alone:
 --
 --   * the keys without the arm are three catalogue rows nothing can ever
 --     satisfy — the only source that would answer `true` for them is the arm,
@@ -24,7 +27,12 @@
 --     nobody holds and every caller can ask for, while a grant row whose
 --     catalogue key did not land cannot exist at all
 --     (`private.role_capabilities.capability` references
---     `private.capabilities(key)`).
+--     `private.capabilities(key)`);
+--   * the arm without the overload is a per-night answer that only a policy can
+--     ask for. The data-access layer reaches this model through ONE exposed
+--     function, so without change 3 nothing outside a policy body can pose the
+--     question at all — and a guard that cannot ask falls back to the role,
+--     which is the shape the whole phase exists to replace.
 --
 -- So `BEGIN; ... COMMIT;` is not decoration here either.
 --
@@ -358,5 +366,131 @@ $$;
 -- `{public}`. For `anon`, `auth.uid()` is null, both arms find nothing, and the
 -- privilege buys a correct `false` rather than access.
 GRANT EXECUTE ON FUNCTION private.has_capability(text, uuid) TO authenticated, anon;
+
+-- =============================================================================
+-- 4. public.my_access_context(uuid) — the per-night question, exposed once
+-- =============================================================================
+--
+-- An OVERLOAD. The argument-less `public.my_access_context()` is left exactly as
+-- it stands (`20260808000000_access_context_user_id.sql`), with its two callers
+-- — `src/lib/supabase/middleware.ts:90` and `src/lib/capabilities/server.ts:202`
+-- — untouched. This file adds a SECOND function with the same name and a
+-- different argument list, which in Postgres is a second object.
+--
+-- ── WHY AN OVERLOAD AND NOT ONE FUNCTION WITH AN OPTIONAL ARGUMENT ──────────
+--
+-- The alternative was changing the existing function to take a defaulted
+-- `uuid`. The replace-in-place form cannot do that — Postgres refuses a
+-- signature change with `42P13` — so the existing function would have to be
+-- removed and re-created inside this transaction.
+--
+-- THAT IS THE ONE THING NOT TO DO HERE, and the reason is not stylistic. This
+-- queue is applied BY HAND, one row at a time (`35-HUMAN-UAT.md`). Removing and
+-- re-creating leaves a window in which the function does not exist — and if the
+-- transaction is interrupted in that window, the window does not close. The
+-- function it would leave missing is the one `src/lib/supabase/middleware.ts`
+-- calls on EVERY navigation, which means every scan, on a phone, on a bad
+-- network, in front of a queue. An overload cannot produce that state: until
+-- `COMMIT`, nothing that exists has been taken away.
+--
+-- (The removal statement is DESCRIBED and not written out, deliberately: the
+-- plan's check for this file asserts the file does not contain it, and a check
+-- whose only match is the sentence forbidding the thing is a check that gets
+-- ignored. Same choice `20260809000000_party_assignments.sql` made for the zone
+-- offsets and the update cascade.)
+--
+-- ── THE OBJECTION SOMEBODY WILL MAKE IN GOOD FAITH, AND ITS ANSWER ──────────
+--
+-- `20260807000000_capability_model.sql:231-237` refuses an exposed function that
+-- takes an identifier, and the reason it gives is measured rather than
+-- stylistic: a `has_capability(user_id, capability)` reachable over REST would
+-- be a free enumeration oracle, and **this repository has no rate limiting
+-- anywhere** (verified 2026-08-05). Normally the mitigation for an oracle is a
+-- limiter; there is none to add, so the SHAPE of the API is the mitigation.
+--
+-- `p_party_id` IS NOT THAT SHAPE. The rule forbids naming a SUBJECT — *whom
+-- shall I answer about* — and this argument names a CONTEXT — *in which night*.
+-- The function still answers about `auth.uid()` and about nobody else, because
+-- it is still not given any way to name anybody else: both arms of the resolver
+-- it calls are anchored on the caller's own id. A caller passing a night they
+-- have no assignment for learns exactly what they already knew — their own role
+-- capabilities — and a caller passing a night that does not exist learns the
+-- same. Nothing about any other person, and nothing about the night itself,
+-- crosses this boundary.
+--
+-- Without this paragraph somebody will refuse the function for the right rule
+-- and the wrong reason, and the phase will lose the only way its guards have to
+-- ask a per-night question.
+--
+-- ── THE PAYLOAD IS THE SAME PAYLOAD ─────────────────────────────────────────
+--
+-- The same four keys as the argument-less version — `capabilities`, `user_id`,
+-- `role`, `status` — in the same order, with no key added. The ONLY difference
+-- is that the capability list is resolved for `p_party_id`, which by the
+-- resolver's `OR` is the UNION of what the caller's role confers and what their
+-- live assignment on that night confers. A different set of keys here would make
+-- the two versions two payload shapes, and the layer that reads them would need
+-- to know which one it called.
+--
+-- `role` and `status` are carried for the reason stated at
+-- `…capability_model.sql:243-252` and re-stated at
+-- `20260808000000_access_context_user_id.sql`: they are values two client
+-- components still take as props, and their removal belongs to the phase that
+-- deletes that transport. **No new caller may branch on them.** Every new
+-- decision asks the capability array.
+
+CREATE OR REPLACE FUNCTION public.my_access_context(p_party_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  -- The capability list is DERIVED from the predicate — one call to
+  -- private.has_capability per catalogue row — and is deliberately NOT a second
+  -- copy of the profiles-to-grants join, nor a second copy of the assignment
+  -- lookup. Two implementations of one rule are two definitions, and two
+  -- definitions drift, which is the single thing CAP-01 forbids. The join and
+  -- the assignment arm exist once, in section 3 above, and this function asks
+  -- them questions.
+  select jsonb_build_object(
+    'capabilities', coalesce(
+      (
+        select jsonb_agg(c.key order by c.key)
+        from private.capabilities c
+        where private.has_capability(c.key, p_party_id)
+      ),
+      '[]'::jsonb
+    ),
+    'user_id', (select auth.uid()),
+    'role', (
+      select p.role from public.profiles p where p.id = (select auth.uid())
+    ),
+    'status', (
+      select p.status from public.profiles p where p.id = (select auth.uid())
+    )
+  );
+$$;
+
+-- The exposure boundary, written as two statements in this order and never
+-- assumed — and written FOR THE NEW SIGNATURE, which is the part that is easy to
+-- get wrong. `CREATE OR REPLACE` retains the ACL of the function it replaces,
+-- but this is not a replacement: it is a NEW object, and Postgres grants
+-- `EXECUTE` to `PUBLIC` by default on every new function. The argument-less
+-- version's REVOKE does not reach here. Without the first line below, this
+-- function would be live to an anonymous request at
+-- `/rest/v1/rpc/my_access_context`.
+REVOKE ALL ON FUNCTION public.my_access_context(uuid) FROM public, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.my_access_context(uuid) TO authenticated;
+
+COMMENT ON FUNCTION public.my_access_context(uuid) IS
+  'Phase 35: the per-night form of public.my_access_context(). Same four payload keys, with capabilities resolved for p_party_id '
+  '- the union of what the caller''s role confers and what their live, unrevoked, unexpired assignment on that night confers. '
+  'It is an OVERLOAD and not a signature change: the argument-less version is what the middleware calls on every navigation, '
+  'and removing it inside a hand-applied queue would leave a window in which it does not exist. '
+  'p_party_id names a CONTEXT, never a SUBJECT: the function still answers about auth.uid() and has no way to name anybody else, '
+  'which is why it does not become the enumeration oracle capability_model.sql:231-237 refuses. '
+  'EXECUTE is revoked from public, anon and authenticated, and then given to authenticated alone.';
 
 COMMIT;
