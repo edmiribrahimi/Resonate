@@ -7,14 +7,17 @@
  * and `organizer/pending` is precisely the pair where the two live definitions
  * of "organizer" disagree — P1 lets a pending organizer insert a ticket tier,
  * P3 forbids the same person a venue. Plan `32-03` measured the consequence:
- * seven of eleven personas are `absent` on production and 191 of 220 read cells
- * are vacuous. Production gives SCHEMA truth; only a container gives PERSONA
- * truth. Neither alone is a baseline, so this phase captures both.
+ * seven of the eleven personas of the day were `absent` on production and 191 of
+ * 220 read cells were vacuous. Plan 43-08 widened the grid to fourteen personas
+ * by adding `staff`, which production also does not hold — so the gap this file
+ * exists to close got wider, not narrower. Production gives SCHEMA truth; only a
+ * container gives PERSONA truth. Neither alone is a baseline, so this phase
+ * captures both.
  *
  * WHAT IT DOES. Starts `postgres:17.6` — production's exact major.minor, because
  * a baseline rendered by a different planner is a baseline of a different
  * database — applies the shim, the repository's base schema and all 33
- * migrations, seeds nine personas and at least two differently-owned rows in
+ * migrations, seeds twelve personas and at least two differently-owned rows in
  * every table, hands the result to the SAME capture functions
  * `scripts/rls-baseline.mjs` runs against production, and destroys the
  * container. Always destroys it, including on failure.

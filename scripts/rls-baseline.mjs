@@ -619,9 +619,9 @@ export async function captureB1(target, { phasePoint }) {
 // ── personas ───────────────────────────────────────────────────────────────
 
 /**
- * ── The eleven personas (phase decision D-11) ─────────────────────────────
+ * ── The fourteen personas (phase decision D-11, widened by plan 43-08) ─────
  *
- * The full 3×3 role × status grid, plus `authenticated/no-profile`, plus
+ * The full 4×3 role × status grid, plus `authenticated/no-profile`, plus
  * `anon`. The grid is the MINIMUM that can distinguish P1 from P3: they
  * disagree on exactly one pair, `organizer/pending`, who may insert a ticket
  * tier but not a venue. Drop a row of the grid and that asymmetry — the one
@@ -634,8 +634,43 @@ export async function captureB1(target, { phasePoint }) {
  *
  * A persona that does not exist on a target is recorded `absent`, never
  * omitted — an omitted row is indistinguishable from a row that agreed.
+ *
+ * ── WHY `'staff'` IS APPENDED AFTER `'member'`, AND NOT ANYWHERE ELSE ──────
+ *
+ * THE ORDER OF THESE TWO ARRAYS IS LOAD-BEARING. It is not a style choice and
+ * it is not alphabetical by accident of taste.
+ *
+ * `scripts/container/seed.mjs:208-230` assigns each seeded persona an id of the
+ * form `32000004-0000-4000-8000-<index padded>`, where `index` runs through the
+ * NESTED LOOP `for role of PERSONA_ROLES { for status of PERSONA_STATUSES }`.
+ * So index 1 — and therefore the LOWEST persona id in `public.profiles` — is
+ * `PERSONA_ROLES[0]/PERSONA_STATUSES[0]`.
+ *
+ * The write matrix's `update` probe targets exactly that row: `resolveProbeKeys`
+ * (`:1221-1231`) takes `min(pk)` and `buildProbeStatement` (`:1270-1271`) writes
+ * `where (pk) = '<key>'`. Since plan 43-06 the container restores
+ * `profiles_role_implies_approved` **NOT VALID**, and a NOT VALID CHECK refuses
+ * every update to an already-violating row — even on a column the predicate does
+ * not mention. If `min(id)` ever landed on a forbidden pair, every
+ * `profiles × update` cell would stop being an RLS verdict and start being a
+ * `23514`, and `rls-baseline-compare.mjs` would report them as changed cells
+ * with no visible cause. That was **eleven** cells before this plan and is
+ * **fourteen** after it.
+ *
+ * Which edits are safe, stated so the next person does not have to derive it:
+ *
+ *   - appending `'staff'` AFTER `'member'` — safe, index 1 stays
+ *     `master/approved`, a compliant pair. This is what was done.
+ *   - inserting `'staff'` BEFORE `'master'` — also safe, because
+ *     `staff/approved` complies with the rule too.
+ *   - reordering `PERSONA_STATUSES` — **NOT SAFE**. Move `'pending'` to the
+ *     front and index 1 becomes `master/pending`, which the rule forbids, and
+ *     the fourteen `profiles × update` cells flip.
+ *
+ * `seed.mjs:723-756` asserts this on every run rather than trusting the comment,
+ * because a comment is not a guard.
  */
-export const PERSONA_ROLES = ['master', 'organizer', 'member'];
+export const PERSONA_ROLES = ['master', 'organizer', 'member', 'staff'];
 export const PERSONA_STATUSES = ['approved', 'pending', 'rejected'];
 const PERSONA_ANON = 'anon';
 const PERSONA_NO_PROFILE = 'authenticated/no-profile';
@@ -654,10 +689,18 @@ export const PERSONA_LABELS = [
  * is no organizer and no non-approved row, which is precisely why plan 32-04
  * exists: only a seeded container can carry the other seven.
  *
- * The container is required to offer **all eleven**. That is the reason it
+ * The container is required to offer **all fourteen**. That is the reason it
  * exists: `organizer/pending` — the one pair where P1 and P3 disagree — cannot
  * be measured anywhere else, and a container that quietly failed to seed it
  * would produce a matrix indistinguishable from production's.
+ *
+ * **`production` is deliberately UNCHANGED by plan 43-08.** The `staff` role
+ * exists in a committed migration that has not been applied, so production holds
+ * no `staff` row and none of the three `staff/*` personas can resolve there.
+ * Adding one here would make every production capture exit 1 for a reason that
+ * is TRUE and is NOT a defect — the loudest possible way to teach the next
+ * reader that this list is noise. It gains a `staff` entry on the day a `staff`
+ * row genuinely exists in production, and not before.
  */
 const EXPECTED_PERSONAS = {
   production: [PERSONA_ANON, PERSONA_NO_PROFILE, 'master/approved', 'member/approved'],
@@ -677,7 +720,7 @@ export function assertUuid(value, what) {
 }
 
 /**
- * The nine role × status personas, resolved to the LOWEST id in each cell so
+ * The twelve role × status personas, resolved to the LOWEST id in each cell so
  * the choice is deterministic across runs.
  *
  * **The uuid is used and discarded: only the label reaches the artefact.**
@@ -685,11 +728,20 @@ export function assertUuid(value, what) {
  * 5) — a member's uuid is a member identifier, and publishing one is
  * irreversible. Every resolved uuid is registered with `redact()` so it cannot
  * reach an error message either.
+ *
+ * **THE ROLE LIST HERE IS A SECOND SITE, AND IT DOES NOT DERIVE FROM
+ * `PERSONA_ROLES`.** It is a SQL literal, so a role added to the array above and
+ * forgotten here is seeded, is counted in the grid, and is then silently skipped
+ * by `resolvePersonas` — the persona would come back `absent` on a target that
+ * actually holds it, which reads as "nothing to measure" instead of "the
+ * resolver has a typo". `'staff'` was added to BOTH in plan 43-08. The literal
+ * is not interpolated on purpose: this string is embedded in SQL, and the file's
+ * rule is that nothing reaches a statement without having been written down.
  */
 const PERSONA_SQL = `
 select role, status, (array_agg(id order by id))[1]::text as subject
   from public.profiles
- where role in ('master','organizer','member')
+ where role in ('master','organizer','member','staff')
    and status in ('approved','pending','rejected')
  group by role, status
 `;
@@ -870,7 +922,7 @@ async function readRowCounts(target, tables) {
  * artefact instead of taken on trust.
  *
  * Reads cannot write, so all 20 tables are batched into ONE transaction per
- * persona and the request count stays at eleven. The one-probe-per-request
+ * persona and the request count stays at one per persona. The one-probe-per-request
  * rule applies to B3, where a statement could write.
  */
 function buildB2Body(tables) {
