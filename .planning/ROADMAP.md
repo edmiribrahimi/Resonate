@@ -270,8 +270,8 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 43-08-PLAN.md — `staff` joins the write matrix: the deliberate re-baseline, and staff proved equal to member cell for cell
-- [ ] 43-09-PLAN.md — the six acts write the register in one transaction, and a refused write becomes a value
+- [x] 43-08-PLAN.md — `staff` joins the write matrix: the deliberate re-baseline, and staff proved equal to member cell for cell
+- [x] 43-09-PLAN.md — the six acts write the register in one transaction, and a refused write becomes a value
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 7/15 | In Progress|  |
+| 43. Role Model & Account Creation | 9/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
