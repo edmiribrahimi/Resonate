@@ -6,12 +6,14 @@ import {
   DOOR_UNRESOLVED_STATUS,
   requireDoorOperator,
 } from "@/lib/door/require-operator";
+import { ROLES } from "@/lib/rbac/roles";
 import type {
   DoorNotValidReason,
   DoorScanOutcomeKind,
   DoorScanSource,
   DoorSubjectType,
 } from "@/lib/door/outcome";
+import type { UserRole } from "@/types/database";
 
 /** The subject of every row this route writes. FIX-13: a thing, never a person. */
 const SUBJECT_TYPE = "membership" satisfies DoorSubjectType;
@@ -40,6 +42,49 @@ function parseSource(value: unknown): DoorScanSource {
 /** Absent means `"unknown"`, never a rejection — see `parseIsoInstant`. */
 function parseDeviceId(value: unknown): string {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : "unknown";
+}
+
+/**
+ * The closed role set, at runtime.
+ *
+ * `UserRole` is a type and disappears at build time, so a value arriving from a
+ * phone cannot be checked against it. `ROLES` (`src/lib/rbac/roles.ts`) is its
+ * runtime mirror, and this line is what binds the two: the annotation is an
+ * assignment and **not a cast**, so a value in `ROLES` that the union does not
+ * name is a `npm run build` error. The mirror is ASYMMETRIC in the same way
+ * `acts.ts` describes its own — the union gaining a fifth role while `ROLES`
+ * does not is *not* caught here, and would show up as a real role written as
+ * NULL by the branch below. That direction is the safe one: the entry is still
+ * admitted and the marker reads *unknown*, never *member*.
+ *
+ * Deriving the set instead of re-typing four literals is the whole point:
+ * `20260808003000_attendances_entry_role.sql` refuses a CHECK precisely so this
+ * repository stops at three enumerations of the role list, and a fourth written
+ * by hand here would have re-created the thing the migration declined.
+ */
+const KNOWN_ROLES: readonly UserRole[] = Object.values(ROLES);
+
+/**
+ * The role label the DOOR read, on a queued sync — D-17.
+ *
+ * A queued entry is composed on a phone, so this value is client-supplied, and
+ * the disposition of that is written down (T-43-10-01, `accept, bounded`): it
+ * is a **label, never a permission**. The operator sending it already holds
+ * `door.operate` and can admit anyone they like; a false label makes a night
+ * report wrong, it does not open a door. Deriving the value at sync time
+ * instead would be strictly worse than trusting it — `profiles.role` read hours
+ * after the night is the mutable-role problem the column exists to avoid, moved
+ * to a different moment and made invisible.
+ *
+ * Returns `null` for anything outside the closed set, which the caller writes
+ * as NULL. `null` here means **unknown**, and the caller must never read it as
+ * *member*.
+ */
+function parseDoorEntryRole(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  return (KNOWN_ROLES as readonly string[]).includes(trimmed) ? trimmed : null;
 }
 
 // GET — backward compatible: membership card view uses this.
@@ -122,6 +167,14 @@ export async function POST(request: Request) {
       scannedAt?: string;
       deviceId?: string;
       source?: string;
+      /**
+       * The role the roster carried when this entry was taken at the door —
+       * D-17. **`entryRole` is the field name plan 43-13 must send**, camelCase
+       * like every other field on this body, and it is written to the snake_case
+       * `attendances.entry_role`. Read only when `source === "offline_sync"`;
+       * see the insert below.
+       */
+      entryRole?: string;
     };
     try {
       body = await request.json();
@@ -260,16 +313,29 @@ export async function POST(request: Request) {
     // `no_party_selected` — that reason sends a member of staff to the party
     // selector when the fault is an empty scan, and a message that names the
     // wrong cause is the failure mode `meta-gates.md` calls out by name.
+    //
+    // `role` joins this select and does **not** get one of its own. It is one
+    // word in a query that already runs, on the door's hot path, and
+    // `checkin-offline.md` is the reason it must stay that way: at the door a
+    // slow query is a queue, and a second round trip per scan is a second
+    // round trip per person standing in front of the phone. The count of
+    // `profiles` queries in this file is unchanged by this plan: THREE before
+    // and three after — this one, the GET handler's, and the operator-label
+    // lookup in the 23505 branch, of which the check-in path reaches at most
+    // two (T-43-10-03). The assertion greps this file for the profiles-table
+    // call; it is written here in words rather than as the pattern itself,
+    // because a comment quoting the pattern would be counted by it.
     let profile: {
       id: string;
       full_name: string;
       membership_code: string;
+      role: string | null;
     } | null = null;
 
     if (typeof code === "string" && code.trim() !== "") {
       const { data, error: profileError } = await serviceClient
         .from("profiles")
-        .select("id, full_name, membership_code")
+        .select("id, full_name, membership_code, role")
         .eq("membership_code", code)
         .single();
 
@@ -345,6 +411,68 @@ export async function POST(request: Request) {
     // `checked_in_at` is the **server** clock even when the phone supplied a
     // `scannedAt`: a device clock is evidence, never authority. The device's
     // own reading is carried on the `door_scan_events` row instead.
+
+    /**
+     * `entry_role` — what this entry WAS, taken at the door (D-13, D-17).
+     *
+     * `checked_in_at` above takes the server clock over the phone's, and this
+     * value goes the other way on purpose. The two are not in tension: a clock
+     * is a fact the server can establish better than the device, and *what the
+     * roster said when a person was admitted* is a fact only the device holds.
+     * Reading `profiles.role` at sync time would answer a different question —
+     * *what is this account now* — hours or days after the night, and would
+     * make an entry look like whatever the account has since become.
+     *
+     * Hence the order:
+     *
+     *   1. a queued sync (`source === "offline_sync"`) uses the label the
+     *      device carried, validated against the closed set;
+     *   2. everything else uses the role just read from the profile, because
+     *      online the door and the write are the SAME moment and the freshly
+     *      read value IS the door-time value.
+     *
+     * Nothing sends `entryRole` yet — the offline store, the sync manager and
+     * the scanner are plan 43-13, and this is the surface it implements
+     * against. Until it lands, a queued membership sync writes NULL: *unknown*,
+     * which is true, and never *member*, which would not be.
+     */
+    let entryRole: string | null = null;
+    if (source === "offline_sync") {
+      entryRole = parseDoorEntryRole(body.entryRole);
+      if (entryRole === null && body.entryRole !== undefined) {
+        // **The asymmetry, at the site.** An unrecognised role label is NOT a
+        // reason to refuse an entry. Refusing a valid guest happens in front of
+        // a queue, needs a human to unpick it and ruins the night of someone
+        // who was let in by the community; a night report carrying one entry
+        // marked *unknown* is a number read at a desk, later, by someone who
+        // can ask. `checkin-offline.md`: when the information is uncertain the
+        // default is admit and record.
+        //
+        // Its own log category, so it never reads like the profile-lookup or
+        // the insert failure above and below it. The value is truncated because
+        // it is client-supplied and unbounded, and it is the only thing that
+        // makes this diagnosable at all.
+        //
+        // The observable effect this project's zero-silent-failure rule asks
+        // for is deliberately NOT at the door: the operator would see a warning
+        // about a label they cannot act on while people wait. It lands where
+        // the fault can be acted on instead — a NULL `entry_role` on a row
+        // written after the column existed is visible in the night report, and
+        // the migration says a NULL is never to be read as *member*. Stated
+        // rather than implied, because it is weaker than an at-the-door effect
+        // and that is a choice, not an oversight.
+        console.warn(
+          "[membership-verify] unrecognised entry_role from device — admitted, entry_role written NULL:",
+          {
+            deviceId,
+            received: String(body.entryRole).slice(0, 32),
+          }
+        );
+      }
+    } else {
+      entryRole = profile.role ?? null;
+    }
+
     const { data: attendance, error: insertError } = await serviceClient
       .from("attendances")
       .insert({
@@ -353,12 +481,19 @@ export async function POST(request: Request) {
         user_id: profile.id,
         checked_in_at: new Date().toISOString(),
         checked_in_by: operatorId,
+        entry_role: entryRole,
       })
       .select("id, checked_in_at")
       .single();
 
     if (insertError) {
       // Unique constraint violation — this member is already present here.
+      //
+      // The existing row keeps the `entry_role` it was written with, and this
+      // branch deliberately does not update it: the marker belongs to the
+      // FIRST admission, which is the one that took a seat. A second read
+      // rewriting it would let a role changed between the two scans overwrite
+      // what the door saw — the very thing the column exists to prevent.
       if (insertError.code === "23505") {
         // The `party_id` predicate is not optional and is not a refinement.
         //
@@ -465,9 +600,16 @@ export async function POST(request: Request) {
       // this is a write that failed for a reason nobody has classified. With
       // no error tracking in this project a log line is a place nobody looks,
       // so the observable effect is the 500 the door sees.
+      //
+      // `code` and `message` only, never the error object whole. PostgREST puts
+      // the OFFENDING ROW in `details` on a constraint violation, and the row
+      // this branch is inserting names a member; measurement 43-01 found the
+      // same shape publishing a full name and a `membership_code`, which is the
+      // door's only credential. The narrowing arrived with this plan because
+      // this plan changed what the insert carries.
       console.error(
         "[membership-verify] attendance insert failed (non-conflict):",
-        insertError
+        { code: insertError.code, message: insertError.message }
       );
       return NextResponse.json(
         { valid: false, error: "Failed to record attendance" },
