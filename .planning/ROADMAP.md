@@ -262,7 +262,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 43-06-PLAN.md — `role ⇒ approved` as a database rule, and the harness that still seeds what it forbids — applied and observed
+- [x] 43-06-PLAN.md — `role ⇒ approved` as a database rule, and the harness that still seeds what it forbids — applied and observed
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 5/15 | In Progress|  |
+| 43. Role Model & Account Creation | 6/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
