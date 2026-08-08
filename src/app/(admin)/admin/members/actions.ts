@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getAccessContext } from "@/lib/capabilities/server";
 import type { AccessContextResult } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import type { MembershipAct } from "@/lib/membership/acts";
 import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/email";
 import { MemberApprovedEmail } from "@/emails/member-approved";
@@ -248,9 +249,21 @@ function writeFailure(
 // VERDICTS are byte-identical to before — same key, same capability, same
 // answer for every persona.
 
+/**
+ * A resolved actor: the access context, with the subject NARROWED to non-null.
+ *
+ * The narrowing is the point. Every act below writes `p_actor_id` from
+ * `ctx.userId`, and `record_membership_act`'s table CHECK makes a `'user'` act
+ * with a null actor unrepresentable (`membership_acts_actor_attributed`,
+ * proved by mutation in 43-07). Carrying the non-null through the type means
+ * the compiler, and not a reviewer, is what stops an unattributed act being
+ * written.
+ */
+type ActorContext = AccessContextResult & { userId: string };
+
 /** A guard's answer: the actor, or the refusal. */
 type GuardOutcome =
-  | { ok: true; ctx: AccessContextResult }
+  | { ok: true; ctx: ActorContext }
   | { ok: false; failure: "forbidden"; detail: string };
 
 /** Master-only: deactivate, reactivate. */
@@ -268,8 +281,9 @@ async function verifyMaster(): Promise<GuardOutcome> {
   // produced no subject did not refuse anybody, it failed. The throw lands in
   // `guarded`'s first catch and is reported as `capabilities_unavailable`,
   // which is the cause an operator can act on.
-  if (!ctx.userId) throw new Error("capabilities.resolve_failed: no_subject");
-  return { ok: true, ctx };
+  const { userId } = ctx;
+  if (!userId) throw new Error("capabilities.resolve_failed: no_subject");
+  return { ok: true, ctx: { ...ctx, userId } };
 }
 
 /** Master or organizer: approve / reject / role changes within the ceiling. */
@@ -278,8 +292,9 @@ async function verifyAdminOrOrganizer(): Promise<GuardOutcome> {
   if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
     return { ok: false, failure: "forbidden", detail: "staff_manage_required" };
   }
-  if (!ctx.userId) throw new Error("capabilities.resolve_failed: no_subject");
-  return { ok: true, ctx };
+  const { userId } = ctx;
+  if (!userId) throw new Error("capabilities.resolve_failed: no_subject");
+  return { ok: true, ctx: { ...ctx, userId } };
 }
 
 /**
@@ -299,7 +314,7 @@ async function verifyAdminOrOrganizer(): Promise<GuardOutcome> {
 async function guarded<T>(
   action: string,
   verify: () => Promise<GuardOutcome>,
-  run: (ctx: AccessContextResult) => Promise<MemberActResult<T>>
+  run: (ctx: ActorContext) => Promise<MemberActResult<T>>
 ): Promise<MemberActResult<T>> {
   let outcome: GuardOutcome;
 
@@ -360,18 +375,192 @@ function logEmailFailure(action: string, memberId: string, error: unknown) {
   );
 }
 
-// --- Master-only actions ---
+type ServiceClient = ReturnType<typeof getServiceClient>;
 
+/** What every act returns on success: the subject, and the register row's id. */
+type ActRecorded = { memberId: string; actId: string | null };
+
+// =============================================================================
+// The register write is NOT a second call
+// =============================================================================
+//
+// Every act below is ONE `.rpc()` to `public.record_membership_act`
+// (`supabase/migrations/20260808002000_membership_register.sql`), which performs
+// the `public.profiles` write and inserts its register row **inside one
+// transaction**.
+//
+// `.update()` followed by an insert cannot be atomic across two PostgREST
+// requests, and a mutation that succeeded while its record failed is exactly the
+// untraced act D-11 forbids — silently, because nothing would read the second
+// call's error. 43-07 measured the other direction too: when the constraint of
+// 43-06 refuses the profile write, the register row is not inserted either
+// (`register rows before 2, after 2`). **The register never claims something the
+// database refused.**
+//
+// ── Nothing here is typed by the compiler, and that is worth saying ──────────
+//
+// No Supabase client in this repository is parameterised with `Database`
+// (`src/types/database.ts`, and `acts.ts:28-33` says the same). So the function
+// name, the eight parameter names and every column name below are strings that
+// `npm run build` cannot check. A green build proves this file COMPILES; it
+// proves nothing about the RPC existing, its arguments being spelled right, or
+// the SQLSTATE-to-`error.code` mapping this file branches on. That evidence is
+// manual procedure M-43-08, written by plan 43-15 — stated here rather than
+// implied.
+//
+// ── The actor comes from the session, and from nowhere else ──────────────────
+//
+// `p_actor_id` is `ctx.userId`, resolved once per action by `getAccessContext()`
+// and narrowed to non-null by `ActorContext`. Never a form field, never a
+// header: `npm run verify:no-header-identity` asserts the header-reader count
+// stays at zero, and a form field would let the caller name somebody else as
+// the author of an act.
+//
+// `p_actor_kind` is always `'user'` here. `'system'` exists for D-16's
+// reconciliation-driven demotion, which has no human author; a surface where a
+// person clicked a button is never a system act.
+
+async function recordAct(
+  action: string,
+  serviceClient: ServiceClient,
+  params: {
+    subjectId: string;
+    act: MembershipAct;
+    actorId: string;
+    /** `null` means *leave this axis alone* — the function coalesces. */
+    role?: string | null;
+    status?: string | null;
+    note?: string | null;
+  }
+): Promise<MemberActResult<ActRecorded>> {
+  const { data, error } = await serviceClient.rpc("record_membership_act", {
+    p_subject_id: params.subjectId,
+    p_act: params.act,
+    p_actor_id: params.actorId,
+    p_actor_kind: "user",
+    p_role: params.role ?? null,
+    p_status: params.status ?? null,
+    p_note: params.note ?? null,
+    // Phase 35's per-night assignment is what fills this. Passed explicitly
+    // rather than omitted, so the day it stops being null is a one-line diff.
+    p_party_id: null,
+  });
+
+  if (error) return writeFailure(action, error);
+
+  return {
+    ok: true,
+    data: {
+      memberId: params.subjectId,
+      actId: typeof data === "string" ? data : null,
+    },
+  };
+}
+
+// --- Role changes: master OR organizer, within the ceiling ---
+
+/**
+ * The three roles this file may WRITE. There is no fourth.
+ *
+ * ── The ceiling is a branch that does not exist ──────────────────────────────
+ *
+ * `'master'` is not a member of this union, is not an argument anywhere below,
+ * and no branch writes it. That is deliberately NOT the same thing as
+ * validating it away at runtime: a runtime check is a permission that could be
+ * misgranted — somebody removes the `if`, or reaches the write through a path
+ * that skipped it — whereas an absent union member is a path that is not there
+ * to be reached. D-07 puts the ceiling on a *self-replicating* power, so the
+ * difference between "refused" and "unrepresentable" is the whole margin.
+ */
+type WritableRole = "organizer" | "staff" | "member";
+
+/**
+ * Ranked so that "promoted" and "demoted" are computed, not guessed.
+ *
+ * `staff` sits between the two (43-05, D-14): it grants nothing a member lacks
+ * on its own, and everything an organizer has flows from `organizer`.
+ */
+const ROLE_RANK: Record<WritableRole, number> = {
+  organizer: 3,
+  staff: 2,
+  member: 1,
+};
+
+/**
+ * ── THIS GATE WIDENS. Read this before assuming it was always so ─────────────
+ *
+ * `updateMemberRole` called `verifyMaster()` until this plan. It now calls
+ * `verifyAdminOrOrganizer()`, so **an organizer may change another account's
+ * role** — which is D-21: ACCT-01's *"an organizer may promote a staff member
+ * to organizer"* is a change this phase MAKES, not a behaviour it inherited.
+ * D-07 says why the self-replicating power is granted on purpose: requiring the
+ * master for every promotion makes one person the bottleneck of their own
+ * community.
+ *
+ * **Nothing else that `verifyMaster` guards moves with it.**
+ * `deactivateMember` and `reactivateMember` are still master-only, deliberately
+ * — D-21 says the widening must not carry anything else, and the two functions
+ * above exist unmerged for exactly this reason.
+ *
+ * D-07's ceiling holds in two places, and both are needed now that an organizer
+ * can reach this:
+ *
+ *   1. the TARGET cannot be `master` — `WritableRole` has no such member;
+ *   2. the SUBJECT cannot be a `master` — refused below. Without (2) the
+ *      widening would let an organizer demote the master, which is not a
+ *      promotion but is reached through the same door. The surface already
+ *      hides the control (`MemberTable.tsx`, *"Don't show role actions for
+ *      other masters"*), and a Server Action is a public endpoint with a
+ *      convenient signature (`nextjs-architecture.md`), so the surface hiding
+ *      it is not the same as it being refused.
+ */
 export async function updateMemberRole(
   memberId: string,
-  newRole: "organizer" | "member"
-): Promise<MemberActResult<{ memberId: string }>> {
-  return guarded("updateMemberRole", verifyMaster, async (ctx) => {
+  newRole: WritableRole
+): Promise<MemberActResult<ActRecorded>> {
+  return guarded("updateMemberRole", verifyAdminOrOrganizer, async (ctx) => {
     if (memberId === ctx.userId) {
       return { ok: false, failure: "forbidden", detail: "self_role_change" };
     }
 
-    // Granting the organizer role approves the account in the same write.
+    const serviceClient = getServiceClient();
+
+    // The current role, read for two reasons: to name the act (`promoted` or
+    // `demoted` — the register has to say which), and to refuse a `master`
+    // subject. `maybeSingle()` and not `single()`: a missing row is
+    // `subject_not_found`, and `single()` would report it as a PostgREST error
+    // code that classifies as a generic write failure.
+    const { data: subject, error: readError } = await serviceClient
+      .from("profiles")
+      .select("role")
+      .eq("id", memberId)
+      .maybeSingle();
+
+    if (readError) return writeFailure("updateMemberRole", readError);
+    if (!subject) {
+      return { ok: false, failure: "subject_not_found", detail: "no_profile" };
+    }
+
+    const currentRole = String(subject.role);
+
+    // Ceiling, part 2 — see the block comment above.
+    if (currentRole === "master") {
+      return { ok: false, failure: "forbidden", detail: "subject_is_master" };
+    }
+
+    if (currentRole === newRole) {
+      // No act, and no register row. The register has seven values and none of
+      // them means "nothing happened"; writing one anyway would put a
+      // transition in the history that the database never performed.
+      return { ok: false, failure: "nothing_to_do", detail: "role_unchanged" };
+    }
+
+    const act: MembershipAct =
+      ROLE_RANK[newRole] > (ROLE_RANK[currentRole as WritableRole] ?? 0)
+        ? "promoted"
+        : "demoted";
+
+    // Granting a staff role approves the account in the same statement.
     //
     // Owner decision, 2026-08-06: giving someone staff rights while leaving
     // them `pending` is a contradiction in this path, not a state to be
@@ -381,61 +570,76 @@ export async function updateMemberRole(
     // them (`api/tickets/checkin/route.ts`); closing it here means the question
     // stops being asked at all.
     //
+    // It is also the shape `profiles_role_implies_approved` (43-06) judges, and
+    // the reason the constraint will never fire on THIS path: role and status
+    // move in one statement, so the forbidden intermediate state never exists.
+    //
     // Demotion does NOT revoke approval: `member` and `approved` are different
     // axes (`access-gating.md`, gate *due assi*), and someone who was approved
-    // stays approved when they stop being staff.
-    const serviceClient = getServiceClient();
-    const { error } = await serviceClient
-      .from("profiles")
-      .update(
-        newRole === "organizer"
-          ? { role: newRole, status: "approved" }
-          : { role: newRole }
-      )
-      .eq("id", memberId);
+    // stays approved when they stop being staff. So demotion passes the role
+    // alone, and the function leaves `status` where it was.
+    const result = await recordAct("updateMemberRole", serviceClient, {
+      subjectId: memberId,
+      act,
+      actorId: ctx.userId,
+      role: newRole,
+      status: newRole === "member" ? null : "approved",
+    });
 
-    if (error) return writeFailure("updateMemberRole", error);
-
-    revalidatePath("/admin/members");
-    return { ok: true, data: { memberId } };
+    if (result.ok) revalidatePath("/admin/members");
+    return result;
   });
 }
 
+// --- Master-only actions: deactivate, reactivate (D-21: these do NOT widen) ---
+
 export async function deactivateMember(
   memberId: string
-): Promise<MemberActResult<{ memberId: string }>> {
+): Promise<MemberActResult<ActRecorded>> {
   return guarded("deactivateMember", verifyMaster, async (ctx) => {
     if (memberId === ctx.userId) {
       return { ok: false, failure: "forbidden", detail: "self_deactivate" };
     }
 
     const serviceClient = getServiceClient();
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "rejected", role: "member" })
-      .eq("id", memberId);
+    const result = await recordAct("deactivateMember", serviceClient, {
+      subjectId: memberId,
+      act: "deactivated",
+      actorId: ctx.userId,
+      // Both axes in one statement, as before. The demotion is what keeps this
+      // path compatible with `profiles_role_implies_approved`: withdrawing the
+      // approval of an organizer without also demoting them would be exactly
+      // the state 43-06 makes unrepresentable.
+      role: "member",
+      status: "rejected",
+    });
 
-    if (error) return writeFailure("deactivateMember", error);
-
-    revalidatePath("/admin/members");
-    return { ok: true, data: { memberId } };
+    if (result.ok) revalidatePath("/admin/members");
+    return result;
   });
 }
 
 export async function reactivateMember(
   memberId: string
-): Promise<MemberActResult<{ memberId: string }>> {
-  return guarded("reactivateMember", verifyMaster, async () => {
+): Promise<MemberActResult<ActRecorded>> {
+  return guarded("reactivateMember", verifyMaster, async (ctx) => {
+    // The self-check its two siblings had and this one did not. One line, and
+    // its absence was an inconsistency the next person would have copied rather
+    // than noticed.
+    if (memberId === ctx.userId) {
+      return { ok: false, failure: "forbidden", detail: "self_reactivate" };
+    }
+
     const serviceClient = getServiceClient();
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "approved" })
-      .eq("id", memberId);
+    const result = await recordAct("reactivateMember", serviceClient, {
+      subjectId: memberId,
+      act: "reactivated",
+      actorId: ctx.userId,
+      status: "approved",
+    });
 
-    if (error) return writeFailure("reactivateMember", error);
-
-    revalidatePath("/admin/members");
-    return { ok: true, data: { memberId } };
+    if (result.ok) revalidatePath("/admin/members");
+    return result;
   });
 }
 
@@ -443,16 +647,18 @@ export async function reactivateMember(
 
 export async function approveMember(
   memberId: string
-): Promise<MemberActResult<{ memberId: string }>> {
-  return guarded("approveMember", verifyAdminOrOrganizer, async () => {
+): Promise<MemberActResult<ActRecorded>> {
+  return guarded("approveMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
 
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "approved" })
-      .eq("id", memberId);
+    const result = await recordAct("approveMember", serviceClient, {
+      subjectId: memberId,
+      act: "approved",
+      actorId: ctx.userId,
+      status: "approved",
+    });
 
-    if (error) return writeFailure("approveMember", error);
+    if (!result.ok) return result;
 
     const member = await readContact(serviceClient, memberId);
     if (member?.email) {
@@ -463,22 +669,33 @@ export async function approveMember(
 
     revalidatePath("/admin/members");
     revalidatePath("/organizer/members");
-    return { ok: true, data: { memberId } };
+    return result;
   });
 }
 
 export async function rejectMember(
   memberId: string
-): Promise<MemberActResult<{ memberId: string }>> {
-  return guarded("rejectMember", verifyAdminOrOrganizer, async () => {
+): Promise<MemberActResult<ActRecorded>> {
+  return guarded("rejectMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
 
-    const { error } = await serviceClient
-      .from("profiles")
-      .update({ status: "rejected", role: "member" })
-      .eq("id", memberId);
+    // `rejected` and `deactivated` are the same write and two acts, because
+    // they are performed for two different reasons: this one refuses an
+    // application, the other withdraws an access that had been granted
+    // (`acts.ts:41-45`). The register is the only place that difference
+    // survives, and it is the difference a season is read by.
+    //
+    // The demotion in the same statement is why rejecting an organizer does not
+    // violate `profiles_role_implies_approved`.
+    const result = await recordAct("rejectMember", serviceClient, {
+      subjectId: memberId,
+      act: "rejected",
+      actorId: ctx.userId,
+      role: "member",
+      status: "rejected",
+    });
 
-    if (error) return writeFailure("rejectMember", error);
+    if (!result.ok) return result;
 
     const member = await readContact(serviceClient, memberId);
     if (member?.email) {
@@ -489,7 +706,7 @@ export async function rejectMember(
 
     revalidatePath("/admin/members");
     revalidatePath("/organizer/members");
-    return { ok: true, data: { memberId } };
+    return result;
   });
 }
 
