@@ -310,14 +310,25 @@ function MemberActions({
   const changeRole = (to: "organizer" | "staff" | "member") => () =>
     handleAction(() => updateMemberRole(member.id, to));
 
-  // Who may do what, stated once. Both a master and an organizer hold
-  // `staff.manage`, so both may approve, reject and change a role (D-21). Only
-  // the master holds `master.manage`, so only the master may withdraw an access
-  // already granted — plan 43-09 widened `updateMemberRole` alone and left
-  // `deactivateMember` / `reactivateMember` where they were, deliberately.
+  // Who may reach WHICH CONTROL, stated once. Both a master and an organizer
+  // hold `staff.manage`, so both may approve, reject and change a role (D-21).
+  // Only the master holds `master.manage`, so only the master reaches the
+  // Deactivate and Reactivate controls — plan 43-09 widened `updateMemberRole`
+  // alone and left those two where they were, deliberately.
+  //
+  // ── This is narrower than what the server permits, since 2026-08-08 ─────────
+  //
+  // The name is about the two CONTROLS and no longer about the outcome. The
+  // owner repealed the rule that reserved the two status transitions to the
+  // master, so an organizer may now withdraw an approved account's access (with
+  // Reject) and readmit a rejected one (with Approve); the register names those
+  // `deactivated` and `reactivated` from the transition rather than from the
+  // function. This surface simply offers no control that reaches either, because
+  // Approve and Reject are drawn on `pending` rows only — WIDENING IT IS A
+  // PRODUCT DECISION AND IS NOT TAKEN HERE BY IMPLICATION.
   //
   // This renders what is actually possible instead of what the widened union
-  // suggests: before this plan an organizer saw approve and reject and nothing
+  // suggests: before plan 43-09 an organizer saw approve and reject and nothing
   // else, so ACCT-01 — *an organizer may promote a staff member to organizer* —
   // had no control anywhere on the surface.
   const canWithdrawAccess = callerRole === "master";
@@ -615,11 +626,15 @@ export default function MemberTable({
             subject: subjectLabel(o.subjectId),
             // The cause AND its detail. A per-subject outcome used to carry the
             // cause alone; since CR-01 the act group can refuse one subject of a
-            // batch for five distinct reasons that all tag as `forbidden`, and
-            // the detail is what tells "it is the master" from "it is you" from
-            // "that act is reserved to the master". An absent detail still falls
-            // back to the cause's own sentence, which remains the honest answer
-            // rather than a borrowed one.
+            // batch for several distinct reasons that all tag as `forbidden`,
+            // and the detail is what tells "it is the master" from "it is you".
+            // Since 2026-08-08 a subject can also come back `nothing_to_do` /
+            // `status_unchanged` — it already held the status — or
+            // `act_underivable`, each with its own sentence: a batch derives its
+            // act per subject, so it can refuse one row of five without
+            // shrinking the count. An absent detail still falls back to the
+            // cause's own sentence, which remains the honest answer rather than
+            // a borrowed one.
             kind: (o.failure ?? "write_failed") as MemberNoticeKind,
             detail: o.detail,
           }));

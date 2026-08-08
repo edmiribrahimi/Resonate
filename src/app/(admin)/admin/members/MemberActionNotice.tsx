@@ -38,9 +38,9 @@ import type { MemberActFailure } from "./actions";
  */
 
 /**
- * The seven causes this surface can draw.
+ * The eight causes this surface can draw.
  *
- * Six come from the server (`MemberActFailure`). The seventh is client-only:
+ * Seven come from the server (`MemberActFailure`). The eighth is client-only:
  * the action never returned at all, so there is no tag to read and no way to
  * know from here whether the write landed.
  */
@@ -76,7 +76,7 @@ const TONE_STYLES: Record<Tone, { box: string; title: string }> = {
   },
 };
 
-/** The six server causes, one sentence each. No two collapse. */
+/** The seven server causes, one sentence each. No two collapse. */
 const NOTICES: Record<MemberNoticeKind, Notice> = {
   capabilities_unavailable: {
     tone: "fault",
@@ -157,6 +157,25 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
       "database never performed.",
   },
 
+  /**
+   * The cause that arrived with the 2026-08-08 owner decision, and the one that
+   * says the register refused to LIE rather than refused to write.
+   */
+  act_underivable: {
+    tone: "refusal",
+    title: "This account's current state has no name in the register",
+    body:
+      "Nothing was changed and nothing was recorded. Since the act is named " +
+      "after the transition it performs — approved, rejected, reactivated, " +
+      "deactivated — an account whose current status this screen does not " +
+      "recognise cannot be moved without inventing a name for what happened. " +
+      "The register refuses to write rather than to guess, because a history " +
+      "that misnames itself is read as true. Reload the list; if the status " +
+      "shown is one this product does not use, the database has values the " +
+      "code does not know about and that is worth reporting rather than " +
+      "retrying.",
+  },
+
   transport_unavailable: {
     tone: "fault",
     title: "The server did not answer",
@@ -169,16 +188,28 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 };
 
 /**
- * `forbidden` is one tag covering twelve distinct refusals, and telling a person
+ * `forbidden` is one tag covering eleven distinct refusals, and telling a person
  * only "you do not have permission" would collapse them exactly as the recorded
  * newsletter defect collapses its three causes.
  *
- * Five arrived with CR-01's repair (`43-REVIEW-FIX`): `self_approve`,
- * `self_reject`, `withdrawal_is_master_only`, `restoration_is_master_only`, and
- * a widened `subject_is_master` that now covers every act in the group rather
- * than the role change alone. Each is reachable per subject inside a batch, so
- * each has to arrive at this file as a VALUE — which is why
+ * Three arrived with CR-01's repair (`43-REVIEW-FIX`): `self_approve`,
+ * `self_reject`, and a widened `subject_is_master` that now covers every act in
+ * the group rather than the role change alone. Each is reachable per subject
+ * inside a batch, so each has to arrive at this file as a VALUE — which is why
  * `BulkSubjectOutcome` gained a `detail`.
+ *
+ * ── TWO CAUSES WERE REMOVED HERE, and removing them was the point ────────────
+ *
+ * `withdrawal_is_master_only` and `restoration_is_master_only` drew the
+ * reserved-transition rule, **repealed by owner decision on 2026-08-08**: an
+ * organizer may reject an approved member and may readmit a rejected one, so
+ * the server no longer produces either detail and neither sentence could ever
+ * be drawn again. They are deleted rather than left in place, because a handled
+ * cause is where a later reader stops looking — plan 43-09 found two `catch`
+ * blocks that had gone unreachable and 43-14 found a comment denying the defect
+ * beside it. `readmission_before_role_change` below is not their replacement: it
+ * refuses a DOOR (a role change that would silently readmit) and names the two
+ * steps that do the same thing honestly.
  *
  * Every key below is a `detail` literal chosen by `admin/members/actions.ts`
  * — a value, not a message, and therefore safe to branch on and safe to render.
@@ -195,11 +226,15 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   },
   master_manage_required: {
     tone: "refusal",
-    title: "Deactivating and reactivating an account is reserved to the master",
+    title: "The Deactivate and Reactivate controls are reserved to the master",
     body:
-      "Nothing was attempted. An organizer may approve, reject and change a " +
-      "role, and deliberately may not withdraw an access that was already " +
-      "granted. This is a boundary of the access model, not a fault.",
+      "Nothing was attempted. This is about these two CONTROLS and no longer " +
+      "about the outcome they produce: since 2026-08-08 an organizer may " +
+      "withdraw an approved account's access with Reject, and may readmit a " +
+      "rejected one with Approve — the register records those as deactivated " +
+      "and reactivated, named after what happened rather than after which " +
+      "button was used. So this refusal is a boundary of these two entry " +
+      "points, not of what an organizer is allowed to decide.",
   },
   subject_is_master: {
     tone: "refusal",
@@ -214,29 +249,19 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
       "Changing who holds the top role is done through the deployment " +
       "environment, which is the one place it is recorded.",
   },
-  withdrawal_is_master_only: {
+  readmission_before_role_change: {
     tone: "refusal",
     title:
-      "This account's access was already granted — withdrawing it is Deactivate, " +
-      "and Deactivate is reserved to the master",
+      "This account was refused — readmit it first, then set the role",
     body:
-      "Nothing was changed. Reject refuses an application that is still open; " +
-      "withdrawing an access that had already been granted is a different act " +
-      "with a different name, and the register keeps the two apart on purpose. " +
-      "Rejecting an approved account here would write \"rejected\" into the " +
-      "history where \"deactivated\" is what happened.",
-  },
-  restoration_is_master_only: {
-    tone: "refusal",
-    title:
-      "This account was already refused — restoring it is Reactivate, and " +
-      "Reactivate is reserved to the master",
-    body:
-      "Nothing was changed. Approve decides an application that is still open; " +
-      "restoring an access that had been withdrawn is a different act with a " +
-      "different name. Approving a rejected account here would write " +
-      "\"approved\" into the history where \"reactivated\" is what happened — " +
-      "and it would reach, through a wider gate, the act the narrower one holds.",
+      "Nothing was changed. Granting staff or organizer writes \"approved\" in " +
+      "the same statement, so a role change aimed at a refused account would " +
+      "also let that person back in — and it would be recorded as a promotion, " +
+      "which is not what happened. Press Approve first: that is recorded as a " +
+      "readmission, with your name and the time. Then set the role. Two acts, " +
+      "two rows, both true — and nobody comes back into the community inside a " +
+      "row labelled \"promoted\". You are not being refused the outcome, only " +
+      "this one-step route to it.",
   },
   self_approve: {
     tone: "refusal",
@@ -292,8 +317,19 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   },
 };
 
-/** `nothing_to_do` covers two situations that want two different next steps. */
+/** `nothing_to_do` covers three situations that want three different next steps. */
 const NOTHING_TO_DO_BY_DETAIL: Record<string, Notice> = {
+  status_unchanged: {
+    tone: "noop",
+    title: "This account already holds that status",
+    body:
+      "No act was recorded, on purpose. The act is named after the transition " +
+      "it performs, and there is no transition here: approving an approved " +
+      "account or rejecting a rejected one moves nothing. Writing a row anyway " +
+      "would put a change in the history that never happened — the same reason " +
+      "a role change to the role already held records nothing. Nothing is " +
+      "wrong here.",
+  },
   role_unchanged: {
     tone: "noop",
     title: "This account already holds that role",
