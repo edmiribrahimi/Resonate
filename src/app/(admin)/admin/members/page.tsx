@@ -4,6 +4,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import MemberTable from "@/components/admin/MemberTable";
 import StaffNav from "@/components/staff/StaffNav";
+import CreateAccountForm from "./CreateAccountForm";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -91,6 +92,18 @@ export default async function AdminMembersPage() {
       <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1} className="px-6">
+        {/*
+          The creation surface, above the table.
+
+          It is NOT gated again here, and that is deliberate rather than an
+          omission: the page already refused anybody without `ADMIN_ACCESS`
+          above, and the action itself re-asks for `STAFF_MANAGE` on every call.
+          Hiding a control is not protecting an endpoint (`access-gating.md`,
+          gate *coerenza navigazione/permessi*), so the authority is in
+          `createAccount` and this mount is the affordance.
+        */}
+        <CreateAccountForm />
+
         {/*
           `userId` is `string | null` from the resolver; the identity header
           this replaces was read as `headersList.get(...) || ""`. `?? ""` is

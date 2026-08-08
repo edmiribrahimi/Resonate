@@ -11,6 +11,7 @@ import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/email";
 import { MemberApprovedEmail } from "@/emails/member-approved";
 import { MemberRejectedEmail } from "@/emails/member-rejected";
+import { AccountInvitationEmail } from "@/emails/account-invitation";
 
 // Service-role client for operations that need to bypass RLS
 // (organizers don't have RLS write permission on profiles)
@@ -21,15 +22,82 @@ function getServiceClient() {
   );
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app";
+/**
+ * The app URL, read WITHOUT a `||` fallback.
+ *
+ * This line used to be `process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"`,
+ * and both halves of that were wrong in a way this project has already paid for:
+ *
+ *   * the fallback host is not the deployed host, so a missing variable did not
+ *     fail — it silently produced links to somewhere else, which is the shape of
+ *     failure `comms-analytics.md` (gate *variabili d'ambiente verificate*)
+ *     forbids;
+ *   * `NEXT_PUBLIC_APP_URL` is the exact variable a trailing newline once broke
+ *     on this project (recorded: it broke the SumUp webhook URL). `.trim()` is
+ *     therefore not defensive tidying, it is the recorded incident.
+ *
+ * Returns `null` rather than throwing, so each caller decides what a missing
+ * value means: a link that cannot be built is a NAMED failure in
+ * `createAccount`, and a thrown-and-logged email failure in the two paths that
+ * merely decorate a message with a link.
+ */
+function readAppUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!raw) return null;
+  // Trailing slashes stripped so `${appUrl}/api/...` cannot produce `//api/...`,
+  // which is a different path to Supabase's redirect allow-list matcher.
+  return raw.replace(/\/+$/, "");
+}
 
 async function sendApprovalEmail(email: string, fullName: string) {
+  const appUrl = readAppUrl();
+  // Throwing here is deliberate. Both callers of this function invoke it
+  // fire-and-forget with `.catch(logEmailFailure)`, so a missing variable now
+  // produces one distinguishable log line — `[members.email_failed] … app_url`
+  // — instead of an approval message pointing at a host this project does not
+  // own.
+  if (!appUrl) throw new Error("app_url_missing");
   const html = await render(
-    MemberApprovedEmail({ memberName: fullName || "Member", loginUrl: APP_URL })
+    MemberApprovedEmail({ memberName: fullName || "Member", loginUrl: appUrl })
   );
   await sendEmail({
     to: email,
     subject: "Welcome to Resonate - You're Approved!",
+    html,
+  });
+}
+
+/**
+ * The invitation for a hand-created account — beside its two siblings, and
+ * different from both in one way that matters.
+ *
+ * `sendApprovalEmail` and `sendRejectionEmail` are called fire-and-forget: a
+ * failed approval mail is regrettable, and the approval itself still happened.
+ * This one is **awaited** by its caller, because for ACCT-03 the invitation *is*
+ * the requirement — a swallowed send here is the requirement failing quietly,
+ * and the person is left with an account they cannot sign into and no idea it
+ * exists.
+ *
+ * The link comes from the caller. Building it here would put a second reading
+ * of `NEXT_PUBLIC_APP_URL` in the file, and the two could disagree.
+ */
+async function sendAccountInvitation(
+  email: string,
+  fullName: string,
+  setPasswordUrl: string
+) {
+  const html = await render(
+    AccountInvitationEmail({
+      memberName: fullName || "ciao",
+      setPasswordUrl,
+    })
+  );
+  await sendEmail({
+    to: email,
+    // Italian, like the body: `comms-analytics.md`, gate *template in italiano*.
+    // The sender is `RESEND_FROM_EMAIL`, resolved inside `sendEmail`, so this
+    // goes out from `noreply@` like every other transactional message.
+    subject: "Il tuo account re:sonate è pronto",
     html,
   });
 }
@@ -144,9 +212,28 @@ export type MemberActFailure =
    */
   | "nothing_to_do";
 
-export type MemberActResult<T> =
+/**
+ * The failure branch, shared by every action in this file.
+ *
+ * `membershipCode` is optional and only ONE path sets it: `createAccount`'s
+ * two invitation failures, where the account exists and already works at the
+ * door while the message does not exist. It rides on the failure rather than on
+ * a success because it is not a success — and an operator told "the invitation
+ * failed" without the code has been told half of what happened.
+ */
+type FailureBranch<F extends string> = {
+  ok: false;
+  failure: F;
+  detail: string;
+  membershipCode?: string | null;
+};
+
+/** A tagged outcome, parameterised by the vocabulary of failures it can carry. */
+export type ActResult<T, F extends string> =
   | { ok: true; data: T }
-  | { ok: false; failure: MemberActFailure; detail: string };
+  | FailureBranch<F>;
+
+export type MemberActResult<T> = ActResult<T, MemberActFailure>;
 
 /** PostgreSQL `check_violation`. Measured at the JS client in plan 43-01. */
 const CHECK_VIOLATION = "23514";
@@ -311,11 +398,21 @@ async function verifyAdminOrOrganizer(): Promise<GuardOutcome> {
  * (`src/lib/capabilities/server.ts:103-116`, measured), so a second call would
  * be a second full round trip, not a free read.
  */
-async function guarded<T>(
+/**
+ * The three tags `guarded` itself produces, from POSITION alone.
+ *
+ * Named because the generic below has to promise they are in the caller's
+ * vocabulary: an action that declares its own failure union must still be able
+ * to receive these three, or a refusal would arrive as a tag nothing on the
+ * surface knows how to draw.
+ */
+type GuardTag = "capabilities_unavailable" | "forbidden" | "write_failed";
+
+async function guarded<T, F extends string = MemberActFailure>(
   action: string,
   verify: () => Promise<GuardOutcome>,
-  run: (ctx: ActorContext) => Promise<MemberActResult<T>>
-): Promise<MemberActResult<T>> {
+  run: (ctx: ActorContext) => Promise<ActResult<T, F>>
+): Promise<ActResult<T, F | GuardTag>> {
   let outcome: GuardOutcome;
 
   try {
@@ -487,6 +584,37 @@ const ROLE_RANK: Record<WritableRole, number> = {
 };
 
 /**
+ * ── The union is the ceiling in the SOURCE. This is the ceiling at RUNTIME ────
+ *
+ * The comment above says an absent union member is "a path that is not there to
+ * be reached". That is true of every caller written in this repository, and it
+ * is **not** true of the wire.
+ *
+ * A Server Action is a public endpoint with a convenient signature
+ * (`nextjs-architecture.md`, gate *server action autorizzata*). Its arguments
+ * are deserialised from a POST body; TypeScript is erased before any of that
+ * runs, so `newRole: WritableRole` constrains what this repository can WRITE and
+ * constrains nothing about what an authenticated organizer can SEND. A crafted
+ * request carrying `"master"` would reach `record_membership_act` unopposed —
+ * `profiles_role_check` admits `master`, because master is a real role — and the
+ * self-replicating power D-07 forbids would have been granted by a value that
+ * never appears in the source.
+ *
+ * So the ceiling is held twice, and neither is redundant:
+ *
+ *   1. **unrepresentable in the source** — `WritableRole` has no `'master'`, so
+ *      nobody writing code here can produce one by accident;
+ *   2. **unreachable from the wire** — this predicate, tested against the SAME
+ *      closed set, so nobody sending bytes here can produce one on purpose.
+ *
+ * `ROLE_RANK` is the set: one literal, three keys, and adding a fourth role
+ * means editing the place that already decides promotion from demotion.
+ */
+function isWritableRole(value: unknown): value is WritableRole {
+  return typeof value === "string" && Object.hasOwn(ROLE_RANK, value);
+}
+
+/**
  * ── THIS GATE WIDENS. Read this before assuming it was always so ─────────────
  *
  * `updateMemberRole` called `verifyMaster()` until this plan. It now calls
@@ -519,6 +647,13 @@ export async function updateMemberRole(
   newRole: WritableRole
 ): Promise<MemberActResult<ActRecorded>> {
   return guarded("updateMemberRole", verifyAdminOrOrganizer, async (ctx) => {
+    // Ceiling, part 1, AT RUNTIME — see `isWritableRole`. The union above is a
+    // source-level guarantee and this is the wire-level one; a crafted
+    // `newRole: "master"` is refused here rather than written.
+    if (!isWritableRole(newRole)) {
+      return { ok: false, failure: "forbidden", detail: "role_not_writable" };
+    }
+
     if (memberId === ctx.userId) {
       return { ok: false, failure: "forbidden", detail: "self_role_change" };
     }
@@ -868,5 +1003,488 @@ export async function bulkRejectMember(
       { role: "member", status: "rejected" },
       sendRejectionEmail
     )
+  );
+}
+
+// =============================================================================
+// createAccount — an approval performed by someone entitled to approve
+// =============================================================================
+//
+// ACCT-01 through ACCT-04 in one action, and the first thing to say about it is
+// what it IS: `community-membership.md` calls every way into this community
+// outside the ordinary approval flow an **exception to the gating**, to be
+// counted and attributed rather than treated as a convenience. D-08 says the
+// same from the other side — creating an account *is* the act of approval. That
+// is why the gate is `STAFF_MANAGE` (approval's own gate) and not something
+// looser, why the act lands in the register with its author, and why
+// `approved_via` is written rather than left null.
+//
+// ── Three defects in the existing analog are NOT copied ─────────────────────
+//
+// `src/lib/guest-list/process-entry.ts:218-251` already creates an auth user
+// and generates a recovery link. Three of its lines are defects rather than
+// patterns, and each is replaced here rather than inherited:
+//
+//   :249-251  a 500 ms sleep on a timer, standing in for a read-back. The call
+//             is not repeated here even as a quotation, so the plan's grep for
+//             it can assert zero rather than "zero outside the comments".
+//             If the `handle_new_user` trigger has not written
+//             the profile by then, the following statement matches zero rows,
+//             changes nothing and returns `error: null`: an account with no
+//             profile, no membership code and no entry, failing invisibly.
+//             Replaced by an update that RETURNS its rows, so zero rows is a
+//             named failure instead of a silence.
+//   :240-243  a failed `generateLink` logged and then swallowed into a `/login`
+//             fallback. The person receives a message that cannot do what it
+//             says. Replaced by a distinct returned cause.
+//   :245-247  the app URL read with an or-default to a hard-coded host — again
+//             not quoted literally, so the grep can assert zero. A missing
+//             variable there produces links to a host this project does not
+//             own, instead of failing. See `readAppUrl` at the top of this file.
+//
+// ── Why an ORDER, and why THIS order ────────────────────────────────────────
+//
+// Everything that can be checked without side effects is checked FIRST — the
+// capability gate, the input, the app URL — because every failure after
+// `createUser` leaves an auth user behind, and a retry then collides with
+// `already_exists`. Refusing early costs nothing; refusing late costs an
+// orphaned account and a confusing second attempt.
+//
+// After that the sequence is: create the auth user, write the approval channel
+// (which doubles as the trigger read-back), record the act, then read the code,
+// then the link, then the send. The register write is deliberately LAST among
+// the writes to `profiles`, so the register never records an approval whose
+// preconditions failed.
+
+/**
+ * What can go wrong, one word each. There is no shared "action failed".
+ *
+ * Eleven causes rather than a tidy three, because a person reading a notice has
+ * to know **what state the world is in**, and these differ:
+ *
+ *   * `already_exists` — nothing was created. Also the idempotency key
+ *     (`comms-analytics.md`, *una mail non si richiama*): a second attempt on
+ *     the same address must not send a second invitation, and it does not,
+ *     because this returns before the link is generated.
+ *   * `profile_missing` — the auth user exists, the profile does not. The
+ *     trigger did not run. Nobody was approved and nothing was sent.
+ *   * `constraint_refused` — the database refused the approval write, `23514`.
+ *   * `invitation_link_failed` / `invitation_link_misaimed` — **the account
+ *     exists and already works at the door**; only the message does not. Both
+ *     carry the membership code for exactly that reason.
+ *   * `invitation_send_failed` — the link existed, the provider did not accept
+ *     the message. Different from the two above: the link can be re-sent,
+ *     whereas a link that was never generated has to be generated.
+ *
+ * `nothing_to_do` and `subject_not_found` are absent on purpose: creation always
+ * changes something, and a subject that does not exist is `profile_missing`
+ * here, which says *the trigger did not run* rather than *reload the list*.
+ */
+export type CreateAccountFailure =
+  | "capabilities_unavailable"
+  | "forbidden"
+  | "invalid_input"
+  | "app_url_missing"
+  | "already_exists"
+  | "profile_missing"
+  | "constraint_refused"
+  | "write_failed"
+  | "invitation_link_failed"
+  | "invitation_link_misaimed"
+  | "invitation_send_failed";
+
+export type CreateAccountData = {
+  memberId: string;
+  actId: string | null;
+  /**
+   * The door's credential, minted by the trigger.
+   *
+   * `null` only if it could not be read back — which does not undo the
+   * creation, so it is reported as a success carrying an absence rather than as
+   * a failure. The surface says so; the table below it holds the code anyway.
+   */
+  membershipCode: string | null;
+  role: WritableRole;
+};
+
+export type CreateAccountResult = ActResult<
+  CreateAccountData,
+  CreateAccountFailure
+>;
+
+/** The register's own failure vocabulary, translated into this path's. */
+function asCreateFailure(
+  failure: MemberActFailure
+): CreateAccountFailure {
+  // A subject the register cannot find means the trigger did not write the
+  // profile — the only way to reach it here, since the id came from an auth
+  // user created moments earlier by this same call.
+  if (failure === "subject_not_found") return "profile_missing";
+  if (failure === "constraint_refused") return "constraint_refused";
+  return "write_failed";
+}
+
+/**
+ * Do the two URLs name the same target?
+ *
+ * ── Why this comparison exists at all ───────────────────────────────────────
+ *
+ * `generateLink` merges `options` into the request BODY and returns
+ * `properties.redirect_to` (measured in plan 43-01 from the installed 2.97.0
+ * package, finding 4). If the requested target is not on the project's Auth
+ * redirect allow-list, Auth does not refuse — it falls back to the site URL and
+ * returns a link that works, lands somewhere else, and says nothing about it.
+ *
+ * Plan 43-04 read the allow-list read-only and found every deployed origin
+ * carries a `/**` entry, so the production answer is already yes. This is not
+ * therefore redundant: it is the ASSERTION that keeps that answer true. A
+ * dashboard edit a year from now would otherwise be discovered by a person who
+ * followed an invitation and arrived at a dashboard with no password field.
+ *
+ * The comparison is structural, not textual — origin, path and the `next`
+ * parameter — because a returned value that differs only in a trailing slash or
+ * in case of scheme is the same target, and failing on that would be a false
+ * alarm on a path where a false alarm blocks an invitation.
+ */
+function sameRedirectTarget(returned: string, requested: string): boolean {
+  try {
+    const a = new URL(returned);
+    const b = new URL(requested);
+    const path = (u: URL) => u.pathname.replace(/\/+$/, "") || "/";
+    return (
+      a.protocol === b.protocol &&
+      a.host.toLowerCase() === b.host.toLowerCase() &&
+      path(a) === path(b) &&
+      a.searchParams.get("next") === b.searchParams.get("next")
+    );
+  } catch {
+    // An unparseable value is not the requested target. Treated as a mismatch
+    // rather than as a crash: this runs on the invitation path and a throw here
+    // would be reported as a generic write failure.
+    return false;
+  }
+}
+
+/**
+ * Create an account, approved, with its role, its register row and its
+ * invitation.
+ *
+ * ── The role is a closed union, and the ceiling is held TWICE ───────────────
+ *
+ * `"master"` is not in `WritableRole`, is not an argument here, and no branch
+ * below produces it — that is the ceiling in the source. `isWritableRole` holds
+ * it at runtime, because a Server Action is a public endpoint and TypeScript is
+ * erased before the POST body is deserialised. See `isWritableRole` for why
+ * neither half is redundant.
+ *
+ * `"organizer"` IS in the union, and that is D-20 rather than an oversight:
+ * whoever may promote reaches the same end state, and forcing create-then-
+ * promote would write two register rows for one act — a history that says
+ * something happened twice when it happened once.
+ *
+ * ── What the widest caller can reach ───────────────────────────────────────
+ *
+ * The widest caller is an **organizer** (`STAFF_MANAGE` resolves to master and
+ * organizer). Stated explicitly, as plan 43-09 did for `updateMemberRole`:
+ *
+ *   * **role** — `member`, `staff` or `organizer`, and nothing else, on both
+ *     the source and the wire;
+ *   * **subject** — a NEW account only. This action has no subject id
+ *     parameter, so unlike `updateMemberRole` there is no existing account it
+ *     can be aimed at: a duplicate address is refused before anything is
+ *     written, so it cannot be used to touch, re-approve or re-role somebody
+ *     who already exists — including a master;
+ *   * **status** — `approved`, always. There is no argument for it.
+ *
+ * ── The service-role client, justified as `access-gating.md` requires ───────
+ *
+ * `auth.admin.createUser` and `auth.admin.generateLink` exist only on a
+ * service-role client; no RLS policy can grant them. The rule's other half is
+ * *never reachable from untrusted input*: the capability gate runs before the
+ * client is constructed, the address is trimmed and lower-cased, the role is
+ * tested against a closed set, and no caller-supplied value reaches a query
+ * that names a row other than the one this call just created.
+ *
+ * The residual, named rather than implied: `already_exists` is an
+ * account-existence oracle, and this repository has **no rate limiting
+ * anywhere** (`access-gating.md`, verified 2026-08-05). The gate is the
+ * mitigation — master and organizer are entitled to know who is in the
+ * community — and nothing unauthenticated reaches this action.
+ */
+export async function createAccount(input: {
+  email: string;
+  fullName: string;
+  role: WritableRole;
+}): Promise<CreateAccountResult> {
+  return guarded<CreateAccountData, CreateAccountFailure>(
+    "createAccount",
+    verifyAdminOrOrganizer,
+    async (ctx) => {
+      // ── Everything checkable without a side effect, before the first one ──
+      //
+      // Hand-written, and that is a REVIEW ITEM rather than a preference:
+      // `package.json` has no validation library and this plan adds none, so
+      // these three tests are the whole contract. A real address is not
+      // verifiable by any string test — Auth is the authority and it refuses
+      // what it refuses — so the aim here is only to stop the obviously empty
+      // and the obviously malformed before an auth user exists.
+      const email = input.email.trim().toLowerCase();
+      if (!email || !email.includes("@") || email.includes(" ")) {
+        return { ok: false, failure: "invalid_input", detail: "email" };
+      }
+
+      const fullName = input.fullName.trim();
+      if (!fullName) {
+        return { ok: false, failure: "invalid_input", detail: "full_name" };
+      }
+
+      if (!isWritableRole(input.role)) {
+        return { ok: false, failure: "invalid_input", detail: "role" };
+      }
+      const role = input.role;
+
+      const appUrl = readAppUrl();
+      if (!appUrl) {
+        console.error(
+          "[members.app_url_missing] createAccount: NEXT_PUBLIC_APP_URL is unset or blank"
+        );
+        return {
+          ok: false,
+          failure: "app_url_missing",
+          detail: "NEXT_PUBLIC_APP_URL",
+        };
+      }
+
+      // The callback, not `/set-password` directly. Plan 43-04: the callback is
+      // what exchanges the recovery code for a session, and a link aimed
+      // straight at the surface would land there with no session and draw the
+      // expired-link notice on a link that was fine. `next` is resolved by that
+      // route against its own enumerated allow-list, on which `/set-password`
+      // is a listed entry.
+      const redirectTo = `${appUrl}/api/auth/callback?next=/set-password`;
+
+      const serviceClient = getServiceClient();
+
+      // ── 1. The auth user ────────────────────────────────────────────────
+      //
+      // `email_confirm: true` is deliberate and is the whole of D-09 in one
+      // flag: the creator vouched for this person, so there is nobody to
+      // confirm anything to, and the account has to be usable at the door on
+      // the night it was created for — which cannot wait for a confirmation
+      // click that may never come.
+      //
+      // `full_name` in `user_metadata` because that is the only field the
+      // `handle_new_user` trigger reads from it
+      // (`20260310000000_guest_list.sql:145-155`). The membership code is minted
+      // by that trigger and NOT by `src/utils/qr.ts`'s generator: two
+      // generators for one identifier drift, and the trigger's is the one the
+      // door already trusts.
+      const { data: created, error: authError } =
+        await serviceClient.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { full_name: fullName },
+        });
+
+      if (authError || !created?.user) {
+        // Both labels are recognised because GoTrue has used both for a
+        // duplicate address, and which one this project's instance emits is
+        // not knowable from this repository without creating a duplicate
+        // account against production. Recognising both costs nothing;
+        // recognising neither would report the one refusal an operator meets
+        // routinely as a generic fault.
+        const code = authError?.code;
+        if (code === "email_exists" || code === "user_already_exists") {
+          console.error("[members.already_exists] createAccount: email_exists");
+          return {
+            ok: false,
+            failure: "already_exists",
+            detail: "email_exists",
+          };
+        }
+        // Never the error object and never its body: an auth error on this path
+        // carries the address that was submitted.
+        console.error(
+          `[members.write_failed] createAccount: auth code=${code ?? "unknown"} ` +
+            `status=${authError?.status ?? "unknown"}`
+        );
+        return { ok: false, failure: "write_failed", detail: code ?? "auth" };
+      }
+
+      const memberId = created.user.id;
+
+      // ── 2. The approval channel, which is ALSO the read-back ─────────────
+      //
+      // `approved_via = 'admin_manual'` is D-08 made legible in the data as
+      // well as in the register: an allowed value of
+      // `profiles_approved_via_check` (`referral | guest_list | admin_manual`)
+      // that no code path writes today. There is no fourth label and this plan
+      // does not widen that constraint.
+      //
+      // It is written BEFORE the register act, on purpose. Any failure here
+      // leaves the profile exactly as the trigger wrote it — `member`,
+      // `pending`, unapproved — and nothing in the register claiming otherwise.
+      // The other order would leave an approved account whose channel is
+      // unrecorded, which is the state D-08 exists to prevent.
+      //
+      // And `.select("id")` is what replaces the analog's 500 ms sleep: an
+      // update that matches no row returns an EMPTY array with `error: null`.
+      // So "the trigger has not written the profile" stops being a silence and
+      // becomes `profile_missing` — deterministically, without depending on the
+      // `P0002 → error.code` mapping that plan 43-09 flagged as an assumption
+      // rather than a measurement. That mapping is still honoured below, as a
+      // second net.
+      const { data: channelRows, error: channelError } = await serviceClient
+        .from("profiles")
+        .update({ approved_via: "admin_manual" })
+        .eq("id", memberId)
+        .select("id");
+
+      if (channelError) {
+        const failed = writeFailure("createAccount", channelError);
+        return { ...failed, failure: asCreateFailure(failed.failure) };
+      }
+
+      if (!channelRows || channelRows.length === 0) {
+        console.error(
+          `[members.profile_missing] createAccount: subject=${memberId} ` +
+            `no profile row after createUser — handle_new_user did not run`
+        );
+        return {
+          ok: false,
+          failure: "profile_missing",
+          detail: "trigger_did_not_run",
+        };
+      }
+
+      // ── 3. The act, and the approval, in ONE transaction ────────────────
+      //
+      // Role and status move together in a single statement, which is both
+      // D-08 (the account lands approved, not back in the queue it was just
+      // let out of) and the reason `profiles_role_implies_approved` cannot fire
+      // on this path: the forbidden intermediate state — a staff role on a
+      // `pending` account — never exists. A plain `createUser` leaves
+      // `status = 'pending'`, so writing the role alone would be a hard `23514`
+      // for `staff` and `organizer`, and a contradiction for `member`.
+      //
+      // `act: "created"` and the actor from the session: D-11, and
+      // `community-membership.md`'s *chi decide è tracciato*. The profile write
+      // and the register row are one transaction inside the function, so this
+      // path cannot produce an approval nobody is named for.
+      const recorded = await recordAct("createAccount", serviceClient, {
+        subjectId: memberId,
+        act: "created",
+        actorId: ctx.userId,
+        role,
+        status: "approved",
+      });
+
+      if (!recorded.ok) {
+        return { ...recorded, failure: asCreateFailure(recorded.failure) };
+      }
+
+      // ── 4. The credential, read back ────────────────────────────────────
+      //
+      // Needed by the surface: an operator whose invitation failed still has to
+      // be able to admit this person. A failed read does not undo anything, so
+      // it is logged with its own category and carried as an absence rather
+      // than raised as a failure.
+      let membershipCode: string | null = null;
+      const { data: profile, error: codeError } = await serviceClient
+        .from("profiles")
+        .select("membership_code")
+        .eq("id", memberId)
+        .maybeSingle();
+
+      if (codeError) {
+        console.error(
+          `[members.code_unreadable] createAccount: subject=${memberId} ` +
+            `code=${codeError.code ?? "unknown"}`
+        );
+      } else {
+        membershipCode = profile?.membership_code ?? null;
+      }
+
+      // The account exists and is admissible from here on. Every failure below
+      // says so, and carries the code.
+      const codeCarried = { membershipCode };
+
+      // ── 5. The link ─────────────────────────────────────────────────────
+      //
+      // `recovery` and not `invite`: `invite` CREATES a user (the user already
+      // exists by now) and does not permit setting a password; `recovery`
+      // requires an existing user and does. A recovery link also cannot carry
+      // metadata — `GenerateRecoveryLinkParams.options` is
+      // `Pick<GenerateLinkOptions, 'redirectTo'>` in the installed 2.97.0
+      // package — which is why the target rides in the URL.
+      const { data: link, error: linkError } =
+        await serviceClient.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          options: { redirectTo },
+        });
+
+      if (linkError || !link?.properties?.action_link) {
+        console.error(
+          `[members.invitation_link_failed] createAccount: subject=${memberId} ` +
+            `code=${linkError?.code ?? "unknown"} status=${linkError?.status ?? "unknown"}`
+        );
+        revalidatePath("/admin/members");
+        return {
+          ok: false,
+          failure: "invitation_link_failed",
+          detail: linkError?.code ?? "no_action_link",
+          ...codeCarried,
+        };
+      }
+
+      if (!sameRedirectTarget(link.properties.redirect_to ?? "", redirectTo)) {
+        // The requested target was not honoured — the signature of an allow-list
+        // entry that is not there. The link WORKS; it just lands somewhere with
+        // no password field. Sending it would be worse than not sending it,
+        // because the failure would then be a person's confusion rather than an
+        // operator's notice. The returned value is not logged: it is a URL Auth
+        // chose, and the diagnosis is the mismatch, not its content.
+        console.error(
+          `[members.invitation_link_misaimed] createAccount: subject=${memberId} ` +
+            `redirect_to did not match the requested target`
+        );
+        revalidatePath("/admin/members");
+        return {
+          ok: false,
+          failure: "invitation_link_misaimed",
+          detail: "redirect_to_mismatch",
+          ...codeCarried,
+        };
+      }
+
+      // ── 6. The send, AWAITED ────────────────────────────────────────────
+      //
+      // The one place `approveMember`'s fire-and-forget is deliberately not
+      // copied. There the mail decorates an act that already happened; here the
+      // invitation IS the requirement (ACCT-03), so a swallowed send is the
+      // requirement failing quietly — and this project has no error tracking, so
+      // quietly means nobody ever finds out.
+      try {
+        await sendAccountInvitation(email, fullName, link.properties.action_link);
+      } catch (err) {
+        logEmailFailure("createAccount", memberId, err);
+        revalidatePath("/admin/members");
+        return {
+          ok: false,
+          failure: "invitation_send_failed",
+          detail: "send_failed",
+          ...codeCarried,
+        };
+      }
+
+      revalidatePath("/admin/members");
+      revalidatePath("/organizer/members");
+
+      return {
+        ok: true,
+        data: { memberId, actId: recorded.data.actId, membershipCode, role },
+      };
+    }
   );
 }
