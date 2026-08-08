@@ -169,9 +169,16 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
 };
 
 /**
- * `forbidden` is one tag covering seven distinct refusals, and telling a person
+ * `forbidden` is one tag covering twelve distinct refusals, and telling a person
  * only "you do not have permission" would collapse them exactly as the recorded
  * newsletter defect collapses its three causes.
+ *
+ * Five arrived with CR-01's repair (`43-REVIEW-FIX`): `self_approve`,
+ * `self_reject`, `withdrawal_is_master_only`, `restoration_is_master_only`, and
+ * a widened `subject_is_master` that now covers every act in the group rather
+ * than the role change alone. Each is reachable per subject inside a batch, so
+ * each has to arrive at this file as a VALUE — which is why
+ * `BulkSubjectOutcome` gained a `detail`.
  *
  * Every key below is a `detail` literal chosen by `admin/members/actions.ts`
  * — a value, not a message, and therefore safe to branch on and safe to render.
@@ -196,12 +203,57 @@ const FORBIDDEN_BY_DETAIL: Record<string, Notice> = {
   },
   subject_is_master: {
     tone: "refusal",
-    title: "The master's role cannot be changed from here, by anybody",
+    title: "No act on this surface can be aimed at the master, by anybody",
     body:
       "Nothing was changed. The refusal comes from the server, not from this " +
       "screen: the table hides the control on a master's row, and hiding a " +
       "control is not the same as refusing a request — a Server Action is a " +
-      "public endpoint with a convenient signature.",
+      "public endpoint with a convenient signature. It covers every act here — " +
+      "role change, approve, reject, deactivate, reactivate — because a " +
+      "restriction reachable through a sibling act is not a restriction. " +
+      "Changing who holds the top role is done through the deployment " +
+      "environment, which is the one place it is recorded.",
+  },
+  withdrawal_is_master_only: {
+    tone: "refusal",
+    title:
+      "This account's access was already granted — withdrawing it is Deactivate, " +
+      "and Deactivate is reserved to the master",
+    body:
+      "Nothing was changed. Reject refuses an application that is still open; " +
+      "withdrawing an access that had already been granted is a different act " +
+      "with a different name, and the register keeps the two apart on purpose. " +
+      "Rejecting an approved account here would write \"rejected\" into the " +
+      "history where \"deactivated\" is what happened.",
+  },
+  restoration_is_master_only: {
+    tone: "refusal",
+    title:
+      "This account was already refused — restoring it is Reactivate, and " +
+      "Reactivate is reserved to the master",
+    body:
+      "Nothing was changed. Approve decides an application that is still open; " +
+      "restoring an access that had been withdrawn is a different act with a " +
+      "different name. Approving a rejected account here would write " +
+      "\"approved\" into the history where \"reactivated\" is what happened — " +
+      "and it would reach, through a wider gate, the act the narrower one holds.",
+  },
+  self_approve: {
+    tone: "refusal",
+    title: "You cannot approve your own account",
+    body:
+      "Nothing was changed. Every act on somebody's role or status is recorded " +
+      "with its author, and an act whose author and subject are the same person " +
+      "is the one shape attribution cannot make safe. Ask another master or " +
+      "organizer.",
+  },
+  self_reject: {
+    tone: "refusal",
+    title: "You cannot reject your own account",
+    body:
+      "Nothing was changed. It is the same refusal as approving yourself, held " +
+      "in both directions so the pair cannot drift apart — which is exactly how " +
+      "the gap this closes came about.",
   },
   self_role_change: {
     tone: "refusal",

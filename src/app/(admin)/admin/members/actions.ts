@@ -554,6 +554,189 @@ async function recordAct(
   };
 }
 
+// =============================================================================
+// THE ACT GROUP — the rule every act below holds, and the next one inherits
+// =============================================================================
+//
+// Six acts write `public.profiles.role` and `.status` through
+// `record_membership_act`, behind TWO gates:
+//
+//   verifyMaster            -> master.manage -> deactivateMember, reactivateMember
+//   verifyAdminOrOrganizer  -> staff.manage  -> approveMember, rejectMember,
+//                                               updateMemberRole, the two bulks,
+//                                               createAccount
+//
+// CR-01 of `43-REVIEW.md` found the two gates reaching the SAME WRITES.
+// `rejectMember` performs, byte for byte, the `UPDATE` of the master-only
+// `deactivateMember`; `approveMember` performs the `UPDATE` of the master-only
+// `reactivateMember`. **A master-only restriction that is reachable through a
+// sibling with a wider gate is not a restriction.** The reachable outcome was
+// concrete: an organizer calling `rejectMember(<the master>)` — a Server Action
+// is a public endpoint, and the table merely HIDING the control on a master's
+// row is an affordance and not a boundary — left the product with **no master at
+// all**, and with no way back inside the product, because `WritableRole` has no
+// `'master'` and no branch writes one.
+//
+// THE RULE CHOSEN HERE. Three parts, and a seventh act inherits all three.
+//
+//   1. NO ACT IN THIS GROUP REACHES A SUBJECT WHO HOLDS `master`.
+//      Uniform, under BOTH gates, independent of who is calling. `WritableRole`
+//      is deliberately NOT widened and the recovery path does not come back into
+//      this file: restoring the top role stays where D-12 put it —
+//      `public.reconcile_master`, driven by the deployment environment, whose own
+//      zero-master guard refuses a configuration that would leave nobody. This
+//      rule is that guard's counterpart one layer up: the database refuses to
+//      REACH zero masters, and this file refuses to AIM at the one there is.
+//
+//   2. NO ACT IN THIS GROUP REACHES ITS OWN AUTHOR.
+//      Every act is recorded with its author; an act whose author and subject
+//      are the same person is the one shape attribution cannot make safe. 43-09
+//      added this to `reactivateMember` calling its absence *«un'incoerenza che
+//      il prossimo avrebbe copiato invece di notare»* — and stopped one function
+//      short of `approveMember` and `rejectMember`, which is the copy it feared.
+//
+//   3. THE ACT NAMES THE TRANSITION IT PERFORMS. Two status transitions are
+//      RESERVED to the `master.manage` pair, and are refused to every act under
+//      the wide gate — whoever is calling, master included:
+//
+//          approved -> rejected   IS `deactivateMember`  — withdrawing an access
+//                                                          that had been granted
+//          rejected -> approved   IS `reactivateMember`  — restoring one
+//
+//      Under the wide gate an act may DECIDE AN OPEN APPLICATION (`pending` ->
+//      `approved` or `rejected`) and may re-assert a status the account already
+//      holds. It may not overturn a decision the narrow gate made. That is what
+//      makes the master-only pair a restriction rather than a longer route to
+//      the same write.
+//
+//      Rule 3 is not only the permission repair — it is what keeps the REGISTER
+//      truthful. `acts.ts:41-45` says `rejected` and `deactivated` are two acts
+//      for one write BECAUSE they are performed for two different reasons, and
+//      the register is the only place that difference survives. Letting
+//      `approveMember` revive a rejected account would write `approved` where
+//      `reactivated` is what happened: a history that misnames itself is worse
+//      than a history that is missing, because it is read as true.
+//
+//      It binds `updateMemberRole` too, and that is deliberate rather than
+//      incidental: a promotion to `organizer` or `staff` writes
+//      `status = 'approved'` in the SAME statement (43-06), so a promotion aimed
+//      at a rejected account is a reactivation reached through a third door.
+//      A demotion passes the role alone and leaves the status axis where it was,
+//      so it is unconstrained by rule 3 — `member` and `approved` are two axes
+//      (`access-gating.md`, gate *due assi*).
+//
+//   The surface already agrees with rule 3 and does not have to change:
+//   `MemberTable.tsx` offers Approve and Reject only on a `pending` row (:406),
+//   the bulk pair only on the pending tab (:781), and a role change only on an
+//   `approved` one (:318). Rule 3 makes the server REFUSE what the surface
+//   already declines to offer — which is the whole distinction between hiding a
+//   control and refusing a request.
+//
+//   FOR A BULK ACT, a refused subject becomes an OUTCOME and is never dropped.
+//   43-14's contract is one distinguishable sentence per cause, and
+//   *"5 selected, 4 rejected, 1 refused because it is the master"* is not the
+//   same report as *"5 rejected"* — a count that quietly shrinks is the asserted
+//   count of 43-09 wearing the opposite sign.
+
+/** The status axis, as every act in this group writes it. */
+const STATUS_APPROVED = "approved";
+const STATUS_REJECTED = "rejected";
+
+/**
+ * Is this status write one of the two transitions reserved to `master.manage`?
+ *
+ * `to === null` means the act does not move the status axis at all (a demotion),
+ * and nothing is reserved about leaving a value alone.
+ */
+function isReservedTransition(from: string, to: string | null): boolean {
+  if (to === null) return false;
+  if (from === STATUS_APPROVED && to === STATUS_REJECTED) return true;
+  if (from === STATUS_REJECTED && to === STATUS_APPROVED) return true;
+  return false;
+}
+
+/** A refusal, in the shape every act in this group returns it. */
+type SubjectRefusal = { ok: false; failure: MemberActFailure; detail: string };
+
+/**
+ * The three rules above, in one read, before any act in this group writes.
+ *
+ * Returns the subject's CURRENT role and status on success, because two callers
+ * need them anyway — `updateMemberRole` names the act from the role it is
+ * replacing — and a second read would be a second truth.
+ *
+ * `maybeSingle()` and not `single()`: a missing row is `subject_not_found`, and
+ * `single()` would report it as a PostgREST code that classifies as a generic
+ * write failure. The distinction is the difference between *"reload the list"*
+ * and *"the write was refused"*.
+ *
+ * ── `ownsReservedTransitions`, and why its default is the safe one ───────────
+ *
+ * `false` unless stated. Only `deactivateMember` and `reactivateMember` pass
+ * `true`, because they ARE the two reserved transitions — refusing them their
+ * own operation would be rule 3 eating the pair it exists to protect. A seventh
+ * act that forgets the flag therefore gets the RESTRICTIVE answer, which is the
+ * direction a forgotten flag has to fail in.
+ */
+async function assertSubjectActionable(
+  serviceClient: ServiceClient,
+  ctx: ActorContext,
+  memberId: string,
+  opts: {
+    /** The action name, for the log line of a failed read. */
+    action: string;
+    /** The `detail` a self-aimed act carries — one value per act, never shared. */
+    selfDetail: string;
+    /** The status this act writes, or `null` when it leaves the axis alone. */
+    statusWrite: string | null;
+    ownsReservedTransitions?: boolean;
+  }
+): Promise<{ ok: true; role: string; status: string } | SubjectRefusal> {
+  // Rule 2, first and without a round trip: an act aimed at its own author is
+  // refused before the database is asked anything about anybody.
+  if (memberId === ctx.userId) {
+    return { ok: false, failure: "forbidden", detail: opts.selfDetail };
+  }
+
+  const { data: subject, error } = await serviceClient
+    .from("profiles")
+    .select("role, status")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (error) return writeFailure(opts.action, error);
+  if (!subject) {
+    return { ok: false, failure: "subject_not_found", detail: "no_profile" };
+  }
+
+  const role = String(subject.role);
+  const status = String(subject.status);
+
+  // Rule 1.
+  if (role === "master") {
+    return { ok: false, failure: "forbidden", detail: "subject_is_master" };
+  }
+
+  // Rule 3.
+  if (
+    !opts.ownsReservedTransitions &&
+    isReservedTransition(status, opts.statusWrite)
+  ) {
+    return {
+      ok: false,
+      failure: "forbidden",
+      // Two details rather than one, because the two want two different next
+      // steps: one says *use Deactivate*, the other says *use Reactivate*.
+      detail:
+        status === STATUS_APPROVED
+          ? "withdrawal_is_master_only"
+          : "restoration_is_master_only",
+    };
+  }
+
+  return { ok: true, role, status };
+}
+
 // --- Role changes: master OR organizer, within the ceiling ---
 
 /**
@@ -654,34 +837,25 @@ export async function updateMemberRole(
       return { ok: false, failure: "forbidden", detail: "role_not_writable" };
     }
 
-    if (memberId === ctx.userId) {
-      return { ok: false, failure: "forbidden", detail: "self_role_change" };
-    }
-
     const serviceClient = getServiceClient();
 
-    // The current role, read for two reasons: to name the act (`promoted` or
-    // `demoted` — the register has to say which), and to refuse a `master`
-    // subject. `maybeSingle()` and not `single()`: a missing row is
-    // `subject_not_found`, and `single()` would report it as a PostgREST error
-    // code that classifies as a generic write failure.
-    const { data: subject, error: readError } = await serviceClient
-      .from("profiles")
-      .select("role")
-      .eq("id", memberId)
-      .maybeSingle();
+    // Granting a staff role approves the account in the same statement; a
+    // demotion leaves the status axis alone. Computed BEFORE the guard, because
+    // rule 3 judges the transition this act is about to perform.
+    const statusWrite = newRole === "member" ? null : STATUS_APPROVED;
 
-    if (readError) return writeFailure("updateMemberRole", readError);
-    if (!subject) {
-      return { ok: false, failure: "subject_not_found", detail: "no_profile" };
-    }
+    // Rules 1, 2 and 3 in one read — see THE ACT GROUP above. This replaces the
+    // self-check and the `subject_is_master` refusal that used to live here
+    // inline, and the read it used to do to name the act: `subject.role` comes
+    // back from the same statement.
+    const subject = await assertSubjectActionable(serviceClient, ctx, memberId, {
+      action: "updateMemberRole",
+      selfDetail: "self_role_change",
+      statusWrite,
+    });
+    if (!subject.ok) return subject;
 
-    const currentRole = String(subject.role);
-
-    // Ceiling, part 2 — see the block comment above.
-    if (currentRole === "master") {
-      return { ok: false, failure: "forbidden", detail: "subject_is_master" };
-    }
+    const currentRole = subject.role;
 
     if (currentRole === newRole) {
       // No act, and no register row. The register has seven values and none of
@@ -718,7 +892,7 @@ export async function updateMemberRole(
       act,
       actorId: ctx.userId,
       role: newRole,
-      status: newRole === "member" ? null : "approved",
+      status: statusWrite,
     });
 
     if (result.ok) revalidatePath("/admin/members");
@@ -732,11 +906,18 @@ export async function deactivateMember(
   memberId: string
 ): Promise<MemberActResult<ActRecorded>> {
   return guarded("deactivateMember", verifyMaster, async (ctx) => {
-    if (memberId === ctx.userId) {
-      return { ok: false, failure: "forbidden", detail: "self_deactivate" };
-    }
-
     const serviceClient = getServiceClient();
+
+    // Rules 1 and 2. NOT rule 3: this act IS `approved -> rejected`, so it
+    // passes `ownsReservedTransitions` — see THE ACT GROUP above.
+    const subject = await assertSubjectActionable(serviceClient, ctx, memberId, {
+      action: "deactivateMember",
+      selfDetail: "self_deactivate",
+      statusWrite: STATUS_REJECTED,
+      ownsReservedTransitions: true,
+    });
+    if (!subject.ok) return subject;
+
     const result = await recordAct("deactivateMember", serviceClient, {
       subjectId: memberId,
       act: "deactivated",
@@ -758,14 +939,19 @@ export async function reactivateMember(
   memberId: string
 ): Promise<MemberActResult<ActRecorded>> {
   return guarded("reactivateMember", verifyMaster, async (ctx) => {
-    // The self-check its two siblings had and this one did not. One line, and
-    // its absence was an inconsistency the next person would have copied rather
-    // than noticed.
-    if (memberId === ctx.userId) {
-      return { ok: false, failure: "forbidden", detail: "self_reactivate" };
-    }
-
     const serviceClient = getServiceClient();
+
+    // Rules 1 and 2 — the self-check 43-09 added here is now the group's, held
+    // for all six acts instead of for three. NOT rule 3: this act IS
+    // `rejected -> approved`.
+    const subject = await assertSubjectActionable(serviceClient, ctx, memberId, {
+      action: "reactivateMember",
+      selfDetail: "self_reactivate",
+      statusWrite: STATUS_APPROVED,
+      ownsReservedTransitions: true,
+    });
+    if (!subject.ok) return subject;
+
     const result = await recordAct("reactivateMember", serviceClient, {
       subjectId: memberId,
       act: "reactivated",
@@ -785,6 +971,16 @@ export async function approveMember(
 ): Promise<MemberActResult<ActRecorded>> {
   return guarded("approveMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
+
+    // Rules 1, 2 and 3 — see THE ACT GROUP above. Rule 3 is what stops this
+    // being `reactivateMember` under a wider gate and a wrong name: a `rejected`
+    // subject is refused with `restoration_is_master_only`.
+    const subject = await assertSubjectActionable(serviceClient, ctx, memberId, {
+      action: "approveMember",
+      selfDetail: "self_approve",
+      statusWrite: STATUS_APPROVED,
+    });
+    if (!subject.ok) return subject;
 
     const result = await recordAct("approveMember", serviceClient, {
       subjectId: memberId,
@@ -813,6 +1009,19 @@ export async function rejectMember(
 ): Promise<MemberActResult<ActRecorded>> {
   return guarded("rejectMember", verifyAdminOrOrganizer, async (ctx) => {
     const serviceClient = getServiceClient();
+
+    // Rules 1, 2 and 3 — see THE ACT GROUP above. This is the function CR-01
+    // was found on: gated on `staff.manage`, writing `role: 'member',
+    // status: 'rejected'`, and carrying neither guard, so an organizer could aim
+    // it at the master and leave the product with none. Rule 3 additionally
+    // stops it being `deactivateMember` under a wider gate: an `approved`
+    // subject is refused with `withdrawal_is_master_only`.
+    const subject = await assertSubjectActionable(serviceClient, ctx, memberId, {
+      action: "rejectMember",
+      selfDetail: "self_reject",
+      statusWrite: STATUS_REJECTED,
+    });
+    if (!subject.ok) return subject;
 
     // `rejected` and `deactivated` are the same write and two acts, because
     // they are performed for two different reasons: this one refuses an
@@ -879,6 +1088,18 @@ export type BulkSubjectOutcome = {
   subjectId: string;
   ok: boolean;
   failure?: MemberActFailure;
+  /**
+   * The refusal's `detail` — a value from a closed set, never a message.
+   *
+   * Added for CR-01. Six of the seven `forbidden` details this file produces are
+   * now reachable per subject inside a batch, and `forbidden` alone would tell
+   * an operator only *"one of them was refused"*. That is the collapse
+   * `meta-gates.md` forbids by name and 43-14 spent a component avoiding: the
+   * report has to be able to say **"5 selected, 4 rejected, 1 refused because it
+   * is the master"**, and a subject that quietly vanished from the count would
+   * be the asserted count of 43-09 wearing the opposite sign.
+   */
+  detail?: string;
 };
 
 export type BulkActData = {
@@ -894,6 +1115,8 @@ async function runBulk(
   memberIds: string[],
   act: MembershipAct,
   write: { role?: string | null; status?: string | null },
+  /** The `detail` a self-aimed subject carries in THIS batch. One per act. */
+  selfDetail: string,
   sendMail: (email: string, fullName: string) => Promise<void>
 ): Promise<MemberActResult<BulkActData>> {
   // Read once, named `requested`, and used ONLY as the denominator of a report.
@@ -909,6 +1132,33 @@ async function runBulk(
   const outcomes: BulkSubjectOutcome[] = [];
 
   for (const subjectId of memberIds) {
+    // THE ACT GROUP, per subject. Both bulks are gated on `staff.manage`, so
+    // rules 1, 2 and 3 all apply — `bulkRejectMember([<the master>])` was the
+    // second half of CR-01, and it reached the same write as the single act
+    // without even the self-check.
+    //
+    // The refusal becomes an OUTCOME and the loop continues. A refused subject
+    // never disappears from the report: it is counted in `failed` and carries
+    // its own cause AND detail, so the notice says which subject and why. The
+    // batch is not aborted, for the same reason 43-09 gave — a caller told WHICH
+    // one was refused can act on it; a caller told "the batch failed" can only
+    // start again and hope.
+    const subject = await assertSubjectActionable(serviceClient, ctx, subjectId, {
+      action,
+      selfDetail,
+      statusWrite: write.status ?? null,
+    });
+
+    if (!subject.ok) {
+      outcomes.push({
+        subjectId,
+        ok: false,
+        failure: subject.failure,
+        detail: subject.detail,
+      });
+      continue;
+    }
+
     const result = await recordAct(action, serviceClient, {
       subjectId,
       act,
@@ -920,7 +1170,7 @@ async function runBulk(
     outcomes.push(
       result.ok
         ? { subjectId, ok: true }
-        : { subjectId, ok: false, failure: result.failure }
+        : { subjectId, ok: false, failure: result.failure, detail: result.detail }
     );
   }
 
@@ -982,7 +1232,8 @@ export async function bulkApproveMember(
       ctx,
       memberIds,
       "approved",
-      { status: "approved" },
+      { status: STATUS_APPROVED },
+      "self_approve",
       sendApprovalEmail
     )
   );
@@ -1000,7 +1251,8 @@ export async function bulkRejectMember(
       // The demotion travels with the rejection, exactly as the single act does:
       // it is what keeps a rejected organizer compatible with
       // `profiles_role_implies_approved`.
-      { role: "member", status: "rejected" },
+      { role: "member", status: STATUS_REJECTED },
+      "self_reject",
       sendRejectionEmail
     )
   );
@@ -1195,6 +1447,15 @@ function sameRedirectTarget(returned: string, requested: string): boolean {
  *     written, so it cannot be used to touch, re-approve or re-role somebody
  *     who already exists — including a master;
  *   * **status** — `approved`, always. There is no argument for it.
+ *
+ * That is also why this is the one act in the group that does NOT call
+ * `assertSubjectActionable`: the three rules are about a subject the caller
+ * NAMED, and here there is none to name. The subject is minted a few lines below
+ * by `createUser`, so it cannot be a master (rule 1), cannot be the author
+ * (rule 2), and its status transition is `pending -> approved` — an open
+ * application being decided, which rule 3 permits under this gate. Stated rather
+ * than left as an absence, so the next reader does not read the missing call as
+ * the omission CR-01 was.
  *
  * ── The service-role client, justified as `access-gating.md` requires ───────
  *

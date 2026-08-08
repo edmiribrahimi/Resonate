@@ -51,7 +51,22 @@ type BulkResult = {
   requested: number;
   succeeded: number;
   failed: number;
-  failures: { subjectId: string; subject: string; kind: MemberNoticeKind }[];
+  failures: {
+    subjectId: string;
+    subject: string;
+    kind: MemberNoticeKind;
+    /**
+     * The refusal's `detail`, when the action supplied one.
+     *
+     * It did not, until CR-01: a per-subject outcome carried the cause alone,
+     * and the notice fell back to the cause's own sentence. That was honest
+     * while the only per-subject causes were database failures. It stopped being
+     * honest the moment the act group started refusing individual subjects for
+     * five different reasons — "one of them was refused" is the collapse this
+     * component exists to prevent.
+     */
+    detail?: string;
+  }[];
   /** Set when the batch was refused as a whole, before any subject was touched. */
   batchNotice?: ActionNotice;
 };
@@ -598,10 +613,15 @@ export default function MemberTable({
           .map((o) => ({
             subjectId: o.subjectId,
             subject: subjectLabel(o.subjectId),
-            // A per-subject outcome carries the cause and no detail; the notice
-            // falls back to the cause's own sentence, which is the honest
-            // answer rather than a borrowed one.
+            // The cause AND its detail. A per-subject outcome used to carry the
+            // cause alone; since CR-01 the act group can refuse one subject of a
+            // batch for five distinct reasons that all tag as `forbidden`, and
+            // the detail is what tells "it is the master" from "it is you" from
+            // "that act is reserved to the master". An absent detail still falls
+            // back to the cause's own sentence, which remains the honest answer
+            // rather than a borrowed one.
             kind: (o.failure ?? "write_failed") as MemberNoticeKind,
+            detail: o.detail,
           }));
 
         setBulkResult({ ...base, succeeded, failed, failures });
@@ -840,6 +860,7 @@ export default function MemberTable({
                 <MemberActionNotice
                   key={f.subjectId}
                   kind={f.kind}
+                  detail={f.detail}
                   subject={f.subject}
                 />
               ))}
