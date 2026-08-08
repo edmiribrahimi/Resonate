@@ -11,7 +11,10 @@
  *
  * Both unions below are mirrored by SQL `CHECK` constraints on
  * `public.membership_acts`
- * (`supabase/migrations/20260808002000_membership_register.sql`, section 2).
+ * (`supabase/migrations/20260808002000_membership_register.sql`, section 2 —
+ * and, for `MembershipAct`, the CURRENT constraint is the one re-declared by
+ * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1, which
+ * dropped the seven-value form and added the nine-value one).
  * They were written once here and copied there. **Editing either side means
  * editing both, in the same commit.**
  *
@@ -34,9 +37,12 @@
  */
 
 /**
- * What was done to an account's role or status.
+ * What was done to an account's role or status, or to what it may do on one
+ * night.
  *
- * Seven values, mirrored by the `act` CHECK on `public.membership_acts`.
+ * Nine values, mirrored by the `act` CHECK on `public.membership_acts`
+ * (widened from seven by
+ * `supabase/migrations/20260809002000_assignment_acts.sql`, section 1).
  *
  * `rejected` and `deactivated` are two values and not one although they are the
  * SAME write today — `{status: 'rejected', role: 'member'}` — because they are
@@ -44,10 +50,22 @@
  * withdraws an access that had been granted. A register that cannot tell them
  * apart cannot be read a season later, which is the only thing it is for.
  *
- * Phase 35's per-night assignment adds its own values (`'assigned'`,
- * `'unassigned'`) to this union and to the CHECK, in one commit, when it lands.
- * A door override does NOT: it stays in `door_scan_events` (D-18), and the
- * migration says why.
+ * `assigned` and `unassigned` LANDED with phase 35, and they are the two acts
+ * of the per-night assignment — read as *Assigned to a night* and *Assignment
+ * revoked*. They are the only two values that carry `party_id`, and the only
+ * two that leave all four role/status columns null: an assignment moves neither
+ * axis, and a `NULL` there means *this act did not touch that axis*.
+ *
+ * They are also the only two written by a function other than
+ * `public.record_membership_act` directly: `public.record_party_assignment_act`
+ * delegates to it, in the same transaction as the row it is recording, so a
+ * mutation cannot succeed while its record fails.
+ *
+ * A door override still does NOT enter here: it stays in `door_scan_events`.
+ * D-18 was REWRITTEN rather than widened when the two values above arrived, and
+ * the criterion is in
+ * `COMMENT ON COLUMN public.membership_acts.party_id` — **admitting a person is
+ * not granting a power.** An override admits; an assignment grants.
  */
 export type MembershipAct =
   | "created"
@@ -56,7 +74,9 @@ export type MembershipAct =
   | "promoted"
   | "demoted"
   | "deactivated"
-  | "reactivated";
+  | "reactivated"
+  | "assigned"
+  | "unassigned";
 
 /**
  * Who performed the act — D-22.
