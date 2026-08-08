@@ -191,13 +191,18 @@ collaudo.
 
 ## Le prove, nell'ordine in cui si possono davvero fare
 
-Sono **sedici**, raggruppate in sei sessioni. Fra una sessione e l'altra ci si
-puo' fermare senza lasciare niente a meta'.
+Sono **diciassette**, raggruppate in sette sessioni. Fra una sessione e l'altra
+ci si puo' fermare senza lasciare niente a meta'.
 
 Undici portano i nomi `M-43-01 … M-43-11` e sono le prove che i requisiti della
 fase chiedono. Cinque portano i nomi `W-43-14-A … W-43-14-F` e sono le
 camminate sull'interfaccia scritte dal piano 43-14. Una prova — la numero 16 —
 e' **la stessa cosa** vista da due piani diversi, e per questo porta due nomi.
+
+La diciassettesima, `CR-01/3`, e' arrivata dopo: verifica una **decisione del
+proprietario del 2026-08-08** e **sostituisce** un controllo che verificava due
+rifiuti oggi abrogati. Una prova in attesa che verifica una regola che non
+esiste piu' e' peggio di nessuna prova.
 
 ---
 
@@ -411,6 +416,16 @@ una cosa da sapere: `rifiutato` e `disattivato` scrivono la stessa cosa sul
 profilo ma restano **due atti diversi** nel registro. Uno rifiuta una domanda,
 l'altro ritira un accesso gia' concesso, e il registro e' l'unico posto dove
 quella differenza sopravvive.
+
+e una seconda, dal 2026-08-08: **il nome dell'atto non viene dal pulsante che hai
+premuto, viene dalla transizione che hai compiuto.** Quindi in questa prova, se
+si segue l'ordine indicato — approvare (da `pending`), rifiutare (da `approved`),
+promuovere, disattivare, riattivare — il registro non scrive necessariamente il
+nome del pulsante: **rifiutare un account gia' approvato si registra come
+`deactivated`**, non come `rejected`. Le cinque righe restano cinque; e' il
+secondo nome a essere diverso da quello che ci si aspetterebbe, ed e' corretto
+cosi'. Se invece si vuole vedere un `rejected` vero, bisogna rifiutare un account
+che e' ancora `pending`.
 
 pulizia: l'account di prova va cancellato a fine sessione. Le sue righe nel
 registro **restano**, per progetto.
@@ -943,14 +958,105 @@ result: [pending]
 
 ---
 
+## Sessione 7 — la decisione del proprietario del 2026-08-08
+
+### 17. CR-01/3 — un organizer riammette, e il registro dice **riammesso**
+
+ruolo: **organizer** (serve una sessione con quel ruolo), piu' un master per
+preparare il soggetto e per leggere il registro
+serve prima: le sei migration applicate e il codice deployato
+serve una mano tecnica: **si, dai passi 2 e 3**
+
+perche' esiste: **e' l'unica prova di una decisione presa dal proprietario**, il
+2026-08-08, e non da un agente. Alla domanda *chi puo' ribaltare una decisione
+gia' presa su una persona* la risposta scelta e' stata: **gli organizer possono
+fare tutto.** Il rischio che quella scelta riapre non e' il permesso: e' il
+**nome** di cio' che finisce nel registro. Se un organizer riammette qualcuno e
+la storia lo chiama `approved`, il registro dice che una domanda aperta e' stata
+decisa dove invece una decisione chiusa e' stata ribaltata — e una storia che si
+nomina male viene letta come vera.
+
+Questa prova **sostituisce** un controllo precedente che verificava due rifiuti
+(*riammettere e' riservato al master*, *ritirare e' riservato al master*) che
+**non esistono piu'**. Una prova in attesa che verifica una regola abrogata e'
+peggio di nessuna prova.
+
+nota sulla superficie, da leggere prima di cominciare: **oggi un organizer non ha
+alcun pulsante che raggiunga una riammissione.** Approve e Reject sono disegnati
+solo sulle richieste in attesa; Deactivate e Reactivate solo per il master. La
+decisione del proprietario e' realizzata **nel server**, e allargare la
+superficie e' una decisione di prodotto ancora da prendere. **Questo e' il motivo
+per cui i passi 2 e 3 richiedono una mano tecnica** — e il fatto che la
+richiesta si possa costruire a mano e' esattamente cio' che rende il controllo
+del server l'unico confine che conta.
+
+passi:
+1. Con una sessione **master**, portare un account di prova nello stato
+   `rejected` (pulsante Reject su una richiesta in attesa, oppure Deactivate su
+   un account approvato).
+2. **[serve una mano tecnica]** Con una sessione **organizer**, invocare
+   `approveMember` con l'id di quell'account.
+3. **[serve una mano tecnica]** Con la stessa sessione organizer, invocare
+   `approveMember` una seconda volta sullo stesso account, che ora e'
+   `approved`.
+4. Aprire la pagina **Membership acts** e guardare le righe nuove.
+5. Guardare la casella di posta dell'account di prova.
+6. **[serve una mano tecnica]** Con la sessione organizer, invocare
+   `updateMemberRole` verso `staff` su un **secondo** account di prova che si
+   trova in stato `rejected`.
+
+cosa deve succedere:
+1. l'account risulta `rejected` nella tabella;
+2. **riesce** — nessun rifiuto. Prima del 2026-08-08 qui compariva un riquadro
+   ambra: se ricompare, l'abrogazione non e' arrivata in produzione;
+3. **non riesce, e non e' un guasto**: *«This account already holds that
+   status»*, con `status_unchanged` in carattere da macchina da scrivere. E'
+   grigio, non rosso: non e' successo niente e non c'era niente da fare;
+4. **una sola riga nuova** dal passo 2, e l'atto e' **`reactivated`** — non
+   `approved`. Il passo 3 **non** ha aggiunto nulla. La riga porta il nome
+   dell'organizer come autore, l'ora, e il passaggio di stato
+   `rejected → approved`;
+5. **nessuna mail nuova.** La mail *«You're Approved!»* e' scritta per una
+   domanda accettata, non per un rientro, e non viene mandata. **Questo e' un
+   fatto voluto e insieme una lacuna nota: oggi una persona riammessa non viene
+   informata da nessuno.** Va segnalato come lavoro da fare, non come difetto di
+   questa prova;
+6. **rifiutato**, con *«This account was refused — readmit it first, then set the
+   role»* e `readmission_before_role_change`. **Nessuna riga nel registro.**
+
+se non succede:
+- al passo 4, se l'atto e' `approved` invece di `reactivated`, il registro sta
+  prendendo il nome dalla **funzione chiamata** invece che dalla **transizione
+  avvenuta**, ed e' esattamente il difetto che l'abrogazione della regola 3
+  doveva evitare. **Fermarsi e segnalarlo**: ogni riammissione successiva
+  aggiunge una riga sbagliata a una tabella che non si puo' correggere — il
+  registro e' append-only per costruzione;
+- al passo 3, se compare una riga nuova nel registro, il registro sta scrivendo
+  un cambiamento che non e' avvenuto;
+- al passo 6, se il cambio di ruolo riesce, una persona e' rientrata nella
+  community dentro una riga etichettata `promoted`: una via di rientro che non
+  si vede. E' il *nessuna corsia grigia* di `community-membership.md`.
+
+la stessa prova nell'altra direzione, se c'e' tempo: con la sessione organizer,
+`rejectMember` su un account **approvato**. Atteso: riesce, e l'atto registrato
+e' **`deactivated`**, non `rejected` — e **nessuna mail di rifiuto**, perche'
+quel testo e' scritto per una domanda respinta e non per un accesso ritirato.
+
+pulizia: **cancellare i due account di prova** a fine sessione. Le loro righe nel
+registro **restano**, per progetto — ed e' anche il motivo per cui questa prova
+non si esegue su un account vero di un membro.
+result: [pending]
+
+---
+
 ## Riepilogo
 
-totale: 16
+totale: 17
 passate: 0
 parziali: 3 — le prove **1**, **14** e **15** portano una meta' gia' misurata in
 laboratorio, con la data, e una meta' che richiede una persona
-in attesa: 13
-bloccate dal deploy: 15 su 16 (la sola prova **2** funziona con il solo codice)
+in attesa: 14
+bloccate dal deploy: 16 su 17 (la sola prova **2** funziona con il solo codice)
 
 ## Quello che questo file non copre
 

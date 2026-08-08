@@ -642,31 +642,42 @@ in tre parti che un settimo atto eredita:
 2. **Nessun atto del gruppo raggiunge il proprio autore.** Il self-check che
    43-09 aveva fermato una funzione prima di `approveMember` e `rejectMember` —
    cioe' esattamente la copia che quel piano temeva.
-3. **L'atto nomina la transizione che compie.** Due transizioni di stato sono
-   **riservate** alla coppia `master.manage` e rifiutate a ogni atto del gate
-   largo, chiunque chiami:
+3. **L'atto nomina la transizione che compie.**
 
-   - `approved -> rejected` **e'** `deactivateMember` — ritirare un accesso gia'
-     concesso;
-   - `rejected -> approved` **e'** `reactivateMember` — ripristinarne uno.
+   > ⚠️ **La forma originale di questa regola — la riserva delle due transizioni
+   > alla coppia `master.manage` — e' ABROGATA PER DECISIONE DEL PROPRIETARIO,
+   > 2026-08-08.** Vedi la sezione *«CR-01 — la regola 3, abrogata e sostituita»*
+   > in fondo a questo documento: le regole 1 e 2 restano intatte, la regola 3 e'
+   > oggi la **derivazione della transizione** e non piu' una riserva di
+   > permesso. Il testo qui sotto e' conservato come storia di cosa fu deciso il
+   > giorno della riparazione, **non come descrizione del codice attuale**.
 
-   Sotto il gate largo si **decide una domanda aperta** (`pending -> …`) e si puo'
-   riaffermare uno stato gia' posseduto. Non si ribalta una decisione presa dal
-   gate stretto. E' questo che rende la coppia master-only una restrizione invece
-   che una strada piu' lunga verso la stessa scrittura.
+   ~~Due transizioni di stato sono **riservate** alla coppia `master.manage` e
+   rifiutate a ogni atto del gate largo, chiunque chiami:~~
 
-   La regola 3 non e' solo la riparazione del permesso: e' cio' che tiene onesto
-   il **registro**. `acts.ts:41-45` dice che `rejected` e `deactivated` sono due
-   atti per una scrittura perche' rispondono a due ragioni diverse, e il registro
-   e' l'unico posto dove quella differenza sopravvive. Lasciare che
-   `approveMember` resusciti un account rifiutato scriverebbe `approved` dove
-   `reactivated` e' cio' che e' successo: una storia che si nomina male e' peggio
-   di una storia mancante, perche' viene letta come vera.
+   - ~~`approved -> rejected` **e'** `deactivateMember` — ritirare un accesso
+     gia' concesso;~~
+   - ~~`rejected -> approved` **e'** `reactivateMember` — ripristinarne uno.~~
 
-   Vincola anche `updateMemberRole`: una promozione a `organizer`/`staff` scrive
-   `status='approved'` nella stessa istruzione, quindi una promozione puntata su
-   un account rifiutato e' una riattivazione da una terza porta. Una retrocessione
-   passa il ruolo da solo e non e' vincolata.
+   ~~Sotto il gate largo si **decide una domanda aperta** (`pending -> …`) e si
+   puo' riaffermare uno stato gia' posseduto. Non si ribalta una decisione presa
+   dal gate stretto.~~
+
+   Cio' che di questa regola **e' sopravvissuto all'abrogazione** e' la sua
+   ragione: e' cio' che tiene onesto il **registro**. `acts.ts:41-45` dice che
+   `rejected` e `deactivated` sono due atti per una scrittura perche' rispondono
+   a due ragioni diverse, e il registro e' l'unico posto dove quella differenza
+   sopravvive. Lasciare che `approveMember` resusciti un account rifiutato
+   scriverebbe `approved` dove `reactivated` e' cio' che e' successo: una storia
+   che si nomina male e' peggio di una storia mancante, perche' viene letta come
+   vera. La sostituzione del 2026-08-08 conserva **questa** frase e butta via la
+   riserva di permesso che la implementava.
+
+   Vincolava anche `updateMemberRole`: una promozione a `organizer`/`staff`
+   scrive `status='approved'` nella stessa istruzione, quindi una promozione
+   puntata su un account rifiutato e' una riattivazione da una terza porta. Una
+   retrocessione passa il ruolo da solo e non e' vincolata. **Quella terza porta
+   resta chiusa anche dopo l'abrogazione**, ma per un motivo diverso — vedi sotto.
 
 **Cosa e' cambiato in concreto.** Un solo guard condiviso,
 `assertSubjectActionable`, chiamato da `updateMemberRole`, `approveMember`,
@@ -675,23 +686,24 @@ dal ciclo di `runBulk`. `createAccount` e' l'unico atto del gruppo che non lo
 chiama, e il perche' e' scritto accanto invece che lasciato come un'assenza: non
 ha un soggetto che il chiamante possa nominare.
 
-`ownsReservedTransitions` ha default `false`, cosi' un settimo atto che
-dimenticasse il flag ottiene la risposta **restrittiva** — la direzione in cui un
-flag dimenticato deve fallire.
+~~`ownsReservedTransitions` ha default `false`~~ — rimosso il 2026-08-08 insieme
+alla regola 3.
 
 **Nel bulk un soggetto rifiutato non sparisce.** `BulkSubjectOutcome` guadagna
-`detail`, `MemberTable` lo passa a `MemberActionNotice`, e cinque nuove voci
-entrano in `FORBIDDEN_BY_DETAIL` (`self_approve`, `self_reject`,
-`withdrawal_is_master_only`, `restoration_is_master_only`, piu' un
-`subject_is_master` riformulato perche' ora copre tutti gli atti). Il contratto
-di 43-14 — una frase distinguibile per causa — regge: *«5 selezionati, 4 respinti,
-1 rifiutato perche' e' il master»* resta diverso da *«5 respinti»*.
+`detail`, `MemberTable` lo passa a `MemberActionNotice`, e nuove voci entrano in
+`FORBIDDEN_BY_DETAIL` (`self_approve`, `self_reject`, piu' un
+`subject_is_master` riformulato perche' ora copre tutti gli atti; ~~`withdrawal_is_master_only`,
+`restoration_is_master_only`~~ rimosse il 2026-08-08). Il contratto di 43-14 —
+una frase distinguibile per causa — regge: *«5 selezionati, 4 respinti, 1
+rifiutato perche' e' il master»* resta diverso da *«5 respinti»*.
 
 **La superficie non cambia**, e la coincidenza va detta: `MemberTable` gia'
 offriva Approve/Reject solo su una riga `pending` (`:406`), il bulk solo sulla
 scheda pending (`:781`) e il cambio ruolo solo su una `approved` (`:318`). La
-regola 3 fa **rifiutare al server** cio' che la superficie gia' non offre — che e'
-l'intera differenza fra nascondere un controllo e rifiutare una richiesta.
+regola 3 faceva **rifiutare al server** cio' che la superficie gia' non offre —
+che e' l'intera differenza fra nascondere un controllo e rifiutare una richiesta.
+**Dal 2026-08-08 quella coincidenza e' finita**, e nella direzione opposta: il
+server permette piu' di quanto la superficie offra. Vedi sotto.
 
 ### WR-01 — chiuso, con una deviazione dal fix proposto
 
@@ -801,10 +813,13 @@ manuale, e non e' stata raccolta qui.
    *0 su 1*, e la riga del soggetto porta la frase di `subject_is_master` — non
    sparisce dal conteggio.
 3. Ripetere con `rejectMember(<il proprio id>)`. Atteso: `self_reject`.
-4. `approveMember(<un account rejected>)`. Atteso:
-   `restoration_is_master_only`, e nessuna riga nel registro.
-   `rejectMember(<un account approved>)`. Atteso:
-   `withdrawal_is_master_only`.
+4. **Riscritto il 2026-08-08 — testava due rifiuti che non esistono piu'.**
+   Con una sessione **organizer**: `approveMember(<un account rejected>)`.
+   Atteso: **riesce**, e la riga nuova nel registro porta l'atto
+   **`reactivated`**, non `approved`. Poi `rejectMember(<un account approved>)`:
+   riesce, e l'atto e' **`deactivated`**, non `rejected`. Infine
+   `approveMember(<un account gia' approved>)`: `nothing_to_do` /
+   `status_unchanged`, e **nessuna riga nuova**.
 5. Su un ambiente con il build deployato e le migration **non** applicate:
    effettuare un login qualunque. Atteso: la barra degli indirizzi **non**
    contiene `master=`, nessun banner ambra, e nei log del server compare
@@ -851,3 +866,166 @@ lacuna:
 applicate, postgres 17.6, 21 tabelle con RLS, container distrutto.
 `npm run build` exit 0. **Non esiste un test runner per il prodotto**: nulla qui
 e' dichiarato verificato perche' "i test passano".
+
+---
+
+## CR-01 — la regola 3, abrogata e sostituita — 2026-08-08
+
+> **Questa e' una DECISIONE DEL PROPRIETARIO, presa esplicitamente il
+> 2026-08-08. Non e' una deviazione dell'esecutore.** La distinzione conta in
+> questa fase, dove ogni altra scelta e' stata presa da un agente ed e'
+> etichettata come tale.
+
+**La domanda posta:** *chi puo' ribaltare una decisione gia' presa su una
+persona — riammettere qualcuno che era stato rifiutato, o escludere qualcuno che
+era stato approvato?*
+
+**La risposta scelta: gli organizer possono fare tutto.**
+
+Quindi la **regola 3 e' abrogata**: `isReservedTransition`,
+`ownsReservedTransitions` e i due rifiuti `withdrawal_is_master_only` /
+`restoration_is_master_only` non esistono piu'. Un organizer puo' rifiutare un
+membro approvato e puo' riammettere un rifiutato, **esattamente come prima della
+fase 43**.
+
+**Le regole 1 e 2 restano, intatte.** Sono la riparazione del finding Critical
+CR-01 e non fanno parte di questa decisione:
+
+1. nessun atto del gruppo raggiunge un soggetto che porta `master`
+   (`subject_is_master`) — senza, un organizer demolisce il master e lascia il
+   prodotto senza alcun master, irrecuperabile dal prodotto;
+2. nessun atto raggiunge il proprio autore.
+
+Commit: `b599439`.
+
+### Cio' che ha preso il posto della regola 3
+
+L'abrogazione riapre il problema che la regola 3 copriva per incidente, e il fix
+che la introdusse lo aveva gia' nominato: *«l'alternativa e' che `approveMember`
+scriva `approved` dove `reactivated` e' la verita'»*.
+
+**Il registro smette di nominare l'atto dalla FUNZIONE chiamata e lo nomina dalla
+TRANSIZIONE avvenuta:**
+
+| stato prima | stato scritto | atto registrato |
+|---|---|---|
+| `pending` | `approved` | `approved` — una domanda aperta decisa |
+| `rejected` | `approved` | **`reactivated`** — una decisione chiusa ribaltata |
+| `pending` | `rejected` | `rejected` — una domanda aperta decisa |
+| `approved` | `rejected` | **`deactivated`** — un membro rimosso |
+
+Quattro funzioni scrivono l'asse dello stato — `approveMember`, `rejectMember`,
+`deactivateMember`, `reactivateMember` — e **nessuna nomina piu' il proprio
+atto**: tutte passano da `planStatusAct`. Anche la coppia master-only, quindi:
+`deactivateMember` puntato su un account `pending` registra `rejected`, perche'
+e' quello che e' successo.
+
+Lo stato precedente arriva dalla lettura che `assertSubjectActionable` fa **gia'**
+per le regole 1 e 2: nessuna seconda query, quindi nessuna finestra fra lo stato
+giudicato e lo stato nominato. `record_membership_act` prende comunque
+`FOR UPDATE` sul soggetto e calcola i propri before-values dentro la transazione.
+
+**Il bulk deriva per soggetto.** Un lotto su stati misti registra un **misto** di
+nomi — cinque selezionati possono essere tre `approved` e due `reactivated`.
+
+**Cio' che non si deriva si rifiuta invece di indovinarlo**, come il brief
+richiedeva:
+
+| caso | esito |
+|---|---|
+| stato gia' posseduto (`approved -> approved`) | `nothing_to_do` / `status_unchanged`, nessuna riga |
+| stato precedente non riconosciuto | **`act_underivable`**, nuova causa con la sua frase |
+
+`act_underivable` e' una causa nuova nel vocabolario di `MemberActFailure` e non
+un `write_failed`: le due vogliono passi successivi opposti.
+
+### La mail segue l'atto, non la porta
+
+E' l'unico punto in cui il membro vede quale delle due cose e' successa, quindi
+e' l'ultimo posto dove il nome della funzione dovrebbe decidere. `approveMember`
+manda *«You're Approved!»* solo quando l'atto derivato e' `approved`;
+`rejectMember` manda la sua solo su `rejected`. Una **riammissione** e un
+**ritiro** non mandano nulla — che e' esattamente cio' che `reactivateMember` e
+`deactivateMember` hanno sempre fatto per quelle transizioni.
+
+Conseguenza: **nessun percorso preesistente ha cambiato mail.** I due percorsi
+nuovi non ne hanno una.
+
+> **Voce aperta, nominata qui invece che scoperta dopo:** in questo progetto non
+> esiste **alcun messaggio** per una riammissione ne' per un ritiro d'accesso.
+> Una persona riammessa non viene informata. `community-membership.md`, gate *un
+> rifiuto e' una comunicazione, non uno stato*, e' la ragione per cui e' una
+> lacuna e non un risparmio.
+
+### La terza porta: `updateMemberRole`
+
+Una promozione a `organizer`/`staff` scrive `status='approved'` nella stessa
+istruzione, quindi puntata su un account `rejected` **e'** una riammissione — e
+una chiamata porta un solo nome d'atto, che qui puo' nominare onestamente solo
+un movimento di **ruolo**.
+
+**Scelta: rifiutata**, con `readmission_before_role_change`. Rifiuta una
+**porta**, non una persona: la stessa sessione riammette con Approve (che ora
+scrive `reactivated`) e poi cambia il ruolo. Due righe, due autori, due orari,
+un clic in piu'. `community-membership.md`, gate *nessuna corsia grigia*: una
+via di rientro va contata e attribuita, non sepolta dentro una riga etichettata
+`promoted`. Il rifiuto non sarebbe stato difendibile **prima** di questa
+decisione — allora sarebbe stato un vicolo cieco per un organizer; oggi costa un
+clic e non una capacita'.
+
+**`pending` non e' rifiutato**, ed e' un'asimmetria deliberata: la decisione del
+proprietario del **2026-08-06**, scritta dentro `updateMemberRole`, fa decidere
+alla promozione una domanda aperta, e decidere non e' ribaltare.
+
+> **Seconda voce aperta:** resta quindi una riga `promoted` il cui
+> `status_before` e' `pending` — un'ammissione che il registro **non nomina**
+> come tale, e che la pagina del registro non evidenzia fra gli atti che fanno
+> entrare qualcuno. E' l'unico caso in cui la porta ha ancora la precedenza sulla
+> transizione, e a metterla li' e' stata una decisione del proprietario.
+
+### La superficie, e cosa NON e' stato fatto
+
+Le due cause diventate irraggiungibili sono state **rimosse** da
+`MemberActionNotice.tsx`, non lasciate "gestite": un ramo morto che sembra
+gestito e' il punto in cui un lettore successivo smette di cercare — precedente
+registrato in questa stessa fase (43-09, due `catch` irraggiungibili; 43-14, un
+commento che smentiva il difetto accanto). Nessuna causa collassa in un
+messaggio generico: `act_underivable`, `status_unchanged` e
+`readmission_before_role_change` hanno ciascuna la sua frase.
+
+Corretta anche la copia di `master_manage_required`, che dopo l'abrogazione
+**diceva il falso** (*«un organizer … deliberatamente non puo' ritirare un
+accesso gia' concesso»*), e i due commenti di `MemberTable.tsx` che affermavano
+la stessa cosa.
+
+> **Terza voce aperta, ed e' la piu' importante.** La superficie e' ora **piu'
+> stretta di cio' che il server permette**: Approve e Reject sono disegnati solo
+> sulle righe `pending`, e Deactivate/Reactivate solo per il master. Quindi **un
+> organizer non ha oggi alcun controllo che raggiunga una riammissione o un
+> ritiro**, e la decisione del proprietario e' realizzata solo al livello del
+> server. Allargare la superficie — o allargare il gate di
+> `deactivateMember`/`reactivateMember`, che restano `verifyMaster` — **e' una
+> decisione di prodotto di classe Critical e non e' stata presa qui per
+> implicazione.** Va portata al proprietario.
+
+### Verifica eseguita
+
+| comando | esito |
+|---|---|
+| `npm run build` | **exit 0** — `✓ Compiled successfully`, typecheck di Next incluso |
+| `npx tsc --noEmit` | **exit 0** |
+| `npm run verify:capabilities -- --target=container` | **5/5 verde, 0 warning** — 9 chiavi, 20 grant e 16 rifiuti su 4 ruoli, container distrutto |
+
+Il target `production` e' rosso come atteso: non e' stato deployato nulla.
+
+**Cio' che quel verde NON prova** (`CLAUDE.md` Guardrail 1: non esiste alcun
+test runner per il prodotto, e nessun client Supabase e' parametrizzato con
+`Database`): che `planStatusAct` scriva davvero `reactivated` a runtime, che le
+tre cause nuove arrivino alla superficie, e che la mail resti ferma sui due
+percorsi nuovi. **Evidenza manuale**, scritta come procedura 17 in
+`43-HUMAN-UAT.md`.
+
+**Nessuna migration applicata a produzione. Nessuna mail inviata. Nessuna sonda
+di scrittura su produzione** — le righe di `membership_acts` sopravvivono alla
+cancellazione del soggetto, quindi una sonda dal vivo lascerebbe un atto falso
+permanente in una tabella d'audit.
