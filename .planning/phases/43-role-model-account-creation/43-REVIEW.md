@@ -819,3 +819,35 @@ _Reviewed: 2026-08-08_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
 _Fixed: 2026-08-08 — CR-01, WR-01, WR-05. Gli altri undici finding restano aperti._
+
+---
+
+## WR-04 — chiuso dall'orchestratore, 2026-08-08
+
+`supabase/migrations/20260808001000_role_implies_approved.sql` aggiungeva
+`profiles_role_implies_approved` senza `DROP CONSTRAINT IF EXISTS`, mentre la
+sua sorella nello stesso file ce l'aveva. Le sei migration di questa fase si
+applicano **a mano, una alla volta**: una seconda esecuzione di quel file
+avrebbe sollevato `42710`, mandato in rollback la transazione e lasciato **non
+applicata tutta la coda successiva** — registro degli atti, `entry_role`,
+riconciliazione. E' la forma normale dell'errore quando qualcuno ri-esegue per
+sicurezza dopo un dubbio.
+
+**Fix:** `DROP CONSTRAINT IF EXISTS` prima dell'`ADD`, con la ragione scritta
+accanto invece che dedotta dalla simmetria.
+
+**Audit delle altre cinque, eseguito nella stessa occasione** — era l'unica
+lacuna:
+
+| Migration | Esito |
+|---|---|
+| `…000500_staff_role` | idempotente — i due `ADD CONSTRAINT` reali (`:75`, `:100`) hanno ciascuno il proprio `DROP … IF EXISTS` (`:72`, `:97`); gli altri due riscontri sono dentro commenti |
+| `…002000_membership_register` | idempotente — 9 fra `IF NOT EXISTS` / `OR REPLACE` / `ON CONFLICT` |
+| `…003000_attendances_entry_role` | idempotente |
+| `…004000_master_reconcile` | idempotente — `CREATE OR REPLACE` |
+| `…005000_membership_acts_append_only` | idempotente per natura — solo `REVOKE` e `GRANT` |
+
+**Verifica:** `npm run baseline:container -- --smoke` exit 0 — 44 migration
+applicate, postgres 17.6, 21 tabelle con RLS, container distrutto.
+`npm run build` exit 0. **Non esiste un test runner per il prodotto**: nulla qui
+e' dichiarato verificato perche' "i test passano".

@@ -100,6 +100,18 @@ BEGIN;
 -- greppable by intent. Measured in `postgres:17.6`. The seed asserts against
 -- this exact name; see below.
 
+-- IDEMPOTENZA — WR-04 della code review del 2026-08-08.
+-- Il `DROP ... IF EXISTS` non e' cosmetico e non e' simmetria stilistica con la
+-- sorella piu' sopra: le sei migration di questa fase vengono applicate A MANO,
+-- una alla volta. Senza questa riga, una seconda esecuzione di QUESTO file
+-- solleva `42710` (duplicate_object), manda in rollback l'intera transazione e
+-- lascia NON APPLICATA tutta la coda che segue — cioe' il registro degli atti,
+-- `entry_role` e la riconciliazione. Il rischio non e' teorico: e' la forma
+-- normale dell'errore quando qualcuno ri-esegue per sicurezza dopo un dubbio.
+-- Ri-eseguire deve essere sicuro, o nessuno ri-esegue quando dovrebbe.
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_role_implies_approved;
+
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_implies_approved
   CHECK (role NOT IN ('master', 'organizer', 'staff') OR status = 'approved');
