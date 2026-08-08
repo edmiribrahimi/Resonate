@@ -176,18 +176,28 @@ export default async function DashboardPage({
   const { role, status } = await getAccessContext();
 
   // Both expressions KEEP THEIR FORM, deliberately. Neither redirects and
-  // neither narrows a query: `isStaff` draws a shortcut block and
+  // neither narrows a query: the first draws a shortcut block and
   // `isPendingOrRejected` draws a notice — they decide what this page RENDERS,
   // which makes them presentation under this phase's contract.
   //
-  // `isStaff` looks like an obvious candidate for the staff-manage capability
-  // question, and leaving it alone is the correct call: it gates a NAVIGATION
-  // AFFORDANCE, and
+  // ── This variable used to be called `isStaff`, and the name had become a lie
+  //
+  // The predicate is CORRECT and must not move. What broke is only its name:
+  // phase 43 adds a fourth role literally called `staff`, and a variable called
+  // `isStaff` that evaluates to **false** for the `staff` role is an invitation
+  // to a future reader to "fix" it — which would hand a `staff` account the
+  // management section, an affordance the access model refuses it. Measured in
+  // this phase, cell by cell: `staff` holds nothing a `member` does not, and it
+  // does not hold `door.operate`, `organizer.access`, `admin.access` or
+  // `staff.manage`. So the correct reading of this line is *"may this account
+  // reach the management tools"*, and it is now named that.
+  //
+  // Renaming rather than converting: this gates a NAVIGATION AFFORDANCE, and
   // phase 34 (STAFF-03 — "a navigation entry appears only where the matching
   // server-side check also passes") rewrites that whole family at once against
   // four roles. Converting one member of the family here means paying for the
   // redesign twice, and the route is already gated upstream.
-  const isStaff = role === "master" || role === "organizer";
+  const canReachManagementTools = role === "master" || role === "organizer";
   const isPendingOrRejected = status === "pending" || status === "rejected";
 
   return (
@@ -404,8 +414,9 @@ export default async function DashboardPage({
               </div>
             </div>
 
-            {/* Management Tools — staff only */}
-            {isStaff && (
+            {/* Management Tools — master and organizer only. Deliberately NOT
+                the `staff` role: see the note beside the predicate above. */}
+            {canReachManagementTools && (
               <ManagementSection role={role as "master" | "organizer"} />
             )}
           </>
