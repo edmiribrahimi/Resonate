@@ -4,6 +4,8 @@ phase: 35-per-night-assignments
 source: [35-01-PLAN.md, 35-VALIDATION.md, 43-HUMAN-UAT.md, ACCESS-MODEL-DECISIONS.md]
 started: 2026-08-08
 updated: 2026-08-08
+queue_rows_applied: 6
+queue_rows_total: 15
 ---
 
 # Fase 35 — le prove da fare a mano
@@ -28,29 +30,74 @@ updated: 2026-08-08
 
 ## Prima di tutto: l'ordine di applicazione
 
-**Niente di quello che questa fase costruisce esiste in produzione oggi, e non
-esiste nemmeno cio' su cui si appoggia.** `43-VERIFICATION.md` lo dice con due
-numeri: `migrations_applied: 0`, `deployed: false`. Quindi il ruolo `staff`, la
-regola *«un ruolo di staff implica approvato»* e il registro degli atti **non
-esistono nel database di produzione**. Ogni riga della fase 35 li presuppone.
+**Le prime sei righe di questa coda sono state applicate in produzione il
+2026-08-08, e lo stato risultante e' stato verificato interrogando il database,
+non dedotto.** Il ruolo `staff`, la regola *«un ruolo di staff implica
+approvato»* e il registro degli atti **esistono ora nel database di produzione**.
+E' il presupposto su cui poggia ogni riga della fase 35, e non e' piu' un
+presupposto: e' un fatto misurato.
 
-La coda e' di **quindici** migration: **sei** della fase 43, **otto** della fase
-35, e **una** che sta in un blocco a se' perche' e' l'unica che si applica
-**dopo** il deploy del codice.
+La coda resta di **quindici** migration: **sei** della fase 43 — **fatte** —,
+**otto** della fase 35 — **da fare** —, e **una** che sta in un blocco a se'
+perche' e' l'unica che si applica **dopo** il deploy del codice.
 
 L'ordine **non e' un suggerimento**: sbagliarlo fa fallire l'applicazione nel
 momento peggiore, cioe' mentre la si sta facendo.
 
-### Blocco A — le righe 1–14, PRIMA del deploy del codice di questa fase
+> **Il codice della fase 43 non e' deployato, e va bene cosi'.** Il database ha
+> le sei migration, l'applicazione online e' ancora quella vecchia. E' **il verso
+> sicuro** dell'accoppiamento descritto piu' avanti: le migration applicate con
+> il codice ancora vecchio non rompono niente — verificato percorso per percorso
+> dal piano 43-06 su dieci punti del prodotto che scrivono ruolo o stato. Il
+> verso opposto e' quello che rompe.
+
+### Blocco A1 — le righe 1–6, APPLICATE il 2026-08-08
+
+| # | File | Perche' doveva stare qui | Esito |
+|---|---|---|---|
+| 1 | `20260808000500_staff_role.sql` | crea il quarto ruolo `staff`. Tutto il resto lo nomina | applicata |
+| 2 | `20260808001000_role_implies_approved.sql` | la regola **nomina** `staff`: prima della riga 1 non avrebbe senso | applicata |
+| 3 | `20260808002000_membership_register.sql` | crea `membership_acts`, il registro degli atti | applicata |
+| 4 | `20260808003000_attendances_entry_role.sql` | la colonna che segna com'e' stato un ingresso | applicata |
+| 5 | `20260808004000_master_reconcile.sql` | la riconciliazione dell'account proprietario | applicata |
+| 6 | `20260808005000_membership_acts_append_only.sql` | toglie a chi scrive nel registro il potere di riscriverlo. Agisce sulla tabella della riga 3 | applicata |
+
+**Cosa e' stato osservato dopo, contro il database di produzione** — sono le
+righe che rendono questa una verifica e non un'affermazione:
+
+| Oggetto | Prima | Dopo |
+|---|---|---|
+| `profiles_role_check` | `master, organizer, member` | `master, organizer, staff, member` |
+| `profiles_role_implies_approved` | assente | `CHECK ((role <> ALL (ARRAY['master','organizer','staff'])) OR (status = 'approved'))` |
+| `public.membership_acts` | assente | tabella presente |
+| `attendances.entry_role` | colonna assente | presente |
+| `reconcile_master()` | assente | presente |
+| `record_membership_act()` | assente | presente |
+| `private.capabilities` | 8 righe | **9 righe** |
+| `private.role_capabilities` | 16 righe | **20 righe** |
+
+**Nessuna riga e' stata rifiutata, cancellata o riscritta.** Prima di applicare
+e' stato contato quanto sarebbe stato violato dal vincolo nuovo: i quattro
+profili in produzione — uno `master/approved` e tre `member/approved` — lo
+soddisfano **tutti**, quindi non c'era nessuna decisione per riga da prendere. E
+nessun oggetto della fase 43 era gia' presente: non c'era nessuna applicazione a
+meta' da districare.
+
+> **Non fidarsi del registro delle migration per sapere cosa e' applicato.** La
+> tabella `supabase_migrations.schema_migrations` — il registro che tiene la CLI
+> — si ferma a `20260806161753`, ed era **gia' cinque righe indietro prima di
+> tutto questo**: in questo progetto le migration si applicano a mano, e quel
+> registro non viene mantenuto. E' stato lasciato intatto di proposito.
+>
+> **Conseguenza operativa: chi vuole sapere se una riga di questa coda e'
+> applicata deve guardare l'oggetto, non il registro** — il vincolo, la tabella,
+> la colonna, la funzione. Leggere il registro e concluderne che non e' applicato
+> niente e' un errore che questo file esiste per prevenire.
+
+### Blocco A2 — le righe 7–14, da applicare PRIMA del deploy del codice di questa fase
 
 | # | File | Perche' deve stare qui |
 |---|---|---|
-| 1 | `20260808000500_staff_role.sql` | crea il quarto ruolo `staff`. Tutto il resto lo nomina |
-| 2 | `20260808001000_role_implies_approved.sql` | la regola **nomina** `staff`: prima della riga 1 non avrebbe senso |
-| 3 | `20260808002000_membership_register.sql` | crea `membership_acts`, il registro degli atti |
-| 4 | `20260808003000_attendances_entry_role.sql` | la colonna che segna com'e' stato un ingresso |
-| 5 | `20260808004000_master_reconcile.sql` | la riconciliazione dell'account proprietario |
-| 6 | `20260808005000_membership_acts_append_only.sql` | toglie a chi scrive nel registro il potere di riscriverlo. Agisce sulla tabella della riga 3 |
 | 7 | `20260809000000_party_assignments.sql` | crea la tabella delle assegnazioni per serata: ha bisogno del ruolo `staff` (riga 1) e del vincolo `role ⇒ approved` (riga 2) |
 | 8 | `20260809001000_assignment_resolver.sql` | modifica il corpo del resolver e **legge la tabella della riga 7** |
 | 9 | `20260809002000_assignment_acts.sql` | allarga il `CHECK` di `membership_acts`, che nasce alla riga 3 |
@@ -61,8 +108,12 @@ momento peggiore, cioe' mentre la si sta facendo.
 | 14 | `20260809005000_live_assignment_flag.sql` | aggiunge **una chiave** al payload di `public.my_access_context()` leggendo la tabella della riga 7. Chiude il blocco perche' quella funzione e' chiamata dal middleware a **ogni richiesta**: si applica quando tutto il resto e' gia' in piedi. Se resta non applicata, la chiave semplicemente non arriva e il gate grossolano si comporta come oggi |
 
 **Le otto della fase 35 vengono dopo tutte e sei quelle della fase 43, senza
-eccezioni.** Non c'e' un caso in cui convenga anticiparne una: le righe 7, 9 e
-14 nominano oggetti che le righe 1, 2 e 3 creano.
+eccezioni** — e da oggi quella condizione e' **soddisfatta**, non piu' da
+attendere. Non c'e' mai stato un caso in cui convenisse anticiparne una: le
+righe 7, 9 e 14 nominano oggetti che le righe 1, 2 e 3 creano.
+
+Fra loro, invece, l'ordine 7 → 14 **e' ancora tutto da rispettare**: e' l'unica
+parte della coda che nessuno ha ancora percorso.
 
 ### Blocco B — «Dopo il deploy», e la sua eccezione scritta a lettere piene
 
@@ -92,36 +143,44 @@ si dichiara invece di scoprirlo**.
 > non in fondo: e' una finestra aperta, con una data di chiusura che dipende da
 > un'operazione manuale.
 
-### La riga zero, da accertare prima di cominciare
+### La riga zero, accertata e chiusa il 2026-08-08
 
-C'e' **una migration della fase 33, datata `20260808000000`** — quella che porta
-`user_id` dentro il payload di `public.my_access_context()` — la cui
-applicazione in produzione **non risulta registrata da nessuna parte**: non in
+C'era **una migration della fase 33, datata `20260808000000`** — quella che porta
+`user_id` dentro il payload di `public.my_access_context()` — la cui applicazione
+in produzione non risultava registrata da nessuna parte: non in
 `43-VERIFICATION.md`, non in `.planning/STATE.md`, e non nelle catture di
-baseline di produzione, che sono tutte anteriori al giorno in cui quel file e'
-stato scritto.
+baseline di produzione, tutte anteriori al giorno in cui quel file e' stato
+scritto.
 
-**Va accertato prima di applicare la riga 1**, per due ragioni:
+**E' stata accertata, ed e' applicata.** Interrogata in produzione,
+`public.my_access_context()` risponde con la chiave `user_id` presente nel
+payload. **La coda e' di quindici righe, non sedici.**
 
-1. se non e' applicata, in produzione ogni percorso che crea un artista, una
-   venue o una guest list fallisce gia' oggi con `capabilities.identity_missing`
-   — e `33-REVIEW.md` avverte che i sintomi sono tre e la causa una sola;
-2. la **riga 14** ridefinisce `public.my_access_context()`. Applicarla sopra una
-   definizione piu' vecchia di quella che il repository contiene e' il modo piu'
-   rapido per far sparire una chiave senza che nessun messaggio lo dica.
+Nella stessa verifica sono stati trovati presenti anche `private.has_capability`
+**con l'argomento `p_party_id`** — l'aggancio che questa fase estende —,
+`private.capabilities` e `private.role_capabilities`: le fasi 32 e 33 sono
+applicate per intero.
 
-**Come si accerta:** con una sessione autenticata, chiamare
-`public.my_access_context()` e guardare se il payload porta `user_id`. Se non lo
-porta, quella migration entra in coda **come riga 0**, prima di tutto il resto.
+**Perche' valeva la pena accertarlo, e resta scritto:** se non fosse stata
+applicata, ogni percorso che crea un artista, una venue o una guest list sarebbe
+gia' fallito con `capabilities.identity_missing`, e `33-REVIEW.md` avverte che i
+sintomi sono **tre** e la causa **una sola** — in un prodotto senza error
+tracking. E la **riga 14** ridefinisce proprio `public.my_access_context()`:
+applicarla sopra una definizione piu' vecchia sarebbe stato il modo piu' rapido
+per far sparire una chiave senza che nessun messaggio lo dicesse.
 
 ---
 
 ## Il falso verde: quello che `npm run build` non prova
 
-**`npm run build` sara' verde per tutta questa fase senza che nessuna migration
-sia applicata.** Il typecheck di Next legge i tipi da `src/types/database.ts`, un
-file del repository, **non dal database vivo**: nessuna riga di quel file sa se
-una tabella esiste davvero da qualche parte.
+**`npm run build` sara' verde per tutta questa fase senza che nessuna delle otto
+migration di questa fase sia applicata.** Il typecheck di Next legge i tipi da
+`src/types/database.ts`, un file del repository, **non dal database vivo**:
+nessuna riga di quel file sa se una tabella esiste davvero da qualche parte.
+
+**Aver applicato le sei della fase 43 non cambia questo di una virgola.** Il
+verde di ieri e il verde di domani sono lo stesso verde, e nessuno dei due sa
+niente del database.
 
 Quindi un build verde qui e' **uno stato di verifica falso-positivo**, non una
 prova. Dire *«compila, quindi funziona»* in questa fase e' esattamente
@@ -141,6 +200,11 @@ posto.
 
 Vale per le righe 1–14 senza eccezioni. La riga 15 e' l'unica eccezione, ed e'
 dichiarata sopra.
+
+**Ed e' esattamente lo stato in cui si trova la produzione oggi:** le sei
+migration della fase 43 sono applicate, il codice della fase 43 **non e'
+deployato**. Non e' una situazione a meta': e' il verso sicuro, quello descritto
+qui sotto.
 
 Il motivo non e' prudenziale, e' **misurato**. Il piano 43-12 ha registrato un
 accoppiamento duro: se il codice viene deployato senza la migration numero 5,
@@ -173,6 +237,13 @@ npm run verify:capabilities
 Deve diventare **verde**. Se resta rosso, l'applicazione e' andata a meta' — ed
 e' la maniera piu' rapida e piu' economica di scoprirlo, prima che lo scopra
 qualcuno alla porta.
+
+**Dopo le sei della fase 43, i due conteggi che lo script pretende sono stati
+letti in produzione e coincidono**: `private.capabilities` porta **9 righe** e
+`private.role_capabilities` ne porta **20**, cioe' i 36/20/16 che lo script
+dichiara oggi. **Il comando non e' stato eseguito**: sono due conteggi letti dal
+catalogo, non un'esecuzione verde. La differenza si scrive, perche' e'
+esattamente il tipo di scorciatoia che questo file esiste per impedire.
 
 **Attenzione: in questa fase i conteggi attesi cambiano, ed e' voluto.** Lo
 script pre-registra la propria aritmetica accanto alla dichiarazione che conta
