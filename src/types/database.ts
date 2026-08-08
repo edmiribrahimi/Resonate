@@ -513,6 +513,73 @@ export interface PartyAssignmentRow {
   revoked_by: string | null;
 }
 
+/** The four roles a credit may carry, mirrored by `party_credits_credit_check`. */
+export type PartyCredit = "dj" | "photographer" | "host" | "visual";
+
+/**
+ * A row of `public.party_credits` — phase 35's public credit
+ * (`supabase/migrations/20260809003000_party_credits.sql`).
+ *
+ * ── What this table is, in one sentence ──────────────────────────────────────
+ *
+ * One artist, credited in one role, on one night, recorded by somebody. It is an
+ * ATTRIBUTION and nothing else.
+ *
+ * ── THE FIELD THAT IS NOT HERE, and why that is the guarantee ────────────────
+ *
+ * **This type has no account field, and it must never acquire one.** Not
+ * `user_id`, not `profile_id`, not `auth_user_id`, not an optional one "for
+ * later". A person can be credited on a night WITHOUT HAVING AN ACCOUNT — that
+ * is ASSIGN-06 — and a credit grants access to nothing.
+ *
+ * A credit that TRIED to carry an account **would not compile**: there is no
+ * field to put it in, and `npm run build` is this repository's type gate. That
+ * is half of the automatic coverage ASSIGN-06 can have. The other half is
+ * structural on the database side — the table has no such column either, so the
+ * join somebody would write in good faith,
+ * `join public.party_credits pc on pc.user_id = auth.uid()`, does not parse.
+ * Adding either side takes a migration or an edit to this interface: a visible,
+ * dated decision, never an autocomplete.
+ *
+ * `created_by` is NOT that field. It is the account that INSERTED the row, in
+ * exactly the sense `public.artists.created_by` already uses
+ * (`20260226100000_artist_profiles.sql:12`) — never who the artist is.
+ *
+ * ── The honest limit, the same one `PartyAssignmentRow` carries ──────────────
+ *
+ * None of the four Supabase clients is parameterised, so this interface
+ * DOCUMENTS the shape and does not make a query against it type-checked. The
+ * database refuses a row that disagrees with the two named constraints in that
+ * migration; `npm run build` cannot tell you that it agrees.
+ *
+ * No personal data, and this is not a formality on this table. A credit is about
+ * a night, and a night that has not been announced is material
+ * (`sound-manifesto.md`, gate *la line-up e' materiale, non manifesto*). This
+ * repository is PUBLIC: no artist name, no date and no venue belongs in this
+ * file — only the shape of the row that holds them.
+ */
+export interface PartyCreditRow {
+  id: string;
+  /** The night. `ON DELETE CASCADE`: a credit on a night that no longer exists is about nothing. */
+  party_id: string;
+  /**
+   * Which catalogue row is credited — a RELATION, never a name repeated here.
+   * `ON DELETE RESTRICT`: detach the credit before deleting the artist.
+   */
+  artist_id: string;
+  /** In which role. Mirrored by a SQL `CHECK`; nothing compares the two halves. */
+  credit: PartyCredit;
+  /** Display order only. It carries no meaning about seniority or fee. */
+  sort_order: number;
+  /**
+   * Who RECORDED the row — never who the artist is. `null` once that account is
+   * deleted, which costs attribution and disarms nothing.
+   */
+  created_by: string | null;
+  /** The server clock. A device clock is evidence, never authority. */
+  created_at: string;
+}
+
 /**
  * The two `private` tables, and the payload of the one exposed function.
  *

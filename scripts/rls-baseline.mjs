@@ -1277,6 +1277,40 @@ export const PROBE_PAYLOADS = {
     },
     update: 'granted_at',
   },
+  // Public credits for a night (plan 35-05). RLS on, and **no INSERT, UPDATE or
+  // DELETE policy at all**, deliberately (`20260809003000_party_credits.sql`,
+  // section 3): writes arrive from the catalogue surface with the service
+  // client. So every cell of this row is expected to refuse `42501` for EVERY
+  // persona including `master/approved` — the same shape as `party_assignments`,
+  // `membership_acts`, `profiles` and `tickets`.
+  //
+  // NO COLUMN HERE TAKES `auth.uid()`, and that is not an oversight in the
+  // convention above: this table HAS no column naming an account. That absence
+  // is the guarantee ASSIGN-06 is made of, so a payload that invented one would
+  // be probing a table that does not exist. `created_by` is the account that
+  // INSERTED the row, the seed fills it as the owner column
+  // (`scripts/container/seed.mjs:515-522`), and no probe sets it because a probe
+  // is not trying to own anything — the same treatment `artists` and `venues`
+  // already get.
+  //
+  // `{{artists}}` is why `artists` joins the referenceable list below. It has to
+  // resolve to a REAL row: `artist_id` is `NOT NULL REFERENCES public.artists`,
+  // so the nil uuid would make the insert fail `23503` — a refusal for the wrong
+  // reason, which D-19 would then record as inconclusive on all fourteen
+  // personas, and the row of the matrix would prove nothing about the policy.
+  //
+  // `sort_order` is the update column. The three columns that decide WHOSE
+  // attribution a night carries — `party_id`, `artist_id`, `credit` — are
+  // deliberately absent from the update probe: a probe has no business rewriting
+  // who played a night, even inside a transaction that rolls back, for the same
+  // reason no monotone guard appears in any payload here.
+  party_credits: {
+    insert: {
+      columns: ['party_id', 'artist_id', 'credit'],
+      values: ['{{event_parties}}', '{{artists}}', `'dj'`],
+    },
+    update: 'sort_order',
+  },
   // A checkout the subject started, against an existing tier.
   pending_purchases: {
     insert: {
@@ -1330,8 +1364,15 @@ export const PROBE_PAYLOADS = {
   venues: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
 };
 
-/** The tables a `{{placeholder}}` may point at. */
+/**
+ * The tables a `{{placeholder}}` may point at.
+ *
+ * `artists` was added by plan 35-05 for `party_credits.artist_id`, which is
+ * `NOT NULL` against it: without a real id there, the probe would fail `23503`
+ * on every persona and measure the foreign key instead of the policy.
+ */
 export const PROBE_REFERENCE_TABLES = [
+  'artists',
   'discount_codes',
   'drink_orders',
   'event_parties',
