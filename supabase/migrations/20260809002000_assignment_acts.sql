@@ -107,4 +107,99 @@ COMMENT ON CONSTRAINT membership_acts_act_check ON public.membership_acts IS
   'Seven from D-11 (20260808002000), plus assigned / unassigned from phase 35 — "Assigned to a night" and "Assignment revoked". '
   'Editing either side means editing both, in the same commit: a divergence raises 23514 when somebody performs the act, never at build time.';
 
+-- =============================================================================
+-- 2. D-18, REWRITTEN — what enters this register, and what does not
+-- =============================================================================
+--
+-- ── WHAT D-18 SAID, AND WHY IT CANNOT BE LEFT STANDING ──────────────────────
+--
+-- `20260808002000_membership_register.sql:299-312` refuses a door override a
+-- place in this register, and gives this reason:
+--
+--   "an override does not change who somebody IS. It admits one person, on one
+--    night, and expires with that night; this register records changes to an
+--    account's role and status, which persist."
+--
+-- Read literally, that criterion EXCLUDES THE PER-NIGHT ASSIGNMENT TOO. An
+-- assignment also concerns one person on one night, also expires with that
+-- night (`party_assignments.ends_at`), and also changes neither role nor
+-- status — its four role/status columns in this register are null by design.
+--
+-- Yet the same migration added `party_id` to this table **ON PURPOSE**
+-- (`:259-272`) so that the per-night assignment would write HERE, and
+-- `ACCESS-MODEL-DECISIONS.md` § 5 names "per-night assignment" in the list of
+-- things that must record who and when. Two paragraphs of the same phase
+-- therefore point in opposite directions.
+--
+-- **Leaving both in place would be worse than either of them**, and that is not
+-- a stylistic judgement: it is the sentence D-18 itself uses to forbid a second
+-- register — *"the first question of every later reader becomes which one is
+-- right"*. A contradiction inside ONE register is that same failure with the
+-- reader's question moved one level down.
+--
+-- ── THE CRITERION THAT WAS ACTUALLY BEING REACHED FOR ───────────────────────
+--
+-- Expiry is not the criterion. Both acts expire with the night.
+--
+-- The criterion is: **admitting a person is not granting a power.**
+--
+--   * A door override ADMITS. It lets one person through one door on one
+--     evening, and afterwards that person can do exactly what they could do
+--     before. Nothing about what they MAY DO moved.
+--   * An assignment GRANTS. It hands somebody the door, the gallery upload, or
+--     the running of a night — `door.operate`, `door.supervise`,
+--     `media.upload`, `party.manage`
+--     (`20260809000000_party_assignments.sql`, `party_assignments_capability_assignable`).
+--     After it, that person may do something they could not do before, and
+--     somebody chose to let them.
+--
+-- That is what makes it attributable under `ACCESS-MODEL-DECISIONS.md` § 5, and
+-- it is why the acts are `assigned` and `unassigned` rather than a note on a
+-- scan.
+--
+-- ── WHAT STAYS TRUE OF D-18 ────────────────────────────────────────────────
+--
+-- A door override still does NOT enter this register. It stays in
+-- `public.door_scan_events`, which already holds its outcome, its operator, its
+-- device and `is_undo` — a reversal being a further event and not an erasure
+-- (`20260805120000:118-119`). § 5 requires attribution for an override as well,
+-- and it HAS it: the question this rewrite answers is not *whether* an act is
+-- attributed but *which register* holds it, and the answer follows from the
+-- criterion above.
+--
+-- **This rewrite does not widen the register. It defines it.** Nothing that was
+-- outside is now inside except the one act `party_id` was added for.
+--
+-- ── AND STILL NO SECOND REGISTER ───────────────────────────────────────────
+--
+-- Quoted rather than paraphrased, from the paragraph being rewritten:
+-- *"Two registers holding overlapping truths is worse than either of them,
+-- because the first question of every later reader becomes which one is right."*
+-- That sentence survives this rewrite intact, and it is the reason the
+-- assignment writes into `public.membership_acts` instead of getting its own
+-- table of who-assigned-whom.
+--
+-- ── WHY THE REWRITE IS A `COMMENT ON COLUMN` AND NOT AN EDIT ────────────────
+--
+-- `20260808002000_membership_register.sql` was APPLIED TO PRODUCTION on
+-- 2026-08-08. `supabase-data.md`, gate *migration in avanti*: an applied
+-- migration is a historical fact and is not edited — a new one is written. So
+-- the superseded paragraph stays in that file, where it will keep being read.
+--
+-- This statement is therefore where the CURRENT reading lives, and it lives on
+-- the database object rather than in a file: `\d+ public.membership_acts` shows
+-- it, and it is the same text for anyone who never opens `supabase/`. It
+-- REPLACES the paragraph — a `COMMENT ON COLUMN` has no accumulating form —
+-- and it says so, so that a reader who arrives at `:299-312` first is told
+-- there is a later one and which of the two governs.
+
+COMMENT ON COLUMN public.membership_acts.party_id IS
+  'Which night this act concerns. Null for every act about an account rather than an evening. '
+  'D-18, REWRITTEN by 20260809002000_assignment_acts.sql — this text supersedes the paragraph at 20260808002000_membership_register.sql:299-312, which is left in place because that migration is applied and applied migrations are not edited. '
+  'The criterion is NOT that an act expires with the night: a per-night assignment expires too. The criterion is that ADMITTING A PERSON IS NOT GRANTING A POWER. '
+  'An override at the door admits one person for one evening and changes nothing about what they may do; it stays in public.door_scan_events with its outcome, operator, device and is_undo. '
+  'An assignment grants a power — door.operate, door.supervise, media.upload, party.manage — so it is recorded here, as assigned / unassigned, which is what ACCESS-MODEL-DECISIONS.md section 5 requires when it names per-night assignment. '
+  'Both acts are attributed; the question this settles is which register holds which, not whether an author is recorded. '
+  'No second register: two registers holding overlapping truths is worse than either, because the first question of every later reader becomes which one is right.';
+
 COMMIT;
