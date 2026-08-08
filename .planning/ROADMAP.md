@@ -275,8 +275,8 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 43-10-PLAN.md — the seat cost made readable: `attendances.entry_role` and the roster payload — applied and observed
-- [ ] 43-11-PLAN.md — account creation: the action, the Italian invitation carrying a link, and the form
+- [x] 43-10-PLAN.md — the seat cost made readable: `attendances.entry_role` and the roster payload — applied and observed
+- [x] 43-11-PLAN.md — account creation: the action, the Italian invitation carrying a link, and the form
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 9/15 | In Progress|  |
+| 43. Role Model & Account Creation | 11/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
