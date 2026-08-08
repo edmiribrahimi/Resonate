@@ -33,7 +33,7 @@ stata applicata**. Il codice nuovo esiste ma non e' deployato.
 
 Quasi tutte le prove qui sotto sono impossibili finche' questo non succede.
 
-### Le cinque migration, in quest'ordine esatto
+### Le sei migration, in quest'ordine esatto
 
 L'ordine **non e' un suggerimento**: sbagliarlo fa fallire l'applicazione nel
 momento peggiore, cioe' mentre la si sta facendo.
@@ -45,6 +45,15 @@ momento peggiore, cioe' mentre la si sta facendo.
 | 3 | `20260808002000_membership_register.sql` | il registro degli atti |
 | 4 | `20260808003000_attendances_entry_role.sql` | la colonna che segna com'e' stato un ingresso |
 | 5 | `20260808004000_master_reconcile.sql` | la riconciliazione dell'account proprietario |
+| 6 | `20260808005000_membership_acts_append_only.sql` | toglie a chi scrive nel registro il potere di riscriverlo |
+
+> **La sesta e' arrivata dopo**, dalla revisione del codice del 2026-08-08
+> (finding WR-01): il registro degli atti era modificabile e cancellabile dallo
+> stesso client che compie gli atti, e un registro che il suo autore puo'
+> cancellare non e' un registro. Va applicata **dopo** la numero 3, che crea la
+> tabella su cui agisce. Se non venisse applicata, tutto il resto funziona lo
+> stesso — ma la garanzia di tracciabilita' che questa fase esiste per dare
+> resterebbe scoperta, e nessun messaggio d'errore lo direbbe.
 
 ### Poi il codice — e non prima
 
