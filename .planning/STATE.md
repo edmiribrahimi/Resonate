@@ -3,16 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phase 43 executed end to end — 15 plans, 9 waves. Verification is
-  human_needed, NOT passed: six migrations are committed and UNAPPLIED, no code
-  is deployed, and 16 of 16 manual checks in 43-HUMAN-UAT.md are pending. Two of
-  them are time-sensitive — see that file's first section."
-last_updated: "2026-08-08T03:36:32.262Z"
-last_activity: 2026-08-08 -- Phase 43 executed; code review found and fixed 1 Critical (an organizer could demote the master via rejectMember); verification human_needed
+stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+last_updated: "2026-08-08T15:48:43.514Z"
+last_activity: 2026-08-08 -- Phase 35 planning complete
 progress:
   total_phases: 13
   completed_phases: 4
-  total_plans: 53
+  total_plans: 74
   completed_plans: 53
   percent: 31
 ---
@@ -33,14 +30,14 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 Phase: 43 (role-model-account-creation) — EXECUTING
 Plan: 1 of 15
-Status: Executing Phase 43
+Status: Ready to execute
         `gsd/phase-32-capability-model-in-the-database`, which forks the phase 31
         branch. Plan-checker: VERIFICATION PASSED, 0 blockers, 2 warnings — both
         closed before execution.
         Only waves 1 and 6 parallelise; the rest is genuinely sequential, because
         the baseline must be captured and committed **before the first migration
         file exists**. A baseline taken after the change is not a baseline.
-Last activity: 2026-08-07 -- Phase 43 execution started
+Last activity: 2026-08-08 -- Phase 35 planning complete
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
