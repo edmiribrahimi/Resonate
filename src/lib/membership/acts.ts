@@ -52,9 +52,18 @@
  *
  * `assigned` and `unassigned` LANDED with phase 35, and they are the two acts
  * of the per-night assignment — read as *Assigned to a night* and *Assignment
- * revoked*. They are the only two values that carry `party_id`, and the only
- * two that leave all four role/status columns null: an assignment moves neither
- * axis, and a `NULL` there means *this act did not touch that axis*.
+ * revoked*. They are the only two values that carry `party_id`.
+ *
+ * An assignment moves neither the role nor the status axis, and a reader should
+ * expect to see that as `role_before === role_after` and
+ * `status_before === status_after` — **not** as nulls. Measured against a
+ * container: `public.record_membership_act` computes the after-values as
+ * `coalesce(argument, before)`, so passing null for both axes writes the
+ * subject's current role and status on each side rather than leaving the
+ * columns empty. The useful consequence is that the `assigned` act preserves
+ * the role its holder held at the grant — the one fact
+ * `party_assignments.assignee_role` is nulled out of when the assignment is
+ * revoked.
  *
  * They are also the only two written by a function other than
  * `public.record_membership_act` directly: `public.record_party_assignment_act`
