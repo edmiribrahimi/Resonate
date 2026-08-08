@@ -1,5 +1,9 @@
 /**
- * seed.mjs — nine personas and two differently-owned rows in every table.
+ * seed.mjs — twelve personas and two differently-owned rows in every table.
+ *
+ * (Nine until plan 43-08, which added the `staff` row of the grid. The count is
+ * never written down twice: everything below derives it from
+ * `PERSONA_ROLES.length × PERSONA_STATUSES.length`.)
  *
  * WHY THE SHAPE OF THE DATA IS THE WHOLE POINT. `32-RESEARCH.md` § *Pitfall 3*:
  * production is nearly empty, thirteen of its twenty tables hold no rows, and
@@ -39,7 +43,7 @@
  * A seeded code can therefore never collide with a member's.
  *
  * WHY THIS FILE ALSO CARRIES ROLE-02's ONLY AUTOMATED DETECTOR. Phase 43 adds a
- * database rule — a staff role implies `approved` — and four of the nine
+ * database rule — a staff role implies `approved` — and six of the twelve
  * personas above become unrepresentable the moment it lands. Losing them would
  * cost the sixteen write-matrix cells that caught phase 32's worst defect, so
  * the seed drops the constraint around the persona loop and restores it after
@@ -163,17 +167,26 @@ const ROLE_IMPLIES_APPROVED = {
 const NOT_VALID_SUFFIX = ' NOT VALID';
 
 /**
- * The four states the rule forbids — the ones D-05 exists to keep seedable, and
+ * The SIX states the rule forbids — the ones D-05 exists to keep seedable, and
  * the ones assertion 2 then proves are actually refused.
  *
- * They obey this file's identity convention exactly as the nine personas do
+ * **Six, not four, since plan 43-08.** `ROLE_IMPLIES_APPROVED.predicate` names
+ * three roles — `master`, `organizer`, `staff` — and two non-approved statuses
+ * exist, so the rule forbids 3 × 2 = 6 pairs. Until 43-08 this list held only
+ * the four that the persona grid could produce, because `staff` was not a
+ * persona; the moment it became one, a list of four would have been a detector
+ * that watched two thirds of the rule and reported a green for the whole of it.
+ * `staff/pending` and `staff/rejected` are the two the phase itself created, so
+ * they are precisely the two whose refusal was least evidenced.
+ *
+ * They obey this file's identity convention exactly as the twelve personas do
  * (threat T-32-04-02): an id whose first group is the literal `43000004` —
  * phase 43, plan 03 — an address at the reserved `.invalid` TLD that can reach
  * no inbox, a name that is a ROLE and never a person, and a membership code
  * `handle_new_user()` **cannot** mint, since its alphabet
  * `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` contains neither `0` nor `1`.
  *
- * None of these rows is ever written: every one of the four is refused. They are
+ * None of these rows is ever written: every one of the six is refused. They are
  * built to the convention anyway, because the day one of them IS written is the
  * day the rule stopped working, and on that day the row must still be
  * unmistakably synthetic.
@@ -183,6 +196,8 @@ const FORBIDDEN_WRITES = [
   { role: 'organizer', status: 'rejected' },
   { role: 'master', status: 'pending' },
   { role: 'master', status: 'rejected' },
+  { role: 'staff', status: 'pending' },
+  { role: 'staff', status: 'rejected' },
 ].map((cell, i) => ({
   ...cell,
   label: `${cell.role}/${cell.status}`,
@@ -204,7 +219,14 @@ function seedUuid(seed) {
   return `32000004-${h.slice(0, 4)}-4${h.slice(4, 7)}-8${h.slice(7, 10)}-${h.slice(10, 22)}`;
 }
 
-/** The nine grid personas, in a fixed order, with their synthetic identities. */
+/**
+ * The twelve grid personas, in a fixed order, with their synthetic identities.
+ *
+ * **The nesting order of these two loops is what assigns `index`, and `index` is
+ * what the write matrix's `update` probe follows** — see the long comment on
+ * `PERSONA_ROLES` in `rls-baseline.mjs` and `assertProbeRowSatisfiesTheRule`
+ * below, which asserts the consequence on every run.
+ */
 function buildPersonas() {
   const personas = [];
   let index = 0;
@@ -371,9 +393,10 @@ export async function seedContainer(admin) {
   // about whether the rule exists at all.
   assertDeclarationAgrees(await readRoleImpliesApproved(admin));
 
-  // Four of the nine personas below violate the rule by construction —
+  // Six of the twelve personas below violate the rule by construction —
   // `organizer/pending`, `organizer/rejected`, `master/pending`,
-  // `master/rejected`. They are the only reason phase 32's write matrix caught
+  // `master/rejected`, and since plan 43-08 `staff/pending` and
+  // `staff/rejected`. They are the only reason phase 32's write matrix caught
   // its worst defect, sixteen cells and every one of them theirs, so D-05 keeps
   // them seedable by dropping the constraint here and restoring it in the
   // `finally` below.
@@ -398,7 +421,7 @@ export async function seedContainer(admin) {
     relaxed = true;
   }
 
-  // ── the nine personas ────────────────────────────────────────────────────
+  // ── the twelve personas ──────────────────────────────────────────────────
   //
   // The trigger `on_auth_user_created` mints a membership code with `random()`.
   // It is real product behaviour and it is left installed; it is only silenced
@@ -422,7 +445,7 @@ export async function seedContainer(admin) {
     await admin.query('alter table auth.users enable trigger on_auth_user_created');
 
     // `NOT VALID` IS MANDATORY, and the reason is measured rather than reasoned:
-    // by the time this line runs, four of the rows just seeded violate the
+    // by the time this line runs, six of the rows just seeded violate the
     // predicate, and a plain `add constraint` fails with
     //   ERROR: check constraint "…" of relation "profiles" is violated by some row
     // `[VERIFIED: postgres:17.6, 43-RESEARCH.md § B.3, and reproduced against
@@ -602,9 +625,12 @@ async function assertConstraintObject(admin) {
  * only mechanical evidence that D-04 is enforced at all; after that, the rule is
  * a line in a migration that somebody believes.
  *
- * The four writes are the four states D-05 keeps seedable — the same four,
+ * The six writes are the six states D-05 keeps seedable — the same six,
  * deliberately, so that the seed both demonstrates they can be created with the
- * rule relaxed and demonstrates they cannot be created with it in force.
+ * rule relaxed and demonstrates they cannot be created with it in force. Two of
+ * them, `staff/pending` and `staff/rejected`, exist only because plan 43-08 made
+ * `staff` a persona; they are the states of the role this phase invented, and
+ * before 43-08 nothing in this repository had ever watched the rule refuse them.
  *
  * WHAT IS ASSERTED, AND WHY NOT THE MESSAGE. The branch is SQLSTATE `23514`
  * (`43-MEASUREMENTS.md` measurement 5), plus the constraint's own name from the
@@ -627,7 +653,8 @@ async function assertForbiddenWritesRefused(admin) {
 
   if (!present) {
     say(
-      `      skipped: ${name} is declared absent, so the four forbidden writes were not attempted and ` +
+      `      skipped: ${name} is declared absent, so the ${FORBIDDEN_WRITES.length} forbidden writes ` +
+        'were not attempted and ' +
         'ROLE-02 has no automated evidence in this run'
     );
     return;
@@ -675,18 +702,27 @@ async function assertForbiddenWritesRefused(admin) {
   const { rows: after } = await admin.query('select count(*)::int as n from public.profiles');
   if (after[0].n !== before[0].n) {
     throw new Error(
-      `public.profiles held ${before[0].n} rows before the four forbidden writes and ${after[0].n} ` +
+      `public.profiles held ${before[0].n} rows before the ${FORBIDDEN_WRITES.length} forbidden ` +
+        `writes and ${after[0].n} ` +
         'after. A refused insert must write nothing, so at least one of them was refused after ' +
         'landing — which would mean the grid, the fingerprints and the write matrix are all measuring ' +
         'a database with a row nobody intended. Nothing was measured.'
     );
   }
 
-  say(`      4/4 forbidden writes refused, profiles still ${after[0].n} rows`);
+  // The count is derived, never typed: a hard-coded `4/4` would have kept
+  // printing a full score while two of the six went unwatched.
+  say(
+    `      ${FORBIDDEN_WRITES.length}/${FORBIDDEN_WRITES.length} forbidden writes refused, ` +
+      `profiles still ${after[0].n} rows`
+  );
 }
 
 /**
- * ── The two lines that prevent a silent eleven-cell regression ────────────
+ * ── The two lines that prevent a silent fourteen-cell regression ──────────
+ *
+ * (Eleven cells before plan 43-08, fourteen after: one `profiles × update` cell
+ * per persona, and the grid grew from nine personas to twelve.)
  *
  * The write matrix's `update` probe touches exactly ONE row per table:
  * `buildProbeStatement` (`rls-baseline.mjs:1270-1271`) writes
@@ -696,19 +732,22 @@ async function assertForbiddenWritesRefused(admin) {
  * A `NOT VALID` CHECK refuses **any** update to an already-violating row,
  * including an update to a column the predicate does not mention
  * `[VERIFIED: 43-RESEARCH.md § B.1b]`. So if the row `min(pk)` picks is one of
- * the four forbidden personas, all eleven `profiles × update` cells stop being
+ * the six forbidden personas, all fourteen `profiles × update` cells stop being
  * an RLS verdict and become a `23514` — and `rls-baseline-compare.mjs` would
- * report eleven `b3_cell_changed` defects with no visible cause.
+ * report fourteen `b3_cell_changed` defects with no visible cause.
  *
  * Today that row is `master/approved`, and it is so **only** because of the
  * order of two arrays: persona ids are `…-<index padded>` assigned by
  * `for role of PERSONA_ROLES { for status of PERSONA_STATUSES }`, with
- * `PERSONA_ROLES = ['master','organizer','member']` and
- * `PERSONA_STATUSES = ['approved','pending','rejected']`
- * (`rls-baseline.mjs:638-639`), so index 1 is `master/approved`. Move `pending`
- * to the front of `PERSONA_STATUSES` and index 1 becomes `master/pending`.
- * Appending `'staff'` after `'member'` is safe; inserting it before `'master'`
- * gives `staff/approved`, which also complies.
+ * `PERSONA_ROLES = ['master','organizer','member','staff']` and
+ * `PERSONA_STATUSES = ['approved','pending','rejected']`, so index 1 is
+ * `master/approved`. Move `pending` to the front of `PERSONA_STATUSES` and
+ * index 1 becomes `master/pending`.
+ *
+ * Plan 43-08 appended `'staff'` after `'member'` for exactly this reason, which
+ * leaves index 1 untouched; inserting it before `'master'` would also have been
+ * safe, since `staff/approved` complies. **Reordering `PERSONA_STATUSES` would
+ * not be**, and no comment prevents that — this assertion does.
  *
  * That is luck, not design, so it is asserted. The assertion runs whether or not
  * the constraint is present: the hazard is dormant until plan 43-06, and a guard
@@ -733,8 +772,8 @@ async function assertProbeRowSatisfiesTheRule(admin) {
   if (!row) {
     throw new Error(
       'no profiles row was returned for the key the write matrix probes with `update`. The seed ' +
-        'wrote nine personas and the matrix targets min(pk) among them, so an empty answer means the ' +
-        'personas are not there. Nothing was measured.'
+        `wrote ${PERSONA_ROLES.length * PERSONA_STATUSES.length} personas and the matrix targets ` +
+        'min(pk) among them, so an empty answer means the personas are not there. Nothing was measured.'
     );
   }
 
@@ -744,8 +783,8 @@ async function assertProbeRowSatisfiesTheRule(admin) {
       `the row the write matrix probes with \`update\` is ${row.role}/${row.status}, which violates ` +
         `"${ROLE_IMPLIES_APPROVED.name}". Once that constraint exists it is restored NOT VALID, and a ` +
         'NOT VALID CHECK refuses every update to an already-violating row — even on a column the rule ' +
-        'does not mention. All eleven `profiles × update` cells would stop reporting an RLS verdict ' +
-        'and start reporting 23514, and the comparator would call them eleven changed cells with no ' +
+        'does not mention. All fourteen `profiles × update` cells would stop reporting an RLS verdict ' +
+        'and start reporting 23514, and the comparator would call them fourteen changed cells with no ' +
         'visible cause. The likely edit is a reordering of PERSONA_STATUSES or PERSONA_ROLES in ' +
         'rls-baseline.mjs: index 1 must stay a compliant pair. Fix the ordering, do not weaken this ' +
         'check. Nothing was measured about writes on profiles.'
