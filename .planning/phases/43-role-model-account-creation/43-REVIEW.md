@@ -612,6 +612,210 @@ portare con sé il testo di un errore PostgREST. Il confine oggi tiene perché
 
 ---
 
+## Riparazioni applicate — 2026-08-08
+
+Tre finding su quattordici sono stati chiusi. **Gli altri undici restano aperti
+per scelta**, non per dimenticanza: non sono stati toccati e non vanno letti
+come risolti.
+
+| Finding | Esito | Commit |
+|---|---|---|
+| **CR-01** | ✅ chiuso | `2db9ebf` |
+| **WR-01** | ✅ chiuso | `2561c2e` |
+| **WR-05** | ✅ chiuso | `b6127dd` |
+| WR-02 · WR-03 · WR-04 · WR-06 · WR-07 · WR-08 · IN-01…IN-05 | ⬜ non toccati, differiti deliberatamente | — |
+
+### CR-01 — chiuso, e la regola scelta per il gruppo di atti
+
+Il finding chiedeva di chiudere **la classe, non l'istanza**. La regola sta
+scritta in cima al gruppo di atti in `src/app/(admin)/admin/members/actions.ts`,
+in tre parti che un settimo atto eredita:
+
+1. **Nessun atto del gruppo raggiunge un soggetto che porta `master`.** Uniforme
+   sotto **entrambi** i gate e indipendente da chi chiama — quindi vale anche per
+   `deactivateMember` e `reactivateMember`, che prima potevano aggredire un
+   master. `WritableRole` **non** e' stata allargata: la via di recupero resta
+   `reconcile_master`, dove D-12 l'ha messa. La regola e' la controparte, un
+   livello sopra, della guardia zero-master della funzione: il database rifiuta
+   di **arrivare** a zero master, questo file rifiuta di **puntare** all'unico che
+   c'e'.
+2. **Nessun atto del gruppo raggiunge il proprio autore.** Il self-check che
+   43-09 aveva fermato una funzione prima di `approveMember` e `rejectMember` —
+   cioe' esattamente la copia che quel piano temeva.
+3. **L'atto nomina la transizione che compie.** Due transizioni di stato sono
+   **riservate** alla coppia `master.manage` e rifiutate a ogni atto del gate
+   largo, chiunque chiami:
+
+   - `approved -> rejected` **e'** `deactivateMember` — ritirare un accesso gia'
+     concesso;
+   - `rejected -> approved` **e'** `reactivateMember` — ripristinarne uno.
+
+   Sotto il gate largo si **decide una domanda aperta** (`pending -> …`) e si puo'
+   riaffermare uno stato gia' posseduto. Non si ribalta una decisione presa dal
+   gate stretto. E' questo che rende la coppia master-only una restrizione invece
+   che una strada piu' lunga verso la stessa scrittura.
+
+   La regola 3 non e' solo la riparazione del permesso: e' cio' che tiene onesto
+   il **registro**. `acts.ts:41-45` dice che `rejected` e `deactivated` sono due
+   atti per una scrittura perche' rispondono a due ragioni diverse, e il registro
+   e' l'unico posto dove quella differenza sopravvive. Lasciare che
+   `approveMember` resusciti un account rifiutato scriverebbe `approved` dove
+   `reactivated` e' cio' che e' successo: una storia che si nomina male e' peggio
+   di una storia mancante, perche' viene letta come vera.
+
+   Vincola anche `updateMemberRole`: una promozione a `organizer`/`staff` scrive
+   `status='approved'` nella stessa istruzione, quindi una promozione puntata su
+   un account rifiutato e' una riattivazione da una terza porta. Una retrocessione
+   passa il ruolo da solo e non e' vincolata.
+
+**Cosa e' cambiato in concreto.** Un solo guard condiviso,
+`assertSubjectActionable`, chiamato da `updateMemberRole`, `approveMember`,
+`rejectMember`, `deactivateMember`, `reactivateMember` e — per ogni soggetto —
+dal ciclo di `runBulk`. `createAccount` e' l'unico atto del gruppo che non lo
+chiama, e il perche' e' scritto accanto invece che lasciato come un'assenza: non
+ha un soggetto che il chiamante possa nominare.
+
+`ownsReservedTransitions` ha default `false`, cosi' un settimo atto che
+dimenticasse il flag ottiene la risposta **restrittiva** — la direzione in cui un
+flag dimenticato deve fallire.
+
+**Nel bulk un soggetto rifiutato non sparisce.** `BulkSubjectOutcome` guadagna
+`detail`, `MemberTable` lo passa a `MemberActionNotice`, e cinque nuove voci
+entrano in `FORBIDDEN_BY_DETAIL` (`self_approve`, `self_reject`,
+`withdrawal_is_master_only`, `restoration_is_master_only`, piu' un
+`subject_is_master` riformulato perche' ora copre tutti gli atti). Il contratto
+di 43-14 — una frase distinguibile per causa — regge: *«5 selezionati, 4 respinti,
+1 rifiutato perche' e' il master»* resta diverso da *«5 respinti»*.
+
+**La superficie non cambia**, e la coincidenza va detta: `MemberTable` gia'
+offriva Approve/Reject solo su una riga `pending` (`:406`), il bulk solo sulla
+scheda pending (`:781`) e il cambio ruolo solo su una `approved` (`:318`). La
+regola 3 fa **rifiutare al server** cio' che la superficie gia' non offre — che e'
+l'intera differenza fra nascondere un controllo e rifiutare una richiesta.
+
+### WR-01 — chiuso, con una deviazione dal fix proposto
+
+Nuova migration `supabase/migrations/20260808005000_membership_acts_append_only.sql`
+(prefisso verificato libero, ordina dopo `20260808004000`). `20260808002000` non
+e' stata toccata: e' committata, puo' essere gia' applicata, e il prefisso e' la
+chiave primaria `version` di Supabase.
+
+**Deviazione:** `anon` e `authenticated` **conservano** i loro grant; la REVOKE
+colpisce `PUBLIC` e `service_role`. La forma proposta dal finding li revocava
+tutti e tre, ed e' stata scritta cosi' per prima:
+`verify:capabilities --target=container` si e' rifiutato di misurare alcunche'.
+
+> *«these table/role pairs lack one of SELECT, INSERT, UPDATE, DELETE:
+> membership_acts/anon, membership_acts/authenticated. A 42501 would then mean a
+> missing grant, not a policy refusal. Nothing was measured.»*
+
+La premessa di `scripts/rls-baseline-container.mjs:290-320` — *RLS narrows a
+grant; it cannot create one* — e' che quelle due ruote tengano tutti e quattro i
+privilegi DML su **ogni** tabella con RLS, cosi' che un `42501` nelle sue sonde
+significhi «una policy ha rifiutato». Toglierli su una tabella acceca l'unico
+controllo automatico che questo repo ha sul modello d'accesso, e lo acceca su
+tutte le tabelle. E per quelle due ruote il livello sarebbe **ridondante**: la RLS
+senza policy di scrittura le rifiuta gia' del tutto — il paragrafo di
+`20260808002000` e' vero per loro. Il buco e' `service_role`, che porta
+`BYPASSRLS`, ed e' `service_role` che la migration chiude.
+
+**Misurato su container usa e getta** (mai su produzione: le righe di
+`membership_acts` sopravvivono al soggetto, quindi una sonda dal vivo lascerebbe
+un atto falso permanente in una tabella d'audit):
+
+| sonda come `service_role` | con la migration | senza |
+|---|---|---|
+| `DELETE ... WHERE false` | `42501 permission denied` | **`NO REFUSAL`, rowCount=0** |
+| `UPDATE ... WHERE false` | `42501 permission denied` | **`NO REFUSAL`, rowCount=0** |
+| `INSERT` | `42501 permission denied` | `23502` — arriva al NOT NULL della tabella, cioe' **supera del tutto il controllo dei grant** |
+| `SELECT count(*)` | ok | ok |
+| `record_membership_act(...)` | registro `2 -> 3` | registro `2 -> 3` |
+
+La riga che conta e' la prima: prima della migration risponde «DELETE 0», che e'
+un successo. La via legittima — la funzione definer — continua a scrivere.
+
+**Non mecanizzato, e va detto.** Il finding suggeriva anche un'asserzione
+permanente in `scripts/container/seed.mjs`. Non e' stata aggiunta: quel file
+appartiene a 43-08 e ampliarlo qui sarebbe uscito dal perimetro di questa
+riparazione. La proprieta' e' **misurata oggi** con la sonda sopra, e **non e'
+sorvegliata** contro una futura migration che rigrantasse le DML. Voce da aprire.
+
+### WR-05 — chiuso, e come le due cose restano distinguibili
+
+`PGRST202`, `42883` e `42P01` significano ora *«questo deploy e' avanti rispetto
+al suo database»*: **NO-OP, nessun flag, nessun banner**. Tre codici e non uno,
+per la ragione che 43-09 diede su `P0002`: quale etichetta sopravviva a PostgREST
+e' un'assunzione, non una misurazione.
+
+**Come si distinguono da un fallimento vero** — la domanda che il finding pone e
+a cui bisogna rispondere, perche' senza error tracking un errore che solo logga
+non raggiunge nessuno:
+
+1. **categoria di log propria** — `[auth.reconcile_master.schema_absent]`, che
+   nomina la coda di migration da applicare, contro `[auth.reconcile_master]` di
+   ogni altro ramo. Due prefissi, mai una riga sola;
+2. **valore di ritorno diverso** — `null` (nessun flag) contro `"unavailable"`,
+   `"refused"` e i quattro flag di esito, **che continuano a disegnare il
+   banner**. Una sola causa e' stata separata *fuori* da `unavailable`, non
+   ripiegata *dentro*;
+3. **l'effetto osservabile non sparisce, cambia pubblico.** Finche' la coda non e'
+   applicata, ogni atto su `/admin/members` risponde `write_failed` con la sua
+   notice — `record_membership_act` manca dallo stesso database — e
+   `/admin/members/register` e' vuota. L'operatore incontra il guasto la prima
+   volta che prova a lavorare; i 150 membri no.
+
+Corretta anche una nota di quel file diventata falsa (*«nothing renders it
+today»* del flag `?master=`, che la dashboard invece disegna) — ed e' proprio la
+ragione per cui il fix serve.
+
+**Non fatto:** la seconda mossa proposta da WR-05, cioe' condizionare il banner
+di `dashboard/page.tsx:317` a `canReachManagementTools`. Resta aperta insieme a
+WR-03, che riguarda la stessa condizione di rendering. E **l'ordine di deploy —
+cinque migration PRIMA di promuovere il build — non e' ancora scritto in
+`43-HUMAN-UAT.md`**: e' l'altra meta' di WR-05 e resta aperta.
+
+### Verifica eseguita
+
+| comando | esito |
+|---|---|
+| `npm run build` | **exit 0** — `✓ Compiled successfully`, typecheck di Next incluso |
+| `npx tsc --noEmit` | **exit 0** |
+| `npm run verify:capabilities -- --target=container` | **5/5 verde, 0 warning**, 44 migration applicate, 42 coppie tabella/ruolo verificate |
+| sonda WR-01 su container usa e getta | tabella sopra, provata per mutazione |
+
+**Cio' che quel verde NON prova** (`CLAUDE.md` Guardrail 1: non esiste alcun test
+runner per il prodotto, e nessun client Supabase e' parametrizzato con
+`Database`): che `assertSubjectActionable` rifiuti davvero un soggetto master a
+runtime, che i nuovi `detail` arrivino alla superficie, e che `PGRST202` sia
+l'etichetta che PostgREST emette per una funzione assente. Quella e' evidenza
+manuale, e non e' stata raccolta qui.
+
+**Procedura manuale da eseguire prima di dichiarare la fase verificata:**
+
+1. Con un account `organizer/approved`, dalla console del browser su
+   `/organizer/members`, invocare la Server Action `rejectMember` con l'id del
+   master. Leggere `public.profiles` per il master **prima e dopo**. Atteso:
+   `role` e `status` invariati, **nessuna** riga nuova in
+   `public.membership_acts`, notice `subject_is_master` sullo schermo.
+2. Ripetere con `bulkRejectMember([<id del master>])`. Atteso: il rapporto dice
+   *0 su 1*, e la riga del soggetto porta la frase di `subject_is_master` — non
+   sparisce dal conteggio.
+3. Ripetere con `rejectMember(<il proprio id>)`. Atteso: `self_reject`.
+4. `approveMember(<un account rejected>)`. Atteso:
+   `restoration_is_master_only`, e nessuna riga nel registro.
+   `rejectMember(<un account approved>)`. Atteso:
+   `withdrawal_is_master_only`.
+5. Su un ambiente con il build deployato e le migration **non** applicate:
+   effettuare un login qualunque. Atteso: la barra degli indirizzi **non**
+   contiene `master=`, nessun banner ambra, e nei log del server compare
+   `[auth.reconcile_master.schema_absent]`.
+
+**Nessuna migration e' stata applicata a produzione. Nessuna mail e' stata
+inviata. Nessuna sonda ha toccato un database di produzione.**
+
+---
+
 _Reviewed: 2026-08-08_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Fixed: 2026-08-08 — CR-01, WR-01, WR-05. Gli altri undici finding restano aperti._
