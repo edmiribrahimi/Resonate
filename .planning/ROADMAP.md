@@ -266,7 +266,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 43-07-PLAN.md — the register: one append-only table for five acts, with a system actor and an atomic write — applied and observed
+- [x] 43-07-PLAN.md — the register: one append-only table for five acts, with a system actor and an atomic write — applied and observed
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -435,7 +435,7 @@ Plans:
 | 31. Live Defects at the Door and the Bar | 13/13 | Complete   | 2026-08-06 |
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
-| 43. Role Model & Account Creation | 6/15 | In Progress|  |
+| 43. Role Model & Account Creation | 7/15 | In Progress|  |
 | 35. Per-Night Assignments | 0/TBD | Not started | - |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
