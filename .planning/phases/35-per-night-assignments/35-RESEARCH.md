@@ -1529,9 +1529,20 @@ senza test, l'evidenza osservabile e' l'unica prova che esistera'.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **Tutte e sei sono chiuse, e la chiusura e' implementata.** Questa sezione
+> resta come registro di come si e' arrivati alle decisioni, non come elenco di
+> cose da decidere: ogni voce porta in linea la decisione o il piano che la
+> chiude. Un lettore futuro non deve poter scambiare una domanda gia' risposta
+> per una ancora aperta.
 
 1. **Un'assegnazione puo' essere delegata oltre, e da chi?**
+   **(RISOLTA — D-C, implementata dal piano 35-08.)** La Server Action chiede
+   `staff.manage`, che e' per-account e non per-notte: chi e' assegnato per una
+   notte non puo' assegnare nessun altro. La domanda resta aperta **come
+   decisione futura**, non come lacuna, ed e' scritta nel codice invece che
+   risposta per omissione.
    - Sappiamo: `ACCESS-MODEL-DECISIONS.md §Cosa NON e' risolto` la lascia aperta
      esplicitamente.
    - Non sappiamo: se chi e' assegnato come «organizer per una notte» possa
@@ -1541,12 +1552,23 @@ senza test, l'evidenza osservabile e' l'unica prova che esistera'.
      domanda resta aperta invece di essere risposta per omissione. **Scriverlo.**
 
 2. **Un `member` `pending` puo' essere assegnato a una serata?**
+   **(RISOLTA — per costruzione, piano 35-03; il meccanismo e' del piano 35-02.)**
+   La foreign key composta `(user_id, assignee_role) → profiles (id, role)` rende
+   assegnabili **solo** `master`, `organizer` e `staff`, e quei tre sono
+   `approved` per regola di database (`role ⇒ approved`, fase 43). La domanda
+   sui `member` **sparisce**: non ce ne sono di assegnabili. Percio' il braccio
+   del resolver non consulta lo stato, e un test di stato li' sarebbe un modo
+   nuovo di rifiutare qualcuno alla porta.
    - Sappiamo: `master`/`organizer`/`staff` sono `approved` per regola di
      database dalla fase 43. Restano i `member`.
    - **Raccomandazione:** A2 — non consultare lo stato, come `door.operate`.
      **Ma e' una decisione d'accesso e va confermata dal proprietario** (C15).
 
 3. **L'assegnazione va in `membership_acts` o basta `party_assignments`?**
+   **(RISOLTA — D-D, implementata dal piano 35-04.)** Va nel registro **e** D-18
+   viene riscritta con il criterio corretto (*ammettere una persona* non e'
+   *concedere un potere*), sostituendo il paragrafo vecchio invece di
+   affiancarlo.
    - Sappiamo: la colonna `party_id` e i due nomi d'atto sono stati riservati
      per questo. Ma il criterio di D-18 escluderebbe un atto che scade con la
      notte.
@@ -1554,6 +1576,9 @@ senza test, l'evidenza osservabile e' l'unica prova che esistera'.
      criterio corretto (*ammettere una persona* ≠ *concedere un potere*).
 
 4. **`door_scan_events_select_admin` va ristretta in questa fase?**
+   **(RISOLTA — D-E, implementata dal piano 35-09.)** Si', e **per assegnazione,
+   non per ruolo**: `staff.manage` continua a leggere tutto, `door.operate` e
+   `party.manage` leggono la propria notte. Il commento vecchio e' sostituito.
    - Sappiamo: la migration la indica come compito **della fase 35**
      (`20260805120000:151-154`).
    - Non sappiamo: se restringerla renda invisibile una serata a un organizer
@@ -1564,6 +1589,10 @@ senza test, l'evidenza osservabile e' l'unica prova che esistera'.
      commento vecchio va sostituito, non appeso.
 
 5. **Cosa succede a `event_parties.lineup text[]` quando nasce `party_credits`?**
+   **(RISOLTA — D-F, implementata dal piano 35-05.)** Convivenza **dichiarata**
+   nella migration — `lineup` e' il testo comunicato, `party_credits` e'
+   l'attribuzione — con la migrazione fra le due rimandata a una fase che la
+   nomini, e il debito registrato per nome nel piano 35-14.
    - **Raccomandazione:** convivenza dichiarata in questa fase (`lineup` resta
      il testo comunicato, `party_credits` e' l'attribuzione), con la migrazione
      rimandata a una fase che la nomini. **Ma va scritto**: due fonti per la
@@ -1572,6 +1601,9 @@ senza test, l'evidenza osservabile e' l'unica prova che esistera'.
 
 6. **Le sei migration della fase 43 verranno applicate prima che questa fase
    parta?**
+   **(RISOLTA — D-K, implementata dal piano 35-01.)** Si procede, e il
+   `checkpoint:human-verify` bloccante del primo piano mette il fatto per
+   iscritto invece di ridiscutere la decisione.
    - Sappiamo: non lo sono oggi, e `ACCESS-MODEL-DECISIONS.md §12` registra la
      decisione del proprietario di rimandare **tutta** la verifica manuale alla
      fine della costruzione, **con il suo prezzo dichiarato**.

@@ -304,13 +304,13 @@ Plans:
   4. Undoing a check-in is refused for a person assigned only to the door for that night, and allowed for an organizer
   5. A dj or photographer credit can be created for a person who has no account, grants access to no tool, and creates no account
 
-**Plans**: 14 plans, in 7 waves
+**Plans**: 17 plans, in 7 waves
 **UI hint**: yes
 
 Plans:
 **Wave 1**
 
-- [ ] 35-01-PLAN.md — Wave 0: the baseline before the first line of DDL, and the 6 + 5 migration queue as a blocking checkpoint
+- [ ] 35-01-PLAN.md — Wave 0: the baseline before the first line of DDL, and the 6 + 6 migration queue as a blocking checkpoint
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -334,14 +334,17 @@ Plans:
 - [ ] 35-10-PLAN.md — `doorAuth` on the payload the scanner already asks for, and a night list that only ever adds rows
 - [ ] 35-11-PLAN.md — Undo requires a supervising capability, with its status chosen by reading the drain's table
 - [ ] 35-12-PLAN.md — The drain judges at `scannedAt`: no queued scan is ever stranded
+- [ ] 35-15-PLAN.md — `live_assignment_capabilities` in the payload the middleware already asks for: the coarse question, never the per-night one
+- [ ] 35-16-PLAN.md — `media.upload` gets its real consumer: one upload predicate read by the action that validates and by the action that writes
 
 **Wave 6** *(blocked on Wave 5)*
 
 - [ ] 35-13-PLAN.md — The device: store v5, the verdict read from cache, and the offline undo that no longer bypasses supervision
+- [ ] 35-17-PLAN.md — The coarse gate widened and the per-night gates landed together: scanner and per-night review reachable, with three distinguishable rebounds
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 35-14-PLAN.md — `35-HUMAN-UAT.md` written: eight procedures, the honest coverage declaration, and the deferred debt named
+- [ ] 35-14-PLAN.md — `35-HUMAN-UAT.md` written: eleven procedures, the honest coverage declaration, and the deferred debt named
 
 ### Phase 34: One Work Surface
 
