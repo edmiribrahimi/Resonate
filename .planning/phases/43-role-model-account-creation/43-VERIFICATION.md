@@ -634,3 +634,37 @@ domanda respinta.
 *Verificato: 2026-08-08*
 *Verificatore: Claude (gsd-verifier)*
 *Nessuna migration applicata. Nessuna mail inviata. L'unica query di produzione e' stata una `SELECT` in sola lettura su `public.events.slug`.*
+
+---
+
+## Nota di validita' — questo documento e' anteriore a quattro commit
+
+Scritto prima di `b599439`, `b589a23`, `dd9d50a`, `12f045c`. Aggiunta
+dall'orchestratore il 2026-08-08 perche' `ai-engineering.md` (gate
+*documentazione datata*) vieta di citare un documento derivato senza verificarlo
+contro il codice corrente — e questo documento sarebbe stato citato.
+
+**Cosa e' cambiato dopo la sua scrittura**, per decisione del proprietario del
+2026-08-08 (l'unica decisione dell'utente in tutta la fase 43; tutto il resto e'
+di un agente):
+
+| Prima | Adesso |
+|---|---|
+| Regola 3: ribaltare una decisione chiusa era riservato al master | **abrogata** — i sei atti stanno su un gate solo |
+| `deactivateMember` / `reactivateMember` su `verifyMaster` | `verifyAdminOrOrganizer` — supersede T-43-09-02 |
+| L'atto registrato prendeva il nome dalla funzione chiamata | lo prende dalla **transizione osservata** (`planStatusAct`) |
+| Nessuna conferma sugli atti che ribaltano | conferma che nomina l'esito e il numero di persone |
+| Nessun messaggio a chi viene riammesso | `MemberReactivatedEmail`, in italiano |
+
+**Cosa NON e' cambiato, ed e' stato riverificato dopo:** la regola 1
+(`subject_is_master`, il fix di CR-01), la regola 2 (nessun atto sul proprio
+autore), `WritableRole` senza `'master'`, le due righe `door.operate` a `false`
+(`20260807000000_capability_model.sql:416-417`), e il set di ammissione del
+roster della porta (`src/app/api/membership/list/route.ts:90` — un solo
+predicato, `.not("membership_code","is",null)`).
+
+**Il verdetto `human_needed` non cambia**, e cambia in peggio la copertura: le
+quattro modifiche sono verificate solo da `npm run build`, `npx tsc --noEmit`,
+`eslint` e `verify:capabilities --target=container` — tutti verdi, tutti su
+container. Nulla e' deployato. Le procedure manuali sono salite da 16 a **18**
+(la 17 riscritta, la 18 nuova).
