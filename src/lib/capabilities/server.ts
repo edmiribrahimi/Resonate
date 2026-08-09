@@ -157,6 +157,29 @@
  * arms of the SQL resolver remain anchored on `auth.uid()`. The migration writes
  * the same paragraph, for the same reason — somebody will refuse this function
  * for the right rule and the wrong reason.
+ *
+ * ── The third question, which is COARSE, and what it does not authorise ──────
+ *
+ * `liveAssignmentCapabilities` is the answer to *"does this subject hold ANY
+ * live assignment, and for which trades?"*. It arrives inside the payload both
+ * functions already fetch — one key, no extra round trip — because the caller it
+ * exists for is `src/lib/supabase/middleware.ts`, which runs before **every**
+ * request, including every scan at the door.
+ *
+ * **It does not say which night, and no amount of work here would let it.** At
+ * routing time the person has not chosen a date, so the middleware has no night
+ * to name; putting the night dimension into this field would mean asking N
+ * questions instead of one, on that path.
+ *
+ * So the field is **wider than the real permission, always and by
+ * construction**: somebody assigned to *another* night is inside it. **No
+ * surface decides with this field alone.** Whoever wants to know whether a
+ * person may do something on a night calls `hasCapability(key, { partyId })`,
+ * and on the three door routes that write with the service client the boundary
+ * is `requireDoorOperator({ partyId })`, because the service client bypasses
+ * every policy. Reading the coarse field is deciding **where somebody may go**,
+ * never **what they may read** — the middleware-is-UX / RLS-is-the-boundary
+ * split, applied to a field instead of to a route.
  */
 
 import { cache } from "react";
@@ -186,12 +209,55 @@ import type { CapabilityKey } from "./keys";
  *
  * **No new caller may branch on `role` or `status`.** A page passing them to a
  * nav is not branching. Every decision asks `capabilities`.
+ *
+ * ── `liveAssignmentCapabilities`, and the distinction everything rests on ─────
+ *
+ * Added to the payload by
+ * `supabase/migrations/20260809005000_live_assignment_flag.sql` — **row 14 of
+ * the 15-row queue** in `.planning/phases/35-per-night-assignments/35-HUMAN-UAT.md`,
+ * the last row of block A2. It reads last because it is the coarsest answer and
+ * the newest, and because appending it kept the migration a pure addition to the
+ * four keys already there.
+ *
+ * **The three states are the point, and collapsing two of them is a silent
+ * failure:**
+ *
+ *   - **`null`** — the key was **not in the payload**. In this product that has
+ *     one known cause: row 14 is **not applied** while code that presumes it is
+ *     already running. That is the false-green state `35-HUMAN-UAT.md` declares
+ *     out loud — `npm run build` is green with **zero** migrations applied,
+ *     because the types come from `src/types/database.ts` and no client in this
+ *     repository is parameterised with a `Database` generic, so
+ *     `supabase.rpc("my_access_context")` is untyped and the compiler never sees
+ *     the payload.
+ *   - **an empty `Set`** — the question was asked and answered: **no live
+ *     assignment**. A fact, not a fault.
+ *   - **a non-empty `Set`** — the trades.
+ *
+ * Collapsing `null` into the empty set would make *"the migration queue is
+ * behind"* indistinguishable from *"this person is not working tonight"* — and
+ * the second sentence is the one somebody would read **in front of a queue**.
+ * This project has **no error tracking** (`meta-gates.md`), so nothing else
+ * would ever report the difference. It is therefore a value **decided by
+ * position** — `null` versus a `Set` — and never a string to interpret; the same
+ * rule `guards.ts:73-79` states for a category that must cross to a client.
+ *
+ * **`Set<string>` and not `Set<CapabilityKey>`, deliberately.** `capabilities`
+ * is derived from the catalogue itself — the SQL selects `c.key from
+ * private.capabilities c` — so every element is a catalogue key by construction
+ * of the query. This one is read from a **data column**,
+ * `party_assignments.capability`; a foreign key constrains it to the same
+ * catalogue today, but that is a property of a constraint on another table, not
+ * of this query, and asserting the union here would launder a constraint into a
+ * type. `.has(CAP.DOOR_OPERATE)` type-checks against a `Set<string>` either way,
+ * so the honest width costs its callers nothing.
  */
 export interface AccessContextResult {
   capabilities: Set<CapabilityKey>;
   userId: string | null;
   role: string | null;
   status: string | null;
+  liveAssignmentCapabilities: Set<string> | null;
 }
 
 /**
@@ -209,12 +275,23 @@ export interface AccessContextResult {
  * sites refuse for an accidental reason rather than a stated one. `null` is the
  * honest answer to "who is this", and every consumer refuses on it explicitly:
  * see `ownsOrIsMaster` in `@/lib/capabilities/guards`.
+ *
+ * `liveAssignmentCapabilities` is the **empty set here, deliberately not
+ * `null`**, and the two look interchangeable until you name what each one says.
+ * `null` means *"the payload did not carry the key"*, whose one known cause is
+ * an unapplied migration; the empty set means *"asked and answered: no live
+ * assignment"*. For a caller with no session the second sentence is simply
+ * **true** — nobody holds nothing — so `null` here would raise the
+ * migration-is-missing signal on every logged-out visit and drown the one
+ * occasion it exists to fire on. Same choice `capabilities` makes six lines
+ * above, for the same reason: an anonymous refusal is an answer.
  */
 const ANONYMOUS_CONTEXT: AccessContextResult = {
   capabilities: new Set<CapabilityKey>(),
   userId: null,
   role: null,
   status: null,
+  liveAssignmentCapabilities: new Set<string>(),
 };
 
 /** PostgreSQL's `insufficient_privilege`. What `anon` gets from the wrapper. */
@@ -249,6 +326,12 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * no limiter available to put in front of it. The shape of the API is the
  * mitigation.
  *
+ * Carries `liveAssignmentCapabilities` — the coarse *"any live assignment, and
+ * for which trades"* answer, `Set<string> | null`, where `null` means the key
+ * was absent and therefore that row 14 of the migration queue is not applied.
+ * It is **wider than the real permission** and authorises nothing on its own:
+ * see the two paragraphs at the top of this file before reading it anywhere.
+ *
  * @throws `capabilities.resolve_failed: <code>` when the lookup fails. Never
  *         returns a degraded value: see the file comment.
  */
@@ -272,11 +355,17 @@ export const getAccessContext = cache(
  * `sub`, so `auth.uid()` is null and the answer is a confident "no capabilities"
  * about nobody.
  *
- * The payload is the **same four keys** as the argument-less version, in the
+ * The payload is the **same five keys** as the argument-less version, in the
  * same order, so `AccessContextResult` is the same type. The only difference is
  * the capability list, which the SQL resolver's `OR` makes the **union** of what
  * the caller's role confers and what their live, unrevoked, unexpired assignment
  * on that night confers.
+ *
+ * `liveAssignmentCapabilities` is **not** narrowed to `partyId` here, and that is
+ * not an oversight to tidy: it is the same account-wide coarse answer both
+ * signatures carry, so the two payloads keep one shape behind one type. The
+ * per-night answer on this function is `capabilities`. Two keys, two questions;
+ * merging them would leave a caller unable to ask either one cleanly.
  *
  * **Memoised per `partyId`, never globally.** `cache()` keys on the argument, so
  * two nights are two entries; the limit above still applies, so in a Server
@@ -317,7 +406,7 @@ export const getPartyAccessContext = cache(
  * The payload contract, in one place because there are two callers of it.
  *
  * Extracted rather than duplicated: the `42501` split, the shape check and the
- * four-field mapping each carry a measured reason, and two copies of them would
+ * five-field mapping each carry a measured reason, and two copies of them would
  * be two places to fix on the day one of those reasons changes. The two RPC call
  * sites stay separate — one per exposed SQL function — because the *call* is the
  * thing that differs; the *interpretation* is not.
@@ -376,11 +465,37 @@ async function interpretAccessContext(
     user_id?: unknown;
     role?: unknown;
     status?: unknown;
+    live_assignment_capabilities?: unknown;
   };
 
   if (!Array.isArray(payload.capabilities)) {
     throw new Error("capabilities.resolve_failed: malformed_capabilities");
   }
+
+  // The coarse answer, and the ONE place its three states are decided.
+  //
+  // Same guard as `capabilities` — `Array.isArray` on the raw value — and a
+  // DIFFERENT verdict when it fails, which is the part to read before changing
+  // it. A missing `capabilities` throws because without it there is no answer at
+  // all; a missing `live_assignment_capabilities` resolves to `null`, because
+  // its absence has a known, expected and temporary cause — row 14 of the queue
+  // not applied yet — and throwing would take down every request, the door
+  // included, over a key nothing is allowed to decide with on its own.
+  //
+  // A value that is present but is not an array is treated as `null` too. That
+  // is not the same defect and it is deliberately not given its own state: it
+  // means the payload does not have the shape declared, which is "no answer" —
+  // and three states are already the most a caller can be asked to tell apart.
+  //
+  // `null` is not a quiet failure: it is the only value that says *"the deploy
+  // is ahead of the database"*, and it says it by POSITION, not in a string.
+  // Plan 35-17 owns making it observable at the gate that reads it; nothing in
+  // this phase may collapse it into the empty set on the way there.
+  const liveAssignmentCapabilities = Array.isArray(
+    payload.live_assignment_capabilities
+  )
+    ? new Set(payload.live_assignment_capabilities as string[])
+    : null;
 
   // `user_id` is mapped exactly as `role` and `status` are, and on purpose
   // there is NO fallback here. Reaching for `supabase.auth.getUser()` when
@@ -395,6 +510,7 @@ async function interpretAccessContext(
     userId: typeof payload.user_id === "string" ? payload.user_id : null,
     role: typeof payload.role === "string" ? payload.role : null,
     status: typeof payload.status === "string" ? payload.status : null,
+    liveAssignmentCapabilities,
   };
 }
 
