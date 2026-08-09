@@ -282,9 +282,13 @@ sonde di scrittura**. Ogni confronto di questa fase si misura contro quei numeri
 
 ## Le prove da fare a mano
 
-Sono **dieci**, prese da `35-VALIDATION.md § Manual-Only Verifications`. **Qui
+Sono **undici**: dieci prese da `35-VALIDATION.md § Manual-Only Verifications`,
+piu' la **11**, che non viene da li' perche' il buco che prova e' stato trovato
+**durante l'esecuzione** — dal piano 35-12, e chiuso dal piano **35-22**. **Qui
 ci sono i segnaposto, non le procedure**: i passi, il ruolo, le precondizioni e
-cosa deve succedere arrivano con il **piano 35-14**.
+cosa deve succedere arrivano con il **piano 35-14** — con l'eccezione della
+**11**, che porta gia' la propria procedura qui sotto, perche' uno dei suoi tre
+casi vive in una **finestra che si chiude** e non puo' aspettare 35-14.
 
 Nessuna di queste e' rimandabile a uno strumento. Ognuna esiste perche' un
 comando di questo repository **non puo'** rispondere alla domanda che pone.
@@ -301,6 +305,7 @@ comando di questo repository **non puo'** rispondere alla domanda che pone.
 | 8 | L'assegnazione «photo» sblocca il caricamento, e senza non lo sblocca | ASSIGN-01 | il gate vive in due Server Action e l'esito si vede solo dall'interfaccia pubblica dell'evento | `pending` |
 | 9 | L'organizer di una notte vede quella notte e non l'altra | ASSIGN-01 | e' un gate che **deve poter fallire**, e il fallimento si osserva cambiando la serata nell'indirizzo a mano | `pending` |
 | 10 | I metadati escono davvero dal file, e il video verso una notte segreta e' rifiutato | ASSIGN-01 | nessuno strumento del repository apre un file e ne legge l'EXIF: la spoglia e' una proprieta' **a tempo d'esecuzione**. Vale **solo con la riga 15 applicata** | `pending` |
+| 11 | Una persona `staff` assegnata alla porta **SCANSIONA** quella notte — e non un'altra — e prima che la coda sia applicata nessuno riceve un 503 | ASSIGN-01, ASSIGN-08 | il permesso per-notte non esiste finche' la riga 8 non e' applicata, quindi **nessun comando di questo repository puo' osservarlo**: `npm run build` e' verde con zero migration applicate. E il terzo caso vive in una finestra che si chiude da sola. Procedura **sotto**, non in 35-14 | `pending` |
 
 **Due dipendenze dalla coda, dichiarate qui perche' cambiano l'esito e non solo
 il calendario.** La prova **7** e' falsa-negativa finche' la riga 14 non e'
@@ -308,6 +313,89 @@ applicata: la sessione `staff` verrebbe rimbalzata per una ragione diversa da
 quella che la prova cerca. La prova **10** e' falsa-positiva finche' la riga 15
 non e' applicata: si puo' osservare un file spogliato dalla rotta **mentre** la
 porta del browser resta aperta accanto.
+
+**E una terza, di segno opposto.** I casi **A** e **B** della prova **11**
+pretendono la riga 8 applicata; il caso **C** pretende che **non** lo sia. Non e'
+una contraddizione: sono due momenti diversi della stessa sera di lavoro, e
+l'ordine fra loro non e' negoziabile — **C prima, poi la coda, poi A e B**.
+
+---
+
+## Prova 11 — la scansione riceve la notte (piano 35-22)
+
+**Perche' esiste.** `35-VALIDATION.md` non la contiene: il buco non era previsto,
+e' stato **trovato durante l'esecuzione** dal piano 35-12 — nessuno dei ventuno
+piani della fase passava una notte alla rotta di check-in, quindi una persona
+`staff` assegnata alla porta raggiungeva lo scanner (prova 7), vedeva la serata
+nella lista, e prendeva **403 su ogni scansione**. ASSIGN-01 dice *«can use that
+night's tools»*, e alla porta lo strumento **e' la scansione**: il requisito
+primario della fase non sarebbe stato consegnato. Registrato come voce 7 di
+`deferred-items.md`, chiuso dal piano **35-22**.
+
+**Cosa nessun comando di questo repository puo' dire.** `npm run build` e' verde
+con **zero** migration applicate — nessun client e' parametrizzato con
+`Database`, quindi il nome della funzione per-notte e la forma del suo payload
+sono stringhe che nessun compilatore controlla. **Questa procedura e' l'unica
+prova che esistera'.**
+
+### Preparazione (ruoli, mai persone)
+
+1. Un evento **pubblicato** con **due** serate distinte, `notte A` e `notte B`.
+2. Un account **staff**, `approved`, **senza** `door.operate` da ruolo — l'unico
+   modo in cui puo' scansionare e' l'assegnazione. Chiamalo *l'assegnatario*.
+3. Un account **organizer** e un account **master**, per il confronto.
+4. Un biglietto valido e non usato per `notte A`.
+5. Con l'organizer, assegnare all'assegnatario `door.operate` sulla **sola
+   `notte A`** (superficie del piano 35-05).
+
+### Caso C — PRIMA che la coda sia applicata. **La finestra che si chiude**
+
+> **Questo caso si prova nella finestra fra il deploy del codice e
+> l'applicazione della riga 8, e in nessun altro momento.** Chiusa quella
+> finestra, non e' piu' provabile: la funzione che oggi manca esistera', e la
+> condizione che il caso osserva non sara' piu' riproducibile senza smontare la
+> produzione. **Se si applica la coda per prima, questa prova e' persa** — non
+> rimandata.
+
+| Chi | Passi | Cosa si deve osservare |
+|---|---|---|
+| master | `/admin/scanner`, selezionare `notte A`, scansionare il biglietto | **Verde, esattamente come oggi.** L'ingresso e' registrato. Nel Network la risposta e' quella di sempre. **Nessun rallentamento**: la chiamata d'autorizzazione resta **una** |
+| organizer | idem, su un secondo biglietto | Idem. Se uno dei due riceve un **503** o una latenza visibilmente maggiore, il secondo braccio e' finito sul percorso di ruolo: **e' il difetto che questo piano esiste per evitare**, e va fermato prima di andare avanti |
+| assegnatario | stessa pagina, `notte A` selezionata, scansionare | **Rifiutato — ed e' l'esito atteso in questa finestra.** Nel Network: **`403`**, e nel corpo `"status":"door_night_unresolved"`. Sotto il titolo rosso, la frase *«This account's assignment for that night could not be checked — the refusal above stands on the role check alone.»* |
+| assegnatario | mettere il telefono in modalita' aereo, scansionare, riportarlo online e attendere il drain | La voce **non** deve restare in coda ritentata a ogni `online`: un `503` la manderebbe nel bucket **retry** e la farebbe ripartire tutta la notte. Il percorso in coda non passa dal secondo braccio: e' giudicato a `scannedAt` (prova 2) |
+
+**Fallimenti da riconoscere in questa finestra:** un **503** in risposta a una
+scansione — di chiunque — e un contatore di scansioni in attesa che **cresce
+senza mai scendere**. Sono la stessa cosa vista da due lati.
+
+### Caso A — DOPO l'applicazione della riga 8: l'assegnatario scansiona
+
+| Chi | Passi | Cosa si deve osservare |
+|---|---|---|
+| assegnatario | `/admin/scanner`, selezionare `notte A`, scansionare il biglietto di `notte A` | **Verde. L'ingresso e' registrato.** In `door_scan_events` compare una riga con `outcome = 'recorded'`, `party_id` = `notte A`, e **`operator_id` = l'assegnatario** — non l'organizer che lo ha assegnato |
+| assegnatario | riscansionare lo stesso biglietto | `already_recorded`, con l'ora e l'operatore del primo ingresso. E' il comportamento di sempre: il secondo braccio cambia **chi** puo' scansionare, niente altro |
+| master, organizer | scansionare un secondo biglietto | Invariato rispetto al caso C |
+
+**Fallimento da riconoscere:** un `403` all'assegnatario **dopo** l'applicazione
+della riga 8. Vuol dire che ASSIGN-01 non e' arrivato alla porta, che e'
+esattamente lo stato che questo piano chiude.
+
+### Caso B — la notte nominata non e' la sua
+
+| Chi | Passi | Cosa si deve osservare |
+|---|---|---|
+| assegnatario | selezionare **`notte B`** nello scanner e scansionare un qualunque biglietto | **Rifiutato**, `403`, e il corpo dice **quale** delle tre cause: `"status":"door_night_other_night"`. La frase sotto il titolo e' *«This account is on the door, but not for the night selected on this device — select the right night.»* — cioe' un rifiuto su cui si puo' agire in cinque secondi, non un vicolo cieco |
+| assegnatario | tornare a `notte A` e riscansionare | Passa. E' la conferma che il rifiuto precedente riguardava **la notte**, non l'account |
+| un secondo account `staff`, assegnato a **nessuna** notte | scansionare, con qualunque notte selezionata | Rifiutato, `403`, con la **terza** causa distinta: `"status":"door_night_not_assigned"` e la frase *«This account is not on the door for any night…»*. Se questo caso e il precedente producono lo **stesso** corpo, le cause sono collassate e la distinzione e' andata persa |
+| organizer | revocare l'assegnazione su `notte A` e far riscansionare l'assegnatario | Il rifiuto passa da `door_night_other_night` a `door_night_not_assigned`. La riga dell'assegnazione **resta in tabella** con `revoked_at` valorizzato: se e' sparita, la revoca e' una `DELETE` e la prova 2 non ha piu' senso |
+
+**Nota su cosa NON prova il caso B.** Il **titolo** sopra la frase resta quello
+generico che `ScannerClient.tsx:121-131` mappa dallo status HTTP prima di leggere
+il corpo — *«This account is not allowed to check people in»*. E' lo stesso
+limite gia' registrato in `require-operator.ts:93-110` per il rifiuto di
+supervisione: qui si osserva la **frase di dettaglio**, non il titolo. Un titolo
+generico non e' un fallimento di questa prova; una frase di dettaglio **assente o
+uguale per i tre casi** lo e'.
 
 ---
 
@@ -322,6 +410,13 @@ telefono, con la radio spenta, in un build di produzione.
 E ASSIGN-01 porta la propria: la matrice di scrittura prova che il **permesso**
 e' per-notte; non prova che la persona assegnata **arrivi** allo strumento.
 Quella meta' si osserva solo aprendo l'applicazione.
+
+**E c'e' un terzo pezzo, che fino al piano 35-22 non era nemmeno elencato:
+arrivare allo strumento non e' usarlo.** La prova **7** osserva che
+l'assegnatario *raggiunge* lo scanner; la prova **11** osserva che *scansiona*.
+Erano la stessa voce per omissione, e per ventuno piani nessuno ha guardato la
+seconda meta'. Restano due prove distinte perche' sono due gate distinti — il
+middleware e la rotta — e uno verde non dice niente sull'altro.
 
 ---
 

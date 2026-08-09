@@ -2,9 +2,11 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
+import { CAP } from "@/lib/capabilities/keys";
 import {
   DOOR_UNRESOLVED_STATUS,
   requireDoorOperator,
+  type DoorAuth,
 } from "@/lib/door/require-operator";
 import { verifyTicketToken } from "@/utils/qr";
 import { partyStartInstant } from "@/utils/datetime";
@@ -64,8 +66,35 @@ import type { DoorScanEvent } from "@/types/database";
  *    a person who really walked in never appeared in the night's record. The
  *    403 is therefore no longer the last word for a request carrying both
  *    `source: "offline_sync"` and a `scannedAt`: see {@link judgeAtScanTime}.
- *    Nothing on the online path changed — a live scan with no `scannedAt` gets
- *    the same 401, 403 and 503 it always did, from the same single guard call.
+ *
+ * 6. **The authorisation has two arms, and the second one is asked only after
+ *    the first has refused.** ASSIGN-01 says a person assigned to a night may
+ *    use that night's tools, and at the door the tool is the scan. The guard
+ *    call below asks the ROLE question and nothing else, so a `staff` account
+ *    assigned to tonight's door reached the scanner, saw the night in its list,
+ *    and then took 403 on every code it read. The second arm — asked in the
+ *    handler, answered by {@link readNightArm} — closes that, and its position
+ *    is the whole of its safety:
+ *
+ *      - **The role path does not pay for it.** `master` and `organizer` are
+ *        answered by the first arm and never reach the second, so their scan
+ *        costs exactly what it cost before: one resolution, no extra round trip,
+ *        not one changed byte on the way in.
+ *      - **Whoever reaches the second arm has already been refused**, so the
+ *        second arm can only leave that refusal standing or overturn it. It can
+ *        never make an outcome worse — which is why none of its three refusals
+ *        is a 503, and why all three keep the 403 the first arm had already
+ *        produced. See the paragraph on the status code in {@link readNightArm}.
+ *      - **A queued report never reaches it.** That is not tidiness: the second
+ *        arm asks *"is the assignment live NOW"*, and point 5 above exists
+ *        because that is the wrong question for a moment in the past. Plan
+ *        35-12 measured the specific error — an assignment granted *after* the
+ *        scan reads as live at drain time — so the drain keeps going to
+ *        {@link judgeAtScanTime} and nowhere else.
+ *
+ *    Nothing on the online path changed for anyone the first arm admits — a live
+ *    scan by an operator with the role gets the same 401, 403 and 503 it always
+ *    did, from the same single guard call.
  */
 
 /** The scanned string: a ticket uuid, a dot, and 64 hex of HMAC-SHA256. */
@@ -332,6 +361,194 @@ async function judgeAtScanTime(
   return { kind: "never_assigned", operatorId };
 }
 
+/**
+ * ── The second arm's three refusals, as VALUES decided by position ───────────
+ *
+ * Coined here and not in `@/lib/door/outcome.ts` because this plan owns one
+ * file; the shape is the one `DOOR_UNRESOLVED_STATUS` and
+ * `DOOR_SUPERVISION_REQUIRED` already established — a machine-readable
+ * classification in the envelope's `status` field, a human sentence beside it in
+ * `error`, and **never** a category parsed out of prose (CR-01: Next redacts
+ * server-side messages in a production build).
+ *
+ * Three, not two, and none of them collapses into another:
+ *
+ *   1. refused by role **and** holding no live door assignment anywhere;
+ *   2. holding one, but not for the night this request named;
+ *   3. the per-night question could not be answered at all.
+ *
+ * The third is the one that would be lost first if somebody tidied this into a
+ * boolean, and it is the one that is true in production **today**: the per-night
+ * resolver is row 8 of the hand-applied queue in `35-HUMAN-UAT.md` and does not
+ * exist yet, so every request that reaches the second arm gets outcome 3 until
+ * the queue is applied. An `unresolved` that arrived as a denial would say *"you
+ * are not assigned"* to somebody whose assignment nobody managed to look up.
+ *
+ * ── What reads them, and what does not, stated rather than implied ───────────
+ *
+ * `ScannerClient.tsx:121-131` maps the HTTP status to the **headline** before it
+ * parses the body, and puts `error` underneath as the **detail** line
+ * (`reportServerFault`). So the sentences below are what the operator actually
+ * reads at the door — the only observer this product has, since it carries no
+ * error tracking (`meta-gates.md`) — while the headline stays the generic *"This
+ * account is not allowed to check people in"*. The `status` values have no device
+ * consumer yet, exactly as `DOOR_SUPERVISION_REQUIRED` had none when plan 35-11
+ * coined it; they travel now so the classification exists as a value rather than
+ * having to be recovered from a sentence later.
+ */
+const DOOR_NIGHT_NOT_ASSIGNED = "door_night_not_assigned";
+const DOOR_NIGHT_OTHER_NIGHT = "door_night_other_night";
+const DOOR_NIGHT_UNRESOLVED = "door_night_unresolved";
+
+/**
+ * The three sentences. The second one is the reason the second arm bothers to
+ * classify its own refusal at all: *"you are on the door, but this device has
+ * the wrong night selected"* is a refusal somebody can act on in five seconds,
+ * where *"not allowed"* sends them to find an organizer. At the door that
+ * difference is the whole value of the extra lookup it costs.
+ */
+const DOOR_NIGHT_ERROR: Record<string, string> = {
+  [DOOR_NIGHT_NOT_ASSIGNED]:
+    "This account is not on the door for any night — an organizer has to assign it.",
+  [DOOR_NIGHT_OTHER_NIGHT]:
+    "This account is on the door, but not for the night selected on this device — select the right night.",
+  [DOOR_NIGHT_UNRESOLVED]:
+    "This account's assignment for that night could not be checked — the refusal above stands on the role check alone.",
+};
+
+/**
+ * What the second arm answered.
+ *
+ * `http` is carried rather than derived so that the one place that chooses a
+ * status code is the one place that explains the choice.
+ */
+type NightArm =
+  | { granted: true; operatorId: string }
+  | { granted: false; http: 401 | 403; status: string; error: string };
+
+/** The refusal shape, so the four exits below cannot drift apart. */
+function refuseNight(status: string): NightArm {
+  return { granted: false, http: 403, status, error: DOOR_NIGHT_ERROR[status] };
+}
+
+/**
+ * *May this account work THIS night's door, even though the role says no?* —
+ * everything about that question except the asking of it.
+ *
+ * **The call itself is inline in the handler, not here, and that is not an
+ * oversight.** The standing check on this file measures by line number that the
+ * role form of the guard is called before the per-night form; a helper declared
+ * above the handler is hoisted, so it would read correctly and measure
+ * backwards. A check its own code arranges to pass is not a check — the same
+ * lesson `35-11-SUMMARY.md` recorded when a comment quoting a call broke the
+ * count. So the asking stays where the order is visible, and the answering —
+ * which is the part with the reasoning in it — lives here.
+ *
+ * ── Why this is a second call and not an argument on the first ───────────────
+ *
+ * Somebody will propose merging the two into one call with an optional night,
+ * and this paragraph exists to take the reason away. The per-night form of the
+ * guard resolves through `public.my_access_context(uuid)`, **a function that
+ * does not exist in production** until row 8 of the hand-applied queue lands.
+ * The guard answers that correctly — `unresolved`, 503 — and 503 on the *only*
+ * authorisation call would be **503 on every scan, from the first deploy, at two
+ * in the morning, with a queue at the door**. Plan 35-12 refused that road and
+ * was right; this arm inherits the decision rather than reopening it.
+ *
+ * Splitting it in two is what makes the failure harmless: everybody who gets
+ * here has already been refused by the role arm, so the worst this function can
+ * do is leave that refusal exactly where it found it.
+ *
+ * ── The status code, and the bucket it produces ─────────────────────────────
+ *
+ * **403 for all three refusals. Never 503, and that is deliberate.**
+ *
+ * Read off `src/lib/offline/sync-manager.ts`'s classification table: `:225`
+ * files `401 || 403` under **`blocked`**, `:235` files `>= 500` under
+ * **`retry`**. Three reasons `blocked` is the right bucket here, in increasing
+ * order of importance:
+ *
+ *   1. **It is unreachable from the drain by construction.** This arm is asked
+ *      only when the request is *not* a queued report, so no queue entry can
+ *      ever be classified by one of these answers. It is the same argument plan
+ *      35-11 made for the undo route, and it is checkable: the caller's
+ *      condition names `isQueuedReport`.
+ *   2. **If a future edit did make it reachable, `blocked` is the survivable
+ *      mistake and `retry` is not.** A 503 would put the entry in `retry`, where
+ *      it would be sent again on every `online` for the rest of the night
+ *      against a condition a retry cannot change — the missing resolver is not
+ *      going to appear at 03:00. `blocked` at least keeps the entry, and keeps
+ *      it counted on a screen somebody looks at.
+ *   3. **403 is the code this caller had already been given.** The role arm
+ *      answered *"no"* on the server's clock and that answer stands; the second
+ *      arm only failed to overturn it. Answering 503 would tell an operator with
+ *      no title that the server is broken, and would move a refusal that was
+ *      already correct into the retryable bucket. The permission was resolved.
+ *      What was not resolved is the appeal.
+ *
+ * ── Outcome 2 comes from the coarse field, and grants nothing ────────────────
+ *
+ * `liveAssignmentCapabilities` answers *"does this subject hold ANY live
+ * assignment, and for which trades?"* — `server.ts:161-183` says in as many
+ * words that it is **wider than the real permission** and that no surface may
+ * decide with it alone. Nothing here decides with it: the verdict was taken
+ * above, by the guard, on the named night. This read only says which **sentence**
+ * the refusal gets, and a field that is too wide is exactly the right instrument
+ * for that — "assigned somewhere, refused here" is precisely what it can see.
+ *
+ * Its three states are honoured as three (`server.ts:222-243`): `null` is *the
+ * key was not in the payload*, i.e. row 14 of the queue is behind, and it is
+ * **outcome 3** — never the empty set's meaning, which is the answered fact *"no
+ * live assignment"*. Collapsing those two would make a migration that has not
+ * been applied indistinguishable from a person who is not working tonight, and
+ * the second sentence is the one somebody reads in front of a queue.
+ */
+async function readNightArm(perNight: DoorAuth | null): Promise<NightArm> {
+  // `null` is the guard having THROWN at the call site. It throws
+  // `door.invalid_party_id` for a malformed night and nothing else, and the
+  // night has been through `UUID_PATTERN` there, so this is unreachable —
+  // carried as a value rather than trusted, because an uncaught throw would be
+  // answered by the handler's last-resort 500, which is the wrong shape for a
+  // caller who was simply refused.
+  if (perNight === null) return refuseNight(DOOR_NIGHT_UNRESOLVED);
+
+  if (perNight.ok) return { granted: true, operatorId: perNight.userId };
+
+  // The session went away between the two resolutions. 401, and the same body
+  // the role arm's 401 has always carried — a sign-in is the remedy, and
+  // `blocked` is the bucket that waits for one.
+  if (perNight.kind === "unauthenticated") {
+    return { granted: false, http: 401, status: "unauthorized", error: "Unauthorized" };
+  }
+
+  // The lookup itself failed — today, every time, because the resolver is not
+  // in production yet. Its own category, and NOT a denial.
+  if (perNight.kind === "unresolved") {
+    return refuseNight(DOOR_NIGHT_UNRESOLVED);
+  }
+
+  // A real refusal for this night. All that is left is to say which of the two
+  // it is, and that costs one read of the coarse field.
+  let liveAnywhere: Set<string> | null;
+  try {
+    liveAnywhere = (await getAccessContext()).liveAssignmentCapabilities;
+  } catch (error) {
+    // The refusal is real either way; what could not be established is its
+    // sentence. Outcome 3 rather than outcome 1, because outcome 1 asserts a
+    // fact — *"not assigned anywhere"* — that nobody just verified.
+    console.error("[door.night_arm_reason_unresolved]", error);
+    return refuseNight(DOOR_NIGHT_UNRESOLVED);
+  }
+
+  if (liveAnywhere === null) return refuseNight(DOOR_NIGHT_UNRESOLVED);
+
+  return refuseNight(
+    liveAnywhere.has(CAP.DOOR_OPERATE)
+      ? DOOR_NIGHT_OTHER_NIGHT
+      : DOOR_NIGHT_NOT_ASSIGNED
+  );
+}
+
 /** The legacy `status` string for an outcome, and whether the old bundle reads it as green. */
 function legacyStatusFor(outcome: DoorOutcome): { valid: boolean; status: string } {
   if (outcome.outcome === "recorded") return { valid: true, status: "checked_in" };
@@ -413,10 +630,29 @@ export async function POST(request: Request) {
      */
     const isQueuedReport = source === "offline_sync" && deviceScannedAt !== null;
 
-    // The 403, byte for byte the answer it has always been, for everything that
-    // is not a queued report. Reached before the party lookup, so a refused
-    // caller still costs one round trip and reads nothing.
-    if (!auth.ok && !isQueuedReport) {
+    /**
+     * The night, shape-checked HERE and not only below, because the refusal
+     * beneath this has to know whether there is a night to appeal to.
+     *
+     * The predicate is character for character the one that used to live at the
+     * `--- The night ---` block, and that block still owns the refusal: a caller
+     * who names no night, or names a malformed one, is answered exactly where it
+     * always was and with exactly what it always got. Nothing is decided here.
+     */
+    const namedNight =
+      typeof body.partyId === "string" && UUID_PATTERN.test(body.partyId.trim())
+        ? body.partyId.trim()
+        : null;
+
+    // The 403, byte for byte the answer it has always been, for a caller with no
+    // night to appeal to and for nothing else. Reached before the party lookup,
+    // so a refused caller still costs one round trip and reads nothing.
+    //
+    // The added condition is the whole of point 6: a refused caller who DID name
+    // a night falls through to the second arm a few lines down, which either
+    // overturns this refusal or reissues it with a cause of its own. It cannot
+    // do anything else — the refusal is already in hand at this line.
+    if (!auth.ok && !isQueuedReport && namedNight === null) {
       return NextResponse.json(
         { valid: false, status: "forbidden", error: auth.error },
         { status: auth.status }
@@ -433,12 +669,76 @@ export async function POST(request: Request) {
     // night to attribute the scan to — a row invented here would be a row
     // attributed to the wrong night, which is the defect the column exists to
     // prevent. Said out loud rather than left for a reader to notice a gap.
-    const partyId = typeof body.partyId === "string" ? body.partyId.trim() : "";
-    if (!UUID_PATTERN.test(partyId)) {
+    if (namedNight === null) {
       return NextResponse.json(
         { outcome: "not_valid", reason: "no_party_selected", valid: false, status: "no_party_selected" },
         { status: DOOR_HTTP.not_valid }
       );
+    }
+
+    /**
+     * ONE name for the night, from here down.
+     *
+     * It is the value handed to the second arm, the value `respond()` writes
+     * into `door_scan_events.party_id`, and the value a ticket's own night is
+     * compared against below. **That single identity is the night-to-subject
+     * binding on this route**, and it is why an assignee cannot name their own
+     * night and act on another one: there is no second night to act on. The
+     * rule `bindNightToSubject` enforces in `undo/route.ts` — the named night
+     * must be the subject's, or a night of the subject's event — is enforced
+     * here by `wrongParty || wrongEvent` further down, against this same value,
+     * for every caller and not only for an assignee.
+     *
+     * Keep it that way. If a future edit resolves the night from the ticket
+     * instead of from the body, the guard above will have answered about one
+     * night while the row is written about another, which is precisely the hole
+     * plan 35-11 found and closed on the undo route.
+     */
+    const partyId = namedNight;
+
+    /**
+     * ── The second arm ───────────────────────────────────────────────────────
+     *
+     * Asked only when the role arm has refused, and only for a request that is
+     * not a report from the drain. Both halves of that condition are load-bearing
+     * and point 6 of the file comment holds the reasons: the role path must not
+     * pay a round trip it does not need, and a queued report must keep being
+     * judged at `scannedAt` by {@link judgeAtScanTime} rather than at *now*.
+     *
+     * It sits **before** `getServiceClient()`, so a refusal from it has touched
+     * nothing — same discipline as the supervision gate in `undo/route.ts`.
+     */
+    let nightGrant: { partyId: string; operatorId: string } | null = null;
+
+    if (!auth.ok && !isQueuedReport) {
+      // THE per-night question, asked here and nowhere else. Inline rather than
+      // inside {@link readNightArm} so that the two forms of the guard are in
+      // the file in the order they run — see the note at the top of that
+      // function for why a hoisted helper would have hidden it.
+      let perNight: DoorAuth | null;
+      try {
+        perNight = await requireDoorOperator({ partyId });
+      } catch (error) {
+        // Entered by POSITION; the error is never parsed (CR-01).
+        console.error("[door.night_arm_threw]", error);
+        perNight = null;
+      }
+
+      const arm = await readNightArm(perNight);
+
+      if (!arm.granted) {
+        // The refusal the role arm had already produced, reissued with a cause
+        // of its own. Same status, so nobody's outcome moved; a distinct
+        // `status` value and a distinct sentence, so the operator at the door
+        // can tell "not assigned at all" from "wrong night selected" from "the
+        // question could not be asked".
+        return NextResponse.json(
+          { valid: false, status: arm.status, error: arm.error },
+          { status: arm.http }
+        );
+      }
+
+      nightGrant = { partyId, operatorId: arm.operatorId };
     }
 
     const serviceClient = getServiceClient();
@@ -472,6 +772,39 @@ export async function POST(request: Request) {
       );
     }
 
+    /**
+     * The grant is scoped to the night it was granted for, checked against the
+     * row that will actually be written.
+     *
+     * **Unreachable today, and written as a branch anyway** — the same shape and
+     * the same reason as the third arm of the judgement below. `party` is read
+     * `.eq("id", partyId)`, so the two are equal by construction *right now*;
+     * this line exists so that they cannot stop being equal quietly. The edit
+     * that would break it is a plausible one — *"resolve the party from the
+     * ticket, so an event-level ticket lands on its own night"* — and it would
+     * silently turn a grant for night X into a row on night Y, which is the hole
+     * plan 35-11 found live on the undo route.
+     *
+     * A refusal, not a 500: if the two ever disagree, the caller is somebody who
+     * was refused by the role arm and is being admitted on the strength of an
+     * assignment to a different night. The safe answer is the one the role arm
+     * had already given.
+     */
+    if (nightGrant !== null && nightGrant.partyId !== party.id) {
+      console.error("checkin:night_grant_mismatch", {
+        granted: nightGrant.partyId,
+        writing: party.id,
+      });
+      return NextResponse.json(
+        {
+          valid: false,
+          status: DOOR_NIGHT_OTHER_NIGHT,
+          error: DOOR_NIGHT_ERROR[DOOR_NIGHT_OTHER_NIGHT],
+        },
+        { status: 403 }
+      );
+    }
+
     const eventTitle =
       (party.events as unknown as { title: string } | null)?.title || "";
 
@@ -486,37 +819,48 @@ export async function POST(request: Request) {
 
     // --- Who recorded this, and whether the assignment outlived the scan -------
     //
-    // Three outcomes reach the lines below, and **none of them is a refusal of
+    // Four outcomes reach the lines below, and **none of them is a refusal of
     // the person who was scanned**:
     //
-    //   1. the guard said yes — by role, exactly as before this plan;
-    //   2. the guard said no, and the assignment was live at `scannedAt` and has
-    //      been revoked since. The scan is recorded, and the answer carries
-    //      `assignmentRevokedAfterScan` so the drain can file it as resolved
-    //      under its own name instead of as an ordinary admission;
-    //   3. the guard said no and no assignment ever covered that moment. Handled
-    //      just below `respond()`, because it still writes a row.
+    //   1. the role arm said yes — exactly as before any of this;
+    //   2. the role arm said no and the SECOND arm said yes: an operator
+    //      assigned to this night, scanning it live. This is ASSIGN-01 at the
+    //      door, and it is the half plan 35-12 named and could not close;
+    //   3. the role arm said no, this is a queued report, and the assignment was
+    //      live at `scannedAt` and has been revoked since. The scan is recorded,
+    //      and the answer carries `assignmentRevokedAfterScan` so the drain can
+    //      file it as resolved under its own name;
+    //   4. the role arm said no, this is a queued report, and no assignment ever
+    //      covered that moment. Handled just below `respond()`, because it still
+    //      writes a row.
     //
-    // The `live` arm is the fourth and quietest: an assignment that was live then
-    // and is live now. It reaches this route only through the drain — an online
-    // scan by the same account is still refused, because `requireDoorOperator()`
-    // is called here without a night and its per-night arm is silent without one
-    // (`require-operator.ts:143-151`). Stated rather than left to be discovered:
-    // closing that half means naming the night at the guard, which this plan
-    // deliberately does not do (see the SUMMARY).
+    // Outcomes 2 and 3 do not overlap, and the ORDER below is what keeps them
+    // apart: the second arm never runs for a queued report, so a report from the
+    // drain still reaches `judgeAtScanTime` and is still judged at `scannedAt`.
+    // Letting the second arm answer a queued report would readmit the exact
+    // error plan 35-12 measured — an assignment granted *after* the scan reads
+    // as live at drain time.
     let judgement: ScanTimeJudgement;
     if (auth.ok) {
       judgement = { kind: "live", operatorId: auth.userId };
+    } else if (nightGrant !== null) {
+      // Outcome 2. The subject comes from the same resolution that granted, so
+      // no extra call to the Auth server for an id we already hold, and
+      // `operator_id` — NOT NULL — is attributed to the account that really
+      // scanned.
+      judgement = { kind: "live", operatorId: nightGrant.operatorId };
     } else if (deviceScannedAt !== null) {
       judgement = await judgeAtScanTime(serviceClient, partyId, deviceScannedAt);
     } else {
-      // Unreachable: `isQueuedReport` requires a `deviceScannedAt`, and the 403
-      // above returns for everything that is not a queued report. Written as a
-      // third arm rather than as a non-null assertion, because an assertion here
-      // would be a promise and this is a check — and because if the refusal above
-      // is ever edited, the failure lands on the recoverable outcome (503, the
-      // retryable bucket) instead of on a crash inside a `try` that answers 500
-      // to a scan.
+      // Unreachable, still: `isQueuedReport` requires a `deviceScannedAt`, and
+      // everything that is NOT a queued report has by now either been refused
+      // (the 403 with no night, or the second arm's own refusal) or granted, in
+      // which case `nightGrant` is set and the arm above took it. Written as a
+      // fourth arm rather than as a non-null assertion, because an assertion
+      // here would be a promise and this is a check — and because if either
+      // refusal above is ever edited, the failure lands on the recoverable
+      // outcome (503, the retryable bucket) instead of on a crash inside a
+      // `try` that answers 500 to a scan.
       console.error("checkin:queued_report_without_scanned_at", { partyId });
       judgement = { kind: "unresolved" };
     }
