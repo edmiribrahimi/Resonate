@@ -1,11 +1,14 @@
 ---
-status: partial
+status: written
 phase: 35-per-night-assignments
-source: [35-01-PLAN.md, 35-VALIDATION.md, 43-HUMAN-UAT.md, ACCESS-MODEL-DECISIONS.md]
+source: [35-01-PLAN.md, 35-14-PLAN.md, 35-VALIDATION.md, 43-HUMAN-UAT.md, ACCESS-MODEL-DECISIONS.md]
 started: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 queue_rows_applied: 6
 queue_rows_total: 15
+procedures_total: 13
+procedures_closed: 0
+closing_windows: [12, 7, 10, "11-C"]
 ---
 
 # Fase 35 — le prove da fare a mano
@@ -17,10 +20,14 @@ queue_rows_total: 15
 > posto in cui l'ordine di applicazione delle migration e' scritto per intero**.
 > Nessun piano successivo della fase 35 lo ricostruisce: lo legge da qui.
 >
-> **Cosa c'e' oggi e cosa arriva dopo.** Questa e' la versione di Wave 0: porta
-> la coda di applicazione, il falso verde del build e i segnaposto delle prove.
-> **Le procedure passo-per-passo per requisito arrivano con il piano 35-14**, e
-> fino ad allora ogni voce dell'elenco in fondo e' `pending` senza istruzioni.
+> **Cosa c'e' oggi.** Il file e' **completo**: la coda di applicazione, il falso
+> verde del build, le **finestre che si chiudono**, **tredici procedure**
+> passo-per-passo, la dichiarazione di copertura e il debito differito con il suo
+> nome. La versione di Wave 0 (piano 35-01) aveva la coda e i segnaposto; il
+> piano **35-14** ha sostituito i segnaposto con le procedure.
+>
+> **Scritto non e' eseguito.** Tutte e tredici portano `status: pending`:
+> nessuna e' stata fatta, e nessuna riga di questo file va letta come un esito.
 >
 > **Ruoli, mai persone.** Questo repository e' pubblico. Qui non compare nessun
 > nome, nessun indirizzo di posta e nessun codice di membership: si scrive
@@ -1099,22 +1106,252 @@ chiunque, ed e' descritta nella frase stessa. E' la voce 4 di
 
 ## La dichiarazione di copertura, onesta
 
-**Quattro requisiti su otto sono chiudibili automaticamente** — ASSIGN-01
-(limitatamente al **permesso**), ASSIGN-04, ASSIGN-06, ASSIGN-07. **Gli altri
-quattro — ASSIGN-02, ASSIGN-03, ASSIGN-05, ASSIGN-08 — hanno una meta' che
-nessuno strumento di questo repository puo' raggiungere**, perche' vive su un
-telefono, con la radio spenta, in un build di produzione.
+> Scritta come **dati**, non come giudizio. Non dice se la fase e' andata bene:
+> dice cosa un comando puo' provare e cosa no.
 
-E ASSIGN-01 porta la propria: la matrice di scrittura prova che il **permesso**
-e' per-notte; non prova che la persona assegnata **arrivi** allo strumento.
-Quella meta' si osserva solo aprendo l'applicazione.
+### Chiudibili automaticamente: quattro su otto
+
+| Req | Con che cosa si chiude | Perche' quel comando basta |
+|---|---|---|
+| **ASSIGN-01** — *limitatamente al permesso* | matrice B3 su `party_assignments`, **e** B2/B3 **byte-identiche su ogni altra tabella**, `event_media` inclusa | La seconda meta' e' la parte che conta: che le celle di tutte le altre tabelle non si muovano **e' la prova che l'assegnazione non filtra altrove**. Una tabella nuova che concede solo se' stessa e' un permesso; una che sposta una cella altrove e' un'escalation |
+| **ASSIGN-04** — nessuno si assegna da solo | sonda negativa dedicata in `CONSTRAINT_PROBES`, **tarata per mutazione** | Non conta lo SQLSTATE: pretende `23514` **dal vincolo chiamato per nome**, e ogni altra condizione della riga di sonda e' deliberatamente **soddisfatta**, cosi' che l'unico motivo di rifiuto sia quello misurato. Gira sulla connessione privilegiata perche' sotto persona la scrittura e' rifiutata `42501` **prima** che il `CHECK` sia valutato — cioe' sotto persona ASSIGN-04 non e' misurabile affatto |
+| **ASSIGN-06** — un credito non concede niente | matrice, **piu' la prova negativa** | La prova negativa e' la sostanza: una persona con un credito e **nessuna** assegnazione ha **la stessa matrice di un `member`**. Senza quella, la matrice direbbe solo che i crediti esistono |
+| **ASSIGN-07** — creare un credito non crea un account | `npm run verify:no-credit-account` | Esce **1** nominando file e riga se il percorso del credito acquista la capacita' di **creare** un account. Provato per mutazione in quattro direzioni, **due delle quali sui rifiuti** — un controllo che non sa fallire e' una decorazione |
+
+### La precisazione su ASSIGN-01, che non si addolcisce
+
+La matrice prova che il **permesso** e' per-notte. **Non prova che la persona
+arrivi allo strumento.** Quello dipende dal routing e da due pagine, e si osserva
+**solo aprendo l'applicazione**: sono le procedure **7**, **8** e **9**, e sono
+quella meta'.
 
 **E c'e' un terzo pezzo, che fino al piano 35-22 non era nemmeno elencato:
 arrivare allo strumento non e' usarlo.** La prova **7** osserva che
 l'assegnatario *raggiunge* lo scanner; la prova **11** osserva che *scansiona*.
-Erano la stessa voce per omissione, e per ventuno piani nessuno ha guardato la
-seconda meta'. Restano due prove distinte perche' sono due gate distinti — il
-middleware e la rotta — e uno verde non dice niente sull'altro.
+Erano la stessa voce **per omissione**, e per ventuno piani nessuno ha guardato
+la seconda meta' — il buco e' stato trovato in esecuzione dal piano 35-12 e
+chiuso dal piano 35-22, **dentro** questa fase. Restano due prove distinte
+perche' sono **due gate distinti** — il middleware e la rotta — e uno verde non
+dice niente sull'altro.
+
+Va detto anche il seguito, perche' altrimenti la riga «ASSIGN-01 consegnata» si
+legge come piu' di quel che vale: **la consegna di ASSIGN-01 dipende dal piano
+35-22**, spedito in questa fase **dopo** che il buco era stato trovato. Senza,
+una persona `staff` assegnata alla porta avrebbe raggiunto lo scanner, visto la
+serata, e preso **403 su ogni scansione**.
+
+### Con una meta' irraggiungibile: quattro su otto
+
+**ASSIGN-02, ASSIGN-03, ASSIGN-05, ASSIGN-08.** La ragione, scritta una volta:
+quella meta' **vive su un telefono, con la radio spenta, in un build di
+produzione**, e **nessuno strumento di questo repository la raggiunge**. Non e'
+una lacuna dell'harness: e' dove sta il comportamento.
+
+| Req | Cosa un comando prova | Cosa resta a una persona con un telefono |
+|---|---|---|
+| **ASSIGN-02** | il predicato `now() < ends_at`, spostando **`ends_at`, mai `now()`** | che la notte finita **nasconda** e non cancelli, su un dispositivo offline da ore — prova 1 |
+| **ASSIGN-03** | che la revoca sia **una riga e non una `DELETE`** | che una scansione gia' in coda **si risolva** invece di restare appesa — prova 2 |
+| **ASSIGN-05** | il solo lato server, con due sessioni | la **frase distinguibile** in build di produzione, e il ramo offline che vive sul dispositivo — prove 3 e 4 |
+| **ASSIGN-08** | **niente** | *«quante volte una chiamata parte»* e' comportamento del client: N scansioni ⇒ N check-in e **zero** chiamate d'autorizzazione, contate nel pannello di rete — prova 5 |
+
+### La frase che vale per tutte e otto
+
+**`npm run build` e' un typecheck, e passa senza che nessuna migration sia
+applicata.** I tipi vengono da `src/types/database.ts`, un file del repository,
+non dal database vivo — e nessuno dei client Supabase e' parametrizzato con
+`Database`, quindi il compilatore non ha mai visto `party_id`, `venue_secret`,
+un nome di funzione per-notte ne' un nome di bucket.
+
+**Un build verde in questa fase non e' evidenza che qualcosa funzioni.** Sta
+scritto anche piu' in alto, e non e' una ripetizione per enfasi: e' l'unica
+affermazione di questo documento che qualcuno potrebbe usare per saltare tutto il
+resto.
+
+**E non esiste alcun test runner per il prodotto.** Nessuna riga di questo file,
+di nessun SUMMARY di questa fase e di nessun `35-VERIFICATION.md` puo' dire che
+qualcosa e' verificato «perche' i test passano».
+
+---
+
+## Il debito differito, con il suo nome
+
+> Un debito senza nome diventa invisibile, e un elenco che si accorcia in
+> silenzio e' indistinguibile da un elenco a cui e' caduta una riga. Ogni voce
+> qui dice **cosa manca** e **perche' non e' stato fatto** — nessuna dice «da
+> valutare».
+
+### Prima, i due debiti che questa fase ha CHIUSO, dichiarati ritirati
+
+Nelle prime stesure del piano 35-14 questo elenco aveva due voci in piu': la
+**mancata sanitizzazione EXIF** e lo **scarto fra `media.upload` per-notte e
+`event_media` per-evento**. **Non compaiono piu', e la ragione va scritta invece
+che lasciata dedurre: sono state chiuse dentro questa fase**, per decisione del
+proprietario del **2026-08-08** — la seconda dal piano **35-18** (`party_id` su
+`event_media`, con backfill, trigger e policy), la prima dai piani **35-19**,
+**35-20** e **35-21** (spoglia lato server, non aggirabile).
+
+**Un debito ritirato si dichiara ritirato.** Sparire dall'elenco e cadere
+dall'elenco si assomigliano troppo.
+
+### Le tredici voci aperte
+
+**1. L'annullamento non e' registrato su due rami su tre** — guest list e
+membership (piano 35-11).
+*Conseguenza:* su quei due percorsi un annullamento resta **invisibile** nella
+lista di revisione della serata: chi guarda il registro dopo la serata vede solo
+gli annullamenti dei biglietti.
+*Perche' e' differito:* e' lavoro di **registrazione**, non di autorizzazione — e
+il ramo membership dovrebbe smettere di **cancellare** una riga di presenza, che
+e' una modifica al **significato dei dati di presenza**, non un ritocco.
+
+**2. La concessione reciproca non e' coperta.** Il `CHECK` ferma *«A assegna
+A»*, non *«A assegna B, B assegna A»*.
+*Perche' e' differito:* **non e' in ASSIGN-04**, ed e' dichiarata fuori scopo.
+*Il mitigante che esiste gia':* l'attribuzione. `membership_acts` con l'indice
+sull'autore rende quella coppia **leggibile** — non impedita, leggibile.
+
+**3. `attendances.entry_role` non ha ancora il suo terzo caso.** La migration
+della fase 43 dice che un'assegnazione per-serata e' un **terzo modo d'ingresso**.
+*Perche' e' differito:* questa fase **non lo scrive**, perche' non e' in nessuno
+degli otto requisiti. **Nominarlo qui e' cio' che gli impedisce di sparire.**
+
+**4. `event_parties.lineup` e `party_credits` convivono.** La frase che dice
+quale fonte vince per cosa e' scritta nella migration: `lineup` e' **il testo
+comunicato**, `party_credits` e' **l'attribuzione** verso una riga di `artists`.
+*Perche' e' differito:* la **migrazione** fra le due e' rimandata a una fase che
+la nomini. Nessuna delle due deriva dall'altra, e finche' e' cosi' convivono
+senza contraddirsi.
+
+**5. La superficie delle assegnazioni sara' spostata dalla fase 34**, dietro un
+redirect permanente.
+*Non e' un difetto:* e' previsto, ed e' scritto qui perche' chi trova
+l'indirizzo cambiato non lo legga come una regressione.
+
+**6. La spoglia dei metadati copre le immagini e NON i video.** Registrato il
+**2026-08-08**. `stripImageMetadata` tratta `image/jpeg`, `image/png` e
+`image/webp`; `sharp` **non tratta i contenitori video**, e un MP4 o un MOV porta
+le coordinate in un atomo `udta` esattamente come un JPEG le porta nell'EXIF.
+*La mitigazione che c'e':* un video verso una serata con `venue_secret` **vero**
+— **o con quel valore non leggibile, o verso una notte che non esiste** — e'
+**rifiutato**. E' il gate *default chiuso* di `venue-secrecy.md`: si ammette solo
+un `false` esplicito.
+*Cio' che resta aperto:* su una serata **non** segreta un video passa **non
+spogliato**, e porta con se' luogo e ora dello scatto.
+*Perche' e' differito:* la chiusura richiede un **percorso video separato** —
+riscrittura del contenitore o rimozione degli atomi — e non e' in nessuno degli
+otto requisiti.
+**Scriverlo qui e' cio' che impedisce che «sanitizzazione EXIF spedita» venga
+letto come «tutti i media sono puliti».**
+
+**7. Gli oggetti gia' presenti in `event-media` prima di questa fase non sono
+stati ri-spogliati.** Registrato il **2026-08-08**. La spoglia agisce sul
+**percorso di caricamento**; tutto cio' che e' stato caricato prima e' ancora nel
+bucket **pubblico**, con il suo path derivabile e i suoi metadati.
+*Cosa cambierebbe ri-spogliarli:* niente di cio' che e' gia' uscito —
+`venue-secrecy.md` e' **monotono** — ma fermerebbe i **download futuri**.
+*Perche' e' differito:* fuori dagli otto requisiti.
+
+**8. Un evento non pubblicato non e' raggiungibile per assegnazione.** Chi arriva
+alla revisione della notte per il braccio `party.manage` e' tipicamente `staff`,
+e le policy di `events` e `event_parties` gli mostrano solo cio' che e'
+**pubblicato**. Misurato, non dedotto (piano 35-10): su un evento non pubblicato
+la capability e' **conferita**, le righe visibili in `event_parties` sono **zero**
+e `validUntil` esce **`null`**.
+*Perche' e' differito:* chiuderlo richiede **un braccio in piu'** su quelle
+policy, cioe' una migration in piu', fuori dagli otto requisiti. Per una lista
+che si guarda **dopo** la serata il limite e' stretto, ma esiste.
+
+**9. Nessuna navigazione porta alla revisione per-notte.** Chi e' assegnato come
+organizer di una notte raggiunge quella pagina **solo con un indirizzo che
+qualcuno gli passa**: `NAV_ITEMS` nasconde le voci **per ruolo**, e un `staff`
+assegnato non ha un ruolo che la mostri.
+*Perche' e' differito:* e' **STAFF-03 della fase 34** — la navigazione
+ricostruita su quattro ruoli — e non e' un difetto di questa fase.
+*Perche' ha bisogno del nome lo stesso:* senza, la segnalazione che arrivera'
+sara' *«lo strumento non funziona»* invece di *«lo strumento non si trova»*, e
+sono due indagini diverse.
+
+**10. Il braccio della presenza nel gate dei media interroga una tabella che non
+esiste.** Misurato il **2026-08-08**: `.from("attendance")` in
+`src/app/(public)/events/[slug]/actions.ts:48` e in
+`src/app/(public)/events/[slug]/page.tsx:318`, mentre la tabella si chiama
+`public.attendances` (`supabase/schema.sql:231`). PostgREST risponde con un
+errore, il codice destruttura solo `{ data }` e **ignora `error`**, quindi il
+braccio **rifiuta sempre**.
+*Conseguenza misurabile:* **prima di questa fase solo `organizer` e `master`
+potevano caricare media**, e la casella non compariva nemmeno a un membro
+approvato e presente.
+*Perche' e' differito:* correggerlo **allarga** chi puo' caricare — che e' una
+modifica al **gating** (`media-and-storage.md`, gate *chi carica ha titolo*) e
+passa da `access-gating.md`, non da qui.
+**Nominato perche' altrimenti verrebbe «sistemato» in un commit di pulizia da
+qualcuno che non sa di star allargando un permesso.** Dopo il piano 35-21 ha un
+effetto in meno: un fotografo assegnato **non dipende piu'** da quel braccio.
+
+**11. Gli oggetti abbandonati nel bucket di quarantena non hanno una pulizia.**
+Registrato il **2026-08-08**. La rotta di finalizzazione cancella l'oggetto in
+`finally`, ma un caricamento **interrotto prima della chiamata** lascia un file
+li'.
+*Quanto costa:* il bucket e' **privato e senza policy di lettura per
+`authenticated`**, quindi il costo e' **spazio, non segreto**. Ma quegli oggetti
+sono **file non spogliati**, e solo il service role puo' svuotare l'area.
+*Perche' e' differito:* la chiusura e' un **cron di pulizia**, fuori dagli otto
+requisiti.
+
+**12. Le righe legacy di `event_media` su eventi con piu' serate restano senza
+notte.** Registrato il **2026-08-08**. Il backfill del piano 35-18 riempie
+`party_id` **solo** dove l'evento ha esattamente **una** serata, perche' li' la
+risposta e' un fatto; sulle altre righe attribuire una notte a posteriori
+sarebbe **inventarla**.
+*Cosa significa `NULL` li':* **legacy, ambito evento**. Si leggono e si moderano
+come oggi e **non soddisfano nessun braccio per-notte**. E `null` **non significa
+«tutte le serate»** — e' l'unica lettura sbagliata che il tipo da solo non
+impedisce, ed e' quella che trasformerebbe un permesso circoscritto a una sera in
+uno illimitato.
+*Perche' non e' un buco:* **nessuna riga nuova puo' nascere `NULL`** — il trigger
+la rifiuta. E' un'**asimmetria permanente** fra il vecchio archivio e il nuovo, e
+chi guardera' quei dati deve saperlo.
+
+**13. Un oggetto gia' spogliato puo' restare orfano nel bucket pubblico.**
+Registrato il **2026-08-09** dai piani 35-20 e 35-21 — **non era fra le dodici
+del piano 35-14**, ed e' qui perche' 35-21 lo ha indirizzato a questo documento
+per nome. Se `registerMedia` fallisce **dopo** che la rotta ha pubblicato,
+restano byte **gia' spogliati** nel bucket pubblico, con path derivabile e
+**nessuna riga che li governi** — quindi **fuori moderazione**.
+*Quanto costa:* non e' una divulgazione di coordinate — i metadati sono usciti —
+ma e' un file di una serata **raggiungibile per URL** e che nessuno puo'
+rimuovere dall'interfaccia, perche' per l'interfaccia non esiste.
+*La mitigazione che c'e':* il rifiuto e' **visibile a chi carica**, e la frase
+dice di **avvisare un organizer** invece di ricaricare — cioe' l'unica azione
+utile.
+*Perche' e' differito:* la chiusura e' uno **spazzino** sul bucket pubblico, che
+e' lo stesso lavoro della voce 11 su un'area diversa, e non e' in nessuno degli
+otto requisiti.
+
+### Riconciliazione con `deferred-items.md`
+
+Quel file porta **undici** voci, che non sono le tredici di sopra: sono le cose
+trovate **durante l'esecuzione** e fuori dal perimetro del piano che le ha
+trovate. Vanno lette insieme, e questa e' la corrispondenza — **per nome, non per
+cancellazione**.
+
+| Voce | Stato | Chi l'ha chiusa, o perche' resta |
+|---|---|---|
+| **1** — `ends_at` da `event_parties.date`, non da `events.date` | **CHIUSA** il 2026-08-08 | Piano **35-04**, e **misurata invece che accettata**: ventiquattro ore esatte di divergenza su una sub-serata del giorno dopo |
+| **2** — «un path morto nell'indice della persona» | **RITIRATA — l'affermazione era falsa** | `src/components/scanner/**` **esiste** e contiene `ScanFlash.tsx`; `npm run verify:persona` e' verde su tutti e 58 i glob, **controllo A compreso** — cioe' esattamente il controllo che avrebbe dovuto fallire. La riga **resta** invece di sparire perche' l'affermazione ha attraversato tre documenti pubblicati senza che nessuno la provasse, e cancellarla lascerebbe le altre due copie in circolazione senza smentita |
+| **3** — cancellare un artista accreditato fallisce, e il rifiuto non raggiunge nessuno | **APERTA** | Il vincolo `ON DELETE RESTRICT` resta com'e': `CASCADE` lascerebbe che una cancellazione **riscriva in silenzio cosa e' stata una serata**. Manca il rifiuto che **nomina le serate** e offre di staccarle. Chi apre `organizer/artists` la chiude |
+| **4** — l'uscita dalla demozione bloccata non ha un pulsante | **APERTA** | Scritta ed esportata; il controllo vive su una superficie fuori perimetro. **Finche' non e' collegato non si puo' dire che il percorso d'uscita e' spedito**: e' scritto, non raggiungibile. Vedi **prova 13** |
+| **5** — `validUntil` e' `null` su un evento non pubblicato | **CHIUSA** il 2026-08-09 | Piano **35-10**, **misurata**: capability conferita, zero righe visibili, `validUntil` `null`. La deduzione era giusta e ora c'e' una tabella al posto di un ragionamento. Il limite che ne resta e' la **voce 8** di sopra |
+| **6** — la semantica `NULL` documentata sul registro non e' quella che il writer produce | **APERTA, fuori fase** | La migration e' **applicata in produzione dal 2026-08-08** e il gate *migration in avanti* la protegge: si corregge con una migration nuova, non riscrivendo un file gia' applicato. **La incontrera' la prima superficie che LEGGE il registro** — un lettore che si fidi del commento interpretera' un valore presente come «asse toccato» quando non lo e' |
+| **7** — la scansione non riceve mai la notte | **CHIUSA** | Piano **35-22**, scritto dentro questa fase dopo la scoperta. E' la **prova 11** |
+| **8** — un annullamento offline di una voce in coda non arriva al server | **APERTA, dichiarata** | **Non e' un difetto di correttezza**: se l'ammissione non ha mai raggiunto il server, lo stato finale del server e' *«non e' successo niente»*, che e' corretto. Cio' che si perde e' la **traccia** — e la perdita e' **dichiarata sullo schermo** (*«Undone at the door, held on this device (N)»*) invece che silenziosa. La chiusura fedele sono **due richieste per una voce**, cioe' una modifica al modello di richiesta del drain |
+| **9** — il caricamento media rifiuta per tutti fino al piano 35-21 | **CHIUSA** il 2026-08-09 | Piano **35-21**: la notte e' passata **e** `partyId` e' obbligatorio. La finestra era **interna alla fase** e si e' chiusa alla wave 8. **`deferred-items.md` porta ancora la voce come aperta**, perche' nessun piano l'ha riaperta per aggiornarla: questa riga e' la registrazione della chiusura |
+| **10** — il ramo dei rimborsi non confronta la notte nominata | **APERTA** | E' **preesistente** e vale **identico per `master` e per `organizer`**. Chiuderla **solo per gli assegnatari** costruirebbe una **porta a due velocita'**: la stessa persona ammessa dal telefono di un organizer e rifiutata da quello di uno staff, la stessa sera, alla stessa porta. **Si chiude per tutti i ruoli insieme o non si chiude** — e la direzione va scelta ricordando che alla porta, davanti a una fila, **un controllo in piu' e' un modo in piu' di rifiutare** |
+| **11** — il caso C della prova 11 vive in una finestra che si chiude | **SEQUENZA, non un debito** | Non e' una cosa da fare: e' un **ordine da rispettare**. **C → coda → A e B**, ed e' scritto in testa alla prova 11 |
+
+**Riepilogo:** quattro chiuse (1, 5, 7, 9), una **ritirata perche' falsa** (2),
+cinque aperte (3, 4, 6, 8, 10), una che e' un vincolo di sequenza (11). Nessuna
+e' stata cancellata.
 
 ---
 
@@ -1122,8 +1359,14 @@ middleware e la rotta — e uno verde non dice niente sull'altro.
 
 **Non e' riaperta qui.** `ACCESS-MODEL-DECISIONS.md § 12`, decisione del
 proprietario del 2026-08-06: tutta la verifica manuale — le quattordici prove
-della fase 32, le diciotto della 43 e le dieci di questa — si esegue **alla fine
-della costruzione**, non fase per fase.
+della fase 32, le diciotto della 43 e le **tredici** di questa — si esegue **alla
+fine della costruzione**, non fase per fase.
+
+**Con quattro eccezioni, e non sono una riapertura della decisione.** Le prove
+**12**, **7**, **10** e il caso **C** della **11** hanno una finestra che si
+chiude: rimandarle non le rimanda, le **perde**. Sono elencate in testa a questo
+file, e la decisione del proprietario riguarda **quando si fa la verifica**, non
+**se esistano prove che scadono**.
 
 **Il prezzo e' dichiarato, e si scrive una volta sola cosi' che nessuno lo
 riscopra con sorpresa:** le fasi 33, 43, 35 e 34 poggiano tutte sul modello di
@@ -1131,7 +1374,12 @@ capability della fase 32. Se una di quelle prove e' rossa, cio' che le e' stato
 costruito sopra e' costruito su una fondazione sbagliata, e **il rifacimento e'
 proporzionale a quanto e' stato costruito**.
 
-**Rimandato non significa verificato.** Finche' questo file resta
-`status: partial`, la fase 35 non ha una sola prova manuale chiusa, e nessun
-`35-VERIFICATION.md` puo' scrivere «verificato» su un requisito la cui meta'
-osservabile e' ancora in questo elenco.
+**Rimandato non significa verificato.** Il deliverable di questa fase e' questo
+file **scritto**; **eseguirlo non lo e'**, e la differenza va tenuta. Tutte e
+tredici le prove portano `status: pending`: **la fase 35 non ha una sola prova
+manuale chiusa**, e nessun `35-VERIFICATION.md` puo' scrivere «verificato» su un
+requisito la cui meta' osservabile e' ancora in questo elenco.
+
+`status: written` nel frontmatter significa esattamente questo — le procedure
+esistono e sono eseguibili senza chiedere niente a nessuno — e **non** significa
+che qualcuno le abbia eseguite.
