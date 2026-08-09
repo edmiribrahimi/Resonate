@@ -68,12 +68,34 @@ export interface DoorSubject {
   label?: string;
 }
 
-/** Why a scan produced nothing. Shown red at the door. */
+/**
+ * Why a scan produced nothing. Shown red at the door.
+ *
+ * ── Not mirrored in SQL, and that is why a fifth member costs no migration ───
+ * `door_scan_events` stores `outcome` and `cause`; it does **not** store this
+ * reason (`src/lib/door/classify.ts:176`). So unlike `DoorScanCause` and
+ * `DoorSubjectType` above, widening this union is a TypeScript-only change. The
+ * two places that hold it are total `Record`s — `NOT_VALID_MESSAGE` in
+ * `ScannerClient.tsx` and `NOT_VALID_REASONS` in `sync-manager.ts` — so a fifth
+ * member is a `npm run build` error at both until it is answered, which is the
+ * whole reason they are written as totals.
+ *
+ * `no_assignment_at_scan` is the fifth, added by plan 35-12, and it is the only
+ * member of this union **no live scan can produce**. It answers one question and
+ * only on the drain: *a scan was queued on a device whose operator held no
+ * door assignment for that night at the moment the code was read.* Before it,
+ * that scan came back as a 403 and the drain filed it under `blocked` — which
+ * waits for a sign-in, and no sign-in returns an assignment nobody ever had. It
+ * is a `not_valid` and not a fourth outcome on purpose: the row is written, the
+ * presence is on the record, and the queue entry leaves for `failedCheckins`
+ * where a person can see it, instead of hanging for the rest of the season.
+ */
 export type DoorNotValidReason =
   | "invalid_signature"
   | "unknown_code"
   | "wrong_night"
-  | "no_party_selected";
+  | "no_party_selected"
+  | "no_assignment_at_scan";
 
 /**
  * An admission that was recorded but is not ordinary.

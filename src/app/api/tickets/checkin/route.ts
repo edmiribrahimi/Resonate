@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getAccessContext } from "@/lib/capabilities/server";
 import {
   DOOR_UNRESOLVED_STATUS,
   requireDoorOperator,
@@ -52,6 +53,19 @@ import type { DoorScanEvent } from "@/types/database";
  *    Classification happens afterwards, over `door_scan_events`. The two refund
  *    causes are the exception because they are a server fact derived from a
  *    stored timestamp, not a judgement.
+ *
+ * 5. **A report from the drain is judged at `scannedAt`, never at the moment it
+ *    arrives.** ASSIGN-03, plan 35-12, and it is the correction of a live defect
+ *    rather than a new feature. A door assignment can be revoked between the
+ *    scan and the sync; `requireDoorOperator()` asks *"may this account work the
+ *    door NOW"*, so a queued scan came back 403 and `sync-manager.ts:131` filed
+ *    it under `blocked` — the bucket that *"waits for a new login"*. **No login
+ *    returns a revoked assignment**, so that scan hung in the queue for good and
+ *    a person who really walked in never appeared in the night's record. The
+ *    403 is therefore no longer the last word for a request carrying both
+ *    `source: "offline_sync"` and a `scannedAt`: see {@link judgeAtScanTime}.
+ *    Nothing on the online path changed — a live scan with no `scannedAt` gets
+ *    the same 401, 403 and 503 it always did, from the same single guard call.
  */
 
 /** The scanned string: a ticket uuid, a dot, and 64 hex of HMAC-SHA256. */
@@ -134,6 +148,145 @@ type ScanEventInsert = Omit<DoorScanEvent, "id">;
  * JWT and needs neither.
  */
 
+/**
+ * What the assignment question answered, for a report that arrived from the
+ * drain. Tagged by position, and **not one of these five arms is a refusal of
+ * the person who was scanned.**
+ *
+ * `operatorId` rides on the three resolved arms because `door_scan_events.
+ * operator_id` is NOT NULL: even the arm that admits nobody has to attribute the
+ * row it writes, or the scan would be unrecordable and we would be back to
+ * losing it.
+ */
+type ScanTimeJudgement =
+  | { kind: "live"; operatorId: string }
+  | { kind: "revoked_after_scan"; operatorId: string }
+  | { kind: "never_assigned"; operatorId: string }
+  | { kind: "unauthenticated" }
+  | { kind: "unresolved" };
+
+/**
+ * *Was this operator assigned to this night at the moment the code was read?*
+ *
+ * ── Why the question moves in time, and why the answer is never a refusal ────
+ *
+ * The row survives its own revocation: a revocation is an `UPDATE` that sets
+ * `revoked_at`, never a `DELETE`
+ * (`supabase/migrations/20260809000000_party_assignments.sql:215-221`, which
+ * names this drain as the reason). So the table can still answer a question
+ * about 01:40 at 03:00, and this function asks exactly that one:
+ *
+ *   `granted_at <= scannedAt` AND `scannedAt < ends_at` AND
+ *   (`revoked_at IS NULL` OR `revoked_at > scannedAt`)
+ *
+ * The middle clause is ASSIGN-02 — access to a night's tools does not outlive
+ * the night — asked at the scan rather than at the sync, which is the same
+ * correction as the third clause and would otherwise be the same bug.
+ *
+ * ── The accepted failure mode of `scannedAt`, written out rather than met ────
+ *
+ * `scannedAt` is **the phone's clock**. The lexicon is this repository's own —
+ * `src/lib/offline/checkin-store.ts:135-136`, *"Device clock at the read.
+ * Evidence, not authority"*, and `src/app/api/membership/verify/route.ts:412*
+ * says the same thing in its own words. A device whose clock is wrong can
+ * therefore make an assignment look live when it was not, or dead when it was.
+ *
+ * **That is accepted, deliberately, and here is the whole of the reasoning.**
+ * The direction of the error on this path is *admit and record*, never *refuse*:
+ * `checkin-offline.md` names the false refusal — the one that happens in front
+ * of a queue — as the worse of the two failures, and refusing here would lose a
+ * presence that really occurred. What a wrong clock can buy is one admission
+ * recorded that a stricter reading would have listed as unassigned; what
+ * refusing would buy is a person erased from the night. The mitigation is that
+ * the anomaly is **visible**: the row carries `scanned_at` and `recorded_at`
+ * separately, and the distance between them is readable by anyone reviewing the
+ * night. It is not an authorisation boundary and must never be used as one —
+ * the boundary for a live scan is still `requireDoorOperator()`, on the server's
+ * clock, and this function is reached only when that boundary has already
+ * refused **and** the request declared itself a report of something past.
+ *
+ * ── The service client, and why nothing untrusted reaches it ────────────────
+ *
+ * `access-gating.md`, gate *service role*. Three values reach the query and each
+ * one is accounted for: `operatorId` comes from the resolved session and never
+ * from the body; `partyId` has been through `UUID_PATTERN` at the call site;
+ * `scannedAt` has been through `Date.parse` and re-emitted by `toISOString()`,
+ * so it is `YYYY-MM-DDTHH:mm:ss.sssZ` and cannot carry a quote into the
+ * PostgREST `or` string below. It is the service client and not the cookie-bound
+ * one because the question is about a revoked assignment, and a subject whose
+ * assignment has been revoked is precisely the subject a live-assignment policy
+ * would stop from reading the row that proves they once had it.
+ *
+ * ── Never a `false` standing in for an unanswered question ──────────────────
+ *
+ * Both failure arms are `unresolved`, never `never_assigned`. `unresolved` is
+ * not `false`: the caller answers 503, which `sync-manager.ts:141` puts in the
+ * **retry** bucket, so the entry is tried again when the answer is available
+ * instead of being retired on a question nobody answered.
+ */
+async function judgeAtScanTime(
+  serviceClient: ReturnType<typeof getServiceClient>,
+  partyId: string,
+  scannedAt: string
+): Promise<ScanTimeJudgement> {
+  let operatorId: string | null;
+
+  // The subject, and only the subject. `requireDoorOperator()` is still called
+  // exactly once in this handler — its `forbidden` arm does not carry a user id,
+  // and `door_scan_events.operator_id` is NOT NULL, so the id has to come from
+  // somewhere. One RPC, and only on this path: a drain report from an account
+  // the role grant does not cover. A live scan never reaches this line.
+  try {
+    operatorId = (await getAccessContext()).userId;
+  } catch (error) {
+    // Entered by POSITION, and the error is never parsed: Next redacts
+    // server-side messages in a production build. Its own category, so it is
+    // distinguishable from the read below.
+    console.error("[door.assignment_subject_unresolved]", error);
+    return { kind: "unresolved" };
+  }
+
+  // The 403 came back and there is no subject at all — the session went away
+  // between the two reads. Answered as 401 by the caller, which is `blocked`,
+  // which is the bucket a sign-in genuinely does clear.
+  if (!operatorId) return { kind: "unauthenticated" };
+
+  const { data, error } = await serviceClient
+    .from("party_assignments")
+    .select("id, revoked_at")
+    .eq("party_id", partyId)
+    .eq("user_id", operatorId)
+    .eq("capability", "door.operate")
+    .lte("granted_at", scannedAt)
+    .gt("ends_at", scannedAt)
+    .or(`revoked_at.is.null,revoked_at.gt."${scannedAt}"`)
+    .limit(1);
+
+  if (error) {
+    // Includes the case that is true in production **today**: this table is row
+    // 7 of the hand-applied queue in `35-HUMAN-UAT.md` and does not exist yet,
+    // so this read answers `42P01`. That is `unresolved` and not "no assignment"
+    // — the queue entry is retried rather than retired on a table that is about
+    // to appear.
+    console.error("[door.assignment_history_unreadable]", {
+      partyId,
+      scannedAt,
+      code: error.code ?? "unknown",
+    });
+    return { kind: "unresolved" };
+  }
+
+  const row = data?.[0];
+  if (!row) return { kind: "never_assigned", operatorId };
+
+  // A row that matched the window either was never revoked, or was revoked
+  // AFTER the scan — the `or` above admits no third shape. The distinction is
+  // kept because the second one is the anomaly somebody should see.
+  return row.revoked_at === null
+    ? { kind: "live", operatorId }
+    : { kind: "revoked_after_scan", operatorId };
+}
+
 /** The legacy `status` string for an outcome, and whether the old bundle reads it as green. */
 function legacyStatusFor(outcome: DoorOutcome): { valid: boolean; status: string } {
   if (outcome.outcome === "recorded") return { valid: true, status: "checked_in" };
@@ -149,49 +302,32 @@ export async function POST(request: Request) {
     // Handler (measured — three calls, three executions), so a second call here
     // would be a second network round trip before a scan resolves.
     const auth = await requireDoorOperator();
-    if (!auth.ok) {
-      // The 401 and the 403 keep the exact body and code they have always had.
-      // `unresolved` is the third case and is deliberately neither: it says the
-      // permission could not be *looked up*, which is not the same statement as
-      // "not permitted", and 503 puts it in the sync manager's retryable bucket
-      // (`sync-manager.ts:141`) rather than its blocked one (`:131`).
+
+    // The 401 and the 503 keep the exact body and code they have always had, and
+    // they are answered here, before anything is read. `unresolved` is
+    // deliberately neither a refusal nor a failure: it says the permission could
+    // not be *looked up*, which is not the same statement as "not permitted", and
+    // 503 puts it in the sync manager's retryable bucket (`sync-manager.ts:141`)
+    // rather than its blocked one (`:131`).
+    //
+    // **The 403 is not answered here any more, and that is point 5 of the file
+    // comment.** A report from the drain is about a moment that has already
+    // happened, and the question this guard asked — *may this account work the
+    // door now* — is the wrong one for it. So the body is parsed first, and the
+    // 403 is answered below, unchanged, for everything that is not such a report.
+    if (!auth.ok && auth.kind !== "forbidden") {
       return NextResponse.json(
         {
           valid: false,
           status:
             auth.kind === "unauthenticated"
               ? "unauthorized"
-              : auth.kind === "forbidden"
-                ? "forbidden"
-                : DOOR_UNRESOLVED_STATUS,
+              : DOOR_UNRESOLVED_STATUS,
           error: auth.error,
         },
         { status: auth.status }
       );
     }
-
-    /**
-     * Who is holding the phone, hoisted out of the tagged union deliberately.
-     *
-     * `respond()` below is a nested **function declaration**, and TypeScript
-     * drops the `auth.ok` narrowing inside one — declarations are hoisted, so
-     * the compiler cannot know the guard ran first. That is why the code this
-     * replaces reached for a non-null assertion at that same line: the `!` was
-     * paying for this exact limitation, not for a genuinely nullable subject.
-     *
-     * (Written without spelling the old expression out. The standing assertion
-     * for this file is a literal `grep -c` for it, and a comment quoting the
-     * token would make that check fail on a correct file — the same
-     * self-invalidating shape this plan already guards against on
-     * `requires_approved`.)
-     *
-     * A `const` captured after the guard carries the narrowed `string` into the
-     * closure with no assertion at all, which is the point — `operator_id` is
-     * NOT NULL and an unattributed admission is a door override nobody can
-     * review (`ACCESS-MODEL-DECISIONS.md` §5). One name, one fact, used by both
-     * writes below.
-     */
-    const operatorId: string = auth.userId;
 
     let body: CheckinRequestBody;
     try {
@@ -200,6 +336,45 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { valid: false, status: "invalid_body", error: "Invalid request body" },
         { status: 400 }
+      );
+    }
+
+    // --- Evidence, not authority ----------------------------------------------
+    // The device clock says when the phone read the code. It is stored as
+    // evidence, and the ONE decision it now takes part in is the assignment
+    // question below — which is a question about the past, has no other source
+    // of truth, and can only ever admit-and-record. It still decides nothing
+    // about the night's boundaries: a backdated `scannedAt` must not be able to
+    // place a scan before the night began, and the one before/after decision on
+    // the refund path compares two server-side values.
+    const deviceScannedAt =
+      typeof body.scannedAt === "string" &&
+      !Number.isNaN(Date.parse(body.scannedAt))
+        ? new Date(body.scannedAt).toISOString()
+        : null;
+
+    const source: DoorScanSource =
+      body.source === "offline_sync" ? "offline_sync" : "online";
+
+    /**
+     * A report of something that already happened, as opposed to a scan taking
+     * place right now.
+     *
+     * Both halves are required, and neither alone would do. `source` alone is a
+     * claim in the body and carries no moment to judge at; a `scannedAt` alone
+     * arrives on an online scan too, where the guard's *now* is the right
+     * question and the answer must not be softened. Together they are the only
+     * shape `sync-manager.ts:190-199` produces.
+     */
+    const isQueuedReport = source === "offline_sync" && deviceScannedAt !== null;
+
+    // The 403, byte for byte the answer it has always been, for everything that
+    // is not a queued report. Reached before the party lookup, so a refused
+    // caller still costs one round trip and reads nothing.
+    if (!auth.ok && !isQueuedReport) {
+      return NextResponse.json(
+        { valid: false, status: "forbidden", error: auth.error },
+        { status: auth.status }
       );
     }
 
@@ -255,17 +430,6 @@ export async function POST(request: Request) {
     const eventTitle =
       (party.events as unknown as { title: string } | null)?.title || "";
 
-    // --- Evidence, not authority ----------------------------------------------
-    // The device clock says when the phone read the code. It is stored as
-    // evidence and is never used to decide anything: a backdated `scannedAt`
-    // must not be able to place a scan before the night began. The one
-    // before/after decision in this file compares two server-side values.
-    const deviceScannedAt =
-      typeof body.scannedAt === "string" &&
-      !Number.isNaN(Date.parse(body.scannedAt))
-        ? new Date(body.scannedAt).toISOString()
-        : null;
-
     // `"unknown"` rather than a refusal: refusing would strand a queued entry
     // written by an older bundle that had no device id, and a stranded entry is
     // a scan nobody ever sees again. The cost is that such a row cannot be
@@ -275,8 +439,111 @@ export async function POST(request: Request) {
         ? body.deviceId.trim()
         : "unknown";
 
-    const source: DoorScanSource =
-      body.source === "offline_sync" ? "offline_sync" : "online";
+    // --- Who recorded this, and whether the assignment outlived the scan -------
+    //
+    // Three outcomes reach the lines below, and **none of them is a refusal of
+    // the person who was scanned**:
+    //
+    //   1. the guard said yes — by role, exactly as before this plan;
+    //   2. the guard said no, and the assignment was live at `scannedAt` and has
+    //      been revoked since. The scan is recorded, and the answer carries
+    //      `assignmentRevokedAfterScan` so the drain can file it as resolved
+    //      under its own name instead of as an ordinary admission;
+    //   3. the guard said no and no assignment ever covered that moment. Handled
+    //      just below `respond()`, because it still writes a row.
+    //
+    // The `live` arm is the fourth and quietest: an assignment that was live then
+    // and is live now. It reaches this route only through the drain — an online
+    // scan by the same account is still refused, because `requireDoorOperator()`
+    // is called here without a night and its per-night arm is silent without one
+    // (`require-operator.ts:143-151`). Stated rather than left to be discovered:
+    // closing that half means naming the night at the guard, which this plan
+    // deliberately does not do (see the SUMMARY).
+    let judgement: ScanTimeJudgement;
+    if (auth.ok) {
+      judgement = { kind: "live", operatorId: auth.userId };
+    } else if (deviceScannedAt !== null) {
+      judgement = await judgeAtScanTime(serviceClient, partyId, deviceScannedAt);
+    } else {
+      // Unreachable: `isQueuedReport` requires a `deviceScannedAt`, and the 403
+      // above returns for everything that is not a queued report. Written as a
+      // third arm rather than as a non-null assertion, because an assertion here
+      // would be a promise and this is a check — and because if the refusal above
+      // is ever edited, the failure lands on the recoverable outcome (503, the
+      // retryable bucket) instead of on a crash inside a `try` that answers 500
+      // to a scan.
+      console.error("checkin:queued_report_without_scanned_at", { partyId });
+      judgement = { kind: "unresolved" };
+    }
+
+    if (judgement.kind === "unauthenticated") {
+      return NextResponse.json(
+        { valid: false, status: "unauthorized", error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    if (judgement.kind === "unresolved") {
+      // `unresolved` is not `false`. 503 is the retryable bucket, and it is the
+      // same code `respond()` already uses for a scan that could not be written,
+      // so the drain's handling of it is exercised rather than new.
+      return NextResponse.json(
+        {
+          valid: false,
+          status: DOOR_UNRESOLVED_STATUS,
+          error:
+            "Could not check this device's door assignment for that night — this is not a refusal. It will be reported again.",
+        },
+        { status: 503 }
+      );
+    }
+
+    /**
+     * Who is holding the phone, hoisted out of the tagged union deliberately.
+     *
+     * `respond()` below is a nested **function declaration**, and TypeScript
+     * drops the narrowing of a tagged union inside one — declarations are
+     * hoisted, so the compiler cannot know the guard ran first. That is why the
+     * code this replaces reached for a non-null assertion at that same line: the
+     * `!` was paying for this exact limitation, not for a genuinely nullable
+     * subject.
+     *
+     * (Written without spelling the old expression out. The standing assertion
+     * for this file is a literal `grep -c` for it, and a comment quoting the
+     * token would make that check fail on a correct file — the same
+     * self-invalidating shape this plan already guards against on
+     * `requires_approved`.)
+     *
+     * A `const` captured after the guard carries the narrowed `string` into the
+     * closure with no assertion at all, which is the point — `operator_id` is
+     * NOT NULL and an unattributed admission is a door override nobody can
+     * review (`ACCESS-MODEL-DECISIONS.md` §5). One name, one fact, used by both
+     * writes below.
+     */
+    const operatorId: string = judgement.operatorId;
+
+    /**
+     * The marker for outcome 2, and why it is a field of the answer rather than
+     * a column of the row.
+     *
+     * `door_scan_events.cause` is a closed `CHECK` set in a migration that is
+     * **already applied in production**, and point 4 of the file comment is the
+     * stronger reason not to reach for it anyway: at the door the row states a
+     * fact, and classification happens afterwards, over `door_scan_events`. This
+     * is a classification, and it is derivable from evidence that is already
+     * complete and cannot be erased — the row carries `operator_id`, `party_id`,
+     * `scanned_at`, `recorded_at` and `source`, and `party_assignments` keeps the
+     * revocation as an `UPDATE`, never a `DELETE`. A reviewer joining the two
+     * sees it; nothing had to be invented for them to.
+     *
+     * So the field travels in the **answer**, where it has a reader that exists
+     * today: `sync-manager.ts` classifies it as `done` under its own `via`, which
+     * is the difference between the night's queue saying *"reported"* and saying
+     * *"reported, and the assignment behind it had already been taken away"*.
+     * It is not a `DoorFlag`: flags are rendered at the door by `FLAG_MESSAGE`,
+     * and by the time a drain runs there is no door and nobody standing at it.
+     */
+    const assignmentRevokedAfterScan = judgement.kind === "revoked_after_scan";
 
     const rawToken = typeof body.token === "string" ? body.token.trim() : "";
 
@@ -352,8 +619,51 @@ export async function POST(request: Request) {
 
       const legacyStatus = legacyStatusFor(outcome);
       return NextResponse.json(
-        { ...outcome, ...legacyStatus, ...legacy },
+        {
+          ...outcome,
+          ...legacyStatus,
+          ...legacy,
+          // Additive, and only when true. An absent field and `false` mean the
+          // same thing to every reader, and an older bundle that has never heard
+          // of it ignores it exactly as it ignores the fields it does not know —
+          // the same additive-for-one-release discipline as `LegacyFields` above,
+          // in the other direction.
+          ...(assignmentRevokedAfterScan
+            ? { assignmentRevokedAfterScan: true }
+            : {}),
+        },
         { status: DOOR_HTTP[outcome.outcome] }
+      );
+    }
+
+    // --- Outcome 3: no assignment ever covered that moment ---------------------
+    //
+    // The scan is **not lost**, and it is **not admitted either**. It is written
+    // into the night's record as `not_valid` with its own reason, and the queue
+    // entry leaves for `failedCheckins`, where the phone shows a count somebody
+    // reads. Before this plan the same request came back 403 and the entry went
+    // to `blocked` — which waits for a new login, and no login turns anybody into
+    // an assignee. Waiting for a remedy that cannot arrive is not a third answer:
+    // it is the scan disappearing quietly, which is the one outcome the queue
+    // exists to prevent.
+    //
+    // It is `dead` in the drain and not `retry` for the same reason it is not
+    // `blocked`: the condition will not become true on a later attempt, and a
+    // retry loop with no ceiling is what `MAX_SYNC_ATTEMPTS` exists to refuse.
+    //
+    // Placed here, after `respond()`, because it has to write the row: the whole
+    // difference between this and the 403 is that a row now exists.
+    if (judgement.kind === "never_assigned") {
+      console.warn("checkin:no_assignment_at_scan", {
+        partyId,
+        scannedAt,
+        deviceId,
+        source,
+      });
+      return respond(
+        { outcome: "not_valid", reason: "no_assignment_at_scan" },
+        { ticket_id: null, subject_user_id: null, cause: null },
+        { event_title: eventTitle, party_title: party.title || "" }
       );
     }
 

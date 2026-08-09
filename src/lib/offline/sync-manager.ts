@@ -71,6 +71,13 @@ const NOT_VALID_REASONS: Record<DoorNotValidReason, true> = {
   unknown_code: true,
   wrong_night: true,
   no_party_selected: true,
+  // The fifth, and the only one that arrives from this file's own requests: the
+  // check-in route answers it when the operator held no door assignment for that
+  // night at `scannedAt`. It reaches `failedCheckins` under its own name rather
+  // than under `unexpected_response`, which is the difference between a night's
+  // review saying *"this device was not assigned"* and saying *"something went
+  // wrong"*.
+  no_assignment_at_scan: true,
 };
 
 function asFailureReason(value: unknown): FailureReason {

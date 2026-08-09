@@ -64,6 +64,14 @@ const NOT_VALID_MESSAGE: Record<DoorNotValidReason, string> = {
   unknown_code: "No ticket or member matches this code",
   wrong_night: "This code is for another night",
   no_party_selected: "Choose the party first — a scan needs a night",
+  // The one member of the union no live scan can produce: the check-in route
+  // answers it only for a report arriving from the drain (plan 35-12). The
+  // sentence exists because the `Record` is total, and a total `Record` with a
+  // hole would be a member silently falling to UNRECOGNISED_REASON_MESSAGE. If
+  // it ever does reach this screen, it is not about the person in front of it —
+  // it is about this device's authorisation for that night.
+  no_assignment_at_scan:
+    "This device had no door assignment for that night — recorded, not admitted",
 };
 
 /** A reason from a bundle this one does not know. Its own sentence, not one of the four. */
