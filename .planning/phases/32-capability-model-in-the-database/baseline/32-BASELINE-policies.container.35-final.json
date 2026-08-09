@@ -1,0 +1,878 @@
+{
+  "artefact": "B1",
+  "target": "postgres-container",
+  "postgres_version": "17.6",
+  "captured_at": "2026-08-09",
+  "phase_point": "35-final",
+  "rows": [
+    {
+      "schemaname": "public",
+      "tablename": "artists",
+      "policyname": "artists_delete_master",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('master.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "artists",
+      "policyname": "artists_insert_organizer",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('catalogue.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "artists",
+      "policyname": "artists_select_public",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "artists",
+      "policyname": "artists_update_organizer",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('catalogue.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendances",
+      "policyname": "attendances_all_admin",
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendances",
+      "policyname": "attendances_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_code_tiers",
+      "policyname": "discount_code_tiers_delete",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_code_tiers",
+      "policyname": "discount_code_tiers_insert",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_code_tiers",
+      "policyname": "discount_code_tiers_select",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_code_tiers",
+      "policyname": "discount_code_tiers_update",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_codes",
+      "policyname": "discount_codes_delete",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_codes",
+      "policyname": "discount_codes_insert",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_codes",
+      "policyname": "discount_codes_select",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "discount_codes",
+      "policyname": "discount_codes_update",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "door_scan_events",
+      "policyname": "door_scan_events_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT private.has_capability('staff.manage'::text) AS has_capability) OR ( SELECT private.has_capability('door.operate'::text, door_scan_events.party_id) AS has_capability) OR ( SELECT private.has_capability('party.manage'::text, door_scan_events.party_id) AS has_capability))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_items",
+      "policyname": "drink_items_delete",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_items",
+      "policyname": "drink_items_insert",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_items",
+      "policyname": "drink_items_select",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_items",
+      "policyname": "drink_items_update",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_orders",
+      "policyname": "drink_orders_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_tokens",
+      "policyname": "drink_tokens_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "drink_tokens",
+      "policyname": "drink_tokens_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_delete_admin",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_delete_own",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = uploaded_by)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_insert_member",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": null,
+      "with_check": "((( SELECT auth.uid() AS uid) = uploaded_by) AND ( SELECT private.has_capability('membership.active'::text) AS has_capability) AND (party_id IS NOT NULL) AND (( SELECT private.party_event_id(event_media.party_id) AS party_event_id) = event_id))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_select_approved",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(status = 'approved'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = uploaded_by)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_media",
+      "policyname": "event_media_update_admin",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_parties",
+      "policyname": "event_parties_delete_own",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT private.has_capability('staff.manage'::text) AS has_capability) AND ((( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = 'master'::text) OR (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_parties.event_id) AND (e.created_by = ( SELECT auth.uid() AS uid)))))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_parties",
+      "policyname": "event_parties_insert_admin",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_parties",
+      "policyname": "event_parties_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_parties",
+      "policyname": "event_parties_select_published",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_parties.event_id) AND (e.is_published = true))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "event_parties",
+      "policyname": "event_parties_update_own",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT private.has_capability('staff.manage'::text) AS has_capability) AND ((( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = 'master'::text) OR (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_parties.event_id) AND (e.created_by = ( SELECT auth.uid() AS uid)))))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events",
+      "policyname": "events_delete_own",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "((( SELECT auth.uid() AS uid) = created_by) OR ( SELECT private.has_capability('master.manage'::text) AS has_capability))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events",
+      "policyname": "events_insert_admin",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events",
+      "policyname": "events_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events",
+      "policyname": "events_select_published",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "((is_published = true) AND ((early_access_until IS NULL) OR (early_access_until <= now()) OR (( SELECT auth.uid() AS uid) IS NOT NULL)))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events",
+      "policyname": "events_update_own",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "((( SELECT auth.uid() AS uid) = created_by) OR ( SELECT private.has_capability('master.manage'::text) AS has_capability))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "guest_list_entries",
+      "policyname": "guest_list_delete_admin",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "guest_list_entries",
+      "policyname": "guest_list_insert_admin",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "guest_list_entries",
+      "policyname": "guest_list_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "guest_list_entries",
+      "policyname": "guest_list_update_admin",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "membership_acts",
+      "policyname": "membership_acts_select_register_read",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('register.read'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "newsletter_subscribers",
+      "policyname": "newsletter_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "party_assignments",
+      "policyname": "party_assignments_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "party_assignments",
+      "policyname": "party_assignments_select_staff_manage",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "party_credits",
+      "policyname": "party_credits_select_catalogue_manage",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('catalogue.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "party_credits",
+      "policyname": "party_credits_select_published",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(EXISTS ( SELECT 1\n   FROM (event_parties ep\n     JOIN events e ON ((e.id = ep.event_id)))\n  WHERE ((ep.id = party_credits.party_id) AND (e.is_published = true))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "pending_purchases",
+      "policyname": "pending_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles_update_master",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('master.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles_update_own",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = id)",
+      "with_check": "((( SELECT auth.uid() AS uid) = id) AND (role = ( SELECT profiles_1.role\n   FROM profiles profiles_1\n  WHERE (profiles_1.id = ( SELECT auth.uid() AS uid)))) AND (status = ( SELECT profiles_1.status\n   FROM profiles profiles_1\n  WHERE (profiles_1.id = ( SELECT auth.uid() AS uid)))))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "rsvps",
+      "policyname": "rsvps_delete_own",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "rsvps",
+      "policyname": "rsvps_insert_approved",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "((( SELECT auth.uid() AS uid) = user_id) AND ( SELECT private.has_capability('membership.active'::text) AS has_capability))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "rsvps",
+      "policyname": "rsvps_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "rsvps",
+      "policyname": "rsvps_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_refunds",
+      "policyname": "refunds_insert_own",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "(requested_by = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_refunds",
+      "policyname": "refunds_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_refunds",
+      "policyname": "refunds_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "(requested_by = ( SELECT auth.uid() AS uid))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_refunds",
+      "policyname": "refunds_update_admin",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_tiers",
+      "policyname": "ticket_tiers_delete",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_tiers",
+      "policyname": "ticket_tiers_insert",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_tiers",
+      "policyname": "ticket_tiers_select",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "ticket_tiers",
+      "policyname": "ticket_tiers_update",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tickets",
+      "policyname": "tickets_select_admin",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "( SELECT private.has_capability('staff.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tickets",
+      "policyname": "tickets_select_own",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "authenticated"
+      ],
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "venues",
+      "policyname": "venues_delete_master",
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('master.manage'::text) AS has_capability)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "venues",
+      "policyname": "venues_insert_organizer",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": null,
+      "with_check": "( SELECT private.has_capability('catalogue.manage'::text) AS has_capability)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "venues",
+      "policyname": "venues_select_public",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "venues",
+      "policyname": "venues_update_organizer",
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "public"
+      ],
+      "qual": "( SELECT private.has_capability('catalogue.manage'::text) AS has_capability)",
+      "with_check": null
+    }
+  ],
+  "supporting_counts": {
+    "policy_count": 72,
+    "rls_enabled_tables": 23
+  }
+}
