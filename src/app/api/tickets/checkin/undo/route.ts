@@ -17,9 +17,47 @@ import type { DoorScanEvent } from "@/types/database";
  * *«Ogni undo va registrato con chi lo ha fatto e quando: e' il percorso piu'
  * semplice per far rientrare qualcuno»*.
  *
- * The split this file records, so a later reader does not look for the other
- * half here: **who may** undo is Phase 35's question (ASSIGN-05); **who did**
- * belongs here, because the night's review list is unreadable without it.
+ * ── What is closed here, and what is NOT ────────────────────────────────────
+ *
+ * This file used to record a split and defer half of it: *who may* undo was
+ * left to Phase 35, *who did* belonged here. **The deferred half has landed —
+ * it is answered below and no longer a future question.** The half that was
+ * never deferred is the one still incomplete: *who did* is recorded on **one
+ * branch out of three**, and that is written here rather than left to be
+ * discovered, because a gap nobody names is a gap nobody closes.
+ *
+ * **1. Who may undo: answered.** `door.supervise`, held by role (master,
+ * organizer) or by a live per-night assignment, resolved ONCE by
+ * `requireDoorOperator({ partyId })` and read off `maySupervise`. ASSIGN-05.
+ *
+ * **2. Who did undo: recorded on the TICKET branch only.** That branch writes a
+ * `door_scan_events` row with `is_undo: true` and `operator_id`, before it
+ * mutates anything. The **guest list** branch and the **membership** branch
+ * write no register row at all — the guest list deferral is stated again at its
+ * own site below, and the membership branch does not merely leave a gap: it
+ * **DELETEs** the `attendances` row.
+ *
+ * The consequence, without softening: on those two branches a reversal is
+ * invisible in the night's review list. Nothing distinguishes *«this person was
+ * never admitted»* from *«this person was admitted and somebody reversed it»*,
+ * and on the membership branch the admission itself stops existing. This
+ * product has **no error tracking** (`meta-gates.md`), so nobody finds that out
+ * on their own — it is found out by a person reading a review list that is
+ * quietly wrong, or not at all. `checkin-offline.md` asks for the opposite in
+ * as many words: *«Ogni undo va registrato con chi lo ha fatto e quando»*.
+ *
+ * **3. Why it is not closed in this plan.** It is RECORDING work, not
+ * authorisation work, and it has a perimeter of its own that does not fit
+ * inside a gate: the two branches receive an id and no night, so recording them
+ * needs the caller to name the night (`ScannerClient`), and the membership
+ * branch needs to stop deleting a presence row — which changes what presence
+ * data MEANS and is a decision about the register, not an adjustment to this
+ * handler. Naming the work is the honest move; doing half of it here would
+ * produce a register that is right on one branch, absent on another and
+ * misleading on the third.
+ *
+ * Until that lands, ASSIGN-05 is **half closed**: the refusal is real, the
+ * record is partial. A green on this plan is not the requirement being met.
  */
 
 const UUID_PATTERN =
