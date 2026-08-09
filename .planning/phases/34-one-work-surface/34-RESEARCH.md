@@ -1353,7 +1353,13 @@ M-8 by an organizer approving someone and seeing nothing happen, M-9 at a door.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five were closed before planning began. The first three by decisions recorded in
+> `34-CONTEXT.md:234-267`, which state explicitly that they are written there *"so that no plan
+> can treat them as still open"*; the fourth and fifth by this research's own measurement. The
+> heading is marked so that no reader arrives at an open question and re-derives an answer that
+> already exists — and each item carries the `RESOLVED:` line naming what closed it.
 
 1. **Does the map cover `/api/*` Route Handlers?**
    - Known: `door.supervise` and `media.upload` gate Route Handlers via `require-operator.ts`
@@ -1363,6 +1369,10 @@ M-8 by an organizer approving someone and seeing nothing happen, M-9 at a door.
      on the door's path.
    - **Recommendation: no.** Keep the two keys `scope: "table"` with the reason *"gates a
      Route Handler; the guard is X"*. Record as a finding for a later phase.
+   - **RESOLVED: D-34-13** (`34-CONTEXT.md:234-244`) accepts the recommendation. `/api/*` stays
+     out of the map; `door.supervise` and `media.upload` are declared `scope: "table"` naming
+     their guards, and the fork is a finding for a later phase. Bringing `/api/*` in would mean
+     a middleware rule on the door's scan path, which this phase does not touch.
 
 2. **`typedRoutes` on or off?**
    - Known: 14 errors today, all at concatenation sites, 3 of them in the menus this phase
@@ -1371,23 +1381,35 @@ M-8 by an organizer approving someone and seeing nothing happen, M-9 at a door.
    - Unclear: nothing material.
    - **Recommendation: on, in Wave 1**, paired with the middleware-emitted redirect so the
      union stays clean.
+   - **RESOLVED: D-34-14** (`34-CONTEXT.md:246-256`) accepts it as one decision, not two:
+     `typedRoutes: true` **and** the redirect emitted from `src/middleware.ts`, because a
+     `next.config` redirect's *source* enters the route type union and would hand this phase a
+     false green on the exact sweep it exists to perform. Planned in 34-01 Task 1 and 34-03
+     Task 1.
 
 3. **307 during the phase, 308 at ship?**
    - Known: D-34-04 requires 308; "how the redirect table is verified" is explicit discretion;
      a wrong 308 cannot be withdrawn from a client.
    - **Recommendation: yes**, with the flip as an acceptance criterion of the final plan and
      the walk re-run after the flip.
+   - **RESOLVED: D-34-15** (`34-CONTEXT.md:258-264`) accepts it. 307 while the phase is in
+     flight, 308 flipped in plan 34-17 with the walk re-run after. D-34-04 is unchanged — the
+     redirects still ship permanent — with the irreversibility handled instead of hoped about.
 
 4. **Does `admin.access` keep any route?**
    - Known: yes — `finance`, `analytics` ×3, `newsletter`, `members/growth`. Six routes,
      master-only, matching D-34-02's own list plus `members/growth`.
-   - **No question remains; recorded so the planner does not re-derive it.**
+   - **RESOLVED by this research's own measurement.** Six routes — `finance`, `analytics` ×3,
+     `newsletter`, `members/growth` — and the list is settled. **No question remains; recorded
+     so the planner does not re-derive it.** Bound in plan 34-01 Task 2.
 
-5. **What does `staff` see?** — 43-CONTEXT deferred it here. **Answered by measurement, not
+5. **What does `staff` see?** — 43-CONTEXT deferred it here. **RESOLVED by measurement, not
    by design: nothing.** A `staff` account holds only `membership.card.view` and
-   `membership.active`. No code implements this; the plan must record that it was **checked
-   against the grant table and observed in M-4**, which is the difference between a decision
-   and an assumption.
+   `membership.active`, read from the grant table in this session. No code implements this, so
+   the plan must record that it was **checked against the grant table and observed in M-4** —
+   which is the difference between a decision and an assumption. Owed by plan 34-17, whose
+   must-have is *"a `staff` account reaches none of the 23 work addresses, and that was
+   observed"*.
 
 ---
 
