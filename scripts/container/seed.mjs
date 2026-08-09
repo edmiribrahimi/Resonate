@@ -265,20 +265,66 @@ const FORBIDDEN_WRITES = [
  * plan 35-02 pinned as the probe's `assigned_by` fallback: two blocks, two
  * purposes, and neither can be mistaken for the other or for an account.
  *
- * ALL THREE ARE `staff/approved`, deliberately. Role and status are held
+ * ALL FOUR ARE `staff/approved`, deliberately. Role and status are held
  * CONSTANT so that the only thing left varying is the assignment — that is what
- * makes this an axis rather than three more cells. It also means they satisfy
+ * makes this an axis rather than four more cells. It also means they satisfy
  * `profiles_role_implies_approved` on their own and need no relaxation of it.
+ *
+ * ── WHY THERE IS A FOURTH ACCOUNT, AND WHY IT CARRIES A DIFFERENT KEY ──────
+ *
+ * Added by plan 35-09. The first three all carry `door.operate`, so between
+ * them they can only ever exercise ONE of the per-night arms wherever a policy
+ * has more than one.
+ *
+ * `20260809004000_door_scan_events_by_assignment.sql` has two: `door.operate`
+ * for whoever worked the door, and `party.manage` for whoever runs the night.
+ * With only the first three accounts seeded, **no reachable situation would
+ * traverse the second one** — it would be a line of SQL that no persona, no
+ * probe and no capture could distinguish from a line that had been deleted.
+ * `ai-engineering.md`, gate *un gate deve poter fallire*: a guard nothing can
+ * trip is decoration that makes something look watched.
+ *
+ * The fourth account therefore holds `party.manage` on night 1 and **no door
+ * assignment at all**. That absence is the load-bearing half: an account
+ * holding both would be admitted by the door arm and would say nothing about
+ * the manage arm.
+ *
+ * ── THE COLLISION THIS DELIBERATELY DOES NOT CAUSE ────────────────────────
+ *
+ * Plan 35-06 recorded a warning against its own future: **seed a
+ * `door.supervise` for the LOWEST profile on the LOWEST night and the ASSIGN-04
+ * constraint probe starts colliding again**, reporting `23505` from
+ * `party_assignments_live_unique` instead of the success its mutation run
+ * expects (`rls-baseline.mjs`, `CONSTRAINT_PROBES`). Three things keep this
+ * fourth row clear of it: the key is `party.manage` and not `door.supervise`,
+ * the subject is a `35000001…` account and not `min(id)` of `public.profiles`,
+ * and the partial unique index is on `(party_id, user_id, capability)` — all
+ * three columns differ. Written down because the next person adding a row here
+ * needs the rule, not the outcome.
  */
+
+/** The key the door axis is measured on: three accounts, one worked door. */
 const THIRD_AXIS_CAPABILITY = 'door.operate';
+
+/**
+ * The key the FOURTH account holds. Assignable by
+ * `party_assignments_capability_assignable`, and a per-night arm of
+ * `door_scan_events_select_admin` in its own right.
+ */
+const THIRD_AXIS_MANAGE_CAPABILITY = 'party.manage';
+
+/** Both keys, in the order the assertions below report them. */
+const THIRD_AXIS_CAPABILITIES = [THIRD_AXIS_CAPABILITY, THIRD_AXIS_MANAGE_CAPABILITY];
 
 /** The constraint whose survival the third axis depends on, asserted by name. */
 const THIRD_AXIS_ROLE_FK = 'party_assignments_assignee_role_fk';
 
 const THIRD_AXIS_PERSONAS = [
-  { key: 'assigned-night1', axis: 'assigned night1', night: 0 },
-  { key: 'assigned-night2', axis: 'assigned night2', night: 1 },
-  { key: 'unassigned', axis: 'unassigned', night: null },
+  { key: 'assigned-night1', axis: 'assigned night1', night: 0, capability: THIRD_AXIS_CAPABILITY },
+  { key: 'assigned-night2', axis: 'assigned night2', night: 1, capability: THIRD_AXIS_CAPABILITY },
+  { key: 'unassigned', axis: 'unassigned', night: null, capability: THIRD_AXIS_CAPABILITY },
+  // The fourth: runs night 1, works nobody's door. See the paragraph above.
+  { key: 'manages-night1', axis: 'manages night1', night: 0, capability: THIRD_AXIS_MANAGE_CAPABILITY },
 ].map((persona, i) => ({
   ...persona,
   role: 'staff',
@@ -649,6 +695,14 @@ export async function seedContainer(admin) {
   });
   await assertThirdAxis(admin, { nights: seededIds.get('event_parties') ?? [] });
 
+  // AFTER the axis is known to discriminate, and not before: this one reads the
+  // door register THROUGH the policy, and its expectations are only meaningful
+  // once the assignments behind them are known to be live and per-night.
+  await assertDoorRegisterByAssignment(admin, {
+    nights: seededIds.get('event_parties') ?? [],
+    granter: byLabel.get('master/approved'),
+  });
+
   return assertDiscriminating(admin, allTables, owners, [...personas, ...THIRD_AXIS_PERSONAS]);
 }
 
@@ -706,7 +760,7 @@ async function seedThirdAxis(admin, { nights, granter }) {
     );
   }
 
-  const [assignedToOne, assignedToTwo, unassigned] = THIRD_AXIS_PERSONAS;
+  const [assignedToOne, assignedToTwo, unassigned, managesOne] = THIRD_AXIS_PERSONAS;
   const rows = [
     { n: 1, persona: assignedToOne, party: nights[0], live: true },
     { n: 2, persona: assignedToTwo, party: nights[1], live: true },
@@ -714,6 +768,10 @@ async function seedThirdAxis(admin, { nights, granter }) {
     // strongest form of "a revocation grants nothing", since the account it
     // belongs to holds nothing else anywhere.
     { n: 3, persona: unassigned, party: nights[0], live: false },
+    // Plan 35-09. The manage arm of `door_scan_events_select_admin` has no
+    // other way to be reached: it is `party.manage`, on ONE night, for an
+    // account with no door assignment anywhere.
+    { n: 4, persona: managesOne, party: nights[0], live: true },
   ];
 
   for (const row of rows) {
@@ -723,7 +781,7 @@ async function seedThirdAxis(admin, { nights, granter }) {
         `insert into public.party_assignments
            (id, party_id, user_id, capability, assignee_role, assigned_by, ends_at)
          values ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::uuid, ${PROBE_FUTURE_INSTANT})`,
-        [id, row.party, row.persona.id, THIRD_AXIS_CAPABILITY, row.persona.role, granter.id]
+        [id, row.party, row.persona.id, row.persona.capability, row.persona.role, granter.id]
       );
     } else {
       // `assignee_role` NULL and both revocation columns filled: the only shape
@@ -733,7 +791,7 @@ async function seedThirdAxis(admin, { nights, granter }) {
         `insert into public.party_assignments
            (id, party_id, user_id, capability, assignee_role, assigned_by, ends_at, revoked_at, revoked_by)
          values ($1::uuid, $2::uuid, $3::uuid, $4, null, $5::uuid, ${PROBE_FUTURE_INSTANT}, now(), $5::uuid)`,
-        [id, row.party, row.persona.id, THIRD_AXIS_CAPABILITY, granter.id]
+        [id, row.party, row.persona.id, row.persona.capability, granter.id]
       );
     }
   }
@@ -778,39 +836,58 @@ async function assertThirdAxis(admin, { nights }) {
     );
   }
 
-  // What the axis must look like: one `true` per assigned account, on ITS night
-  // and on no other, and nothing at all for the unassigned one.
+  // What the grid must look like: for each account, exactly ONE `true` — on ITS
+  // night and with ITS key — and `false` in the other three cells. Both keys are
+  // read for EVERY account, not just for the one that holds each: a cell that is
+  // never read is a cell that cannot disagree, and the claim being made here is
+  // that `party.manage` on night 1 belongs to ONE account rather than to the
+  // three that merely work a door.
   const expected = new Map();
   for (const persona of THIRD_AXIS_PERSONAS) {
-    for (let n = 0; n < 2; n += 1) {
-      expected.set(`${persona.key}#${n}`, persona.night === n);
+    for (const capability of THIRD_AXIS_CAPABILITIES) {
+      for (let n = 0; n < 2; n += 1) {
+        expected.set(
+          `${persona.key}#${capability}#${n}`,
+          persona.night === n && persona.capability === capability
+        );
+      }
     }
   }
 
   const wrong = [];
   const observedLines = [];
   for (const persona of THIRD_AXIS_PERSONAS) {
-    const answers = [];
-    for (let n = 0; n < 2; n += 1) {
-      const { rows } = await admin.query(
-        `select exists (
-           select 1 from public.party_assignments pa
-            where pa.user_id = $1::uuid
-              and pa.party_id = $2::uuid
-              and pa.capability = $3
-              and pa.revoked_at is null
-              and now() < pa.ends_at
-         ) as live`,
-        [persona.id, nights[n], THIRD_AXIS_CAPABILITY]
-      );
-      const live = rows[0].live === true;
-      answers.push(live);
-      const want = expected.get(`${persona.key}#${n}`);
-      if (live !== want) {
-        wrong.push(`${persona.label} on night ${n + 1}: ${live} (expected ${want})`);
+    for (const capability of THIRD_AXIS_CAPABILITIES) {
+      const answers = [];
+      for (let n = 0; n < 2; n += 1) {
+        const { rows } = await admin.query(
+          `select exists (
+             select 1 from public.party_assignments pa
+              where pa.user_id = $1::uuid
+                and pa.party_id = $2::uuid
+                and pa.capability = $3
+                and pa.revoked_at is null
+                and now() < pa.ends_at
+           ) as live`,
+          [persona.id, nights[n], capability]
+        );
+        const live = rows[0].live === true;
+        answers.push(live);
+        const want = expected.get(`${persona.key}#${capability}#${n}`);
+        if (live !== want) {
+          wrong.push(
+            `${persona.label} · ${capability} on night ${n + 1}: ${live} (expected ${want})`
+          );
+        }
+      }
+      // Only the row an account actually holds is printed; the six all-false
+      // cross-check rows are asserted above and would drown the report.
+      if (persona.capability === capability) {
+        observedLines.push(
+          `${persona.axis.padEnd(16)} ${capability.padEnd(13)} night1=${answers[0]} night2=${answers[1]}`
+        );
       }
     }
-    observedLines.push(`${persona.axis.padEnd(16)} night1=${answers[0]} night2=${answers[1]}`);
   }
 
   if (wrong.length) {
@@ -841,6 +918,201 @@ async function assertThirdAxis(admin, { nights }) {
     `      third axis  1 revoked row, ends_at still in the future — revocation withholds the grant ` +
       'on its own, not by expiry'
   );
+}
+
+/**
+ * ── Assertion 5: the door register is read BY ASSIGNMENT, and by whom ─────
+ *
+ * Added by plan 35-09, and it measures the policy
+ * `door_scan_events_select_admin` as re-written by
+ * `20260809004000_door_scan_events_by_assignment.sql`.
+ *
+ * WHY IT IS HERE AND NOT IN THE READ MATRIX. B2 measures the twelve role ×
+ * status personas, and `resolvePersonas` resolves each cell to the LOWEST id in
+ * it — deliberately, so no matrix row moves when accounts are appended
+ * (`rls-baseline.mjs:722-747`). Every account of the third axis therefore sorts
+ * behind the grid's `staff/approved` and **no capture ever impersonates one**.
+ * B2 can say that nobody who could read this table before reads less of it now;
+ * it cannot say anything at all about the two arms this phase added. This
+ * function is the only place in the repository that can.
+ *
+ * WHY THE POLICY IS INSPECTED BEFORE IT IS MEASURED. Every expectation below
+ * except the first is a count of rows a persona can see, and the ones that
+ * matter are ZEROES — "this night and no other" is a zero on the other night.
+ * **A zero is also what a missing arm produces, and what a missing policy
+ * produces, and what an empty table produces.** So three things are asserted
+ * before a single count is read: the policy exists, its predicate names all
+ * three capabilities, and the register actually holds rows on both nights. Any
+ * of the three absent and the counts below would be a page of agreeing zeroes
+ * measuring nothing — the "green screen rather than evidence" this file's own
+ * header refuses (threat T-32-04-03).
+ *
+ * WHY IT IMPERSONATES RATHER THAN RE-STATING THE PREDICATE. `assertThirdAxis`
+ * above re-states the resolver's liveness test in SQL, and says why: a checker
+ * that reads its expectation off the thing it checks cannot fail. Here the
+ * opposite choice is right, because here the thing under test is **the policy**
+ * — the argument is that a session with these claims sees these rows, and there
+ * is no way to make that argument except by opening such a session. `set local
+ * role authenticated` inside a transaction that is rolled back is the same
+ * mechanism `personaTransaction` uses, and plan 35-06 measured that it genuinely
+ * stops bypassing RLS (its constraint-probe direction B, where the same
+ * statement went from succeeding to `42501`).
+ *
+ * WHAT EACH EXPECTATION IS FOR:
+ *
+ *   1. `master/approved` sees EVERY row. This is the one that would catch a
+ *      narrowing done by role: whoever read the whole register yesterday reads
+ *      the whole register today, and the number says so rather than a paragraph.
+ *   2. `assigned night1` sees night 1's rows and ZERO of night 2's — ASSIGN-01
+ *      on the surface where it is a read rather than a permission.
+ *   3. `unassigned` sees ZERO. Its only row is revoked, its window still open:
+ *      the zero is revocation's doing and not expiry's.
+ *   4. `manages night1` sees night 1's rows and ZERO of night 2's, **through the
+ *      `party.manage` arm and no other** — it holds no door assignment anywhere.
+ *      Without this account the arm exists and nothing reaches it, and the page
+ *      it was written for would show an empty list to somebody entitled to the
+ *      night while raising no error at all.
+ */
+async function assertDoorRegisterByAssignment(admin, { nights, granter }) {
+  const TABLE = 'public.door_scan_events';
+  const POLICY = 'door_scan_events_select_admin';
+  const ARMS = ['staff.manage', THIRD_AXIS_CAPABILITY, THIRD_AXIS_MANAGE_CAPABILITY];
+
+  const { rows: policyRows } = await admin.query(
+    `select pg_get_expr(polqual, polrelid) as qual
+       from pg_policy
+      where polname = $1 and polrelid = $2::regclass`,
+    [POLICY, TABLE]
+  );
+  if (!policyRows.length) {
+    throw new Error(
+      `"${POLICY}" is not on ${TABLE}. Every count below would be zero for want of a policy rather ` +
+        'than for want of an assignment, and the two are indistinguishable from a number. Nothing ' +
+        'was measured about ASSIGN-01 on the door register.'
+    );
+  }
+  const qual = policyRows[0].qual ?? '';
+  const missingArms = ARMS.filter((arm) => !qual.includes(`'${arm}'`));
+  if (missingArms.length) {
+    throw new Error(
+      `"${POLICY}" does not name ${missingArms.join(', ')} in its predicate:\n        ${qual}\n` +
+        'The zeroes this function is about to read would then be the absence of an arm and not the ' +
+        'absence of an assignment. If an arm was deliberately removed, remove its expectation here in ' +
+        'the same commit — do not let this assertion keep passing about a policy that no longer has ' +
+        'the shape it asserts.'
+    );
+  }
+
+  const perNight = [];
+  for (const night of nights.slice(0, 2)) {
+    const { rows } = await admin.query(
+      `select count(*)::int as n from ${TABLE} where party_id = $1::uuid`,
+      [night]
+    );
+    perNight.push(rows[0].n);
+  }
+  const total = perNight[0] + perNight[1];
+  if (perNight[0] < 1 || perNight[1] < 1) {
+    throw new Error(
+      `${TABLE} holds ${perNight[0]} row(s) on night 1 and ${perNight[1]} on night 2, and this ` +
+        'assertion needs at least one on each. With an empty night, "sees that night" and "sees ' +
+        'nothing" are the same number and the per-night arms cannot be told from a policy that ' +
+        'refuses everybody. Seed a row per night. Nothing was measured.'
+    );
+  }
+
+  /** Counts what one subject can actually SELECT, through the policy. */
+  async function visibleTo(subject) {
+    await admin.query('begin');
+    try {
+      await admin.query(`select set_config('request.jwt.claims', $1, true) is not null`, [
+        JSON.stringify({ sub: subject, role: 'authenticated' }),
+      ]);
+      await admin.query('set local role authenticated');
+      const seen = [];
+      for (const night of nights.slice(0, 2)) {
+        const { rows } = await admin.query(
+          `select count(*)::int as n from ${TABLE} where party_id = $1::uuid`,
+          [night]
+        );
+        seen.push(rows[0].n);
+      }
+      const { rows: all } = await admin.query(`select count(*)::int as n from ${TABLE}`);
+      return { perNight: seen, total: all[0].n };
+    } finally {
+      await admin.query('rollback');
+    }
+  }
+
+  const [assignedToOne, assignedToTwo, unassigned, managesOne] = THIRD_AXIS_PERSONAS;
+  const cases = [
+    {
+      who: 'master/approved',
+      subject: granter.id,
+      // The whole register. Not "at least as much as before" — ALL of it, which
+      // is what the old role-only predicate gave and what arm 1 reproduces.
+      want: { perNight: [perNight[0], perNight[1]], total },
+      because: 'staff.manage — the register did not shrink for whoever already had it',
+    },
+    {
+      who: assignedToOne.axis,
+      subject: assignedToOne.id,
+      want: { perNight: [perNight[0], 0], total: perNight[0] },
+      because: 'door.operate on night 1 — that night and no other',
+    },
+    {
+      who: assignedToTwo.axis,
+      subject: assignedToTwo.id,
+      want: { perNight: [0, perNight[1]], total: perNight[1] },
+      because: 'door.operate on night 2 — the same property, the other way round',
+    },
+    {
+      who: unassigned.axis,
+      subject: unassigned.id,
+      want: { perNight: [0, 0], total: 0 },
+      because: 'one revoked row, window still open — revocation withholds, not expiry',
+    },
+    {
+      who: managesOne.axis,
+      subject: managesOne.id,
+      want: { perNight: [perNight[0], 0], total: perNight[0] },
+      because: 'party.manage on night 1, and NO door assignment — the third arm, traversed',
+    },
+  ];
+
+  const wrong = [];
+  const lines = [];
+  for (const c of cases) {
+    const seen = await visibleTo(c.subject);
+    const ok =
+      seen.total === c.want.total &&
+      seen.perNight[0] === c.want.perNight[0] &&
+      seen.perNight[1] === c.want.perNight[1];
+    if (!ok) {
+      wrong.push(
+        `${c.who}: saw night1=${seen.perNight[0]} night2=${seen.perNight[1]} total=${seen.total} ` +
+          `(expected ${c.want.perNight[0]}/${c.want.perNight[1]}/${c.want.total})`
+      );
+    }
+    lines.push(
+      `${c.who.padEnd(17)} night1=${String(seen.perNight[0]).padStart(2)} ` +
+        `night2=${String(seen.perNight[1]).padStart(2)} total=${String(seen.total).padStart(2)}  ${c.because}`
+    );
+  }
+
+  if (wrong.length) {
+    throw new Error(
+      `the door register is not read by assignment: ${wrong.join('; ')}. ` +
+        'A count that came in TOO HIGH is a night readable by somebody who did not work it and does ' +
+        'not run it (T-35-43). A count that came in TOO LOW is worse on the surface it feeds: the ' +
+        'night-review page renders this table through the cookie-bound client, and there an empty ' +
+        'list is the DESIGNED state of a quiet evening — it would say "no problems" to a person ' +
+        'without permission to see the problems, raising no error anywhere (T-35-47). Investigate ' +
+        'the policy and the seeded assignments, never the expectation.'
+    );
+  }
+
+  for (const line of lines) say(`      door register  ${line}`);
 }
 
 /**
