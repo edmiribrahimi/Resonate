@@ -33,6 +33,97 @@ function refuse(auth: Extract<DoorAuth, { ok: false }>) {
 }
 
 /**
+ * The shape a night identifier must have before it reaches the door guard.
+ *
+ * Same literal as `src/app/api/tickets/checkin/undo/route.ts:23-24`,
+ * `src/lib/capabilities/server.ts` and `src/lib/door/require-operator.ts` —
+ * copied rather than reinvented, because four regexes for one shape are four
+ * answers waiting to disagree.
+ *
+ * It is checked HERE, in the route, rather than left to the guard: with a
+ * `partyId` the guard **throws** `door.invalid_party_id` on a malformed id and
+ * says in its `@throws` note why — a permanent caller fault laundered into the
+ * retryable 503 bucket would be retried for the rest of the night
+ * (`sync-manager.ts:141`). The route owns validating its own input and
+ * answering 400.
+ */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The door's verdict, as the device receives it — ASSIGN-08.
+ *
+ * ── Why it rides on this response and not on a fourth call ───────────────────
+ *
+ * This is the request the scanner makes when it opens a night
+ * (`ScannerClient.tsx:486`), and it already costs one authorisation. Resolving
+ * the verdict here means the device learns *what it may do tonight* for **zero
+ * extra round trips**, and never asks again for the rest of the session: N
+ * scans cost N check-in calls and no authorisation call at all.
+ *
+ * That is not an optimisation, it is the requirement. `require-operator.ts`
+ * measured the thing that makes it one: **`cache()` does not memoise inside a
+ * Route Handler** — three calls ran the body three times, in `next dev` and in
+ * a production build alike. A second resolution is therefore a second network
+ * round trip on a phone with one bar, in front of a queue, and **no compiler
+ * will ever see it**.
+ *
+ * ── Decided by POSITION, never by message ────────────────────────────────────
+ *
+ * Every field here is a value at a fixed key. Next redacts server-side error
+ * messages in production builds (CR-01), so a device that had to parse prose to
+ * learn a category would work in `next dev` and stop working where it matters.
+ */
+interface DoorAuthorisation {
+  /** May scan tonight — by ROLE **or** by an assignment to this night. The two are one verdict here. */
+  mayScan: boolean;
+  /** ASSIGN-05: may **reverse** an admission. A separate key (`door.supervise`), never a flag on the first. */
+  maySupervise: boolean;
+  /**
+   * When this night ends, as an instant — ASSIGN-02, and a **courtesy of the
+   * interface**.
+   *
+   * It decides **what is drawn**, never **what is permitted**, and it is never
+   * a reason to drop anything from the queue. The boundary is on the server, in
+   * the resolver's predicate (`now() < pa.ends_at`, the server's clock, which
+   * no device can move). A cache may stop trusting itself at this instant; a
+   * scan already queued is evidence of something that happened and outlives it.
+   *
+   * `null` when the night declares no end — and `null` is **not** invented into
+   * an expiry, because `event_parties.end_time` is nullable and a fabricated
+   * one would be shown to staff as a fact.
+   */
+  validUntil: string | null;
+  /**
+   * The **server's** clock at the moment the verdict was resolved.
+   *
+   * It is here so the device can **measure the drift of its own clock instead
+   * of trusting it**: a phone twenty minutes fast at 02:00 must not expire a
+   * verdict twenty minutes early. A device clock is evidence, never authority —
+   * `src/app/api/membership/verify/route.ts:412`, and the same lexicon in
+   * `checkin-store.ts:135-136`.
+   */
+  resolvedAt: string;
+}
+
+/**
+ * The four fields, built from the verdict that has ALREADY been resolved.
+ *
+ * Takes the resolved arm rather than resolving again, for the reason written
+ * out above and in `refuse` — the same discipline, on the other branch.
+ */
+function doorAuthorisation(
+  auth: Extract<DoorAuth, { ok: true }>
+): DoorAuthorisation {
+  return {
+    mayScan: auth.mayScan,
+    maySupervise: auth.maySupervise,
+    validUntil: auth.validUntil,
+    resolvedAt: auth.resolvedAt,
+  };
+}
+
+/**
  * One row of the attendance payload — the shape the offline cache is built from.
  *
  * Declared once so the three sources below (live tickets, guest-list entries,
@@ -198,10 +289,36 @@ export async function GET(request: Request) {
   const search = searchParams.get("search")?.trim().toLowerCase() || "";
   const partyIdFilter = searchParams.get("partyId");
 
-  // Once per handler. This is the request the door makes before the radio goes
-  // off, so a round trip saved here is a round trip saved on a weak signal.
-  const auth = await requireDoorOperator();
+  // T-35-47. The `partyId` on the query string is untrusted input, and it is
+  // checked before it can reach either the guard or PostgREST. See UUID_PATTERN
+  // for why a malformed id is a 400 here and not one of the guard's four
+  // outcomes.
+  if (partyIdFilter !== null && !UUID_PATTERN.test(partyIdFilter)) {
+    return NextResponse.json(
+      { error: "partyId must be a uuid" },
+      { status: 400 }
+    );
+  }
+
+  // Once per handler, and with the night NAMED when there is one. This is the
+  // request the door makes before the radio goes off, so a round trip saved
+  // here is a round trip saved on a weak signal — and naming the night here is
+  // what lets the verdict ride home on this response instead of costing a
+  // fourth call. `cache()` does not memoise inside a Route Handler: a second
+  // call to the door guard would be a second full round trip, and no compiler
+  // would see it. The literal is not spelled out again on purpose — the plan's
+  // check counts occurrences of it in this file, and a check that has to be
+  // read around is a check that gets ignored the third time it goes red.
+  const auth = await requireDoorOperator(
+    partyIdFilter ? { partyId: partyIdFilter } : undefined
+  );
   if (!auth.ok) return refuse(auth);
+
+  // Built from the verdict already resolved above — never a second question.
+  // Additive: it is a new key beside `events`, and no existing key changes name,
+  // type or meaning. A staff device may run the previous bundle against this API
+  // for a whole session, and that session is a night at the door.
+  const doorAuth = doorAuthorisation(auth);
 
   const serviceClient = getServiceClient();
   const today = new Date().toISOString().split("T")[0];
@@ -222,7 +339,7 @@ export async function GET(request: Request) {
   const { data: parties } = await partiesQuery;
 
   if (!parties || parties.length === 0) {
-    return NextResponse.json({ events: [] });
+    return NextResponse.json({ events: [], doorAuth });
   }
 
   const results: PartyResult[] = await Promise.all(
@@ -515,6 +632,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     events: results.map((r) => (r as Extract<PartyResult, { ok: true }>).value),
+    doorAuth,
   });
 }
 
