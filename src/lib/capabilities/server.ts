@@ -119,6 +119,44 @@
  * any Next.js minor upgrade**; if it silently starts memoising everywhere the
  * instruction becomes merely redundant, and if it silently stops memoising in
  * renders the cost multiplies across 42 surfaces with nothing to report it.
+ *
+ * ── Two context functions, and why not one with an optional argument ─────────
+ *
+ * The next reader will ask it, so here is the answer before the question:
+ * `getAccessContext()` and `getPartyAccessContext(partyId)` are two exported
+ * functions because **memoisation is keyed on arguments, and the two questions
+ * do not have the same answer**.
+ *
+ * `getAccessContext()` takes nothing, so `cache()` has one entry for the whole
+ * render: the caller's role capabilities do not change between two components.
+ * `getPartyAccessContext(partyId)` takes the night, so `cache()` keys on it and
+ * two nights are two entries — which is the requirement, not an optimisation.
+ * A single function with an optional argument would still memoise per argument
+ * (`undefined` being one of them), so the merge is *possible*; it is refused
+ * because it makes the two questions look like one, and they are not:
+ *
+ *   - **no night named → the per-night arm is silent, never permissive.** This
+ *     is ASSIGN-01, and it is not a TypeScript nicety. The SQL resolver's first
+ *     condition is `p_party_id is not null`, and plan 35-03 measured what
+ *     happens without it: sixteen probes, **16/16 with the guard, 13/16 with the
+ *     "tolerant" form** — and one of the three that flip is the call shape all
+ *     **70** RLS policies use. An assignment to one night would grant the
+ *     capability everywhere, with no error and no policy definition changed.
+ *     The TypeScript surface must not re-introduce that shape by making the
+ *     night look like a detail a caller may forget.
+ *   - the argument-less form is the one `src/lib/supabase/middleware.ts` calls
+ *     on **every navigation**, and the SQL side deliberately kept it as a
+ *     separate object rather than changing its signature
+ *     (`20260809001000_assignment_resolver.sql`, section 4). Two functions here
+ *     mirror two functions there, which is one fewer translation to get wrong.
+ *
+ * **`p_party_id` names a CONTEXT, never a SUBJECT.** D-04 forbids a resolver
+ * that takes a user id, because this repository has **no rate limiting
+ * anywhere** and such a function would be a free enumeration oracle. That rule
+ * is not relaxed here and is not being bent: the night is not a person, and both
+ * arms of the SQL resolver remain anchored on `auth.uid()`. The migration writes
+ * the same paragraph, for the same reason — somebody will refuse this function
+ * for the right rule and the wrong reason.
  */
 
 import { cache } from "react";
@@ -183,6 +221,25 @@ const ANONYMOUS_CONTEXT: AccessContextResult = {
 const INSUFFICIENT_PRIVILEGE = "42501";
 
 /**
+ * The shape a night identifier must have before it is allowed near the database.
+ *
+ * Copied deliberately from `src/app/api/tickets/checkin/undo/route.ts:23-24`,
+ * the pattern this repository already uses for an inbound uuid, rather than
+ * invented here: two spellings of "is this a uuid" are two answers waiting to
+ * disagree.
+ *
+ * A non-uuid is **not** an error to forward. PostgREST would answer `22P02`, and
+ * a malformed-input fault dressed as a lookup failure is the shape this module
+ * exists to prevent — it would reach the door as "could not check this
+ * account's permission" when what happened is that a caller sent rubbish.
+ */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The cookie-bound client. Named so the helper below can be typed without a new import. */
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
  * Resolve the current session's access context, once per render.
  *
  * Takes no user identifier, and must never take one — the same shape rule the
@@ -201,72 +258,145 @@ export const getAccessContext = cache(
 
     const { data, error } = await supabase.rpc("my_access_context");
 
-    if (error) {
-      // The anonymous case, which is NOT a failure. `42501` is what the
-      // revoke produces for a caller with no session. It is only that,
-      // though, when there really is no session: an *authenticated* caller
-      // seeing `42501` means the GRANT to `authenticated` has gone, and
-      // reading that as "anonymous" would lock every signed-in user out of
-      // every capability-gated surface while looking like a normal refusal.
-      // So the two are separated by asking who is calling, and only on this
-      // path — the happy path pays nothing for it.
-      if (error.code === INSUFFICIENT_PRIVILEGE) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+    return interpretAccessContext(supabase, data, error);
+  }
+);
 
-        if (!user) {
-          return ANONYMOUS_CONTEXT;
-        }
+/**
+ * The same question, asked **about one night**.
+ *
+ * Calls `public.my_access_context(p_party_id)`
+ * (`supabase/migrations/20260809001000_assignment_resolver.sql`, section 4) with
+ * the **cookie-bound client**, never the service client — for the reason at the
+ * top of this file, which is not a preference: a service-role token carries no
+ * `sub`, so `auth.uid()` is null and the answer is a confident "no capabilities"
+ * about nobody.
+ *
+ * The payload is the **same four keys** as the argument-less version, in the
+ * same order, so `AccessContextResult` is the same type. The only difference is
+ * the capability list, which the SQL resolver's `OR` makes the **union** of what
+ * the caller's role confers and what their live, unrevoked, unexpired assignment
+ * on that night confers.
+ *
+ * **Memoised per `partyId`, never globally.** `cache()` keys on the argument, so
+ * two nights are two entries; the limit above still applies, so in a Server
+ * Action or a Route Handler each call is a full round trip and the answer must
+ * be resolved once into a local.
+ *
+ * @throws `party.invalid_id` — the argument is not a uuid. A caller bug, not a
+ *         runtime condition: validate the input and answer 400 before calling.
+ * @throws `capabilities.resolve_failed: <code>` when the lookup fails. Never
+ *         returns a degraded value: see the file comment.
+ */
+export const getPartyAccessContext = cache(
+  async (partyId: string): Promise<AccessContextResult> => {
+    // Refused at the entrance, before a client is even built. Throwing a
+    // DISTINCT category matters: `capabilities.resolve_failed` means "the
+    // question was asked and not answered", and a caller — the door, above all
+    // — is entitled to treat those two differently.
+    if (!UUID_PATTERN.test(partyId)) {
+      throw new Error("party.invalid_id");
+    }
 
-        console.error(
-          "[capabilities.resolve_failed] my_access_context refused an " +
-            "AUTHENTICATED caller with 42501 — the GRANT to `authenticated` " +
-            "is missing. Every capability-gated surface is now failing."
-        );
+    const supabase = await createClient();
+
+    // Named argument, and that is how the overload is selected: PostgREST picks
+    // between `my_access_context()` and `my_access_context(p_party_id)` by the
+    // argument names supplied. Renaming `p_party_id` in the migration silently
+    // stops selecting this function — it does not fail to compile, it resolves
+    // to the argument-less one and answers about no night at all.
+    const { data, error } = await supabase.rpc("my_access_context", {
+      p_party_id: partyId,
+    });
+
+    return interpretAccessContext(supabase, data, error);
+  }
+);
+
+/**
+ * The payload contract, in one place because there are two callers of it.
+ *
+ * Extracted rather than duplicated: the `42501` split, the shape check and the
+ * four-field mapping each carry a measured reason, and two copies of them would
+ * be two places to fix on the day one of those reasons changes. The two RPC call
+ * sites stay separate — one per exposed SQL function — because the *call* is the
+ * thing that differs; the *interpretation* is not.
+ */
+async function interpretAccessContext(
+  supabase: SupabaseServerClient,
+  data: unknown,
+  error: { code?: string | null } | null
+): Promise<AccessContextResult> {
+  if (error) {
+    // The anonymous case, which is NOT a failure. `42501` is what the
+    // revoke produces for a caller with no session. It is only that,
+    // though, when there really is no session: an *authenticated* caller
+    // seeing `42501` means the GRANT to `authenticated` has gone, and
+    // reading that as "anonymous" would lock every signed-in user out of
+    // every capability-gated surface while looking like a normal refusal.
+    // So the two are separated by asking who is calling, and only on this
+    // path — the happy path pays nothing for it.
+    //
+    // On the per-night overload `42501` has a second cause worth naming: that
+    // function is a NEW object, and its own `REVOKE`/`GRANT` pair had to be
+    // written for the new signature (`…assignment_resolver.sql`, section 4).
+    // If that pair were ever lost, this branch is where an authenticated
+    // caller's per-night question would start failing while the argument-less
+    // one kept working.
+    if (error.code === INSUFFICIENT_PRIVILEGE) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return ANONYMOUS_CONTEXT;
       }
 
-      throw new Error(
-        `capabilities.resolve_failed: ${error.code ?? "unknown"}`
+      console.error(
+        "[capabilities.resolve_failed] my_access_context refused an " +
+          "AUTHENTICATED caller with 42501 — the GRANT to `authenticated` " +
+          "is missing. Every capability-gated surface is now failing."
       );
     }
 
-    // A payload that is not the documented shape is a failure, not an empty
-    // answer. `supabase.rpc()` is untyped in this repository — no client is
-    // parameterised with a `Database` generic — so this is the only place the
-    // shape is checked at all, and a wrong shape here means the function was
-    // redefined underneath its caller.
-    if (data === null || typeof data !== "object" || Array.isArray(data)) {
-      throw new Error("capabilities.resolve_failed: malformed_payload");
-    }
-
-    const payload = data as {
-      capabilities?: unknown;
-      user_id?: unknown;
-      role?: unknown;
-      status?: unknown;
-    };
-
-    if (!Array.isArray(payload.capabilities)) {
-      throw new Error("capabilities.resolve_failed: malformed_capabilities");
-    }
-
-    // `user_id` is mapped exactly as `role` and `status` are, and on purpose
-    // there is NO fallback here. Reaching for `supabase.auth.getUser()` when
-    // the key is absent would restore the round trip the migration exists to
-    // avoid — and it would restore it on the very paths where `cache()` does
-    // not save you (a Server Action, a Route Handler). An absent `user_id` on
-    // an authenticated caller means the migration has not been applied; the
-    // answer is `null`, and every consumer refuses on `null`. Nothing degrades
-    // into a permissive answer.
-    return {
-      capabilities: new Set(payload.capabilities as CapabilityKey[]),
-      userId: typeof payload.user_id === "string" ? payload.user_id : null,
-      role: typeof payload.role === "string" ? payload.role : null,
-      status: typeof payload.status === "string" ? payload.status : null,
-    };
+    throw new Error(`capabilities.resolve_failed: ${error.code ?? "unknown"}`);
   }
-);
+
+  // A payload that is not the documented shape is a failure, not an empty
+  // answer. `supabase.rpc()` is untyped in this repository — no client is
+  // parameterised with a `Database` generic — so this is the only place the
+  // shape is checked at all, and a wrong shape here means the function was
+  // redefined underneath its caller.
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("capabilities.resolve_failed: malformed_payload");
+  }
+
+  const payload = data as {
+    capabilities?: unknown;
+    user_id?: unknown;
+    role?: unknown;
+    status?: unknown;
+  };
+
+  if (!Array.isArray(payload.capabilities)) {
+    throw new Error("capabilities.resolve_failed: malformed_capabilities");
+  }
+
+  // `user_id` is mapped exactly as `role` and `status` are, and on purpose
+  // there is NO fallback here. Reaching for `supabase.auth.getUser()` when
+  // the key is absent would restore the round trip the migration exists to
+  // avoid — and it would restore it on the very paths where `cache()` does
+  // not save you (a Server Action, a Route Handler). An absent `user_id` on
+  // an authenticated caller means the migration has not been applied; the
+  // answer is `null`, and every consumer refuses on `null`. Nothing degrades
+  // into a permissive answer.
+  return {
+    capabilities: new Set(payload.capabilities as CapabilityKey[]),
+    userId: typeof payload.user_id === "string" ? payload.user_id : null,
+    role: typeof payload.role === "string" ? payload.role : null,
+    status: typeof payload.status === "string" ? payload.status : null,
+  };
+}
 
 /**
  * Ask one capability question about the current session.
@@ -279,8 +409,31 @@ export const getAccessContext = cache(
  *
  * A `false` here is a refusal. A failure to resolve is a throw — the caller
  * never has to wonder which one it got, which is the whole point.
+ *
+ * ── The second argument, reserved in `guards.ts:86-92` and now real ──────────
+ *
+ * `hasCapability(key, { partyId })` asks the same question **about one night**:
+ * the union of what the caller's role confers and what a live assignment on that
+ * night confers. Without `partyId` the behaviour is unchanged, down to the
+ * function it calls — every existing call site keeps compiling and keeps getting
+ * exactly the answer it got before.
+ *
+ * **Omitting `partyId` is not a shortcut for "any night".** It is the question
+ * *"what does this account carry regardless of any night"*, and an assignment
+ * contributes nothing to it — the same silence the SQL guard enforces, mirrored
+ * here on purpose. A caller that means to ask about a night and forgets to name
+ * it gets a **false negative**, which at the door is a refusal in front of a
+ * queue. Name the night, or do not ask the per-night question.
+ *
+ * @throws `party.invalid_id` — `partyId` was supplied and is not a uuid.
  */
-export async function hasCapability(key: CapabilityKey): Promise<boolean> {
-  const { capabilities } = await getAccessContext();
+export async function hasCapability(
+  key: CapabilityKey,
+  opts?: { partyId?: string }
+): Promise<boolean> {
+  const { capabilities } = opts?.partyId
+    ? await getPartyAccessContext(opts.partyId)
+    : await getAccessContext();
+
   return capabilities.has(key);
 }
