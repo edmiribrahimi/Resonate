@@ -5,21 +5,33 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
-import AssignmentsClient from "./AssignmentsClient";
-import type { AssignableCapability } from "./actions";
-import type { UserRole, UserStatus } from "@/types/database";
+import AssignmentsClient from "@/app/(admin)/admin/events/[id]/assignments/AssignmentsClient";
+import type { AssignableCapability } from "@/app/(admin)/admin/events/[id]/assignments/actions";
+import type { UserRole } from "@/types/database";
 
 /**
  * Who works this night — the surface for ASSIGN-01 and ASSIGN-03.
  *
- * ── Why this address, and not a "already new" one ────────────────────────────
+ * ── Where this lives, and why it moved ───────────────────────────────────────
  *
- * It lives in the ORGANIZER tree, beside the other per-event management
- * surfaces, and accepts that phase 34 will later move it behind a permanent
- * redirect — which is what that phase promises for every prior address.
- * Building the moved address today would pre-empt a phase-34 decision and take
- * the choice away from it.
+ * It used to live in the organizer tree and said so, deferring its address to
+ * phase 34. This is that phase (D-34-03): the surface has **no `/admin` twin**,
+ * so this was a move and not a merge, and the prior address answers with a
+ * redirect emitted by `src/middleware.ts`.
+ *
+ * The file sits inside the `(work)` route group, which changes no URL — it is a
+ * LAYOUT boundary, not an address, and it exists so that `admin/(work)/
+ * layout.tsx` reaches every collapsed work surface without reaching
+ * `/admin/scanner`. Measured on this move rather than assumed: `(work)/events/
+ * [id]/assignments/` inside the group coexists with `admin/events/[id]/{edit,
+ * tickets,sales,…}/` outside it, sharing the same `/admin/events/[id]/` prefix
+ * and the same `[id]` slug name, and `next build` lists this page as
+ * `/admin/events/[id]/assignments` with no `(work)` in it.
+ *
+ * Its two former siblings — `actions.ts` and `AssignmentsClient.tsx` — did NOT
+ * come into the group. R-WORK-ROUTES (plan 34-07): only route files enter
+ * `(work)`, because a route group governs routing and nothing else. That is why
+ * the two imports above are absolute.
  *
  * ── The error state is not the empty state, and that is the part not to
  *    simplify ──────────────────────────────────────────────────────────────────
@@ -61,13 +73,17 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // Identity from the session, not from an inbound header.
   const ctx = await getAccessContext();
 
-  // `MobileNav` is a `"use client"` component that still takes role and status
-  // as props; phase 34 (STAFF-03) converts it. No decision on this page reads
-  // them.
-  const navRole = ctx.role as UserRole | null;
-  const navStatus = ctx.status as UserStatus | null;
-
-  // Defense in depth: may this person reach the organizer area at all.
+  // Defense in depth, and it stays (D-34-09): the middleware and this page give
+  // the same verdict because they read the SAME entry —
+  // `/admin/events/[id]/assignments` is bound to `organizer.access` in
+  // `src/lib/routes/capability-routes.ts`. A page that stops asking is a page
+  // protected by a redirect alone, and `access-gating.md` is explicit that a
+  // redirect is not a boundary.
+  //
+  // The two nav mounts and the two `as UserRole` / `as UserStatus` casts that
+  // stood here are gone: `admin/(work)/layout.tsx` resolves the context once for
+  // the whole tree and draws both navs (D-34-07). `getAccessContext` is
+  // `cache()`-scoped per request, so this second ask costs no round trip.
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
@@ -80,8 +96,14 @@ export default async function AssignmentsPage({ params }: PageProps) {
     .eq("id", eventId)
     .single();
 
+  // The collapsed address, not the prior one. Both refusals below used to send
+  // the caller to `/organizer/events`, which now answers with a redirect to
+  // `/admin/events` — so the destination is unchanged and only the hop is gone.
+  // Verdict-identical by construction: this branch is only reached by somebody
+  // who already cleared `organizer.access` above, which is the key
+  // `/admin/events` is bound to.
   if (eventError || !event) {
-    redirect("/organizer/events");
+    redirect("/admin/events");
   }
 
   // Ownership — one call, never a re-inlined comparison.
@@ -92,7 +114,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
   // there is no second boundary: this `if` is the only thing scoping them to an
   // event the caller may see.
   if (!ownsOrIsMaster(ctx, event.created_by)) {
-    redirect("/organizer/events");
+    redirect("/admin/events");
   }
 
   const serviceClient = getServiceClient();
@@ -168,7 +190,7 @@ export default async function AssignmentsPage({ params }: PageProps) {
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <Link
-          href="/organizer/events"
+          href="/admin/events"
           className="text-xs text-muted hover:text-foreground transition-colors"
         >
           &larr; Back to Events
@@ -202,8 +224,6 @@ export default async function AssignmentsPage({ params }: PageProps) {
           />
         )}
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

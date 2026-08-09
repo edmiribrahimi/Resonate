@@ -36,9 +36,11 @@ import type {
  * visible**. D-11 records the acts; this page is the reading, without which the
  * recording is a table nobody opens.
  *
- * The template is `organizer/events/[id]/review/page.tsx`, the repository's
+ * The template is `admin/(work)/events/[id]/review/page.tsx`, the repository's
  * only other capability-gated read of an append-only register, followed line
- * for line rather than re-derived.
+ * for line rather than re-derived. (It stood in the organizer tree until plan
+ * 34-06 moved it; the path is corrected here rather than carried, because a
+ * citation that no longer resolves is the thing this phase exists to remove.)
  */
 
 /**
