@@ -284,3 +284,58 @@ indistinguibile.
 
 **Chiuso da:** piano **35-22**, wave 7, scritto dall'orchestratore il 2026-08-09
 dopo questa scoperta.
+
+---
+
+## 8. [APERTA, dichiarata] Un annullamento offline di una voce in coda non arriva al server
+
+**Trovata da:** piano 35-13, **misurando il contratto del piano 35-12 contro la
+coda reale** invece di ereditarlo.
+
+**Il fatto.** `sync-manager.ts:299-307` promette che il drain riporti la
+reversione a `/api/tickets/checkin/undo`. Quella route risponde **400 «Ticket is
+not checked in»** (`undo/route.ts:347-352`) quando l'ammissione non e' mai stata
+riportata — che e' **sempre** il caso di una voce in coda, perche' e' in coda
+esattamente per quello. E il ramo `membership` pretende un `attendanceId`, un
+identificatore lato server che un telefono offline non possiede.
+
+**Perche' entrambe le strade ovvie erano sbagliate.** Applicare il contratto alla
+lettera produce un contatore rosso che afferma una cosa falsa. Non applicarlo
+affatto e' peggio: `targetFor` manderebbe la voce marcata a
+`/api/tickets/checkin` come **ammissione**, cioe' **rimetterebbe dentro la
+persona appena tolta alla porta**.
+
+**Cosa e' stato fatto invece.** Lo stato di coda `undone` e' escluso dal drain
+**per costruzione** (entrambi i lettori filtrano per valore esatto) e **contato
+sullo schermo** con un'etichetta che dice la verita': *«Undone at the door, held
+on this device (N)»*.
+
+**Perche' questo non e' un difetto di correttezza.** Se l'ammissione non ha mai
+raggiunto il server e viene annullata sul dispositivo, lo stato finale sul
+server e' *«non e' successo niente»* — che e' corretto. Cio' che si perde e' la
+**traccia**: che qualcuno e' stato ammesso e poi annullato alla porta non risulta
+da nessuna parte. E' una perdita reale e minore, ed e' **dichiarata sullo
+schermo** invece che silenziosa.
+
+**Cosa servirebbe per chiuderla.** La forma fedele e' **due richieste per una
+voce** — prima l'ammissione, poi la reversione — che e' una modifica al modello
+di richiesta del drain e vuole un piano su `sync-manager.ts`. Non e' fra gli otto
+requisiti di questa fase.
+
+---
+
+## 9. [DA SAPERE PRIMA DEL DEPLOY, non un difetto] Il caricamento media rifiuta per tutti fino al piano 35-21
+
+**Trovata da:** piano 35-16, che l'ha dichiarata invece di lasciarla scoprire.
+
+`registerMedia` ora pretende la notte. L'unico chiamante, `MediaUpload.tsx`, la
+passa solo dal piano **35-21**. Fra i due, il caricamento **rifiuta per tutti —
+organizer e master compresi** — con `MEDIA_NIGHT_REQUIRED`.
+
+La direzione e' **fail-closed** e la finestra e' **interna alla fase**: si chiude
+alla wave 8. Ma il fatto operativo va detto: **se questa fase si fermasse prima
+della wave 8, il prodotto spedirebbe un caricamento non funzionante.** Non e' un
+motivo per fermarsi — e' un motivo per non fermarsi a meta'.
+
+**Obbligo ereditato da 35-21:** deve passare la notte **e** rendere `partyId`
+obbligatorio. Oggi solo il primo dei due e' asserito da un grep.
