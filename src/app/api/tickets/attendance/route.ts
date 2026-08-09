@@ -5,9 +5,12 @@ import { CAP } from "@/lib/capabilities/keys";
 import { getPostHogServer } from "@/lib/posthog/server";
 import {
   DOOR_HTTP,
+  DOOR_NIGHT_ERROR,
+  DOOR_NIGHT_UNRESOLVED,
   type DoorOutcome,
   type DoorSubjectType,
 } from "@/lib/door/outcome";
+import { readNightArm } from "@/lib/door/night-arm";
 import {
   DOOR_UNRESOLVED_ERROR,
   DOOR_UNRESOLVED_STATUS,
@@ -871,15 +874,170 @@ export async function GET(request: Request) {
 }
 
 /**
+ * The night this guest-list entry belongs to — the subject's own, or one of its
+ * event's — resolved BEFORE anything is granted on the strength of it.
+ *
+ * It is `bindNightToSubject` from `src/app/api/tickets/checkin/undo/route.ts`,
+ * applied to the third subject type. The rule is the same one plan 35-11 found
+ * missing and closed there: **the named night must be the subject's, or a night
+ * of the subject's event.** Without it, an assignee could name their own night
+ * to pass the appeal and then write against somebody else's guest, which is
+ * exactly the hole that route had live.
+ *
+ * `guest_list_entries.party_id` is **nullable** (`20260310000000_guest_list.sql:47`)
+ * — an event-level entry is a real product, not a defect — so there are two
+ * branches and not one. When the row names a night, that night wins and the body
+ * cannot override it; when it does not, the body's night must at least belong to
+ * the row's event.
+ *
+ * Three answers and not two, for the reason the undo route gives: a lookup that
+ * did not answer must never arrive as a refusal, because a `false` there is a
+ * refusal wearing the costume of an answer.
+ */
+type GuestNightBinding =
+  | { bound: true; night: string }
+  | { bound: false; kind: "no_night" | "mismatch" | "unreadable" };
+
+async function bindNightToGuestEntry(
+  serviceClient: ReturnType<typeof getServiceClient>,
+  entryPartyId: string | null,
+  entryEventId: string,
+  namedNight: string | null
+): Promise<GuestNightBinding> {
+  if (entryPartyId) {
+    // The subject's own night wins. A body that names a different one is
+    // naming a night this guest was never on.
+    if (namedNight !== null && namedNight !== entryPartyId) {
+      return { bound: false, kind: "mismatch" };
+    }
+    return { bound: true, night: entryPartyId };
+  }
+
+  // Event-level entry: there is no night on the row, so the caller has to name
+  // one, and it has to be one of this event's.
+  if (namedNight === null) return { bound: false, kind: "no_night" };
+
+  const { data, error } = await serviceClient
+    .from("event_parties")
+    .select("id, event_id")
+    .eq("id", namedNight)
+    .maybeSingle();
+
+  if (error) {
+    // Its own category. Distinct from a mismatch on purpose: one is the caller
+    // naming the wrong night, the other is this server failing to find out.
+    console.error("[attendance] guest_night_binding_unreadable", {
+      namedNight,
+      code: error.code ?? "unknown",
+    });
+    return { bound: false, kind: "unreadable" };
+  }
+
+  const party = data as { id: string; event_id: string } | null;
+
+  if (!party || party.event_id !== entryEventId) {
+    return { bound: false, kind: "mismatch" };
+  }
+
+  return { bound: true, night: namedNight };
+}
+
+/**
  * POST handler for guest-list name-based check-in.
  * Updates guest_list_entries status to 'checked_in', and records when and by whom.
+ *
+ * ── The two arms, and why the second one exists here too (CR-01) ─────────────
+ *
+ * At the door the guest list is a tool of the night exactly as the scanner is:
+ * the same screen, the button next to the QR reader. Until this change the GET
+ * had been given the night (plan 35-10 filters the list by assignment) and the
+ * **POST — the half that writes — had not**. An assignee reached the scanner,
+ * opened their night, saw the guests in the payload, tapped *Check in*, and got
+ * **403 in front of a queue**. `staff` does not hold `door.operate` by role: it
+ * is one of the six explicit renunciations of
+ * `20260809001000_assignment_resolver.sql:212-225`. That is `checkin-offline.md`'s
+ * worse asymmetry — the false refusal — on the button beside the one plan 35-22
+ * had just fixed.
+ *
+ * The shape is **the one plan 35-22 built for `api/tickets/checkin`**, not a
+ * second one. `readNightArm` and the three refusal values are imported from
+ * `@/lib/door/night-arm` and `@/lib/door/outcome` rather than restated, because
+ * two copies of one appeal are two answers waiting to disagree about the same
+ * person on the same night — the reason `require-operator.ts` exists at all.
+ *
+ *   1. The role call stays exactly where it was and keeps its arguments:
+ *      whoever holds `door.operate` by role — `master`, `organizer` — resolves
+ *      once, pays nothing, and their path is unchanged.
+ *   2. The per-night arm runs **only** on the refusal branch of the first, and
+ *      **only when this is not a queued report**. Both halves are load-bearing;
+ *      the second is not an optimisation. Plan 35-12 measured that judging a
+ *      queued report by *"is the assignment live NOW"* readmits ASSIGN-03: an
+ *      assignment granted **after** the scan reads as live at drain time. This
+ *      route has no `judgeAtScanTime` and writes no `door_scan_events` row, so
+ *      it cannot judge the past moment — and the honest answer to a queued
+ *      report from an unassigned account is the refusal it already had. Named
+ *      limit, not an oversight: see *What a queued report still gets* below.
+ *   3. The night is **bound to the subject before anything is granted**
+ *      ({@link bindNightToGuestEntry}), the rule `bindNightToSubject` enforces on
+ *      the undo route. The night is read from the ROW when the row has one; the
+ *      body may only supply it for an event-level entry, and then only if it
+ *      belongs to that entry's event.
+ *
+ * ── The status, and the bucket it produces ──────────────────────────────────
+ *
+ * **403, never 503**, for the same three reasons written out in
+ * `night-arm.ts`. Read off `sync-manager.ts`'s table, `401 || 403` is filed
+ * under **`blocked`** and `>= 500` under **`retry`**; `blocked` is the bucket
+ * this choice produces, and it is the right one because the arm is unreachable
+ * from the drain by construction — the condition below names `isQueuedReport`,
+ * and the drain now says so on this route (`sync-manager.ts`, `case "guest"`).
+ * A 503 would file a permanent refusal under `retry`, where it would be resent
+ * on every `online` for the rest of the night against a condition no retry
+ * changes.
+ *
+ * ── What a queued report still gets, said out loud ──────────────────────────
+ *
+ * A drained guest entry from an account refused by role keeps its `403` and
+ * lands in `blocked`, exactly as before this change. That bucket is **counted on
+ * the scanner's screen** (`getBlockedCount`) and has a way out
+ * (`retryBlockedAfterSignIn`), so it is visible rather than silent — but a
+ * sign-in does not turn anybody into an assignee, and this route cannot ask the
+ * question that would: it has no record of the moment the name was tapped.
+ * Closing that half means giving the guest path the evidence the ticket path
+ * carries, which is a change to the queue's request model and not to this
+ * handler. Stated instead of left to be discovered.
+ *
+ * ── What a refused caller now pays, and what it may learn ───────────────────
+ *
+ * A caller the role arm refused now reaches the body parse and one read of its
+ * own guest entry before being answered. Two consequences, both declared:
+ * malformed JSON from a refused caller answers `400` where it used to answer
+ * `403` (the body is the caller's own, so nothing leaks — the same trade the
+ * undo route declared when it moved its parse above its guard); and every
+ * binding failure that is not a read failure answers with the **byte-identical
+ * `403` the role arm had already produced**, so "no such entry", "no night to
+ * appeal to" and "that night is not this guest's" are one answer to the caller
+ * and three categories in the log. They are collapsed deliberately: telling them
+ * apart would tell an account with no title which guest-list entries exist.
  */
 export async function POST(request: Request) {
-  // Once per handler, same as the GET.
+  // ── Arm 1 ─────────────────────────────────────────────────────────────────
+  // Once per handler, same as the GET, and with the same arguments it has always
+  // had — none. `cache()` does not memoise inside a Route Handler, so this is
+  // resolved into a local and never asked twice.
   const auth = await requireDoorOperator();
-  if (!auth.ok) return refuse(auth);
 
-  let body: { guestListEntryId?: string };
+  // The 401 and the 503 keep the exact body and code they have always had, and
+  // they are answered here, before anything is read. Only the `forbidden` arm
+  // has an appeal, so only it falls through.
+  if (!auth.ok && auth.kind !== "forbidden") return refuse(auth);
+
+  let body: {
+    guestListEntryId?: string;
+    partyId?: string;
+    source?: string;
+    scannedAt?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -897,16 +1055,49 @@ export async function POST(request: Request) {
     );
   }
 
+  /**
+   * A report of something that already happened, as opposed to a check-in
+   * taking place right now.
+   *
+   * Both halves are required and neither alone would do — character for
+   * character the predicate `api/tickets/checkin/route.ts` uses, because two
+   * definitions of "queued" on two door routes are two answers waiting to
+   * disagree. `source` alone is a claim in the body and carries no moment to
+   * judge at; a `scannedAt` alone arrives on a live check-in too.
+   */
+  const isQueuedReport =
+    body.source === "offline_sync" &&
+    typeof body.scannedAt === "string" &&
+    !Number.isNaN(Date.parse(body.scannedAt));
+
+  // A refused caller reporting from the drain is answered here, with the 403 it
+  // has always had, before a single read. This is what makes the arm below
+  // unreachable from the drain by construction — and it is the ASSIGN-03
+  // protection, not a shortcut: see point 2 of the docblock.
+  if (!auth.ok && isQueuedReport) return refuse(auth);
+
+  // The night named by the caller, shape-checked before it can reach the guard,
+  // which THROWS on a malformed id rather than laundering it into the retryable
+  // bucket (see UUID_PATTERN). A malformed night is not a 400 here: it is simply
+  // not a night, and the binding below decides what that costs.
+  const namedNight =
+    typeof body.partyId === "string" && UUID_PATTERN.test(body.partyId.trim())
+      ? body.partyId.trim()
+      : null;
+
   const serviceClient = getServiceClient();
 
   // Verify the entry exists and is not already checked in. `maybeSingle`, not
   // `single`: "the row is not there" and "the query failed" are different
   // failures and a 404 for the second one sends the door looking for the wrong
   // problem.
+  //
+  // `party_id` and `event_id` are read for the binding below, and they are the
+  // only two columns this change adds. Nothing personal is new.
   const { data: entryData, error: fetchError } = await serviceClient
     .from("guest_list_entries")
     .select(
-      "id, status, first_name, last_name, checked_in_at, checked_in_by, updated_at"
+      "id, status, first_name, last_name, checked_in_at, checked_in_by, updated_at, party_id, event_id"
     )
     .eq("id", guestListEntryId)
     .maybeSingle();
@@ -916,6 +1107,18 @@ export async function POST(request: Request) {
       guestListEntryId,
       message: fetchError.message,
     });
+    // For a caller with no title the read failure is not a 500 about the
+    // server: it is an appeal that could not be heard. Its own cause, and NOT a
+    // denial — *"could not find out"* never arrives as *"not permitted"*.
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          error: DOOR_NIGHT_ERROR[DOOR_NIGHT_UNRESOLVED],
+          status: DOOR_NIGHT_UNRESOLVED,
+        },
+        { status: 403 }
+      );
+    }
     return NextResponse.json(
       { error: "Could not read the guest list entry" },
       { status: 500 }
@@ -923,13 +1126,92 @@ export async function POST(request: Request) {
   }
 
   if (!entryData) {
+    // A refused caller gets the refusal it already had, never a 404: a 404 here
+    // would answer *"which guest-list entries exist"* to an account with no
+    // title.
+    if (!auth.ok) return refuse(auth);
     return NextResponse.json(
       { error: "Guest list entry not found" },
       { status: 404 }
     );
   }
 
-  const entry = entryData as GuestRow & { updated_at: string };
+  const entry = entryData as GuestRow & {
+    updated_at: string;
+    party_id: string | null;
+    event_id: string;
+  };
+
+  /**
+   * ── Arm 2 ────────────────────────────────────────────────────────────────
+   *
+   * The operator whose id will be written into `checked_in_by`. On the role
+   * path it is the one arm 1 resolved and nothing below runs; on the appeal
+   * path it comes from the SAME resolution that granted, so the write is
+   * attributed to the account that really did it and no third round trip is
+   * spent recovering an id already in hand.
+   */
+  let operatorId: string;
+
+  if (auth.ok) {
+    operatorId = auth.userId;
+  } else {
+    const binding = await bindNightToGuestEntry(
+      serviceClient,
+      entry.party_id,
+      entry.event_id,
+      namedNight
+    );
+
+    if (!binding.bound) {
+      if (binding.kind === "unreadable") {
+        return NextResponse.json(
+          {
+            error: DOOR_NIGHT_ERROR[DOOR_NIGHT_UNRESOLVED],
+            status: DOOR_NIGHT_UNRESOLVED,
+          },
+          { status: 403 }
+        );
+      }
+      // `no_night` and `mismatch`: there is no night bound to this subject to
+      // appeal with, so the answer is the one the role arm already gave —
+      // unchanged, byte for byte. Distinguished in the log, not on the wire.
+      console.warn("[attendance] guest night unbound", {
+        guestListEntryId,
+        kind: binding.kind,
+      });
+      return refuse(auth);
+    }
+
+    // THE per-night question, asked here and nowhere else on this route.
+    // Inline rather than inside `readNightArm` so that the two forms of the
+    // guard appear in this file in the order they run — a helper declared above
+    // would be hoisted and would measure backwards.
+    let perNight: DoorAuth | null;
+    try {
+      perNight = await requireDoorOperator({ partyId: binding.night });
+    } catch (error) {
+      // Entered by POSITION; the error is never parsed (CR-01).
+      console.error("[door.night_arm_threw] attendance", error);
+      perNight = null;
+    }
+
+    const arm = await readNightArm(perNight);
+
+    if (!arm.granted) {
+      // The refusal the role arm had already produced, reissued with a cause of
+      // its own. Same status code, so nobody's bucket moved; a distinct value
+      // and a distinct sentence, so the operator at the door can tell "not
+      // assigned at all" from "wrong night selected" from "the question could
+      // not be asked".
+      return NextResponse.json(
+        { error: arm.error, status: arm.status },
+        { status: arm.http }
+      );
+    }
+
+    operatorId = arm.operatorId;
+  }
 
   if (entry.status === "checked_in") {
     // The label is prose; `operatorId` below is the fact. A lookup that failed
@@ -1005,7 +1287,10 @@ export async function POST(request: Request) {
     .update({
       status: "checked_in",
       checked_in_at: now,
-      checked_in_by: auth.userId,
+      // The account that really did it, whichever arm granted. `NOT NULL` in
+      // spirit if not in schema: an unattributed admission is the one thing
+      // `ACCESS-MODEL-DECISIONS.md` §5 refuses.
+      checked_in_by: operatorId,
       updated_at: now,
     })
     .eq("id", guestListEntryId);
@@ -1023,7 +1308,7 @@ export async function POST(request: Request) {
 
   const posthog = getPostHogServer();
   posthog.capture({
-    distinctId: auth.userId,
+    distinctId: operatorId,
     event: "guest_list_checkin",
     properties: {
       guest_list_entry_id: guestListEntryId,

@@ -232,3 +232,71 @@ export const DOOR_SUPERVISION_REQUIRED = "door_supervision_required";
  */
 export const DOOR_SUPERVISION_REQUIRED_ERROR =
   "Undoing a check-in needs a supervisor. Ask an organizer for this night.";
+
+/**
+ * ── The second arm's three refusals, as VALUES decided by position ───────────
+ *
+ * Coined by plan 35-22 inside `src/app/api/tickets/checkin/route.ts`, with the
+ * reason written beside them: *"coined here and not in `@/lib/door/outcome.ts`
+ * because this plan owns one file"*. That reason expired the moment a second
+ * door route needed the same three answers. They live here now, for the reason
+ * this module exists — **two vocabularies, each internally consistent, that
+ * agree until they do not** — and `checkin/route.ts` imports them rather than
+ * keeping a copy.
+ *
+ * The shape is the one `DOOR_UNRESOLVED_STATUS` and
+ * {@link DOOR_SUPERVISION_REQUIRED} already established: a machine-readable
+ * classification in the envelope's `status` field, a human sentence beside it in
+ * `error`, and **never** a category parsed out of prose (Next redacts
+ * server-side messages in a production build, so a branch on a message works in
+ * `next dev` and silently stops working where it matters).
+ *
+ * Three, not two, and none of them collapses into another:
+ *
+ *   1. refused by role **and** holding no live door assignment anywhere;
+ *   2. holding one, but not for the night this request named;
+ *   3. the per-night question could not be answered at all.
+ *
+ * The third is the one that would be lost first if somebody tidied this into a
+ * boolean, and it is the one that is true in production **today**: the per-night
+ * resolver is row 8 of the hand-applied queue in `35-HUMAN-UAT.md` and does not
+ * exist yet, so every request that reaches a second arm gets outcome 3 until the
+ * queue is applied. An `unresolved` that arrived as a denial would say *"you are
+ * not assigned"* to somebody whose assignment nobody managed to look up.
+ *
+ * ── What reads them, and what does not, stated rather than implied ───────────
+ *
+ * `ScannerClient.tsx:121-131` maps the HTTP status to the **headline** before it
+ * parses the body, and puts `error` underneath as the **detail** line
+ * (`reportServerFault`). So the sentences below are what the operator actually
+ * reads at the door — the only observer this product has, since it carries no
+ * error tracking (`meta-gates.md`) — while the headline stays the generic *"This
+ * account is not allowed to check people in"*. The `status` values still have no
+ * device consumer; they travel so the classification exists as a value rather
+ * than having to be recovered from a sentence later.
+ */
+export const DOOR_NIGHT_NOT_ASSIGNED = "door_night_not_assigned";
+export const DOOR_NIGHT_OTHER_NIGHT = "door_night_other_night";
+export const DOOR_NIGHT_UNRESOLVED = "door_night_unresolved";
+
+/** The three literals as a union, so the `Record` below can be total over them. */
+export type DoorNightRefusal =
+  | typeof DOOR_NIGHT_NOT_ASSIGNED
+  | typeof DOOR_NIGHT_OTHER_NIGHT
+  | typeof DOOR_NIGHT_UNRESOLVED;
+
+/**
+ * The three sentences. The second one is the reason a second arm bothers to
+ * classify its own refusal at all: *"you are on the door, but this device has
+ * the wrong night selected"* is a refusal somebody can act on in five seconds,
+ * where *"not allowed"* sends them to find an organizer. At the door that
+ * difference is the whole value of the extra lookup it costs.
+ */
+export const DOOR_NIGHT_ERROR: Record<DoorNightRefusal, string> = {
+  [DOOR_NIGHT_NOT_ASSIGNED]:
+    "This account is not on the door for any night — an organizer has to assign it.",
+  [DOOR_NIGHT_OTHER_NIGHT]:
+    "This account is on the door, but not for the night selected on this device — select the right night.",
+  [DOOR_NIGHT_UNRESOLVED]:
+    "This account's assignment for that night could not be checked — the refusal above stands on the role check alone.",
+};

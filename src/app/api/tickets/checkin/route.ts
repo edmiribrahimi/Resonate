@@ -2,7 +2,6 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
-import { CAP } from "@/lib/capabilities/keys";
 import {
   DOOR_UNRESOLVED_STATUS,
   requireDoorOperator,
@@ -12,11 +11,14 @@ import { verifyTicketToken } from "@/utils/qr";
 import { partyStartInstant } from "@/utils/datetime";
 import {
   DOOR_HTTP,
+  DOOR_NIGHT_ERROR,
+  DOOR_NIGHT_OTHER_NIGHT,
   type DoorFlag,
   type DoorOutcome,
   type DoorScanCause,
   type DoorScanSource,
 } from "@/lib/door/outcome";
+import { readNightArm } from "@/lib/door/night-arm";
 import type { DoorScanEvent } from "@/types/database";
 
 /**
@@ -362,192 +364,25 @@ async function judgeAtScanTime(
 }
 
 /**
- * ── The second arm's three refusals, as VALUES decided by position ───────────
+ * ── Where the second arm went, and what stayed ───────────────────────────────
  *
- * Coined here and not in `@/lib/door/outcome.ts` because this plan owns one
- * file; the shape is the one `DOOR_UNRESOLVED_STATUS` and
- * `DOOR_SUPERVISION_REQUIRED` already established — a machine-readable
- * classification in the envelope's `status` field, a human sentence beside it in
- * `error`, and **never** a category parsed out of prose (CR-01: Next redacts
- * server-side messages in a production build).
+ * The three refusal VALUES now live in `@/lib/door/outcome.ts` and the answering
+ * of the per-night question in `@/lib/door/night-arm.ts` ({@link readNightArm}).
  *
- * Three, not two, and none of them collapses into another:
+ * They were coined in this file by plan 35-22, which wrote the reason beside
+ * them: *"coined here and not in `@/lib/door/outcome.ts` because this plan owns
+ * one file"*. That reason expired when the guest-list check-in
+ * (`api/tickets/attendance`, its POST) turned out to need the same appeal — the
+ * third door route asking the same question. Two copies of it would be two
+ * answers waiting to disagree about the same person on the same night, which is
+ * precisely what `require-operator.ts` exists to make impossible.
  *
- *   1. refused by role **and** holding no live door assignment anywhere;
- *   2. holding one, but not for the night this request named;
- *   3. the per-night question could not be answered at all.
- *
- * The third is the one that would be lost first if somebody tidied this into a
- * boolean, and it is the one that is true in production **today**: the per-night
- * resolver is row 8 of the hand-applied queue in `35-HUMAN-UAT.md` and does not
- * exist yet, so every request that reaches the second arm gets outcome 3 until
- * the queue is applied. An `unresolved` that arrived as a denial would say *"you
- * are not assigned"* to somebody whose assignment nobody managed to look up.
- *
- * ── What reads them, and what does not, stated rather than implied ───────────
- *
- * `ScannerClient.tsx:121-131` maps the HTTP status to the **headline** before it
- * parses the body, and puts `error` underneath as the **detail** line
- * (`reportServerFault`). So the sentences below are what the operator actually
- * reads at the door — the only observer this product has, since it carries no
- * error tracking (`meta-gates.md`) — while the headline stays the generic *"This
- * account is not allowed to check people in"*. The `status` values have no device
- * consumer yet, exactly as `DOOR_SUPERVISION_REQUIRED` had none when plan 35-11
- * coined it; they travel now so the classification exists as a value rather than
- * having to be recovered from a sentence later.
+ * **What did NOT move is the call.** `requireDoorOperator({ partyId })` is still
+ * asked inline in the handler below. The standing check on this file measures by
+ * line number that the role form of the guard is called before the per-night
+ * form, and a helper that made the call would be hoisted: it would read
+ * correctly and measure backwards. The asking stays where the order is visible.
  */
-const DOOR_NIGHT_NOT_ASSIGNED = "door_night_not_assigned";
-const DOOR_NIGHT_OTHER_NIGHT = "door_night_other_night";
-const DOOR_NIGHT_UNRESOLVED = "door_night_unresolved";
-
-/**
- * The three sentences. The second one is the reason the second arm bothers to
- * classify its own refusal at all: *"you are on the door, but this device has
- * the wrong night selected"* is a refusal somebody can act on in five seconds,
- * where *"not allowed"* sends them to find an organizer. At the door that
- * difference is the whole value of the extra lookup it costs.
- */
-const DOOR_NIGHT_ERROR: Record<string, string> = {
-  [DOOR_NIGHT_NOT_ASSIGNED]:
-    "This account is not on the door for any night — an organizer has to assign it.",
-  [DOOR_NIGHT_OTHER_NIGHT]:
-    "This account is on the door, but not for the night selected on this device — select the right night.",
-  [DOOR_NIGHT_UNRESOLVED]:
-    "This account's assignment for that night could not be checked — the refusal above stands on the role check alone.",
-};
-
-/**
- * What the second arm answered.
- *
- * `http` is carried rather than derived so that the one place that chooses a
- * status code is the one place that explains the choice.
- */
-type NightArm =
-  | { granted: true; operatorId: string }
-  | { granted: false; http: 401 | 403; status: string; error: string };
-
-/** The refusal shape, so the four exits below cannot drift apart. */
-function refuseNight(status: string): NightArm {
-  return { granted: false, http: 403, status, error: DOOR_NIGHT_ERROR[status] };
-}
-
-/**
- * *May this account work THIS night's door, even though the role says no?* —
- * everything about that question except the asking of it.
- *
- * **The call itself is inline in the handler, not here, and that is not an
- * oversight.** The standing check on this file measures by line number that the
- * role form of the guard is called before the per-night form; a helper declared
- * above the handler is hoisted, so it would read correctly and measure
- * backwards. A check its own code arranges to pass is not a check — the same
- * lesson `35-11-SUMMARY.md` recorded when a comment quoting a call broke the
- * count. So the asking stays where the order is visible, and the answering —
- * which is the part with the reasoning in it — lives here.
- *
- * ── Why this is a second call and not an argument on the first ───────────────
- *
- * Somebody will propose merging the two into one call with an optional night,
- * and this paragraph exists to take the reason away. The per-night form of the
- * guard resolves through `public.my_access_context(uuid)`, **a function that
- * does not exist in production** until row 8 of the hand-applied queue lands.
- * The guard answers that correctly — `unresolved`, 503 — and 503 on the *only*
- * authorisation call would be **503 on every scan, from the first deploy, at two
- * in the morning, with a queue at the door**. Plan 35-12 refused that road and
- * was right; this arm inherits the decision rather than reopening it.
- *
- * Splitting it in two is what makes the failure harmless: everybody who gets
- * here has already been refused by the role arm, so the worst this function can
- * do is leave that refusal exactly where it found it.
- *
- * ── The status code, and the bucket it produces ─────────────────────────────
- *
- * **403 for all three refusals. Never 503, and that is deliberate.**
- *
- * Read off `src/lib/offline/sync-manager.ts`'s classification table: `:225`
- * files `401 || 403` under **`blocked`**, `:235` files `>= 500` under
- * **`retry`**. Three reasons `blocked` is the right bucket here, in increasing
- * order of importance:
- *
- *   1. **It is unreachable from the drain by construction.** This arm is asked
- *      only when the request is *not* a queued report, so no queue entry can
- *      ever be classified by one of these answers. It is the same argument plan
- *      35-11 made for the undo route, and it is checkable: the caller's
- *      condition names `isQueuedReport`.
- *   2. **If a future edit did make it reachable, `blocked` is the survivable
- *      mistake and `retry` is not.** A 503 would put the entry in `retry`, where
- *      it would be sent again on every `online` for the rest of the night
- *      against a condition a retry cannot change — the missing resolver is not
- *      going to appear at 03:00. `blocked` at least keeps the entry, and keeps
- *      it counted on a screen somebody looks at.
- *   3. **403 is the code this caller had already been given.** The role arm
- *      answered *"no"* on the server's clock and that answer stands; the second
- *      arm only failed to overturn it. Answering 503 would tell an operator with
- *      no title that the server is broken, and would move a refusal that was
- *      already correct into the retryable bucket. The permission was resolved.
- *      What was not resolved is the appeal.
- *
- * ── Outcome 2 comes from the coarse field, and grants nothing ────────────────
- *
- * `liveAssignmentCapabilities` answers *"does this subject hold ANY live
- * assignment, and for which trades?"* — `server.ts:161-183` says in as many
- * words that it is **wider than the real permission** and that no surface may
- * decide with it alone. Nothing here decides with it: the verdict was taken
- * above, by the guard, on the named night. This read only says which **sentence**
- * the refusal gets, and a field that is too wide is exactly the right instrument
- * for that — "assigned somewhere, refused here" is precisely what it can see.
- *
- * Its three states are honoured as three (`server.ts:222-243`): `null` is *the
- * key was not in the payload*, i.e. row 14 of the queue is behind, and it is
- * **outcome 3** — never the empty set's meaning, which is the answered fact *"no
- * live assignment"*. Collapsing those two would make a migration that has not
- * been applied indistinguishable from a person who is not working tonight, and
- * the second sentence is the one somebody reads in front of a queue.
- */
-async function readNightArm(perNight: DoorAuth | null): Promise<NightArm> {
-  // `null` is the guard having THROWN at the call site. It throws
-  // `door.invalid_party_id` for a malformed night and nothing else, and the
-  // night has been through `UUID_PATTERN` there, so this is unreachable —
-  // carried as a value rather than trusted, because an uncaught throw would be
-  // answered by the handler's last-resort 500, which is the wrong shape for a
-  // caller who was simply refused.
-  if (perNight === null) return refuseNight(DOOR_NIGHT_UNRESOLVED);
-
-  if (perNight.ok) return { granted: true, operatorId: perNight.userId };
-
-  // The session went away between the two resolutions. 401, and the same body
-  // the role arm's 401 has always carried — a sign-in is the remedy, and
-  // `blocked` is the bucket that waits for one.
-  if (perNight.kind === "unauthenticated") {
-    return { granted: false, http: 401, status: "unauthorized", error: "Unauthorized" };
-  }
-
-  // The lookup itself failed — today, every time, because the resolver is not
-  // in production yet. Its own category, and NOT a denial.
-  if (perNight.kind === "unresolved") {
-    return refuseNight(DOOR_NIGHT_UNRESOLVED);
-  }
-
-  // A real refusal for this night. All that is left is to say which of the two
-  // it is, and that costs one read of the coarse field.
-  let liveAnywhere: Set<string> | null;
-  try {
-    liveAnywhere = (await getAccessContext()).liveAssignmentCapabilities;
-  } catch (error) {
-    // The refusal is real either way; what could not be established is its
-    // sentence. Outcome 3 rather than outcome 1, because outcome 1 asserts a
-    // fact — *"not assigned anywhere"* — that nobody just verified.
-    console.error("[door.night_arm_reason_unresolved]", error);
-    return refuseNight(DOOR_NIGHT_UNRESOLVED);
-  }
-
-  if (liveAnywhere === null) return refuseNight(DOOR_NIGHT_UNRESOLVED);
-
-  return refuseNight(
-    liveAnywhere.has(CAP.DOOR_OPERATE)
-      ? DOOR_NIGHT_OTHER_NIGHT
-      : DOOR_NIGHT_NOT_ASSIGNED
-  );
-}
 
 /** The legacy `status` string for an outcome, and whether the old bundle reads it as green. */
 function legacyStatusFor(outcome: DoorOutcome): { valid: boolean; status: string } {

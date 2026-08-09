@@ -51,6 +51,16 @@ import type { UserRole, UserStatus } from "@/types/database";
  * and attendance. Those write with the **service client**, so no row-level
  * policy sees them and the guard is the only boundary there is.
  *
+ * On check-in and on attendance the per-night form is the **second arm**: the
+ * role question is asked first and the night is named only on its refusal
+ * branch, so an account that holds `door.operate` by role pays nothing
+ * (`@/lib/door/night-arm.ts` for why the two are not one call). On attendance
+ * that arm covers the **POST**, the half that writes, and it does **not** cover
+ * a report drained from the offline queue — that one keeps the answer it always
+ * had, for the reason the route's own docblock gives. This sentence used to
+ * claim the whole of `attendance`, and until the CR-01 fix it was true of the
+ * `GET` alone.
+ *
  * And the second half is a shape rather than a check: the night list that
  * `/api/tickets/attendance` returns is filtered by assignment (plan 35-10), so
  * somebody assigned to a different night reaches this page and simply **does
