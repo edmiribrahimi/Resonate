@@ -1,5 +1,6 @@
 ---
-status: testing
+status: partial
+deferred_by: owner decision, 2026-08-09 — reaffirming decision 12 of 2026-08-06
 phase: 35-per-night-assignments
 source:
   - 35-HUMAN-UAT.md
@@ -29,7 +30,30 @@ niente lo è, quindi l'urgenza sta solo dove è reale.
 | 4 | **11** casi A/B — la scansione riceve la notte | nessuna (il caso C è perso) | — |
 | 5–13 | 1, 2, 3, 4, 5, 6, 8, 9, 13 | nessuna | Seguono la decisione del proprietario |
 
+## Rimandato per decisione del proprietario — 2026-08-09
+
+Le prove manuali di questo file si eseguono **tutte insieme alla fine della
+v1.5**, non ora. È la conferma della decisione 12 del 2026-08-06, già registrata
+in `43-CONTEXT.md`: la costruzione prosegue attraverso 33, 43, 35, 34 e le
+restanti, e la verifica a mano avviene alla fine.
+
+**Il prezzo, scritto qui perché a fine v1.5 nessuno se lo ricorderà.** Nove di
+queste prove non hanno finestra e si eseguiranno esattamente come sono scritte.
+**Tre no** — e per quelle rimandare non è rimandare, è perdere:
+
+| Prova | Muore quando | Cosa resta impossibile da osservare |
+|---|---|---|
+| **12** — upgrade IndexedDB v4 → v5 su coda piena | l'ultimo telefono della porta aggiorna il bundle | Lo stato «coda piena su v4» non è più costruibile senza reinstallare un bundle vecchio. È **l'unica irreversibile della fase**: il suo fallimento perde presenze già pagate, in silenzio, senza error tracking |
+| **10** — i metadati escono dal file | un fotografo assegnato carica il primo file da dentro una sede segreta | Prima costa un file di test; dopo costa una sede, e `venue-secrecy.md` non ha rollback |
+| **7** — staff assegnato raggiunge lo scanner | la prima serata reale | Non è irreversibile: è che si scoprirebbe davanti a una fila, alle due di notte |
+
+A fine v1.5 queste tre esisteranno ancora come righe di un elenco. Non ci sarà
+più niente da guardare. **Registrato, non contestato** — la decisione è del
+proprietario e la costruzione prosegue.
+
 ## Current Test
+
+[rimandato — sessione riaperta a fine v1.5]
 
 number: 1
 name: Prova 12 — l'upgrade di IndexedDB v4 → v5 su una coda non vuota
