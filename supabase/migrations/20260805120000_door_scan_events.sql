@@ -148,8 +148,8 @@ ALTER TABLE public.door_scan_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS door_scan_events_select_admin ON public.door_scan_events;
 
--- Deliberately coarse: per-night scoping of an organizer does not exist in this
--- product until Phase 35, which is the phase that should narrow this predicate.
+-- SUPERSEDED TWICE, not current: 20260807010000 moved it to a capability, then
+-- 20260809004000_door_scan_events_by_assignment.sql narrowed it BY ASSIGNMENT.
 -- The parentheses around the helper call are load-bearing — a bare call is
 -- re-evaluated per row (20260224_rbac_migration.sql:127-135).
 CREATE POLICY door_scan_events_select_admin ON public.door_scan_events
