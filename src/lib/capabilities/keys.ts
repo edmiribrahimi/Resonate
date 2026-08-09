@@ -99,9 +99,17 @@ export const CAP = {
   CATALOGUE_MANAGE: "catalogue.manage",
   /** P5 — `get_user_status() = 'approved'` alone; role irrelevant. */
   MEMBERSHIP_ACTIVE: "membership.active",
-  /** Middleware `/admin/*` except the scanner: master, status ignored. */
+  /**
+   * The six master-only surfaces — analytics and its two sub-pages, newsletter,
+   * finance, members/growth. Six named addresses, not a prefix: the binding
+   * lives in `src/lib/routes/capability-routes.ts`. Status ignored.
+   */
   ADMIN_ACCESS: "admin.access",
-  /** Middleware `/organizer/*`: role only, status ignored. */
+  /**
+   * The least capability any collapsed staff surface needs, including the
+   * `/admin` root itself. Role only, status ignored; the addresses it opens are
+   * named in `src/lib/routes/capability-routes.ts`.
+   */
   ORGANIZER_ACCESS: "organizer.access",
   /** Middleware `/admin/scanner` and the four door routes: ROLE ALONE. */
   DOOR_OPERATE: "door.operate",

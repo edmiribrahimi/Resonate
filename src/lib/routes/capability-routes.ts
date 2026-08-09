@@ -133,10 +133,12 @@ type Binding =
       /**
        * May a live per-night assignment open these? (D-34-03)
        *
-       * The rule travels here verbatim from the docblock of
-       * `ORGANIZER_ASSIGNMENT_ROUTES` (`src/lib/supabase/middleware.ts:60-90`),
-       * because it is the whole safety of that arm and it must not be left
-       * behind with the expression it replaces:
+       * The rule travelled here verbatim from the docblock of what used to be
+       * `ORGANIZER_ASSIGNMENT_ROUTES` in `src/lib/supabase/middleware.ts`.
+       * **That identifier no longer exists** — plan 34-03 deleted it, having
+       * first confirmed the paragraph had arrived here, because deleting a
+       * safety rule and the expression it guards in one commit is how a rule
+       * becomes folklore. This is now the only copy:
        *
        *   *A route earns a place here only once it already has its own
        *   server-side gate, and the list grows one route at a time, as a
@@ -183,9 +185,34 @@ export const CAPABILITY_ROUTES = {
    * verdict is nonetheless being re-derived from a new place. Mutation C of
    * plan 34-01 exists for exactly that: it proves this entry wins for
    * `/admin/scanner` even when it is declared LAST.
+   *
+   * ── `assignmentOpenable`, added by plan 34-03, and why it was missing ───────
+   *
+   * The door has had an assignment arm since phase 35: the rule this map
+   * replaces read *role **or** a live `door.operate` assignment*, because
+   * `staff` does **not** hold `door.operate` by role — it is one of the six
+   * declared refusals of the role (`20260808000500_staff_role.sql`), so a member
+   * of staff rostered on tonight's door holds it by assignment and by nothing
+   * else. The scanner page carries the SAME predicate deliberately and says so:
+   * *anybody who clears the coarse gate clears this one; if the two ever
+   * diverge, this is the copy that is wrong.*
+   *
+   * Plan 34-01 transcribed the allow-list of the `/organizer` arm — one route,
+   * `review` — and the door's arm had no allow-list to travel with, so it was
+   * left behind. Without this flag the middleware refuses the person rostered
+   * to work the door, at two in the morning, in front of a queue: the exact
+   * asymmetry `checkin-offline.md` names as the worse of the two errors. It was
+   * caught by the assertion at the top of `src/lib/supabase/middleware.ts`,
+   * which fired on the first request against the map as wave 1 left it.
+   *
+   * This is **not** a widening. It restores, in data, the arm the code being
+   * replaced already had; the reach of every role is identical before and
+   * after. And it satisfies the rule below on its own terms — this route has
+   * had its own server-side gate since plan 35-16, with the same predicate.
    */
   [CAP.DOOR_OPERATE]: {
     routes: ["/admin/scanner"],
+    assignmentOpenable: true,
     alsoGatesTables: true,
   },
 
@@ -261,11 +288,13 @@ export const CAPABILITY_ROUTES = {
   },
 
   /**
-   * The one route a live per-night assignment may open, and the only entry in
-   * this map carrying that flag. The per-night gate on the page itself — which
-   * re-asks `party.manage` against the night resolved from `?party=` — is
-   * untouched by this phase and is the real boundary; this flag only decides
-   * whether the middleware lets the request reach it.
+   * The one route under `party.manage` a live per-night assignment may open —
+   * one of the map's **two** assignment-openable entries, the other being the
+   * door. (It was described here as the only one until plan 34-03 measured that
+   * the door's arm had been left behind; see that entry.) The per-night gate on
+   * the page itself — which re-asks `party.manage` against the night resolved
+   * from `?party=` — is untouched by this phase and is the real boundary; this
+   * flag only decides whether the middleware lets the request reach it.
    */
   [CAP.PARTY_MANAGE]: {
     routes: ["/admin/events/[id]/review"],
