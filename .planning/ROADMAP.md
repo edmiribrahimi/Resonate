@@ -318,9 +318,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 35-03-PLAN.md — The resolver's second arm, null-safe, plus three new capability keys and the per-night `my_access_context` overload
-- [ ] 35-04-PLAN.md — The assignment acts in the existing register, the atomic writer, and D-18 rewritten with the right criterion
-- [ ] 35-05-PLAN.md — `party_credits`: the table without an account column, the publication gate on its reads, and the structural check for ASSIGN-07
+- [x] 35-03-PLAN.md — The resolver's second arm, null-safe, plus three new capability keys and the per-night `my_access_context` overload
+- [x] 35-04-PLAN.md — The assignment acts in the existing register, the atomic writer, and D-18 rewritten with the right criterion
+- [x] 35-05-PLAN.md — `party_credits`: the table without an account column, the publication gate on its reads, and the structural check for ASSIGN-07
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 2/21 | In Progress|  |
+| 35. Per-Night Assignments | 5/21 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |

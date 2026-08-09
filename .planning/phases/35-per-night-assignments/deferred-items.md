@@ -8,7 +8,24 @@
 
 ---
 
-## 1. [BLOCCANTE per 35-04] `ends_at` va letto da `event_parties.date`, non da `events.date`
+## 1. [CHIUSA il 2026-08-08 dal piano 35-04] `ends_at` va letto da `event_parties.date`, non da `events.date`
+
+> **Esito.** Il piano 35-04 ha applicato la correzione e l'ha **misurata invece
+> di accettarla**: su una serata costruita apposta con la sub-serata il giorno
+> dopo il genitore — `events.date = 2026-10-09`, `event_parties.date =
+> 2026-10-10` — le due espressioni divergono di ventiquattro ore esatte, e la
+> riga che il writer scrive prende `2026-10-12T04:00:00Z`, quello della serata.
+> Registrata come deviazione in `35-04-SUMMARY.md`.
+>
+> **Come ci e' arrivata.** Non da questo file: l'orchestratore l'ha portata
+> **dentro il prompt** dell'esecutore di 35-04, con la misura e la ragione. Vale
+> la pena scriverlo, perche' una voce affidata a un documento presuppone che
+> qualcuno lo apra, e chi esegue un piano legge il piano. La voce resta il
+> registro; il prompt e' stato il veicolo.
+>
+> Il testo originale resta sotto, invariato.
+
+---
 
 **Trovata da:** piano 35-02, task 2, provando la migration contro un container
 `postgres:17.6` costruito con lo shim, lo schema base e tutte e 45 le migration.
