@@ -72,3 +72,11 @@ docs/
 # sedi non acquisite. Finora era coperto solo dal gitignore globale della
 # macchina: su un altro clone non lo sarebbe stato.
 .claude/settings.local.json
+
+# Worktree degli agenti: `.claude/` E' versionato, e qui dentro finiscono
+# checkout completi del repository — piu' l'`.env.local` che un esecutore copia
+# per far girare la baseline. Un `git add .claude/` di qualcuno pubblicherebbe
+# un albero intero con dentro le credenziali. Stessa logica della riga sopra,
+# su un contenuto piu' grosso: il repo e' pubblico e una pubblicazione non si
+# annulla.
+.claude/worktrees/
