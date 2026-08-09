@@ -90,8 +90,15 @@ const OWNER_COLUMN_PRIORITY = [
  */
 const SEED_ORDER = ['events', 'event_parties', 'ticket_tiers', 'discount_codes', 'drink_orders'];
 
-/** The tables a `{{placeholder}}` in a payload may point at. */
+/**
+ * The tables a `{{placeholder}}` in a payload may point at.
+ *
+ * `artists` was added by plan 35-05 for `party_credits.artist_id`. It is not in
+ * `SEED_ORDER` and does not need to be: `rest` is sorted, and `artists` sorts
+ * before `party_credits`, so its ids exist by the time the credits are seeded.
+ */
 const REFERENCEABLE = [
+  'artists',
   'discount_codes',
   'drink_orders',
   'event_parties',

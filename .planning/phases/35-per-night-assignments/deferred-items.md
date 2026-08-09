@@ -104,3 +104,53 @@ Cancellarla lascerebbe le altre due copie in circolazione senza smentita.
 E' il `Gate hallucination` di `ai-engineering.md` nella sua forma tipica: un
 fatto plausibile, ereditato per citazione, che nessuno ha misurato. La riga
 resta come smentita, con il comando che chiunque puo' rieseguire.
+
+---
+
+## 3. [APERTA] Cancellare un artista accreditato ora fallisce, e il rifiuto non raggiunge nessuno
+
+**Trovata da:** piano 35-05, task 1, confrontando le catture di baseline in
+container — non ragionando, misurando.
+
+**Il fatto.** `20260809003000_party_credits.sql` dichiara
+`artist_id uuid NOT NULL REFERENCES public.artists ON DELETE RESTRICT`. Da quel
+momento **un artista accreditato su una serata non e' piu' cancellabile**.
+`npm run baseline:compare --target=container --before-point=35-02
+--after-point=35-05` riporta tre celle che si muovono:
+
+| Cella | Prima | Dopo |
+|---|---|---|
+| `master/approved × artists × delete` | `ok:1` | `23503` |
+| `master/pending × artists × delete` | `ok:1` | `23503` |
+| `master/rejected × artists × delete` | `ok:1` | `23503` |
+
+**Nessuna policy e' cambiata.** `artists_delete_master` e' byte-identica fra le
+due catture: e' un vincolo, non un permesso. Nell'harness ogni artista seminato
+e' accreditato, quindi ogni delete incontra la chiave; in produzione solo un
+artista **accreditato** e' protetto.
+
+**Perche' il vincolo resta com'e'.** Le alternative sono peggiori in modo non
+recuperabile: `CASCADE` lascerebbe che una cancellazione riscriva in silenzio
+cosa e' stata una serata, e `SET NULL` non esiste su una colonna `NOT NULL`. Un
+rifiuto si annulla staccando il credito; una serata riscritta no.
+
+**Cosa manca, ed e' il debito vero.** Il percorso di cancellazione in
+`src/app/(organizer)/organizer/artists` oggi mostrerebbe l'errore grezzo di
+PostgREST. **Non esiste error tracking in questo prodotto** (`meta-gates.md`):
+un fallimento inspiegato su quel bottone raggiunge una persona solo se quella
+persona lo sta guardando. Il rifiuto deve **nominare le serate che lo bloccano**
+e offrire di staccarle — la stessa forma che `20260809000000_party_assignments.sql`
+sezione 3c pretende per una demozione bloccata da un'assegnazione viva, e lo
+stesso gate: un fallimento che conta ha bisogno di un **effetto osservabile**,
+non di una riga di log.
+
+**Perche' non e' stato fatto nel piano 35-05.** Quel percorso non e' fra i
+`files_modified` del piano, che copre la migration, il tipo di riga e lo script
+di verifica. Correggerlo li' sarebbe stato uno sconfinamento su una superficie
+che nessun piano di questa fase ha ancora aperto.
+
+**Cosa deve succedere.** Chi apre la superficie di catalogo dei crediti — o il
+piano che tocca `organizer/artists` — intercetta `23503` sulla cancellazione di
+un artista, elenca le serate che lo accreditano, e non lascia arrivare all'utente
+un messaggio generico. E' il precedente del form newsletter registrato in
+`.planning/codebase/CONCERNS.md`, da non ripetere.

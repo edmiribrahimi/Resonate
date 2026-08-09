@@ -1,0 +1,2346 @@
+{
+  "artefact": "B2",
+  "target": "postgres-container",
+  "postgres_version": "17.6",
+  "captured_at": "2026-08-08",
+  "phase_point": "35-05",
+  "rows": [
+    {
+      "persona": "anon",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "profiles",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "anon",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "profiles",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_orders",
+      "count": 1,
+      "pk_md5": "84afbb951c9cd8cfb7c53306cf2674a5",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "membership_acts",
+      "count": 2,
+      "pk_md5": "61672d2164db5a64938adc318bf5986e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_credits",
+      "count": 2,
+      "pk_md5": "d26db262eed6d412214f9aba0ecfcb85",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "pending_purchases",
+      "count": 1,
+      "pk_md5": "a897de5348f26961fac443668333b50c",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "attendances",
+      "count": 1,
+      "pk_md5": "bbf6cf695a245c121a071b9db6083333",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_orders",
+      "count": 1,
+      "pk_md5": "eee322f44a9d79e79afd1052fc2a6e5a",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_tokens",
+      "count": 1,
+      "pk_md5": "4af7922034ba7bb4d1871b6253721f9c",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_media",
+      "count": 1,
+      "pk_md5": "b3c343900ccdd4f78186ed4e2d2ad632",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "pending_purchases",
+      "count": 1,
+      "pk_md5": "d121149ee790a2921afbe2784422c959",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "57453e8517c8642fc62e8c325b6696fa",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "rsvps",
+      "count": 1,
+      "pk_md5": "c42614289c2aeef8faf9f1692ee63829",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_refunds",
+      "count": 1,
+      "pk_md5": "9e3977123ec4e3cac4ae6431e351ed3b",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "tickets",
+      "count": 1,
+      "pk_md5": "84c8d9508c20d8a59d6021e4b144a077",
+      "vacuous": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "fd1f76e858762011f2bd11a13f4afac3",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "690d891d77a113ffb54e4c3b2ded1a43",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "membership_acts",
+      "count": 2,
+      "pk_md5": "61672d2164db5a64938adc318bf5986e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_credits",
+      "count": 2,
+      "pk_md5": "d26db262eed6d412214f9aba0ecfcb85",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "attendances",
+      "count": 2,
+      "pk_md5": "2c0c82292bed774fe91a0f960b97e08a",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "door_scan_events",
+      "count": 2,
+      "pk_md5": "39bf960637337e91519d494047deb82b",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_tokens",
+      "count": 2,
+      "pk_md5": "fb64c4f391f4e247ddd9aa049cdf3107",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_media",
+      "count": 2,
+      "pk_md5": "f218cbd13de1b7c97f59c50a76dc55c2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_parties",
+      "count": 2,
+      "pk_md5": "b02899c5018eb5f3d364170f86ac1330",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "events",
+      "count": 2,
+      "pk_md5": "d0fe7fdbc9242339537b9f24ddf6bc40",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "guest_list_entries",
+      "count": 2,
+      "pk_md5": "1f7fc36fa70d31d4b77fbaa9f39e52f2",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "newsletter_subscribers",
+      "count": 2,
+      "pk_md5": "de62cfd9a1d14353a50708fdf4c80dea",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_assignments",
+      "count": 2,
+      "pk_md5": "9bcc5a3e16733b2833939839328cb897",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "profiles",
+      "count": 12,
+      "pk_md5": "ff5c062e45c840688c0796ae43bf22dd",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "rsvps",
+      "count": 2,
+      "pk_md5": "5258779dcacd0dec46aa715981e63a22",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_refunds",
+      "count": 2,
+      "pk_md5": "02ccf795a6ac7aa6f9b8e34c72e28c10",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "tickets",
+      "count": 2,
+      "pk_md5": "28bb30fda3efc33fce700b66be81e7d7",
+      "vacuous": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "e024795a0b03e1cad37b643465051738",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "7c4838a65952eeeb8de8463e06b9583d",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "artists",
+      "count": 2,
+      "pk_md5": "f0de149857f850aa05736882e3fed26a",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "attendances",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_code_tiers",
+      "count": 2,
+      "pk_md5": "4d01da56a18761f236628acf1e73e894",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_codes",
+      "count": 2,
+      "pk_md5": "9a35fea4bd1623f2008243b5cc5974ae",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "door_scan_events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_items",
+      "count": 2,
+      "pk_md5": "65f9aa79421851bdd49c62ff9ddd78e9",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_orders",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_tokens",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_media",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_parties",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "events",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "guest_list_entries",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "membership_acts",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "newsletter_subscribers",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_assignments",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_credits",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "pending_purchases",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "profiles",
+      "count": 1,
+      "pk_md5": "f6982bd9d16cf3e1342e08e2035302a2",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "rsvps",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_refunds",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_tiers",
+      "count": 2,
+      "pk_md5": "4c5c2ef976d4748b0d4f7a87d02bb053",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "tickets",
+      "count": 0,
+      "pk_md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "vacuous": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "venues",
+      "count": 2,
+      "pk_md5": "63c1b91f755cef31c983c43701a7abf1",
+      "vacuous": false
+    }
+  ],
+  "personas": [
+    {
+      "persona": "anon",
+      "resolved": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "resolved": true
+    },
+    {
+      "persona": "master/approved",
+      "resolved": true
+    },
+    {
+      "persona": "master/pending",
+      "resolved": true
+    },
+    {
+      "persona": "master/rejected",
+      "resolved": true
+    },
+    {
+      "persona": "member/approved",
+      "resolved": true
+    },
+    {
+      "persona": "member/pending",
+      "resolved": true
+    },
+    {
+      "persona": "member/rejected",
+      "resolved": true
+    },
+    {
+      "persona": "organizer/approved",
+      "resolved": true
+    },
+    {
+      "persona": "organizer/pending",
+      "resolved": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "resolved": true
+    },
+    {
+      "persona": "staff/approved",
+      "resolved": true
+    },
+    {
+      "persona": "staff/pending",
+      "resolved": true
+    },
+    {
+      "persona": "staff/rejected",
+      "resolved": true
+    }
+  ],
+  "table_row_counts": {
+    "artists": 2,
+    "attendances": 2,
+    "discount_code_tiers": 2,
+    "discount_codes": 2,
+    "door_scan_events": 2,
+    "drink_items": 2,
+    "drink_orders": 2,
+    "drink_tokens": 2,
+    "event_media": 2,
+    "event_parties": 2,
+    "events": 2,
+    "guest_list_entries": 2,
+    "membership_acts": 2,
+    "newsletter_subscribers": 2,
+    "party_assignments": 2,
+    "party_credits": 2,
+    "pending_purchases": 2,
+    "profiles": 12,
+    "rsvps": 2,
+    "ticket_refunds": 2,
+    "ticket_tiers": 2,
+    "tickets": 2,
+    "venues": 2
+  }
+}
