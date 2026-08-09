@@ -36,6 +36,15 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  * have destroyed the queue of any device hopping from 3 to 4 — rows for people
  * who paid, on a phone that is offline and cannot be audited.
  *
+ * A sixth, from version 5: **this store now remembers a verdict, and a reversal.**
+ * The door verdict for a night is resolved ONCE, when the night is opened, and
+ * read back from `meta` afterwards — never asked again per scan, which would be
+ * a round trip per person in front of a queue. And an admission reversed with
+ * the radio off is no longer deleted from the queue: it is marked, so who
+ * reversed it and when survive on the device. Both are read the same way: a
+ * verdict that is not there is `null`, meaning *not resolved*, and never
+ * *refused*.
+ *
  * Two limits that remain, unchanged and deliberate:
  * - Tickets bought after the list was downloaded are not in the cache. Offline
  *   they are admitted and flagged, never refused — refusing a valid guest
@@ -45,7 +54,7 @@ import type { DoorNotValidReason, DoorSubjectType } from "@/lib/door/outcome";
  */
 
 const DB_NAME = "resonate-checkin";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 /** The `meta` key under which this install's device id lives. */
 const DEVICE_ID_KEY = "deviceId";
@@ -61,6 +70,23 @@ const DEVICE_ID_KEY = "deviceId";
  * makes.
  */
 const ROSTER_PREDATES_ROLE_KEY = "rosterPredatesRole";
+
+/**
+ * The `meta` key prefix under which a resolved door verdict lives, **one key per
+ * night**.
+ *
+ * Per party and not one shared key, because two nights are two verdicts: an
+ * assignment is granted for a night (`party_assignments`), so somebody who may
+ * supervise night A may not supervise night B. A single key would let the
+ * verdict of the night last opened decide the night currently open, which is the
+ * same class of defect `bindNightToSubject` closes on the server side
+ * (`undo/route.ts:148`) — an authorisation for one night acting on another.
+ */
+const DOOR_AUTH_KEY_PREFIX = "doorAuth:";
+
+function doorAuthKey(partyId: string): string {
+  return `${DOOR_AUTH_KEY_PREFIX}${partyId}`;
+}
 
 /**
  * How many times a queued entry may be retried before it is recorded as failed.
@@ -80,6 +106,34 @@ export type QueuedSubjectType = "ticket" | "guest" | "membership";
 
 /** Why a queued entry can never succeed. */
 export type FailureReason = DoorNotValidReason | "unexpected_response";
+
+/**
+ * The door verdict for ONE night, as the server resolved it, cached on the
+ * device.
+ *
+ * The four fields are the payload of `doorAuth` on `/api/tickets/attendance`
+ * (`attendance/route.ts:118-127`), carried across unchanged: this store keeps
+ * what the server said, it does not derive a second opinion from it.
+ *
+ * **`validUntil` is a courtesy of the interface, never a boundary**, and the
+ * sentence is repeated here rather than assumed to have been read in
+ * `require-operator.ts:153-166`: the boundary is the server's own clock inside
+ * the SQL resolver. This device may use `validUntil` to decide **what it draws**
+ * and nothing else. `null` means the server declared no end — no expiry is
+ * invented from it.
+ *
+ * `resolvedAt` is the **server's** clock at resolution, and it is here so the
+ * device can measure the drift of its own clock instead of trusting it. Same
+ * lexicon as `scannedAt` below and as
+ * `src/app/api/membership/verify/route.ts:412`: a device clock is evidence,
+ * never authority.
+ */
+export interface CachedDoorAuth {
+  mayScan: boolean;
+  maySupervise: boolean;
+  validUntil: string | null;
+  resolvedAt: string;
+}
 
 /** A cached attendee, keyed by party **and** subject so a night is part of its identity. */
 export interface AttendeeRecord {
@@ -140,9 +194,41 @@ export interface PendingCheckin {
    * `blocked` means the session expired: kept, not retried, surfaced with a
    * sign-in prompt. Classified as failed the night's queue is discarded;
    * classified as retryable it spins forever. Neither is acceptable.
+   *
+   * `undone` is the third of the same kind: the admission was **reversed at the
+   * door with the radio off**, so it must not be reported as an admission, and
+   * it must not disappear either. Both drain readers filter by an exact value —
+   * {@link getPendingCheckins} takes `"pending"`, {@link getBlockedCheckins}
+   * takes `"blocked"` — so an `undone` entry is excluded from the drain **by
+   * construction** rather than by a check somebody could forget to write. It is
+   * counted by {@link getUndoneLocallyCount} so that "excluded" never means
+   * "invisible".
    */
-  state: "pending" | "blocked";
+  state: "pending" | "blocked" | "undone";
   lastAttemptAt?: string;
+  /**
+   * ── The admission was reversed on this device, with the radio off ──────────
+   *
+   * The three fields are {@link https://developer.mozilla.org/ | the shape}
+   * `LocallyUndoneMarker` declares in `sync-manager.ts:318-325`, which wrote the
+   * contract from the consumer's side on purpose. They are re-declared
+   * structurally here instead of imported: `sync-manager.ts` imports this
+   * module, and importing it back would be a cycle.
+   *
+   * **Why the entry is marked and not deleted.** Deleting it — what this file
+   * did until now, `undoCheckInLocally` below — means the night's record shows
+   * an evening in which the admission never happened at all: nobody ever sees
+   * that somebody was admitted and then taken back out, and
+   * `checkin-offline.md` calls the undo *«il percorso piu' semplice per far
+   * rientrare qualcuno»* and requires it to be recorded with who and when. The
+   * marker keeps who and when on the device even while no endpoint has accepted
+   * them yet.
+   */
+  undoneLocally?: true;
+  /** Device clock at the reversal. Evidence, not authority — as `scannedAt` is. */
+  undoneAt?: string;
+  /** Who reversed it, so the record can say. Never a bare "somebody". */
+  undoneBy?: string;
   /**
    * The role the roster held **at the door**, for a membership entry.
    *
@@ -454,6 +540,58 @@ function getDB(): Promise<IDBPDatabase<CheckinDB>> {
           key: ROSTER_PREDATES_ROLE_KEY,
           value: "true",
         });
+      }
+
+      if (oldVersion < 5) {
+        // ── Version 5: a step that migrates nothing, and touches NO QUEUE ────
+        //
+        // Say the important half first, in full words, because it is the whole
+        // property this step was written to have: **this step does not touch the
+        // queue store.** It does not read it, it does not rewrite a row of
+        // it, and it does not delete or re-create the store. A device arriving
+        // here can be carrying a NON-EMPTY queue — admissions for people who
+        // paid, taken at 01:40, on a phone that is offline right now and cannot
+        // be audited — and a schema upgrade that strands them is a presence lost
+        // with nobody to notice. `checkin-offline.md`, gate *coda durevole*.
+        //
+        // It can afford to do nothing structural for the same reason version 4
+        // could: everything version 5 adds is either a **new `meta` key** in a
+        // store that already exists (the per-night door verdict,
+        // {@link DOOR_AUTH_KEY_PREFIX}) or **optional fields** on records in a
+        // store that already exists (`undoneLocally` / `undoneAt` / `undoneBy`,
+        // and the third `state`). IndexedDB holds records without a schema, so
+        // an existing queue entry with no marker is a valid queue entry and one
+        // written after this release simply carries fields more.
+        //
+        // The version number is still bumped, deliberately: the shape a reader
+        // of this store may find has changed, and the version is the only
+        // versioned marker of that. It is also what makes the queue-survival
+        // proof a thing a person can perform — see `35-HUMAN-UAT.md`, which
+        // requires it be exercised on a real device with a scan already queued.
+        // That proof is NOT inherited from the version-4 one: an upgrade that
+        // stranded nothing last time is not an upgrade that strands nothing this
+        // time, and no test runner in this repository can tell the difference.
+        //
+        // The rule from the steps above holds here too and is repeated rather
+        // than assumed: **only `idb` promises are awaited inside this
+        // callback.** One await on anything else would let the `versionchange`
+        // transaction close mid-migration.
+        //
+        // Nothing is written. A device with no cached verdict reads `null` from
+        // {@link readDoorAuth}, and `null` means *not resolved* — never
+        // *refused*. Seeding a placeholder here would be exactly the collapse
+        // this plan exists to prevent, one store earlier.
+        //
+        // ── A CONSTRAINT ON THIS COMMENT, and it is not pedantry ─────────────
+        // The queue store is named "the queue store" above and never by its
+        // identifier, because the assertion for this step is a grep: the body of
+        // this block must not contain that identifier. Spelling it out to
+        // explain the property would break the check that measures the property,
+        // and this repository has the incident twice already (plan 35-07 on a
+        // `catch`, plan 35-11 on a call site). The rule that came out of both:
+        // rewrite the prose, never weaken the check. Anyone tempted to "fix" the
+        // wording here is about to disable the only thing standing between a
+        // schema bump and a lost queue.
       }
     },
   });
@@ -850,6 +988,97 @@ export async function markCheckedInLocally(
   await db.put("attendees", attendee);
 }
 
+/** What a local reversal was actually able to do. Two facts, never one boolean. */
+export interface LocalUndoResult {
+  /**
+   * There was a cached attendee row, and it no longer says checked in.
+   *
+   * `false` is **not** a failure on its own: a membership admission writes no
+   * attendee row at all ({@link checkInMemberLocally} touches only the queue), so
+   * there is nothing to revert and nothing went wrong. The field a caller should
+   * branch on is {@link reversalHeld}.
+   */
+  reverted: boolean;
+  /**
+   * There WAS a queue entry, and it now carries the reversal instead of being
+   * deleted.
+   *
+   * `false` means the admission is not in this device's queue — it was already
+   * reported, so the record on the server still says the person came in and
+   * **nothing on this device will ever say otherwise**. The caller must say that
+   * out loud: it is the difference between "reversed" and "reversed here only",
+   * and collapsing the two is the silent failure `meta-gates.md` forbids.
+   */
+  reversalHeld: boolean;
+}
+
+/**
+ * Reverse a local admission and **mark** its queue entry instead of deleting it.
+ *
+ * The counterpart of {@link undoCheckInLocally}, which deletes. Both exist, and
+ * which one a caller reaches for is the decision: deleting makes the admission
+ * never have happened, marking keeps who reversed it and when.
+ *
+ * **One transaction over both stores, and that is a change from the delete
+ * path.** That one reverted the attendee first and dropped the queue entry
+ * second, deliberately, so a throw between them left the admission still due to
+ * be reported — the recoverable failure rather than the silent one. A single
+ * `readwrite` transaction over both stores is strictly better than choosing an
+ * order: either both happen or neither does, and the caller is told which.
+ *
+ * `undoneBy` is a label this device holds, never an authorisation. The verdict
+ * that decides whether this function may be called at all is read from the
+ * cached `doorAuth` by the caller — a store cannot authorise, it can only
+ * remember what the server said.
+ */
+export async function markUndoneLocally(
+  key: string,
+  undoneBy: string
+): Promise<LocalUndoResult> {
+  const db = await getDB();
+  const now = new Date().toISOString();
+
+  const tx = db.transaction(["attendees", "pendingCheckins"], "readwrite");
+  const attendees = tx.objectStore("attendees");
+  const pending = tx.objectStore("pendingCheckins");
+
+  const attendee = await attendees.get(key);
+  if (attendee) {
+    attendee.checkedIn = false;
+    attendee.checkedInAt = undefined;
+    attendee.checkedInBy = undefined;
+    await attendees.put(attendee);
+  }
+
+  const entry = await pending.get(key);
+  if (entry) {
+    await pending.put({
+      ...entry,
+      state: "undone",
+      undoneLocally: true,
+      undoneAt: now,
+      undoneBy,
+    });
+  }
+
+  await tx.done;
+  return { reverted: attendee !== undefined, reversalHeld: entry !== undefined };
+}
+
+/**
+ * How many reversals this device is holding and nobody has accepted yet.
+ *
+ * A number, on the one screen a member of staff is looking at, because there is
+ * no error tracking in this project and an entry excluded from the drain with
+ * nothing rendering it would be an entry that does not exist. The counter is the
+ * observer.
+ */
+export async function getUndoneLocallyCount(): Promise<number> {
+  const db = await getDB();
+  const all = await db.getAll("pendingCheckins");
+  return all.filter((e) => e.state === "undone").length;
+}
+
 /** Revert a local admission and drop its queue entry. */
 export async function undoCheckInLocally(key: string): Promise<void> {
   const db = await getDB();
@@ -1111,6 +1340,85 @@ export async function rosterPredatesRole(): Promise<boolean> {
   const db = await getDB();
   const flag = await db.get("meta", ROSTER_PREDATES_ROLE_KEY);
   return flag?.value === "true";
+}
+
+/**
+ * Remember the door verdict the server resolved for ONE night.
+ *
+ * Called once, from the fetch the scanner already makes when a night is opened.
+ * It is not called from a scan path, and that is the requirement rather than a
+ * habit: asking for the verdict per scan is a round trip per person, on a phone,
+ * on a weak signal, in front of a queue.
+ *
+ * One `readwrite` transaction, the shape {@link getDeviceId} uses and for the
+ * same reason: two tabs open at once serialise on the overlapping scope instead
+ * of writing two verdicts that disagree.
+ *
+ * Stored as JSON in the `value` string the `meta` store already holds. The
+ * alternative — widening `MetaRecord.value` to a union — would change the type of
+ * a store two other keys already use, for one caller.
+ */
+export async function cacheDoorAuth(
+  partyId: string,
+  verdict: CachedDoorAuth
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction("meta", "readwrite");
+  await tx.store.put({
+    key: doorAuthKey(partyId),
+    value: JSON.stringify(verdict),
+  });
+  await tx.done;
+}
+
+/**
+ * The verdict this device holds for a night, **or `null`**.
+ *
+ * ── `null` is NOT `false`, and the return type is what keeps them apart ──────
+ *
+ * `null` means *this device has not been told*. It does not mean refused. The
+ * two are different facts and a caller that collapses them has written a refusal
+ * wearing the costume of an answer — the property `require-operator.ts:136-141`
+ * states for the server side of the same question, and the reason its fourth
+ * arm exists at all. Returning `CachedDoorAuth | null` rather than a bare
+ * boolean is the whole point: a caller cannot read `maySupervise` off a `null`
+ * by accident, it has to decide what an unanswered question means.
+ *
+ * A value that is present but not the shape written by {@link cacheDoorAuth} —
+ * a half-written record, a key from a future release — also reads as `null`.
+ * Same direction, deliberately: a payload this code cannot vouch for has not
+ * told us anything, and pretending otherwise would let a malformed string decide
+ * a supervision question.
+ */
+export async function readDoorAuth(
+  partyId: string
+): Promise<CachedDoorAuth | null> {
+  const db = await getDB();
+  const row = await db.get("meta", doorAuthKey(partyId));
+  if (!row?.value) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(row.value);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+
+  const v = parsed as Record<string, unknown>;
+  // Checked field by field rather than cast. Every one of these arrived as JSON,
+  // so nothing here is type-checked by anything but these four lines.
+  if (typeof v.mayScan !== "boolean") return null;
+  if (typeof v.maySupervise !== "boolean") return null;
+  if (typeof v.resolvedAt !== "string") return null;
+  if (v.validUntil !== null && typeof v.validUntil !== "string") return null;
+
+  return {
+    mayScan: v.mayScan,
+    maySupervise: v.maySupervise,
+    validUntil: v.validUntil,
+    resolvedAt: v.resolvedAt,
+  };
 }
 
 /** Look up a member by membership code in the offline roster. */
