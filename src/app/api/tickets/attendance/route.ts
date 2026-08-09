@@ -444,6 +444,7 @@ export async function GET(request: Request) {
   const auth = await requireDoorOperator(
     partyIdFilter ? { partyId: partyIdFilter } : undefined
   );
+
   // ── Who is admitted, and to how much ─────────────────────────────────────
   //
   // Read the admission-set paragraph above `liveDoorAssignments` before
