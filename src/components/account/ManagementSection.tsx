@@ -1,13 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import CollapsibleSection from "@/components/account/CollapsibleSection";
 
 interface ManagementSectionProps {
   role: "master" | "organizer";
 }
 
-const masterLinks = [
+/**
+ * Form 1 of plan 34-01 — the `NavItem<Route>[]` shape the Next.js docs give.
+ * The type goes on the DATA, not on the call site, so a misspelt address is a
+ * build error here rather than a 404 in somebody's Management Tools list.
+ */
+interface ManagementLink {
+  label: string;
+  href: Route;
+}
+
+const masterLinks: ManagementLink[] = [
   { label: "Events", href: "/admin/events" },
   { label: "Members", href: "/admin/members" },
   { label: "Artists", href: "/admin/artists" },
@@ -17,7 +28,7 @@ const masterLinks = [
   { label: "Analytics", href: "/admin/analytics" },
 ];
 
-const organizerLinks = [
+const organizerLinks: ManagementLink[] = [
   { label: "Events", href: "/organizer/events" },
   { label: "Members", href: "/organizer/members" },
   { label: "Artists", href: "/organizer/artists" },

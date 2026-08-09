@@ -141,7 +141,10 @@ function RegisterForm() {
 
         <p className="mt-6 text-center text-sm text-muted">
           Already have an account?{" "}
-          <Link href={`/login${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""}`} className="text-accent hover:text-accent-hover">
+          {/* Form 2 of plan 34-01 — see the twin in `login/page.tsx`. Same two
+              strings as before; the ternary is what keeps each branch a
+              literal instead of widening to `/login${string}`. */}
+          <Link href={nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : "/login"} className="text-accent hover:text-accent-hover">
             Sign In
           </Link>
         </p>

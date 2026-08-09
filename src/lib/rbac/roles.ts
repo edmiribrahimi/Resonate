@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import type { UserRole, UserStatus } from "@/types/database";
 
 // Re-export types for convenience
@@ -24,7 +25,14 @@ export const STATUSES = {
 
 // Navigation item shape
 export interface NavItem {
-  href: string;
+  /**
+   * Typed as `Route` rather than `string` by plan 34-01 — form 1, the
+   * `NavItem<Route>[]` shape the Next.js docs give. `MobileNav` hands this
+   * straight to `<Link>`, so without the type here a nav entry could point at
+   * an address that does not exist and nothing would say so until a member
+   * tapped it.
+   */
+  href: Route;
   label: string;
   icon: string;
   /** Minimum roles required (null = visible to everyone including unauthenticated) */

@@ -14,6 +14,7 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  typedRoutes: true,
   turbopack: {},
   images: {
     remotePatterns: [
