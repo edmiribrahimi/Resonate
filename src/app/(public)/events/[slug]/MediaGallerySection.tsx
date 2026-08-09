@@ -11,12 +11,21 @@ interface MediaGallerySectionProps {
   media: MediaGridItem[];
   canUpload: boolean;
   eventId: string;
+  /**
+   * The nights this viewer may upload to, resolved on the server
+   * (`page.tsx`, the `uploadableParties` block). Carried through untouched: this
+   * component is a pass-through and decides nothing about permission —
+   * `nextjs-architecture.md`, gate *gruppo = pubblico*: a shared component
+   * receives its permissions as input, it does not work them out.
+   */
+  uploadableParties: { id: string; title: string; date: string }[];
 }
 
 export default function MediaGallerySection({
   media,
   canUpload,
   eventId,
+  uploadableParties,
 }: MediaGallerySectionProps) {
   const [selectedItem, setSelectedItem] = useState<MediaGridItem | null>(null);
   const router = useRouter();
@@ -54,6 +63,7 @@ export default function MediaGallerySection({
         <div className="mt-4">
           <MediaUpload
             eventId={eventId}
+            uploadableParties={uploadableParties}
             onUploadComplete={handleUploadComplete}
           />
         </div>

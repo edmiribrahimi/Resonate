@@ -1,5 +1,62 @@
 "use client";
 
+/**
+ * The upload box, and the two things it stopped being able to do.
+ *
+ * It no longer writes to the **public** bucket, and it no longer uploads without
+ * naming a night. Both were true until plan 35-21; the first is the reason the
+ * metadata strip could be walked around, the second is the reason a per-night
+ * assignment granted a power nobody could spend.
+ *
+ * ── The shape of one upload, and why it is three steps and not one ───────────
+ *
+ *   1. deposit the file in `event-media-quarantine` — a PRIVATE bucket with no
+ *      read policy for anybody (`20260809004600`, section 3);
+ *   2. `POST /api/media/finalize`, which authorises on the night, strips the
+ *      metadata and writes the stripped bytes to the public bucket with the
+ *      service role;
+ *   3. only on its `ok`, `registerMedia(...)` with the key that route returned.
+ *
+ * The bytes do not travel through step 2's request. A Vercel Function refuses a
+ * body over **4.5 MB** with `FUNCTION_PAYLOAD_TOO_LARGE`, and this component
+ * accepts photos up to 50 MB — the reasoning and the source are in the header of
+ * `src/app/api/media/finalize/route.ts`.
+ *
+ * ── The window this component does NOT close ─────────────────────────────────
+ *
+ * Writing to the quarantine bucket removes the *product's* path to the public
+ * one. It does not remove *the* path: until
+ * `supabase/migrations/20260809006000_event_media_server_upload_only.sql` is
+ * applied by hand — row 15 of the queue in `35-HUMAN-UAT.md`, the one row that
+ * is applied AFTER the deploy — any approved session can still write straight
+ * into `event-media` from a browser console and skip the strip entirely. The
+ * door is `20260225120000_phase7_media.sql:70-77`. This file changing is not
+ * that row being applied, and nobody should read it as such.
+ *
+ * ── Refusals are sentences, one per cause ────────────────────────────────────
+ *
+ * There is **no error tracking in this product** (`meta-gates.md`), so a
+ * `console.error` here reaches a log nobody reads: this screen is the only place
+ * a failure becomes observable at all. `/api/media/finalize` answers with a
+ * **category as a value** — seventeen of them — precisely so that this component
+ * can say seventeen different things instead of one. Collapsing them would undo
+ * that work at the last inch and would re-enact the recorded newsletter defect
+ * (`.planning/codebase/CONCERNS.md`).
+ *
+ * The two Server Actions are a different case and are handled differently on
+ * purpose: Next **redacts** the message of an error thrown out of a Server Action
+ * in a production build (`35-PATTERNS.md` S3), so their category cannot be read
+ * from `err.message`. They are separated **by position** instead — which call in
+ * the sequence threw — which is a real distinction that survives the redaction.
+ * Nothing in this file parses an error message.
+ *
+ * ── Language ─────────────────────────────────────────────────────────────────
+ *
+ * The copy is English, like every other user-facing string in this product
+ * (measured: no Italian string exists anywhere under `src/`). A half-Italian
+ * upload box inside an English application is a defect, not a translation.
+ */
+
 import { useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { validateMediaUpload, registerMedia } from "@/app/(public)/events/[slug]/actions";
@@ -13,6 +70,78 @@ const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 
 const ACCEPT_STRING = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
 
+/**
+ * Where the bytes land FIRST, and the only bucket this component may name.
+ *
+ * The public bucket `event-media` is deliberately absent from this file — the
+ * structural check `npm run verify:media-strip` fails if it reappears here, and
+ * that check is the guard against a second writer growing back later.
+ */
+const QUARANTINE_BUCKET = "event-media-quarantine";
+
+/**
+ * One sentence per way the finalize route can say no.
+ *
+ * Written as a `Record` over the categories that route exports as values, so
+ * that adding a category upstream and forgetting it here degrades to the
+ * fallback below — which still prints the raw category — rather than to a shared
+ * message that hides which of the seventeen happened.
+ *
+ * The two the plan asks to be spelled out in full are the strip failure and the
+ * video-on-a-secret-night refusal: those are the two a member will actually
+ * meet, and both are cases where "upload failed, try again" would be a lie.
+ */
+const FINALIZE_REASON_TEXT: Record<string, string> = {
+  // Refusals of the person, or of what they sent.
+  "media_finalize.unauthenticated":
+    "your session expired before the file was published -- sign in and try again.",
+  "media_finalize.malformed_request":
+    "the upload request was malformed, so nothing was published. This is a bug in the app, not something you did.",
+  "media_finalize.path_not_yours":
+    "that file does not belong to your session, so it was not published.",
+  "media.party_not_of_event":
+    "the night you picked belongs to a different event, so the file was not published.",
+  "forbidden.media_upload_required":
+    "you are not allowed to upload to that night. A photo assignment covers one night only.",
+
+  // The question could not be answered. NOT a refusal of the person.
+  "media_finalize.permission_unresolved":
+    "we could not check your permission for that night, so nothing was published. Your file is still held -- try again in a moment.",
+  "media_finalize.source_unreadable":
+    "we could not read the file back from the holding area, so nothing was published. Your file is still held -- try again in a moment.",
+  "media_finalize.publish_failed":
+    "the file could not be written to the gallery. Your file is still held -- try again in a moment.",
+  "media_finalize.unexpected":
+    "something we did not anticipate went wrong, so nothing was published. Your file is still held -- try again in a moment.",
+
+  // Terminal, and each says what it actually means.
+  "media_finalize.source_missing":
+    "the uploaded file was no longer in the holding area, so nothing was published. Select it again.",
+  "media_finalize.type_not_accepted":
+    "that file type is not accepted, so it was not published.",
+  "media_finalize.container_mismatch":
+    "the file's contents do not match the type it claims to be, so it was not published.",
+  "media_finalize.video_on_secret_night":
+    "videos are not allowed on this night. Its venue is secret, and we cannot strip a video's location data -- photos are fine.",
+  "media_finalize.already_published":
+    "a file already exists at that name in the gallery, so this one was not published. Try uploading it again.",
+
+  // The stripper's three, owned by `src/lib/media/strip-metadata.ts`.
+  "media_strip.unsupported_type":
+    "this image type cannot have its metadata stripped, so it was not uploaded.",
+  "media_strip.tool_unavailable":
+    "the tool that removes location data from photos is unavailable, so the file was NOT uploaded. Your file is still held -- try again in a moment.",
+  "media_strip.failed":
+    "stripping the photo's metadata failed, so the file was NOT uploaded. A photo taken at a secret venue carries its coordinates, so we would rather lose the upload than publish them.",
+};
+
+/** A night this viewer may upload to. Resolved on the server, never here. */
+export interface UploadableParty {
+  id: string;
+  title: string;
+  date: string;
+}
+
 interface SelectedFile {
   file: File;
   preview: string;
@@ -22,7 +151,32 @@ interface SelectedFile {
 
 interface MediaUploadProps {
   eventId: string;
+  /**
+   * The nights this viewer may upload to, resolved by
+   * `hasCapability(CAP.MEDIA_UPLOAD, { partyId })` on the server for each night
+   * of the event (`events/[slug]/page.tsx`). This list is a **convenience, not a
+   * boundary**: it lives in the browser, so it can be edited. Every night named
+   * here is re-checked by `validateMediaUpload`, by `/api/media/finalize` and by
+   * `registerMedia`, each against the same one predicate.
+   */
+  uploadableParties: UploadableParty[];
   onUploadComplete?: () => void;
+}
+
+/** `2026-10-10` -> `Sat 10 Oct`. Local formatting only; nothing is parsed back. */
+function formatNightDate(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/** The label a night carries in the picker and in the single-night line. */
+function nightLabel(party: UploadableParty): string {
+  return `${party.title} -- ${formatNightDate(party.date)}`;
 }
 
 function formatFileSize(bytes: number): string {
@@ -46,14 +200,39 @@ function getFileExtension(file: File): string {
   return mimeMap[file.type] || "bin";
 }
 
-export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadProps) {
+export default function MediaUpload({
+  eventId,
+  uploadableParties,
+  onUploadComplete,
+}: MediaUploadProps) {
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Map<number, "pending" | "uploading" | "done" | "error">>(new Map());
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<{ name: string; message: string }[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Which night, and why there is no preselection ──────────────────────────
+  //
+  // With more than one night the picker starts EMPTY and the upload button stays
+  // disabled until a night is chosen. Preselecting would make the common case
+  // "the night chosen by inattention", and a photograph filed under the wrong
+  // night is not a cataloguing slip when one of those nights happens inside a
+  // venue whose address is still secret.
+  //
+  // With exactly one night there is no picker: it is used, and it is NAMED on
+  // screen, so nobody uploads without seeing where the file is going.
+  //
+  // With zero nights the control does not render. `canUpload` should have been
+  // false upstream, so arriving here means a permission question went
+  // unanswered — an error state with its own sentence, never a mute box
+  // (`nextjs-architecture.md`, gate *stato vuoto e d'errore*).
+  const soleParty = uploadableParties.length === 1 ? uploadableParties[0] : null;
+  const [selectedPartyId, setSelectedPartyId] = useState<string>(soleParty?.id ?? "");
+  const selectedParty =
+    uploadableParties.find((p) => p.id === selectedPartyId) ?? null;
 
   const validateFile = useCallback((file: File): { valid: boolean; type: "photo" | "video"; error?: string } => {
     const isPhoto = ALLOWED_PHOTO_TYPES.includes(file.type);
@@ -76,6 +255,7 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     setError(null);
+    setFileErrors([]);
     setSuccessMessage(null);
     const fileArray = Array.from(newFiles);
     const errors: string[] = [];
@@ -125,28 +305,46 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
   const handleUpload = async () => {
     if (files.length === 0 || uploading) return;
 
+    // The night is required by every layer below, so it is required here too --
+    // and refused with its own sentence rather than a disabled button that
+    // explains nothing.
+    const partyId = selectedPartyId;
+    if (!partyId) {
+      setError("Pick which night these files are from before uploading.");
+      return;
+    }
+
     setUploading(true);
     setError(null);
+    setFileErrors([]);
     setSuccessMessage(null);
 
-    // Step 1: Validate upload permission
+    // ── Step 1: may this session upload to THIS night? ────────────────────────
+    //
+    // Position, not message: a throw here is the permission question, and it is
+    // the only thing this catch can mean. Next redacts the message in
+    // production, so `err.message` is not read.
     let userId: string;
     try {
-      const result = await validateMediaUpload(eventId);
+      const result = await validateMediaUpload(eventId, partyId);
       userId = result.userId;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload validation failed");
+    } catch (cause) {
+      console.error("[media_upload.validate_failed] permission check threw", cause);
+      setError(
+        "We could not confirm you may upload to that night, so nothing was uploaded. " +
+          "If you were assigned to a different night, pick that one."
+      );
       setUploading(false);
       return;
     }
 
-    // Step 2: Upload each file
+    // ── Step 2: quarantine -> finalize -> register, per file ──────────────────
     const supabase = createClient();
     const progressMap = new Map<number, "pending" | "uploading" | "done" | "error">();
     files.forEach((_, i) => progressMap.set(i, "pending"));
     setUploadProgress(new Map(progressMap));
 
-    let allSucceeded = true;
+    const failures: { name: string; message: string }[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const selectedFile = files[i];
@@ -154,31 +352,126 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
       setUploadProgress(new Map(progressMap));
 
       const ext = getFileExtension(selectedFile.file);
-      const storagePath = `${eventId}/${userId}/${Date.now()}-${i}.${ext}`;
+      // The SAME key scheme as before. `/api/media/finalize` requires exactly
+      // three segments, the first two being this event and the caller's own id,
+      // and publishes the stripped bytes under the same key.
+      const quarantinePath = `${eventId}/${userId}/${Date.now()}-${i}.${ext}`;
 
-      try {
-        const { error: uploadError } = await supabase.storage
-          .from("event-media")
-          .upload(storagePath, selectedFile.file);
+      // 2a. Deposit into the PRIVATE bucket. Nothing is reachable from here:
+      //     `20260809004600` grants no read policy to anybody, deliberately.
+      const { error: depositError } = await supabase.storage
+        .from(QUARANTINE_BUCKET)
+        .upload(quarantinePath, selectedFile.file, {
+          contentType: selectedFile.file.type,
+        });
 
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Register in DB
-        await registerMedia(eventId, storagePath, selectedFile.type, selectedFile.file.size);
-
-        progressMap.set(i, "done");
-        setUploadProgress(new Map(progressMap));
-      } catch (err) {
+      if (depositError) {
         progressMap.set(i, "error");
         setUploadProgress(new Map(progressMap));
-        allSucceeded = false;
-        console.error(`Upload failed for ${selectedFile.file.name}:`, err);
+        console.error(
+          `[media_upload.deposit_failed] ${QUARANTINE_BUCKET} write refused`,
+          depositError
+        );
+        failures.push({
+          name: selectedFile.file.name,
+          message:
+            "the file could not be placed in the holding area, so it was never published. Nothing left your device's control.",
+        });
+        continue;
+      }
+
+      // 2b. The ONLY path to the public bucket. It authorises on the night,
+      //     strips the metadata and writes the result with the service role.
+      let finalizedPath: string;
+      try {
+        const response = await fetch("/api/media/finalize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            partyId,
+            quarantinePath,
+            mimeType: selectedFile.file.type,
+            fileSize: selectedFile.file.size,
+          }),
+        });
+
+        const payload: unknown = await response.json().catch(() => null);
+        const ok =
+          typeof payload === "object" &&
+          payload !== null &&
+          (payload as { ok?: unknown }).ok === true;
+
+        if (!response.ok || !ok) {
+          // The category arrives as a VALUE, which is the whole reason the route
+          // answers this way. An unknown category still prints itself rather
+          // than melting into a shared sentence -- a category nobody wrote a line
+          // for must remain identifiable on the screen.
+          const reason =
+            typeof payload === "object" &&
+            payload !== null &&
+            typeof (payload as { reason?: unknown }).reason === "string"
+              ? (payload as { reason: string }).reason
+              : `http_${response.status}`;
+          const text =
+            FINALIZE_REASON_TEXT[reason] ??
+            `it was refused with an unrecognised reason (${reason}), so it was not published.`;
+          progressMap.set(i, "error");
+          setUploadProgress(new Map(progressMap));
+          console.error(`[${reason}] media finalize refused for one file`);
+          failures.push({ name: selectedFile.file.name, message: text });
+          continue;
+        }
+
+        const path = (payload as { path?: unknown }).path;
+        if (typeof path !== "string" || path === "") {
+          throw new Error("finalize.missing_path");
+        }
+        finalizedPath = path;
+      } catch (cause) {
+        // A network fault or an unreadable answer. Distinct from every refusal
+        // above, because the file may or may not have been published and the
+        // person deserves to be told which uncertainty they are in.
+        progressMap.set(i, "error");
+        setUploadProgress(new Map(progressMap));
+        console.error("[media_upload.finalize_unreachable]", cause);
+        failures.push({
+          name: selectedFile.file.name,
+          message:
+            "we could not reach the server that publishes it, so it may or may not have gone through. Refresh the page before trying again.",
+        });
+        continue;
+      }
+
+      // 2c. The row, with the night. Only now, and only with the key the route
+      //     returned.
+      try {
+        await registerMedia(
+          eventId,
+          partyId,
+          finalizedPath,
+          selectedFile.type,
+          selectedFile.file.size
+        );
+        progressMap.set(i, "done");
+        setUploadProgress(new Map(progressMap));
+      } catch (cause) {
+        progressMap.set(i, "error");
+        setUploadProgress(new Map(progressMap));
+        console.error("[media_upload.register_failed] row insert threw", cause);
+        // Distinguished by POSITION from 2b: the bytes ARE published, only the
+        // row is missing. Saying "upload failed" here would be false, and the
+        // difference matters -- the file exists in the gallery bucket and an
+        // organizer cannot see it to moderate it.
+        failures.push({
+          name: selectedFile.file.name,
+          message:
+            "it was published but could not be recorded, so it will not appear in the gallery. Tell an organizer rather than uploading it again.",
+        });
       }
     }
 
-    if (allSucceeded) {
+    if (failures.length === 0) {
       // Clean up previews
       files.forEach((f) => URL.revokeObjectURL(f.preview));
       setFiles([]);
@@ -186,14 +479,70 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
       setSuccessMessage("Media uploaded! It will appear after organizer approval.");
       onUploadComplete?.();
     } else {
-      setError("Some files failed to upload. You can retry the failed ones.");
+      // One line per file, each carrying its own cause. There is deliberately no
+      // single summary sentence: a shared message is the recorded newsletter
+      // defect, and it is the exact thing seventeen server-side categories exist
+      // to avoid.
+      setFileErrors(failures);
+      if (failures.length < files.length) onUploadComplete?.();
     }
 
     setUploading(false);
   };
 
+  // Zero nights, with the box rendered anyway: `canUpload` was true on some
+  // other ground while no night resolved. It is a distinguishable ERROR STATE,
+  // never a mute control -- and never a drop zone that accepts files it cannot
+  // send anywhere.
+  if (uploadableParties.length === 0) {
+    return (
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+        <p className="text-sm text-amber-300">
+          Uploads are unavailable here right now: we could not work out which
+          night a file would belong to. Reload the page, and tell an organizer if
+          it keeps happening.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {/* ── Which night ──────────────────────────────────────────────────────
+          One night: named, never a silent default. Several: an empty picker,
+          because a preselected night is a night chosen by inattention. */}
+      {soleParty ? (
+        <p className="text-sm text-muted">
+          Uploading to <span className="text-fg">{nightLabel(soleParty)}</span>
+        </p>
+      ) : (
+        <div>
+          <label
+            htmlFor="media-upload-night"
+            className="mb-1 block text-sm text-muted"
+          >
+            Which night are these from?
+          </label>
+          <select
+            id="media-upload-night"
+            className="w-full rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-fg"
+            value={selectedPartyId}
+            onChange={(e) => {
+              setSelectedPartyId(e.target.value);
+              setError(null);
+            }}
+            disabled={uploading}
+          >
+            <option value="">Select a night...</option>
+            {uploadableParties.map((party) => (
+              <option key={party.id} value={party.id}>
+                {nightLabel(party)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Drop zone */}
       <div
         className={`relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
@@ -244,6 +593,21 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
           <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Per-file refusals: one line per file, each with its own cause.
+          Deliberately NOT summarised into a single sentence -- see the header. */}
+      {fileErrors.length > 0 && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+          <ul className="space-y-1">
+            {fileErrors.map((failure, index) => (
+              <li key={`${failure.name}-${index}`} className="text-sm text-red-400">
+                <span className="font-medium">{failure.name}</span> --{" "}
+                {failure.message}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -323,16 +687,26 @@ export default function MediaUpload({ eventId, onUploadComplete }: MediaUploadPr
             })}
           </div>
 
-          {/* Upload button */}
+          {/* Upload button. Disabled until a night is named -- and the reason is
+              written next to it, because a control that refuses without saying
+              why is the same silent failure in a nicer shape. */}
           {!uploading && (
-            <button
-              type="button"
-              className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-              onClick={handleUpload}
-              disabled={files.length === 0}
-            >
-              Upload {files.length} {files.length === 1 ? "file" : "files"}
-            </button>
+            <>
+              <button
+                type="button"
+                className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+                onClick={handleUpload}
+                disabled={files.length === 0 || !selectedParty}
+              >
+                Upload {files.length} {files.length === 1 ? "file" : "files"}
+                {selectedParty ? ` to ${selectedParty.title}` : ""}
+              </button>
+              {!selectedParty && (
+                <p className="text-center text-xs text-muted">
+                  Pick a night above to enable the upload.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

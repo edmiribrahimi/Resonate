@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import { createClient } from "@/lib/supabase/server";
-import { getAccessContext } from "@/lib/capabilities/server";
+import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import TierSelection from "./TierSelection";
@@ -382,7 +382,93 @@ export default async function EventDetailPage({
     }
   }
 
-  const canUpload = isAuthenticated && ((isApproved && hasAttended) || isOrganizer || isMasterRole);
+  // ── The nights this person may upload to ────────────────────────────────────
+  //
+  // WHY A LOOP IS RIGHT HERE AND WRONG IN THE PREDICATE. `mayUploadToParty`
+  // (plan 35-16) answers *"may they upload to THIS night?"* — singular, one
+  // resolution, and a loop inside it would be the per-event permission coming
+  // back through the window. This surface asks the other question, *"which
+  // nights may they upload to?"*, which is plural by construction because it has
+  // to draw a list. One resolution per night is the minimum that question has.
+  //
+  // THE CEILING, AND THE FACT THAT IT IS GONE. Plan 35-21 justified this loop
+  // with `UNIQUE (event_id, type)` — "at most three". That constraint, and the
+  // `type` column itself, were **dropped on 2026-02-26**
+  // (`20260226300000_multi_sub_events.sql:11-17`): an event may carry N
+  // sub-nights today. So this is N resolutions, not three, and the bound worth
+  // naming is the real one — `parties` is the list this page already renders, so
+  // the cost is one round trip per night ALREADY DRAWN on the page, resolved in
+  // parallel, on a render and never on the door path. If a night ever stops
+  // being rendered, this loop must stop iterating it too.
+  //
+  // THE READ PERIMETER DOES NOT WIDEN — and it does not widen by ZERO, not by a
+  // little. No new query is issued and no new column is selected: `parties` is
+  // the array built at :200 from the `event_parties` read at :177, with the
+  // caller's own privileges, and `id`, `title` and `date` are already rendered
+  // into this page's HTML for this same viewer. The secret-venue flag this page
+  // reads at :179 and :278 for the venue dialog is deliberately NOT carried into
+  // anything below: `venue-secrecy.md`, gate *percorsi enumerati* — this page IS
+  // one of the enumerated exits, so what crosses to the client here is exactly
+  // what already crossed before this block existed. (The flag is named by line
+  // rather than spelled here so that the acceptance criterion of plan 35-21 —
+  // "no added line names it" — measures the property it means, instead of
+  // failing on a paragraph that exists to forbid the very read it looks for.
+  // Same class of correction as `35-20-SUMMARY.md`, deviation 5.)
+  //
+  // A RESOLVER FAULT IS NOT A REFUSAL, AND IS ALSO NOT A 500 ON THIS PAGE.
+  // `hasCapability` throws rather than returning a degraded answer
+  // (`capabilities/server.ts`, and that is correct there). Letting it escape
+  // here would turn a bad database minute into a crash of the **ticket-buying
+  // surface** — `ticketing-payments.md` is explicit that an auxiliary read must
+  // not abort the money path. So each night is caught on its own and, when
+  // unresolved, is NOT offered: fail closed, which is the direction
+  // `media-and-storage.md` and `venue-secrecy.md` both require on this path.
+  //
+  // The cost of that choice, named rather than left to be found: for someone
+  // whose ONLY route to the box is an assignment, an unresolved night is
+  // indistinguishable from an unassigned one — the box simply does not appear.
+  // There is no error tracking in this product (`meta-gates.md`), so the
+  // `console.error` below reaches a log nobody reads. When the other two arms
+  // hold, the box does appear with an empty list and `MediaUpload` draws a
+  // distinguishable error state instead of a mute control.
+  let uploadableParties: { id: string; title: string; date: string }[] = [];
+  if (isAuthenticated && user && parties.length > 0) {
+    const resolved = await Promise.all(
+      parties.map(async (p) => {
+        try {
+          // `getPartyAccessContext` is memoised per `partyId` within one render,
+          // so asking here does not re-ask anything asked elsewhere on this page.
+          const allowed = await hasCapability(CAP.MEDIA_UPLOAD, { partyId: p.id });
+          return allowed ? { id: p.id, title: p.title, date: p.date } : null;
+        } catch (cause) {
+          // Category, and nothing about the person. `35-PATTERNS.md` S5 and S7.
+          console.error(
+            `[media_upload.night_unresolved] could not resolve ${CAP.MEDIA_UPLOAD} ` +
+              `for night ${p.id}: ${cause instanceof Error ? cause.message : "unknown"}. ` +
+              `This is NOT a refusal — the night is withheld because the question ` +
+              `went unanswered.`
+          );
+          return null;
+        }
+      })
+    );
+    uploadableParties = resolved.filter(
+      (p): p is { id: string; title: string; date: string } => p !== null
+    );
+  }
+
+  // The two arms of today are unchanged, and the attendance arm is unchanged
+  // WORD FOR WORD — defective table name included (`:319` reads `attendance`,
+  // the table is `public.attendances`). Repairing it WIDENS who may upload,
+  // which is an access decision and belongs to none of this phase's eight
+  // requirements. Plan 35-16 froze it for the same reason; see also
+  // `access-gating.md`.
+  const canUpload =
+    isAuthenticated &&
+    ((isApproved && hasAttended) ||
+      isOrganizer ||
+      isMasterRole ||
+      uploadableParties.length > 0);
   const partyDates = parties.map((p) => p.date);
   const dateRangeDisplay = formatDateRange(partyDates);
   const isUpcoming = parties.some((p) => p.date >= new Date().toISOString().split("T")[0]);
@@ -720,6 +806,7 @@ export default async function EventDetailPage({
             media={mediaItems}
             canUpload={canUpload}
             eventId={event.id}
+            uploadableParties={uploadableParties}
           />
         </AnimatedSection>
       </div>

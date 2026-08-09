@@ -15,41 +15,32 @@ import {
 // =============================================================
 
 /**
- * ── The night is a parameter of BOTH actions, and it is TRAILING and OPTIONAL
- *    only for as long as one caller has not been rewritten ────────────────────
+ * ── The night is the SECOND parameter of both actions, and it is REQUIRED ─────
  *
- * Plan 35-16 specifies `registerMedia(eventId, partyId, storagePath, type,
- * fileSize)` — the night second, required. It is written here as a **trailing
- * optional parameter instead**, and the reason is mechanical rather than
- * stylistic: the single caller of both actions today is
- * `src/components/media/MediaUpload.tsx`, which is rewritten by **plan 35-21,
- * two waves later**. A required parameter added now is `TS2554` on that file,
- * `npm run build` red, and a red tree handed to the plans of the wave in
- * between — a failure that is nobody's to fix where it appears.
+ * Plan 35-16 wrote it trailing and optional, deliberately and temporarily: its
+ * only caller — `src/components/media/MediaUpload.tsx` — belonged to plan 35-21,
+ * two waves later, and a required parameter added then would have been a
+ * `TS2554` on that file and a red tree handed to a wave that did not break it.
+ * The paragraph it left here named the debt and named who owed it.
  *
- * **The optionality costs the gate nothing, and here is why.** A Server Action
- * parameter's type is not a boundary: the client sends whatever it likes over
- * the wire, so an absent night has to be refused AT RUNTIME under either
- * signature. Both actions therefore refuse a missing night with
- * `MEDIA_NIGHT_REQUIRED` before asking any permission question. There is no
- * branch on which the absence of a night is tolerated — tolerating it would make
- * the whole gate bypassable by omitting an argument, which is the one shape this
- * plan exists to prevent.
+ * **Plan 35-21 has now rewritten that caller, so the debt is paid here.** The
+ * signature is the one 35-16 specified: `registerMedia(eventId, partyId,
+ * storagePath, type, fileSize)`, night second, night required. `TS2554` is now
+ * the *desired* behaviour — a future caller that forgets the night does not
+ * compile.
  *
- * **The consequence, declared instead of discovered:** from this commit until
- * plan 35-21 ships, `MediaUpload.tsx` names no night, so **every upload refuses
- * — organizer and master included**. Today that is the only working upload path
- * (see the presence-arm paragraph in `@/lib/media/may-upload`), so this is a
- * real, temporary, in-phase regression. It is the fail-closed direction, it
- * never reaches production alone (the phase deploys as one), and it mirrors what
- * the database will do anyway: `20260809004500` refuses a row without a night
- * with `23514`.
+ * **The runtime refusal stays, and removing it would be the mistake.** A Server
+ * Action parameter's type is not a boundary: the client sends whatever it likes
+ * over the wire, so an absent or empty night must be refused AT RUNTIME under
+ * any signature. Both actions still refuse with `MEDIA_NIGHT_REQUIRED` before
+ * asking any permission question. The type stops an honest caller from
+ * forgetting; the runtime check stops a dishonest one from omitting.
  *
- * **What plan 35-21 owes:** pass the night from `MediaGallerySection` through
- * `MediaUpload`, then move `partyId` to the position the plan names and make it
- * required. Its own acceptance criteria already grep `MediaUpload.tsx` for
- * `partyId`, so the first half is mechanically asserted by the plan that owns
- * the file; the second half is this paragraph's job to remember.
+ * **The window 35-16 declared is closed by this commit.** Between wave 6 and
+ * this one, every upload refused — organizer and master included — because no
+ * caller named a night (`deferred-items.md`, item 9). From here uploads work
+ * again, and they land in the **quarantine** bucket first: the browser no longer
+ * writes to the public one.
  */
 
 /**
@@ -79,15 +70,25 @@ import {
  * on the client, where they arrive as one redacted message. Carrying a category
  * to the client requires a **tagged value decided by position** — a discriminated
  * result — and that is a change to this function's return type, which its one
- * caller destructures. Plan 35-21 rewrites that caller and owns the conversion;
- * doing it here would be the red build described above.
+ * caller destructures.
+ *
+ * **Plan 35-21 rewrote that caller and did NOT convert the return type, which is
+ * a decision and not an omission.** Its caller now distinguishes these outcomes
+ * **by position** — which call in the sequence threw — and shows a different
+ * sentence for each, which is what `35-PATTERNS.md` S3 asks for and what the
+ * seventeen categories of `/api/media/finalize` deliver as a *value* rather than
+ * a message. Converting this action to a discriminated result would add a third
+ * spelling of the same categories for the two questions position already
+ * separates. If a future caller needs finer granularity than "permission" versus
+ * "registration", THAT is the change to make, and it is a change to this return
+ * type, not to a string.
  *
  * One further honesty: the two sub-reasons the deleted code distinguished ("not
  * approved" and "no attendance record") are both inside the predicate's presence
  * arm now and both surface as `forbidden.media_upload_required`. The predicate
  * answers yes or no; the arm that said no is in the code, not in the message.
  */
-export async function validateMediaUpload(eventId: string, partyId?: string) {
+export async function validateMediaUpload(eventId: string, partyId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -132,13 +133,29 @@ export async function validateMediaUpload(eventId: string, partyId?: string) {
  * `event_media_require_party` refuses with `23514` even on the service
  * connection (`20260809004500`, section 4) — that is the net **under** the code,
  * not the place the rule lives.
+ *
+ * ── `storagePath` no longer names bytes the browser wrote ────────────────────
+ *
+ * Since plan 35-21 the caller does not write to `event-media` at all: it deposits
+ * into the private `event-media-quarantine` bucket and then calls
+ * `POST /api/media/finalize`, which authorises, strips the metadata and writes
+ * the stripped bytes to the public bucket. `storagePath` is the key **that route
+ * returned**, and the row is written only after it answered `ok`.
+ *
+ * This action still does not verify that an object exists at that key, and that
+ * is unchanged rather than newly accepted: a row pointing at nothing renders a
+ * broken image in a moderation queue, which is visible, whereas the reverse —
+ * bytes in the public bucket with no row — is the invisible one, and it is the
+ * one `/api/media/finalize` is built to make rare. The window between a
+ * successful publish and this insert is named in `35-20-SUMMARY.md`,
+ * constatazione 3.
  */
 export async function registerMedia(
   eventId: string,
+  partyId: string,
   storagePath: string,
   type: "photo" | "video",
-  fileSize: number,
-  partyId?: string
+  fileSize: number
 ) {
   const supabase = await createClient();
   const {
