@@ -1,0 +1,99 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- The browser loses its write on the public media bucket
+--
+-- ── PER CHI STA PER APPLICARLA A MANO (riga 15 della coda) ───────────────────
+--
+-- Questo blocco e' in italiano, e non per gusto: la coda che porta qui —
+-- `.planning/phases/35-per-night-assignments/35-HUMAN-UAT.md` — e' in italiano,
+-- e chi apre questo file lo apre venendo da li'. Il resto del file segue la
+-- lingua delle altre migration di questa fase, che e' l'inglese.
+--
+--   * **Questa riga si applica DOPO il deploy del codice di questa fase.** E'
+--     l'unica della coda che rompe la regola «migration prima, codice dopo», e
+--     la rompe in una sola direzione: applicarla PRIMA lascerebbe i caricamenti
+--     dei membri rotti fino al deploy, perche' il codice vecchio scrive ancora
+--     dal browser; applicarla DOPO lascia aperta, per la durata del deploy, la
+--     stessa porta che e' aperta oggi. Fra un peggioramento e uno stato
+--     invariato si sceglie lo stato invariato.
+--
+--   * **Finche' questa riga non e' applicata, la spoglia dei metadati e'
+--     aggirabile.** Chiunque abbia una sessione di membro approvato puo'
+--     scrivere direttamente nel bucket pubblico `event-media` saltando
+--     `/api/media/finalize`, e quindi pubblicare una foto con dentro le
+--     coordinate GPS di dove e' stata scattata. Su una serata con sede segreta
+--     quella e' una rivelazione, e una rivelazione non si annulla.
+--
+-- ── READ THIS BEFORE APPLYING IT. THIS FILE IS AN EXCEPTION TO THE ORDER ─────
+--
+-- Every other migration in this repository is applied BEFORE the code that
+-- needs it. **This one is applied AFTER the deploy of this phase's code**, and
+-- it is the only row of the queue in `35-HUMAN-UAT.md` (row 15) that inverts
+-- that rule.
+--
+-- The inversion is a decision, not an oversight, and the reasoning is short
+-- enough to check:
+--
+--   * Applying it BEFORE the deploy breaks member uploads until the deploy
+--     lands, because the code in production still writes to `event-media`
+--     straight from the browser. That is a real worsening, for a real window.
+--   * Applying it AFTER the deploy leaves open, for the length of the deploy,
+--     **exactly the door that is open today**. It worsens nothing relative to
+--     the current state.
+--
+-- Between a temporary worsening and an unchanged state, the unchanged state
+-- wins — and it is declared here rather than discovered by whoever is halfway
+-- through the queue.
+--
+-- ── AND THE SENTENCE THAT IS THE REASON THIS FILE EXISTS ─────────────────────
+--
+-- **UNTIL THIS ROW IS APPLIED, THE METADATA STRIP IS BYPASSABLE.** Anyone
+-- holding an approved member session can write into `event-media` directly from
+-- a browser and skip `/api/media/finalize` entirely — publishing a photograph
+-- with the GPS coordinates of where it was taken still inside it. For an event
+-- whose venue is secret that is a reveal, and `venue-secrecy.md` records that a
+-- reveal has no rollback: the mail is out, the screenshot exists.
+--
+-- The door is `20260225120000_phase7_media.sql:70-77`, and this file is what
+-- closes it. That is why the sentence is at the top of the file that closes it,
+-- and not at the bottom.
+--
+-- ── WHAT IT DOES, IN ONE STATEMENT ───────────────────────────────────────────
+--
+-- Drops the INSERT policy that grants every approved `authenticated` session a
+-- write into `event-media`, and creates NOTHING in its place. From that moment
+-- the only writer of the public bucket is the service role — which is to say
+-- `src/app/api/media/finalize/route.ts`, which is to say the path that strips.
+--
+-- This is a monotone move in the permitted direction (`meta-gates.md`, guardie
+-- monotone): it makes a door HARDER to walk through, never easier. Members now
+-- deposit into the private `event-media-quarantine` bucket
+-- (`20260809004600_event_media_quarantine_bucket.sql`), whose INSERT policy
+-- carries the identical predicate. Nobody who could upload before is refused
+-- now; the bytes simply land somewhere unreachable first.
+--
+-- ── THE THREE POLICIES THIS FILE DOES NOT TOUCH, AND WHY EACH STAYS ──────────
+--
+--   * "Anyone can view event media" (`:79-82`) — the bucket is public for
+--     reading today and stays public for reading. Making it private is a
+--     different decision with consequences for every URL already published, and
+--     it is in none of this phase's eight requirements. Not this file's call.
+--
+--   * "Members can delete own event media" (`:84-92`) and
+--   * "Admins can delete event media" (`:94-101`) — `deleteMedia` removes the
+--     object with the cookie-bound client
+--     (`src/app/(public)/events/[slug]/actions.ts`), so dropping either would
+--     break deletion. That is not a convenience: `media-and-storage.md` (gate
+--     *moderazione = rimozione*) requires that removal stay genuinely possible,
+--     because it is what makes revocation of consent workable for the people in
+--     the frame (`legal-compliance.md`, gate *immagini delle persone*). A phase
+--     that closed the upload door and jammed the delete door would have made
+--     the product worse at the thing that matters most here.
+--
+-- No table is touched. No policy on `public.*` is touched. One statement.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
+
+DROP POLICY IF EXISTS "Members can upload event media" ON storage.objects;
+
+COMMIT;

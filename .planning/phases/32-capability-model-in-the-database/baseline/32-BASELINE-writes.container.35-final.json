@@ -1,0 +1,6789 @@
+{
+  "artefact": "B3",
+  "target": "postgres-container",
+  "postgres_version": "17.6",
+  "captured_at": "2026-08-09",
+  "phase_point": "35-final",
+  "rows": [
+    {
+      "persona": "anon",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "anon",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "anon",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "authenticated/no-profile",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "artists",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "artists",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "venues",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/approved",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "artists",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/pending",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "artists",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "master/rejected",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "23505",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "member/approved",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/approved",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "member/pending",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/pending",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "member/rejected",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "member/rejected",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "artists",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "venues",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/approved",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/pending",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "events",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "23503",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "organizer/rejected",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "staff/approved",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/approved",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "staff/pending",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/pending",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "artists",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "artists",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "artists",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "attendances",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "attendances",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "attendances",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_code_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_code_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_code_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_codes",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_codes",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "discount_codes",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "door_scan_events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "door_scan_events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "door_scan_events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_items",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_items",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_items",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_orders",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_orders",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_orders",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_tokens",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_tokens",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "drink_tokens",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_media",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_media",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_media",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_parties",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_parties",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "event_parties",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "events",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "events",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "events",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "guest_list_entries",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "guest_list_entries",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "guest_list_entries",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "membership_acts",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "membership_acts",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "membership_acts",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "newsletter_subscribers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_assignments",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_assignments",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_assignments",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_credits",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_credits",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "party_credits",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "pending_purchases",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "pending_purchases",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "pending_purchases",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "profiles",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "profiles",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "profiles",
+      "verb": "update",
+      "result": "42P17",
+      "conclusive_for_rls": false
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "rsvps",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "rsvps",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "rsvps",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_refunds",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_refunds",
+      "verb": "insert",
+      "result": "ok:1",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_refunds",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_tiers",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_tiers",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "ticket_tiers",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "tickets",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "tickets",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "tickets",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "venues",
+      "verb": "delete",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "venues",
+      "verb": "insert",
+      "result": "42501",
+      "conclusive_for_rls": true
+    },
+    {
+      "persona": "staff/rejected",
+      "table": "venues",
+      "verb": "update",
+      "result": "ok:0",
+      "conclusive_for_rls": true
+    }
+  ],
+  "rollback_guarantee": {
+    "probe_strings_checked": 966,
+    "every_string_ends_in_rollback": true,
+    "no_string_carries_the_forbidden_token": true,
+    "row_counts_rechecked": 23,
+    "row_counts_unchanged": true
+  },
+  "constraint_probes": [
+    {
+      "id": "ASSIGN-04",
+      "table": "party_assignments",
+      "constraint": "party_assignments_no_self_grant",
+      "expected_sqlstate": "23514",
+      "observed": "23514 party_assignments_no_self_grant",
+      "verdict": "refused as declared",
+      "pass": true
+    }
+  ]
+}
