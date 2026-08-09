@@ -1276,8 +1276,45 @@ migration della fase 35 segue `membership_register.sql`, non `artist_profiles.sq
 
 ### D — `is_admin_or_organizer()` e' il predicato superato. Nessuna policy nuova lo usa.
 
+> **CORREZIONE, 2026-08-09 — questa sezione era fattualmente sbagliata, e lo era
+> gia' quando e' stata scritta.**
+>
+> Trovata dal piano 35-09, misurando contro la cattura `35-pre` invece di
+> leggere. **Sul database, `door_scan_events_select_admin` non usa
+> `is_admin_or_organizer()` e non lo usa da prima di questa fase:**
+> `20260807010000_policies_to_capabilities.sql:145-149` — fase 32 — l'ha gia'
+> spostata su `staff.manage`:
+>
+> ```sql
+> DROP POLICY IF EXISTS door_scan_events_select_admin ON public.door_scan_events;
+> CREATE POLICY door_scan_events_select_admin ON public.door_scan_events
+>   AS PERMISSIVE FOR SELECT
+>   USING ((select private.has_capability('staff.manage')));
+> ```
+>
+> **Conseguenza per la fase 35:** il primo braccio della policy a tre bracci e'
+> **identico** a cio' che c'era gia'; l'intera modifica del piano 35-09 sono i
+> due bracci per-notte. Chi legge la versione originale di questa sezione
+> conclude di dover migrare un predicato che e' gia' migrato.
+>
+> **L'errore, che e' il pezzo istruttivo.** La sezione citava
+> `20260805120000_door_scan_events.sql:155-156` — dove quel predicato c'e'
+> davvero — e ne concludeva lo stato vivo. Ma in questo progetto *«le migration
+> sono la fonte di verita' dello schema»* significa **la loro somma in ordine**,
+> non un file: due giorni dopo, un'altra migration l'aveva sostituita. Un file di
+> migration dice cosa e' successo quel giorno, mai cosa e' vero oggi.
+>
+> La stessa affermazione stantia vive in `31-VERIFICATION.md:882`.
+>
+> Il testo originale resta sotto perche' i piani gia' scritti lo citano, e una
+> citazione senza la sua smentita accanto e' peggio di entrambe.
+
+---
+
 `20260225150000_party_architecture.sql:40-41` e
-`20260805120000_door_scan_events.sql:155-156` lo usano ancora:
+`20260805120000_door_scan_events.sql:155-156` lo usano ancora **nel testo di quei
+file** (ma vedi la correzione sopra: per `door_scan_events` una migration
+successiva l'ha superata):
 
 ```sql
 CREATE POLICY door_scan_events_select_admin ON public.door_scan_events
