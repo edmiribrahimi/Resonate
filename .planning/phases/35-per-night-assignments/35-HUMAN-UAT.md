@@ -4,7 +4,7 @@ phase: 35-per-night-assignments
 source: [35-01-PLAN.md, 35-14-PLAN.md, 35-VALIDATION.md, 43-HUMAN-UAT.md, ACCESS-MODEL-DECISIONS.md]
 started: 2026-08-08
 updated: 2026-08-09
-queue_rows_applied: 15
+queue_rows_applied: 16
 queue_rows_total: 16
 procedures_total: 13
 procedures_closed: 0
@@ -179,7 +179,39 @@ righe 7, 9 e 14 nominano oggetti che le righe 1, 2 e 3 creano.
 Fra loro, invece, l'ordine 7 → 14 **e' ancora tutto da rispettare**: e' l'unica
 parte della coda che nessuno ha ancora percorso.
 
-### Blocco B — «Dopo il deploy», e la sua eccezione scritta a lettere piene
+### Blocco B — APPLICATO il 2026-08-09, dopo il deploy
+
+> **Fatto, e nell'ordine giusto.** Il codice della fase e' stato deployato in
+> produzione il **2026-08-09** (`origin/main` portato a `4cd807d`, cinque fasi:
+> 31, 32, 33, 43, 35), e la riga 15 e' stata applicata **dopo**, non prima —
+> verificando che il codice nuovo fosse vivo con un marcatore che esiste solo
+> in esso: `POST /api/media/finalize` e' passata da **404** a **401**.
+>
+> **Stato osservato dopo, contro il database di produzione:**
+>
+> | Policy su `storage.objects` | Prima | Dopo |
+> |---|---|---|
+> | `Members can upload event media` | presente | **rimossa** |
+> | `Anyone can view event media` | presente | presente |
+> | `Members can delete own event media` | presente | presente |
+> | `Admins can delete event media` | presente | presente |
+>
+> Bucket: `event-media` pubblico in lettura, `event-media-quarantine`
+> **privato**.
+>
+> **Il gate EXIF e' chiuso.** Da adesso `event-media` accetta scritture **solo
+> dal service role**, cioe' solo dalla rotta che spoglia i metadati. La finestra
+> descritta qui sotto — aperta dal 2026-02-25 e non da questa fase — **e'
+> chiusa**.
+>
+> **Quello che questo NON prova.** Che la spoglia funzioni su un file vero:
+> quella e' la **prova 10**, ancora `pending`, e va fatta prima che un fotografo
+> assegnato carichi da dentro una sede segreta. Chiudere la porta del browser
+> obbliga a passare dalla rotta; non dimostra che la rotta faccia il suo lavoro.
+
+---
+
+### Blocco B — il perche' dell'eccezione, scritto a lettere piene
 
 | # | File | Quando | Perche' proprio qui |
 |---|---|---|---|

@@ -7,9 +7,9 @@ must_haves_total: 5
 code_in_place: "5/5 roadmap success criteria have matching, reviewed source: party_assignments schema, per-night resolver, door guard second arm (35-22), door.supervise gate, party_credits table"
 automated_evidence: "container measurement (orchestrator-run, cited not repeated): verify:capabilities --target=container 5/5 green (12 keys, 26 grants/22 refusals, 4 roles); verify:no-header-identity exit 0; verify:no-credit-account exit 0; verify:media-strip 5/5 checks (MEDIA_STRIP_OK); verify:persona 7/7; npm run build exit 0"
 observed_in_production: false
-deployed: false
+deployed: true
 migrations_committed: 9
-migrations_applied: 9
+migrations_applied: 10
 manual_procedures_written: 13
 manual_procedures_executed: 0
 verifier_measurements_run: 0
@@ -42,6 +42,38 @@ human_verification:
     expected: "Comportamento visibile solo aprendo l'applicazione: chi vede cosa, quale frase compare, quali serate nomina il rifiuto 23503"
     why_human: "Interfaccia utente; nessun grep osserva un rendering o una frase a schermo."
 ---
+
+> ## Terza annotazione — 2026-08-09, deployato e coda completa
+>
+> **Il codice e' in produzione.** `origin/main` portato in fast-forward a
+> `4cd807d`: 484 commit, **cinque fasi** (31, 32, 33, 43, 35). Deploy verificato
+> con un marcatore che esiste solo nel codice nuovo — `POST /api/media/finalize`
+> da **404** a **401** — e non con un'attesa a occhio.
+>
+> **La coda e' completa: sedici righe su sedici.** La riga 15
+> (`event_media_server_upload_only`) e' stata applicata **dopo** il deploy, che
+> e' l'unico ordine che il suo stesso header ammette. Osservato dopo: la policy
+> `Members can upload event media` **non esiste piu'**, le tre da conservare
+> sono intatte, la quarantena resta privata. **Il gate EXIF e' chiuso.**
+>
+> **`deployed` passa a `true` e `migrations_applied` a 10.** Lo stato resta
+> **`human_needed`**, e la ragione non e' cambiata di una virgola: **nessuna
+> delle tredici procedure e' stata eseguita**. Quattro requisiti su otto hanno
+> una meta' che vive su un telefono, con la radio spenta, e nessun comando di
+> questo repository puo' raggiungerla.
+>
+> **Due finestre si sono chiuse con il deploy, e vanno lette come perdite.**
+> Il **caso C della prova 11** non e' piu' osservabile (gia' annotato sopra). E
+> la **prova 12** — l'upgrade di IndexedDB su una coda non vuota, l'unica
+> irreversibile della fase — aveva come finestra *«prima che qualunque telefono
+> della porta abbia aggiornato il bundle»*: **il deploy e' esattamente
+> quell'evento**. La decisione di deployare e' stata presa dal proprietario con
+> questo fatto davanti, il 2026-08-09.
+>
+> **Restano aperte e urgenti: la prova 7** (uno `staff` assegnato raggiunge
+> davvero lo scanner) e la **prova 10** (i metadati escono davvero dal file),
+> entrambe da fare **prima della prima serata reale**.
+
 
 > ## Seconda annotazione — 2026-08-09, le migration sono applicate
 >
