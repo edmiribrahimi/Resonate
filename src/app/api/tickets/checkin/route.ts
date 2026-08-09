@@ -211,8 +211,9 @@ type ScanTimeJudgement =
  * one is accounted for: `operatorId` comes from the resolved session and never
  * from the body; `partyId` has been through `UUID_PATTERN` at the call site;
  * `scannedAt` has been through `Date.parse` and re-emitted by `toISOString()`,
- * so it is `YYYY-MM-DDTHH:mm:ss.sssZ` and cannot carry a quote into the
- * PostgREST `or` string below. It is the service client and not the cookie-bound
+ * so it is `YYYY-MM-DDTHH:mm:ss.sssZ`. All three reach the query only as
+ * parameters of `.eq` / `.lte` / `.gt`, never as a hand-built filter string —
+ * see the paragraph on the query itself. It is the service client and not the cookie-bound
  * one because the question is about a revoked assignment, and a subject whose
  * assignment has been revoked is precisely the subject a live-assignment policy
  * would stop from reading the row that proves they once had it.
@@ -251,6 +252,25 @@ async function judgeAtScanTime(
   // which is the bucket a sign-in genuinely does clear.
   if (!operatorId) return { kind: "unauthenticated" };
 
+  // Two of the three clauses in the filter, and the third — the revocation —
+  // deliberately NOT here.
+  //
+  // `.or("revoked_at.is.null,revoked_at.gt.<iso>")` was written first and then
+  // refused. A PostgREST `or` string is parsed as `column.operator.value` on
+  // dots and commas, and an ISO instant carries both a `:` and a `.`; the
+  // repository's only precedent for `.or()`
+  // (`api/tickets/attendance/route.ts:247`) passes a uuid, which has neither, so
+  // it is no precedent at all for this. Getting the quoting wrong would not
+  // fail loudly — it would silently match nothing, and matching nothing here
+  // reads as *"nobody was ever assigned"*, which is the wrong answer arriving
+  // with a confident face. So the comparison happens below, in code that can be
+  // read, and the query is left using only the three primitives this repository
+  // already exercises.
+  //
+  // No `limit`, and no ordering that could hide a row: the scope is ONE night ×
+  // ONE person × ONE capability, so the result is the number of times that
+  // person was assigned and revoked for that single night. A `limit(1)` here
+  // could return a revoked row and hide a live one beside it.
   const { data, error } = await serviceClient
     .from("party_assignments")
     .select("id, revoked_at")
@@ -258,9 +278,7 @@ async function judgeAtScanTime(
     .eq("user_id", operatorId)
     .eq("capability", "door.operate")
     .lte("granted_at", scannedAt)
-    .gt("ends_at", scannedAt)
-    .or(`revoked_at.is.null,revoked_at.gt."${scannedAt}"`)
-    .limit(1);
+    .gt("ends_at", scannedAt);
 
   if (error) {
     // Includes the case that is true in production **today**: this table is row
@@ -276,15 +294,42 @@ async function judgeAtScanTime(
     return { kind: "unresolved" };
   }
 
-  const row = data?.[0];
-  if (!row) return { kind: "never_assigned", operatorId };
+  const rows = data ?? [];
+  if (rows.length === 0) return { kind: "never_assigned", operatorId };
 
-  // A row that matched the window either was never revoked, or was revoked
-  // AFTER the scan — the `or` above admits no third shape. The distinction is
-  // kept because the second one is the anomaly somebody should see.
-  return row.revoked_at === null
-    ? { kind: "live", operatorId }
-    : { kind: "revoked_after_scan", operatorId };
+  // `Date.parse` on both sides, never a string comparison. PostgREST renders a
+  // `timestamptz` as `2026-08-09T02:30:00+00:00` while `scannedAt` has been
+  // re-emitted by `toISOString()` as `...Z`, so `>` on the two strings compares
+  // `+` against `Z` and answers confidently wrong. This is the same class of
+  // defect as `src/utils/datetime.ts`'s reason for existing, one layer up.
+  const scannedAtMs = Date.parse(scannedAt);
+  let sawRevokedAfterScan = false;
+
+  for (const row of rows) {
+    if (row.revoked_at === null) return { kind: "live", operatorId };
+
+    const revokedMs = Date.parse(row.revoked_at as string);
+    if (Number.isNaN(revokedMs)) {
+      // A revocation with a timestamp nothing can read. It is not "revoked
+      // before" and it is not "revoked after" — it is *unknown*, and an unknown
+      // must not collapse into either answer. Retryable, and its own category.
+      console.error("[door.assignment_revocation_unreadable]", {
+        partyId,
+        assignmentId: row.id,
+      });
+      return { kind: "unresolved" };
+    }
+
+    if (revokedMs > scannedAtMs) sawRevokedAfterScan = true;
+  }
+
+  // No live row, but at least one that was still live when the code was read.
+  // That is outcome 2: the scan resolves, and it is marked.
+  if (sawRevokedAfterScan) return { kind: "revoked_after_scan", operatorId };
+
+  // Every row in the window had already been revoked by `scannedAt`. Same answer
+  // as no row at all — the assignment did not cover that moment.
+  return { kind: "never_assigned", operatorId };
 }
 
 /** The legacy `status` string for an outcome, and whether the old bundle reads it as green. */
