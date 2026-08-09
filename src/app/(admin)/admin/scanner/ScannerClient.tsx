@@ -17,7 +17,10 @@ import {
   checkInLocally,
   checkInMemberLocally,
   markCheckedInLocally,
-  undoCheckInLocally,
+  // `undoCheckInLocally` — the function that DELETES the queue entry — is
+  // deliberately not imported any more. It still exists in the store, and the
+  // offline branch below calls `markUndoneLocally` instead: deleting makes the
+  // admission never have happened, marking keeps who reversed it and when.
   markUndoneLocally,
   cacheDoorAuth,
   readDoorAuth,
@@ -95,10 +98,33 @@ const FLAG_MESSAGE: Record<DoorFlag, string> = {
   not_in_cache: "Not in the list on this device — admitted, flagged for review",
 };
 
-/** Every distinct way a response can fail to be an outcome, told apart. */
-function serverFaultMessage(status: number): string {
+/**
+ * Every distinct way a response can fail to be an outcome, told apart.
+ *
+ * ── The body is a parameter now, and that is the whole of the fix ────────────
+ *
+ * This function used to take the HTTP status alone, so it chose a headline
+ * **before** anything read the body. The limit was measured and written down
+ * where the value is minted, `require-operator.ts:104-110`, waiting for this
+ * plan: two different `403`s reached this line and produced one sentence, so a
+ * device could not tell *"this account may never work the door"* from *"this
+ * account may work this door but may not reverse an admission on it"*.
+ *
+ * The distinction is made on a **value decided by position** — `status` in the
+ * envelope — and never by reading the prose in `error`. Next redacts the message
+ * of an error thrown in a production build (CR-01), which is exactly why the
+ * category travels as its own field.
+ *
+ * A `403` **without** that value keeps the sentence it has always had. Nobody
+ * who is refused today is told something different.
+ */
+function serverFaultMessage(status: number, body?: unknown): string {
   if (status === 401) return "Session expired — sign in again to keep scanning";
-  if (status === 403) return "This account is not allowed to check people in";
+  if (status === 403) {
+    return readString(body, "status") === DOOR_SUPERVISION_REQUIRED
+      ? DOOR_SUPERVISION_REQUIRED_ERROR
+      : "This account is not allowed to check people in";
+  }
   if (status === 503) return "The scan was not written to the record — scan again";
   if (status >= 500) return "The server could not complete this scan";
   return `The server answered in a way this app does not understand (HTTP ${status})`;
@@ -1044,14 +1070,67 @@ export default function ScannerClient() {
       const confirmMsg = `Undo check-in for ${record.name}?`;
       if (!window.confirm(confirmMsg)) return;
 
-      // With the radio off the reversal cannot reach the server, and the entry
-      // it would reverse is still sitting in the queue. Dropping the queue entry
-      // locally is the whole of the undo in that case: leaving it there means
-      // the admission is reported on the next drain and the reversal a member of
-      // staff performed at the door never happened. `checkin-offline.md` calls
-      // the undo *«il percorso piu' semplice per far rientrare qualcuno»* — an
-      // undo that silently does nothing is worse than one that refuses out loud.
+      // ── T-3. With the radio off, an undo is still a supervisory act ─────────
+      //
+      // What this branch used to be, so the change is legible: it performed a
+      // purely local reversal, deleted the queue entry, wrote no record and
+      // **asked nobody**. Its comment was right about why it must exist — *an
+      // undo that silently does nothing is worse than one that refuses out
+      // loud* — and wrong about what that licenses. A supervision rule that
+      // lives only in `/api/tickets/checkin/undo` is a rule you step around by
+      // turning the radio off. So the branch stays, and it decides **from the
+      // verdict this device was given when the night was opened**.
+      //
+      // ── THE DOOR'S ASYMMETRY IS INVERTED HERE, DELIBERATELY ────────────────
+      //
+      // It is written out because it contradicts the general rule and somebody
+      // will otherwise "correct" it. At the door, refusing a valid guest is
+      // worse than admitting a duplicate, so an uncertain **scan** admits: the
+      // false refusal happens in front of a queue. An **undo** is not an
+      // admission. Refusing one sends nobody away — it leaves a person recorded
+      // as having come in, which is the **recoverable** direction, correctable
+      // by anybody with signal. Allowing an unauthorised one silently removes a
+      // presence from the night's record, and `checkin-offline.md` calls the
+      // undo *«il percorso piu' semplice per far rientrare qualcuno»*. So on the
+      // third outcome — the question was never answered — this **refuses**.
+      //
+      // Three outcomes, and none of them is silent: there is no error tracking
+      // in this repository, so the flash on this screen is the only observer
+      // that exists (`meta-gates.md`).
       if (!navigator.onLine) {
+        // 3 · The verdict was never resolved. Its own outcome, never folded into
+        // the refusal above it, on the precedent of `DOOR_UNRESOLVED_STATUS`
+        // (`require-operator.ts:185-192`): the sentence says nothing about
+        // permission, because the point of this arm is that permission is
+        // unknown. `null` is not `false`, and `readDoorAuth` returns a type that
+        // keeps the two apart precisely so this branch has to exist.
+        if (doorAuth === null) {
+          console.warn("scanner:undo_verdict_unresolved", {
+            partyId: selectedPartyId,
+          });
+          showFlash(
+            "error",
+            "This device has not been told who may undo tonight",
+            "This is not a refusal of the account — the question was never answered. Get signal, reopen the night, then try again."
+          );
+          return;
+        }
+
+        // 2 · Answered, and the answer is no. Refused OUT LOUD, with the same
+        // sentence the server sends on the online path, so the two paths cannot
+        // drift into saying different things about one rule.
+        if (!doorAuth.maySupervise) {
+          console.warn("scanner:undo_refused_supervision", {
+            partyId: selectedPartyId,
+          });
+          showFlash(
+            "error",
+            "This check-in was NOT undone",
+            DOOR_SUPERVISION_REQUIRED_ERROR
+          );
+          return;
+        }
+
         if (!record.localKey) {
           showFlash(
             "error",
@@ -1060,11 +1139,31 @@ export default function ScannerClient() {
           );
           return;
         }
+
+        // 1 · Permitted. The reversal is **marked** on the queue entry rather
+        // than deleting it: deleted, the night's record shows an evening in
+        // which the admission never happened at all, and who reversed it and
+        // when are gone with it.
         try {
-          await undoCheckInLocally(record.localKey);
+          const result = await markUndoneLocally(
+            record.localKey,
+            deviceIdRef.current ?? THIS_DEVICE_LABEL
+          );
           markRecordUndone(record);
-          showFlash("error", "Undone on this device", `${record.name} — not reported`);
           await refreshQueueCounts();
+
+          // Two different facts, told apart rather than sharing one sentence.
+          // `reversalHeld: false` means the admission is no longer in this
+          // device's queue — it was already reported — so the record on the
+          // server still says the person came in and nothing here will change
+          // that. Saying "undone" flat would be the silent failure.
+          showFlash(
+            "error",
+            "Undone on this device",
+            result.reversalHeld
+              ? `${record.name} — held here, not yet reported`
+              : `${record.name} — the server already has the entry, undo it again with signal`
+          );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
           showFlash(
@@ -1117,17 +1216,27 @@ export default function ScannerClient() {
 
         // A failed undo used to be swallowed whole: the row stayed checked in,
         // the history said nothing, and the operator had no way to know.
-        let detail: string | null = null;
+        //
+        // The body is parsed and then **kept**, not reduced to its `error`
+        // string on the spot: `serverFaultMessage` needs the `status` field
+        // beside it to tell a supervision `403` from a generic one, and reading
+        // the category off a value rather than off prose is the rule (CR-01).
+        let failureBody: unknown = null;
         try {
-          detail = readString(await res.json(), "error");
+          failureBody = await res.json();
         } catch {
-          detail = null;
+          failureBody = null;
         }
-        console.error("scanner:undo_failed", { status: res.status, detail });
+        const detail = readString(failureBody, "error");
+        console.error("scanner:undo_failed", {
+          status: res.status,
+          category: readString(failureBody, "status"),
+          detail,
+        });
         showFlash(
           "error",
           "The check-in was NOT undone",
-          detail ?? serverFaultMessage(res.status)
+          detail ?? serverFaultMessage(res.status, failureBody)
         );
       } catch (error) {
         console.error("scanner:undo_unreachable", error);
@@ -1145,6 +1254,11 @@ export default function ScannerClient() {
       selectedPartyId,
       markRecordUndone,
       refreshQueueCounts,
+      // The verdict is a dependency of the decision, not of the render: without
+      // it this callback would close over the verdict of the night it was
+      // created under, which for a device that switched nights is the wrong
+      // night's answer to a per-night question.
+      doorAuth,
     ]
   );
 
@@ -1193,7 +1307,7 @@ export default function ScannerClient() {
     recordId: string,
     type: ScanRecord["type"]
   ) {
-    const message = serverFaultMessage(status);
+    const message = serverFaultMessage(status, body);
     const detail = readString(body, "error");
     console.error("scanner:unexpected_response", { status, detail, type });
     showFlash("error", message, detail ?? undefined);
