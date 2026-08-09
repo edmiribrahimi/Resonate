@@ -224,6 +224,13 @@ None.
 - Wave 4's collapse plans delete the thirteen hand mounts this plan updated; each is a single JSX line plus its import.
 - Phase 39 inherits two items: the `pending`-organizer Check-in divergence, and the two stale comments named above.
 
+## Self-Check: PASSED
+
+- `src/lib/routes/staff-tabs.ts` — present on disk, tracked, in commit `bd04086`
+- `.planning/phases/34-one-work-surface/34-04-SUMMARY.md` — present on disk, tracked
+- `bd04086`, `bf3e146`, `3969dc1` — all three reachable from `HEAD`
+- Working tree clean; `STATE.md` and `ROADMAP.md` untouched by this plan, as the orchestrator owns those writes
+
 ---
 *Phase: 34-one-work-surface*
 *Completed: 2026-08-09*
