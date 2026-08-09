@@ -272,9 +272,16 @@ export default function ReviewListClient({
           <select
             id="review-party"
             value={selectedPartyId ?? ""}
+            // The collapsed address (D-34-03). This control is the one that
+            // exercises the per-night gate: changing the night rewrites
+            // `?party=`, and the page re-asks `party.manage` about whatever
+            // this produces. `typedRoutes` refused the prior literal the moment
+            // the page left the organizer tree — which is D-34-14 working, and
+            // the reason the 308 is emitted by the middleware rather than
+            // declared in `next.config`.
             onChange={(e) =>
               router.push(
-                `/organizer/events/${eventId}/review?party=${e.target.value}`
+                `/admin/events/${eventId}/review?party=${e.target.value}`
               )
             }
             className="mt-1 w-full rounded-xl border border-card-border bg-card px-3 py-2 text-sm text-foreground"

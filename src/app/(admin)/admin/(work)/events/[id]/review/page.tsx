@@ -4,24 +4,40 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
 import { classifyNight } from "@/lib/door/classify";
 import { partyStartInstant, partyEndInstant } from "@/utils/datetime";
-import ReviewListClient from "./ReviewListClient";
-import type {
-  UserRole,
-  UserStatus,
-  DoorScanEvent,
-  EventParty,
-} from "@/types/database";
+import ReviewListClient from "@/app/(admin)/admin/events/[id]/review/ReviewListClient";
+import type { UserRole, DoorScanEvent, EventParty } from "@/types/database";
 
 /**
  * The night's review list.
  *
- * ── Where this lives, and why ────────────────────────────────────────────────
- * Under the **organizer** tree, beside `events/[id]/{sales,tickets,guest-list,
- * analytics}` — the owner's decision. Phase 34 collapses the duplicated admin
- * and organizer trees; a new top-level address would have to be redirected then.
+ * ── Where this lives, and why it moved ───────────────────────────────────────
+ * It stood in the organizer tree, beside `events/[id]/{sales,tickets,guest-list,
+ * analytics}`, and deferred its address to phase 34. This is that phase
+ * (D-34-03): the surface has **no `/admin` twin**, so this was a move and not a
+ * merge, and the prior address answers with a redirect that `src/middleware.ts`
+ * emits before any session is read. That address is written once, in
+ * `src/lib/routes/organizer-redirects.ts`, and deliberately not spelled again
+ * here: it is the token the phase's sweep greps for, and a comment that spells
+ * it is a comment that defeats the criterion. The query string survives the
+ * redirect, which matters on this surface because `?party=` is what the gate
+ * below resolves the night from.
+ *
+ * The file is inside the `(work)` route group, which changes no URL: it is a
+ * LAYOUT boundary so that `admin/(work)/layout.tsx` reaches every collapsed work
+ * surface and does not reach `/admin/scanner`. `ReviewListClient.tsx` did NOT
+ * come with it — R-WORK-ROUTES (plan 34-07), only route files enter `(work)` —
+ * which is why the import above is absolute.
+ *
+ * ── What did NOT move: the assignment arm's safety ───────────────────────────
+ * This is the one route under `party.manage`, and it is one of the map's two
+ * assignment-openable entries (the other is the door). That flag decides only
+ * whether the MIDDLEWARE lets a request reach this page. It is coarse by
+ * construction: at routing time no night has been chosen, so the middleware
+ * cannot ask the question that matters. **The per-night gate below is the real
+ * boundary for this surface**, and it is byte-identical to what stood in the
+ * organizer tree.
  *
  * ── Who may open it, and a correction to what this file used to say ──────────
  * Two arms: the owner of the event from inside the organizer area, or somebody
@@ -86,13 +102,16 @@ export default async function DoorReviewPage({
   // answers about `auth.uid()`, which no client can send.
   const ctx = await getAccessContext();
 
-  // `MobileNav` and `ReviewListClient` are both `"use client"` and both still take
-  // `role` as a prop — the second uses it for an interface affordance (the
-  // technical view, offered to a master), which is why it is a prop and not a
-  // decision. Phase 34 (STAFF-03) converts both. Nothing on this page branches on
-  // these values.
+  // `ReviewListClient` is `"use client"` and still takes `role` as a prop — it
+  // uses it for an interface affordance (the technical view, offered to a
+  // master), which is why it is a prop and not a decision. Nothing on this page
+  // branches on it.
+  //
+  // The two nav mounts and the `status` cast that stood beside this are gone:
+  // `admin/(work)/layout.tsx` draws both navs and resolves the context once for
+  // the whole tree (D-34-07). This cast survives because the affordance does,
+  // and converting it is not this phase's.
   const navRole = ctx.role as UserRole | null;
-  const navStatus = ctx.status as UserStatus | null;
 
   // ── The gate has TWO arms now, and the second one needs the night ───────────
   //
@@ -116,14 +135,19 @@ export default async function DoorReviewPage({
 
   // Where a refusal on this page lands, decided once.
   //
-  // Somebody who holds `organizer.access` keeps going exactly where they went
-  // before, `/organizer/events`. Somebody who arrived by **assignment** does
-  // not hold it — they are typically `staff` — and sending them to
-  // `/organizer/events` would bounce them again off the middleware, producing
-  // two redirects and a second notice about a different thing. They go to
-  // `/dashboard`. **Nobody loses a destination they had.**
+  // Somebody who holds `organizer.access` goes to the events list — written as
+  // `/admin/events` now that the tree has collapsed. That is the SAME endpoint
+  // it named before: `/organizer/events` answers with a redirect to
+  // `/admin/events`, and this branch is only reached by somebody who holds the
+  // key that address is bound to. One hop fewer, nobody's destination changed.
+  //
+  // Somebody who arrived by **assignment** does not hold it — they are typically
+  // `staff` — and sending them to the events list would bounce them again off
+  // the middleware, producing two redirects and a second notice about a
+  // different thing. They go to `/dashboard`. **Nobody loses a destination they
+  // had.**
   const refusalDestination = holdsOrganizerAccess
-    ? "/organizer/events"
+    ? "/admin/events"
     : "/dashboard";
 
   // The normal server client, and **not** the RLS-bypassing service client from
@@ -333,7 +357,7 @@ export default async function DoorReviewPage({
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <Link
-          href="/organizer/events"
+          href="/admin/events"
           className="text-sm text-muted hover:text-foreground transition-colors"
         >
           &larr; Back to Events
@@ -358,8 +382,6 @@ export default async function DoorReviewPage({
           readError={readError}
         />
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
