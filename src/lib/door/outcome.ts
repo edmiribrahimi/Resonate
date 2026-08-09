@@ -193,3 +193,42 @@ export function isDoorOutcome(value: unknown): value is DoorOutcome {
     Object.prototype.hasOwnProperty.call(DOOR_OUTCOME_KINDS, kind)
   );
 }
+
+/**
+ * ── The supervision refusal, and why its two strings live HERE ───────────────
+ *
+ * They were coined in `src/lib/door/require-operator.ts` (plan 35-07) and that
+ * module still re-exports them, so no importer changed. They moved because of a
+ * hard constraint rather than a preference: **a client component cannot import
+ * `require-operator.ts`.** That module imports `@/lib/supabase/server`, which
+ * reads `next/headers`, and the scanner is `"use client"`.
+ *
+ * The scanner needs both of them, and it needs them for two different halves of
+ * one requirement:
+ *
+ *   - {@link DOOR_SUPERVISION_REQUIRED} to recognise, in a `403` body, that the
+ *     refusal was about supervision and not about the account — the headline is
+ *     chosen from the HTTP status **before** the body is read, and that limit was
+ *     measured and written down in `require-operator.ts:104-110` waiting for
+ *     exactly this fix.
+ *   - {@link DOOR_SUPERVISION_REQUIRED_ERROR} because with the radio off there is
+ *     no server to send the sentence, and the device has to say it itself.
+ *
+ * The alternative — retyping the two strings in the client — is the defect this
+ * whole module exists to prevent, stated at the top of the file: two
+ * vocabularies, each internally consistent, that agree until they do not. This
+ * module is the source and imports nothing, which is precisely what makes it the
+ * one place both a route and a phone can read from.
+ */
+export const DOOR_SUPERVISION_REQUIRED = "door_supervision_required";
+
+/**
+ * The human sentence for a supervision refusal.
+ *
+ * It names the **way out** — ask an organizer for this night — because at 02:00
+ * the useful part of a refusal is what to do next, and because this refusal is
+ * about one night rather than about the account. English only: the interface
+ * language is a milestone decision, not a per-string choice.
+ */
+export const DOOR_SUPERVISION_REQUIRED_ERROR =
+  "Undoing a check-in needs a supervisor. Ask an organizer for this night.";

@@ -192,29 +192,30 @@ export const DOOR_UNRESOLVED_ERROR =
   "Could not check this account's door permission — this is not a refusal. Try again.";
 
 /**
- * The machine-readable classification of a supervision refusal.
+ * The machine-readable classification of a supervision refusal, and its
+ * sentence.
  *
- * Same form as `DOOR_UNRESOLVED_STATUS` and for the same measured reason: a
- * **value**, decided by position, never a parsed message. Next redacts the
- * message of an error thrown out of a Server Action in a production build, so a
- * category that has to reach a device cannot travel in prose (CR-01).
+ * **Re-exported, no longer declared here** (plan 35-13). Both moved to
+ * `src/lib/door/outcome.ts` for a reason that is a constraint and not taste: the
+ * scanner is a `"use client"` component and needs both — the value to tell a
+ * supervision `403` from a generic one, the sentence to refuse an undo with the
+ * radio off — and it cannot import this module, which reaches `next/headers`
+ * through `@/lib/supabase/server`. `outcome.ts` imports nothing, which is what
+ * makes it the one place a route and a phone can read the same string from.
  *
- * It classifies a **403**, not a fourth status code. An account that may work
- * the door but may not reverse an admission has been answered, and answered
- * correctly; the retryable 503 belongs to the case where nobody answered.
+ * The properties they were coined with are unchanged and are written beside the
+ * declarations: a **value** decided by position and never a parsed message
+ * (CR-01), classifying a **403** and not a fourth status code — an account that
+ * may work the door but may not reverse an admission has been answered, and the
+ * retryable 503 belongs to the case where nobody answered.
+ *
+ * Re-exported rather than relocated outright so that not one of the five callers
+ * of this module changes an import line for a move that is about a sixth.
  */
-export const DOOR_SUPERVISION_REQUIRED = "door_supervision_required";
-
-/**
- * The human sentence for a supervision refusal.
- *
- * It names the **way out** — ask an organizer for this night — because at 02:00
- * the useful part of a refusal is what to do next, and because this refusal is
- * about one night rather than about the account. English only: the interface
- * language is a milestone decision, not a per-string choice.
- */
-export const DOOR_SUPERVISION_REQUIRED_ERROR =
-  "Undoing a check-in needs a supervisor. Ask an organizer for this night.";
+export {
+  DOOR_SUPERVISION_REQUIRED,
+  DOOR_SUPERVISION_REQUIRED_ERROR,
+} from "@/lib/door/outcome";
 
 /**
  * The shape a night identifier must have before it reaches this guard.
