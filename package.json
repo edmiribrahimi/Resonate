@@ -12,6 +12,7 @@
     "verify:no-header-identity": "node scripts/verify-no-header-identity.mjs",
     "verify:no-credit-account": "node scripts/verify-no-credit-account.mjs",
     "verify:media-strip": "node scripts/verify-media-strip.mjs",
+    "verify:redirects": "bash scripts/verify-organizer-redirects.sh",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
