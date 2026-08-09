@@ -387,7 +387,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 34-06-PLAN.md — The two organizer-only surfaces move, the assignment allow-list becomes a per-route binding, and the route-group arrangement is recorded for the next wave
+- [x] 34-06-PLAN.md — The two organizer-only surfaces move, the assignment allow-list becomes a per-route binding, and the route-group arrangement is recorded for the next wave
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -522,7 +522,7 @@ Plans:
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
-| 34. One Work Surface | 7/17 | In Progress|  |
+| 34. One Work Surface | 8/17 | In Progress|  |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
