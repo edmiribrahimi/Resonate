@@ -38,11 +38,18 @@ import type { MemberActFailure } from "./actions";
  */
 
 /**
- * The eight causes this surface can draw.
+ * The ten causes this surface can draw.
  *
- * Seven come from the server (`MemberActFailure`). The eighth is client-only:
- * the action never returned at all, so there is no tag to read and no way to
- * know from here whether the write landed.
+ * Nine come from the server (`MemberActFailure`) — seven from phase 43 and two
+ * added by phase 35, plan 08, when a live per-night assignment became a new way
+ * for a role write to be refused. The tenth is client-only: the action never
+ * returned at all, so there is no tag to read and no way to know from here
+ * whether the write landed.
+ *
+ * The total `Record` below is what forced this file to be edited at all: adding
+ * a cause to the action without a sentence here is a `npm run build` error, not
+ * a refusal that draws nothing. That is the whole reason the type is written
+ * this way, and on 2026-08-09 it did its job.
  */
 export type MemberNoticeKind = MemberActFailure | "transport_unavailable";
 
@@ -174,6 +181,55 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
       "shown is one this product does not use, the database has values the " +
       "code does not know about and that is worth reporting rather than " +
       "retrying.",
+  },
+
+  /**
+   * PHASE 35 — the refusal that is a rule, and the one with a way out.
+   *
+   * `party_assignments` ties `(user_id, assignee_role)` to the live profile row,
+   * so a role change aimed at somebody who holds a LIVE per-night assignment is
+   * refused by the database with `23503`. That is the rule working: a member of
+   * staff with a live door assignment cannot quietly become a `member` while the
+   * assignment keeps resolving at the door.
+   *
+   * **The `detail` under this notice is the list of blocking nights**, and it is
+   * the one detail on this surface that carries data rather than a closed
+   * literal. `20260809000000_party_assignments.sql` section 3c requires it: a
+   * generic refusal here is the recorded newsletter defect on an urgent path, in
+   * a product with no error tracking, so the answer has to name what blocks.
+   */
+  live_assignments_block_demotion: {
+    tone: "refusal",
+    title:
+      "This person is assigned to a night — revoke the assignments first, then change the role",
+    body:
+      "Nothing was changed. A live per-night assignment names the role its " +
+      "holder had when it was granted, so the database refuses to move that " +
+      "role out from under it — for a demotion and for a promotion alike. The " +
+      "nights that block it are listed below. Revoke them from the event's " +
+      "assignments page and set the role afterwards, or use the single action " +
+      "that does both: it revokes each assignment, then changes the role, and " +
+      "records them as the separate acts they are. A revocation is never a " +
+      "deletion — it stays in the record, because the door has to be able to " +
+      "ask later whether somebody was assigned at the moment they scanned.",
+  },
+
+  /**
+   * The state nobody chose. Its own cause because `write_failed`'s sentence
+   * promises *"nothing was written"*, and here that would be false.
+   */
+  revocation_incomplete: {
+    tone: "fault",
+    title:
+      "Some assignments were revoked and the role was NOT changed — the account is between two states",
+    body:
+      "The combined action stopped at the first revocation it could not " +
+      "perform, deliberately: changing the role after only some of them would " +
+      "have left a night without the person covering it and an account whose " +
+      "role no longer matches anything. What was revoked is revoked and is " +
+      "recorded; the role is untouched. Open the event's assignments page and " +
+      "look at what remains before trying again — the count below says how far " +
+      "it got.",
   },
 
   transport_unavailable: {

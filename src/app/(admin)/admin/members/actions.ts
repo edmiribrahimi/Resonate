@@ -248,6 +248,48 @@ export type MemberActFailure =
   /** Any other database failure. Nothing was changed. */
   | "write_failed"
   /**
+   * The role write was refused because the subject holds a LIVE per-night
+   * assignment.
+   *
+   * ── This is a RULE working, and it is a NEW way to refuse an operation ──────
+   *
+   * `party_assignments` carries a composite foreign key
+   * `(user_id, assignee_role) → public.profiles (id, role)`
+   * (`20260809000000_party_assignments.sql`, section 3). It has deliberately no
+   * update-cascading action, so changing a role out from under a live
+   * assignment is REFUSED with `23503` rather than silently propagated. A
+   * `staff` account with a live door assignment cannot quietly become a
+   * `member` while that assignment keeps resolving at the door.
+   *
+   * **It is not only a demotion.** Any role move breaks the pair: promoting a
+   * `staff` holder to `organizer` fails the same key for the same reason. The
+   * name of this cause says "demotion" because that is the urgent path, and the
+   * sentence a person reads says the whole truth.
+   *
+   * ── Why it may not arrive as a generic failure ──────────────────────────────
+   *
+   * Section 3c of that migration states the requirement and names plan 35-08 as
+   * the surface that owes it: **the refusal must name the assignments that
+   * block, and it must offer a way out.** A generic refusal here is the
+   * *"Qualcosa è andato storto"* precedent this repository has already recorded
+   * (`.planning/codebase/CONCERNS.md`), on an urgent path, in a product with no
+   * error tracking at all. So the `detail` this cause carries is the LIST of
+   * blocking nights, and `revokeAssignmentsAndDemote` below is the one action
+   * that clears them.
+   */
+  | "live_assignments_block_demotion"
+  /**
+   * `revokeAssignmentsAndDemote` stopped part-way: at least one revocation
+   * landed and the role change did NOT happen.
+   *
+   * Its own cause, and emphatically not a `write_failed` — whose sentence
+   * promises *"nothing was written"*, which here would be false. The world is in
+   * a state nobody chose: some nights have lost their staff, the account still
+   * holds its role. That is worth its own screen, because the next step is to
+   * look at what remains rather than to retry blindly.
+   */
+  | "revocation_incomplete"
+  /**
    * The act cannot be NAMED, so nothing was written.
    *
    * Since the reserved-transition rule was repealed (owner decision,
@@ -306,6 +348,18 @@ const CHECK_VIOLATION = "23514";
  */
 const NO_DATA_FOUND = "P0002";
 
+/** PostgreSQL `foreign_key_violation`. Phase 35's composite key raises it. */
+const FOREIGN_KEY_VIOLATION = "23503";
+
+/**
+ * The one foreign key on `public.profiles (id, role)` — phase 35's.
+ *
+ * Named as a constant because `20260808001000_role_implies_approved.sql:179-181`
+ * already set the rule for this repository: **anyone renaming a constraint
+ * renames it everywhere that asserts it.** This is now one of those places.
+ */
+const LIVE_ASSIGNMENT_FK = "party_assignments_assignee_role_fk";
+
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -326,7 +380,39 @@ type WriteError = { code?: string | null; message?: string | null };
 function classifyWriteFailure(error: WriteError): MemberActFailure {
   if (error.code === CHECK_VIOLATION) return "constraint_refused";
   if (error.code === NO_DATA_FOUND) return "subject_not_found";
+  if (isBlockedByLiveAssignment(error)) return "live_assignments_block_demotion";
   return "write_failed";
+}
+
+/**
+ * Is this the phase-35 refusal — a role write blocked by a LIVE assignment?
+ *
+ * ── The constraint NAME is read here, and that is not the thing this file
+ *    forbids ────────────────────────────────────────────────────────────────
+ *
+ * The rule everywhere above is that a CATEGORY is never picked from a sentence,
+ * and it is not being broken. The CODE decides the family: `23503` says a
+ * foreign key refused the write, and that is a field of the error object, not
+ * prose. The NAME then says WHICH foreign key — and `23503` can reach this file
+ * from any other key on `public.profiles`, so collapsing them would be the same
+ * failure this whole section exists to avoid, one scale smaller.
+ *
+ * The identifier is one this repository chose and declared
+ * (`20260809000000_party_assignments.sql`), not a phrase a framework may
+ * reword — the same standing this file already gives the constraint name it
+ * logs for diagnosis.
+ *
+ * **The direction of the error is the safe one**, and that is why the test is
+ * written this way round: a message that does not carry the name falls back to
+ * `write_failed`, which promises less. It never asserts a specific cause it
+ * could not confirm — a refusal that named the wrong reason would send an
+ * operator to revoke assignments that are not the problem.
+ */
+function isBlockedByLiveAssignment(error: WriteError): boolean {
+  return (
+    error.code === FOREIGN_KEY_VIOLATION &&
+    (error.message ?? "").includes(LIVE_ASSIGNMENT_FK)
+  );
 }
 
 /**
@@ -542,6 +628,123 @@ type ServiceClient = ReturnType<typeof getServiceClient>;
 
 /** What every act returns on success: the subject, and the register row's id. */
 type ActRecorded = { memberId: string; actId: string | null };
+
+// =============================================================================
+// PHASE 35 — a role write blocked by a live assignment, and the way out
+// =============================================================================
+//
+// Three exported acts write `role` and can now be refused with `23503` on
+// `party_assignments_assignee_role_fk`: `updateMemberRole` (any role move),
+// `deactivateMember` and `rejectMember` (both write `role: 'member'`). None of
+// them handled it before this plan, and all three would have answered with
+// their generic write failure — the exact shape of the recorded precedent, on
+// the one path where somebody is standing at a screen trying to get something
+// done tonight.
+//
+// The classification is CENTRAL — `classifyWriteFailure`, one branch, so it
+// cannot be added to two of the three paths and forgotten on the sibling
+// somebody was not looking at. What each path does for itself is the
+// ENRICHMENT: turning the tag into a sentence that names WHICH nights, which
+// needs the subject id and a second read and therefore cannot live in a
+// synchronous classifier.
+
+/**
+ * The `detail` of a blocked role write: the nights that block it.
+ *
+ * ── This is the ONE detail in this file that carries data, not a literal ─────
+ *
+ * Everywhere else `detail` is a value from a closed set, and the reason is that
+ * `MemberActionNotice.tsx` LOOKS IT UP to refine a sentence. This one is not
+ * looked up — no map has a key for it — it is RENDERED, verbatim, in the
+ * monospace line that component already draws under every notice. Nothing
+ * branches on it, so it cannot become a category smuggled inside a string.
+ *
+ * It carries data because the requirement is that it must:
+ * `20260809000000_party_assignments.sql` section 3c asks for a refusal that
+ * **names the assignments that block**, and there is no error tracking in this
+ * product — a log line reaches nobody, so this string is the only place the
+ * answer exists for the person who needs it.
+ *
+ * No personal data. A date, a night's title and a capability key: the subject is
+ * the account the operator already has selected, and this repository is public.
+ *
+ * If the enrichment read itself fails, the detail says so rather than pretending
+ * to a complete list. A truncated list would send somebody to revoke two of
+ * three assignments and meet the same refusal again with less trust in it.
+ */
+async function describeBlockingAssignments(
+  serviceClient: ServiceClient,
+  memberId: string
+): Promise<string> {
+  const { data: live, error } = await serviceClient
+    .from("party_assignments")
+    .select("party_id, capability")
+    .eq("user_id", memberId)
+    .is("revoked_at", null);
+
+  if (error || !live) {
+    console.error(
+      `[members.live_assignments_block_demotion] could not list the blocking ` +
+        `assignments: ${error?.code ?? "unknown"}`
+    );
+    return "blocked by live assignments — the list could not be read";
+  }
+
+  if (live.length === 0) {
+    // The write was refused by that key and nothing is live. The two readings
+    // disagree, which is information: a concurrent revocation between the two
+    // statements, or a key firing for a reason this file has mis-identified.
+    // Saying so is the honest answer; claiming "no assignments" as though the
+    // refusal had not happened is not.
+    return "blocked by a live assignment that is no longer there — reload and try again";
+  }
+
+  const { data: nights } = await serviceClient
+    .from("event_parties")
+    .select("id, title, date")
+    .in(
+      "id",
+      live.map((row) => row.party_id as string)
+    );
+
+  const nightById = new Map(
+    (nights ?? []).map((n) => [n.id as string, n as { title: string; date: string }])
+  );
+
+  const listed = live
+    .map((row) => {
+      const night = nightById.get(row.party_id as string);
+      // The date is written as it is STORED — a plain `YYYY-MM-DD`, no
+      // formatting. It is unambiguous, it carries no zone question
+      // (`time-and-scheduling.md`), and it is the same string the organizer
+      // sees on the assignments page.
+      const when = night ? `${night.date} ${night.title}` : row.party_id;
+      return `${when} — ${row.capability}`;
+    })
+    .join("; ");
+
+  return `${live.length} live assignment(s): ${listed}`;
+}
+
+/**
+ * Replaces a blocked write's `detail` with the list of nights that block it.
+ *
+ * Called by the three role-writing acts, each of which passes through it only on
+ * the one tag. Everything else is returned untouched.
+ */
+async function withBlockingNights<T>(
+  serviceClient: ServiceClient,
+  memberId: string,
+  result: MemberActResult<T>
+): Promise<MemberActResult<T>> {
+  if (result.ok || result.failure !== "live_assignments_block_demotion") {
+    return result;
+  }
+  return {
+    ...result,
+    detail: await describeBlockingAssignments(serviceClient, memberId),
+  };
+}
 
 // =============================================================================
 // The register write is NOT a second call
@@ -1222,9 +1425,163 @@ export async function updateMemberRole(
       status: statusWrite,
     });
 
+    // PHASE 35. This write can now be refused with `23503` on
+    // `party_assignments_assignee_role_fk`, and on THIS path it is not only a
+    // demotion: the composite key ties `(user_id, assignee_role)` to the live
+    // profile row, so promoting a `staff` holder to `organizer` breaks the pair
+    // exactly as demoting them to `member` does. Either way the answer must name
+    // the nights rather than read as a failed write.
     if (result.ok) revalidatePath("/admin/members");
-    return result;
+    return withBlockingNights(serviceClient, memberId, result);
   });
+}
+
+/**
+ * THE WAY OUT of a role change blocked by live assignments: revoke them, then
+ * change the role — as ONE action, so nobody has to know the order.
+ *
+ * `20260809000000_party_assignments.sql` section 3c names this plan as the
+ * surface that owes it, and the reason is not convenience: the refusal lands on
+ * an urgent path, and a rule with no exit is indistinguishable, to the person
+ * meeting it, from a product that is broken.
+ *
+ * ── TWO ACTS, and they stay two ─────────────────────────────────────────────
+ *
+ * Each revocation is recorded as `unassigned` by
+ * `public.record_party_assignment_act`, and the role change is recorded as
+ * `promoted` / `demoted` by `public.record_membership_act`. They are NOT fused
+ * into one entry. They are different things — a night's power taken back, and
+ * an account's role moved — and the register is the only place that difference
+ * survives a season (`acts.ts:41-45`, the same argument that keeps `rejected`
+ * and `deactivated` apart for one identical write).
+ *
+ * ── IT STOPS AT THE FIRST FAILED REVOCATION ─────────────────────────────────
+ *
+ * A role change performed after half the revocations would leave a state nobody
+ * chose, and — worse — one the composite key would then permit, because the
+ * remaining assignment is the only thing that was still refusing it. So the
+ * sequence stops, and it says so with its own cause (`revocation_incomplete`)
+ * rather than through `write_failed`, whose sentence promises that nothing was
+ * written.
+ *
+ * ── THE MASTER CASE IS INHERITED, NOT REWRITTEN ─────────────────────────────
+ *
+ * CR-01 of `43-REVIEW.md` found a path on which an organizer could reach the
+ * master. This function does not get to reintroduce it, and it does not get its
+ * own copy of the refusal either: it calls `assertSubjectActionable`, which is
+ * where rules 1 and 2 live for every act in this file, and it delegates the role
+ * write to `updateMemberRole`, which holds the ceiling in both places
+ * (`WritableRole` in the source, `isWritableRole` against the wire). A second
+ * implementation of "not the master" would be a second place to get it wrong,
+ * and the first one was got wrong once already.
+ *
+ * The check runs BEFORE any revocation, deliberately: refusing after the
+ * revocations would have stripped a master of their nights on the way to a
+ * refusal.
+ *
+ * ── THE PRICE, DECLARED: the access context is resolved TWICE ───────────────
+ *
+ * `guarded` resolves it here, and `updateMemberRole` resolves it again — and
+ * `cache()` does not memoise inside a Server Action (`server.ts:103-116`,
+ * measured), so that is two full round trips rather than a free read. S4 of
+ * `35-PATTERNS.md` asks for one resolution per action and this pays two.
+ *
+ * It is paid on purpose. The alternative is to inline the role write, which
+ * means re-deriving `promoted` / `demoted`, the readmission refusal, the
+ * `role_unchanged` case and the master ceiling — the four things this function
+ * is explicitly not allowed to copy. One extra round trip on a rare
+ * administrative path is the cheaper of the two costs, and it is the one that
+ * cannot silently diverge.
+ *
+ * ── The name says "demote"; the signature is general ────────────────────────
+ *
+ * Any role move is refused by the key, not only a demotion. The name is the one
+ * the plan and the migration agreed on and is kept so the two documents still
+ * point at this function; `nextRole` is what it actually does.
+ */
+export async function revokeAssignmentsAndDemote(
+  memberId: string,
+  nextRole: WritableRole
+): Promise<MemberActResult<ActRecorded>> {
+  const cleared = await guarded(
+    "revokeAssignmentsAndDemote",
+    verifyAdminOrOrganizer,
+    async (ctx): Promise<MemberActResult<{ revoked: number }>> => {
+      // The wire-level ceiling, before anything is revoked: a crafted
+      // `nextRole: "master"` must not cost somebody their nights on its way to
+      // being refused by the delegate.
+      if (!isWritableRole(nextRole)) {
+        return { ok: false, failure: "forbidden", detail: "role_not_writable" };
+      }
+
+      const serviceClient = getServiceClient();
+
+      // Rules 1 and 2, the file's own — never a copy. `self_role_change` is the
+      // detail this surface already draws, because this IS a role change and a
+      // second wording for the same refusal would be a second thing to keep in
+      // step.
+      const subject = await assertSubjectActionable(
+        serviceClient,
+        ctx,
+        memberId,
+        {
+          action: "revokeAssignmentsAndDemote",
+          selfDetail: "self_role_change",
+        }
+      );
+      if (!subject.ok) return subject;
+
+      const { data: live, error } = await serviceClient
+        .from("party_assignments")
+        .select("party_id, capability")
+        .eq("user_id", memberId)
+        .is("revoked_at", null);
+
+      if (error) return writeFailure("revokeAssignmentsAndDemote", error);
+
+      let revoked = 0;
+
+      for (const row of live ?? []) {
+        const { error: revokeError } = await serviceClient.rpc(
+          "record_party_assignment_act",
+          {
+            p_party_id: row.party_id,
+            p_subject_id: memberId,
+            p_capability: row.capability,
+            p_act: "unassigned",
+            p_actor_id: ctx.userId,
+          }
+        );
+
+        if (revokeError) {
+          // Only the code and the constraint-bearing message. The field that
+          // carries the failing row is never read here, for the reason stated
+          // at the top of this file.
+          console.error(
+            `[members.revocation_incomplete] revokeAssignmentsAndDemote: ` +
+              `revoked=${revoked} of ${(live ?? []).length}, ` +
+              `code=${revokeError.code ?? "unknown"}`
+          );
+          return {
+            ok: false,
+            failure: "revocation_incomplete",
+            detail: `${revoked} of ${(live ?? []).length} revoked; the role was not changed`,
+          };
+        }
+
+        revoked += 1;
+      }
+
+      return { ok: true, data: { revoked } };
+    }
+  );
+
+  if (!cleared.ok) return cleared;
+
+  // Zero live assignments is NOT short-circuited into a success: the operator
+  // asked for a role change and the only honest answer is the one the existing
+  // path gives, including whatever else might refuse it.
+  return updateMemberRole(memberId, nextRole);
 }
 
 // --- The two REVERSING acts: withdraw an access, restore one ---
@@ -1296,7 +1653,13 @@ export async function deactivateMember(
       status: "rejected",
     });
 
-    if (!result.ok) return result;
+    // PHASE 35. This path writes `role: 'member'`, so a subject holding a LIVE
+    // per-night assignment is refused with `23503` on
+    // `party_assignments_assignee_role_fk` — a rule working, not a fault. The
+    // withdrawal is the URGENT one of the three doors (somebody is being taken
+    // off an access, often the same evening), which is precisely why it may not
+    // answer with a generic write failure.
+    if (!result.ok) return withBlockingNights(serviceClient, memberId, result);
 
     // The mail follows the ACT — so a `pending` subject refused through this
     // door receives the rejection message, and a real withdrawal
@@ -1444,7 +1807,12 @@ export async function rejectMember(
       status: STATUS_REJECTED,
     });
 
-    if (!result.ok) return result;
+    // PHASE 35, the third door that writes `role: 'member'`. Same `23503` on
+    // `party_assignments_assignee_role_fk`, same requirement: name the nights.
+    // It is handled here as well as in the two siblings because a refusal
+    // reachable through one door and not another is the CR-01 shape again —
+    // whichever button an operator presses, the answer has to be the same one.
+    if (!result.ok) return withBlockingNights(serviceClient, memberId, result);
 
     // The mail follows the act, not the door — see THE MAIL FOLLOWS THE ACT
     // above. `MemberRejectedEmail` is written for an application that was
