@@ -237,6 +237,15 @@ This paragraph is owed by `34-VERIFICATION.md` (plan 34-17) and is reproduced he
 - **Plan 34-03 is unblocked but poorer:** it may rewrite the middleware, and it must record in `34-VERIFICATION.md` that M-9 has an after with no before.
 - **Open, owed before v1.5 closes:** M-1 … M-9. M-9's before is gone; the other eight still have their window.
 
+## Self-Check: PASSED
+
+Verified 2026-08-09, against the committed tree rather than against this document:
+
+- `git ls-tree HEAD` lists all three `…container.pre-34.json` artefacts and `34-02-SUMMARY.md`
+- `2d717c3` and `34718cd` both exist in `git log`
+- `git status --porcelain` is empty; `git diff --diff-filter=D HEAD~1 HEAD` shows no deletion
+- `STATE.md` and `ROADMAP.md` are untouched, as required of a worktree executor
+
 ---
 *Phase: 34-one-work-surface*
 *Completed: 2026-08-09*
