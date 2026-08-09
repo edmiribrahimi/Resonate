@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
-last_updated: "2026-08-09T12:32:43.028Z"
+stopped_at: Phase 34 context gathered
+last_updated: "2026-08-09T12:57:29.340Z"
 last_activity: 2026-08-08 -- Phase 35 execution started
 progress:
   total_phases: 13
-  completed_phases: 4
-  total_plans: 74
-  completed_plans: 53
-  percent: 31
+  completed_phases: 5
+  total_plans: 75
+  completed_plans: 75
+  percent: 38
 ---
 
 # State: Resonate
@@ -83,8 +83,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-06
-**Stopped at:** Phase 31 planned and executed end to end — 13 plans, 6 waves, 61
+**Last session:** 2026-08-09T12:57:29.334Z
+**Stopped at:** Phase 34 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
