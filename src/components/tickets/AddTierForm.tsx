@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createTier } from "@/app/(organizer)/organizer/events/[id]/tickets/actions";
+import { createTier } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 
 interface AddTierFormProps {
   eventId: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { purchaseDrinks } from "@/app/(organizer)/organizer/events/actions";
+import { purchaseDrinks } from "@/app/(admin)/admin/events/actions";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import PressableButton from "@/components/motion/PressableButton";
 import type { DrinkItem } from "@/types/database";

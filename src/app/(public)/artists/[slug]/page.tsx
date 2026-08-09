@@ -84,9 +84,10 @@ export default async function ArtistPage({
               protecting: `access-gating.md`, gate *coerenza
               navigazione/permessi*, requires every hidden entry to have its
               own server-side check. This one does. The modal calls
-              `updateArtist`, which re-checks identity and role inside itself
-              at `src/app/(organizer)/organizer/artists/actions.ts:125-137`,
-              and the write is refused again by RLS —
+              `updateArtist`, which re-checks the catalogue-manage capability
+              inside itself at `src/app/(admin)/admin/artists/actions.ts:207`
+              (re-measured 2026-08-09, after the module moved out of the
+              organizer tree), and the write is refused again by RLS —
               `artists_update_organizer` asks the catalogue-manage capability
               (`supabase/migrations/20260807010000_policies_to_capabilities.sql:82-85`),
               which is granted with `requires_approved = true`

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
+import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
 import { rsvpToParty } from "./rsvp-actions";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 

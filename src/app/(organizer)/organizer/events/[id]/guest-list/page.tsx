@@ -6,7 +6,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
-import GuestListClient from "./GuestListClient";
+import GuestListClient from "@/app/(admin)/admin/events/[id]/guest-list/GuestListClient";
 import GuestListUnavailable from "@/components/guest-list/GuestListUnavailable";
 import type { UserRole, UserStatus, GuestListEntry } from "@/types/database";
 

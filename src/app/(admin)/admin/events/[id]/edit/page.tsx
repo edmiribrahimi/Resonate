@@ -5,7 +5,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
-import { updateEvent } from "@/app/(organizer)/organizer/events/actions";
+import { updateEvent } from "@/app/(admin)/admin/events/actions";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
 
 interface EditEventPageProps {
@@ -27,10 +27,11 @@ export default async function AdminEditEventPage({ params }: EditEventPageProps)
   // that a page-level authentication check does not cover the Server Actions
   // defined inside it — an action is its own entry point, POSTable directly.
   // No second gate is added here on purpose: `boundUpdateEvent` delegates to
-  // `updateEvent`, which calls `verifyOrganizer` and then
-  // `verifyEventOwnership` inside itself (`(organizer)/organizer/events/
-  // actions.ts:318-322`, verified — not assumed). Adding a check here would
-  // create a NEW refusal path on a surface whose behaviour must not change.
+  // `updateEvent`, which calls `assertStaffManage` and then
+  // `assertEventOwnership` inside itself (`(admin)/admin/events/
+  // actions.ts:314-316`, re-measured 2026-08-09 — not assumed). Adding a check
+  // here would create a NEW refusal path on a surface whose behaviour must not
+  // change.
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }

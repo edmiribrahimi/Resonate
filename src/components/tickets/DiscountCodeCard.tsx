@@ -5,7 +5,7 @@ import PressableCard from "@/components/motion/PressableCard";
 import {
   updateDiscountCode,
   deleteDiscountCode,
-} from "@/app/(organizer)/organizer/events/[id]/tickets/actions";
+} from "@/app/(admin)/admin/events/[id]/tickets/actions";
 
 export interface DiscountCodeWithUsage {
   id: string;

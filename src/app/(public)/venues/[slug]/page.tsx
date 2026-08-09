@@ -148,9 +148,11 @@ export default async function VenuePage({
               protecting: `access-gating.md`, gate *coerenza
               navigazione/permessi*, requires every hidden entry to have its
               own server-side check. This one does. The modal calls
-              `updateVenue`, which re-checks identity and role inside itself at
-              `src/app/(organizer)/organizer/venues/actions.ts:125-137`, and
-              the write is refused again by RLS — `venues_update_organizer`
+              `updateVenue`, which re-checks the catalogue-manage capability
+              inside itself at `src/app/(admin)/admin/venues/actions.ts:198`
+              (re-measured 2026-08-09, after the module moved out of the
+              organizer tree), and the write is refused again by RLS —
+              `venues_update_organizer`
               asks the catalogue-manage capability
               (`supabase/migrations/20260807010000_policies_to_capabilities.sql:414-417`),
               which is granted with `requires_approved = true`

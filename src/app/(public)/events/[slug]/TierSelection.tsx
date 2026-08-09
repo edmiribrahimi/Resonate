@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition, useEffect, useCallback } from "react";
-import { purchaseTicket } from "@/app/(organizer)/organizer/events/actions";
-import { validateDiscountCode } from "@/app/(organizer)/organizer/events/[id]/tickets/actions";
+import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
+import { validateDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import PressableButton from "@/components/motion/PressableButton";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 

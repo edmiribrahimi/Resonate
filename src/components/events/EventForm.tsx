@@ -8,8 +8,8 @@ import AutocompleteInput, { type AutocompleteOption } from "@/components/ui/Auto
 import CreateArtistModal from "@/components/artists/CreateArtistModal";
 import VenueProfilePrompt from "@/components/venues/VenueProfilePrompt";
 import CreateVenueModal from "@/components/venues/CreateVenueModal";
-import { searchArtists } from "@/app/(organizer)/organizer/artists/actions";
-import { searchVenues, checkVenueExists } from "@/app/(organizer)/organizer/venues/actions";
+import { searchArtists } from "@/app/(admin)/admin/artists/actions";
+import { searchVenues, checkVenueExists } from "@/app/(admin)/admin/venues/actions";
 import type { AccessType } from "@/types/database";
 
 interface SubEventFormState {

@@ -21,7 +21,7 @@ function getServiceClient() {
 /**
  * The local `verifyOrganizer` and `verifyEventOwnership` are GONE, not unused.
  * They were byte-identical to the pair in
- * `src/app/(organizer)/organizer/events/actions.ts` except for one error string
+ * `src/app/(admin)/admin/events/actions.ts` except for one error string
  * each, and both now live once in `@/lib/capabilities/guards`.
  *
  * **The shape every action below follows, and why the order matters.**

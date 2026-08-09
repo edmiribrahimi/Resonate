@@ -27,7 +27,7 @@ interface DiscountSummary {
   discount_amount: number;
 }
 
-import RefundActions from "@/app/(organizer)/organizer/events/[id]/tickets/RefundActions";
+import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
 
 interface SalesDashboardProps {
   eventTitle: string;

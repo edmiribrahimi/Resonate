@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { updateVenue } from "@/app/(organizer)/organizer/venues/actions";
+import { updateVenue } from "@/app/(admin)/admin/venues/actions";
 import { createClient } from "@/lib/supabase/client";
 
 interface Venue {

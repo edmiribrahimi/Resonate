@@ -5,7 +5,7 @@ import PressableCard from "@/components/motion/PressableCard";
 import {
   updateTier,
   deleteTier,
-} from "@/app/(organizer)/organizer/events/[id]/tickets/actions";
+} from "@/app/(admin)/admin/events/[id]/tickets/actions";
 
 interface TierWithSold {
   id: string;

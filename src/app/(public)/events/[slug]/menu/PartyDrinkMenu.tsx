@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import type { DrinkItem } from "@/types/database";
 import GuestDrinkMenu from "./GuestDrinkMenu";
-import DrinkMenuManager from "@/app/(organizer)/organizer/events/[id]/drinks/DrinkMenuManager";
+import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuManager";
 import { updateMenuClosesAt } from "./actions";
 import { menuCloseInstant } from "@/utils/datetime";
 

@@ -4,7 +4,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
+import { getDrinkItems } from "@/app/(admin)/admin/events/actions";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import type { UserRole, UserStatus, DrinkItem } from "@/types/database";
