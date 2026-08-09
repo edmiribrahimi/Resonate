@@ -379,11 +379,11 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 34-03-PLAN.md — The middleware: three prefix rules become one resolver, and the redirect is emitted before any session work
-- [ ] 34-04-PLAN.md — The two staff menus read the map; the bottom nav's door entry stops being a literal
-- [ ] 34-05-PLAN.md — The work-surface layout, and the four master-only surfaces move under it; `/admin` gets a gate of its own
-- [ ] 34-07-PLAN.md — The eight shared modules leave the organizer tree, 36 import specifiers follow them, and R-WORK-ROUTES is declared
-- [ ] 34-08-PLAN.md — The three mechanical checks: the redirect walk, the `revalidatePath` scan and the route census
+- [x] 34-03-PLAN.md — The middleware: three prefix rules become one resolver, and the redirect is emitted before any session work
+- [x] 34-04-PLAN.md — The two staff menus read the map; the bottom nav's door entry stops being a literal
+- [x] 34-05-PLAN.md — The work-surface layout, and the four master-only surfaces move under it; `/admin` gets a gate of its own
+- [x] 34-07-PLAN.md — The eight shared modules leave the organizer tree, 36 import specifiers follow them, and R-WORK-ROUTES is declared
+- [x] 34-08-PLAN.md — The three mechanical checks: the redirect walk, the `revalidatePath` scan and the route census
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -522,7 +522,7 @@ Plans:
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
-| 34. One Work Surface | 2/17 | In Progress|  |
+| 34. One Work Surface | 7/17 | In Progress|  |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
