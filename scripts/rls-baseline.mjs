@@ -1066,6 +1066,36 @@ export async function captureB2(target, { phasePoint, targetName }) {
  */
 export const PROBE_TEXT = `'rls-baseline-probe'`;
 
+/**
+ * The instant a probe's — or a seeded row's — permission window closes.
+ *
+ * A FIXED LITERAL, AND NEVER `now()`, for two reasons that are different from
+ * each other and both load-bearing (plan 35-06 task 1):
+ *
+ *   1. **`now()` is the clock, and a probe that depends on the clock is not the
+ *      same probe twice.** `door_scan_events.scanned_at` may take `now()`
+ *      because *when the scan happened* is genuinely the moment of the write.
+ *      *When a permission ends* is not: it is a boundary the writer computes
+ *      from the night (`20260809000000_party_assignments.sql`, section 3d), and
+ *      a probe that recomputes it per run has stopped being comparable between
+ *      two captures.
+ *   2. **`now()` made every seeded assignment expired on arrival**, and that is
+ *      the defect this constant actually fixes. `seed.mjs` materialises this
+ *      same payload into real rows, so `ends_at = now()` produced two
+ *      assignments whose window had already closed at the instant they were
+ *      written. The resolver's ARM 2 tests `now() < pa.ends_at`
+ *      (`20260809001000_assignment_resolver.sql:355`), so those rows could never
+ *      grant anything — a seeded assignment that cannot resolve is a row the
+ *      third axis cannot be measured against.
+ *
+ * The value is far enough out that no run of this harness will reach it, and it
+ * is written as an absolute UTC instant rather than a local one: this file's
+ * comparisons must not move with the machine's zone. The night's REAL boundary
+ * is computed by `public.party_end_instant(date, time)` and belongs to the
+ * writer, not here — nothing in this harness is entitled to invent one.
+ */
+export const PROBE_FUTURE_INSTANT = `'2099-12-31 23:00:00+00'::timestamptz`;
+
 export const PROBE_PAYLOADS = {
   // A name and a slug, both unique; the sentinel collides with no real row.
   artists: { insert: { columns: ['name', 'slug'], values: [PROBE_TEXT, PROBE_TEXT] }, update: 'bio' },
@@ -1258,11 +1288,27 @@ export const PROBE_PAYLOADS = {
   // actually exercised, so a legitimate assignment being insertable is measured
   // instead of assumed.
   //
-  // `granted_at` is the update column: the three columns that decide whether an
+  // `granted_at` is the UPDATE column: the three columns that decide whether an
   // assignment is LIVE — `ends_at`, `revoked_at`, `revoked_by` — are deliberately
-  // absent for the same reason the monotone guards are absent from every other
-  // payload here. A probe has no business near a column that widens a door
-  // permission, even inside a transaction that rolls back.
+  // absent from the update probe for the same reason the monotone guards are
+  // absent from every other payload here. A probe has no business near a column
+  // that widens a door permission, even inside a transaction that rolls back.
+  //
+  // **AND `revoked_at` IS NOT ITSELF A MONOTONE GUARD**, which is worth saying
+  // because the next reader will assume it is. `meta-gates.md` names exactly
+  // three one-way switches — `venue_reveal_sent`, a payment status reaching
+  // `completed`, and a format's series numbering — and none of them is this. A
+  // revocation can be followed by a fresh grant: `party_assignments_live_unique`
+  // is PARTIAL on `revoked_at IS NULL` (`20260809000000:514-516`) precisely so
+  // re-granting after a revocation is not refused by a rule about the past. It is
+  // kept out of the update probe because it WIDENS a door permission in one
+  // direction, not because it cannot be undone.
+  //
+  // `ends_at` takes `PROBE_FUTURE_INSTANT` and NEVER `now()` — see that constant.
+  // In the probe it makes the row a legitimate future-dated grant instead of one
+  // that has already expired; in the seed, which materialises this same payload,
+  // it is the difference between two rows the resolver can grant on and two rows
+  // that could never resolve at all.
   party_assignments: {
     insert: {
       columns: ['party_id', 'user_id', 'capability', 'assignee_role', 'assigned_by', 'ends_at'],
@@ -1272,7 +1318,7 @@ export const PROBE_PAYLOADS = {
         `'door.operate'`,
         `'master'`,
         `coalesce(nullif(auth.uid(), {{profiles}}), '35000002-0000-4000-8000-000000000001'::uuid)`,
-        'now()',
+        PROBE_FUTURE_INSTANT,
       ],
     },
     update: 'granted_at',
