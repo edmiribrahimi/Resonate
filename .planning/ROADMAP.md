@@ -368,8 +368,41 @@ Plans:
   3. A navigation entry appears only where the matching server-side check also passes — typing the address of a hidden entry is refused, not rendered
   4. A capability that exists in the database but is mapped to no route fails the production build
 
-**Plans**: TBD
+**Plans**: 17 plans, in 5 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 34-01-PLAN.md — The route↔capability map, the fifteen-row redirect table, and `typedRoutes`, with CAP-02 proved by mutation in both directions
+- [ ] 34-02-PLAN.md — Pre-phase observations: the `pre-34` container baseline, the catalogue link, and the door with the network off
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 34-03-PLAN.md — The middleware: three prefix rules become one resolver, and the redirect is emitted before any session work
+- [ ] 34-04-PLAN.md — The two staff menus read the map; the bottom nav's door entry stops being a literal
+- [ ] 34-05-PLAN.md — The work-surface layout, and the four master-only surfaces move under it; `/admin` gets a gate of its own
+- [ ] 34-06-PLAN.md — The two organizer-only surfaces move, and the assignment allow-list becomes a per-route binding
+- [ ] 34-07-PLAN.md — The eight shared modules leave the organizer tree, and 36 import specifiers follow them
+- [ ] 34-08-PLAN.md — The two mechanical scripts: the redirect walk and the `revalidatePath` check
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 34-09-PLAN.md — `artists` and `venues` collapse onto `organizer.access`
+- [ ] 34-10-PLAN.md — The `members` tree collapses, and the folded register defect closes by construction
+- [ ] 34-11-PLAN.md — `events` and `events/new` collapse, and `EventList` loses its `basePath`
+- [ ] 34-12-PLAN.md — `events/[id]/edit` and `events/[id]/drinks` collapse, with the drinks money path untouched
+- [ ] 34-13-PLAN.md — `events/[id]/tickets` collapses alone — 140 changed lines on a money path
+- [ ] 34-14-PLAN.md — `sales`, `guest-list`, `analytics` and `media` collapse; the media surface gets the gate it never had
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 34-15-PLAN.md — `src/app/(organizer)/` is deleted and the persona is corrected in the same commit
+- [ ] 34-16-PLAN.md — The literal sweep: 26 `revalidatePath` calls, and side 4's message re-pointed at the map
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 34-17-PLAN.md — The flip to 308, both redirect walks, the nine written procedures, and `34-VERIFICATION.md`
 
 ### Phase 36: Formats & Series Numbering
 
