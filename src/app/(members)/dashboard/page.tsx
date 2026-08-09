@@ -36,18 +36,44 @@ export default async function DashboardPage({
   const readParam = (value: string | string[] | undefined) =>
     typeof value === "string" ? value : null;
 
-  // WR-04. `?access=unavailable` is set by `bounceToDashboard()` in
-  // `src/lib/supabase/middleware.ts` when — and only when — the capability
-  // lookup itself failed. It is NOT a refusal: a refusal bounces here with no
-  // param at all. Keeping the two distinguishable is the whole point; the
+  // ── `?access=`, which now carries THREE causes and never collapses them ─────
+  //
+  // WR-04 is closed on this surface and stays closed: every value below is
+  // rendered, none is merely read.
+  //
+  // `bounceToDashboard()` in `src/lib/supabase/middleware.ts` sets one of three
+  // values, decided by position, or no parameter at all. Each gets its own
+  // sentence below, and the sentences say **what to do**, not only what
+  // happened: the person reading one of them may be standing at a door at two
+  // in the morning, and "an error occurred" is worth nothing there. None of
+  // them names a migration or a table — that is the vocabulary of whoever
+  // maintains this, not of whoever is refused by it.
+  //
+  // A value that is none of the three renders **nothing**. A query string is
+  // attacker-supplied input, and a notice drawn from an invented value would be
+  // an authoritative-looking sentence written by whoever sent the link.
+  const accessCause = readParam(params.access);
+
+  // The lookup itself failed. NOT a refusal: a refusal bounces here with no
+  // parameter at all. Keeping the two distinguishable is the whole point; the
   // recorded newsletter defect collapsed a network fault, a missing key and an
   // already-subscribed address into one "Qualcosa è andato storto" and made all
   // three undebuggable for the user and for whoever maintains it.
-  //
-  // Contrary to a note carried forward from two other plans, this one **is**
-  // rendered, and has been since it was introduced — the banner is below. WR-04
-  // is closed on this surface.
-  const accessUnavailable = readParam(params.access) === "unavailable";
+  const accessUnavailable = accessCause === "unavailable";
+
+  // The context resolved, but it did not carry tonight's assignments — so the
+  // question *"is this person working tonight"* could not be asked at all. It
+  // has one known cause and it is a configuration one, which is why the notice
+  // says so instead of implying a decision about the account. It is emphatically
+  // **not** the same sentence as the one below: telling somebody who is on
+  // tonight's rota that they are not assigned is the refusal this product has
+  // decided it will not manufacture.
+  const accessContextStale = accessCause === "context-stale";
+
+  // Assignments exist and none of them opens the page that was asked for.
+  // Also not a fault, and also not "you have no business here": it is a real
+  // answer about a real assignment, and the way out is a person, named.
+  const accessNotAssignedHere = accessCause === "not-assigned-here";
 
   // `?link=refused` is set by `src/app/api/auth/callback/route.ts` (plan 43-04)
   // when the `next` target of a sign-in link was not on its allow-list and the
@@ -291,6 +317,43 @@ export default async function DashboardPage({
               This is a temporary problem on our side, not a decision about your
               account. Nothing has changed about what you have access to. Please
               try again in a moment.
+            </p>
+          </div>
+        )}
+
+        {accessContextStale && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-200">
+              We couldn&apos;t check tonight&apos;s assignments
+            </p>
+            <p className="mt-1 text-sm text-amber-100/80">
+              You were sent here because this app could not read who is assigned
+              to work tonight — so it could not tell whether you are. That is a
+              configuration problem on our side, not a decision about your
+              account, and nothing about your access has changed. If you are due
+              to work a door or a night, tell whoever set that night up:
+              retrying will land you in the same place until it is fixed.
+            </p>
+          </div>
+        )}
+
+        {accessNotAssignedHere && (
+          <div
+            role="status"
+            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-200">
+              You are assigned — but not to that
+            </p>
+            <p className="mt-1 text-sm text-amber-100/80">
+              Nothing is wrong with your account, and you do hold an assignment.
+              It just does not cover the page you asked for: assignments are
+              given one night and one job at a time, so working one night&apos;s
+              door does not open another night, or another job. If this one
+              should be yours, ask the organiser for that night to add it.
             </p>
           </div>
         )}

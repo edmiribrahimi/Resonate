@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getAccessContext } from "@/lib/capabilities/server";
+import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
@@ -22,6 +22,22 @@ import type {
  * Under the **organizer** tree, beside `events/[id]/{sales,tickets,guest-list,
  * analytics}` — the owner's decision. Phase 34 collapses the duplicated admin
  * and organizer trees; a new top-level address would have to be redirected then.
+ *
+ * ── Who may open it, and a correction to what this file used to say ──────────
+ * Two arms: the owner of the event from inside the organizer area, or somebody
+ * holding `party.manage` **on the night being looked at**. The second is
+ * evaluated after `?party=` is resolved, so it can refuse.
+ *
+ * The paragraph that stood beside the ownership check said three things that
+ * are no longer true, and it is corrected rather than left standing: the row
+ * policy behind this page is **not** `is_admin_or_organizer()` and has not been
+ * since phase 32 moved it to `staff.manage`
+ * (`20260807010000_policies_to_capabilities.sql:145-149`); per-night scoping of
+ * an organizer has **arrived**, in this phase; and the migration it cited for
+ * that promise now says something else. A migration file records what happened
+ * on a day, never what is true today — the schema is the migrations *in sum*.
+ * The same stale claim survives in `35-PATTERNS.md` § D, which carries a dated
+ * correction at its head, and in `31-VERIFICATION.md:882`, which does not.
  *
  * ── No notification, by requirement ──────────────────────────────────────────
  * FIX-11 states that this list raises no notification and asks for no action.
@@ -78,15 +94,37 @@ export default async function DoorReviewPage({
   const navRole = ctx.role as UserRole | null;
   const navStatus = ctx.status as UserStatus | null;
 
-  // Defense in depth: may this person reach the organizer area at all.
+  // ── The gate has TWO arms now, and the second one needs the night ───────────
   //
   // This is the **interface** layer — it decides where somebody may go. What
   // decides what they may read is `door_scan_events_select_admin`, and this
   // surface needs both: the redirect alone would leave the night readable
   // through the API by anyone holding the anonymous key.
-  if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
-    redirect("/dashboard");
-  }
+  //
+  // Arm 1 is unchanged: the organizer area, plus ownership of this event. Arm 2
+  // is one night's `party.manage`, and it cannot be asked here — it has no
+  // subject until `?party=` has been resolved against this event's nights. So
+  // the decision moved **down**, past the parties read, and the two arms are
+  // written there as one expression. Arm 1 short-circuits, so anybody who
+  // passes it pays no extra round trip for arm 2's existence.
+  //
+  // Nothing between here and the gate reads the night's record. The reads that
+  // happen first — the event row and the list of nights — are the ones the gate
+  // itself needs, and both are made with the cookie-bound client, so a policy
+  // still stands behind each of them.
+  const holdsOrganizerAccess = ctx.capabilities.has(CAP.ORGANIZER_ACCESS);
+
+  // Where a refusal on this page lands, decided once.
+  //
+  // Somebody who holds `organizer.access` keeps going exactly where they went
+  // before, `/organizer/events`. Somebody who arrived by **assignment** does
+  // not hold it — they are typically `staff` — and sending them to
+  // `/organizer/events` would bounce them again off the middleware, producing
+  // two redirects and a second notice about a different thing. They go to
+  // `/dashboard`. **Nobody loses a destination they had.**
+  const refusalDestination = holdsOrganizerAccess
+    ? "/organizer/events"
+    : "/dashboard";
 
   // The normal server client, and **not** the RLS-bypassing service client from
   // `@/lib/supabase/service`. That client bypasses every policy, so reading the
@@ -103,20 +141,7 @@ export default async function DoorReviewPage({
     .single();
 
   if (eventError || !event) {
-    redirect("/organizer/events");
-  }
-
-  // Ownership — one call, never a re-inlined comparison.
-  //
-  // Recorded honestly: the RLS policy is `is_admin_or_organizer()` and is **not**
-  // per-event. Per-night scoping of an organizer arrives in Phase 35, and the
-  // migration says so (`20260805120000_door_scan_events.sql:151-156`). Until
-  // then this check is the only per-event boundary there is — which is exactly
-  // why it must not be a transcription. `ownsOrIsMaster` refuses a null identity
-  // and an unowned row explicitly; the comparison written out here would compare
-  // `null !== null` and admit.
-  if (!ownsOrIsMaster(ctx, event.created_by)) {
-    redirect("/organizer/events");
+    redirect(refusalDestination);
   }
 
   const { data: parties, error: partiesError } = await supabase
@@ -130,12 +155,81 @@ export default async function DoorReviewPage({
 
   // A party id from the query string is untrusted input. Resolving it against
   // the parties **of this event** is not tidiness: an unchecked id would let an
-  // organizer read another event's night by editing the address, which is the
-  // one per-event boundary this page carries (see the ownership note above).
+  // organizer read another event's night by editing the address.
+  //
+  // It now carries a second load, and the gate below depends on it. Whatever
+  // this line produces is the night arm 2 is asked about, so the resolution has
+  // to happen against this event's own nights **before** the question is put —
+  // otherwise the question would be about an id the caller chose freely.
   const requestedParty =
     typeof query.party === "string" ? query.party : undefined;
   const selectedParty =
     partyList.find((p) => p.id === requestedParty) ?? partyList[0] ?? null;
+
+  // ── The gate, both arms, and the second one can FAIL ────────────────────────
+  //
+  // **Arm 1, unchanged and first.** The organizer area plus ownership of this
+  // event. `ownsOrIsMaster` is one call and never a re-inlined comparison: it
+  // refuses a null identity and an unowned row explicitly, where the comparison
+  // written out by hand would compare `null !== null` and **admit**. It
+  // short-circuits, so an owner never reaches the round trip below.
+  //
+  // **Arm 2 is evaluated AFTER `?party=` has been resolved, and never before.**
+  // That ordering is the whole difference between a gate and a decoration
+  // (`ai-engineering.md`, *un gate deve poter fallire*): because the question is
+  // asked about the night that was actually selected, editing `?party=` to a
+  // night this person is not assigned to makes **the same person on the same
+  // page** be refused. A check hoisted above the resolution would answer about
+  // some other night, or about none, and would pass every time.
+  //
+  // `hasCapability(key, { partyId })` resolves the per-night context, whose
+  // capability list is the union of what the role confers and what a live,
+  // unrevoked, unexpired assignment on that night confers. It **throws** rather
+  // than returning `false` when the lookup fails, and that throw must be left
+  // alone: catching it here and refusing would turn "could not find out" into
+  // "not permitted", which is the one shape this phase exists to prevent. The
+  // observable effect of a failure on this surface is the error boundary — a
+  // broken page — and that is louder than a wrong answer.
+  //
+  // With no night at all the second arm has no subject, and the answer is a
+  // refusal: a permission is not invented in the absence of the thing it is
+  // about. That branch also swallows the case where the parties read itself
+  // failed — the category survives in the `review:parties_read` log above, but
+  // for somebody who arrived by assignment the outcome is an ordinary refusal.
+  // It is named here rather than left to be discovered.
+  const mayReviewThisNight =
+    (holdsOrganizerAccess && ownsOrIsMaster(ctx, event.created_by)) ||
+    (selectedParty !== null &&
+      (await hasCapability(CAP.PARTY_MANAGE, { partyId: selectedParty.id })));
+
+  if (!mayReviewThisNight) {
+    redirect(refusalDestination);
+  }
+
+  // ── Two limits of this gate, declared rather than discovered ────────────────
+  //
+  // **1. An unpublished event is not reachable by assignment.** Somebody who
+  // arrives through arm 2 is typically `staff`, who does not hold
+  // `organizer.access` and therefore does not hold `staff.manage` either: the
+  // policies on `public.events` and `public.event_parties` show them only what
+  // is published. So on an unpublished event the event read above fails
+  // **before** this gate and the page bounces — measured, not deduced (plan
+  // 35-10 saw an assignee read 0 rows of `event_parties` on an unpublished
+  // event). For a review list, which is looked at *after* the night, the limit
+  // is narrow: the event is normally published by then. It is still a limit,
+  // and closing it would mean another arm on those two policies — a further
+  // migration that is in none of this phase's eight requirements.
+  //
+  // **2. This gate protects the PAGE; the policy protects the ROWS — and the
+  // two must agree.** What lets somebody admitted here actually see anything is
+  // the third arm of `door_scan_events_select_admin`, added by plan 35-09,
+  // which reads `party.manage` against the row's own `party_id`. Remove that
+  // arm and this page renders an **empty list** to a person with every right to
+  // the night — and on this surface an empty list is the *designed* state of a
+  // quiet night. It would say "no problems" to somebody who is simply not
+  // permitted to see the problems: a silent failure with no error path at all,
+  // in a product with no error tracking to catch it downstream. The two halves
+  // are named here for each other on purpose.
 
   let rows: DoorScanEvent[] = [];
   let readError: string | null = null;
