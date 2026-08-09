@@ -7,17 +7,10 @@ export default function EventComparisonLoading() {
         <div className="mt-3 h-8 w-56 animate-pulse rounded-lg bg-card-border/50" />
       </header>
 
-      {/* StaffNav skeleton */}
-      <div className="mb-6 px-6">
-        <div className="flex gap-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-8 w-20 animate-pulse rounded-full bg-card-border/50"
-            />
-          ))}
-        </div>
-      </div>
+      {/* The tab-bar skeleton that stood here is gone: `(work)/layout.tsx` now
+          mounts the real tab bar OUTSIDE this boundary, so a skeleton here
+          would draw a second row of pills under a nav that is already
+          rendered. Nothing else about this file changed. */}
 
       <div className="px-6 space-y-6">
         {/* Event selector skeleton */}

@@ -1,18 +1,19 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
-import StaffNav from "@/components/staff/StaffNav";
 import KPIDashboard from "@/components/analytics/KPIDashboard";
 import RecentActivityFeed from "@/components/analytics/RecentActivityFeed";
 import { fetchKPIDashboard } from "@/lib/analytics/dashboard-queries";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminAnalyticsOverviewPage() {
-  const { capabilities, role, status } = await getAccessContext();
+  // `(work)/layout.tsx` already resolved this for the whole tree, and
+  // `getAccessContext` is `cache()`-scoped per request: asking again costs no
+  // second round trip. The page keeps its OWN guard (D-34-09) — the layout
+  // resolves and draws, it does not admit.
+  const { capabilities } = await getAccessContext();
 
   // Defense in depth behind the middleware — and now the SAME question the
   // middleware asks for `/admin/*`, of the same authority, instead of a role
@@ -21,14 +22,6 @@ export default async function AdminAnalyticsOverviewPage() {
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
-
-  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
-  // resolver answers `string | null`. Narrowing here is the same cast the
-  // header read already made, from a better source — `profiles`, whose columns
-  // carry those unions, not an attacker-controllable header. Phase 34
-  // (STAFF-03) owns these props and removes this.
-  const navRole = role as UserRole | null;
-  const navStatus = status as UserStatus | null;
 
   const dashboard = await fetchKPIDashboard();
 
@@ -40,8 +33,6 @@ export default async function AdminAnalyticsOverviewPage() {
           <p className="text-sm text-muted">Overview</p>
         </header>
       </AnimatedSection>
-
-      <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1}>
         <div className="px-6 space-y-6">
@@ -92,8 +83,6 @@ export default async function AdminAnalyticsOverviewPage() {
           <RecentActivityFeed activities={dashboard.recentActivity} />
         </div>
       </AnimatedSection>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
