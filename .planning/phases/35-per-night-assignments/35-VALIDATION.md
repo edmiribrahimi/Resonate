@@ -1,10 +1,12 @@
 ---
 phase: 35
 slug: per-night-assignments
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: signed-off
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-08
+signed_off: 2026-08-09
+signed_off_by: 35-14
 ---
 
 # Phase 35 — Validation Strategy
@@ -115,27 +117,64 @@ automatica** e' la dichiarazione onesta di cosa un comando puo' provare.
 Nessuno di questi installa un framework: sono le **precondizioni di misurabilita'**
 dell'harness che esiste gia'.
 
-- [ ] **La cattura di baseline PRIMA della prima riga di DDL.** Una baseline
+> **Spuntate il 2026-08-09 dal piano 35-14, contro i SUMMARY dei piani che le
+> hanno soddisfatte — non contro cio' che era previsto.** Le voci sono **sei**,
+> non cinque come dice `35-14-PLAN.md`: la sesta (`verify:media-strip`) e' stata
+> aggiunta a questo documento quando i piani 35-19/35-20/35-21 sono entrati nella
+> fase. Contarne cinque avrebbe lasciato la sesta senza verdetto.
+
+- [x] **La cattura di baseline PRIMA della prima riga di DDL.** Una baseline
       presa dopo il cambiamento non e' una baseline. Precedente esplicito in
       `.planning/STATE.md` per la fase 32.
-- [ ] La voce di `PROBE_PAYLOADS` per `party_assignments` **e** per
+      → **Piano 35-01.** Le tre catture `…container.35-pre.json` esistono
+      (`policies`, `reads`, `writes`) e portano i numeri contro cui ogni
+      confronto di questa fase si misura: **68 policy, 21 tabelle con RLS, 294
+      celle di lettura, 882 sonde di scrittura**.
+- [x] La voce di `PROBE_PAYLOADS` per `party_assignments` **e** per
       `party_credits` — senza, **B3 si rifiuta di girare**. E la voce
       **esistente** di `event_media` va aggiornata (piano 35-18): la policy di
       inserimento pretende che la serata appartenga all'evento, e i due
       segnaposto `{{events}}` e `{{event_parties}}` sono risolti in modo
       indipendente, quindi una coppia incoerente farebbe rifiutare ogni cella
       **per il motivo sbagliato**.
-- [ ] Le decisioni in `ROLE_GRANTS` per ogni chiave di capability nuova, una per
+      → **Piani 35-02** (`party_assignments`, commit `ba7ee06`), **35-05**
+      (`party_credits`, commit `1707ea7`, piu' `artists` fra le referenziabili) e
+      **35-18** (la sola voce `event_media`). Il piano 35-06, che avrebbe dovuto
+      aggiungere le prime due, le ha **trovate gia' presenti** e lo ha
+      dichiarato invece di rivendicarle. Asserito: B3 gira senza il messaggio
+      «PROBE_PAYLOADS has no entry», **966 sonde su 23 tabelle**.
+- [x] Le decisioni in `ROLE_GRANTS` per ogni chiave di capability nuova, una per
       ogni ruolo (quattro ruoli dalla fase 43).
-- [ ] **Il terzo asse nel seed del container.** La griglia odierna e' ruolo ×
+      → **Piano 35-03**: `ROLE_GRANTS` a **48 coppie / 26 grant / 22 rifiuti**,
+      `EXPECTED_KEY_COUNT` a **12**. Sono i totali che questo documento
+      pre-annunciava per «dopo la fase 35», e si sono mossi perche' si e' mosso
+      il **modello** — tre chiavi nuove × quattro ruoli.
+- [x] **Il terzo asse nel seed del container.** La griglia odierna e' ruolo ×
       stato; un'**assegnazione** e' un terzo asse. Il seed deve produrre almeno
       *staff assegnato alla notte 1*, *staff assegnato alla notte 2*, *staff non
       assegnato* — **altrimenti ASSIGN-01 e' vacuo in ogni cella** — e almeno una
       persona che tiene `party.manage`, altrimenti il terzo braccio della policy
       del registro della porta e' una riga che nessuna cella attraversa.
-- [ ] Lo script strutturale per ASSIGN-07.
-- [ ] Lo script strutturale `verify:media-strip` (piano 35-21), provato per
+      → **Piano 35-06** per i tre account e la riga revocata, **piano 35-09** per
+      la quarta persona (`party.manage` sulla notte 1, nessuna assegnazione di
+      porta). E l'asse **non e' solo seminato, e' asserito**: `assertThirdAxis`
+      rifiuta se l'asse non discrimina, e `assertDoorRegisterByAssignment` misura
+      i due bracci per-notte. Un asse seminato e mai letto non discrimina niente.
+      Nella stessa voce e' stato corretto il difetto che l'avrebbe reso vacuo:
+      `ends_at` seminato con `now()` nasceva **gia' scaduto**.
+- [x] Lo script strutturale per ASSIGN-07.
+      → **Piano 35-05**: `scripts/verify-no-credit-account.mjs`, registrato come
+      `npm run verify:no-credit-account`, provato per mutazione in **quattro**
+      direzioni — **due delle quali sui rifiuti**, cioe' sul caso in cui lo
+      script deve *non* scattare.
+- [x] Lo script strutturale `verify:media-strip` (piano 35-21), provato per
       mutazione su tutti e cinque i suoi controlli.
+      → **Piano 35-21**: `scripts/verify-media-strip.mjs`, cinque controlli
+      (A–E), **sei** mutazioni — il controllo D ne ha due, perche' fallisce in due
+      modi diversi. **Ogni mutazione e' stata asserita come applicata prima di
+      leggerne l'esito**, e M-B ha fallito l'applicazione al primo tentativo:
+      senza quell'asserzione sarebbe stato registrato «non scatta» su un
+      controllo vivo, o — nella direzione pericolosa — «scatta» su uno morto.
 
 ---
 
@@ -162,13 +201,67 @@ finestre che si chiudono dichiarate.
 
 ## Validation Sign-Off
 
-- [ ] Ogni task porta un `<automated>` verify oppure una dipendenza esplicita da Wave 0
-- [ ] Continuita' di campionamento: mai 3 task consecutivi senza verifica automatica
-- [ ] Wave 0 copre tutti i riferimenti MANCANTI sopra
-- [ ] Nessun flag di watch-mode
-- [ ] Latenza di feedback dichiarata **per livello** in *Feedback Latency Tiers*, e ogni task che paga T3 e' nominato li'
-- [ ] `35-HUMAN-UAT.md` **scritto** prima della chiusura di fase
-- [ ] La dichiarazione di copertura onesta e' riportata nel `35-VERIFICATION.md`: **4 requisiti su 8 chiudibili automaticamente (01 limitatamente al permesso, 04, 06, 07); gli altri quattro (02, 03, 05, 08) hanno una meta' che nessuno strumento di questo repository puo' raggiungere — e ASSIGN-01 ha la propria: che la persona assegnata ARRIVI allo strumento**
-- [ ] `nyquist_compliant: true` impostato nel frontmatter
+> Spuntato il **2026-08-09** dal piano **35-14**, contro i fatti registrati nei
+> ventidue SUMMARY della fase. **Una voce non soddisfatta resta non spuntata e
+> nomina chi dovrebbe soddisfarla**: una lista spuntata per cortesia e' peggio di
+> una lista incompleta, perche' fa credere che qualcuno stia controllando.
 
-**Approval:** pending
+- [x] Ogni task porta un `<automated>` verify oppure una dipendenza esplicita da Wave 0
+      → **Misurato, non assunto.** Ventidue piani; per ognuno il numero di
+      blocchi `<automated>` e' **maggiore o uguale** al numero di task. Nessun
+      task della fase e' privo di verifica automatica.
+- [x] Continuita' di campionamento: mai 3 task consecutivi senza verifica automatica
+      → Conseguenza diretta della riga sopra: i task **senza** verifica
+      automatica sono **zero**, quindi non esiste nessuna sequenza di tre.
+- [x] Wave 0 copre tutti i riferimenti MANCANTI sopra
+      → Tutte e **sei** le voci di *Wave 0 Requirements* sono soddisfatte, ognuna
+      con il piano che l'ha soddisfatta scritto accanto.
+- [x] Nessun flag di watch-mode
+      → `grep -rn -- "--watch\|watchAll\|watch:"` su tutti i documenti della fase:
+      **zero occorrenze**. Nessun comando di questa fase resta in ascolto.
+- [x] Latenza di feedback dichiarata **per livello** in *Feedback Latency Tiers*, e ogni task che paga T3 e' nominato li'
+      → La riga dei livelli e' stata **rimisurata leggendo i blocchi
+      `<automated>` di tutti i piani** il 2026-08-08, ed e' completa. Una nota
+      che quella sezione non porta perche' e' arrivata dopo: il piano **35-22** e'
+      stato scritto il 2026-08-09, **dopo** la rimisura, e paga **T1 soltanto** —
+      il suo `<automated>` e' un `npm run build` piu' dei grep. **Nessun task T3
+      manca dalla lista**, che e' esattamente cio' che questa voce afferma. La
+      sezione non e' stata toccata: dichiara **quanto costa davvero** ogni livello
+      di prova, ed e' un fatto misurato, non una preferenza da aggiornare.
+- [x] `35-HUMAN-UAT.md` **scritto** prima della chiusura di fase
+      → **Scritto, non eseguito**, e la differenza e' il punto. `status: written`,
+      **tredici** procedure con `status: pending`, **zero** chiuse. Le tredici
+      sono le dieci di *Manual-Only Verifications*, piu' la **11** (piano 35-22) e
+      le **12** e **13**, che nascono da cio' che la fase ha costruito. Quattro
+      portano una **finestra che si chiude** — 12, 7, 10 e il caso C della 11 — e
+      sono dichiarate in testa al file.
+- [ ] La dichiarazione di copertura onesta e' riportata nel `35-VERIFICATION.md`: **4 requisiti su 8 chiudibili automaticamente (01 limitatamente al permesso, 04, 06, 07); gli altri quattro (02, 03, 05, 08) hanno una meta' che nessuno strumento di questo repository puo' raggiungere — e ASSIGN-01 ha la propria: che la persona assegnata ARRIVI allo strumento**
+      → **NON SPUNTATA, e non per una svista.** `35-VERIFICATION.md` **non
+      esiste**: e' il deliverable del verificatore di fase, non del piano 35-14,
+      e nessun piano di questa fase lo produce. La dichiarazione **e' scritta**,
+      con gli stessi ID, in `35-HUMAN-UAT.md § La dichiarazione di copertura,
+      onesta`, ed e' pronta per essere riportata li' — **con l'aggiunta che il
+      piano 35-22 ha reso necessaria**: arrivare allo strumento (prova 7) e
+      **usarlo** (prova 11) sono due gate distinti, e per ventuno piani solo il
+      primo era elencato. Spuntarla adesso significherebbe dichiarare fatto un
+      documento che non c'e'.
+- [x] `nyquist_compliant: true` impostato nel frontmatter
+      → **Impostato a `true`, e la ragione e' la prima voce di questa lista, non
+      una cortesia.** Vale la pena scrivere anche il caso opposto: la fase 31 ha
+      tenuto `nyquist_compliant: false` **deliberatamente**, e tenerlo falso con
+      una ragione scritta e' una risposta legittima. Qui il fatto e' misurato —
+      ogni task porta il suo `<automated>` — quindi la risposta e' vera. Metterlo
+      vero **senza guardare** sarebbe stato l'unico errore possibile su questa
+      riga.
+
+**Approval:** **sign-off del contratto di validazione dato il 2026-08-09 dal
+piano 35-14.** Sette voci su otto spuntate; la ottava resta aperta e nomina il
+documento che la chiudera'.
+
+**Cosa questo sign-off NON e'.** Non e' l'approvazione della fase, e non e' una
+verifica del prodotto. Dice che **il campionamento del feedback e' stato quello
+dichiarato** e che il deliverable manuale **esiste**. Non dice che una sola delle
+tredici prove sia stata eseguita — **nessuna lo e'** — ne' che una migration di
+questa fase sia applicata: **nessuna lo e'**, salvo le sei della fase 43 che la
+precedono. E non esiste alcun test runner del prodotto: nessuna riga di questo
+documento va letta come «i test passano».
