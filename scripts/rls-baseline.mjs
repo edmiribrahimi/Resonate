@@ -1429,6 +1429,118 @@ export const PROBE_REFERENCE_TABLES = [
 
 const PROBE_VERBS = ['delete', 'insert', 'update'];
 
+/** The label a constraint probe carries; it is a connection, never a person. */
+const PRIVILEGED_LABEL = 'privileged/service-path';
+
+/**
+ * ── The constraint probes — a SECOND kind of probe, and the reason it is second
+ *
+ * WHY THIS IS NOT A CELL OF THE MATRIX ABOVE. The write matrix answers ONE
+ * question — *who may write a row* — and it answers it under a persona, so RLS
+ * decides. This answers a DIFFERENT question — *does the database refuse a
+ * dishonest row* — and the answer must not depend on RLS at all. Folding the two
+ * into one cell would give a matrix that is red for the right reason and
+ * unreadable for the wrong one: the reader cannot tell a policy refusal from a
+ * constraint refusal by looking at a colour.
+ *
+ * AND ON `party_assignments` THE TWO CANNOT SHARE A CELL EVEN IN PRINCIPLE. That
+ * table has RLS on and **no write policy at all** (`20260809000000`, section 3f),
+ * so every persona is refused `42501` before a single constraint is evaluated.
+ * A persona-level self-grant probe would therefore report `42501` on all fourteen
+ * cells and measure NOTHING about ASSIGN-04 — a green that means "we never got
+ * there". So the probe runs on the PRIVILEGED connection, which is not a
+ * shortcut: it is the path the rule actually has to hold on. The migration says
+ * it in one line (`20260809000000:302-304`): *«the service client bypasses every
+ * RLS policy and bypasses no constraint»*, and that is exactly why ASSIGN-04 is a
+ * `CHECK` and not a policy. This probe exercises the same bypass.
+ *
+ * WHAT MAKES THE ROW MEASURE ONE RULE AND NOT ANY OTHER. Every other condition
+ * on the row is deliberately SATISFIED: `capability` is an assignable key,
+ * `assignee_role` is `'master'` and matches the role of the profile
+ * `{{profiles}}` resolves to (so the composite key would hold if it were
+ * reached), both revocation columns are null (so `revocation_paired` and
+ * `live_role_present` hold), and `ends_at` is a real future instant. The ONLY
+ * thing wrong with it is that `assigned_by` equals `user_id`. If a run reports
+ * `23514` from a DIFFERENT constraint, the row has drifted and the probe is
+ * measuring something else — which is why the constraint's NAME is asserted and
+ * not only the SQLSTATE.
+ *
+ * ── WHY `door.supervise` AND NOT `door.operate`, MEASURED ────────────────────
+ *
+ * The obvious key is `door.operate`, and it is wrong here. The seed materialises
+ * the ordinary `party_assignments` payload into two LIVE rows, and row 1 is
+ * `door.operate` for the very account `{{profiles}}` resolves to on the very
+ * night `{{event_parties}}` resolves to. A probe carrying `door.operate` is
+ * therefore ALSO a duplicate against `party_assignments_live_unique`
+ * (`20260809000000:514-516`), and that is not a hypothetical: the mutation proof
+ * of plan 35-06 measured it on 2026-08-09. With the `CHECK` in place the cell
+ * was green — `ExecConstraints` runs before the index insert, so the `CHECK`
+ * won the race — and with the `CHECK` dropped the cell came back `23505` from
+ * the unique index instead of succeeding.
+ *
+ * A cell that stays red under BOTH conditions is the failure this probe exists
+ * to avoid, one level up: the reader cannot tell "self-grants are refused" from
+ * "that row happened to be a duplicate". `door.supervise` is assignable
+ * (`party_assignments_capability_assignable`), exists in the catalogue after
+ * `20260809001000_assignment_resolver.sql`, and no seeded row carries it — so
+ * the self-grant is the ONLY thing left for the database to object to, and the
+ * mutation makes the insert SUCCEED rather than fail differently.
+ *
+ * If a later plan seeds a `door.supervise` assignment for the lowest profile on
+ * the lowest night, this key has to move again — and the symptom will be exactly
+ * the one above: a mutation run that reports `23505` instead of a success.
+ *
+ * CONTAINER ONLY, and stated rather than left implicit: this probe writes
+ * without a persona, and the one thing that keeps that safe is the rollback plus
+ * the fact that a container is destroyed minutes later. A production capture
+ * prints that it was skipped — silence would read as a pass.
+ *
+ * ── THE `42501` BRANCH IS NOT DEFENSIVE PADDING; IT WAS MADE TO FIRE ─────────
+ *
+ * Measured 2026-08-09, plan 35-06's mutation proof, direction B: the SAME probe
+ * string with `set local role authenticated` injected comes back `42501` **even
+ * with the `CHECK` present**. The write is refused before the constraint is ever
+ * evaluated, so under any role RLS applies to, ASSIGN-04 cannot be measured at
+ * all — with or without the rule. Two consequences, both written down because
+ * the second one is the kind that gets "tidied" away:
+ *
+ *   1. the privileged connection is not a convenience here, it is the ONLY place
+ *      this rule is observable;
+ *   2. a reader who later moves this probe under a persona will get a green-
+ *      looking `42501` on a table where the constraint has been deleted. That is
+ *      the failure the branch exists to name out loud, and direction D of the
+ *      same proof observed exactly it — `42501` with the constraint dropped,
+ *      byte-identical to `42501` with it present.
+ *
+ * (Superuser `FORCE ROW LEVEL SECURITY` was tried first and does NOT reproduce
+ * this: a superuser bypasses RLS regardless. Recorded so the next person does
+ * not spend the run finding out.)
+ */
+export const CONSTRAINT_PROBES = [
+  {
+    id: 'ASSIGN-04',
+    what: 'nobody assigns to themselves',
+    table: 'party_assignments',
+    sqlstate: '23514',
+    constraint: 'party_assignments_no_self_grant',
+    insert: {
+      columns: ['party_id', 'user_id', 'capability', 'assignee_role', 'assigned_by', 'ends_at'],
+      values: [
+        '{{event_parties}}',
+        '{{profiles}}',
+        // NOT `door.operate` — see the paragraph above; that key makes this row a
+        // duplicate as well as a self-grant, and a cell that is red twice over
+        // cannot say which rule it is reporting.
+        `'door.supervise'`,
+        `'master'`,
+        // The self-grant, and the whole point: the SAME account in both columns.
+        '{{profiles}}',
+        PROBE_FUTURE_INSTANT,
+      ],
+    },
+  },
+];
+
 /**
  * The token no probe string may contain, in any casing. The guard below is the
  * only place in this file that is allowed to name it.
@@ -1603,6 +1715,103 @@ function isConclusiveForRls(result, verb, globalRowCount) {
   return globalRowCount > 0;
 }
 
+/**
+ * Runs every constraint probe and CLASSIFIES the refusal instead of counting it.
+ *
+ * The classification is the deliverable, not the pass/fail. Four outcomes are
+ * distinguishable and each one means something different:
+ *
+ *   * `23514` + the declared constraint name → the rule refused, and it was that
+ *     rule. This is the only pass.
+ *   * `42501` → RLS stopped the write BEFORE the constraint was evaluated. The
+ *     probe measured the policy set and learnt nothing about the constraint, so
+ *     it is a FAILURE OF THE PROBE and never a pass. Recorded in those words,
+ *     because "refused" and "refused by the thing we were asking about" are not
+ *     the same sentence and a colour cannot tell them apart.
+ *   * `23514` from another constraint, or any other SQLSTATE (`23503`, `23502`,
+ *     `23505`) → the row drifted and something else caught it first.
+ *   * no error at all → the rule is not enforced. This is the loudest one.
+ *
+ * Returns `{ rows, failures }` rather than throwing, so that TWO readers can use
+ * it: `captureB3`, which throws on any failure because a capture built on an
+ * unmeasured invariant is not evidence, and the mutation proof, which needs to
+ * OBSERVE the failure that a deliberately dropped constraint produces. A runner
+ * that could only throw would have made the mutation proof impossible to write
+ * against the real code, and a mutation proved against a copy of the code proves
+ * nothing about the code.
+ */
+export async function runConstraintProbes(target, options = {}) {
+  const refs = options.refs ?? (await resolveProbeReferences(target));
+
+  const probes = CONSTRAINT_PROBES.map((probe) => ({
+    persona: PRIVILEGED_LABEL,
+    table: probe.table,
+    verb: 'insert',
+    probe,
+    sql: [
+      'begin;',
+      `insert into public."${probe.table}" (${probe.insert.columns
+        .map((c) => `"${c}"`)
+        .join(', ')}) values (${probe.insert.values.map((v) => substituteReferences(v, refs)).join(', ')});`,
+      'rollback;',
+    ].join('\n'),
+  }));
+
+  // The same clause-1 guarantee the matrix gets, over the same function: these
+  // strings write without a persona, so they are the ones that would matter most.
+  assertProbesRollBack(probes);
+
+  const rows = [];
+  const failures = [];
+
+  for (const { probe, sql } of probes) {
+    const { id, table, constraint, sqlstate: expected } = probe;
+    let observed = null;
+    let verdict = null;
+
+    try {
+      await target.query(sql, { readOnly: false });
+      observed = 'no error';
+      verdict = `the insert SUCCEEDED — "${constraint}" did not refuse it`;
+    } catch (error) {
+      const code = probeSqlstate(error);
+      // Same rule as the matrix: a failure that is not a SQL refusal is a broken
+      // measurement, never a result. An unreachable database must not be
+      // recorded as a database that enforces.
+      if (!code) throw error;
+      const name = typeof error?.constraint === 'string' && error.constraint ? error.constraint : null;
+      observed = name ? `${code} ${name}` : code;
+
+      if (code === expected && name === constraint) {
+        verdict = 'refused as declared';
+      } else if (code === '42501') {
+        verdict =
+          'stopped by RLS before the CHECK was evaluated — the policy set was measured and ' +
+          `"${constraint}" was NOT`;
+      } else if (code === expected) {
+        verdict = `${expected} from "${name ?? 'unnamed'}" — expected "${constraint}"`;
+      } else {
+        verdict = `refused ${code}, which is not ${expected} — the row was caught before the CHECK`;
+      }
+    }
+
+    const pass = verdict === 'refused as declared';
+    rows.push({
+      id,
+      table,
+      constraint,
+      expected_sqlstate: expected,
+      observed,
+      verdict,
+      pass,
+    });
+    if (!pass) failures.push(`${id} on ${table}: ${verdict} (observed ${observed})`);
+    say(`      ${pass ? '✓' : '✗'} ${id.padEnd(10)} ${table.padEnd(20)} ${observed.padEnd(38)} ${verdict}`);
+  }
+
+  return { rows, failures };
+}
+
 export async function captureB3(target, { phasePoint, targetName }) {
   const { postgresVersion } = await getFacts(target);
   const tables = await getTables(target);
@@ -1671,6 +1880,8 @@ export async function captureB3(target, { phasePoint, targetName }) {
   say(`      clause 1/2: ${checked} probe strings end in a rollback and carry no forbidden token`);
 
   const rows = [];
+  let constraintRows = [];
+  let constraintFailures = [];
   let sent = 0;
   try {
     for (const probe of probes) {
@@ -1696,9 +1907,36 @@ export async function captureB3(target, { phasePoint, targetName }) {
       });
       if (sent % 60 === 0) say(`      ${sent}/${probes.length} probes sent`);
     }
+
+    // The constraint probes run INSIDE this try on purpose: clause 2/2 below
+    // then re-reads the row counts after them too, so the one probe in this
+    // file that writes without a persona is covered by the same guarantee as
+    // the 966 that do.
+    if (targetName === 'container') {
+      const outcome = await runConstraintProbes(target, { refs });
+      constraintRows = outcome.rows;
+      constraintFailures = outcome.failures;
+    } else {
+      say(
+        `      constraint probes: skipped on target "${targetName}" — they write without a persona, ` +
+          'and the container is the only target this harness is allowed to do that to. Said out loud ' +
+          'because a silent skip reads as a pass.'
+      );
+    }
   } finally {
     const rechecked = await assertRowCountsUnchanged(target, tables, rowCountsBefore);
     say(`      clause 2/2: ${rechecked}/${tables.length} row counts re-read and unchanged after ${sent} probes`);
+  }
+
+  // After the guarantee, never before it: a run that discovered an unenforced
+  // constraint still has to prove it left no row behind.
+  if (constraintFailures.length) {
+    throw new Error(
+      `${constraintFailures.length} constraint probe(s) did not refuse as declared:\n` +
+        constraintFailures.map((f) => `        ${f}`).join('\n') +
+        '\n        Nothing was written. A capture whose named structural guarantees were not ' +
+        'observed is not evidence of them — investigate the constraint, never the expectation.'
+    );
   }
 
   // Absent personas are recorded, never omitted.
@@ -1740,6 +1978,12 @@ export async function captureB3(target, { phasePoint, targetName }) {
         row_counts_rechecked: tables.length,
         row_counts_unchanged: true,
       },
+      // A TRAILING key and not a row of `rows`: `rls-baseline-compare.mjs`
+      // indexes B3 rows by `(persona, table, verb)` and would report every
+      // constraint probe as a `b3_cell_added` against every earlier capture.
+      // These are a different measurement and they live beside the matrix, not
+      // inside it. Sorted by id so the file cannot reorder itself.
+      constraint_probes: sortRows(constraintRows, ['id']),
     },
   });
 
@@ -1748,7 +1992,9 @@ export async function captureB3(target, { phasePoint, targetName }) {
     rowCount: sorted.length,
     detail: `${sent} probes sent, ${refusals} refusals, ${successes} successes, ${
       sorted.filter((r) => r.conclusive_for_rls === false).length
-    } inconclusive`,
+    } inconclusive, ${constraintRows.filter((r) => r.pass).length}/${
+      constraintRows.length
+    } constraint probes refused as declared`,
   };
 }
 
