@@ -57,6 +57,7 @@ import { createHash } from 'node:crypto';
 import {
   PERSONA_ROLES,
   PERSONA_STATUSES,
+  PROBE_FUTURE_INSTANT,
   PROBE_PAYLOADS,
   PROBE_TEXT,
   compareStrings,
@@ -212,6 +213,81 @@ const FORBIDDEN_WRITES = [
   email: `seed-forbidden-${cell.role}-${cell.status}@example.invalid`,
   fullName: `Seed Forbidden ${cell.role} ${cell.status}`,
   membershipCode: `RSN-SEED430${i + 1}`,
+}));
+
+/**
+ * ── THE THIRD AXIS ────────────────────────────────────────────────────────
+ *
+ * WHAT IS MISSING WITHOUT IT. This file's grid has exactly two axes, ROLE and
+ * STATUS, and until phase 35 that was the whole of what could make two accounts
+ * behave differently. An **assignment** is a third one, and it is not a wider
+ * version of either: two accounts identical in role and in status now differ in
+ * what they may do at ONE night, and at no other.
+ *
+ * `35-VALIDATION.md` states the consequence in the only terms that matter:
+ * without three accounts that differ ONLY by assignment, **ASSIGN-01 is vacuous
+ * in every cell**. The property to prove is *«uses the tools of that night and
+ * of no other»*, and proving it needs at least one (person, night) pair whose
+ * answer is `false` while the SAME person on ANOTHER night answers `true`. One
+ * assigned account cannot produce that pair; two accounts on the same night
+ * cannot either.
+ *
+ * THE NEAREST PRECEDENT IN THIS FILE IS `FORBIDDEN_WRITES`, and it is only
+ * NEAR. That list grew from four to six when `staff` became a persona — an axis
+ * that got LONGER. This is an axis that did not exist, so the shape below is
+ * designed rather than copied, and the design rule taken from that precedent is
+ * the one that matters: **a detector that watches part of a rule reports a green
+ * for the whole of it.** Seeding two of these three would be exactly that.
+ *
+ * WHY THE FOURTH ROW — the REVOKED one — IS NOT OPTIONAL. It is the only place
+ * in this harness where a revoked assignment exists at all, and it answers two
+ * questions no live row can:
+ *
+ *   * a revoked row does NOT grant (ASSIGN-03), and it must fail to grant *while
+ *     still inside its window* — which is why its `ends_at` is the same future
+ *     instant the live rows carry. Had it been given a past `ends_at`, the row
+ *     would have been denied by EXPIRY and would have proved nothing whatever
+ *     about revocation;
+ *   * a revoked row does not block its holder's demotion, because
+ *     `assignee_role` is `NULL` and a `MATCH SIMPLE` composite key is not
+ *     checked when a referencing column is null (`20260809000000`, section 3b).
+ *
+ * IDENTITIES. Same convention as the twelve personas and the six forbidden
+ * writes, and for the same reason (threat T-32-04-02, and CLAUDE.md guardrail 5
+ * — this repository is PUBLIC): a first uuid group that is the literal
+ * `35000001` and belongs to no real account, an address on the reserved
+ * `.invalid` TLD that can reach no inbox, a `fullName` that is a ROLE AND ITS
+ * AXIS and never a person, and a `membershipCode` `handle_new_user()` cannot
+ * mint — its alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` holds neither `0` nor
+ * `1`, and every code here holds both.
+ *
+ * The `35000001` block is distinct from the `35000002-…-000000000001` literal
+ * plan 35-02 pinned as the probe's `assigned_by` fallback: two blocks, two
+ * purposes, and neither can be mistaken for the other or for an account.
+ *
+ * ALL THREE ARE `staff/approved`, deliberately. Role and status are held
+ * CONSTANT so that the only thing left varying is the assignment — that is what
+ * makes this an axis rather than three more cells. It also means they satisfy
+ * `profiles_role_implies_approved` on their own and need no relaxation of it.
+ */
+const THIRD_AXIS_CAPABILITY = 'door.operate';
+
+/** The constraint whose survival the third axis depends on, asserted by name. */
+const THIRD_AXIS_ROLE_FK = 'party_assignments_assignee_role_fk';
+
+const THIRD_AXIS_PERSONAS = [
+  { key: 'assigned-night1', axis: 'assigned night1', night: 0 },
+  { key: 'assigned-night2', axis: 'assigned night2', night: 1 },
+  { key: 'unassigned', axis: 'unassigned', night: null },
+].map((persona, i) => ({
+  ...persona,
+  role: 'staff',
+  status: 'approved',
+  label: `staff/approved · ${persona.axis}`,
+  id: `35000001-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+  email: `seed-staff-${persona.key}@example.invalid`,
+  fullName: `Seed Persona staff ${persona.axis}`,
+  membershipCode: `RSN-SEED350${i + 1}`,
 }));
 
 /**
@@ -448,6 +524,32 @@ export async function seedContainer(admin) {
         [p.id, p.email, p.fullName, p.membershipCode, p.role, p.status]
       );
     }
+
+    // ── the third axis, accounts only ─────────────────────────────────────
+    //
+    // Here rather than in their own block because they need the same two things
+    // the grid personas need: the code-minting trigger silenced, so two runs
+    // produce the same database, and a row in `auth.users` before a row in
+    // `public.profiles`. Their ASSIGNMENTS are seeded much later, after the
+    // nights exist — see `seedThirdAxis`.
+    //
+    // They are appended AFTER the grid and their ids sort after `32000004…`, and
+    // that is load-bearing twice over: `resolvePersonas` resolves each grid cell
+    // to its LOWEST id, so `staff/approved` keeps resolving to the grid persona
+    // and no matrix row moves; and `min(pk)` on `public.profiles` keeps naming
+    // `master/approved`, which is what `assertProbeRowSatisfiesTheRule` below
+    // exists to protect.
+    for (const p of THIRD_AXIS_PERSONAS) {
+      await admin.query(
+        `insert into auth.users (id, email, raw_user_meta_data) values ($1::uuid, $2, '{}'::jsonb)`,
+        [p.id, p.email]
+      );
+      await admin.query(
+        `insert into public.profiles (id, email, full_name, membership_code, role, status)
+         values ($1::uuid, $2, $3, $4, $5, $6)`,
+        [p.id, p.email, p.fullName, p.membershipCode, p.role, p.status]
+      );
+    }
   } finally {
     await admin.query('alter table auth.users enable trigger on_auth_user_created');
 
@@ -537,7 +639,208 @@ export async function seedContainer(admin) {
     seededIds.set(table, ids);
   }
 
-  return assertDiscriminating(admin, allTables, owners, personas);
+  // AFTER the loop, and the order is a foreign key rather than a preference:
+  // `party_assignments.party_id` points at `public.event_parties`, and the
+  // composite key `(user_id, assignee_role) → public.profiles (id, role)` is
+  // evaluated at the insert. Both have to exist first.
+  await seedThirdAxis(admin, {
+    nights: seededIds.get('event_parties') ?? [],
+    granter: byLabel.get('master/approved'),
+  });
+  await assertThirdAxis(admin, { nights: seededIds.get('event_parties') ?? [] });
+
+  return assertDiscriminating(admin, allTables, owners, [...personas, ...THIRD_AXIS_PERSONAS]);
+}
+
+/**
+ * ── Seeds the third axis: two live assignments, one revocation ────────────
+ *
+ * Four rows, three accounts, two nights. The shape is the whole argument:
+ *
+ *   | account            | night 1              | night 2 |
+ *   |--------------------|----------------------|---------|
+ *   | assigned night1    | LIVE `door.operate`  | —       |
+ *   | assigned night2    | —                    | LIVE    |
+ *   | unassigned         | REVOKED              | —       |
+ *
+ * Read down the "night 1" column and the axis is visible: three accounts with
+ * the same role and the same status, and three different answers.
+ *
+ * `assigned_by` is `master/approved`, an account from the grid and never one of
+ * the three: `party_assignments_no_self_grant` (ASSIGN-04) refuses a row whose
+ * granter is its subject, and a seed that tripped it would fail here with
+ * `23514` instead of producing data. The distinctness is asserted rather than
+ * argued, because the failure mode of getting it wrong is a seed that cannot
+ * run at all and a reader who has to work out why.
+ *
+ * NO CONSTRAINT IS RELAXED HERE, and that is a decision. The seed drops
+ * `profiles_role_implies_approved` around the persona loop because six of the
+ * twelve grid personas are unrepresentable without it (D-05). Nothing of the
+ * kind applies to this table: all three accounts are `staff`, all three are
+ * `approved`, and `party_assignments_assignee_role_fk` must therefore hold on
+ * every one of these rows. **If it does not, the seed has just found a defect in
+ * the key and must fail loudly rather than seed around it** — which is what an
+ * unguarded `insert` does, and why there is no `try` here.
+ */
+async function seedThirdAxis(admin, { nights, granter }) {
+  if (nights.length < 2) {
+    throw new Error(
+      `the third axis needs at least two nights and public.event_parties seeded ${nights.length}. ` +
+        'ASSIGN-01 is the property "that night and no other", so a single night cannot express it: ' +
+        'every account would answer the same on the only night there is. Nothing was measured.'
+    );
+  }
+  if (!granter) {
+    throw new Error(
+      'master/approved was not resolved, so no account can be the granter of the seeded assignments. ' +
+        'Nothing was measured.'
+    );
+  }
+
+  const clashes = THIRD_AXIS_PERSONAS.filter((p) => p.id === granter.id).map((p) => p.label);
+  if (clashes.length) {
+    throw new Error(
+      `the granter is also the subject of: ${clashes.join(', ')}. ` +
+        '`party_assignments_no_self_grant` would refuse those rows with 23514, and a seed that trips ' +
+        'ASSIGN-04 has produced no data rather than proved anything. Give the third axis its own ids.'
+    );
+  }
+
+  const [assignedToOne, assignedToTwo, unassigned] = THIRD_AXIS_PERSONAS;
+  const rows = [
+    { n: 1, persona: assignedToOne, party: nights[0], live: true },
+    { n: 2, persona: assignedToTwo, party: nights[1], live: true },
+    // The revoked row belongs to the UNASSIGNED account on purpose: it is the
+    // strongest form of "a revocation grants nothing", since the account it
+    // belongs to holds nothing else anywhere.
+    { n: 3, persona: unassigned, party: nights[0], live: false },
+  ];
+
+  for (const row of rows) {
+    const id = `35000001-0000-4000-8000-${String(1000 + row.n).padStart(12, '0')}`;
+    if (row.live) {
+      await admin.query(
+        `insert into public.party_assignments
+           (id, party_id, user_id, capability, assignee_role, assigned_by, ends_at)
+         values ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::uuid, ${PROBE_FUTURE_INSTANT})`,
+        [id, row.party, row.persona.id, THIRD_AXIS_CAPABILITY, row.persona.role, granter.id]
+      );
+    } else {
+      // `assignee_role` NULL and both revocation columns filled: the only shape
+      // `party_assignments_live_role_present` and
+      // `party_assignments_revocation_paired` accept together for a revoked row.
+      await admin.query(
+        `insert into public.party_assignments
+           (id, party_id, user_id, capability, assignee_role, assigned_by, ends_at, revoked_at, revoked_by)
+         values ($1::uuid, $2::uuid, $3::uuid, $4, null, $5::uuid, ${PROBE_FUTURE_INSTANT}, now(), $5::uuid)`,
+        [id, row.party, row.persona.id, THIRD_AXIS_CAPABILITY, granter.id]
+      );
+    }
+  }
+}
+
+/**
+ * ── Assertion 4: the axis actually discriminates ──────────────────────────
+ *
+ * The inserts above succeeding says the rows were ACCEPTED. It does not say they
+ * mean anything: three rows all pointing at the same night, or all already
+ * expired, would insert perfectly and leave ASSIGN-01 exactly as vacuous as it
+ * was. So the grid is read back with the RESOLVER'S OWN LIVENESS PREDICATE —
+ * `revoked_at is null and now() < ends_at`, the two conditions
+ * `20260809001000_assignment_resolver.sql:353-355` tests — and compared against
+ * the shape this file declares.
+ *
+ * The predicate is re-stated here rather than borrowed from the resolver, and
+ * that is on purpose: `private.has_capability` answers about `auth.uid()`, so it
+ * cannot be asked about somebody else, and a checker that reads its expectation
+ * off the thing it checks cannot fail (`rls-baseline.mjs:113-130`, same rule).
+ * The price is a second site for two conditions, and the mitigation is that this
+ * paragraph names the first one.
+ *
+ * `THIRD_AXIS_ROLE_FK` is asserted by NAME for the reason
+ * `20260808001000_role_implies_approved.sql:179-181` states as a rule: whoever
+ * renames a constraint renames it in the seed too. A renamed key with this
+ * assertion still passing would be an assertion about a constraint that no
+ * longer exists.
+ */
+async function assertThirdAxis(admin, { nights }) {
+  const { rows: keyRows } = await admin.query(
+    `select 1 from pg_constraint
+      where conrelid = 'public.party_assignments'::regclass and conname = $1`,
+    [THIRD_AXIS_ROLE_FK]
+  );
+  if (!keyRows.length) {
+    throw new Error(
+      `"${THIRD_AXIS_ROLE_FK}" is not on public.party_assignments. The third axis is three staff ` +
+        'accounts whose live assignments are held to their role BY THAT KEY, so without it the rows ' +
+        'below prove nothing about D-A. If the constraint was renamed, rename it here too — the same ' +
+        'rule 20260808001000_role_implies_approved.sql:179-181 states. Nothing was measured.'
+    );
+  }
+
+  // What the axis must look like: one `true` per assigned account, on ITS night
+  // and on no other, and nothing at all for the unassigned one.
+  const expected = new Map();
+  for (const persona of THIRD_AXIS_PERSONAS) {
+    for (let n = 0; n < 2; n += 1) {
+      expected.set(`${persona.key}#${n}`, persona.night === n);
+    }
+  }
+
+  const wrong = [];
+  const observedLines = [];
+  for (const persona of THIRD_AXIS_PERSONAS) {
+    const answers = [];
+    for (let n = 0; n < 2; n += 1) {
+      const { rows } = await admin.query(
+        `select exists (
+           select 1 from public.party_assignments pa
+            where pa.user_id = $1::uuid
+              and pa.party_id = $2::uuid
+              and pa.capability = $3
+              and pa.revoked_at is null
+              and now() < pa.ends_at
+         ) as live`,
+        [persona.id, nights[n], THIRD_AXIS_CAPABILITY]
+      );
+      const live = rows[0].live === true;
+      answers.push(live);
+      const want = expected.get(`${persona.key}#${n}`);
+      if (live !== want) {
+        wrong.push(`${persona.label} on night ${n + 1}: ${live} (expected ${want})`);
+      }
+    }
+    observedLines.push(`${persona.axis.padEnd(16)} night1=${answers[0]} night2=${answers[1]}`);
+  }
+
+  if (wrong.length) {
+    throw new Error(
+      `the third axis does not discriminate: ${wrong.join('; ')}. ASSIGN-01 is the property "that ` +
+        'night and no other", and it needs one (person, night) pair answering false while the SAME ' +
+        'person answers true on another night. Without that pair every cell of the matrix agrees for ' +
+        'the one reason that proves nothing. Investigate the seeded rows, never the expectation. ' +
+        'Nothing was measured about ASSIGN-01.'
+    );
+  }
+
+  const { rows: revoked } = await admin.query(
+    `select count(*)::int as n from public.party_assignments
+      where revoked_at is not null and revoked_by is not null and assignee_role is null`
+  );
+  if (revoked[0].n !== 1) {
+    throw new Error(
+      `the seed holds ${revoked[0].n} revoked assignments and the third axis declares exactly 1. ` +
+        'The revoked row is the only evidence in this harness that a revocation withholds a grant ' +
+        'while the window is still open, and that a revoked row stops blocking its holder demotion. ' +
+        'Nothing was measured about ASSIGN-03.'
+    );
+  }
+
+  for (const line of observedLines) say(`      third axis  ${line}`);
+  say(
+    `      third axis  1 revoked row, ends_at still in the future — revocation withholds the grant ` +
+      'on its own, not by expiry'
+  );
 }
 
 /**
