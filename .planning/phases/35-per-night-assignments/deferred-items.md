@@ -171,3 +171,62 @@ piano che tocca `organizer/artists` — intercetta `23503` sulla cancellazione d
 un artista, elenca le serate che lo accreditano, e non lascia arrivare all'utente
 un messaggio generico. E' il precedente del form newsletter registrato in
 `.planning/codebase/CONCERNS.md`, da non ripetere.
+
+---
+
+## 4. [APERTA] L'uscita dalla demozione bloccata esiste, ma non ha un pulsante
+
+**Trovata da:** piano 35-08, che l'ha dichiarata invece di lasciarla scoprire.
+
+`revokeAssignmentsAndDemote` e' scritta, esportata, e la frase del rifiuto la
+nomina. Ma il controllo che la invoca vivrebbe su `MemberTable.tsx`, che non e'
+fra i `files_modified` di quel piano.
+
+**Conseguenza operativa oggi:** il rifiuto `23503` **nomina** le serate che
+bloccano — quello funziona — ma l'azione singola richiede una mano tecnica. La
+strada manuale (revocare dalla pagina assegnazioni, poi cambiare il ruolo) resta
+aperta ed e' descritta nella notice.
+
+**Cosa deve succedere.** Il piano che apre `MemberTable.tsx` collega il pulsante.
+Finche' non e' collegato, **non si puo' dire che il percorso d'uscita e'
+spedito**: e' scritto, non raggiungibile.
+
+---
+
+## 5. [DA VERIFICARE — dedotta, non osservata] `validUntil` sara' `null` su un evento non pubblicato
+
+**Trovata da:** piano 35-07, leggendo la policy — **non misurandola**. La
+distinzione e' il punto della voce.
+
+`event_parties_select_admin` chiede `staff.manage`, che un assegnatario a una
+sola notte **non ha**. Su un evento **non pubblicato**, quindi, la lettura di
+`event_parties` fallisce e `validUntil` esce `null`.
+
+La direzione della conseguenza e' quella sicura, ed e' scritta nel codice come
+limite dichiarato. Ma **e' una deduzione**, e questa fase ha gia' visto tre
+deduzioni plausibili smentite dal container (l'ordine `CHECK`/`WITH CHECK`, la
+semantica `NULL` del registro, `ends_at` sul seed).
+
+**Cosa deve succedere.** Chi esegue il piano 35-10 — che risolve il verdetto
+all'apertura dello scanner — **misura** questo caso invece di ereditarlo: una
+persona assegnata a una notte di un evento non pubblicato, e cosa vede.
+
+---
+
+## 6. [APERTA, fuori fase] La semantica `NULL` documentata sul registro non e' quella che il suo writer produce
+
+**Trovata da:** piano 35-04, contro il container.
+
+`20260808002000_membership_register.sql:244-246` documenta *«NULL significa:
+questo atto non ha toccato quell'asse»*. Ma `record_membership_act` calcola i
+quattro assi da se', e **non lo ha mai fatto per nessun atto**: su
+un'assegnazione escono `["staff","staff","approved","approved"]`, non `NULL`.
+
+**Perche' non e' stata corretta.** Quella migration e' **applicata in produzione
+dal 2026-08-08**, e il gate *migration in avanti* la protegge: si corregge con
+una migration nuova, non riscrivendo un file gia' applicato.
+
+**Chi la incontrera' per primo:** la prima superficie che **legge** il registro
+— 35-14, o il piano che mostra la storia di un membro. Un lettore che si fidi
+del commento interpretera' un valore presente come «asse toccato» quando non lo
+e'.

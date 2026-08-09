@@ -324,9 +324,9 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 35-06-PLAN.md — The harness: two probe payloads, the dedicated self-grant probe proved by mutation, and the seed's third axis
-- [ ] 35-07-PLAN.md — `hasCapability(key, { partyId })` and a door guard that resolves once and returns the supervision verdict
-- [ ] 35-08-PLAN.md — The assignment surface, and the single action that revokes then demotes when the database refuses
+- [x] 35-06-PLAN.md — The harness: two probe payloads, the dedicated self-grant probe proved by mutation, and the seed's third axis
+- [x] 35-07-PLAN.md — `hasCapability(key, { partyId })` and a door guard that resolves once and returns the supervision verdict
+- [x] 35-08-PLAN.md — The assignment surface, and the single action that revokes then demotes when the database refuses
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 6/21 | In Progress|  |
+| 35. Per-Night Assignments | 9/21 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
