@@ -124,7 +124,7 @@ export default async function OrganizerEventsPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav role={navRole} context="organizer" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1} className="px-6">
         <EventList events={events ?? []} />

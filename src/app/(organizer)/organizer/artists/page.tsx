@@ -40,7 +40,7 @@ export default async function OrganizerArtistsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Organizer</h1>
       </header>
 
-      <StaffNav role={navRole} context="organizer" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <div className="px-6">
         {!artists || artists.length === 0 ? (

@@ -12,6 +12,7 @@ import ResetPasswordButton from "@/components/auth/ResetPasswordButton";
 import ChangeEmailButton from "@/components/auth/ChangeEmailButton";
 import DashboardDrinkTokens from "./DashboardDrinkTokens";
 import ManagementSection from "@/components/account/ManagementSection";
+import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -251,32 +252,34 @@ export default async function DashboardPage({
   });
   const sortedTickets = [...upcomingTickets, ...pastTickets];
 
-  // Role and status from the SESSION. Only the source changed.
-  const { role, status } = await getAccessContext();
+  // Role, status and the resolved capability set, from the SESSION. Only the
+  // source changed. `capabilities` is read for one thing only — deciding which
+  // management links this page may draw — and it crosses to the client as an
+  // array, because a `Set` is not serialisable across the boundary.
+  const { capabilities, role, status } = await getAccessContext();
+  const managementCapabilities = [...capabilities];
 
-  // Both expressions KEEP THEIR FORM, deliberately. Neither redirects and
-  // neither narrows a query: the first draws a shortcut block and
-  // `isPendingOrRejected` draws a notice — they decide what this page RENDERS,
-  // which makes them presentation under this phase's contract.
+  // ── The role predicate this line used to hold is gone (STAFF-03)
   //
-  // ── This variable used to be called `isStaff`, and the name had become a lie
+  // It read `role === "master" || role === "organizer"`, and the comment that
+  // stood here said phase 34 would rewrite the whole family at once against four
+  // roles. This is that rewrite. The question is no longer *which role is this*
+  // but *would the section draw anything* — answered by the same declaration the
+  // middleware reads, so the affordance and the refusal cannot disagree.
   //
-  // The predicate is CORRECT and must not move. What broke is only its name:
-  // phase 43 adds a fourth role literally called `staff`, and a variable called
-  // `isStaff` that evaluates to **false** for the `staff` role is an invitation
-  // to a future reader to "fix" it — which would hand a `staff` account the
-  // management section, an affordance the access model refuses it. Measured in
-  // this phase, cell by cell: `staff` holds nothing a `member` does not, and it
-  // does not hold `door.operate`, `organizer.access`, `admin.access` or
-  // `staff.manage`. So the correct reading of this line is *"may this account
-  // reach the management tools"*, and it is now named that.
+  // The set of accounts is unchanged, and it was checked rather than assumed
+  // against `20260807000000_capability_model.sql:407-412`: `master` holds
+  // `admin.access` and `organizer.access`, `organizer` holds `organizer.access`,
+  // and no other role holds either. The fourth role — `staff` — holds neither,
+  // so it still sees nothing here, and it now does so because the model says so
+  // rather than because a literal happens to omit it.
   //
-  // Renaming rather than converting: this gates a NAVIGATION AFFORDANCE, and
-  // phase 34 (STAFF-03 — "a navigation entry appears only where the matching
-  // server-side check also passes") rewrites that whole family at once against
-  // four roles. Converting one member of the family here means paying for the
-  // redesign twice, and the route is already gated upstream.
-  const canReachManagementTools = role === "master" || role === "organizer";
+  // Both expressions still KEEP THEIR FORM in the sense that matters: neither
+  // redirects and neither narrows a query. They decide what this page RENDERS.
+  // Hiding this section is not what protects `/admin/*` — the middleware and each
+  // page's own guard do that.
+  const canReachManagementTools =
+    visibleStaffTabs(managementCapabilities).length > 0;
   const isPendingOrRejected = status === "pending" || status === "rejected";
 
   return (
@@ -570,10 +573,13 @@ export default async function DashboardPage({
               </div>
             </div>
 
-            {/* Management Tools — master and organizer only. Deliberately NOT
-                the `staff` role: see the note beside the predicate above. */}
+            {/* Management Tools — the surfaces this account's capabilities
+                open, and only those. The cast that stood here, narrowing `role`
+                to a two-member union, is deleted: a cast is how a new role value
+                gets laundered into an old union without anything saying so, and
+                Phase 43 recorded seventeen of them doing exactly that. */}
             {canReachManagementTools && (
-              <ManagementSection role={role as "master" | "organizer"} />
+              <ManagementSection capabilities={managementCapabilities} />
             )}
           </>
         )}

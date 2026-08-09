@@ -46,7 +46,7 @@ export default async function MemberGrowthPage({
         </header>
       </AnimatedSection>
 
-      <StaffNav role={navRole} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1} className="px-6 space-y-4">
         {/* Granularity toggle */}

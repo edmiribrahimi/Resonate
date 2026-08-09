@@ -1,44 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import type { Route } from "next";
+import type { CapabilityKey } from "@/lib/capabilities/keys";
+import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import CollapsibleSection from "@/components/account/CollapsibleSection";
 
-interface ManagementSectionProps {
-  role: "master" | "organizer";
-}
-
 /**
- * Form 1 of plan 34-01 — the `NavItem<Route>[]` shape the Next.js docs give.
- * The type goes on the DATA, not on the call site, so a misspelt address is a
- * build error here rather than a 404 in somebody's Management Tools list.
+ * The Management Tools list on the account page — the third hand-maintained
+ * menu, and the one most likely to be forgotten.
+ *
+ * It held **two** literal lists, one of seven addresses and one of four, picked
+ * by a `role: "master" | "organizer"` prop. Both are gone. The seven surfaces
+ * are declared once, in `src/lib/routes/staff-tabs.ts`, which reads the same map
+ * the middleware reads (`src/lib/routes/capability-routes.ts`), and this list is
+ * that declaration filtered by what the viewer holds — through the same
+ * `visibleStaffTabs` call the tab bar makes. One filter, one list, no second
+ * copy to fall behind.
+ *
+ * ── Hiding a nav item is not protecting a route ──────────────────────────────
+ *
+ * A link is drawn here only when the viewer holds the capability the middleware
+ * will ask for at that address (STAFF-03). That holds in **one** direction. The
+ * converse is not true and is not claimed: **hiding a nav item is not protecting
+ * a route.** Nothing here refuses anybody — the middleware refuses, and the RLS
+ * policies in the migrations are the boundary on the data.
+ * `access-gating.md`, gate *coerenza navigazione/permessi*.
+ *
+ * This is a `"use client"` component: it receives the resolved keys as props and
+ * never imports the resolver or the guard helpers under `src/lib/capabilities/`.
+ * A capability check that moved from the server to the browser would be a check
+ * the viewer can edit.
  */
-interface ManagementLink {
-  label: string;
-  href: Route;
+interface ManagementSectionProps {
+  /** The keys resolved server-side for this viewer. Serialisable — an array, not a `Set`. */
+  capabilities: readonly CapabilityKey[];
 }
-
-const masterLinks: ManagementLink[] = [
-  { label: "Events", href: "/admin/events" },
-  { label: "Members", href: "/admin/members" },
-  { label: "Artists", href: "/admin/artists" },
-  { label: "Venues", href: "/admin/venues" },
-  { label: "Newsletter", href: "/admin/newsletter" },
-  { label: "Finance", href: "/admin/finance" },
-  { label: "Analytics", href: "/admin/analytics" },
-];
-
-const organizerLinks: ManagementLink[] = [
-  { label: "Events", href: "/organizer/events" },
-  { label: "Members", href: "/organizer/members" },
-  { label: "Artists", href: "/organizer/artists" },
-  { label: "Venues", href: "/organizer/venues" },
-];
 
 export default function ManagementSection({
-  role,
+  capabilities,
 }: ManagementSectionProps) {
-  const links = role === "master" ? masterLinks : organizerLinks;
+  const links = visibleStaffTabs(capabilities);
 
   return (
     <div className="border-t border-card-border pt-6 mt-6">
