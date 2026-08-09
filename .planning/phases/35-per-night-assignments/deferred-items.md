@@ -324,7 +324,15 @@ requisiti di questa fase.
 
 ---
 
-## 9. [DA SAPERE PRIMA DEL DEPLOY, non un difetto] Il caricamento media rifiuta per tutti fino al piano 35-21
+## 9. [CHIUSA il 2026-08-09 dal piano 35-21] Il caricamento media rifiuta per tutti fino al piano 35-21
+
+> **Esito.** Il piano 35-21 ha reso `partyId` il **secondo parametro
+> obbligatorio** di `registerMedia` e la superficie ora nomina la notte: la
+> finestra e' chiusa, il caricamento non rifiuta piu' per tutti. Il rifiuto a
+> runtime resta, perche' il tipo di un parametro di Server Action non e' un
+> confine.
+>
+> Il testo originale resta sotto.
 
 **Trovata da:** piano 35-16, che l'ha dichiarata invece di lasciarla scoprire.
 
