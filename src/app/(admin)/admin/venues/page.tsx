@@ -39,7 +39,7 @@ export default async function AdminVenuesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
       </header>
 
-      <StaffNav role={navRole} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <div className="px-6">
         {!venues || venues.length === 0 ? (

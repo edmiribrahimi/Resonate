@@ -23,10 +23,13 @@ export default async function AdminEventsPage() {
     redirect("/dashboard");
   }
 
-  // role/status still flow to <MobileNav> / <StaffNav> as props: the source
-  // changed, the consumer did not. Nothing here branches on them. The cast
-  // narrows `string | null` to the union those client components declare;
-  // phase 34 (STAFF-03) owns converting them to capabilities.
+  // role/status now flow to <MobileNav> alone. <StaffNav> takes the resolved
+  // capability set instead (plan 34-04, STAFF-03), so the tab bar and the
+  // middleware read one declaration and cannot disagree. `MobileNav`'s
+  // signature is deliberately unchanged: it is mounted on 44 pages including the
+  // door's, and this phase does not edit the door. Nothing here branches on
+  // role/status; the cast narrows `string | null` to the union `MobileNav`
+  // declares.
   const role = rawRole as UserRole | null;
   const status = rawStatus as UserStatus | null;
 
@@ -78,7 +81,7 @@ export default async function AdminEventsPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav role={role} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1} className="px-6">
         <EventList events={events} basePath="/admin/events" />

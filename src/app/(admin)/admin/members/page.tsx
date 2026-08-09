@@ -112,7 +112,7 @@ export default async function AdminMembersPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav role={navRole} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1} className="px-6">
         {/*

@@ -2,72 +2,59 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Route } from "next";
-import type { UserRole } from "@/types/database";
-
-interface StaffNavProps {
-  role: UserRole | null;
-  context: "admin" | "organizer";
-}
+import type { CapabilityKey } from "@/lib/capabilities/keys";
+import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 
 /**
- * Form 1 of plan 34-01 — the address is DATA and it carries its type.
+ * The staff tab bar. It draws what the viewer holds, and nothing else.
  *
- * The previous shape was a bare segment (`"events"`) concatenated with a base
- * resolved from `context`, plus a `contexts` array saying where the tab
- * exists. `typedRoutes` cannot check a concatenation whose base is a `string`,
- * and it cannot know that the `contexts` filter is what keeps
- * `/organizer/finance` — an address that does not exist — from ever being
- * built. Writing both addresses out makes the absence explicit as `null`, and
- * every address that IS written is now checked against the generated union.
+ * ── Hiding a nav item is not protecting a route ──────────────────────────────
  *
- * The visible behaviour is unchanged: a tab with `organizer: null` is exactly
- * a tab whose `contexts` was `["admin"]`.
+ * This component draws a tab only when the viewer holds the capability the
+ * middleware will ask for at that address — both read the same declaration,
+ * `src/lib/routes/capability-routes.ts`, through the labelled view in
+ * `src/lib/routes/staff-tabs.ts`. That is STAFF-03, and it holds in **one**
+ * direction: an entry that is drawn has a matching server-side rule.
  *
- * The `context` prop itself is STAFF-03's to remove, in a later plan of this
- * phase. This task only stops the addresses from being strings.
+ * It does **not** hold in the other, and this component does not claim it does.
+ * **Hiding a nav item is not protecting a route.** A tab that is absent has not
+ * been refused by anything; the refusal is the middleware's, and the boundary on
+ * the data is the RLS policy in the migrations. `access-gating.md`, gate
+ * *coerenza navigazione/permessi*.
+ *
+ * ── Why the resolved set arrives as a prop ───────────────────────────────────
+ *
+ * This is a `"use client"` component and it resolves nothing. It receives the
+ * capability keys the server already resolved and filters on them. It must never
+ * import the resolver or the guard helpers under `src/lib/capabilities/`: a
+ * capability check that moved from the server to the browser would be a check
+ * the viewer can edit. Only the label list travels here, and that list is public
+ * — route patterns and key strings, both already visible in the URL bar.
+ *
+ * ── What this component lost, and why ────────────────────────────────────────
+ *
+ * The prop that named which of the two staff trees this bar was being drawn in.
+ * It concatenated a base onto a bare segment, which is how one menu came to hold
+ * two spellings of the same seven surfaces. There is one work surface now, so
+ * there is one address per tab, and this component no longer knows the two trees
+ * apart — it cannot, and that is the point. The `roles: ["master"]` filter went
+ * the same way: replaced by the capability the middleware asks, not translated
+ * into a second rule.
  */
-interface StaffTab {
-  label: string;
-  admin: Route;
-  /** `null` when the tab has no address in the organizer tree. */
-  organizer: Route | null;
-  /** Role restriction, unchanged. */
-  roles?: UserRole[];
+interface StaffNavProps {
+  /**
+   * The keys resolved server-side for this viewer, as an array.
+   *
+   * An array and not a `Set` deliberately: a client component's props cross the
+   * server/client boundary and must be serialisable, and a `Set` is not.
+   */
+  capabilities: readonly CapabilityKey[];
 }
 
-const STAFF_TABS: StaffTab[] = [
-  { label: "Events", admin: "/admin/events", organizer: "/organizer/events" },
-  { label: "Members", admin: "/admin/members", organizer: "/organizer/members" },
-  { label: "Artists", admin: "/admin/artists", organizer: "/organizer/artists" },
-  { label: "Venues", admin: "/admin/venues", organizer: "/organizer/venues" },
-  { label: "Newsletter", admin: "/admin/newsletter", organizer: null },
-  {
-    label: "Finance",
-    admin: "/admin/finance",
-    organizer: null,
-    roles: ["master"],
-  },
-  {
-    label: "Analytics",
-    admin: "/admin/analytics",
-    organizer: null,
-    roles: ["master"],
-  },
-];
-
-export default function StaffNav({ role, context }: StaffNavProps) {
+export default function StaffNav({ capabilities }: StaffNavProps) {
   const pathname = usePathname();
 
-  // `flatMap` rather than `map(...).filter(...)`: it narrows `Route | null` to
-  // `Route` by construction, with no type predicate to keep in step with the
-  // shape above.
-  const visibleTabs = STAFF_TABS.flatMap((tab) => {
-    const href = context === "admin" ? tab.admin : tab.organizer;
-    if (href === null) return [];
-    if (tab.roles && (!role || !tab.roles.includes(role))) return [];
-    return [{ label: tab.label, href }];
-  });
+  const visibleTabs = visibleStaffTabs(capabilities);
 
   return (
     <>

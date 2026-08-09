@@ -31,7 +31,7 @@ export default async function AdminFinancePage() {
           the point of use. `AccessContextResult` types both fields
           `string | null` because they come back from an untyped `rpc()`; the
           navs declare the narrower unions. Nothing decides anything on them. */}
-      <StaffNav role={role as UserRole | null} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <div className="px-6">
         <TransactionList />

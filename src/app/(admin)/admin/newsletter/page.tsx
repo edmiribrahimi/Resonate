@@ -58,7 +58,7 @@ export default async function AdminNewsletterPage() {
       <div className="px-6 pt-10">
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Admin</h1>
       </div>
-      <StaffNav role={navRole} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <div className="px-6">
         {!statsResult.ok ? (

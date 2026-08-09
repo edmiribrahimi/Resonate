@@ -41,7 +41,7 @@ export default async function AdminAnalyticsOverviewPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav role={navRole} context="admin" />
+      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1}>
         <div className="px-6 space-y-6">
