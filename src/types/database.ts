@@ -540,12 +540,20 @@ export interface PartyAssignmentRow {
   /**
    * The role the holder carried when it was granted.
    *
-   * **`null` means REVOKED**, never *we do not know*. The nullability is the
-   * mechanism, not a gap in the data: the composite foreign key
-   * `(user_id, assignee_role) → public.profiles (id, role)` is `MATCH SIMPLE`,
-   * so it is not enforced once this column is null — which is what frees the
-   * holder's role from a row that is no longer about anything. Read it as *this
-   * row constrains nobody any more*.
+   * **`null` means RETIRED** — revoked *or* expired — never *we do not know*.
+   * The nullability is the mechanism, not a gap in the data: the composite
+   * foreign key `(user_id, assignee_role) → public.profiles (id, role)` is
+   * `MATCH SIMPLE`, so it is not enforced once this column is null — which is
+   * what frees the holder's role from a row that is no longer about anything.
+   * Read it as *this row constrains nobody any more*.
+   *
+   * It said *«null means REVOKED»* until 2026-08-09, and that was the whole of
+   * CR-02: expiry released nothing, so an assignment that ended three weeks ago
+   * and that nobody revoked blocked every role write on its holder for ever —
+   * including `deactivateMember`, the urgent one.
+   * `20260809007000_expired_assignments_release_role.sql` gives expiry the same
+   * effect, and {@link PartyAssignmentRow.expired_at} says which of the two
+   * happened.
    */
   assignee_role: "master" | "organizer" | "staff" | null;
   /** Who granted it. Never equal to `user_id` — the database refuses that with `23514`. */
@@ -570,6 +578,25 @@ export interface PartyAssignmentRow {
   revoked_at: string | null;
   /** Who revoked it. `null` while live, and `null` again if that account is later deleted. */
   revoked_by: string | null;
+  /**
+   * When the row was RETIRED because its night was already over — CR-02.
+   *
+   * **Not a revocation, and deliberately not written as one.** `revoked_at`
+   * stays `null`, so the offline drain can still ask *"was this live at
+   * `scannedAt`?"* about 01:40 at 03:00, which is the whole of ASSIGN-03. What
+   * the stamp does is release {@link PartyAssignmentRow.assignee_role}, so the
+   * composite key stops refusing every role write on the holder.
+   *
+   * **There is no `expired_by`, and its absence is the statement.** Nobody
+   * performs an expiry: time passes. Attributing it to a person would be false
+   * and attributing it to `'system'` would put a non-act into the member
+   * register, so the record of the expiry is this column and nothing else.
+   *
+   * `party_assignments_expiry_not_before_end` refuses a value earlier than
+   * `ends_at`, which is what keeps *"a LIVE assignment blocks a demotion"* true:
+   * the release cannot be back-dated into a way of unlocking one.
+   */
+  expired_at: string | null;
 }
 
 /** The four roles a credit may carry, mirrored by `party_credits_credit_check`. */
