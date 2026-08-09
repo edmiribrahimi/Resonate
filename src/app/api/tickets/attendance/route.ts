@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
+import { CAP } from "@/lib/capabilities/keys";
 import { getPostHogServer } from "@/lib/posthog/server";
 import {
   DOOR_HTTP,
@@ -7,6 +9,7 @@ import {
   type DoorSubjectType,
 } from "@/lib/door/outcome";
 import {
+  DOOR_UNRESOLVED_ERROR,
   DOOR_UNRESOLVED_STATUS,
   requireDoorOperator,
   type DoorAuth,
@@ -30,6 +33,207 @@ function refuse(auth: Extract<DoorAuth, { ok: false }>) {
     },
     { status: auth.status }
   );
+}
+
+/**
+ * The shape a night identifier must have before it reaches the door guard.
+ *
+ * Same literal as `src/app/api/tickets/checkin/undo/route.ts:23-24`,
+ * `src/lib/capabilities/server.ts` and `src/lib/door/require-operator.ts` —
+ * copied rather than reinvented, because four regexes for one shape are four
+ * answers waiting to disagree.
+ *
+ * It is checked HERE, in the route, rather than left to the guard: with a
+ * `partyId` the guard **throws** `door.invalid_party_id` on a malformed id and
+ * says in its `@throws` note why — a permanent caller fault laundered into the
+ * retryable 503 bucket would be retried for the rest of the night
+ * (`sync-manager.ts:141`). The route owns validating its own input and
+ * answering 400.
+ */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The door's verdict, as the device receives it — ASSIGN-08.
+ *
+ * ── Why it rides on this response and not on a fourth call ───────────────────
+ *
+ * This is the request the scanner makes when it opens a night
+ * (`ScannerClient.tsx:486`), and it already costs one authorisation. Resolving
+ * the verdict here means the device learns *what it may do tonight* for **zero
+ * extra round trips**, and never asks again for the rest of the session: N
+ * scans cost N check-in calls and no authorisation call at all.
+ *
+ * That is not an optimisation, it is the requirement. `require-operator.ts`
+ * measured the thing that makes it one: **`cache()` does not memoise inside a
+ * Route Handler** — three calls ran the body three times, in `next dev` and in
+ * a production build alike. A second resolution is therefore a second network
+ * round trip on a phone with one bar, in front of a queue, and **no compiler
+ * will ever see it**.
+ *
+ * ── Decided by POSITION, never by message ────────────────────────────────────
+ *
+ * Every field here is a value at a fixed key. Next redacts server-side error
+ * messages in production builds (CR-01), so a device that had to parse prose to
+ * learn a category would work in `next dev` and stop working where it matters.
+ */
+interface DoorAuthorisation {
+  /** May scan tonight — by ROLE **or** by an assignment to this night. The two are one verdict here. */
+  mayScan: boolean;
+  /** ASSIGN-05: may **reverse** an admission. A separate key (`door.supervise`), never a flag on the first. */
+  maySupervise: boolean;
+  /**
+   * When this night ends, as an instant — ASSIGN-02, and a **courtesy of the
+   * interface**.
+   *
+   * It decides **what is drawn**, never **what is permitted**, and it is never
+   * a reason to drop anything from the queue. The boundary is on the server, in
+   * the resolver's predicate (`now() < pa.ends_at`, the server's clock, which
+   * no device can move). A cache may stop trusting itself at this instant; a
+   * scan already queued is evidence of something that happened and outlives it.
+   *
+   * `null` when the night declares no end — and `null` is **not** invented into
+   * an expiry, because `event_parties.end_time` is nullable and a fabricated
+   * one would be shown to staff as a fact.
+   */
+  validUntil: string | null;
+  /**
+   * The **server's** clock at the moment the verdict was resolved.
+   *
+   * It is here so the device can **measure the drift of its own clock instead
+   * of trusting it**: a phone twenty minutes fast at 02:00 must not expire a
+   * verdict twenty minutes early. A device clock is evidence, never authority —
+   * `src/app/api/membership/verify/route.ts:412`, and the same lexicon in
+   * `checkin-store.ts:135-136`.
+   */
+  resolvedAt: string;
+}
+
+/**
+ * The four fields, built from the verdict that has ALREADY been resolved.
+ *
+ * Takes the resolved arm rather than resolving again, for the reason written
+ * out above and in `refuse` — the same discipline, on the other branch.
+ */
+function doorAuthorisation(
+  auth: Extract<DoorAuth, { ok: true }>
+): DoorAuthorisation {
+  return {
+    mayScan: auth.mayScan,
+    maySupervise: auth.maySupervise,
+    validUntil: auth.validUntil,
+    resolvedAt: auth.resolvedAt,
+  };
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE ADMISSION SET OF THE NIGHT LIST — one field more per row, never one row
+ * fewer. This is the load-bearing paragraph of this file; read it before
+ * touching the branch below.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * The night list is **the first thing the scanner loads**
+ * (`ScannerClient.tsx:464`, before any night is chosen), and an empty list at
+ * the door **is a refusal** — the staff sees no night to open and nobody gets
+ * in. `checkin-offline.md` names the false refusal, the one that happens in
+ * front of a queue, as the worse of the two failures, and this repository has
+ * already made the same call for the twin case: `membership/list/route.ts:45-52`
+ * admits on `membership_code` alone and reads neither role nor status,
+ * deliberately, because *"adding a status test would create a NEW way to refuse
+ * somebody at the door"*.
+ *
+ * So the rule here, and it is a rule and not a preference:
+ *
+ *   * Whoever holds `door.operate` **by role** sees every night from the window
+ *     onward, **exactly as before**. Zero rows fewer, for anybody who had them.
+ *   * Whoever does **not** hold it by role but holds a live per-night
+ *     assignment sees the nights they are assigned to. That set is empty today —
+ *     without the role they were refused 403 before reaching this line — so the
+ *     change is **purely additive**: it gives rows to somebody who had none.
+ *
+ * **What was deliberately NOT done.** The obvious-looking move is to narrow the
+ * list to "the nights you are assigned to" for everyone. That is option (b) of
+ * `35-RESEARCH.md` § T-5 turned inside out, and it fails in the direction this
+ * product refuses: it takes nights away from people who can work them, and it
+ * discovers the mistake at 02:00 on a phone with an empty list.
+ *
+ * **And the case to enumerate by name, because it is the one that will show up
+ * first:** a person with a live assignment and no role that confers
+ * `door.operate` must get a NON-EMPTY list. If the assignment read fails, the
+ * answer is **not** an empty list — it is a distinct, retryable outcome with its
+ * own log category, so an error can never wear the costume of "nobody is on
+ * tonight". That disguise is precedent CR-02, and the newsletter form recorded
+ * in `.planning/codebase/CONCERNS.md` is the same defect one product surface
+ * over.
+ */
+type AssignmentProbe =
+  | { ok: true; partyIds: Set<string> }
+  | { ok: false };
+
+/**
+ * Which nights the CURRENT session holds a live `door.operate` assignment on.
+ *
+ * ── The client is the cookie-bound one, and that is the whole safety of it ───
+ *
+ * `party_assignments_select_own` is `USING (user_id = (select auth.uid()))`
+ * (`20260809000000_party_assignments.sql:549-550`), so this query answers about
+ * the caller and has no way to name anybody else. The service client would
+ * bypass that policy and return every assignment in the database — which is why
+ * it is not used here even though the rest of this route holds one.
+ *
+ * ── Liveness mirrors the resolver's arm 2, and is not a boundary ─────────────
+ *
+ * `revoked_at is null` is ASSIGN-03 — a revocation is a row that was UPDATED,
+ * never one that was removed — and it is pushed to the database. `now() <
+ * ends_at` is ASSIGN-02 and is applied here, in TypeScript, against this
+ * runtime's clock rather than the database's.
+ *
+ * That difference is stated rather than hidden. It is not an authorisation
+ * boundary: the boundary is `now() < pa.ends_at` inside
+ * `private.has_capability`, on the database's own clock, evaluated again when
+ * the scanner actually opens the night. This list only decides what is
+ * **offered**, and the two clocks in question are both servers within a second
+ * of each other, against an `ends_at` that falls at 06:00 — the hour the door is
+ * already shut.
+ *
+ * ── It costs a round trip only for somebody who gets nothing today ──────────
+ *
+ * It is issued **only** on the branch that currently answers 403 with no list at
+ * all. A role holder never reaches it, so the door path everyone uses today
+ * costs exactly what it cost before.
+ */
+async function liveDoorAssignments(): Promise<AssignmentProbe> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("party_assignments")
+    .select("party_id, ends_at")
+    .eq("capability", CAP.DOOR_OPERATE)
+    .is("revoked_at", null);
+
+  if (error) {
+    // Its own category, and only `error.code`. The message is not logged and
+    // not returned: a PostgREST message can carry the shape of the query and
+    // this response reaches a phone. A code is enough to tell a missing
+    // migration from a policy refusal from a dead connection.
+    console.error(
+      `[attendance.assignments_lookup_failed] could not read party_assignments ` +
+        `for the night list: ${error.code ?? "unknown"}. This is NOT "no ` +
+        `assignments" and must never be answered with an empty list.`
+    );
+    return { ok: false };
+  }
+
+  const now = Date.now();
+  const rows = (data ?? []) as { party_id: string; ends_at: string }[];
+
+  return {
+    ok: true,
+    partyIds: new Set(
+      rows.filter((r) => Date.parse(r.ends_at) > now).map((r) => r.party_id)
+    ),
+  };
 }
 
 /**
@@ -173,6 +377,25 @@ interface PartyPayload {
   eventTitle: string;
   date: string;
   time: string | null;
+  /**
+   * How this row was reached — *"un campo in piu' per riga, non una riga in
+   * meno"*.
+   *
+   *   * `false` — by ROLE. The row would have been here before this plan too.
+   *   * `true`  — by a live per-night assignment, and by nothing else. The
+   *     interface can mark it, and can avoid offering a night it will then be
+   *     refused on once the assignment expires.
+   *   * `null`  — **not determined**, which is not `false`. On the single-night
+   *     branch the guard resolves role and assignment as ONE union verdict and
+   *     does not distinguish them; asking a second time to find out would be the
+   *     round trip this whole plan exists to avoid. A fabricated `false` would be
+   *     a claim nobody measured.
+   *
+   * Present on every row rather than omitted where unknown, following the rule
+   * `refundedAt` already sets in this file: the device must never have to
+   * distinguish *absent* from *false*.
+   */
+  reachedByAssignment: boolean | null;
   totalTickets: number;
   guestListCount: number;
   refundedCount: number;
@@ -198,19 +421,111 @@ export async function GET(request: Request) {
   const search = searchParams.get("search")?.trim().toLowerCase() || "";
   const partyIdFilter = searchParams.get("partyId");
 
-  // Once per handler. This is the request the door makes before the radio goes
-  // off, so a round trip saved here is a round trip saved on a weak signal.
-  const auth = await requireDoorOperator();
-  if (!auth.ok) return refuse(auth);
+  // T-35-47. The `partyId` on the query string is untrusted input, and it is
+  // checked before it can reach either the guard or PostgREST. See UUID_PATTERN
+  // for why a malformed id is a 400 here and not one of the guard's four
+  // outcomes.
+  if (partyIdFilter !== null && !UUID_PATTERN.test(partyIdFilter)) {
+    return NextResponse.json(
+      { error: "partyId must be a uuid" },
+      { status: 400 }
+    );
+  }
+
+  // Once per handler, and with the night NAMED when there is one. This is the
+  // request the door makes before the radio goes off, so a round trip saved
+  // here is a round trip saved on a weak signal — and naming the night here is
+  // what lets the verdict ride home on this response instead of costing a
+  // fourth call. `cache()` does not memoise inside a Route Handler: a second
+  // call to the door guard would be a second full round trip, and no compiler
+  // would see it. The literal is not spelled out again on purpose — the plan's
+  // check counts occurrences of it in this file, and a check that has to be
+  // read around is a check that gets ignored the third time it goes red.
+  const auth = await requireDoorOperator(
+    partyIdFilter ? { partyId: partyIdFilter } : undefined
+  );
+
+  // ── Who is admitted, and to how much ─────────────────────────────────────
+  //
+  // Read the admission-set paragraph above `liveDoorAssignments` before
+  // changing a line of this. `null` means **reached by role** — every night,
+  // exactly as before this plan, zero rows fewer. A Set means **reached by
+  // assignment** and holds the only nights this session may open.
+  let assignedPartyIds: Set<string> | null = null;
+
+  if (!auth.ok) {
+    // A NAMED night has already had the assignment question asked of it: the
+    // guard's per-night form unions what the role confers with what a live
+    // assignment on that night confers, so a refusal there is a real refusal.
+    // Only the LIST branch has a second question left to ask, because a list
+    // names no night and the guard therefore answered on role alone.
+    if (partyIdFilter || auth.kind !== "forbidden") return refuse(auth);
+
+    const probe = await liveDoorAssignments();
+
+    if (!probe.ok) {
+      // NOT an empty list, and NOT a 403. *"Could not find out"* is its own
+      // outcome and keeps its own shape: 503 lands in the retry bucket
+      // (`sync-manager.ts:141`) instead of the blocked one a 403 would reach,
+      // which signing in again would never clear. `DOOR_UNRESOLVED_STATUS` is
+      // the value the device already knows, so nothing new has to be taught to
+      // a bundle already in the field.
+      return NextResponse.json(
+        {
+          error: DOOR_UNRESOLVED_ERROR,
+          status: DOOR_UNRESOLVED_STATUS,
+          source: "party_assignments",
+        },
+        { status: 503 }
+      );
+    }
+
+    // No role and no live assignment is the refusal it has always been — same
+    // 403, same body, same words. Nobody who is refused today is refused
+    // differently.
+    if (probe.partyIds.size === 0) return refuse(auth);
+
+    assignedPartyIds = probe.partyIds;
+  }
+
+  // Built from the verdict already resolved above — never a second question.
+  // Additive: it is a new key beside `events`, and no existing key changes name,
+  // type or meaning. A staff device may run the previous bundle against this API
+  // for a whole session, and that session is a night at the door.
+  //
+  // **Absent, never `false`**, on the one branch where there is no single
+  // verdict to report: reached by assignment alone, *"may I scan"* has no answer
+  // that is not per-night. The answer arrives on the request that names a night,
+  // which is the request the scanner makes when it opens one.
+  const doorAuth = auth.ok ? doorAuthorisation(auth) : undefined;
+  const envelope = doorAuth ? { doorAuth } : {};
 
   const serviceClient = getServiceClient();
-  const today = new Date().toISOString().split("T")[0];
 
-  // Fetch current and upcoming parties (today + future) with their events
+  // ── The window opens YESTERDAY, and that is a repair rather than a widening ─
+  //
+  // A night is filed under the date it STARTS and runs to 06:00 the morning
+  // after (`party_end_instant`, and `src/utils/datetime.ts` for the same rule in
+  // TypeScript). `new Date().toISOString()` is the **UTC** calendar date, so
+  // from 00:00 UTC — 02:00 in Turin in summer — the night IN PROGRESS carries a
+  // `date` strictly before it, and a `gte("date", today)` dropped it.
+  //
+  // The consequence was the one this file exists to avoid: a device that
+  // reloads at 02:30 — a crash, a flat battery, a second phone arriving late —
+  // found an empty list during the four hours the door is busiest, and an empty
+  // list at the door is a refusal. One day back puts the night in progress
+  // inside the window at every hour of it.
+  //
+  // It only ADDS rows. Nobody loses one.
+  const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+
+  // Fetch the night in progress and the upcoming ones, with their events
   let partiesQuery = serviceClient
     .from("event_parties")
     .select("id, title, date, time, event_id, events(title)")
-    .gte("date", today)
+    .gte("date", windowStart)
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 
@@ -219,14 +534,49 @@ export async function GET(request: Request) {
     partiesQuery = partiesQuery.eq("id", partyIdFilter);
   }
 
-  const { data: parties } = await partiesQuery;
+  const { data: parties, error: partiesError } = await partiesQuery;
 
-  if (!parties || parties.length === 0) {
-    return NextResponse.json({ events: [] });
+  if (partiesError) {
+    // This error was DISCARDED before this plan — the destructuring took `data`
+    // only — and the handler fell through to `{ events: [] }` with a 200. That
+    // is a read failure wearing the costume of *"no nights tonight"*, which is
+    // precedent CR-02 and the newsletter form of `CONCERNS.md` one surface over.
+    // It now has its own category and a status that says a failure happened.
+    console.error(
+      `[attendance.parties_lookup_failed] could not read event_parties for the ` +
+        `night list: ${partiesError.code ?? "unknown"}. This is NOT "no nights ` +
+        `tonight".`
+    );
+    return NextResponse.json(
+      { error: "Could not read the list of nights", source: "event_parties" },
+      { status: 500 }
+    );
+  }
+
+  // Narrowed to a const so the closure below keeps the narrowing.
+  const assigned = assignedPartyIds;
+
+  // The ONLY place the list is narrowed, and it narrows a set that was empty
+  // before this plan: without the role, this session never reached this line.
+  const visibleParties = assigned
+    ? (parties ?? []).filter((p) => assigned.has(p.id))
+    : (parties ?? []);
+
+  /**
+   * Per row by design even though it is uniform per request today: a role
+   * holder who also carries assignments still reaches every row BY ROLE, and
+   * the field says what is true of the row rather than of the account.
+   */
+  const reachedByAssignment: boolean | null = partyIdFilter
+    ? null
+    : assigned !== null;
+
+  if (visibleParties.length === 0) {
+    return NextResponse.json({ events: [], ...envelope });
   }
 
   const results: PartyResult[] = await Promise.all(
-    parties.map(async (party): Promise<PartyResult> => {
+    visibleParties.map(async (party): Promise<PartyResult> => {
       const event = party.events as unknown as { title: string };
 
       const [ticketsRes, guestRes, refundsRes] = await Promise.all([
@@ -484,6 +834,7 @@ export async function GET(request: Request) {
           eventTitle: event.title,
           date: party.date,
           time: party.time,
+          reachedByAssignment,
           // Live tickets only: a refunded ticket is not a sold seat for tonight.
           totalTickets: ticketAttendees.length,
           guestListCount: guestListAttendees.length,
@@ -515,6 +866,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     events: results.map((r) => (r as Extract<PartyResult, { ok: true }>).value),
+    ...envelope,
   });
 }
 
