@@ -43,6 +43,42 @@ human_verification:
     why_human: "Interfaccia utente; nessun grep osserva un rendering o una frase a schermo."
 ---
 
+> ## Annotazione posteriore — 2026-08-09, dopo la code review
+>
+> **Questo documento e' stato scritto PRIMA della code review di fase.** Quella
+> review ha poi trovato **2 Critical, 9 Warning, 5 Info**, e cinque finding sono
+> stati corretti nello stesso giorno. Il giudizio complessivo — `human_needed`,
+> per migration non applicate e procedure scritte e non eseguite — **non cambia**,
+> ma tre fatti che questo documento non poteva contenere si', e vanno letti
+> insieme a esso:
+>
+> **CR-01 — un secondo buco della stessa forma, su una rotta sorella.**
+> `attendance/route.ts` chiedeva la sola domanda di ruolo: il **check-in per nome
+> dalla guest list**, che alla porta e' lo stesso strumento di una scansione. Un
+> assegnatario apriva la propria serata e veniva rifiutato. Corretto con la
+> stessa forma a due bracci del piano 35-22.
+>
+> **CR-02 — un effetto dell'assegnazione che sopravviveva a ogni notte.** La FK
+> composta non conosce `ends_at`, e nessun cron revoca: lo **stato normale** era
+> che ogni assegnatario diventasse permanentemente non demansionabile, con
+> `deactivateMember` rifiutato sul percorso che il codice stesso chiama *«the
+> URGENT one of the three doors»* — l'account restava `staff`/`approved`, cioe'
+> **attivo**. Corretto ritirando la riga scaduta dentro la stessa istruzione che
+> cambia il ruolo.
+>
+> **Un difetto trovato correggendo, piu' grave dei due sopra.**
+> `party_assignments_live_role_present`, come spedita, **non rifiutava la forma
+> che dichiarava di rifiutare**: con `assignee_role` NULL l'espressione vale
+> `NULL`, e **una `CHECK` passa quando l'espressione e' NULL**. Una riga viva
+> senza ruolo era accettata — e senza ruolo la chiave composta non viene
+> controllata. Era la garanzia D-A (*solo ruoli staff sono assegnabili*)
+> aggirabile dalla logica ternaria di SQL. Misurato sul predicato spedito.
+>
+> **Conseguenza sulla coda:** le migration della fase sono ora **dieci**, non
+> nove, e la nuova sta in blocco A2. Il resto del giudizio di questo documento
+> resta valido.
+
+
 # Phase 35: Per-Night Assignments — Verification Report
 
 **Phase Goal:** What a person can do on one night is granted for that night alone — separate from their account-wide role, and separate from public credit, which grants nothing.
