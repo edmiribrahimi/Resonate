@@ -191,16 +191,52 @@ COMMENT ON FUNCTION public.party_end_instant(date, time) IS
 -- purpose is written here, so that the removal is refused with a reason instead
 -- of being discovered as an outage.
 --
--- IDEMPOTENZA — WR-04 della code review del 2026-08-08. Questa coda si applica
--- A MANO, una riga alla volta. Senza il `DROP ... IF EXISTS`, una seconda
--- esecuzione di QUESTO file solleva `42710` (duplicate_object), manda in
+-- IDEMPOTENZA — WR-04 della code review del 2026-08-08, **corretta da WR-01
+-- della code review del 2026-08-09**. Questa coda si applica A MANO, una riga
+-- alla volta, e riapplicare una riga per sicurezza e' la reazione naturale a un
+-- dubbio: senza idempotenza, una seconda esecuzione di QUESTO file manda in
 -- rollback l'intera transazione e lascia NON APPLICATA tutta la coda che segue.
+--
+-- **La forma precedente produceva esattamente il fallimento che dichiarava di
+-- prevenire.** Era `DROP CONSTRAINT IF EXISTS` seguito da `ADD CONSTRAINT`, e
+-- l'`IF EXISTS` sopprime *«non esiste»*, non *«qualcos'altro dipende da essa»*:
+-- alla sezione 3 questo stesso file crea
+-- `party_assignments_assignee_role_fk`, che REFERENCES `public.profiles (id,
+-- role)` e quindi **dipende dall'indice unico che la DROP cerca di togliere**.
+-- Alla seconda esecuzione la DROP arriva prima del `CREATE TABLE IF NOT EXISTS`
+-- (che non farebbe nulla) e Postgres rifiuta. Misurato in `postgres:17.6`:
+--
+--   ERROR:  cannot drop constraint profiles_id_role_unique on table profiles
+--           because other objects depend on it
+--   DETAIL:  constraint party_assignments_assignee_role_fk on table
+--            party_assignments depends on index profiles_id_role_unique
+--
+-- `2BP01` invece di `42710`, transazione in rollback, coda ferma: lo stesso
+-- danno, con un altro codice.
+--
+-- La forma corretta e' **non toccare un vincolo referenziato**: crearlo se
+-- manca, e altrimenti lasciarlo esattamente dov'e'. Non c'e' `ALTER TABLE ...
+-- ADD CONSTRAINT IF NOT EXISTS` in Postgres — di qui il `DO`, che e' la forma
+-- che questo repository usa gia' quando serve un DDL condizionale.
+--
+-- **Questo file non e' mai stato applicato in produzione** (e' la riga 7 di una
+-- coda che nessuno ha ancora percorso), quindi correggerlo qui non viola il gate
+-- *migration in avanti* di `supabase-data.md`: non c'e' nessun fatto storico da
+-- rispettare.
 
-ALTER TABLE public.profiles
-  DROP CONSTRAINT IF EXISTS profiles_id_role_unique;
-
-ALTER TABLE public.profiles
-  ADD CONSTRAINT profiles_id_role_unique UNIQUE (id, role);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'profiles_id_role_unique'
+       AND conrelid = 'public.profiles'::regclass
+  ) THEN
+    ALTER TABLE public.profiles
+      ADD CONSTRAINT profiles_id_role_unique UNIQUE (id, role);
+  END IF;
+END;
+$$;
 
 COMMENT ON CONSTRAINT profiles_id_role_unique ON public.profiles IS
   'Redundant against the primary key as a rule about data; NOT redundant as a referenced key. '
