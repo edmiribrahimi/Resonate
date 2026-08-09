@@ -125,7 +125,10 @@ special case to be flattened away.
 ### Collapsing the duplicated pages
 
 - **D-34-05: one page per surface, and a divergence is a defect until proved
-  otherwise.** The four duplicated surfaces become one file each. Where the two
+  otherwise.** *(Corrected after research: **twelve page pairs**, not four. The
+  four named here plus `events/new` and all seven `events/[id]/*`, each diffed
+  and measured in `34-RESEARCH.md`. The decision is unchanged; only the count
+  moved, and it tripled.)* The duplicated surfaces become one file each. Where the two
   versions differ, **the verdict comes from `private.role_capabilities`, not
   from either page** — the differences are the drift the collapse exists to
   remove, and at least two of them are measurably wrong today: the organizer
@@ -220,6 +223,55 @@ special case to be flattened away.
   editing a permission. Note the todo's own warning about ordering: a new rule
   inserted carelessly reproduces the scanner hazard. The route map is the answer
   to that warning, not an exception to it.
+
+### Taken after research, 2026-08-09
+
+`34-RESEARCH.md` closed three questions it had been asked to leave open, each
+with a recommendation. All three are accepted, under the same delegated
+discretion, and are recorded here rather than in the research so that no plan
+can treat them as still open.
+
+- **D-34-13: Route Handlers under `/api/*` stay out of the map.** `door.supervise`
+  and `media.upload` gate Route Handlers through `require-operator.ts` and
+  `may-upload.ts`, not through a route rule. They are declared `scope: "table"`
+  with the reason *"gates a Route Handler; the guard is X"* — a declaration that
+  names its guard, not a silent exemption. Bringing `/api/*` under CAP-02 would
+  mean adding a middleware rule on the **door's scan path**, which is the one
+  path this phase has no business touching. Recorded as a finding for a later
+  phase.
+
+- **D-34-14: `typedRoutes: true`, and the 308 is emitted by the middleware — one
+  decision, not two.** The research measured that a `next.config` redirect's
+  **source enters the route type union**: declaring the 15 `/organizer/*`
+  redirects there would keep every stale `/organizer/…` literal compiling and
+  produce a **false green on the exact sweep this phase exists to perform**.
+  Emitting the 308 from the top of `src/middleware.ts` keeps the union clean, so
+  `typedRoutes` can find the literals — 14 type errors today, three of them in
+  menus this phase rewrites anyway. `typedRoutes` does **not** type
+  `revalidatePath`; that half is `scripts/verify-routes.mjs` (D-34-16 below).
+
+- **D-34-15: 307 while the phase is in flight, 308 at ship.** A wrong 308 cannot
+  be withdrawn from a client that has already seen it. The redirects run as 307
+  until the walk is green, and the flip to 308 is an **acceptance criterion of
+  the final plan**, with the walk re-run after the flip. This is D-34-04
+  unchanged — it says the redirects ship permanent — with the irreversibility
+  handled instead of hoped about.
+
+- **D-34-16: `revalidatePath` is in scope, because nothing else can see it.**
+  The research found **26 calls, 16 of them in `admin/members/actions.ts` as
+  matched `/admin/…` + `/organizer/…` pairs**. It is untyped in every option,
+  invisible to `npm run build`, and its failure mode is a members list that stops
+  refreshing after an approval — with no error tracking to report it. A
+  mechanical check (`scripts/verify-routes.mjs`) plus procedure M-8 covers it.
+  Leaving it out would ship a silent failure into the one surface an organizer
+  uses most.
+
+- **D-34-17: the persona is part of this phase's build.** Deleting
+  `src/app/(organizer)/` breaks `npm run verify:persona` check A (dead glob) in
+  two rule frontmatters, and through it checks B and G. **The persona edit
+  belongs in the same commit as the deletion** — a routing table that describes a
+  tree that no longer exists is the exact failure `meta-gates.md` records as
+  worse than no table.
 
 ### Claude's Discretion
 
@@ -359,9 +411,16 @@ justified in the plan:
 - **There is no test runner for this product.** Verification is `npm run build`
   (which is the typecheck), `npm run verify:capabilities`, the container
   baseline (`baseline:rls`, `baseline:container`, `baseline:compare`) and
-  **written manual procedures**. A green `CAP-03` comparison before and after is
-  the instrument that proves no permission moved — which for this phase is the
-  whole claim. Nothing here may be called verified because tests pass.
+  **written manual procedures**. **Correction, after research:** a green
+  `CAP-03` comparison proves *no row-level permission moved* — which is true,
+  worth recording, and **not the whole claim**, as this file originally said.
+  B1 dumps `pg_policies`, B2/B3 are persona matrices, B5 is the advisor:
+  **none of them can see a route.** This phase edits no migration, so that green
+  is very nearly guaranteed. What moves is **who reaches which address**, and the
+  only instruments for it are the map's type-level assertions and a person
+  signing in as each role — nine written procedures, M-1…M-9 in
+  `34-VALIDATION.md`. Nothing here may be called verified because tests pass, and
+  nothing may let a green baseline stand in for evidence it cannot produce.
 - **A stale `.next` produces a false build failure after a worktree merge.**
   `rm -rf .next` before concluding anything is broken.
 - **Verification debt is open upstream:** 9 `human_needed` items in
