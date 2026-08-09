@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export type PaymentCallbackStatus =
@@ -11,8 +12,17 @@ export type PaymentCallbackStatus =
 
 export interface PaymentCallbackResult {
   status: PaymentCallbackStatus;
-  /** Where the user should land once the order/ticket is confirmed. */
-  redirectTo?: string;
+  /**
+   * Where the user should land once the order/ticket is confirmed.
+   *
+   * Typed rather than `string` by plan 34-01 — form 3, the annotated dynamic
+   * href, applied at the SOURCE instead of at the `router.replace()` call
+   * site. This is a money path: the destination after a paid checkout is the
+   * one place a wrong address costs a person the thing they just bought, and
+   * `string` said nothing about it. The two shapes are the only two this
+   * function returns, and they are checked against the generated route union.
+   */
+  redirectTo?: Route<`/events/${string}/menu?${string}` | `/tickets/${string}`>;
 }
 
 /**
@@ -43,13 +53,17 @@ export async function checkPaymentStatus(params: {
 
     const status = mapOrderStatus(order.status);
     if (status === "PAID" && params.slug) {
-      const url = new URL(
-        `/events/${params.slug}/menu`,
-        process.env.NEXT_PUBLIC_APP_URL
-      );
-      url.searchParams.set("order", params.id);
-      if (params.party) url.searchParams.set("party", params.party);
-      return { status, redirectTo: url.pathname + url.search };
+      // Built with `URLSearchParams` instead of `new URL(...).pathname +
+      // .search`, so the value keeps a literal type. Same encoding, same two
+      // parameters, same order — `URL.searchParams.set` and
+      // `URLSearchParams.set` share one implementation. What changes is only
+      // that the result is now a checked route rather than a `string`.
+      const query = new URLSearchParams({ order: params.id });
+      if (params.party) query.set("party", params.party);
+      return {
+        status,
+        redirectTo: `/events/${params.slug}/menu?${query.toString()}`,
+      };
     }
     return { status };
   }

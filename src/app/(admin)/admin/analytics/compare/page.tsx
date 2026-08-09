@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import type { Route } from "next";
 import { createClient } from "@/lib/supabase/server";
 import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
@@ -52,10 +53,22 @@ export default async function AdminEventComparisonPage({
       ? await fetchEventComparison(supabase, selectedIds)
       : [];
 
-  // Build search params string preserving events for mode toggle
+  // Build search params string preserving events for mode toggle.
+  //
+  // Both hrefs are stored in a variable, so they need a type: form 3 of plan
+  // 34-01. `Route` (i.e. `Route<string>`) is enough here and checks something
+  // real — the base is a STATIC route, so the value lands on `RouteImpl`'s
+  // `${StaticRoutes}${SearchOrHash}` arm and a misspelt base fails to compile.
+  // The ternary is what makes each branch a literal: the previous single
+  // template widened the whole expression to `string`, which is what
+  // `typedRoutes` refused. The strings produced are byte-for-byte the same.
   const eventsParam = selectedIds.length > 0 ? `events=${selectedIds.join(",")}` : "";
-  const perAttendeeHref = `/admin/analytics/compare${eventsParam ? `?${eventsParam}&mode=per-attendee` : ""}`;
-  const absoluteHref = `/admin/analytics/compare${eventsParam ? `?${eventsParam}&mode=absolute` : "?mode=absolute"}`;
+  const perAttendeeHref: Route = eventsParam
+    ? `/admin/analytics/compare?${eventsParam}&mode=per-attendee`
+    : "/admin/analytics/compare";
+  const absoluteHref: Route = eventsParam
+    ? `/admin/analytics/compare?${eventsParam}&mode=absolute`
+    : "/admin/analytics/compare?mode=absolute";
 
   return (
     <div className="min-h-dvh pb-24">

@@ -21,7 +21,20 @@ interface EventItem {
 interface EventListProps {
   events: EventItem[];
   showCreator?: boolean;
-  basePath?: string;
+  /**
+   * Narrowed from `string` to the two addresses that are actually passed
+   * (plan 34-01). This is what lets the six hrefs below stay UNANNOTATED and
+   * still be checked: form 2 of the plan — `<Link>` is generic, so `RouteType`
+   * is inferred from the template, and the dynamic arm of `RouteImpl`
+   * resolves. With `basePath: string` the same templates widen to
+   * `${string}/${string}/edit`, which checks nothing and is exactly what
+   * `typedRoutes` refused.
+   *
+   * The `/organizer/events` default survives this task deliberately: deleting
+   * it belongs to plan 34-11, and doing it here would touch a file that plan
+   * rewrites.
+   */
+  basePath?: "/organizer/events" | "/admin/events";
 }
 
 export default function EventList({

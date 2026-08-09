@@ -91,7 +91,12 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
-          <Link href={`/register${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""}`} className="text-accent hover:text-accent-hover">
+          {/* Form 2 of plan 34-01: passed straight to `<Link>`, unannotated, so
+              `RouteType` is inferred per branch. The ternary replaces a single
+              template whose type widened to `/register${string}` — a shape
+              `RouteImpl` cannot accept, because it would also admit
+              `/registerXYZ`. Same two strings as before. */}
+          <Link href={nextUrl ? `/register?next=${encodeURIComponent(nextUrl)}` : "/register"} className="text-accent hover:text-accent-hover">
             Sign Up
           </Link>
         </p>
