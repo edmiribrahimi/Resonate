@@ -212,11 +212,12 @@ export function bindsPublicBucket(raw) {
  *
  * So a hit is one of two things:
  *
- *   1. the bucket named in a statement that also contains `.upload(`. The pair
- *      is split across lines in this codebase's style (`.from("event-media")`
- *      then `.upload(`), so the statement window runs forward to the next `;` or
- *      at most `STATEMENT_WINDOW` lines — never the whole file, or an unrelated
- *      upload further down would be attributed to this bucket.
+ *   1. the bucket named in a statement that also contains one of
+ *      {@link WRITE_CALLS}. The pair is split across lines in this codebase's
+ *      style (`.from("event-media")` then `.upload(`), so the statement window
+ *      runs forward to the next `;` or at most `STATEMENT_WINDOW` lines — never
+ *      the whole file, or an unrelated write further down would be attributed to
+ *      this bucket.
  *
  *   2. the bucket BOUND to a name (`const b = "event-media"`). This is the only
  *      cheap way to close the obvious evasion: hoist the literal into a constant
@@ -232,6 +233,52 @@ export function bindsPublicBucket(raw) {
  * writer, which is the one RLS cannot refuse.
  */
 const STATEMENT_WINDOW = 8;
+
+/**
+ * What counts as WRITING to the bucket — WR-06 of the code review of 2026-08-09.
+ *
+ * **`.upload(` was the whole list, and three of `@supabase/storage-js`'s writes
+ * are not spelled `.upload(`.** They are literals, they would have been
+ * invisible, and the third is the one that matters most:
+ *
+ *   | call | what it does to a PUBLIC bucket |
+ *   |---|---|
+ *   | `.copy(src, dst)` | creates a new object — bytes never stripped |
+ *   | `.move(src, dst)` | the same, and removes the original |
+ *   | `.createSignedUploadUrl(path)` | hands the **browser** a direct write permit |
+ *   | `.uploadToSignedUrl(path, token, file)` | spends one of those permits |
+ *
+ * `createSignedUploadUrl` is the worst of the four, and it is the reason this
+ * list exists rather than a second `includes`. Row 15 of the hand-applied queue
+ * (`20260809006000_event_media_server_upload_only.sql`) takes the browser's
+ * `INSERT` policy away; a `createSignedUploadUrl` issued from the service role
+ * would **hand it straight back**, with the migration still formally applied and
+ * this script still green. That is the shape this phase has already caught twice
+ * inside itself (35-17, and 35-20's M2): a check the thing it watches can
+ * satisfy.
+ *
+ * `.remove(` is deliberately NOT here. Deleting is not publishing, it is the
+ * operation `media-and-storage.md` (gate *moderazione = rimozione*) requires to
+ * keep working, and row 15 preserves the DELETE policies on purpose. A check
+ * that fails on the file it exists to protect gets switched off.
+ *
+ * Each entry is proved by mutation — inserted into a real file under `src/`,
+ * asserted to have landed, the script run, then reverted. The proofs are in the
+ * REVIEW-FIX report for this finding; the list is not "obviously right", it is
+ * measured.
+ */
+const WRITE_CALLS = [
+  '.upload(',
+  '.copy(',
+  '.move(',
+  '.createSignedUploadUrl(',
+  '.uploadToSignedUrl(',
+];
+
+/** The write call this window contains, or `null`. Named so the failure says which. */
+function writeCallIn(window) {
+  return WRITE_CALLS.find((call) => window.includes(call)) ?? null;
+}
 
 export function findPublicBucketWrites(relPath) {
   const lines = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
@@ -262,12 +309,13 @@ export function findPublicBucketWrites(relPath) {
       if (window.includes(';')) break;
       window += `\n${live[j]}`;
     }
-    if (window.includes('.upload(')) {
+    const call = writeCallIn(window);
+    if (call !== null) {
       hits.push({
         path: relPath,
         line: i + 1,
         text: raw.trim(),
-        kind: 'writes to the bucket (.upload in the same statement)',
+        kind: `writes to the bucket (${call} in the same statement)`,
       });
     }
   }
