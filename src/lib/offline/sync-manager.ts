@@ -156,6 +156,10 @@ const guestLegacySuccess: LegacySuccessCheck = (status, body) =>
  * | body `outcome: "not_valid"`                          | dead    |
  * | anything else                                        | dead    |
  *
+ * An entry carrying {@link LocallyUndoneMarker} is not a row of this table: it
+ * reports a **reversal** rather than an admission, and the answer to that report
+ * is classified by this same table, unchanged. See {@link isLocallyUndone}.
+ *
  * The transport-level `ok` boolean does not appear anywhere in it, and that is
  * the point: it was `true` for every failure this phase exists to fix.
  *
@@ -266,6 +270,76 @@ function classifyResponse(
   // is not going to succeed by being sent again, so it is retired **visibly**
   // into `failedCheckins` instead of being retried forever or deleted.
   return { bucket: "dead", reason: "unexpected_response" };
+}
+
+/**
+ * ── The contract for an admission undone with the radio off ──────────────────
+ *
+ * **Defined here, produced by plan 35-13.** It is written on the consumer's side
+ * on purpose: the drain is what has to make sense of such an entry, and a
+ * contract written by the producer and merely read by the consumer is a contract
+ * that drifts. What follows is the whole of what the drain promises.
+ *
+ * **What happens today, and why it is a defect.** With the radio off, the
+ * scanner's undo branch (`ScannerClient.tsx:869-892`) **deletes** the queue
+ * entry. The branch itself is right and its comment says why — *"an undo that
+ * silently does nothing is worse than one that refuses out loud"* — but deleting
+ * is the wrong half of it. Two things follow from the deletion, and the second is
+ * the worse one:
+ *
+ *   1. Nobody ever sees that somebody was admitted and then taken back out.
+ *      `checkin-offline.md` calls the undo *"il percorso piu' semplice per far
+ *      rientrare qualcuno"* and requires it to be recorded with who and when. A
+ *      deleted entry records neither, and the night's record shows an evening in
+ *      which the admission never happened at all.
+ *   2. The same deletion is how a supervision rule that lives only in the route
+ *      is **stepped around by turning the radio off**. That is T-3, and it is
+ *      closed on the device by plan 35-13.
+ *
+ * **What replaces it.** An entry undone locally is no longer deleted. It is
+ * marked, it stays in the queue, and on the next drain it reports the
+ * **reversal** instead of the admission — so the night's record carries both the
+ * entry and its undo, each with its actor and its moment. The reversal is
+ * reported to `/api/tickets/checkin/undo`, and its answer is classified by the
+ * table above with no change: `done` removes the entry because the server holds
+ * the reversal, `retry` keeps it, `blocked` holds it for a sign-in, `dead`
+ * retires it visibly. **No bucket deletes it silently, which is the entire
+ * point.**
+ *
+ * **Nothing here runs today, and that has to be said** — a branch that never
+ * fires reads as dead code to somebody who arrives without this paragraph. No
+ * code in this repository writes {@link LocallyUndoneMarker} onto a queue entry,
+ * so {@link isLocallyUndone} is `false` for every entry that exists, and the
+ * drain's behaviour is byte for byte what it was. The producer is plan 35-13,
+ * and the send path lands **with** it rather than before it, deliberately: a
+ * marked entry with no sender would be an entry no bucket could ever resolve —
+ * the same stranding, one file further along.
+ */
+export interface LocallyUndoneMarker {
+  /** Set by plan 35-13 when an admission is reversed with the radio off. */
+  undoneLocally: true;
+  /** Device clock at the reversal. Evidence, not authority — as `scannedAt` is. */
+  undoneAt: string;
+  /** Who reversed it, so the record can say. `door_scan_events` attributes every row. */
+  undoneBy: string;
+}
+
+/**
+ * Is this entry a reversal waiting to be reported, rather than an admission?
+ *
+ * Read structurally rather than off the type: {@link LocallyUndoneMarker} is not
+ * yet part of `PendingCheckin` — plan 35-13 owns `checkin-store.ts` and puts it
+ * there — and this predicate exists so that the drain's side of the contract is
+ * written, reviewable and unchanged in behaviour before the field arrives.
+ *
+ * `=== true`, for the same reason as {@link saysAssignmentRevokedAfterScan}: an
+ * absent field and a `false` mean the same thing, and only the literal marker
+ * means the other.
+ */
+export function isLocallyUndone(entry: PendingCheckin): boolean {
+  return (
+    (entry as Partial<LocallyUndoneMarker>).undoneLocally === true
+  );
 }
 
 /** Where an entry goes, and what travels with it. */
