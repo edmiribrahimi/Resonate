@@ -4,16 +4,90 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import {
+  mayUploadToParty,
+  MEDIA_NIGHT_REQUIRED,
+  MEDIA_UPLOAD_FORBIDDEN,
+} from "@/lib/media/may-upload";
 
 // =============================================================
 // Media Server Actions
 // =============================================================
 
 /**
- * Pre-upload validation: verify user is authenticated, approved, and has a ticket
- * for the given event (ticket ownership = attendance gate per CONTEXT.md).
+ * ── The night is a parameter of BOTH actions, and it is TRAILING and OPTIONAL
+ *    only for as long as one caller has not been rewritten ────────────────────
+ *
+ * Plan 35-16 specifies `registerMedia(eventId, partyId, storagePath, type,
+ * fileSize)` — the night second, required. It is written here as a **trailing
+ * optional parameter instead**, and the reason is mechanical rather than
+ * stylistic: the single caller of both actions today is
+ * `src/components/media/MediaUpload.tsx`, which is rewritten by **plan 35-21,
+ * two waves later**. A required parameter added now is `TS2554` on that file,
+ * `npm run build` red, and a red tree handed to the plans of the wave in
+ * between — a failure that is nobody's to fix where it appears.
+ *
+ * **The optionality costs the gate nothing, and here is why.** A Server Action
+ * parameter's type is not a boundary: the client sends whatever it likes over
+ * the wire, so an absent night has to be refused AT RUNTIME under either
+ * signature. Both actions therefore refuse a missing night with
+ * `MEDIA_NIGHT_REQUIRED` before asking any permission question. There is no
+ * branch on which the absence of a night is tolerated — tolerating it would make
+ * the whole gate bypassable by omitting an argument, which is the one shape this
+ * plan exists to prevent.
+ *
+ * **The consequence, declared instead of discovered:** from this commit until
+ * plan 35-21 ships, `MediaUpload.tsx` names no night, so **every upload refuses
+ * — organizer and master included**. Today that is the only working upload path
+ * (see the presence-arm paragraph in `@/lib/media/may-upload`), so this is a
+ * real, temporary, in-phase regression. It is the fail-closed direction, it
+ * never reaches production alone (the phase deploys as one), and it mirrors what
+ * the database will do anyway: `20260809004500` refuses a row without a night
+ * with `23514`.
+ *
+ * **What plan 35-21 owes:** pass the night from `MediaGallerySection` through
+ * `MediaUpload`, then move `partyId` to the position the plan names and make it
+ * required. Its own acceptance criteria already grep `MediaUpload.tsx` for
+ * `partyId`, so the first half is mechanically asserted by the plan that owns
+ * the file; the second half is this paragraph's job to remember.
  */
-export async function validateMediaUpload(eventId: string) {
+
+/**
+ * Pre-upload validation: may this session upload to THIS NIGHT of this event?
+ *
+ * The predicate is `mayUploadToParty`, imported and never re-stated. An access
+ * rule written twice is two rules, and that is the defect the whole of phase 32
+ * exists not to repeat — `registerMedia` below reads the same one, because it is
+ * the action that actually writes the row.
+ *
+ * ── Three outcomes, kept distinct ────────────────────────────────────────────
+ *
+ *   `Not authenticated`            — nobody is here
+ *   `media.night_required`         — no night was named
+ *   `media.party_not_of_event`     — that night belongs to another event
+ *   `forbidden.media_upload_required` — the three arms all answered no
+ *
+ * Collapsing them is the recorded newsletter defect — one "Qualcosa è andato
+ * storto" for a network fault, a missing key and an already-subscribed address
+ * (`.planning/codebase/CONCERNS.md`). They are separated by **which line
+ * threw**, never by parsing a string.
+ *
+ * **And the honest limit of that, which a reader must not have to discover:**
+ * this action signals by THROWING, and Next redacts the message of an error
+ * thrown out of a Server Action in a production build (`guards.ts:73-79`). So
+ * the categories above are distinguishable in `next dev` and in a log, and NOT
+ * on the client, where they arrive as one redacted message. Carrying a category
+ * to the client requires a **tagged value decided by position** — a discriminated
+ * result — and that is a change to this function's return type, which its one
+ * caller destructures. Plan 35-21 rewrites that caller and owns the conversion;
+ * doing it here would be the red build described above.
+ *
+ * One further honesty: the two sub-reasons the deleted code distinguished ("not
+ * approved" and "no attendance record") are both inside the predicate's presence
+ * arm now and both surface as `forbidden.media_upload_required`. The predicate
+ * answers yes or no; the arm that said no is in the code, not in the message.
+ */
+export async function validateMediaUpload(eventId: string, partyId?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,50 +98,47 @@ export async function validateMediaUpload(eventId: string) {
     throw new Error("Not authenticated");
   }
 
-  // Check user profile
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error("Profile not found");
+  if (!partyId) {
+    throw new Error(MEDIA_NIGHT_REQUIRED);
   }
 
-  const isOrgOrMaster = profile.role === "organizer" || profile.role === "master";
-
-  // Organizers and masters can always upload; members need approved + ticket
-  if (!isOrgOrMaster) {
-    if (profile.status !== "approved") {
-      throw new Error("Not approved");
-    }
-
-    // Check attendance (scanned at entry — ticket or member card)
-    const { data: attendance } = await supabase
-      .from("attendance")
-      .select("id")
-      .eq("event_id", eventId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!attendance) {
-      throw new Error("You must have attended this event to upload media");
-    }
+  if (!(await mayUploadToParty(eventId, partyId))) {
+    throw new Error(MEDIA_UPLOAD_FORBIDDEN);
   }
 
   return { userId: user.id, canUpload: true };
 }
 
 /**
- * Post-upload metadata insertion: register a media file in the event_media table
- * after it has been uploaded to Supabase Storage.
+ * Post-upload metadata insertion: register a media file in `event_media` after
+ * it has been uploaded to Supabase Storage.
+ *
+ * ── This is the half that makes the gate a gate ──────────────────────────────
+ *
+ * Before this commit this action carried **no check beyond `auth.getUser()`**,
+ * and the only thing protecting it was `event_media_insert_member` — which
+ * admits every account holding `membership.active`, **`staff` included**,
+ * because D-14 grants it that key (`20260808000500_staff_role.sql:136`, and
+ * `20260809004500` section 6 says so in as many words). A Server Action is a
+ * public endpoint with a convenient signature: gating only `validateMediaUpload`
+ * would have left the whole rule walkable around by calling this one directly.
+ *
+ * **This is a narrowing of a path that checked nothing**, which is a change of
+ * behaviour and is said here rather than found later. It is the rule
+ * `media-and-storage.md` already states — gate *chi carica ha titolo* — applied
+ * where the row is written.
+ *
+ * The insert carries `party_id`. Without it the trigger
+ * `event_media_require_party` refuses with `23514` even on the service
+ * connection (`20260809004500`, section 4) — that is the net **under** the code,
+ * not the place the rule lives.
  */
 export async function registerMedia(
   eventId: string,
   storagePath: string,
   type: "photo" | "video",
-  fileSize: number
+  fileSize: number,
+  partyId?: string
 ) {
   const supabase = await createClient();
   const {
@@ -79,12 +150,21 @@ export async function registerMedia(
     throw new Error("Not authenticated");
   }
 
+  if (!partyId) {
+    throw new Error(MEDIA_NIGHT_REQUIRED);
+  }
+
+  if (!(await mayUploadToParty(eventId, partyId))) {
+    throw new Error(MEDIA_UPLOAD_FORBIDDEN);
+  }
+
   const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-media/${storagePath}`;
 
   const { data, error } = await supabase
     .from("event_media")
     .insert({
       event_id: eventId,
+      party_id: partyId,
       uploaded_by: user.id,
       url: publicUrl,
       type,
