@@ -53,7 +53,14 @@ type RetryCause = "offline" | "transport" | "throttled" | "server";
  * reached only from a body that says the server holds the record.
  */
 type Classification =
-  | { bucket: "done"; via: "recorded" | "already_recorded" | "legacy_success" }
+  | {
+      bucket: "done";
+      via:
+        | "recorded"
+        | "recorded_after_revocation"
+        | "already_recorded"
+        | "legacy_success";
+    }
   | { bucket: "retry"; cause: RetryCause }
   | { bucket: "dead"; reason: FailureReason }
   | { bucket: "blocked" };
@@ -79,6 +86,30 @@ const NOT_VALID_REASONS: Record<DoorNotValidReason, true> = {
   // wrong"*.
   no_assignment_at_scan: true,
 };
+
+/**
+ * Did the server say the assignment behind this admission had been revoked
+ * since the scan?
+ *
+ * An **additive** field of the answer, alongside the `DoorOutcome` rather than
+ * inside it: `outcome.ts` says in as many words that the union has three members
+ * and that adding to it breaks FIX-04a's requirement. This is not a fourth
+ * outcome and not a `DoorFlag` — flags are rendered at the door, and by the time
+ * a drain runs there is no door.
+ *
+ * `=== true` and nothing looser. An absent field, a `false` and a truthy string
+ * all have to mean the same thing here: **not stated**. A bundle answering from
+ * a deployment that predates plan 35-12 simply never sends it, and reading a
+ * missing field as an anomaly would turn every ordinary admission into one.
+ */
+function saysAssignmentRevokedAfterScan(body: unknown): boolean {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { assignmentRevokedAfterScan?: unknown })
+      .assignmentRevokedAfterScan === true
+  );
+}
 
 function asFailureReason(value: unknown): FailureReason {
   return typeof value === "string" &&
@@ -113,18 +144,70 @@ const guestLegacySuccess: LegacySuccessCheck = (status, body) =>
  *
  * The order is the contract:
  *
- * | Condition                          | Bucket  |
- * |------------------------------------|---------|
- * | 401 or 403                         | blocked |
- * | 408 or 429                         | retry   |
- * | >= 500                             | retry   |
- * | body `outcome: "recorded"`         | done    |
- * | body `outcome: "already_recorded"` | done    |
- * | body `outcome: "not_valid"`        | dead    |
- * | anything else                      | dead    |
+ * | Condition                                            | Bucket  |
+ * |------------------------------------------------------|---------|
+ * | 401 or 403                                           | blocked |
+ * | 408 or 429                                           | retry   |
+ * | >= 500                                               | retry   |
+ * | body `recorded` **+ `assignmentRevokedAfterScan`**    | done    |
+ * | body `outcome: "recorded"`                           | done    |
+ * | body `outcome: "already_recorded"`                   | done    |
+ * | body `not_valid` **+ `no_assignment_at_scan`**       | dead    |
+ * | body `outcome: "not_valid"`                          | dead    |
+ * | anything else                                        | dead    |
  *
  * The transport-level `ok` boolean does not appear anywhere in it, and that is
  * the point: it was `true` for every failure this phase exists to fix.
+ *
+ * ── The two rows in bold, and why each is where it is (ASSIGN-03) ────────────
+ *
+ * **`recorded` + `assignmentRevokedAfterScan` → `done`.** The scan was taken
+ * while the door assignment was live and the assignment was revoked before this
+ * drain ran. The server has judged it at `scannedAt` and written the row
+ * (`api/tickets/checkin/route.ts`, outcome 2), so the entry leaves the queue
+ * because it has been **resolved**, never because it was lost. It is `done` and
+ * not a bucket of its own: `done` means the server holds the record, and it
+ * does. What the extra row buys is the `via` — the night's queue can say
+ * *"reported, and the assignment behind it had already been taken away"* instead
+ * of filing it as an ordinary admission, and it is logged apart accordingly.
+ *
+ * **`not_valid` + `no_assignment_at_scan` → `dead`.** No assignment ever covered
+ * that operator on that night at that moment. The server still wrote a row, so
+ * the presence is on the record; the entry goes to `failedCheckins` under its
+ * own reason, which is a place the phone counts and a person reads. It needs no
+ * branch of its own below — `NOT_VALID_REASONS` is a total `Record`, so the
+ * reason arrives named rather than flattened into `unexpected_response`, and
+ * that totality is the mechanism, not a coincidence. The row is in this table
+ * anyway, because a contract that only lists the conditions that needed code is
+ * a contract with holes in it.
+ *
+ * ── The three things this deliberately is NOT ───────────────────────────────
+ *
+ * Each of these will be proposed again by somebody reading only the code, so
+ * each is refused here with its reason:
+ *
+ *   1. **Not a fourth status code landing in `retry`.** It would retry, for the
+ *      rest of the night and every `online` after it, a condition that will
+ *      never become true — a revoked assignment is not coming back and an
+ *      assignment that never existed is not going to appear. That is the loop
+ *      with no ceiling that `MAX_SYNC_ATTEMPTS = 8` exists to stop, and reaching
+ *      the ceiling would retire the entry under `unexpected_response`, losing
+ *      the one useful thing the server said.
+ *   2. **Not `blocked`.** `blocked` waits for a new login, and **no login
+ *      returns a revoked assignment**. That is the exact defect this plan
+ *      corrects, and putting either new row there would reinstate it under a
+ *      different name.
+ *   3. **Not "do not revoke while a queue exists".** It is not knowable: the
+ *      server cannot see what is sitting in IndexedDB on a phone, and a
+ *      revocation that had to wait for a device to come back would be a
+ *      revocation that never completes. The question moves in time instead, and
+ *      that is the whole of the fix.
+ *
+ * **The `401`/`403` → `blocked` row is untouched, and must stay so.** It is
+ * right for what it exists for — a session that expired at 02:00, which a
+ * sign-in genuinely does clear. Neither new row travels through a status code;
+ * both are read out of the body, which is why the first row of this table did
+ * not have to move.
  */
 function classifyResponse(
   status: number,
@@ -150,7 +233,11 @@ function classifyResponse(
   if (isDoorOutcome(body)) {
     switch (body.outcome) {
       case "recorded":
-        return { bucket: "done", via: "recorded" };
+        // The refinement first, because the plain `recorded` below would swallow
+        // it and the distinction would exist only in the server's row.
+        return saysAssignmentRevokedAfterScan(body)
+          ? { bucket: "done", via: "recorded_after_revocation" }
+          : { bucket: "done", via: "recorded" };
       case "already_recorded":
         // Dropping a conflict from the queue is safe **only** because
         // `api/tickets/checkin/route.ts` writes the `door_scan_events` row and
