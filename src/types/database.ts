@@ -488,7 +488,19 @@ export interface MembershipActRow {
   /** NULL for a `system` act, and only then — the table refuses the other three combinations. */
   actor_id: string | null;
   actor_kind: MembershipActorKind;
-  /** NULL means *this act did not touch that axis*, never *the value was null*. */
+  /**
+   * `string | null` because the COLUMNS are nullable, not because any writer
+   * produces a null: `public.record_membership_act` computes all four itself and
+   * **no act has ever left one empty** (measured against a container —
+   * `deferred-items.md`, voce 6, still open and out of phase).
+   *
+   * So read *"this act did not move that axis"* as **`before === after`**, never
+   * as a NULL. The NULL semantics documented at
+   * `20260808002000_membership_register.sql:244-246` describes an intention the
+   * writer never carried out; a reader who waits for a null waits for a value
+   * that does not come. See {@link MembershipActRow.party_id} for the case where
+   * this matters most.
+   */
   role_before: string | null;
   role_after: string | null;
   status_before: string | null;
@@ -499,10 +511,38 @@ export interface MembershipActRow {
    * Which night the act was about. Phase 35 writes it, for the acts `'assigned'`
    * and `'unassigned'`; NULL on every act that is about the account itself.
    *
-   * Both role pairs and both status pairs stay NULL on those two acts, and that
-   * is not an omission: an assignment moves neither axis. It grants a capability
-   * for one night — `public.party_assignments` holds that — and the register
-   * holds who did it and when.
+   * ── The four register columns on those two acts, MEASURED ──────────────────
+   *
+   * **They do NOT stay NULL, and the difference is the whole point.**
+   * `public.record_membership_act` computes the after-values itself, as
+   * `coalesce(argument, before)`
+   * (`20260808002000_membership_register.sql:459-460`), so an assignment act —
+   * which passes NULL for both axes precisely so the writer skips its
+   * `public.profiles` write — comes out with all four columns **non-null and
+   * equal**: `role_before === role_after` and `status_before === status_after`.
+   *
+   * **`before === after` is how this register says an act did not move that
+   * axis**, and for an assignment that is the true statement told in the shape
+   * the writer actually produces. It is NOT the NULL that
+   * `20260808002000_membership_register.sql:244-246` documents and that no
+   * writer has ever produced — an open, out-of-phase debt
+   * (`.planning/phases/35-per-night-assignments/deferred-items.md`, voce 6),
+   * which names as its first reader exactly the surface that renders this
+   * register.
+   *
+   * Where the measurement lives, so this comment is a citation and not a claim:
+   * `supabase/migrations/20260809002000_assignment_acts.sql:423-430` — *«on an
+   * assignment act all four come out NON-NULL and equal … Measured against a
+   * container; the opposite was written here first, and was wrong»* — and
+   * `src/lib/membership/acts.ts:55-67`, which draws the useful consequence: the
+   * `assigned` act preserves the role its holder carried at the grant, the one
+   * fact `party_assignments.assignee_role` is nulled out of when the assignment
+   * is retired.
+   *
+   * This paragraph said the opposite until 2026-08-09 (WR-08). `supabase-data.md`,
+   * gate *tipi allineati*: a type that lies is worse than a type that is absent.
+   * No compiler reads a doc comment — the reader does, and the reader would have
+   * concluded «that axis was touched» from a value that means the opposite.
    */
   party_id: string | null;
   /** Optional context, never a person's name or an address. */
