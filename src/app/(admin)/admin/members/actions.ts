@@ -676,11 +676,30 @@ async function describeBlockingAssignments(
   serviceClient: ServiceClient,
   memberId: string
 ): Promise<string> {
+  // ── «Live» here means what the DATABASE means by it, since it is the database
+  //    that refused ─────────────────────────────────────────────────────────
+  //
+  // `revoked_at IS NULL` alone was the filter, and it named rows that were NOT
+  // blocking anything: an assignment that ended three weeks ago and that nobody
+  // revoked is not live, and since CR-02 it does not block a role write either —
+  // `profiles_release_expired_assignments` retires it inside the same statement
+  // (`20260809007000_expired_assignments_release_role.sql`). Listing it would
+  // send somebody to the assignments page of every past event to revoke history,
+  // and the sentence above the list says *«live»*, which would have been false.
+  //
+  // The second clause uses THIS server's clock, and that is acceptable here for
+  // a reason worth writing down: this string is a **diagnosis**, never a
+  // boundary. The boundary is `now() >= ends_at` inside the release function, on
+  // the database's clock, which no other process can move. A device clock — or
+  // an app server's — is evidence, never authority (`checkin-store.ts:135-136`),
+  // and a minute of skew here can only put a night on the list that the next
+  // attempt will find already retired.
   const { data: live, error } = await serviceClient
     .from("party_assignments")
     .select("party_id, capability")
     .eq("user_id", memberId)
-    .is("revoked_at", null);
+    .is("revoked_at", null)
+    .gt("ends_at", new Date().toISOString());
 
   if (error || !live) {
     console.error(
@@ -693,9 +712,11 @@ async function describeBlockingAssignments(
   if (live.length === 0) {
     // The write was refused by that key and nothing is live. The two readings
     // disagree, which is information: a concurrent revocation between the two
-    // statements, or a key firing for a reason this file has mis-identified.
-    // Saying so is the honest answer; claiming "no assignments" as though the
-    // refusal had not happened is not.
+    // statements, a key firing for a reason this file has mis-identified, or —
+    // since CR-02 — `profiles_release_expired_assignments` not running, which is
+    // what an ENDED assignment blocking a role write would mean. Saying so is
+    // the honest answer; claiming "no assignments" as though the refusal had not
+    // happened is not.
     return "blocked by a live assignment that is no longer there — reload and try again";
   }
 

@@ -394,15 +394,32 @@ function targetFor(entry: PendingCheckin): Target {
         legacySuccess: null,
       };
     case "guest":
-      // `/api/tickets/attendance` accepts `guestListEntryId` and nothing else
-      // (`route.ts:537`), so this path carries **less evidence** than the other
-      // two: no device clock, no device id, and no `source`, which means a
-      // guest-list admission cannot be told apart afterwards as having arrived
-      // through the queue. Stated rather than papered over by sending fields
-      // that would be silently ignored.
+      // `source` and `scannedAt` are sent so that the route can tell a report
+      // from the drain apart from a tap on the button, which is what keeps its
+      // per-night appeal (CR-01) **unreachable from here by construction**. That
+      // is the ASSIGN-03 protection plan 35-12 measured: asking *"is the
+      // assignment live NOW"* about a moment that has already passed admits on
+      // the strength of an assignment granted after the fact.
+      //
+      // `partyId` rides along for the same reason it does on the other two
+      // branches — a guest-list entry may be **event-level**
+      // (`guest_list_entries.party_id` is nullable), and then the night has to
+      // be named for the row to be bound to one at all.
+      //
+      // What this path still carries **less** of, stated rather than papered
+      // over: no device id, and the route persists none of these three, so a
+      // guest-list admission still cannot be told apart afterwards as having
+      // arrived through the queue. A refused account's queued guest entry
+      // therefore keeps its 403 and stays in `blocked` — counted on the screen,
+      // and named in the route's docblock as the half this change does not close.
       return {
         url: "/api/tickets/attendance",
-        body: { guestListEntryId: entry.subjectId },
+        body: {
+          guestListEntryId: entry.subjectId,
+          partyId: entry.partyId,
+          scannedAt: entry.scannedAt,
+          source: "offline_sync",
+        },
         legacySuccess: guestLegacySuccess,
       };
   }

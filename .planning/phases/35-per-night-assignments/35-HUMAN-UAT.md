@@ -113,6 +113,20 @@ meta' da districare.
 | 12 | `20260809004500_event_media_party_id.sql` | aggiunge `party_id` a `event_media`; ha bisogno del resolver della riga 8, perche' la policy di inserimento che riscrive chiama `private.has_capability` con la serata |
 | 13 | `20260809004600_event_media_quarantine_bucket.sql` | crea il bucket **privato** di quarantena. E' puramente additiva: non rompe niente in nessun ordine |
 | 14 | `20260809005000_live_assignment_flag.sql` | aggiunge **una chiave** al payload di `public.my_access_context()` leggendo la tabella della riga 7. Chiude il blocco perche' quella funzione e' chiamata dal middleware a **ogni richiesta**: si applica quando tutto il resto e' gia' in piedi. Se resta non applicata, la chiave semplicemente non arriva e il gate grossolano si comporta come oggi |
+| 16 | `20260809007000_expired_assignments_release_role.sql` | **CR-02 della code review del 2026-08-09.** Emenda i vincoli della riga 7: un'assegnazione **scaduta** smette di bloccare per sempre ogni scrittura sul ruolo del suo titolare — inclusa `deactivateMember`, la porta urgente. Dipende solo dalla riga 7 |
+
+> **Perche' la riga 16 sta qui e non in fondo, e perche' il suo timestamp
+> inganna.** Il nome del file ordina **dopo** la riga 15, ma la coda e' ordinata
+> **per dipendenza, non per timestamp**: questo file tocca solo oggetti che crea
+> la riga 7, la riga 15 tocca solo `storage.objects`, e le due non si incontrano.
+> Provato: una replica da vuoto in ordine di filename — 54 migration — compone
+> senza errori.
+>
+> **Se il codice va in deploy con la riga 16 non applicata**, il difetto CR-02
+> resta esattamente com'e' oggi (nessun peggioramento), con una sola differenza
+> visibile: davanti a un rifiuto causato da un'assegnazione **scaduta** la notice
+> dira' *«blocked by a live assignment that is no longer there — reload and try
+> again»*. E' fuorviante e si chiude applicando la riga.
 
 **Le otto della fase 35 vengono dopo tutte e sei quelle della fase 43, senza
 eccezioni** — e da oggi quella condizione e' **soddisfatta**, non piu' da

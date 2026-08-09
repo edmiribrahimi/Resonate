@@ -488,7 +488,19 @@ export interface MembershipActRow {
   /** NULL for a `system` act, and only then — the table refuses the other three combinations. */
   actor_id: string | null;
   actor_kind: MembershipActorKind;
-  /** NULL means *this act did not touch that axis*, never *the value was null*. */
+  /**
+   * `string | null` because the COLUMNS are nullable, not because any writer
+   * produces a null: `public.record_membership_act` computes all four itself and
+   * **no act has ever left one empty** (measured against a container —
+   * `deferred-items.md`, voce 6, still open and out of phase).
+   *
+   * So read *"this act did not move that axis"* as **`before === after`**, never
+   * as a NULL. The NULL semantics documented at
+   * `20260808002000_membership_register.sql:244-246` describes an intention the
+   * writer never carried out; a reader who waits for a null waits for a value
+   * that does not come. See {@link MembershipActRow.party_id} for the case where
+   * this matters most.
+   */
   role_before: string | null;
   role_after: string | null;
   status_before: string | null;
@@ -499,10 +511,38 @@ export interface MembershipActRow {
    * Which night the act was about. Phase 35 writes it, for the acts `'assigned'`
    * and `'unassigned'`; NULL on every act that is about the account itself.
    *
-   * Both role pairs and both status pairs stay NULL on those two acts, and that
-   * is not an omission: an assignment moves neither axis. It grants a capability
-   * for one night — `public.party_assignments` holds that — and the register
-   * holds who did it and when.
+   * ── The four register columns on those two acts, MEASURED ──────────────────
+   *
+   * **They do NOT stay NULL, and the difference is the whole point.**
+   * `public.record_membership_act` computes the after-values itself, as
+   * `coalesce(argument, before)`
+   * (`20260808002000_membership_register.sql:459-460`), so an assignment act —
+   * which passes NULL for both axes precisely so the writer skips its
+   * `public.profiles` write — comes out with all four columns **non-null and
+   * equal**: `role_before === role_after` and `status_before === status_after`.
+   *
+   * **`before === after` is how this register says an act did not move that
+   * axis**, and for an assignment that is the true statement told in the shape
+   * the writer actually produces. It is NOT the NULL that
+   * `20260808002000_membership_register.sql:244-246` documents and that no
+   * writer has ever produced — an open, out-of-phase debt
+   * (`.planning/phases/35-per-night-assignments/deferred-items.md`, voce 6),
+   * which names as its first reader exactly the surface that renders this
+   * register.
+   *
+   * Where the measurement lives, so this comment is a citation and not a claim:
+   * `supabase/migrations/20260809002000_assignment_acts.sql:423-430` — *«on an
+   * assignment act all four come out NON-NULL and equal … Measured against a
+   * container; the opposite was written here first, and was wrong»* — and
+   * `src/lib/membership/acts.ts:55-67`, which draws the useful consequence: the
+   * `assigned` act preserves the role its holder carried at the grant, the one
+   * fact `party_assignments.assignee_role` is nulled out of when the assignment
+   * is retired.
+   *
+   * This paragraph said the opposite until 2026-08-09 (WR-08). `supabase-data.md`,
+   * gate *tipi allineati*: a type that lies is worse than a type that is absent.
+   * No compiler reads a doc comment — the reader does, and the reader would have
+   * concluded «that axis was touched» from a value that means the opposite.
    */
   party_id: string | null;
   /** Optional context, never a person's name or an address. */
@@ -540,12 +580,20 @@ export interface PartyAssignmentRow {
   /**
    * The role the holder carried when it was granted.
    *
-   * **`null` means REVOKED**, never *we do not know*. The nullability is the
-   * mechanism, not a gap in the data: the composite foreign key
-   * `(user_id, assignee_role) → public.profiles (id, role)` is `MATCH SIMPLE`,
-   * so it is not enforced once this column is null — which is what frees the
-   * holder's role from a row that is no longer about anything. Read it as *this
-   * row constrains nobody any more*.
+   * **`null` means RETIRED** — revoked *or* expired — never *we do not know*.
+   * The nullability is the mechanism, not a gap in the data: the composite
+   * foreign key `(user_id, assignee_role) → public.profiles (id, role)` is
+   * `MATCH SIMPLE`, so it is not enforced once this column is null — which is
+   * what frees the holder's role from a row that is no longer about anything.
+   * Read it as *this row constrains nobody any more*.
+   *
+   * It said *«null means REVOKED»* until 2026-08-09, and that was the whole of
+   * CR-02: expiry released nothing, so an assignment that ended three weeks ago
+   * and that nobody revoked blocked every role write on its holder for ever —
+   * including `deactivateMember`, the urgent one.
+   * `20260809007000_expired_assignments_release_role.sql` gives expiry the same
+   * effect, and {@link PartyAssignmentRow.expired_at} says which of the two
+   * happened.
    */
   assignee_role: "master" | "organizer" | "staff" | null;
   /** Who granted it. Never equal to `user_id` — the database refuses that with `23514`. */
@@ -570,6 +618,25 @@ export interface PartyAssignmentRow {
   revoked_at: string | null;
   /** Who revoked it. `null` while live, and `null` again if that account is later deleted. */
   revoked_by: string | null;
+  /**
+   * When the row was RETIRED because its night was already over — CR-02.
+   *
+   * **Not a revocation, and deliberately not written as one.** `revoked_at`
+   * stays `null`, so the offline drain can still ask *"was this live at
+   * `scannedAt`?"* about 01:40 at 03:00, which is the whole of ASSIGN-03. What
+   * the stamp does is release {@link PartyAssignmentRow.assignee_role}, so the
+   * composite key stops refusing every role write on the holder.
+   *
+   * **There is no `expired_by`, and its absence is the statement.** Nobody
+   * performs an expiry: time passes. Attributing it to a person would be false
+   * and attributing it to `'system'` would put a non-act into the member
+   * register, so the record of the expiry is this column and nothing else.
+   *
+   * `party_assignments_expiry_not_before_end` refuses a value earlier than
+   * `ends_at`, which is what keeps *"a LIVE assignment blocks a demotion"* true:
+   * the release cannot be back-dated into a way of unlocking one.
+   */
+  expired_at: string | null;
 }
 
 /** The four roles a credit may carry, mirrored by `party_credits_credit_check`. */

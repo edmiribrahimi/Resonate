@@ -55,7 +55,18 @@ findings:
   warning: 9
   info: 5
   total: 16
-status: issues_found
+status: partially_fixed
+fixed_at: 2026-08-09
+fixed:
+  critical: 2
+  warning: 3
+  info: 0
+  total: 5
+not_fixed:
+  critical: 0
+  warning: 6
+  info: 5
+  total: 11
 ---
 
 # Phase 35: Per-Night Assignments — Code Review Report
@@ -63,7 +74,72 @@ status: issues_found
 **Reviewed:** 2026-08-09T05:21:04Z
 **Depth:** deep (grafo di import e catene di chiamata: middleware → pagina → action/route → guardia → RPC → policy)
 **Files Reviewed:** 45
-**Status:** issues_found
+**Status:** partially_fixed — 5 su 16 chiuse il 2026-08-09
+
+---
+
+## Esiti — cosa e' stato corretto, e cosa no
+
+Cinque voci sono state chiuse: **entrambe le Critical** e **tre Warning**. Le
+altre sei Warning e tutte e cinque le Info **restano aperte per decisione**, non
+per dimenticanza — il perimetro dell'intervento era esattamente questo elenco.
+
+| ID | Esito | In una riga |
+|---|---|---|
+| **CR-01** | `fixed` | Il `POST` di `attendance` ha ora la forma a due bracci del piano 35-22, con la notte **legata al soggetto** prima di concedere; corrette le due affermazioni false che la review ha trovato |
+| **CR-02** | `fixed` | Un'assegnazione **scaduta** viene **ritirata** dentro la stessa istruzione che cambia il ruolo (trigger `BEFORE UPDATE OF role`); una **viva** continua a bloccare |
+| **WR-01** | `fixed` | La riga 7 della coda non droppa piu' un vincolo referenziato: si riapplica su vuoto e su gia-applicato, provato contro container |
+| **WR-02** | `not_fixed` | Fuori perimetro dell'intervento. `23503 → "assignee_not_staff"` e `P0002 → "no_live_assignment"` affermano ancora fatti falsi su una superficie da organizer |
+| **WR-03** | `not_fixed` | Fuori perimetro. Quattro cause distinte arrivano ancora come *«il server non ha risposto»*, e per tre di esse e' falso |
+| **WR-04** | `not_fixed` | Fuori perimetro. Un assegnatario `party.manage` raggiunge ancora la revisione della sola **prima** notte dell'evento |
+| **WR-05** | `not_fixed` | Fuori perimetro. Il selettore di serata butta ancora via il `503` e il `500` che questa fase ha creato per essere visti |
+| **WR-06** | `fixed` | `verify-media-strip` riconosce ora cinque forme di scrittura; ognuna provata per mutazione, con la mutazione asserita prima di leggerne l'esito |
+| **WR-07** | `not_fixed` | Fuori perimetro. `registerMedia` accetta ancora un `storagePath` qualunque |
+| **WR-08** | `fixed` | Il commento sul registro dice ora cio' che la fase ha **misurato**, e cita dove vive la misura |
+| **WR-09** | `not_fixed` | Fuori perimetro. `.eq("capability", "door.operate")` e' ancora la chiave scritta a mano |
+| **IN-01 … IN-05** | `not_fixed` | Tutte e cinque le Info restano aperte per decisione |
+
+**IN-01 e' cambiata di fianco, senza essere stata l'obiettivo.** Spostando
+`DOOR_NIGHT_ERROR` in `@/lib/door/outcome.ts` per il fix di CR-01, il `Record`
+e' diventato **totale** sulla union dei tre literal (`DoorNightRefusal`), che era
+meta' del rimedio proposto. L'altra meta' — tipizzare `refuseNight` sulla stessa
+union — e' anch'essa avvenuta. La voce resta segnata `not_fixed` perche' non e'
+stata verificata come tale: e' un effetto collaterale del fix di CR-01, non un
+intervento su IN-01.
+
+### Cose trovate mentre si correggeva, e che la review non aveva
+
+1. **`party_assignments_live_role_present`, come spedita, non rifiutava la
+   forma che dichiara di rifiutare.** Con `assignee_role` NULL,
+   `assignee_role IN ('master','organizer','staff')` vale `NULL`,
+   `TRUE AND NULL` vale `NULL`, e **una `CHECK` passa quando l'espressione e'
+   `NULL`**. Quindi una riga **viva senza ruolo** era accettata — e senza ruolo
+   la chiave composta non e' controllata, che e' precisamente la cosa che la
+   sezione 3b dice di voler impedire (un `member` che tiene un'assegnazione).
+   Misurato sul predicato spedito, tabella scratch, `postgres:17.6`:
+   `INSERT 0 1` dove serviva un rifiuto. Chiuso dentro il fix di CR-02, che
+   riscrive quella stessa `CHECK`.
+2. **La coda della guest list non e' mai stata alimentata da nessuno.** Nessun
+   percorso vivo mette in coda una voce `type: "guest"`
+   (`checkInLocally` e' chiamata solo con `"ticket"`), e il pulsante *Check in*
+   accanto a un nome e' dichiaratamente **online only**. Il ramo `case "guest"`
+   del drain serve quindi soltanto le voci **legacy** della v2 dello store. Non
+   cambia la diagnosi di CR-01 — cambia quanta popolazione ha oggi.
+3. **Molte migration storiche (2026-02 / 2026-03) non sono idempotenti** —
+   `column already exists`, `relation already exists` alla seconda esecuzione.
+   Fuori dal perimetro di WR-01, che riguarda la coda applicata **a mano**;
+   correggerle vorrebbe dire riscrivere venti file gia' applicati in produzione.
+   Registrato qui perche' nessun documento della fase lo diceva.
+
+### Cosa nessuna di queste correzioni prova
+
+**Non esiste un test runner per il prodotto.** Nessuna riga di questo blocco
+significa «i test passano». Cio' che e' stato eseguito e': `npm run build` (che
+e' il typecheck di Next), `npx tsc --noEmit`, `npx eslint` sui file toccati,
+`npm run verify:media-strip` — e, per CR-02 e WR-01, un container
+`postgres:17.6` costruito con lo shim, lo `schema.sql` del commit iniziale e
+tutte le migration. **Nessun percorso HTTP e' stato esercitato**: la prova di
+CR-01 e' la lettura del codice piu' la procedura scritta in `35-HUMAN-UAT.md`.
 
 ## Summary
 
@@ -109,6 +185,22 @@ runner.
 ## Critical Issues
 
 ### CR-01: Il check-in della guest list non riceve mai la notte — il terzo buco, e un grep che ne difende l'esistenza
+
+> **Esito: `fixed` (2026-08-09).** Il `POST` ha ora la forma a due bracci del
+> piano 35-22 — braccio di ruolo invariato, braccio per-notte **solo** sul suo
+> ramo di rifiuto e **solo** se non e' un report dal drain — con la notte
+> **legata al soggetto** prima di concedere (`bindNightToGuestEntry`, la regola
+> di `bindNightToSubject`). Tre cause distinte per posizione, tutte **403**:
+> bucket `blocked`, irraggiungibile dal drain per costruzione, e il drain ora lo
+> dichiara mandando `source`/`scannedAt`/`partyId`. Vocabolario e `readNightArm`
+> spostati in `@/lib/door/outcome.ts` e `@/lib/door/night-arm.ts` invece che
+> duplicati. Corrette entrambe le affermazioni false: il docblock di
+> `admin/scanner/page.tsx` e il criterio `== 2` di `35-10-PLAN.md:131`, ora `3`
+> con scritto accanto perche' un criterio che fallisce sul proprio fix e' una
+> difesa del difetto. **Meta' dichiarata e non chiusa:** un report dal drain di
+> un account rifiutato per ruolo tiene il suo 403 e resta in `blocked` — questa
+> rotta non ha `judgeAtScanTime` ne' scrive `door_scan_events`, quindi non puo'
+> giudicare il momento passato, e chiederle «e' viva ORA» regredirebbe ASSIGN-03.
 
 **File:** `src/app/api/tickets/attendance/route.ts:877-880`
 **Catena:** `ScannerClient.tsx:1826-1832` → `POST /api/tickets/attendance` → `requireDoorOperator()` **senza argomenti**
@@ -206,6 +298,22 @@ altrimenti il criterio resta un controllo che difende il difetto.
 
 ### CR-02: Un'assegnazione **scaduta** blocca per sempre ogni scrittura sul ruolo — inclusa la disattivazione urgente
 
+> **Esito: `fixed` (2026-08-09), con una strada diversa da entrambe le opzioni
+> proposte.** `20260809007000_expired_assignments_release_role.sql` (riga **16**
+> della coda, blocco A2): una riga **finita** viene **ritirata** — `expired_at`
+> timbrato, `assignee_role` azzerato — **dentro la stessa istruzione che cambia
+> il ruolo**, con un trigger `BEFORE UPDATE OF role` su `public.profiles`.
+> Nessuna finestra, un solo posto, copre ogni scrittore incluso il service
+> client. **Il cron dell'opzione 1 e' stato rifiutato** perche' lascerebbe fino
+> a ventiquattro ore di rifiuto su una porta il cui commento dice *«often the
+> same evening»*, e renderebbe il difetto piu' raro — la peggiore proprieta' per
+> un difetto su un percorso urgente. `revoked_at` **non** viene toccato, quindi
+> il drain puo' ancora chiedere «era viva alle 01:40?». Una **viva** continua a
+> bloccare (misurato), e `party_assignments_expiry_not_before_end` impedisce di
+> sbloccarla ritirandola in anticipo. `describeBlockingAssignments` filtra ora
+> l'insieme che blocca davvero, quindi la parola *«live»* nella notice torna
+> vera senza doverla riscrivere.
+
 **File:** `supabase/migrations/20260809000000_party_assignments.sql:351-376`
 **Consumatori:** `src/app/(admin)/admin/members/actions.ts:1622-1662` (`deactivateMember`), `:1428` (`updateMemberRole`), `:1810` (`rejectMember`), `:675-727` (`describeBlockingAssignments`)
 
@@ -291,6 +399,14 @@ Perche' e' un difetto e non «la regola che funziona»:
 
 ### WR-01: `20260809000000_party_assignments.sql` non e' idempotente — la seconda esecuzione aborta sulla riga che dovrebbe renderla idempotente
 
+> **Esito: `fixed` (2026-08-09).** Sostituito `DROP … IF EXISTS` + `ADD` con un
+> `DO` che crea il vincolo **solo se manca**, cosi' non si tocca mai un vincolo
+> referenziato. Provato in **entrambe le direzioni** contro `postgres:17.6`: 54
+> migration da vuoto in ordine di filename (`FRESH_REPLAY_OK`) e il file
+> riapplicato due volte su un database dove era gia' girato (nessun errore).
+> Correggere il file non viola *migration in avanti*: non e' mai stato applicato
+> in produzione, ed e' scritto nel file.
+
 **File:** `supabase/migrations/20260809000000_party_assignments.sql:194-203`
 
 **Issue:** il commento e' esplicito:
@@ -344,6 +460,11 @@ e correggere il paragrafo, che oggi asserisce una proprieta' che il file non ha.
 ---
 
 ### WR-02: `classifyWriteError` collassa cause distinte in due categorie che affermano fatti falsi
+
+> **Esito: `not_fixed`.** Fuori dal perimetro dell'intervento del 2026-08-09,
+> che copriva CR-01, CR-02, WR-01, WR-06 e WR-08. Resta vero e resta aperto: la
+> frase *«This person is not staff»* su un `23503` da chiave `capability` manda
+> l'operatore a promuovere una persona gia' promossa.
 
 **File:** `src/app/(organizer)/organizer/events/[id]/assignments/actions.ts:263-278`
 
@@ -401,6 +522,10 @@ chiave esista, oppure — piu' semplice e sufficiente — aggiungere alla frase 
 
 ### WR-03: La superficie delle assegnazioni riporta quattro cause come «il server non ha risposto» — e per tre di esse e' falso
 
+> **Esito: `not_fixed`.** Fuori perimetro. Resta vero: per tre delle quattro
+> cause il server **ha** risposto rifiutando, e la frase dice il contrario —
+> `capabilities.resolve_failed` manda a controllare una scrittura mai partita.
+
 **File:** `src/app/(organizer)/organizer/events/[id]/assignments/AssignmentsClient.tsx:144-166`
 
 **Issue:** `verifyOrganizerAccess` (`actions.ts:190-200`) puo' lanciare quattro
@@ -452,6 +577,11 @@ diventa quindi un errore di build finche' non sono scritte.
 ---
 
 ### WR-04: Un assegnatario `party.manage` puo' raggiungere la revisione solo della **prima** notte dell'evento
+
+> **Esito: `not_fixed`.** Fuori perimetro. La direzione dell'errore e' sicura
+> (rifiuto), ma ASSIGN-01 resta **non consegnato** per ogni assegnatario che non
+> sia della notte 1 di un evento a piu' notti, e nessun documento della fase lo
+> dichiara ancora.
 
 **File:** `src/app/(organizer)/organizer/events/[id]/review/page.tsx:165-167`, in combinazione con `src/lib/supabase/middleware.ts:87-89`
 
@@ -507,6 +637,11 @@ il posto dove `?access=not-assigned-here` gia' gli parla.
 ---
 
 ### WR-05: Il selettore di serata dello scanner butta via tutte le risposte d'errore — inclusi i due esiti che questa fase ha creato per essere visti
+
+> **Esito: `not_fixed`.** Fuori perimetro, **e adesso pesa un grado di piu'**:
+> il fix di CR-01 aggiunge tre cause nuove che questa stessa superficie non
+> distingue. Alle due di notte un assegnatario davanti a un selettore vuoto
+> conclude ancora che non e' di turno.
 
 **File:** `src/app/(admin)/admin/scanner/ScannerClient.tsx:638-651`
 
@@ -565,6 +700,16 @@ if (!res.ok) {
 
 ### WR-06: `verify-media-strip` riconosce come scrittura soltanto `.upload(` — e la sua ragione dichiarata e' proprio il secondo scrittore lato server
 
+> **Esito: `fixed` (2026-08-09).** `WRITE_CALLS` con cinque forme —
+> `.upload(`, `.copy(`, `.move(`, `.createSignedUploadUrl(`,
+> `.uploadToSignedUrl(` — e il messaggio di fallimento nomina la chiamata
+> trovata. `.remove(` resta deliberatamente **fuori**: cancellare non e'
+> pubblicare, ed e' l'operazione che la riga 15 conserva apposta. **Provato per
+> mutazione, con la mutazione asserita prima di leggerne l'esito**: ognuna delle
+> quattro forme nuove inserita in un file reale di `src/`, `grep` a confermare
+> che fosse andata a segno, script rosso, ripristino — piu' un **controllo
+> negativo** su `.remove(`, che deve restare verde e resta verde.
+
 **File:** `scripts/verify-media-strip.mjs:236-274`
 
 **Issue:** il controllo A segna una riga come scrittura solo se, entro otto
@@ -608,6 +753,12 @@ mutazione*).
 ---
 
 ### WR-07: `registerMedia` accetta un `storagePath` qualunque — la meta' che il controllo di proprieta' non copre
+
+> **Esito: `not_fixed`.** Fuori perimetro, e con un vincolo in piu' da leggere
+> prima di aprirla: quel file porta anche `.from("attendance")`, che
+> l'intervento del 2026-08-09 aveva istruzione esplicita di **non toccare**
+> — correggerlo allargherebbe chi puo' caricare. L'aggiramento della
+> moderazione descritto qui resta aperto.
 
 **File:** `src/app/(public)/events/[slug]/actions.ts:154-190`
 
@@ -658,6 +809,16 @@ if (segments.length !== 3 || segments[0] !== eventId || segments[1] !== user.id)
 
 ### WR-08: `src/types/database.ts` afferma sul registro il contrario di cio' che questa stessa fase ha misurato
 
+> **Esito: `fixed` (2026-08-09).** Il paragrafo dice ora cio' che la fase ha
+> misurato — le quattro colonne escono **non-NULL e uguali**, e `before ===
+> after` e' il modo in cui questo registro dice «l'atto non ha mosso
+> quell'asse» — e **cita dove vive la misura**:
+> `20260809002000_assignment_acts.sql:423-430`, `src/lib/membership/acts.ts:55-67`
+> e la voce 6 di `deferred-items.md`. Corretta anche la riga sopra
+> (`role_before`/`status_before`), che portava la stessa affermazione in
+> miniatura: lasciarla avrebbe corretto il commento lungo e conservato il
+> riassunto sbagliato due righe piu' su.
+
 **File:** `src/types/database.ts:498-507`
 
 **Issue:**
@@ -703,6 +864,11 @@ prevede.
 
 ### WR-09: La query che decide se una scansione in coda e' un'ammissione o un `not_valid` usa la chiave scritta a mano
 
+> **Esito: `not_fixed`.** Fuori perimetro. Resta l'unica occorrenza letterale
+> della chiave in un file che importa gia' `CAP`: il giorno in cui la chiave
+> viene rinominata, una persona che e' davvero entrata sparisce dal record della
+> serata come non ammessa, in silenzio.
+
 **File:** `src/app/api/tickets/checkin/route.ts:308`
 
 **Issue:**
@@ -736,7 +902,18 @@ questa stringa.
 
 ## Info
 
+> **Esito, tutte e cinque: `not_fixed`.** Nessuna Info rientrava nel perimetro
+> dell'intervento del 2026-08-09. Restano com'erano, con l'unica eccezione
+> collaterale annotata sotto IN-01.
+
 ### IN-01: `DOOR_NIGHT_ERROR` e' l'unico `Record` della fase che non e' totale sulla propria union
+
+> **Esito: `not_fixed`, ma cambiata di fianco.** Il fix di CR-01 ha spostato
+> `DOOR_NIGHT_ERROR` in `@/lib/door/outcome.ts` e nel farlo l'ha reso **totale**
+> sulla union `DoorNightRefusal`; `refuseNight` e' tipizzata sulla stessa union.
+> E' esattamente il rimedio proposto qui, ottenuto come effetto collaterale — non
+> verificato come intervento su IN-01, quindi la voce resta aperta invece di
+> essere dichiarata chiusa senza prova.
 
 **File:** `src/app/api/tickets/checkin/route.ts:410-417`, `:430-432`
 
@@ -814,3 +991,6 @@ messaggio del deposito quando `depositError` porta uno status 413.
 _Reviewed: 2026-08-09T05:21:04Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_
+
+_Fixed: 2026-08-09 — 5 voci su 16 (CR-01, CR-02, WR-01, WR-06, WR-08), un commit
+per voce. `STATE.md` e `ROADMAP.md` non sono stati toccati._
