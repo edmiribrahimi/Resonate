@@ -1,5 +1,5 @@
 /**
- * The nine capability keys, named once.
+ * The twelve capability keys, named once.
  *
  * This module is the source. It imports nothing — not even
  * `@/types/database`, which imports *from here* — for the same reason
@@ -28,7 +28,7 @@
  *
  * The check that closes the gap is `scripts/verify-capabilities.mjs`, added by
  * plan `32-10`: it reads `private.capabilities` and asserts that the set below
- * and the catalogue are the same nine strings. Until it runs, the guarantee
+ * and the catalogue are the same twelve strings. Until it runs, the guarantee
  * here is a convention, not a mechanism.
  *
  * **Editing this file means editing the migration in the same commit** — the
@@ -54,12 +54,41 @@
  * organizer whose own access was never approved, and the "tidy" repair —
  * flipping that key's `requires_approved` — is the same `false` that keeps
  * `DOOR_OPERATE` open in front of a queue.
+ *
+ * ── The tenth, eleventh and twelfth, added by plan 35-03 ─────────────────────
+ *
+ * `DOOR_SUPERVISE`, `MEDIA_UPLOAD` and `PARTY_MANAGE` are the three keys a
+ * per-night assignment may carry besides `DOOR_OPERATE`
+ * (`20260809000000_party_assignments.sql:340-342` names all four). They are the
+ * naming rule above applied a third time, and each of them exists because the
+ * obvious reuse was WRONG in a specific direction:
+ *
+ *   - `DOOR_SUPERVISE` on `DOOR_OPERATE` would make every operator a
+ *     supervisor, which is exactly what ASSIGN-05 refuses; on `STAFF_MANAGE` it
+ *     would hand one night's supervision the whole back office for ever.
+ *   - `MEDIA_UPLOAD` on `MEMBERSHIP_ACTIVE` would confuse the per-night work
+ *     upload with the member-level contribution every approved account already
+ *     has — the distinction `20260808000500_staff_role.sql:125-136` was written
+ *     to keep.
+ *   - `PARTY_MANAGE` on `ORGANIZER_ACCESS` would open the organizer AREA, which
+ *     is a property of the account with no night in it, instead of one night's
+ *     surfaces.
+ *
+ * **Their consumers arrive after this file.** `PARTY_MANAGE` is read by the
+ * door register's policy (plan 35-09) and by the per-night review page (35-17);
+ * `MEDIA_UPLOAD` by the upload guard (35-16) and the media surface (35-21);
+ * `DOOR_SUPERVISE` by the door guard and the undo path (35-07, 35-11, 35-13).
+ * Until those land, side 4 of `scripts/verify-capabilities.mjs` reports them as
+ * keys nobody asks for — a WARNING, deliberately, and the one Phase 34's CAP-02
+ * will later turn into a build failure. It is arriving early on purpose; it is
+ * not silenced.
  */
 
 /**
- * The nine keys. Spelled exactly as the rows of `private.capabilities`
- * (`supabase/migrations/20260807000000_capability_model.sql` section 7, plus
- * `20260808002000_membership_register.sql` section 1 for the ninth).
+ * The twelve keys. Spelled exactly as the rows of `private.capabilities`
+ * (`supabase/migrations/20260807000000_capability_model.sql` section 7,
+ * `20260808002000_membership_register.sql` section 1 for the ninth, and
+ * `20260809001000_assignment_resolver.sql` section 1 for the last three).
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -80,6 +109,12 @@ export const CAP = {
   MEMBERSHIP_CARD_VIEW: "membership.card.view",
   /** Read the register of acts on a member's role and status. Role AND approved. */
   REGISTER_READ: "register.read",
+  /** Reverse a check-in already recorded at the door. ASSIGN-05, and NOT `DOOR_OPERATE`. */
+  DOOR_SUPERVISE: "door.supervise",
+  /** Upload media to a night. The per-night work upload, not `MEMBERSHIP_ACTIVE`. */
+  MEDIA_UPLOAD: "media.upload",
+  /** Manage one night's operational surfaces. Not `ORGANIZER_ACCESS`, which is the area. */
+  PARTY_MANAGE: "party.manage",
 } as const;
 
 export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
@@ -88,14 +123,14 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * One sentence per key, for the humans who read a permission decision.
  *
  * Typed as a **total** `Record` over the union on purpose, exactly as
- * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a tenth key to `CAP`
- * without a description here is a `npm run build` error, and removing a key
- * leaves an unreachable entry that is also an error. It is the one part of this
- * file's contract the compiler can hold — and it held it when the ninth key
- * landed, which in a repository with no test runner is worth saying rather than
- * assuming.
+ * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a thirteenth key to
+ * `CAP` without a description here is a `npm run build` error, and removing a
+ * key leaves an unreachable entry that is also an error. It is the one part of
+ * this file's contract the compiler can hold — and it held it when the ninth key
+ * landed, and again when the tenth, eleventh and twelfth did, which in a
+ * repository with no test runner is worth saying rather than assuming.
  *
- * It cannot hold the other part — that these strings match the nine rows in
+ * It cannot hold the other part — that these strings match the twelve rows in
  * `private.capabilities`. That is `scripts/verify-capabilities.mjs`'s job.
  */
 export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
@@ -115,4 +150,10 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "See the membership card and the attendance history. Status alone, any role.",
   "register.read":
     "Read the register of acts on a member's role and status — who was created, approved, rejected, promoted, demoted, deactivated or reactivated, by whom and when. Role AND an approved status, because the register contains rejections.",
+  "door.supervise":
+    "Reverse a check-in already recorded at the door. A different question from door.operate: an operator admits, a supervisor undoes. Role alone on both grants, deliberately — the undo is what corrects a wrong refusal, and it happens in front of a queue.",
+  "media.upload":
+    "Upload media to a night. The per-night work upload — the photographer uploading to the night they worked — not the member-level contribution, which is membership.active.",
+  "party.manage":
+    "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
 };
