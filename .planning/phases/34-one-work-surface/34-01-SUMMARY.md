@@ -389,6 +389,16 @@ Carried forward, explicitly:
 - **Plan 34-17** flips `REDIRECT_STATUS` to 308 and re-runs the fifteen-address walk after the flip (D-34-15).
 - **Before plan 34-03 merges:** M-9's "before" observation (Finding 4).
 
+## Self-Check: PASSED
+
+- `src/lib/routes/capability-routes.ts` — present
+- `src/lib/routes/organizer-redirects.ts` — present
+- `.planning/phases/34-one-work-surface/34-01-SUMMARY.md` — present
+- `next.config.ts` — present, `typedRoutes: true`
+- Commits `11fb38d`, `6566662`, `8fbdebe` — all present in `git log`
+- `git status --porcelain` — empty
+- `STATE.md` and `ROADMAP.md` — **not touched**; the orchestrator owns those writes
+
 ---
 *Phase: 34-one-work-surface*
 *Completed: 2026-08-09*
