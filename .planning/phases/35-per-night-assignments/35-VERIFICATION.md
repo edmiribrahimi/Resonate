@@ -9,7 +9,7 @@ automated_evidence: "container measurement (orchestrator-run, cited not repeated
 observed_in_production: false
 deployed: false
 migrations_committed: 9
-migrations_applied: 0
+migrations_applied: 9
 manual_procedures_written: 13
 manual_procedures_executed: 0
 verifier_measurements_run: 0
@@ -42,6 +42,33 @@ human_verification:
     expected: "Comportamento visibile solo aprendo l'applicazione: chi vede cosa, quale frase compare, quali serate nomina il rifiuto 23503"
     why_human: "Interfaccia utente; nessun grep osserva un rendering o una frase a schermo."
 ---
+
+> ## Seconda annotazione — 2026-08-09, le migration sono applicate
+>
+> **Nove delle dieci migration della fase sono state applicate in produzione il
+> 2026-08-09**, su richiesta esplicita del proprietario, nell'ordine del blocco
+> A2 di `35-HUMAN-UAT.md`, ognuna senza errore, con pre-volo e stato risultante
+> verificati per query.
+>
+> **La misura che conta:** `npm run verify:capabilities` contro la **produzione**
+> passa da `FAILED 4/5` a **5/5 verde, 0 warning** — 12 chiavi, 26 grant e 22
+> rifiuti su 4 ruoli x 12 chiavi. Produzione e container concordano.
+>
+> **La decima NON e' applicata, ed e' corretto:**
+> `20260809006000_event_media_server_upload_only.sql` va **dopo** il deploy.
+> Verificato che la policy `Members can upload event media` e' ancora viva:
+> **il gate EXIF resta aggirabile** finche' quella riga non e' applicata.
+>
+> **Una prova e' andata persa, non rimandata.** Il caso **C** della prova 11
+> esisteva solo nella finestra fra il deploy del codice e l'applicazione della
+> riga 8. Applicando la riga 8 **prima** del deploy, quella finestra non si
+> aprira' mai: il caso non e' piu' osservabile. Cio' che avrebbe dimostrato —
+> che nessuno riceve un 503 in quella finestra — diventa **privo di oggetto**,
+> perche' la finestra non esistera'. E' una perdita dichiarata, non un'omissione.
+>
+> **`deployed` resta `false`** e lo stato resta **`human_needed`**: il codice non
+> e' in produzione e nessuna delle tredici procedure e' stata eseguita.
+
 
 > ## Annotazione posteriore — 2026-08-09, dopo la code review
 >

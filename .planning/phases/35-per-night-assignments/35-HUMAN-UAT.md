@@ -4,8 +4,8 @@ phase: 35-per-night-assignments
 source: [35-01-PLAN.md, 35-14-PLAN.md, 35-VALIDATION.md, 43-HUMAN-UAT.md, ACCESS-MODEL-DECISIONS.md]
 started: 2026-08-08
 updated: 2026-08-09
-queue_rows_applied: 6
-queue_rows_total: 15
+queue_rows_applied: 15
+queue_rows_total: 16
 procedures_total: 13
 procedures_closed: 0
 closing_windows: [12, 7, 10, "11-C"]
@@ -101,7 +101,50 @@ meta' da districare.
 > la colonna, la funzione. Leggere il registro e concluderne che non e' applicato
 > niente e' un errore che questo file esiste per prevenire.
 
-### Blocco A2 — le righe 7–14, da applicare PRIMA del deploy del codice di questa fase
+### Blocco A2 — le righe 7–14 e 16, APPLICATE il 2026-08-09
+
+> **Applicate.** Le nove righe di questo blocco sono state applicate in
+> produzione il **2026-08-09**, nell'ordine della tabella, ognuna senza errore, e
+> lo stato risultante e' stato **verificato interrogando il database**, non
+> dedotto:
+>
+> | Oggetto | Prima | Dopo |
+> |---|---|---|
+> | `public.party_assignments` | assente | tabella presente |
+> | `public.party_credits` | assente | tabella presente |
+> | `event_media.party_id` | colonna assente | presente |
+> | bucket `event-media-quarantine` | assente | presente e **privato** (`public = false`) |
+> | `private.party_event_id()` | assente | presente |
+> | `private.capabilities` | 9 righe | **12 righe** |
+> | `private.role_capabilities` | 20 righe | **26 righe** |
+> | payload di `my_access_context()` | 4 chiavi | **5** — `live_assignment_capabilities` presente |
+> | `party_assignments.expired_at` (riga 16) | — | presente, con il trigger di rilascio su `profiles` |
+>
+> **Pre-volo, misurato prima di scrivere:** nessun oggetto della fase gia'
+> presente (nessuna applicazione a meta'), `public.event_media` con **zero
+> righe** — quindi il backfill della riga 12 non ha toccato nulla — e i quattro
+> profili in produzione tutti compatibili con i vincoli nuovi.
+>
+> **`npm run verify:capabilities` contro la PRODUZIONE: 5/5 verde, 0 warning.**
+> Prima dell'applicazione usciva `FAILED 4/5`. Produzione e container ora
+> concordano.
+>
+> **Conseguenza operativa fino al deploy, dichiarata e non scoperta.** La riga 12
+> aggiunge un trigger `BEFORE INSERT` che pretende la serata su `event_media`, e
+> **il codice in produzione non la passa ancora**: da adesso al deploy, un
+> caricamento media viene **rifiutato con `23514`**, anche per `master` e
+> `organizer`. Non e' un errore d'ordine — il codice nuovo *pretende* quella
+> colonna, quindi la riga deve precedere il deploy. E la tabella era vuota:
+> nessun dato e' in gioco, solo i caricamenti nuovi.
+>
+> La riga **15 NON e' stata applicata**, come previsto: verificato che la policy
+> `Members can upload event media` e' ancora viva su `storage.objects`, cioe' il
+> browser puo' ancora scrivere — e quindi **il gate EXIF resta aggirabile**,
+> esattamente come descritto nel blocco B.
+
+---
+
+### Blocco A2 — le righe 7–14 e 16, il perche' dell'ordine
 
 | # | File | Perche' deve stare qui |
 |---|---|---|
