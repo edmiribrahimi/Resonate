@@ -336,7 +336,7 @@ Plans:
 - [ ] 35-12-PLAN.md — The drain judges at `scannedAt`: no queued scan is ever stranded
 - [ ] 35-15-PLAN.md — `live_assignment_capabilities` in the payload the middleware already asks for: the coarse question, never the per-night one
 - [ ] 35-18-PLAN.md — `party_id` on `event_media`: the column, the fact-only backfill, and the trigger that makes NULL legacy rather than a wildcard
-- [ ] 35-19-PLAN.md — The metadata strip and the private quarantine bucket: `sharp` declared, and every non-success is a refusal
+- [x] 35-19-PLAN.md — The metadata strip and the private quarantine bucket: `sharp` declared, and every non-success is a refusal
 
 **Wave 6** *(blocked on Wave 5)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 5/21 | In Progress|  |
+| 35. Per-Night Assignments | 6/21 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
