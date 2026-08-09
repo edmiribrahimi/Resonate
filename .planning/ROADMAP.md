@@ -346,7 +346,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 35-20-PLAN.md — `POST /api/media/finalize`: the only path into the public bucket, and it goes through the strip
+- [x] 35-20-PLAN.md — `POST /api/media/finalize`: the only path into the public bucket, and it goes through the strip
 
 **Wave 8** *(blocked on Wave 7)*
 
@@ -485,7 +485,7 @@ Plans:
 | 32. Capability Model in the Database | 11/11 | Complete    | 2026-08-06 |
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
-| 35. Per-Night Assignments | 18/22 | In Progress|  |
+| 35. Per-Night Assignments | 20/22 | In Progress|  |
 | 34. One Work Surface | 0/TBD | Not started | - |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |

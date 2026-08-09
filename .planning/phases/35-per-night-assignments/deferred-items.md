@@ -339,3 +339,44 @@ motivo per fermarsi — e' un motivo per non fermarsi a meta'.
 
 **Obbligo ereditato da 35-21:** deve passare la notte **e** rendere `partyId`
 obbligatorio. Oggi solo il primo dei due e' asserito da un grep.
+
+---
+
+## 10. [APERTA] Il ramo dei rimborsi non confronta la notte nominata
+
+**Trovata da:** piano 35-22, e **deliberatamente non chiusa** — la ragione del
+non-fare e' il contenuto della voce.
+
+**Il fatto.** `src/app/api/tickets/checkin/route.ts:1133-1200` registra
+`recorded` senza confrontare `refunded_party_id` / `refunded_event_id` con la
+notte nominata nel corpo della richiesta. E' **preesistente** e vale **identico
+per `master` e per `organizer`**.
+
+**Perche' non e' stato chiuso dal piano che l'ha trovato.** Chiuderlo **solo per
+gli assegnatari** avrebbe prodotto una **porta a due velocita'**: la stessa
+persona ammessa dal telefono di un organizer e rifiutata da quello di uno staff,
+la stessa sera, alla stessa porta. E' precisamente la divergenza per cui
+`src/lib/door/require-operator.ts` esiste — una sola domanda, una sola risposta,
+per chiunque tenga la porta.
+
+**Cosa deve succedere.** Il piano che lo chiude lo chiude **per tutti i ruoli
+insieme**, o non lo chiude. E la direzione va scelta con l'asimmetria in mente:
+alla porta, davanti a una fila, un controllo in piu' e' un modo in piu' di
+rifiutare.
+
+---
+
+## 11. [SEQUENZA — si perde se si sbaglia l'ordine] Il caso C della prova 11 vive in una finestra che si chiude
+
+**Trovata da:** piano 35-22, scrivendo la propria procedura.
+
+La prova 11 di `35-HUMAN-UAT.md` ha tre casi, e **non sono ordinabili a piacere**:
+
+- **casi A e B** pretendono che la **riga 8** della coda sia **applicata**;
+- **caso C** pretende che **non** lo sia — e' la finestra fra il deploy e
+  l'applicazione, in cui si verifica che `master` e `organizer` scansionano
+  esattamente come oggi e che l'assegnatario riceve un rifiuto **con causa
+  propria**, non un 503 ne' una scansione appesa nel bucket di retry.
+
+**L'ordine e' C → coda → A e B.** Applicando la coda per prima, **il caso C non
+e' rimandato: e' perso.** Va scritto in testa alla prova, non in fondo.
