@@ -17,14 +17,22 @@ import {
   checkInLocally,
   checkInMemberLocally,
   markCheckedInLocally,
-  undoCheckInLocally,
+  // `undoCheckInLocally` — the function that DELETES the queue entry — is
+  // deliberately not imported any more. It still exists in the store, and the
+  // offline branch below calls `markUndoneLocally` instead: deleting makes the
+  // admission never have happened, marking keeps who reversed it and when.
+  markUndoneLocally,
+  cacheDoorAuth,
+  readDoorAuth,
   getDeviceId,
   getPendingCount,
   getFailedCount,
   getBlockedCount,
+  getUndoneLocallyCount,
   getFailedCheckins,
   rosterPredatesRole,
   THIS_DEVICE_LABEL,
+  type CachedDoorAuth,
   type FailedCheckin,
   type MergeResult,
 } from "@/lib/offline/checkin-store";
@@ -33,7 +41,11 @@ import {
   setupSyncListeners,
   retryBlockedAfterSignIn,
 } from "@/lib/offline/sync-manager";
-import { isDoorOutcome } from "@/lib/door/outcome";
+import {
+  isDoorOutcome,
+  DOOR_SUPERVISION_REQUIRED,
+  DOOR_SUPERVISION_REQUIRED_ERROR,
+} from "@/lib/door/outcome";
 import type {
   DoorFlag,
   DoorNotValidReason,
@@ -86,10 +98,33 @@ const FLAG_MESSAGE: Record<DoorFlag, string> = {
   not_in_cache: "Not in the list on this device — admitted, flagged for review",
 };
 
-/** Every distinct way a response can fail to be an outcome, told apart. */
-function serverFaultMessage(status: number): string {
+/**
+ * Every distinct way a response can fail to be an outcome, told apart.
+ *
+ * ── The body is a parameter now, and that is the whole of the fix ────────────
+ *
+ * This function used to take the HTTP status alone, so it chose a headline
+ * **before** anything read the body. The limit was measured and written down
+ * where the value is minted, `require-operator.ts:104-110`, waiting for this
+ * plan: two different `403`s reached this line and produced one sentence, so a
+ * device could not tell *"this account may never work the door"* from *"this
+ * account may work this door but may not reverse an admission on it"*.
+ *
+ * The distinction is made on a **value decided by position** — `status` in the
+ * envelope — and never by reading the prose in `error`. Next redacts the message
+ * of an error thrown in a production build (CR-01), which is exactly why the
+ * category travels as its own field.
+ *
+ * A `403` **without** that value keeps the sentence it has always had. Nobody
+ * who is refused today is told something different.
+ */
+function serverFaultMessage(status: number, body?: unknown): string {
   if (status === 401) return "Session expired — sign in again to keep scanning";
-  if (status === 403) return "This account is not allowed to check people in";
+  if (status === 403) {
+    return readString(body, "status") === DOOR_SUPERVISION_REQUIRED
+      ? DOOR_SUPERVISION_REQUIRED_ERROR
+      : "This account is not allowed to check people in";
+  }
   if (status === 503) return "The scan was not written to the record — scan again";
   if (status >= 500) return "The server could not complete this scan";
   return `The server answered in a way this app does not understand (HTTP ${status})`;
@@ -261,8 +296,48 @@ interface QueueCounts {
   pending: number;
   failed: number;
   blocked: number;
+  /**
+   * Reversals taken with the radio off that no endpoint has accepted yet.
+   *
+   * Its own number, beside the other three, because an entry excluded from the
+   * drain and rendered nowhere is an entry that does not exist. There is no error
+   * tracking in this project; this counter is the observer.
+   */
+  undone: number;
   /** IndexedDB did not answer. Zero and "unknown" are opposite facts. */
   unreadable: boolean;
+}
+
+/**
+ * How far apart the two clocks were when the verdict was resolved, in ms.
+ *
+ * Positive means this device is BEHIND the server. It is measured once, at the
+ * only moment both clocks are comparable — the response — and it is **shown,
+ * never acted on**: `resolvedAt` exists so a phone can measure its own drift
+ * instead of trusting itself (`require-operator.ts:153-166`). Nothing branches
+ * on this number.
+ */
+const CLOCK_DRIFT_WORTH_SAYING_MS = 5 * 60 * 1000;
+
+/** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
+function readDoorAuthPayload(body: unknown): CachedDoorAuth | null {
+  if (typeof body !== "object" || body === null) return null;
+  const raw = (body as { doorAuth?: unknown }).doorAuth;
+  if (typeof raw !== "object" || raw === null) return null;
+  const v = raw as Record<string, unknown>;
+  // `null` here is **absent**, which the route sends deliberately on the one
+  // branch where there is no single verdict to report (attendance/route.ts:496-500).
+  // Absent is not a refusal, and this function must not manufacture one.
+  if (typeof v.mayScan !== "boolean") return null;
+  if (typeof v.maySupervise !== "boolean") return null;
+  if (typeof v.resolvedAt !== "string") return null;
+  if (v.validUntil !== null && typeof v.validUntil !== "string") return null;
+  return {
+    mayScan: v.mayScan,
+    maySupervise: v.maySupervise,
+    validUntil: v.validUntil,
+    resolvedAt: v.resolvedAt,
+  };
 }
 
 interface Attendee {
@@ -352,13 +427,48 @@ export default function ScannerClient() {
   // Online/offline state
   const [isOnline, setIsOnline] = useState(true);
 
-  // The queue, in three numbers plus "could not be read at all"
+  // The queue, in four numbers plus "could not be read at all"
   const [queue, setQueue] = useState<QueueCounts>({
     pending: 0,
     failed: 0,
     blocked: 0,
+    undone: 0,
     unreadable: false,
   });
+
+  /**
+   * ── ASSIGN-08: the verdict is resolved ONCE, when a night is opened ─────────
+   *
+   * `null` means **this device has not been told** — never *refused*. Every
+   * branch below that reads it has to decide what an unanswered question means,
+   * and none of them may quietly answer it.
+   *
+   * **The anti-pattern this state exists to forbid, written down so the next
+   * edit meets it first: never ask for the authorisation on a scan path.** One
+   * round trip per person, on a phone, on a weak signal, in front of a queue, is
+   * the cost — and it buys nothing an assignment resolved at the door does not
+   * already answer. The criterion is observable and it is a step of
+   * `35-HUMAN-UAT.md`: N consecutive scans produce N check-in calls and **zero**
+   * authorisation calls.
+   */
+  const [doorAuth, setDoorAuth] = useState<CachedDoorAuth | null>(null);
+
+  /**
+   * The distance between this device's clock and the server's, measured once at
+   * resolution and rendered when it is large. It decides nothing.
+   */
+  const [clockDriftMs, setClockDriftMs] = useState<number | null>(null);
+
+  /**
+   * The operator asked for the tools back after the night's declared end.
+   *
+   * The escape hatch is what keeps `validUntil` a courtesy instead of a boundary
+   * — see the comment on the banner it belongs to.
+   */
+  const [scanPastEnd, setScanPastEnd] = useState(false);
+
+  /** A coarse clock, only so the "night is over" line can appear on its own. */
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   // What the last refresh could not do. Persistent, never a toast.
   const [cacheNotices, setCacheNotices] = useState<CacheNotice[]>([]);
 
@@ -400,12 +510,13 @@ export default function ScannerClient() {
 
   const refreshQueueCounts = useCallback(async () => {
     try {
-      const [pending, failed, blocked] = await Promise.all([
+      const [pending, failed, blocked, undone] = await Promise.all([
         getPendingCount(),
         getFailedCount(),
         getBlockedCount(),
+        getUndoneLocallyCount(),
       ]);
-      setQueue({ pending, failed, blocked, unreadable: false });
+      setQueue({ pending, failed, blocked, undone, unreadable: false });
     } catch (error) {
       // Zero and "unknown" are opposite facts. Rendering 0 for an unreadable
       // store tells the operator the queue is empty, which is the silent
@@ -464,6 +575,64 @@ export default function ScannerClient() {
       clearInterval(interval);
     };
   }, [refreshQueueCounts]);
+
+  /**
+   * The verdict for the night just opened, from the cache, before the network is
+   * asked anything.
+   *
+   * It runs on `selectedPartyId` alone — not on the search box, not on a scan.
+   * With the radio off this is the ONLY way the verdict arrives, which is the
+   * case the whole cache exists for: the fetch below never answers and every one
+   * of its failure branches returns early.
+   *
+   * A read that throws leaves `doorAuth` at `null`, and `null` is *not resolved*.
+   * That is deliberate and it is the direction of the plan's declared asymmetry
+   * inversion: on an **undo**, an unanswered question refuses. On a **scan** it
+   * changes nothing at all — no branch of a scan path reads this state.
+   */
+  useEffect(() => {
+    // Cleared FIRST, on every change of night, and this line is the whole of the
+    // per-night discipline on the device: a verdict left over from the night
+    // last opened would decide the night now open. That is the same defect
+    // `bindNightToSubject` closes on the server (`undo/route.ts:148`) — an
+    // authorisation for one night acting on another — and here it would be
+    // invisible, because the screen looks identical either way.
+    setDoorAuth(null);
+    setClockDriftMs(null);
+    setScanPastEnd(false);
+
+    if (!selectedPartyId) return;
+
+    let cancelled = false;
+    readDoorAuth(selectedPartyId)
+      .then((cached) => {
+        // Only when nothing fresher has arrived. The fetch below is debounced by
+        // 300 ms so this normally wins the race, but "normally" is not a
+        // guarantee and a stale verdict must never overwrite a live one.
+        if (!cancelled) setDoorAuth((current) => current ?? cached);
+      })
+      .catch((error) => {
+        // Its own category. No banner: the consequence is that the undo asks for
+        // signal, and nothing at the door refuses anybody because of it.
+        console.error("scanner:door_auth_unreadable", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPartyId]);
+
+  /**
+   * A 30-second tick, and ONLY while the server declared an end for this night.
+   *
+   * When `validUntil` is `null` no interval is created and nothing is watched:
+   * an absent end is not an end at midnight, and no expiry is invented from it.
+   */
+  useEffect(() => {
+    if (!doorAuth?.validUntil) return;
+    setNowMs(Date.now());
+    const tick = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(tick);
+  }, [doorAuth?.validUntil]);
 
   // Fetch all parties for party selector
   const fetchParties = useCallback(async () => {
@@ -535,11 +704,24 @@ export default function ScannerClient() {
 
       const notices: CacheNotice[] = [];
       let eventData: AttendanceEvent | null = null;
+      let verdict: CachedDoorAuth | null = null;
       try {
         const data = await res.json();
         const events: AttendanceEvent[] = data.events ?? [];
         eventData = events[0] ?? null;
         setAttendance(eventData);
+
+        // ── ASSIGN-08. THE one moment the verdict is asked for ───────────────
+        //
+        // Read off the response the scanner already makes when a night is
+        // opened. No second call is opened for it and none may be added: this
+        // request is the natural hook precisely because it is the one that
+        // happens before the radio goes off.
+        //
+        // Absent is left absent. The route omits `doorAuth` on the one branch
+        // where there is no single verdict to report, and nothing here turns an
+        // omission into `mayScan: false`.
+        verdict = readDoorAuthPayload(data);
       } catch (error) {
         console.error("scanner:attendance_unparseable", error);
         setCacheNotices([
@@ -550,6 +732,27 @@ export default function ScannerClient() {
           },
         ]);
         return;
+      }
+
+      if (verdict) {
+        setDoorAuth(verdict);
+
+        // The drift, measured at the only moment both clocks are comparable, and
+        // measured to be SHOWN. Nothing branches on it. Any use of the device
+        // clock to decide a refusal is the alarm signal of this plan — the
+        // lexicon is `checkin-store.ts`: evidence, never authority.
+        const serverMs = Date.parse(verdict.resolvedAt);
+        setClockDriftMs(Number.isNaN(serverMs) ? null : Date.now() - serverMs);
+
+        // Written to the cache so the NEXT open, with the radio off, has it.
+        // Failing to write is not a refusal of anything: the verdict is already
+        // in state for this session, and the next open falls back to `null`,
+        // which means unresolved.
+        try {
+          await cacheDoorAuth(selectedPartyId, verdict);
+        } catch (error) {
+          console.error("scanner:door_auth_uncacheable", error);
+        }
       }
 
       // Plan 31-06's per-party diagnostics. They were returned in the body and
@@ -867,14 +1070,67 @@ export default function ScannerClient() {
       const confirmMsg = `Undo check-in for ${record.name}?`;
       if (!window.confirm(confirmMsg)) return;
 
-      // With the radio off the reversal cannot reach the server, and the entry
-      // it would reverse is still sitting in the queue. Dropping the queue entry
-      // locally is the whole of the undo in that case: leaving it there means
-      // the admission is reported on the next drain and the reversal a member of
-      // staff performed at the door never happened. `checkin-offline.md` calls
-      // the undo *«il percorso piu' semplice per far rientrare qualcuno»* — an
-      // undo that silently does nothing is worse than one that refuses out loud.
+      // ── T-3. With the radio off, an undo is still a supervisory act ─────────
+      //
+      // What this branch used to be, so the change is legible: it performed a
+      // purely local reversal, deleted the queue entry, wrote no record and
+      // **asked nobody**. Its comment was right about why it must exist — *an
+      // undo that silently does nothing is worse than one that refuses out
+      // loud* — and wrong about what that licenses. A supervision rule that
+      // lives only in `/api/tickets/checkin/undo` is a rule you step around by
+      // turning the radio off. So the branch stays, and it decides **from the
+      // verdict this device was given when the night was opened**.
+      //
+      // ── THE DOOR'S ASYMMETRY IS INVERTED HERE, DELIBERATELY ────────────────
+      //
+      // It is written out because it contradicts the general rule and somebody
+      // will otherwise "correct" it. At the door, refusing a valid guest is
+      // worse than admitting a duplicate, so an uncertain **scan** admits: the
+      // false refusal happens in front of a queue. An **undo** is not an
+      // admission. Refusing one sends nobody away — it leaves a person recorded
+      // as having come in, which is the **recoverable** direction, correctable
+      // by anybody with signal. Allowing an unauthorised one silently removes a
+      // presence from the night's record, and `checkin-offline.md` calls the
+      // undo *«il percorso piu' semplice per far rientrare qualcuno»*. So on the
+      // third outcome — the question was never answered — this **refuses**.
+      //
+      // Three outcomes, and none of them is silent: there is no error tracking
+      // in this repository, so the flash on this screen is the only observer
+      // that exists (`meta-gates.md`).
       if (!navigator.onLine) {
+        // 3 · The verdict was never resolved. Its own outcome, never folded into
+        // the refusal above it, on the precedent of `DOOR_UNRESOLVED_STATUS`
+        // (`require-operator.ts:185-192`): the sentence says nothing about
+        // permission, because the point of this arm is that permission is
+        // unknown. `null` is not `false`, and `readDoorAuth` returns a type that
+        // keeps the two apart precisely so this branch has to exist.
+        if (doorAuth === null) {
+          console.warn("scanner:undo_verdict_unresolved", {
+            partyId: selectedPartyId,
+          });
+          showFlash(
+            "error",
+            "This device has not been told who may undo tonight",
+            "This is not a refusal of the account — the question was never answered. Get signal, reopen the night, then try again."
+          );
+          return;
+        }
+
+        // 2 · Answered, and the answer is no. Refused OUT LOUD, with the same
+        // sentence the server sends on the online path, so the two paths cannot
+        // drift into saying different things about one rule.
+        if (!doorAuth.maySupervise) {
+          console.warn("scanner:undo_refused_supervision", {
+            partyId: selectedPartyId,
+          });
+          showFlash(
+            "error",
+            "This check-in was NOT undone",
+            DOOR_SUPERVISION_REQUIRED_ERROR
+          );
+          return;
+        }
+
         if (!record.localKey) {
           showFlash(
             "error",
@@ -883,11 +1139,31 @@ export default function ScannerClient() {
           );
           return;
         }
+
+        // 1 · Permitted. The reversal is **marked** on the queue entry rather
+        // than deleting it: deleted, the night's record shows an evening in
+        // which the admission never happened at all, and who reversed it and
+        // when are gone with it.
         try {
-          await undoCheckInLocally(record.localKey);
+          const result = await markUndoneLocally(
+            record.localKey,
+            deviceIdRef.current ?? THIS_DEVICE_LABEL
+          );
           markRecordUndone(record);
-          showFlash("error", "Undone on this device", `${record.name} — not reported`);
           await refreshQueueCounts();
+
+          // Two different facts, told apart rather than sharing one sentence.
+          // `reversalHeld: false` means the admission is no longer in this
+          // device's queue — it was already reported — so the record on the
+          // server still says the person came in and nothing here will change
+          // that. Saying "undone" flat would be the silent failure.
+          showFlash(
+            "error",
+            "Undone on this device",
+            result.reversalHeld
+              ? `${record.name} — held here, not yet reported`
+              : `${record.name} — the server already has the entry, undo it again with signal`
+          );
         } catch (error) {
           console.error("scanner:local_undo_failed", { key: record.localKey, error });
           showFlash(
@@ -940,17 +1216,27 @@ export default function ScannerClient() {
 
         // A failed undo used to be swallowed whole: the row stayed checked in,
         // the history said nothing, and the operator had no way to know.
-        let detail: string | null = null;
+        //
+        // The body is parsed and then **kept**, not reduced to its `error`
+        // string on the spot: `serverFaultMessage` needs the `status` field
+        // beside it to tell a supervision `403` from a generic one, and reading
+        // the category off a value rather than off prose is the rule (CR-01).
+        let failureBody: unknown = null;
         try {
-          detail = readString(await res.json(), "error");
+          failureBody = await res.json();
         } catch {
-          detail = null;
+          failureBody = null;
         }
-        console.error("scanner:undo_failed", { status: res.status, detail });
+        const detail = readString(failureBody, "error");
+        console.error("scanner:undo_failed", {
+          status: res.status,
+          category: readString(failureBody, "status"),
+          detail,
+        });
         showFlash(
           "error",
           "The check-in was NOT undone",
-          detail ?? serverFaultMessage(res.status)
+          detail ?? serverFaultMessage(res.status, failureBody)
         );
       } catch (error) {
         console.error("scanner:undo_unreachable", error);
@@ -968,6 +1254,11 @@ export default function ScannerClient() {
       selectedPartyId,
       markRecordUndone,
       refreshQueueCounts,
+      // The verdict is a dependency of the decision, not of the render: without
+      // it this callback would close over the verdict of the night it was
+      // created under, which for a device that switched nights is the wrong
+      // night's answer to a per-night question.
+      doorAuth,
     ]
   );
 
@@ -1016,7 +1307,7 @@ export default function ScannerClient() {
     recordId: string,
     type: ScanRecord["type"]
   ) {
-    const message = serverFaultMessage(status);
+    const message = serverFaultMessage(status, body);
     const detail = readString(body, "error");
     console.error("scanner:unexpected_response", { status, detail, type });
     showFlash("error", message, detail ?? undefined);
@@ -1758,6 +2049,42 @@ export default function ScannerClient() {
   // ── Scanner View (party selected) ──
   const selectedParty = parties.find((p) => p.partyId === selectedPartyId);
 
+  /**
+   * ── `validUntil` decides WHAT IS DRAWN, and nothing else ────────────────────
+   *
+   * The night's declared end has passed, so the scanning tools collapse behind a
+   * line that says so. Three properties of this, each deliberate:
+   *
+   *   1. **It deletes nothing.** Not one queued scan, not one cached attendee.
+   *      A night that is over is a night whose entries still have to be
+   *      reported, and an interface that tidied them away would be discarding
+   *      presences at exactly the hour nobody is watching.
+   *   2. **It is not a boundary.** The boundary is `now() < pa.ends_at` on the
+   *      server's clock inside the SQL resolver. This is a phone's clock, and a
+   *      phone's clock is evidence. That is why the line carries a way back: one
+   *      tap restores the tools for the session. A device twenty minutes fast
+   *      must not cost an admission — refusing a valid guest happens in front of
+   *      a queue, and it is the worse of the two errors.
+   *   3. **`null` hides nothing.** No declared end means no expiry is invented.
+   *      `validUntil` is `null` for more than one reason (the night declares no
+   *      `end_time`, the row is not visible to this reader, the read did not
+   *      answer) and all of them mean the same thing here: keep working.
+   */
+  const nightEndsAtMs = doorAuth?.validUntil
+    ? Date.parse(doorAuth.validUntil)
+    : NaN;
+  const nightIsOver =
+    !Number.isNaN(nightEndsAtMs) && nowMs > nightEndsAtMs && !scanPastEnd;
+  const nightEndedClock = doorAuth?.validUntil
+    ? formatClock(doorAuth.validUntil)
+    : null;
+
+  /** A drift worth saying out loud. Shown, never acted on. */
+  const driftMinutes =
+    clockDriftMs !== null && Math.abs(clockDriftMs) >= CLOCK_DRIFT_WORTH_SAYING_MS
+      ? Math.round(clockDriftMs / 60000)
+      : null;
+
   return (
     <div className="min-h-dvh bg-background pb-24">
       {/* Sticky header with party info, search, and filters */}
@@ -1817,6 +2144,10 @@ export default function ScannerClient() {
               </div>
             </div>
           </div>
+          {/* Hidden once the night's declared end has passed — a courtesy of the
+              interface, restored in one tap by the line below. See the paragraph
+              on `nightIsOver`. */}
+          {!nightIsOver && (
           <button
             onClick={() => setShowScanner((v) => !v)}
             className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -1845,7 +2176,39 @@ export default function ScannerClient() {
             </svg>
             QR Scan
           </button>
+          )}
         </div>
+
+        {/* The night is over, said once, with a way back that costs one tap. */}
+        {nightIsOver && (
+          <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+            <p className="text-[11px] leading-snug text-yellow-500">
+              This night is over
+              {nightEndedClock ? ` — it ended at ${nightEndedClock}` : ""}.
+              Nothing has been removed: anything still waiting to be reported is
+              still here.
+            </p>
+            <button
+              onClick={() => setScanPastEnd(true)}
+              className="mt-1.5 rounded-full bg-yellow-500/20 px-2.5 py-1 text-[10px] font-medium text-yellow-500 active:scale-95 transition-transform"
+            >
+              Scan anyway
+            </button>
+          </div>
+        )}
+
+        {/* The drift between this device's clock and the server's, shown because
+            it explains an odd-looking end time — and never used to decide one. */}
+        {driftMinutes !== null && (
+          <div className="mb-3 rounded-lg border border-card-border bg-card px-3 py-2">
+            <p className="text-[11px] leading-snug text-muted">
+              This device&apos;s clock is {Math.abs(driftMinutes)} min{" "}
+              {driftMinutes > 0 ? "behind" : "ahead of"} the server. Times shown
+              on this screen come from this clock; nothing is refused because of
+              it.
+            </p>
+          </div>
+        )}
 
         {/*
           The queue, rendered OUTSIDE the Online/Offline ternary above.
@@ -1861,7 +2224,8 @@ export default function ScannerClient() {
         {(queue.unreadable ||
           queue.pending > 0 ||
           queue.failed > 0 ||
-          queue.blocked > 0) && (
+          queue.blocked > 0 ||
+          queue.undone > 0) && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             {queue.pending > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
@@ -1887,6 +2251,18 @@ export default function ScannerClient() {
                 Sign in again to record {queue.blocked}{" "}
                 {queue.blocked === 1 ? "entry" : "entries"}
               </button>
+            )}
+            {/* Reversals taken with the radio off. They are held on this device
+                and NOT drained — the drain would otherwise report the admission
+                they reverse — so they are counted here, which is the only place
+                anybody would see them. The sentence says what is true and does
+                not promise a report that no endpoint accepts yet; see the
+                cross-plan note in `35-13-SUMMARY.md`. */}
+            {queue.undone > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-medium text-purple-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+                Undone at the door, held on this device ({queue.undone})
+              </span>
             )}
             {queue.unreadable && (
               <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500">
