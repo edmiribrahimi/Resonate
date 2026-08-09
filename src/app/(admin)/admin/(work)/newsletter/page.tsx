@@ -1,12 +1,21 @@
 import { redirect } from "next/navigation";
-import MobileNav from "@/components/layout/MobileNav";
-import StaffNav from "@/components/staff/StaffNav";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
-import { getSubscriberStats } from "./actions";
-import FailureNotice from "./FailureNotice";
-import NewsletterClient from "./NewsletterClient";
+// Absolute, not relative, and that is the whole price of R-WORK-ROUTES.
+//
+// Only Next.js ROUTE files enter `(work)`; `actions.ts` and the four
+// co-located client modules are not routes and stay at
+// `admin/newsletter/`, one group shallower than this file. The rule exists for
+// `finance/actions.ts`, which is imported from OUTSIDE its directory by
+// `src/components/admin/{RefundDialog,TransactionList}.tsx` — moving it would
+// have forced this plan to edit two components on the refund path that it does
+// not own. The newsletter modules have no external importer today and follow
+// the rule anyway: a rule with an exception is a rule the next reader has to
+// re-measure. The one edit it costs is this, and it is inside a file this plan
+// owns — which is the point.
+import { getSubscriberStats } from "@/app/(admin)/admin/newsletter/actions";
+import FailureNotice from "@/app/(admin)/admin/newsletter/FailureNotice";
+import NewsletterClient from "@/app/(admin)/admin/newsletter/NewsletterClient";
 
 /**
  * CR-01, fourth call site — the one the review credited with reaching the error
@@ -35,7 +44,9 @@ import NewsletterClient from "./NewsletterClient";
  * actions, which run after the gate has already passed.
  */
 export default async function AdminNewsletterPage() {
-  const { capabilities, role, status } = await getAccessContext();
+  // Resolved once by `(work)/layout.tsx` and `cache()`-scoped per request, so
+  // this second ask is free. The page keeps its own guard (D-34-09).
+  const { capabilities } = await getAccessContext();
 
   // The SAME question the middleware asks for `/admin/*`, of the same
   // authority, instead of a role read out of a request header. Never a role
@@ -43,12 +54,6 @@ export default async function AdminNewsletterPage() {
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
-
-  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
-  // resolver answers `string | null`. Same cast the header read already made,
-  // from a better source. Phase 34 (STAFF-03) owns these props.
-  const navRole = role as UserRole | null;
-  const navStatus = status as UserStatus | null;
 
   const statsResult = await getSubscriberStats();
   const stats = statsResult.ok ? statsResult.data : null;
@@ -58,7 +63,6 @@ export default async function AdminNewsletterPage() {
       <div className="px-6 pt-10">
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Admin</h1>
       </div>
-      <StaffNav role={navRole} context="admin" />
 
       <div className="px-6">
         {!statsResult.ok ? (
@@ -82,8 +86,6 @@ export default async function AdminNewsletterPage() {
           </>
         )}
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

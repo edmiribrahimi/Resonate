@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
-import StaffNav from "@/components/staff/StaffNav";
 import MemberSpendTable from "@/components/analytics/MemberSpendTable";
 import RepeatAttendeeCard from "@/components/analytics/RepeatAttendeeCard";
 import ReferralChainTable from "@/components/analytics/ReferralChainTable";
@@ -15,22 +13,17 @@ import {
 } from "@/lib/analytics/cross-event-queries";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminMemberInsightsPage() {
-  const { capabilities, role, status } = await getAccessContext();
+  // Resolved once by `(work)/layout.tsx` and `cache()`-scoped per request, so
+  // this second ask is free. The page keeps its own guard (D-34-09).
+  const { capabilities } = await getAccessContext();
 
   // Defense in depth behind the middleware — and now the SAME question the
   // middleware asks for `/admin/*`, of the same authority. Never a role list.
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
-
-  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
-  // resolver answers `string | null`. Same cast the header read already made,
-  // from a better source. Phase 34 (STAFF-03) owns these props.
-  const navRole = role as UserRole | null;
-  const navStatus = status as UserStatus | null;
 
   // Fetch all cross-event member data in parallel
   const [members, repeatData, chains, conversion] = await Promise.all([
@@ -55,8 +48,6 @@ export default async function AdminMemberInsightsPage() {
           </h1>
         </header>
       </AnimatedSection>
-
-      <StaffNav role={navRole} context="admin" />
 
       <AnimatedSection delay={0.1}>
         <div className="px-6 space-y-6">
@@ -83,8 +74,6 @@ export default async function AdminMemberInsightsPage() {
           </div>
         </div>
       </AnimatedSection>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
