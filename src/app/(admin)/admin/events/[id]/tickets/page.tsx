@@ -9,7 +9,7 @@ import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
 import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
-import RefundActions from "@/app/(organizer)/organizer/events/[id]/tickets/RefundActions";
+import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
 import type { UserRole, UserStatus } from "@/types/database";
 
 interface PageProps {

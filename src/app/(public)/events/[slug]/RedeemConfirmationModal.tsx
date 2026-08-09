@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useTransition, useRef } from "react";
-import { redeemDrinkToken } from "@/app/(organizer)/organizer/events/actions";
+import { redeemDrinkToken } from "@/app/(admin)/admin/events/actions";
 
 interface RedeemConfirmationModalProps {
   drinkName: string;

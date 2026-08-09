@@ -5,9 +5,9 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
-import { getDrinkItems } from "@/app/(organizer)/organizer/events/actions";
+import { getDrinkItems } from "@/app/(admin)/admin/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
-import DrinkMenuManager from "./DrinkMenuManager";
+import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuManager";
 import EventQRCode from "@/app/(public)/events/[slug]/menu/EventQRCode";
 
 interface DrinksPageProps {

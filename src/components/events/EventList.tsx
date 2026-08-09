@@ -7,7 +7,7 @@ import {
   deleteEvent,
   publishEvent,
   unpublishEvent,
-} from "@/app/(organizer)/organizer/events/actions";
+} from "@/app/(admin)/admin/events/actions";
 
 interface EventItem {
   id: string;

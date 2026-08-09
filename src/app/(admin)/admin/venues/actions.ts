@@ -11,7 +11,7 @@ import { slugify } from "@/utils/slugify";
  * `public.venues` ask, and the key this module's own documentation describes.
  *
  * The twin of `assertCatalogueManage` in
- * `src/app/(organizer)/organizer/artists/actions.ts`, which carries the full
+ * `src/app/(admin)/admin/artists/actions.ts`, which carries the full
  * CR-01 reasoning and the measured grant rows. In short: this gate used to ask
  * `CAP.STAFF_MANAGE` (`requires_approved = false`) while `keys.ts:90-91`
  * documented these operations as requiring an approved status. Code and

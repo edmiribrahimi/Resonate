@@ -6,7 +6,7 @@ import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
-import { updateEvent } from "@/app/(organizer)/organizer/events/actions";
+import { updateEvent } from "@/app/(admin)/admin/events/actions";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
 
 interface EditEventPageProps {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { updateArtist } from "@/app/(organizer)/organizer/artists/actions";
+import { updateArtist } from "@/app/(admin)/admin/artists/actions";
 import { createClient } from "@/lib/supabase/client";
 
 interface Artist {

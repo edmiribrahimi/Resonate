@@ -7,7 +7,7 @@ import {
   updateDrinkItem,
   removeDrinkItem,
   reorderDrinkItems,
-} from "@/app/(organizer)/organizer/events/actions";
+} from "@/app/(admin)/admin/events/actions";
 import type { DrinkItem } from "@/types/database";
 
 function formatPrice(price: number) {

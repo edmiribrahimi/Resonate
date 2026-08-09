@@ -4,7 +4,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
 import EventForm from "@/components/events/EventForm";
-import { createEvent } from "@/app/(organizer)/organizer/events/actions";
+import { createEvent } from "@/app/(admin)/admin/events/actions";
 import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function AdminNewEventPage() {

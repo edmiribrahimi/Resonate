@@ -5,7 +5,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import MobileNav from "@/components/layout/MobileNav";
-import GuestListClient from "@/app/(organizer)/organizer/events/[id]/guest-list/GuestListClient";
+import GuestListClient from "@/app/(admin)/admin/events/[id]/guest-list/GuestListClient";
 import GuestListUnavailable from "@/components/guest-list/GuestListUnavailable";
 import type { UserRole, UserStatus, GuestListEntry } from "@/types/database";
 

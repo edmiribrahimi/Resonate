@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { createVenue } from "@/app/(organizer)/organizer/venues/actions";
+import { createVenue } from "@/app/(admin)/admin/venues/actions";
 
 interface CreateVenueModalProps {
   name: string;

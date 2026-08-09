@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { createArtist } from "@/app/(organizer)/organizer/artists/actions";
+import { createArtist } from "@/app/(admin)/admin/artists/actions";
 
 interface CreateArtistModalProps {
   name: string;
