@@ -193,7 +193,24 @@ spedito**: e' scritto, non raggiungibile.
 
 ---
 
-## 5. [DA VERIFICARE — dedotta, non osservata] `validUntil` sara' `null` su un evento non pubblicato
+## 5. [CHIUSA il 2026-08-09 dal piano 35-10 — MISURATA] `validUntil` e' `null` su un evento non pubblicato
+
+> **Esito: la deduzione era giusta, e ora c'e' una tabella al posto di un
+> ragionamento.** Misurata in `postgres:17.6` con shim, schema iniziale e tutte
+> e 49 le migration, fixture propria, assegnatario `staff`/`approved` con
+> `door.operate` vivo su due notti:
+>
+> | | evento NON pubblicato | evento pubblicato |
+> |---|---|---|
+> | `door.operate` conferita | **true** | **true** |
+> | righe visibili in `event_parties` | **0** | **1** |
+> | `validUntil` | **`null`** | `2026-08-11 06:00 +02` |
+>
+> Sottoprodotto: la capability list dell'assegnatario e'
+> `["door.operate","membership.active","membership.card.view"]` — **niente
+> `door.supervise`**, cioe' ASSIGN-05 osservato invece che solo scritto.
+>
+> Il testo originale resta sotto.
 
 **Trovata da:** piano 35-07, leggendo la policy — **non misurandola**. La
 distinzione e' il punto della voce.
@@ -230,3 +247,40 @@ una migration nuova, non riscrivendo un file gia' applicato.
 — 35-14, o il piano che mostra la storia di un membro. Un lettore che si fidi
 del commento interpretera' un valore presente come «asse toccato» quando non lo
 e'.
+
+---
+
+## 7. [BUCO DI COPERTURA DELLA FASE — chiuso dal piano 35-22] La scansione non riceve mai la notte
+
+**Trovata da:** piano 35-12, leggendo i `files_modified` di **tutti e ventuno**
+i piani della fase invece di fidarsi del proprio perimetro.
+
+**Il fatto.** `src/app/api/tickets/checkin/route.ts:349` chiama
+`await requireDoorOperator()` **senza argomenti** — la sola domanda di ruolo. La
+route **riceve gia'** `partyId` nel corpo (`:436-437`), lo valida come UUID e lo
+usa per cercare il soggetto (`:449`): il dato c'e', la guardia non lo usa. E
+`staff` non tiene `door.operate` per ruolo — e' una delle sei rinunce esplicite
+della fase 43.
+
+**Conseguenza, con la fase spedita come pianificata.** Una persona `staff`
+assegnata alla porta per una notte **raggiunge** lo scanner (35-17), **vede** la
+serata nella lista (35-10), e poi prende **403 su ogni scansione**. ASSIGN-01
+dice *«can use that night's tools»*, e alla porta lo strumento **e' la
+scansione**. Il requisito primario della fase non sarebbe stato consegnato.
+
+**Perche' 35-12 ha avuto ragione a non chiuderlo.** La strada ovvia — passare
+`{ partyId }` a `requireDoorOperator()` — chiama `public.my_access_context(uuid)`,
+che in produzione **non esiste** finche' la coda a mano non e' applicata. La
+guardia risponde correttamente `unresolved` 503, e li' sarebbe stato **503 su
+ogni scansione, dal primo deploy, alle due di notte, con una fila**. Rifiutare la
+strada ovvia era la decisione giusta; il buco resta.
+
+**La forma che lo chiude senza aprire quel disastro:** chiedere la domanda
+per-notte **solo se quella di ruolo ha gia' rifiutato**. Chi tiene `door.operate`
+per ruolo non paga nulla e il suo percorso resta byte-identico; chi non lo tiene
+sarebbe stato rifiutato comunque, quindi un `unresolved` li' non puo' peggiorare
+il suo esito — a patto che arrivi come **causa distinta**, non come un 503
+indistinguibile.
+
+**Chiuso da:** piano **35-22**, wave 7, scritto dall'orchestratore il 2026-08-09
+dopo questa scoperta.
