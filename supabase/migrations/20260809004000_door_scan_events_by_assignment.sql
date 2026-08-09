@@ -1,0 +1,213 @@
+-- The door register, narrowed BY ASSIGNMENT and not by role
+-- Phase 35, Plan 09: ASSIGN-01
+--
+-- Changes:
+-- 1. public.door_scan_events_select_admin — dropped and re-created on THREE arms
+--    of `private.has_capability`, in place of the single
+--    `public.is_admin_or_organizer()` call that
+--    `20260805120000_door_scan_events.sql` carried, and that its own comment
+--    named as work owed to this phase
+--
+-- ONE change, ONE transaction. A `DROP POLICY` that committed without its
+-- `CREATE POLICY` would leave `public.door_scan_events` with RLS enabled and no
+-- SELECT policy at all: not an open table — a table nobody can read, including
+-- the organizer reviewing last Saturday. This queue is applied BY HAND, one row
+-- at a time (`.planning/phases/35-per-night-assignments/35-HUMAN-UAT.md`,
+-- row 11), so the two statements are inside the same `BEGIN`/`COMMIT` and the
+-- interrupted state cannot survive.
+--
+-- IDEMPOTENT, for the same reason: `DROP POLICY IF EXISTS` before the `CREATE`,
+-- so re-running this file against a database that already holds the new policy
+-- reproduces it rather than raising `42710` and stopping the queue behind it.
+
+BEGIN;
+
+-- =============================================================================
+-- 1. door_scan_events_select_admin — the criterion, written out
+-- =============================================================================
+--
+-- ── THE CRITERION: BY ASSIGNMENT, NOT BY ROLE ───────────────────────────────
+--
+-- "Narrow this predicate" has two readings and only one of them is taken here.
+--
+-- The reading NOT taken is *narrow by role*: keep the role test and add an
+-- ownership test, so that an organizer reads only the nights of the events they
+-- created. That would take reading AWAY from accounts that have it today — and
+-- the moment it would be discovered is the moment an organizer opens the record
+-- of a night to answer a question about it, a week later, when the answer is
+-- the only thing that exists. **This product does not add new ways to refuse
+-- somebody something they already had.** It is the same asymmetry `CLAUDE.md`
+-- operating principle 3 states for the door — refusing a valid person is worse
+-- than admitting a duplicate — applied one surface further back, to the record
+-- of that door rather than to the door itself.
+--
+-- The reading taken is *narrow by assignment*: whoever holds the broad staff
+-- capability keeps the whole register, exactly as before, and the narrowing is
+-- **entirely additive** — it names two NEW ways to be entitled to ONE night,
+-- for accounts that today are entitled to nothing. Nobody's visible set shrinks
+-- by one row. That claim is measured rather than asserted: see the note on
+-- arm 1.
+--
+-- ── ARM 1 · `staff.manage`, and why it changes nothing for whoever counted ──
+--
+-- `public.is_admin_or_organizer()` returns `role = 'master' OR role = 'organizer'`
+-- and never reads `status` (`20260224_rbac_migration.sql:127-135`).
+-- `private.role_capabilities` grants `staff.manage` to `master` and to
+-- `organizer` with `requires_approved = false`
+-- (`20260807000000_capability_model.sql:392-393`). **The two predicates select
+-- the same accounts, member for member**, so this arm alone reproduces the old
+-- policy rather than approximating it.
+--
+-- It is nevertheless a different EXPRESSION, and swapping it is half the point
+-- of this file: `public.is_admin_or_organizer()` is the superseded predicate
+-- (`35-PATTERNS.md` § D), and phase 32 moved 45 of 67 policies off it. A policy
+-- rewritten in this phase and left on the old helper would be a policy this
+-- phase touched and did not fix.
+--
+-- ── ARM 2 · `door.operate` on THIS row's night ──────────────────────────────
+--
+-- Whoever worked that door reads that door's rows, and no others. `party_id` is
+-- the column of the row being evaluated, so the resolver's second arm
+-- (`20260809001000_assignment_resolver.sql:339-356`) becomes a per-night
+-- restriction here without one line of application code changing.
+--
+-- `public.door_scan_events.party_id` is `NOT NULL`
+-- (`20260805120000_door_scan_events.sql:65`), so the resolver's `p_party_id is
+-- not null` guard is not what protects this call site — nothing here can pass a
+-- null. What protects it is that the argument is the ROW's night and not a night
+-- the caller chose: a row belonging to another evening is evaluated against
+-- that evening's id, and an assignment to one night therefore admits one night.
+--
+-- ── ARM 3 · `party.manage` on THIS row's night ──────────────────────────────
+--
+-- Whoever MANAGES that night reads that night's register. This is a third arm
+-- and not a widening of the second, because working a door and running an
+-- evening are two different jobs: `keys.ts:38-45` states the rule that a
+-- capability is named after the QUESTION it answers, and an account assigned as
+-- the organizer of one night is not thereby assigned to its door.
+--
+-- **THE OPERATIONAL REASON, WHICH IS THE ONE THAT MAKES THIS ARM MANDATORY.**
+-- The night-review surface
+-- (`src/app/(organizer)/organizer/events/[id]/review/page.tsx`) reads this table
+-- with the cookie-bound server client and deliberately NOT with the
+-- RLS-bypassing service client — its own docblock says so, and says why: with
+-- the bypassing client the boundary would move into the page and this policy
+-- would be decorative. So this policy is the only thing deciding what that page
+-- shows.
+--
+-- Without arm 3 the page would render an EMPTY LIST to somebody entitled to the
+-- night. And on that surface **an empty list is the designed state of a quiet
+-- evening** — no anomalies, nothing to review. The defect would raise no error,
+-- log no line and set off no alarm: it would say *«no problems»* to a person who
+-- simply has not been given permission to see the problems. That is the failure
+-- `meta-gates.md` calls a silent failure in its purest form — no error path at
+-- all, and a neutral face on it. This repository has no error tracking
+-- (verified 2026-08-05), so nothing downstream would catch it either.
+--
+-- The arm is therefore not a convenience for a future page: it is the mitigation
+-- for a wrong answer that looks exactly like a right one.
+--
+-- ── ON THE `(select …)` WRAPPER, AND WHAT IT BUYS ON EACH ARM ───────────────
+--
+-- All three calls are wrapped, and the wrapper is LOAD-BEARING — it is what makes
+-- Postgres evaluate a call once per statement as an InitPlan, and it is NOT
+-- `STABLE` that produces that (`20260807000000_capability_model.sql:177-184`,
+-- proved by `EXPLAIN` on this database, and repeated at
+-- `20260808002000_membership_register.sql:327-333`).
+--
+-- **It buys that on arm 1 and it does not buy it on arms 2 and 3, and saying so
+-- is not a caveat — it is the measurement.** A sub-select that references a
+-- column of the row being filtered is CORRELATED, and Postgres cannot hoist a
+-- correlated sub-select out of the filter: it becomes a `SubPlan` evaluated per
+-- row, wrapper or no wrapper. Measured on `postgres:17.6` through the container
+-- harness, `explain (verbose, costs off)` of a bare select on this table, run
+-- under a persona holding an assignment and under a `master` alike:
+--
+--     Seq Scan on public.door_scan_events
+--       Filter: ((InitPlan 1).col1 OR (SubPlan 2) OR (SubPlan 3))
+--       InitPlan 1 -> Result: private.has_capability('staff.manage', NULL::uuid)
+--       SubPlan 2  -> Result: private.has_capability('door.operate', door_scan_events.party_id)
+--       SubPlan 3  -> Result: private.has_capability('party.manage', door_scan_events.party_id)
+--
+-- One `InitPlan`, two `SubPlan`s. The plan is the same under both personas: the
+-- planner does not know who is asking, so the short-circuit below is a RUNTIME
+-- saving and not a planning one.
+--
+-- That cost is not an accident of the shape — it is what "per night" means. The
+-- answer depends on the row, so it cannot be computed once for the statement.
+-- Two things keep it bounded, and both are already in place:
+--
+--   * ARM ORDER. `staff.manage` is first, and `OR` stops at the first true, so
+--     for the accounts that read this table today — every `master` and every
+--     `organizer` — the correlated arms are never evaluated at all. The per-row
+--     work is paid only by an account that reaches the table WITHOUT the broad
+--     capability, which is precisely the account this file exists to admit.
+--   * THE RESOLVER'S PATH IS INDEXED. `idx_party_assignments_lookup` is on
+--     `(user_id, party_id) WHERE revoked_at IS NULL`
+--     (`20260809000000_party_assignments.sql`, section 3e), which is the lookup
+--     both correlated arms perform.
+--
+-- And the surface this is paid on is a REVIEW page, read after the night, not
+-- the scanner in front of a queue: `20260805120000_door_scan_events.sql:126-127`
+-- is the sentence about a slow query being a queue, and it is about the write
+-- path, which this policy does not touch.
+
+DROP POLICY IF EXISTS door_scan_events_select_admin ON public.door_scan_events;
+
+CREATE POLICY door_scan_events_select_admin ON public.door_scan_events
+  FOR SELECT USING (
+    -- The whole register, for whoever manages the staff surfaces. Unchanged.
+    (SELECT private.has_capability('staff.manage'))
+    -- This night, for whoever worked its door.
+    OR (SELECT private.has_capability('door.operate', door_scan_events.party_id))
+    -- This night, for whoever runs it.
+    OR (SELECT private.has_capability('party.manage', door_scan_events.party_id))
+  );
+
+-- =============================================================================
+-- 2. What this file deliberately does NOT do
+-- =============================================================================
+--
+-- ── `public.is_admin_or_organizer()` IS NOT REMOVED, AND NOT TOUCHED ────────
+--
+-- The function still exists and still has callers — `20260225150000_party_architecture.sql:40-41`
+-- among them. Removing it is a piece of work for another phase, with its own
+-- census of call sites and its own migration.
+--
+-- Naming that work here WITHOUT doing it is the exact mistake this file was
+-- written to correct: the comment it replaces named a phase and waited for it,
+-- and the wait was invisible until somebody went looking. So this paragraph
+-- records only what is TRUE TODAY — the function exists, it has callers, this
+-- file leaves it alone — and claims no owner for its removal.
+--
+-- ── STILL NO INSERT, UPDATE OR DELETE POLICY, AND THE OMISSION IS STILL
+--    DELIBERATE ────────────────────────────────────────────────────────────
+--
+-- Repeated rather than assumed inherited, because this file re-creates the only
+-- policy the table has and a later reader will read THIS file to learn the
+-- table's rules. Writes come only from the service client in the check-in route,
+-- which bypasses RLS; with RLS enabled and no write policy, no authenticated
+-- session can add, edit or remove a row. The table is append-only BY
+-- CONSTRUCTION — not by a convention its writers observe, but by the absence of
+-- any granted path to a write. Two tables in this repository omit their write
+-- policies on purpose, and this is one of them
+-- (`20260808002000_membership_register.sql:337-350` is the other); without this
+-- paragraph the next reader takes the gap for a bug and repairs it.
+--
+-- ── THE READ SET IS WIDER THAN IT WAS, AND THAT IS THE POINT ────────────────
+--
+-- Stated plainly so it is a decision on the record rather than a side effect: a
+-- `staff/approved` account holding a live assignment could read ZERO rows of this
+-- table before this file and can read that night's rows after it. That is
+-- ASSIGN-01 arriving, not an accident — but it IS a widening of who sees the
+-- record of a door, so it belongs in the same paragraph as the narrowing, and
+-- not in a different document.
+--
+-- The three things that bound it are all in the database rather than in a
+-- caller: a live assignment must name one night
+-- (`party_assignments_live_unique`), must not be revoked and must be inside its
+-- window (both tested by the resolver's arm 2), and can be held only by an
+-- account whose role is `master`, `organizer` or `staff`
+-- (`party_assignments_assignee_role_fk`).
+
+COMMIT;
