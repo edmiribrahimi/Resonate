@@ -148,8 +148,8 @@ ALTER TABLE public.door_scan_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS door_scan_events_select_admin ON public.door_scan_events;
 
--- SUPERSEDED, not current: 20260809004000_door_scan_events_by_assignment.sql
--- narrows this register BY ASSIGNMENT and holds the rule and all its reasoning.
+-- SUPERSEDED TWICE, not current: 20260807010000 moved it to a capability, then
+-- 20260809004000_door_scan_events_by_assignment.sql narrowed it BY ASSIGNMENT.
 -- The parentheses around the helper call are load-bearing — a bare call is
 -- re-evaluated per row (20260224_rbac_migration.sql:127-135).
 CREATE POLICY door_scan_events_select_admin ON public.door_scan_events

@@ -3,10 +3,9 @@
 --
 -- Changes:
 -- 1. public.door_scan_events_select_admin — dropped and re-created on THREE arms
---    of `private.has_capability`, in place of the single
---    `public.is_admin_or_organizer()` call that
---    `20260805120000_door_scan_events.sql` carried, and that its own comment
---    named as work owed to this phase
+--    of `private.has_capability`, in place of the single unconditional call it
+--    carries today. `20260805120000_door_scan_events.sql` named this phase as
+--    the one owing that narrowing
 --
 -- ONE change, ONE transaction. A `DROP POLICY` that committed without its
 -- `CREATE POLICY` would leave `public.door_scan_events` with RLS enabled and no
@@ -48,21 +47,37 @@ BEGIN;
 -- by one row. That claim is measured rather than asserted: see the note on
 -- arm 1.
 --
--- ── ARM 1 · `staff.manage`, and why it changes nothing for whoever counted ──
+-- ── ARM 1 · `staff.manage`, and why it changes nothing at all ───────────────
 --
+-- **THIS ARM IS BYTE-IDENTICAL TO THE PREDICATE ALREADY INSTALLED, and that is
+-- a correction of the premise this file was planned on.** The plan for 35-09
+-- and `35-PATTERNS.md` § D both describe the live policy as
+-- `(SELECT public.is_admin_or_organizer())`, quoting
+-- `20260805120000_door_scan_events.sql:155-156`. That is the text of the
+-- migration that CREATED the policy; it is not the state of the database.
+-- `20260807010000_policies_to_capabilities.sql:145-149` — phase 32 — already
+-- dropped it and re-created it as
+-- `(select private.has_capability('staff.manage'))`, and the container capture
+-- confirms it: the `35-pre` policy set holds the capability form, not the
+-- helper.
+--
+-- So this file swaps nothing. **The whole of its change is the two arms below**,
+-- and the record of who reads this table gains rows and loses none — which is
+-- the claim the note above makes and which is now measured rather than argued.
+--
+-- Reading a migration file and taking it for the current schema is the failure
+-- `ai-engineering.md` calls *gate documentazione datata*: a derived statement
+-- inherits an error without inheriting responsibility for it. Written down here
+-- because the next reader will arrive holding the same quotation.
+--
+-- The equivalence is still worth stating, because it is why phase 32's swap cost
+-- nobody anything and why this file's arm 1 costs nobody anything either:
 -- `public.is_admin_or_organizer()` returns `role = 'master' OR role = 'organizer'`
--- and never reads `status` (`20260224_rbac_migration.sql:127-135`).
+-- and never reads `status` (`20260224_rbac_migration.sql:127-135`), while
 -- `private.role_capabilities` grants `staff.manage` to `master` and to
 -- `organizer` with `requires_approved = false`
--- (`20260807000000_capability_model.sql:392-393`). **The two predicates select
--- the same accounts, member for member**, so this arm alone reproduces the old
--- policy rather than approximating it.
---
--- It is nevertheless a different EXPRESSION, and swapping it is half the point
--- of this file: `public.is_admin_or_organizer()` is the superseded predicate
--- (`35-PATTERNS.md` § D), and phase 32 moved 45 of 67 policies off it. A policy
--- rewritten in this phase and left on the old helper would be a policy this
--- phase touched and did not fix.
+-- (`20260807000000_capability_model.sql:392-393`). The two select the same
+-- accounts, member for member.
 --
 -- ── ARM 2 · `door.operate` on THIS row's night ──────────────────────────────
 --
