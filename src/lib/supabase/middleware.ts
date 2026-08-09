@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { resolveRoute } from "@/lib/routes/capability-routes";
 
 /**
  * Set on the RESPONSE when the access context could not be resolved.
@@ -60,36 +61,141 @@ type BounceCause =
   | null;
 
 /**
- * The `/organizer/*` routes a live assignment may open. **One route, not the
- * tree**, and the difference is the whole safety of the widening below.
+ * The allow-list that used to stand here has moved into the route map, and the
+ * paragraph that made it safe travelled with it.
  *
- * Two pages under `/organizer` carry **no server-side check of their own** —
- * verified with `grep -rL` over every `page.tsx` in the group:
+ * It was a one-entry array of anchored regular expressions naming the single
+ * `/organizer/*` address a live per-night assignment could open. It is now the
+ * `assignmentOpenable: true` flag on `party.manage`'s
+ * `/admin/events/[id]/review` entry in `src/lib/routes/capability-routes.ts`,
+ * whose `Binding` docblock carries the rule verbatim: *a route earns a place
+ * there only once it already has its own server-side gate, and the list grows
+ * one route at a time, as a decision, never as a convenience.* Confirmed
+ * present at `capability-routes.ts:136-149` before the expressions were
+ * deleted — deleting the paragraph and the regex together is how a safety rule
+ * becomes folklore.
  *
- *   - `src/app/(organizer)/organizer/page.tsx` — a bare `redirect()`, nothing
- *     else. It is **deliberately not on this list.**
- *   - `src/app/(organizer)/organizer/events/[id]/media/page.tsx` — had none
- *     until plan 35-16 gave it one, and is likewise not on this list.
+ * The anchoring worry the old paragraph spent half its length on is gone by
+ * construction, not by care: `resolveRoute` walks segments and compares
+ * lengths, so there is no `.*` to misplace and no unanchored tail to match
+ * `/reviewers`.
  *
- * Widening `/organizer/*` wholesale would hand both of them to anybody holding
- * any live assignment for any night, because the middleware is the only thing
- * standing in front of them. **A route earns a place on this list only once it
- * already has its own server-side gate**, and the list grows one route at a
- * time, as a decision, never as a convenience.
+ * ── Finding F1, replacing a claim this file made that is wrong in BOTH
+ *    directions ─────────────────────────────────────────────────────────────
  *
- * The expressions are **anchored on both ends**. The id segment is `[^/]+` and
- * the tail is `(?:/|$)`, so `/organizer/events/<id>/review` and
- * `/organizer/events/<id>/review/anything` match, while
- * `/organizer/events/<id>/x/review` and `/organizer/events/<id>/reviewers` do
- * not. A `.*` anywhere in here would quietly re-open the tree this list exists
- * to keep shut.
+ * The deleted paragraph said two pages under `/organizer` carried no
+ * server-side check of their own. Re-measured 2026-08-09, on this tree, it is
+ * wrong in **both** directions:
+ *
+ *   - the media surface's organizer twin **does** gate, on `CAP.STAFF_MANAGE`,
+ *     at line 63 of its page. Plan 35-16 gave it that gate and this comment was
+ *     never re-measured afterwards.
+ *   - `src/app/(admin)/admin/events/[id]/media/page.tsx:17` — the `/admin`
+ *     copy, which the paragraph never mentioned — has **only**
+ *     `if (!user) redirect("/login")`. That is the ungated one.
+ *
+ * So the surviving instance of the pattern the paragraph warned about is under
+ * `/admin`. The route map binds that address to `staff.manage`
+ * (`capability-routes.ts`, the F1 entry), which is the twin's own predicate and
+ * changes nobody's reach: an organizer already saw this surface at the other
+ * address under the same key, and staff and members are refused here before and
+ * after. What remains true is that the `/admin` copy is, today, a surface
+ * standing behind a redirect and nothing else — and `access-gating.md` is
+ * explicit that a redirect is not a boundary. Giving it the twin's gate belongs
+ * to the page-collapse plans of this phase, which own that file; it is recorded
+ * here rather than carried forward as prose that was last true a phase ago.
+ *
+ * The organizer area's own index page is still a bare `redirect()` — and after
+ * plan 34-03 it is unreachable, because that address answers with a redirect
+ * emitted in `src/middleware.ts` before this file runs at all.
  */
-const ORGANIZER_ASSIGNMENT_ROUTES: readonly RegExp[] = [
-  /^\/organizer\/events\/[^/]+\/review(?:\/|$)/,
-];
 
-const isOrganizerAssignmentRoute = (pathname: string) =>
-  ORGANIZER_ASSIGNMENT_ROUTES.some((route) => route.test(pathname));
+/**
+ * The door's binding, asserted once, at module load.
+ *
+ * ── Why a throw stands where a comment used to ───────────────────────────────
+ *
+ * What was here was a paragraph: *the ordering below is load-bearing, invert it
+ * and `/admin/scanner` is judged by `admin.access` and every organizer is
+ * locked out of the door.* Precedence-by-declaration-order is gone — the map's
+ * resolver reads the pattern and never the position, proved by mutation C of
+ * plan 34-01 with this entry declared last — so that paragraph has nothing left
+ * to warn about.
+ *
+ * The hazard it was really about does survive, one level up: **the binding
+ * itself is data now, and data can be edited.** Move `/admin/scanner` into
+ * `admin.access`'s list and nothing in plan 34-01 objects — the totality
+ * assertion still sees a bound route, the ambiguity throw still sees one
+ * pattern, `npm run build` is still green, and the door is master-only. That is
+ * the same failure as the inverted `if / else if`, arriving through the door
+ * the collapse opened.
+ *
+ * So the invariant is stated as a value and checked, in the file whose job it
+ * is to honour it:
+ *
+ *   1. `/admin/scanner` resolves, and resolves to `door.operate`;
+ *   2. that entry is assignment-openable, because a member of staff assigned to
+ *      tonight's door holds `door.operate` by assignment and by nothing else —
+ *      `staff` is one of the six declared refusals of the role
+ *      (`20260808000500_staff_role.sql`). Losing the flag would not refuse a
+ *      stranger; it would refuse the person rostered to work the door, at two
+ *      in the morning, in front of a queue.
+ *
+ * **This check is not decorative and it was not written after the fact.** Run
+ * against the map as plan 34-01 left it, clause 2 **fired**: the map carried no
+ * assignment arm on the door, because the arm 34-01 transcribed was the
+ * `/organizer` allow-list and the scanner's arm — added by phase 35 in a
+ * separate widening — had no allow-list to travel with. The flag was added to
+ * the map in this same commit. A gate that has already caught something is the
+ * only kind worth keeping.
+ *
+ * ── Where it fires, stated because the answer is not "at build time" ─────────
+ *
+ * Module-load code in a middleware bundle runs when the runtime instantiates
+ * the bundle: **the first request after deploy**, not `npm run build`.
+ * Measured, this plan: with `src/middleware.ts` importing the redirect table,
+ * a row naming the scanner still exits `npm run build` 0. So this is a loud,
+ * immediate 500 on every covered route on the first request — which is worse
+ * than a red build and enormously better than a door that quietly refuses the
+ * people rostered to work it, in a product with no error tracking.
+ */
+const DOOR_ADDRESS = "/admin/scanner";
+
+const doorBinding = resolveRoute(DOOR_ADDRESS);
+
+if (doorBinding === null || doorBinding.key !== CAP.DOOR_OPERATE) {
+  throw new Error(
+    `middleware: "${DOOR_ADDRESS}" resolves to ${
+      doorBinding === null ? "no capability at all" : `"${doorBinding.key}"`
+    }, not "${CAP.DOOR_OPERATE}". The door's address is judged by the door's ` +
+      `capability, and by no other. Fix the binding in ` +
+      `src/lib/routes/capability-routes.ts.`
+  );
+}
+
+if (!doorBinding.assignmentOpenable) {
+  throw new Error(
+    `middleware: "${DOOR_ADDRESS}" is bound to "${CAP.DOOR_OPERATE}" but is not ` +
+      `assignment-openable. A member of staff assigned to tonight's door holds ` +
+      `that capability by assignment and by no other route, so without this ` +
+      `flag the middleware refuses the person rostered to work the door.`
+  );
+}
+
+/**
+ * The first segment of the one collapsed work surface.
+ *
+ * A SEGMENT, not a prefix, and the difference is the only reason this is worth
+ * a constant: a prefix test would claim `/administrators` for the work tree,
+ * and a first-segment comparison does not. Nothing decides a
+ * capability here — the map does that — this only answers *is this address one
+ * the map is supposed to have an opinion about*, which is what makes an unmapped
+ * path under the tree a refusal instead of a fall-through (T-34-13).
+ */
+const WORK_TREE_ROOT = "admin";
+
+const isUnderWorkTree = (pathname: string) =>
+  pathname.split("/")[1] === WORK_TREE_ROOT;
 
 export async function updateSession(request: NextRequest) {
   // Track cookies set by Supabase so we can re-apply them after creating
@@ -260,14 +366,19 @@ export async function updateSession(request: NextRequest) {
    * Which of the two assignment-shaped causes this refusal is, or `null` for
    * the ordinary refusal that carries no parameter.
    *
-   * Read by position, in this order and only this order. It is called on the
-   * two rules that consulted the assignments — the scanner and the organizer
-   * area — and on those alone: the `/admin` and `/membership-card` rules have
-   * no assignment arm, so reporting an assignment cause there would explain a
-   * decision that was never taken that way.
+   * Read by position, in this order and only this order. There is one call
+   * site now instead of two, and the rule it used to state as a convention is
+   * enforced by the shape of the code: it is called **only** inside a branch
+   * conditioned on `entry.assignmentOpenable`, so an entry with no assignment
+   * arm gets `null`. Reporting an assignment cause on such a refusal would
+   * explain a decision that was never taken that way.
+   *
+   * Two route entries carry the flag today — the door and the per-night review
+   * — and both of those refusals are still reported with a cause, so neither
+   * value below has lost its way to a screen.
    *
    * `context-stale` will fire **loudly** until the migration carrying the key
-   * is applied: with the key absent every refusal on those two rules is a
+   * is applied: with the key absent every refusal on those two entries is a
    * refusal taken without the assignment question, including one handed to a
    * member who was never going to be admitted. That is deliberate. It is the
    * one signal that says *the deploy is ahead of the database*, this project
@@ -322,13 +433,26 @@ export async function updateSession(request: NextRequest) {
 
   // --- Route protection ---
 
-  // Protected routes requiring authentication
+  // Protected routes requiring authentication.
+  //
+  // `/organizer` is gone from this list, and it is dead rather than relaxed: a
+  // `/organizer/*` address answers with a redirect emitted in
+  // `src/middleware.ts` before `updateSession` is called, so no such request
+  // reaches this line. Measured — the redirect table's fifteen rows are exactly
+  // the fifteen `page.tsx` files under `src/app/(organizer)`, one for one, so
+  // every organizer address that renders anything is translated first and every
+  // other one is a 404 with no page behind it.
+  //
+  // The other four are all still real and are untouched. This is a **prefix**
+  // test and it stays one, deliberately: it decides only whether an anonymous
+  // caller is sent to sign in with their destination in `?redirect=`, which is
+  // refusal state 1 of D-34-08 and is not a capability question at all. No
+  // capability is read on this branch, and none should be.
   const protectedPrefixes = [
     "/dashboard",
     "/membership-card",
     "/attendance",
     "/admin",
-    "/organizer",
   ];
 
   if (!user) {
@@ -340,98 +464,84 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   } else {
-    // Authenticated: enforce role-based access
+    // ── Authenticated: one lookup, where three prefix rules used to be ────────
+    //
+    // What stood here was an `if / else if` pair for `/admin/scanner` and
+    // `/admin`, plus two separate `if`s for `/organizer` and for the two member
+    // addresses, and a paragraph explaining that the pair's ORDER was
+    // load-bearing: invert it and the door is judged by `admin.access`. That
+    // paragraph is deleted with the mechanism it described, because keeping a
+    // warning about a hazard that no longer exists is how the next reader learns
+    // to distrust the comments.
+    //
+    // **The precedence is not preserved here. It is made unnecessary.** There is
+    // one rule, so there is no order to invert. Which capability opens
+    // `/admin/scanner` is decided in `capability-routes.ts` by the specificity
+    // of the PATTERN — never by the position of the entry, proved by mutation C
+    // of plan 34-01 with the door declared last — and two patterns that could
+    // both match one address throw at module load rather than race at request
+    // time. The residue that data cannot guard on its own, an editor moving the
+    // door's address to another key, is the assertion at the top of this file.
+    //
+    // **The middleware is UX. The RLS is the boundary.** Reading one declaration
+    // in two places does not change which of the two is the guarantee: this
+    // decides where somebody may GO, and a row-level policy decides what they
+    // may READ. Nothing below is a substitute for a policy, and the page guards
+    // downstream re-ask the same question against a subject this code does not
+    // have — the night.
+    const entry = resolveRoute(pathname);
 
-    // The ordering below is load-bearing and is NOT a lookup table on purpose.
-    // /admin/scanner is tested BEFORE the general /admin branch, as an
-    // if / else if pair: invert them and /admin/scanner matches
-    // startsWith("/admin") first, is judged by admin.access, and every
-    // organizer is locked out of the door — the refusal that happens in front
-    // of a queue. The two rules that follow are SEPARATE `if` statements, not
-    // a continuation of that chain: a request that fell through the /admin
-    // pair is still tested against both.
-
-    // /admin/scanner -> door.operate (role alone: door.operate is granted with
-    // requires_approved = false, deliberately, so a pending organizer is not
-    // refused at the door)
-    //
-    // ── Widened, and the widening is half of one indivisible change ──────────
-    //
-    // `staff` does **not** hold `door.operate` by role: it is one of the six
-    // declared refusals of phase 43's staff role
-    // (`20260808000500_staff_role.sql`). So before this line existed, a member
-    // of staff **assigned to work this night's door** was bounced to
-    // `/dashboard` before the scanner page existed at all — before the party
-    // resolver, before `requireDoorOperator({ partyId })`, before the offline
-    // drain. The machine this phase built was unreachable by the person it was
-    // built for.
-    //
-    // The fix is not "ask the per-night question here", because that question
-    // has no subject here: at routing time no night has been chosen. It is the
-    // split this project already declares as its architecture — **the
-    // middleware is UX, the boundary is server-side**:
-    //
-    //   1. here, a COARSE test: role, **or** a live assignment for the right
-    //      trade, on some night;
-    //   2. downstream, the real one: `requireDoorOperator({ partyId })` on the
-    //      three door routes, and the night list that `/api/tickets/attendance`
-    //      filters by assignment (plan 35-10) — somebody assigned to another
-    //      night reaches this page and does not find that night in it.
-    //
-    // The edit is INSIDE the existing branch on purpose. The `if / else if`
-    // pair above is load-bearing; adding a rule before it would let
-    // `/admin/scanner` be judged by `admin.access` and lock every organizer out
-    // of the door.
-    if (pathname.startsWith("/admin/scanner")) {
-      if (
-        !capabilities.has(CAP.DOOR_OPERATE) &&
-        !holdsByAssignment(CAP.DOOR_OPERATE)
-      ) {
-        return bounceToDashboard(assignmentBounceCause());
-      }
-    }
-    // /admin/* (except scanner) -> admin.access (granted to master alone)
-    else if (pathname.startsWith("/admin")) {
-      if (!capabilities.has(CAP.ADMIN_ACCESS)) {
-        return bounceToDashboard();
-      }
-    }
-
-    // /organizer/* -> organizer.access (master or organizer, status ignored),
-    // OR a live `party.manage` assignment on ONE allow-listed route.
-    //
-    // The allow-list is the whole safety of this arm: see
-    // `ORGANIZER_ASSIGNMENT_ROUTES` above for the two pages under this prefix
-    // that have no server-side check of their own and must not be opened by an
-    // assignment. `party.manage` is the right key and `organizer.access` is
-    // not: the first is one night's operational surfaces, the second is the
-    // area, which is a property of the account with no night in it
-    // (`keys.ts`).
-    //
-    // The real per-night gate is on the page — the review list re-asks
-    // `party.manage` **against the night resolved from `?party=`**, so changing
-    // that parameter to a night one is not assigned to is refused there. This
-    // test cannot do that: it has no night.
-    if (pathname.startsWith("/organizer")) {
+    if (entry !== null) {
+      // Two arms, and the second one exists only where the route entry says so.
+      //
+      // `assignmentOpenable` is a property of the ROUTE, never of the key and
+      // never of a prefix: `party.manage` opens one night's surfaces, and only
+      // `/admin/events/[id]/review` among them may be opened by a live
+      // assignment. Reading the flag from the entry is what keeps that true when
+      // a second `party.manage` route is added by somebody who never reads this
+      // file.
+      const openedByRole = capabilities.has(entry.key);
       const openedByAssignment =
-        isOrganizerAssignmentRoute(pathname) &&
-        holdsByAssignment(CAP.PARTY_MANAGE);
+        entry.assignmentOpenable && holdsByAssignment(entry.key);
 
-      if (!capabilities.has(CAP.ORGANIZER_ACCESS) && !openedByAssignment) {
-        return bounceToDashboard(assignmentBounceCause());
+      if (!openedByRole && !openedByAssignment) {
+        // The cause, and the discipline is in the ternary rather than in a
+        // convention. `assignmentBounceCause()` is called on the entries that
+        // HAVE an assignment arm and on no others: reporting `context-stale` or
+        // `not-assigned-here` for a refusal on a route with no assignment arm
+        // would explain a decision that was never taken that way, and a map
+        // makes calling it everywhere one keystroke shorter than calling it
+        // correctly.
+        //
+        // `null` is the fourth case and carries no parameter at all — the
+        // ordinary refusal this file has always produced. Three causes, none
+        // collapsed (D-34-08 state 2); `unavailable` is added by
+        // `bounceToDashboard` itself and outranks both of these, which is why it
+        // is not decided here.
+        return bounceToDashboard(
+          entry.assignmentOpenable ? assignmentBounceCause() : null
+        );
       }
-    }
-
-    // /membership-card, /attendance -> membership.card.view (granted to all
-    // three roles with requires_approved = true, which is `status =
-    // 'approved'` for any role — the predicate this replaces)
-    if (
-      pathname.startsWith("/membership-card") ||
-      pathname.startsWith("/attendance")
-    ) {
-      if (!capabilities.has(CAP.MEMBERSHIP_CARD_VIEW)) {
-        return bounceToDashboard();
-      }
+    } else if (isUnderWorkTree(pathname)) {
+      // ── Fail closed, and this is the branch T-34-13 is about ────────────────
+      //
+      // An address under the work tree that the map does not bind is not an
+      // address nobody thought about — it is an address whose binding was
+      // deleted, or misspelt, or added as a page and never declared.
+      // `capability-routes.ts` says it in as many words: a typo like
+      // `"/admin/newsleter"` compiles, resolves to `null`, and the master
+      // silently loses the newsletter. **Losing a page is the acceptable half of
+      // that trade.** Admitting on `null` would be the other half, and it would
+      // hand every unmapped staff address to every signed-in account.
+      //
+      // Addresses outside the tree fall through exactly as they always did.
+      // This map is the whole application's route↔capability map, not a census
+      // of everything the matcher sees: `/dashboard`, `/events/[slug]`, `/api/*`
+      // and the door's own `/api/tickets/checkin` are not in it and must not be
+      // judged by it. `/membership-card` and `/attendance` ARE in it, and are
+      // now judged through the same lookup as everything else — they are there
+      // precisely because calling them table-scoped would have been a lie.
+      return bounceToDashboard();
     }
   }
 
