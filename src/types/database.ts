@@ -142,10 +142,57 @@ export interface Attendance {
   entry_role: string | null;
 }
 
-export interface EventMedia {
+/**
+ * One row of `public.event_media` — the file, and the NIGHT it belongs to.
+ *
+ * ── `party_id`, and the one reading the type cannot forbid ───────────────────
+ *
+ * The rule below is written in THREE places that must say the same thing: the
+ * `COMMENT ON COLUMN` and the trigger comment of
+ * `supabase/migrations/20260809004500_event_media_party_id.sql`, and here. Three
+ * places because the next reader arrives from one of the three, and two
+ * formulations of one rule are two rules.
+ *
+ * ── The honest limit, the same one `PartyAssignmentRow` and `PartyCreditRow`
+ *    carry ──────────────────────────────────────────────────────────────────
+ *
+ * None of the four Supabase clients is parameterised with a `Database` generic
+ * (`src/lib/supabase/server.ts:7`), so this interface is a CATALOGUE FOR THE
+ * READER and not a constraint the compiler applies to a query. **A green
+ * `npm run build` does not prove that any query writes `party_id`** — the
+ * database proves that, by refusing the insert.
+ */
+export interface EventMediaRow {
   id: string;
   event_id: string;
-  uploaded_by: string;
+  /**
+   * The night this file belongs to.
+   *
+   * `null` means **LEGACY ROW, EVENT SCOPE**: uploaded before the column
+   * existed, on an event with more than one night, where attributing a night
+   * after the fact would be inventing it — and for a file shot inside a secret
+   * venue the night is not a detail.
+   *
+   * A legacy row is **read and moderated exactly as today**: the guard is a
+   * `BEFORE INSERT` trigger, so no update of an existing row is affected.
+   *
+   * A legacy row is **never a valid target for a new write**: the trigger
+   * `event_media_require_party` refuses every `INSERT` without a night — the
+   * service role included, because a policy does not reach it and a trigger
+   * does — and the per-night test is an equality between identifiers
+   * (`pa.party_id = p_party_id`, inside `private.has_capability`), so `null`
+   * satisfies no arm.
+   *
+   * **`null` does NOT mean "every night"** — in italiano, perche' e' la lingua
+   * in cui questa regola e' stata decisa e perche' e' l'unica frase di questo
+   * file che non deve essere fraintesa: **`null` non significa «tutte le
+   * serate».** Written exactly like that, twice, because it is the reading that
+   * would turn a permission scoped to one evening into an unlimited one, and it
+   * is the only wrong reading the type alone cannot prevent.
+   */
+  party_id: string | null;
+  /** `null` once the uploading account is deleted — the column is nullable. */
+  uploaded_by: string | null;
   url: string;
   type: "photo" | "video";
   caption: string | null;
@@ -154,6 +201,18 @@ export interface EventMedia {
   order: number;
   created_at: string;
 }
+
+/**
+ * The older name for the same row, kept because it is exported.
+ *
+ * It is an ALIAS and not a second interface on purpose: two shapes describing
+ * one table drift, and this one had already started to — it predates
+ * `party_id`, and it typed `uploaded_by` as non-nullable where the column is
+ * nullable (`20260225120000_phase7_media.sql:8`). Measured before collapsing
+ * it: `grep -rn "EventMedia" src/` finds no reader outside this file, so the
+ * correction costs nothing and the divergence cannot reopen.
+ */
+export type EventMedia = EventMediaRow;
 
 export interface NewsletterSubscriber {
   id: string;

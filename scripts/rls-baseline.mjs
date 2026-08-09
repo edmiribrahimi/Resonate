@@ -1167,10 +1167,57 @@ export const PROBE_PAYLOADS = {
   },
   // `type` is CHECK-constrained to photo|video; `uploaded_by` is the subject —
   // this is the P5 (`status = approved`) surface, so the owner column matters.
+  //
+  // ── WHY `event_id` IS NOT `{{events}}` ANY MORE (plan 35-18) ──────────────
+  //
+  // Since `20260809004500_event_media_party_id.sql` the row must name a NIGHT,
+  // and `event_media_insert_member` demands that the night belong to THIS
+  // event. The two placeholders cannot express that: `{{events}}` and
+  // `{{event_parties}}` are resolved INDEPENDENTLY — one privileged
+  // `min(id::text)` per table, see `resolveProbeReferences` — so nothing
+  // correlates them. With the old entry the probe would compose an incoherent
+  // pair on any database where those two minima disagree, every insert cell
+  // would turn into a refusal FOR THE WRONG REASON, and a matrix that refuses
+  // for the wrong reason is worse than one that does not run: it looks like a
+  // result.
+  //
+  // The correction does NOT touch the placeholder machinery. `values` are SQL
+  // expressions — `door_scan_events` already uses `now()` and `auth.uid()` —
+  // so the pair is made coherent INSIDE the payload: `party_id` takes the
+  // placeholder, and `event_id` is derived from it.
+  //
+  // ── AND WHY THE DERIVATION IS A FUNCTION AND NOT A SUB-SELECT ─────────────
+  //
+  // A plain sub-select reading `public.event_parties` for that id
+  // would run under the PERSONA's read policies:
+  // `event_parties_select_published` only shows a night whose event is
+  // published, and `event_parties_select_admin` shows every night to
+  // `staff.manage`. The same expression would then yield the event id for a
+  // master and NULL for a member — a `23502` for one persona and a real probe
+  // for another. `private.party_event_id(uuid)` is `SECURITY DEFINER` (and
+  // granted to `authenticated` and `anon`) precisely so the value is the SAME
+  // FOR EVERY PERSONA, which is the invariant that makes the matrix a matrix.
+  //
+  // THE DEGENERATE CASE, stated rather than met: if `event_parties` were empty
+  // the placeholder is the nil uuid, the function returns NULL, and the insert
+  // fails `23502` — which D-19 records as INCONCLUSIVE, not as a refusal. That
+  // is the behaviour already provided for, not a new one.
+  //
+  // NOTE ON THE QUOTES, because getting them wrong produces a syntax error and
+  // not a wrong measurement: `substituteReferences` expands `{{table}}` to
+  // `'<uuid>'::uuid` — the literal quotes AND the cast are part of the
+  // substitution. So the placeholder is written BARE here, exactly as every
+  // other entry in this table writes it.
   event_media: {
     insert: {
-      columns: ['event_id', 'url', 'type', 'uploaded_by'],
-      values: ['{{events}}', `'https://example.invalid/rls-baseline-probe'`, `'photo'`, 'auth.uid()'],
+      columns: ['event_id', 'party_id', 'url', 'type', 'uploaded_by'],
+      values: [
+        '(select private.party_event_id({{event_parties}}))',
+        '{{event_parties}}',
+        `'https://example.invalid/rls-baseline-probe'`,
+        `'photo'`,
+        'auth.uid()',
+      ],
     },
     update: 'caption',
   },
