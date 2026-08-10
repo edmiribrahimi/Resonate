@@ -179,6 +179,41 @@ export interface EventParty {
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
   /**
+   * WHEN this night's address was let out BY HAND, or NULL if it never was.
+   * `20260810160000_manual_venue_reveal.sql` §2, applied to production
+   * 2026-08-10 as version `20260810210214`.
+   *
+   * ── IT IS NOT `venue_reveal_email_sent` UNDER A NEW NAME ────────────────────
+   *
+   * The two answer different questions, and the migration carries this same
+   * sentence as a `COMMENT` so neither copy can drift alone.
+   * `venue_reveal_email_sent` says **the mails have gone out** — a one-way
+   * switch that NO branch of `public.record_venue_reveal_act` touches. This
+   * column says **the page is open**, and the `re_hidden` act (D-37-22, master
+   * only) sets it back to NULL.
+   *
+   * That asymmetry is the point, not an oversight: a night can return to secret
+   * ON THE PAGE while the mails stay sent, which is the only honest pair of
+   * states once an address has left. Lowering the mail flag instead would send
+   * the cron to post the address a second time.
+   *
+   * NULL is the right value for every row that existed before this column —
+   * none of them was revealed by hand, because there was no way to do it. The
+   * column is nullable with no `DEFAULT` (`supabase-data.md`, gate *default
+   * sulle righe esistenti*), and zero rows carried a value at the moment it was
+   * added.
+   *
+   * The scheduled path never writes here: `src/app/api/cron/venue-reveal/`
+   * marks `venue_reveal_email_sent` and nothing else. So a NULL means *nobody
+   * pressed the button*, never *this night was not revealed*.
+   *
+   * NOTE, and it will bite the next reader: this interface does NOT declare
+   * `venue_reveal_on_purchase` or `venue_reveal_email_sent`, both of which exist
+   * on the table. That gap predates this column and is recorded in
+   * `deferred-items.md`; do not read their absence here as their absence there.
+   */
+  venue_revealed_at: string | null;
+  /**
    * WHAT THIS NIGHT IS, and WHICH RUN of it. Both `NOT NULL` after
    * `20260810120000_formats_and_series.sql` §9 — FMT-01: a night cannot be
    * saved without saying what format it is. Neither carries a database default,
@@ -675,6 +710,123 @@ export interface MembershipActRow {
   party_id: string | null;
   /** Optional context, never a person's name or an address. */
   note: string | null;
+}
+
+/**
+ * The act vocabulary of `public.venue_reveal_acts` — **THREE human acts, and
+ * not two.** Read from the live `CHECK`, which is the authority:
+ * `act IN ('revealed', 'completed', 're_hidden')`.
+ *
+ * The plan for this file said two, `'revealed'` and `'re_hidden'`, and the plan
+ * was wrong — `'completed'` is D-37-20's *send it to the N who are missing*. It
+ * sets nothing on the night, and it is recorded ANYWAY, because it mails the
+ * address to N more people and is therefore exactly as attributable as the
+ * first act. A two-value vocabulary would make the second, third and fourth
+ * send invisible while each of them is a publication.
+ *
+ *   `revealed`  — the address was let out for the first time. The only act that
+ *                 sets {@link EventParty.venue_revealed_at}.
+ *   `completed` — the remainder went out. Sets nothing on the night.
+ *   `re_hidden` — D-37-22, master only. Clears `event_parties.venue_revealed_at`
+ *                 so the page goes back to secret, and touches
+ *                 `venue_reveal_email_sent` not at all: the mails do not come
+ *                 back, and pretending they might is the one thing this act
+ *                 must not do.
+ *
+ * ── WHERE THIS TYPE SHOULD EVENTUALLY LIVE, and what NOT to do ───────────────
+ *
+ * Three vocabularies in this file are imported from modules that import nothing
+ * — the door's outcome, the capability keys, the register's acts — precisely so
+ * that a `CHECK`, a stored procedure and every caller cannot disagree. This one
+ * belongs in the reveal module that plan 37-10 will create, on the same
+ * inverted-import pattern. It is declared here because that module does not
+ * exist yet and a type that is absent is worse than a type in the wrong file.
+ *
+ * **The next reader MOVES it and re-exports; nobody re-declares it.** A second
+ * copy of these three literals is exactly the drift the other three imports
+ * exist to prevent.
+ */
+export type VenueRevealAct = "revealed" | "completed" | "re_hidden";
+
+/**
+ * A row of `public.venue_reveal_acts` — phase 37's append-only trace of an
+ * address becoming public (`20260810160000_manual_venue_reveal.sql` §3).
+ *
+ * ── Append-only by the ABSENCE of a write path ───────────────────────────────
+ *
+ * RLS is enabled and there is exactly ONE policy, a `SELECT` for `staff.manage`.
+ * There is no `INSERT`, no `UPDATE` and no `DELETE` policy, so no session can
+ * write or erase a row: the only writer is
+ * `public.record_venue_reveal_act(p_party_id uuid, p_act text, p_actor_id uuid,
+ * p_actor_name text, p_recipients_intended integer) RETURNS jsonb`, which is
+ * `SECURITY DEFINER`, has `EXECUTE` revoked from `public`, `anon` and
+ * `authenticated`, and granted to `service_role` alone. The omission of the
+ * three write policies is deliberate and is what makes D-37-22 honest: a night
+ * can go back to secret, and the record that it was once revealed cannot be
+ * removed by anyone.
+ *
+ * ── This table holds no address, and that is structural ──────────────────────
+ *
+ * The subject of every row here is an address becoming public. Recording that
+ * address alongside the act would file the act together with the thing it
+ * released, in a row that outlives the night and can reach a screenshot. So the
+ * venue's name and where it is are simply not columns — and the rule is kept by
+ * the only writer, which composes {@link VenueRevealActRow.party_label} itself
+ * from the event's title and the night's date, rather than by each caller
+ * remembering it.
+ *
+ * ── The honest limit, the same one the other row types carry ─────────────────
+ *
+ * None of the four Supabase clients is parameterised with a generated schema,
+ * so this interface DOCUMENTS the shape and does not make any query against it
+ * type-checked. `npm run build` cannot tell you a column name is right.
+ *
+ * The refusal vocabulary of the writer — it returns typed refusals as VALUES
+ * rather than raising, because on a constraint violation PostgREST hands back
+ * the entire failing row and the failing row here is a night, carrying the
+ * address — is NOT declared here. It is the contract of the server action, and
+ * it belongs to plan 37-10's module next to {@link VenueRevealAct}.
+ */
+export interface VenueRevealActRow {
+  id: string;
+  /**
+   * The night. `ON DELETE SET NULL`, deliberately NOT `CASCADE`: sixteen
+   * constraints already cascade from `public.event_parties`, and this trace does
+   * not become one of them. Deleting a night must not delete the proof that its
+   * address was made public — that proof is worth most exactly where the row it
+   * names has gone.
+   */
+  party_id: string | null;
+  /**
+   * Which night it WAS, denormalised so a row whose `party_id` has gone to NULL
+   * still says what it was about. The event's title and the night's date, and
+   * nothing else — never the venue's name.
+   */
+  party_label: string;
+  act: VenueRevealAct;
+  /** Who did it. `ON DELETE SET NULL`: someone who later leaves does not un-perform their acts. */
+  actor_id: string | null;
+  /**
+   * The person's full name, and the divergence from `MembershipActRow` is
+   * deliberate (D-37-18). There the subject is a person being JUDGED and the
+   * label is a membership code; here the subject is a person who ACTED on a
+   * staff surface, and accountability is the whole point — *revealed by
+   * ORG-0042* answers nobody's question at 19:00 on a Friday.
+   *
+   * **The divergence is authorised in the database and stops there.** That name
+   * does not enter a PLAN, a SUMMARY, a VERIFICATION or anything else under
+   * `.planning/`, which is tracked and public. Artefacts name ROLES.
+   */
+  actor_name: string;
+  /**
+   * How many people this act meant to reach — the number the confirmation shows
+   * (D-37-16) and the one reported back afterwards (D-37-12). Recipients after
+   * de-duplication by email, never tickets plus rsvps, which double-counts
+   * anybody holding both.
+   */
+  recipients_intended: number;
+  /** The server clock. A device clock is evidence, never authority. */
+  at: string;
 }
 
 /**
