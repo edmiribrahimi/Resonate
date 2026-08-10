@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 34 context gathered
-last_updated: "2026-08-09T21:03:49.119Z"
-last_activity: 2026-08-09 -- Phase 34 execution started
+stopped_at: Phase 36 context gathered
+last_updated: "2026-08-10T11:29:47.210Z"
+last_activity: 2026-08-10 -- Phase 36 context gathered
 progress:
   total_phases: 13
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 92
-  completed_plans: 77
-  percent: 38
+  completed_plans: 92
+  percent: 46
 ---
 
 # State: Resonate
@@ -24,20 +24,30 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 34 — One Work Surface
+**Current Focus:** Phase 36 — Formats & Series Numbering
 
 ## Current Position
 
-Phase: 34 (One Work Surface) — EXECUTING
-Plan: 1 of 17
-Status: Executing Phase 34
-        `gsd/phase-32-capability-model-in-the-database`, which forks the phase 31
-        branch. Plan-checker: VERIFICATION PASSED, 0 blockers, 2 warnings — both
-        closed before execution.
-        Only waves 1 and 6 parallelise; the rest is genuinely sequential, because
-        the baseline must be captured and committed **before the first migration
-        file exists**. A baseline taken after the change is not a baseline.
-Last activity: 2026-08-09 -- Phase 34 execution started
+Phase: 36 (Formats & Series Numbering) — CONTEXT GATHERED, not yet planned
+Plan: 0 of 0
+Status: `36-CONTEXT.md` scritto il 2026-08-10 — quattro aree discusse, sedici
+        decisioni. Prossimo passo `/gsd-plan-phase 36`.
+
+        **Fasi 31, 32, 33, 43, 35, 34: 92/92 piani eseguiti.** Il disco e questo
+        file concordano dal 2026-08-10; fino a quel giorno questo blocco
+        dichiarava ancora la fase 34 in esecuzione al piano 1 di 17.
+
+        **Ramo:** `gsd/phase-32-capability-model-in-the-database` — 82 commit
+        oltre `origin/main`, 553 oltre `main`. Niente e' stato spinto.
+
+        **Debito di verifica aperto — 32 voci `human_needed`,** tutte della
+        stessa specie: nessuno strumento di questo repository puo' autenticarsi
+        come un ruolo. `43-VERIFICATION.md` 14 · `35-VERIFICATION.md` 9 ·
+        `34-VERIFICATION.md` 9. Una sessione con cinque account — master,
+        organizer/approved, organizer/pending seminato a mano, staff, member —
+        ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
+        sopra quel modello: il debito non e' suo, ma le sta sotto.
+Last activity: 2026-08-10 -- Phase 36 context gathered
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -83,8 +93,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-09T12:57:29.334Z
-**Stopped at:** Phase 34 context gathered
+**Last session:** 2026-08-10T11:29:47.207Z
+**Stopped at:** Phase 36 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
