@@ -1,10 +1,12 @@
 ---
 phase: 34
 slug: one-work-surface
-status: draft
+status: executed
 nyquist_compliant: false
-wave_0_complete: false
+nyquist_unmet: "M-9 was to be run BEFORE and AFTER the middleware plan (34-03). Neither half was run — deferred by the owner's decision of 2026-08-09 — and the before half is unrecoverable, because the state it would have read no longer exists. Every other sign-off item is met; see 34-VERIFICATION.md § Nyquist sign-off."
+wave_0_complete: true
 created: 2026-08-09
+last_measured: 2026-08-10
 ---
 
 # Phase 34 — Validation Strategy
@@ -47,18 +49,18 @@ created: 2026-08-09
 
 | Requirement | Behaviour | Test Type | Automated Command | File Exists | Status |
 |---|---|---|---|---|---|
-| CAP-02 | A capability key bound to no route fails the production build | type-level totality over `CapabilityKey` | `rm -rf .next && npm run build`, **proved by mutation**: add a 13th key to `CAP` and confirm the build fails | ❌ Wave 1 | ⬜ pending |
-| CAP-02 (inverse) | A staff route bound to no key fails the build | `_everyStaffRouteIsBound` assertion | same, after deleting one route from the map | ❌ Wave 1 | ⬜ pending |
-| CAP-02 (chain) | The database catalogue matches `CAP` | `verify-capabilities` sides 1–3, 5 | `npm run verify:capabilities` | ✅ exists — **needs a database, no CI** | ⬜ pending |
-| STAFF-01 | Each work surface exists once | file census | `find "src/app/(admin)" -name page.tsx \| wc -l` → 23, and `src/app/(organizer)` must not exist | ❌ Wave 4 | ⬜ pending |
-| STAFF-01 | The merged surface renders by entitlement | **manual, per role** — no instrument can see this | M-1 … M-5 | ❌ Wave 5 | ⬜ pending |
-| STAFF-02 | Old addresses answer 308 to the right twin | redirect walk | `bash scripts/verify-organizer-redirects.sh` — 15 rows, status + `Location` each | ❌ Wave 1 (table) / Wave 5 (run) | ⬜ pending |
-| STAFF-02 | **No redirect matches or points at `/admin/scanner`** | module-load assertion in the redirect table | any import, therefore `npm run build` | ❌ Wave 1 | ⬜ pending |
-| STAFF-03 | A hidden nav entry has a matching server-side refusal | type-level — nav and middleware read the same map, so they cannot disagree about the *key* | `npm run build` | ❌ Wave 2 | ⬜ pending |
-| STAFF-03 | The key bound to a route is the *right* key | **manual** — no type can hold this | M-1 … M-6 | ❌ Wave 5 | ⬜ pending |
-| STAFF-03 | `revalidatePath` targets a route that exists | `scripts/verify-routes.mjs` | `node scripts/verify-routes.mjs` | ❌ Wave 4 | ⬜ pending |
-| all | No row-level permission moved | container baseline | `baseline:container` ×2 + `baseline:compare` | ✅ exists | ⬜ pending |
-| all | Persona coherence survives the deletion of a route group | `verify:persona` checks A, B, G | `npm run verify:persona` | ✅ exists | ⬜ pending |
+| CAP-02 | A capability key bound to no route fails the production build | type-level totality over `CapabilityKey` | `rm -rf .next && npm run build`, **proved by mutation**: add a 13th key to `CAP` and confirm the build fails | ✅ `capability-routes.ts:344` | ✅ **done** — mutation A, 34-01 |
+| CAP-02 (inverse) | A staff route bound to no key fails the build | `_everyStaffRouteIsBound` assertion | same, after deleting one route from the map | ✅ `capability-routes.ts:394` | ✅ **done** — mutations B1 **and** B2, 34-01 |
+| CAP-02 (chain) | The database catalogue matches `CAP` | `verify-capabilities` sides 1–3, 5 | `npm run verify:capabilities` | ✅ exists — **needs a database, no CI** | ✅ **run by hand** 2026-08-10, 5/5 green — a written pre-deploy step, not an automation |
+| STAFF-01 | Each work surface exists once | file census | `find "src/app/(admin)" -name page.tsx \| wc -l` → 23, and `src/app/(organizer)` must not exist | ✅ Wave 4 + 34-15 | ✅ **done** — 23 pages, tree GONE, `(work)` non-route census empty |
+| STAFF-01 | The merged surface renders by entitlement | **manual, per role** — no instrument can see this | M-1 … M-5 | ✅ exists | 🟡 **`human_needed`** — unrun, owner decision 2026-08-09 |
+| STAFF-02 | Old addresses answer 308 to the right twin | redirect walk | `bash scripts/verify-organizer-redirects.sh` — 15 rows, status + `Location` each | ✅ Wave 1 (table) / 34-17 (run) | ✅ **done** — walked 15/15 at 307, flipped, **re-walked** 15/15 at 308 |
+| STAFF-02 | **No redirect matches or points at `/admin/scanner`** | module-load assertion in the redirect table | any import, therefore `npm run build` | ✅ `organizer-redirects.ts:147` | ✅ **holds after the flip** — but see 34-03 Finding 1: it fires on the **first request**, not at build time |
+| STAFF-03 | A hidden nav entry has a matching server-side refusal | type-level — nav and middleware read the same map, so they cannot disagree about the *key* | `npm run build` | ✅ Wave 2 | ✅ **done** in one direction only — a **drawn** entry has a matching rule; the converse does not hold and is not claimed |
+| STAFF-03 | The key bound to a route is the *right* key | **manual** — no type can hold this | M-1 … M-6 | ✅ exists | 🟡 **`human_needed`** — unrun, owner decision 2026-08-09 |
+| STAFF-03 | `revalidatePath` targets a route that exists | `scripts/verify-routes.mjs` | `node scripts/verify-routes.mjs` | ✅ Wave 4 | ✅ **done** — exit 0, 47 literals, 0 offenders, 0 skipped |
+| all | No row-level permission moved | container baseline | `baseline:container` ×2 + `baseline:compare` | ✅ exists | ✅ **clean** — and it **cannot see a route**; this phase edits no migration, so the green was near-guaranteed |
+| all | Persona coherence survives the deletion of a route group | `verify:persona` checks A, B, G | `npm run verify:persona` | ✅ exists | ✅ **7/7** — worst case moved to the door's client, margin **1 378** tokens |
 
 ---
 
@@ -127,14 +129,17 @@ baseline stand in for evidence it cannot produce.
 
 ---
 
-## Validation Sign-Off
+## Validation Sign-Off — measured 2026-08-10
 
-- [ ] Every plan task carries either an automated command from the map above or a named M-procedure
-- [ ] Sampling continuity: no three consecutive tasks without `npm run build`
-- [ ] Wave 0 gaps closed in Wave 1
-- [ ] CAP-02's gate **proved by mutation** in both directions, with the mutation confirmed applied before its result is read
-- [ ] M-9 run **before and after** the middleware plan
-- [ ] No test framework installed
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] Every plan task carries either an automated command from the map above or a named M-procedure
+- [x] Sampling continuity: no three consecutive tasks without `npm run build` — every SUMMARY records a build per task commit
+- [x] Wave 0 gaps closed in Wave 1 — plans 34-01 and 34-08
+- [x] CAP-02's gate **proved by mutation** in both directions, with the mutation confirmed applied before its result is read — mutations A, B1 and B2, transcripts in `34-01-SUMMARY.md` and gathered in `34-VERIFICATION.md`
+- [ ] **M-9 run before and after the middleware plan** — **NOT MET, and it is the one that cannot be caught up.** Neither half was run (owner decision of 2026-08-09). The **before** half is unrecoverable: plan 34-03 rewrote the code that judges the request, so the state a baseline would have read no longer exists. When the after finally runs it must be written as *observed after, not observed before, no comparison made.*
+- [x] No test framework installed — and none was proposed
+- [ ] `nyquist_compliant: true` set in frontmatter — **withheld**, on the item above alone
 
-**Approval:** pending
+**Approval:** `human_needed`. Six of seven sign-off items are met and the
+automated suite is green end to end; the seventh failed in the only way that
+cannot be repaired later, which is why the flag stays `false` rather than being
+granted on a six-out-of-seven reading.
