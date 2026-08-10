@@ -1691,7 +1691,6 @@ export async function deactivateMember(
     await notifySubject("deactivateMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -1736,7 +1735,6 @@ export async function reactivateMember(
     await notifySubject("reactivateMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -1784,7 +1782,6 @@ export async function approveMember(
     await notifySubject("approveMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -1842,7 +1839,6 @@ export async function rejectMember(
     await notifySubject("rejectMember", serviceClient, memberId, plan.act);
 
     revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
     return result;
   });
 }
@@ -2059,7 +2055,6 @@ async function runBulk(
 
   if (succeeded > 0) {
     revalidatePath("/admin/members");
-    revalidatePath("/organizer/members");
   }
 
   return { ok: true, data: { succeeded, failed, outcomes } };
@@ -2578,7 +2573,6 @@ export async function createAccount(input: {
       }
 
       revalidatePath("/admin/members");
-      revalidatePath("/organizer/members");
 
       return {
         ok: true,

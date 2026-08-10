@@ -328,7 +328,7 @@ export async function assignToParty(
     return { ok: false, reason };
   }
 
-  revalidatePath(`/organizer/events/${eventId}/assignments`);
+  revalidatePath(`/admin/events/${eventId}/assignments`);
   return { ok: true };
 }
 
@@ -374,6 +374,6 @@ export async function revokeAssignment(
     return { ok: false, reason };
   }
 
-  revalidatePath(`/organizer/events/${eventId}/assignments`);
+  revalidatePath(`/admin/events/${eventId}/assignments`);
   return { ok: true };
 }

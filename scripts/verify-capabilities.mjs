@@ -39,11 +39,55 @@
  *           comment is not a caller, and counting it as one is how a census
  *           reads unchanged while the thing it counts has moved.
  *
- * The fourth side exists because Phase 34's CAP-02 will fail the production
- * build for a capability mapped to no route. A key that nothing asks for today
- * is that failure arriving early, so it is reported as a WARNING naming the
- * key — Phase 34 owns the decision, and five of the twelve keys gate tables
- * rather than routes.
+ * ── SIDE 4, RE-POINTED BY PLAN 34-16 (D-34-12) ──────────────────────────────
+ *
+ * Side 4 asks ONE question: **does a policy body or a `src/` call site ask for
+ * this key?** It stays a WARNING and not an error.
+ *
+ * It does **NOT** ask: *is this key bound to a route?* That question belongs to
+ * `src/lib/routes/capability-routes.ts` — a total `Record<CapabilityKey, …>`
+ * since plan 34-01 — and it is asserted by `npm run build`, which needs no
+ * database credential. Naming the file matters: a message that says "handled
+ * elsewhere" without saying where sends the next reader looking.
+ *
+ * Why side 4 is not promoted to that gate: turning it into the build gate would
+ * make `npm run build` depend on a **live database**, which is exactly what
+ * D-34-11 avoided so that CAP-02 can hold on a Vercel production build with no
+ * credential.
+ *
+ * FINDING F3 — this is the kind of green that misleads, so it is written down
+ * rather than left to be inferred. Two separate reasons:
+ *
+ *   (a) **The route map IS `src/`.** `capability-routes.ts` lives under `src/`
+ *       and references keys as `CAP.` members, so binding a key to a route now
+ *       makes that key "asked for" **by side 4's own definition** of side SRC.
+ *       A reader who takes a green side 4 as proof that keys are bound to
+ *       routes has the implication backwards: binding produces the green, the
+ *       green does not evidence the binding. Only `npm run build` evidences it.
+ *   (b) **Two keys were already asked for before this phase.**
+ *       `door.supervise` by `src/lib/door/require-operator.ts` and
+ *       `media.upload` by `src/lib/media/may-upload.ts`. Both are
+ *       `scope: "table"` in the map — they gate Route Handlers, not addresses
+ *       (D-34-13) — so side 4 is green for them **because their guards landed,
+ *       not because any route did**.
+ *
+ *   A check that is green for a reason other than the one a reader assumes is
+ *   worse than a red one.
+ *
+ * ── CAP-02 IS A CHAIN, AND ITS FIRST LINK HAS NO AUTOMATION (D-34-12) ────────
+ *
+ *   1. `private.capabilities` ↔ `CAP` — asserted by
+ *      `npm run verify:capabilities`, **which needs a live database**.
+ *   2. `CAP` ↔ routes — asserted by `npm run build`, **which needs no
+ *      credential** (the total `Record` in `capability-routes.ts`).
+ *   3. the map ↔ pages on disk — asserted by `node scripts/verify-routes.mjs`.
+ *
+ * **There is no CI in this repository.** `.github/` is absent and
+ * `package.json` carries no test or CI script. So link 1 runs only when a
+ * person runs it: it is a **written pre-deploy step, not an automation**. A
+ * deployer who assumes the Vercel build covers link 1 is assuming a check that
+ * does not exist. The same three lines are in `capability-routes.ts`, on
+ * purpose — this is the one sentence that has to be found from either end.
  *
  * THE FIFTH SIDE (phase decision D-02, added by plan 43-02):
  *
@@ -1027,7 +1071,11 @@ async function run(target, targetLabel) {
     );
   }
 
-  // ── 4 · keys nobody asks for — a WARNING, named (D-33) ──────────────────
+  // ── 4 · keys nobody asks for — a WARNING, named (D-33; re-pointed by 34-16)
+  //
+  // The message below states the question this side does NOT ask, and names the
+  // file that does ask it. See FINDING F3 in the docblock for why a green here
+  // is green for a reason a reader is likely to guess wrong.
   {
     const asked = new Set([...policyKeys.keys(), ...srcKeys.keys()]);
     const orphans = dbKeys.filter((k) => !asked.has(k));
@@ -1041,15 +1089,22 @@ async function run(target, targetLabel) {
     });
     if (problems.length)
       problems.push(
-        "Phase 34's CAP-02 will fail the production build for a capability mapped to no route. " +
-          'This is that failure, arriving early and cheaply. It is a warning and not a failure ' +
-          'because Phase 34 owns the decision, and because five of the twelve keys gate TABLES ' +
-          'rather than routes.'
+        'WHAT THIS SIDE ASKS: does a policy body or a src/ call site ask for this key? ' +
+          'WHAT IT DOES NOT ASK: is this key bound to a ROUTE? That question lives in ' +
+          'src/lib/routes/capability-routes.ts — a total Record<CapabilityKey, …> since ' +
+          'plan 34-01 — and it is asserted by `npm run build`, which needs no database ' +
+          'credential. Do not read a green here as evidence of a route binding: the map ' +
+          'is itself under src/, so binding a key MAKES it asked-for by this side ' +
+          '(finding F3 in the docblock). This stays a WARNING because promoting it would ' +
+          'make the production build depend on a live database (D-34-11/D-34-12), and ' +
+          'because five of the twelve keys gate TABLES rather than routes — each with its ' +
+          'reason written beside it in that same file.'
       );
     warn(
       '4 · every catalogue key is asked for by a policy or by src/',
       problems,
-      `${dbKeys.length} keys, all reached: ${policyKeys.size} by policy, ${srcKeys.size} by src/`
+      `${dbKeys.length} keys, all reached: ${policyKeys.size} by policy, ${srcKeys.size} by src/ ` +
+        '— asked-for, NOT route-bound; routes are capability-routes.ts + `npm run build`'
     );
   }
 

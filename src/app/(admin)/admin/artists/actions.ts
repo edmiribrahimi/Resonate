@@ -192,7 +192,7 @@ export async function createArtist(formData: FormData) {
     throw new Error(`Failed to create artist: ${error.message}`);
   }
 
-  revalidatePath("/artists");
+  revalidatePath("/admin/artists");
   return { success: true, slug: artist.slug };
 }
 
@@ -235,7 +235,7 @@ export async function updateArtist(artistId: string, formData: FormData) {
     throw new Error(`Failed to update artist: ${error.message}`);
   }
 
-  revalidatePath("/artists");
+  revalidatePath("/admin/artists");
   revalidatePath(`/artists/${artistId}`);
   return { success: true };
 }
