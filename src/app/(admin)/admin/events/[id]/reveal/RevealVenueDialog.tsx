@@ -129,6 +129,8 @@ const REFUSAL_SENTENCE: Record<VenueRevealRefusal, string> = {
     "Nothing was sent. The night was already gone by the moment the act was attempted — somebody removed it while this dialog was open. Reload the page.",
   not_secret:
     "Nothing was sent. This night is not marked as secret, so there is no address to release. This screen and the database disagree about what this night is: reload the page, and if this button is still here afterwards, somebody has changed the night's secret setting.",
+  venue_not_set:
+    "Nothing was sent, and nothing was written down. This night has no venue linked to it, so there is no address to release — free text in the venue field is a name, not an address, and it is not what the public page reads. Link the venue in the form above, save, then come back. The refusal is deliberate: revealing a night with nothing to publish would spend an act that cannot be taken back, and the real address would then become public by itself the moment somebody linked the venue.",
   already_revealed:
     "Nothing was sent. This night has already been revealed. Close this dialog: the panel behind it now says when it happened and who did it, and if anybody is still missing the address the button reads “Send to the N still missing”.",
   not_revealed:

@@ -223,6 +223,53 @@ export type NightRefusal =
       sortOrder: number | null;
       nightTitle: string | null;
     }
+  /**
+   * The **other** side door on the same one-way switch — CR-01, phase 37 review.
+   *
+   * `venue_secret_locked` above closes the checkbox. It does not close the field
+   * beside it, and the field beside it is the one that carries the address:
+   * `venue_id` sits in the same `nightFields`, on the same form, and until now
+   * no guard looked at it at all.
+   *
+   * ── The path this closes, which is a PUBLICATION and not an inconsistency ────
+   *
+   * A secret night is revealed while it carries a placeholder in `venue_text`
+   * and no linked venue: the act is written, the mails leave naming the
+   * placeholder, `venue_revealed_at` is set. Days later somebody completes the
+   * night's record from this very form and links the real venue. Nothing
+   * objected, because `venue_secret` had not changed — and **in that instant**
+   * `public.venue_for_parties` began handing the name, the address and the Maps
+   * link to every entitled reader, and the public page stopped withholding.
+   * No act, no confirmation, no count, no row in `venue_reveal_acts`: asked *who
+   * made this address public*, the trace names the act performed on the
+   * placeholder.
+   *
+   * Changing the venue of an already-revealed night is a **second publication**,
+   * and this repository has one rule about those: they pass through the panel
+   * and leave a row, or they are refused (`venue-secrecy.md`, gate
+   * *irreversibilita'*). The first half of the fix — refusing to reveal a night
+   * with no linked venue at all — lives in
+   * `(admin)/admin/events/[id]/reveal/actions.ts` as `venue_not_set`. Closing
+   * only one of the two moves the hole instead of removing it.
+   *
+   * ── Its own kind, and not a second cause under the sentence above ────────────
+   *
+   * The two refusals send the person to two different places, so they get two
+   * sentences. Collapsing them is the newsletter defect
+   * (`.planning/codebase/CONCERNS.md`) reached through a door this phase built.
+   *
+   * ── The perimeter, same shape as its sibling ─────────────────────────────────
+   *
+   * An UNCHANGED `venue_id` passes: opening the form and saving keeps working.
+   * A night never revealed by hand is untouched by this — its venue may still be
+   * set, changed or cleared from here with no trace, and that residue is the one
+   * already written down for `venue_secret`.
+   */
+  | {
+      kind: "venue_link_locked";
+      sortOrder: number | null;
+      nightTitle: string | null;
+    }
   /** Any other database failure. That night was not written. */
   | { kind: "write_failed"; sortOrder: number | null; nightTitle: string | null; code: string | null };
 
@@ -305,6 +352,17 @@ function nightRefusalSentence(refusal: NightRefusal): string {
         `reveal panel on the sub-event itself: only a master can put the ` +
         `address back behind the secret, and the act is recorded with who did ` +
         `it and when.`
+      );
+    case "venue_link_locked":
+      return (
+        `${where}this sub-event's address has already been revealed, so the ` +
+        `venue it points at cannot be changed from this form. The reason is ` +
+        `not bookkeeping: a different venue here becomes the address on the ` +
+        `public page and in every future mail the instant it is saved, with no ` +
+        `act recorded and nobody named for it — while the mails already sent ` +
+        `keep naming the old one. If the venue is genuinely wrong, a master ` +
+        `takes the night back to secret from the reveal panel first; that act ` +
+        `is recorded, and the address can then be set and revealed again.`
       );
     case "write_failed":
       return `${where}saving this night failed (${refusal.code ?? "no code"}). Nothing was written for it.`;
@@ -791,13 +849,13 @@ export async function updateEvent(
   // falls to the INSERT arm below, and the event silently ends up with its
   // nights duplicated. Refusing here is the only thing between that and an
   // archive nobody can trust.
-  // `venue_secret` and `venue_revealed_at` ride along on the read that was
-  // already happening, rather than in a second query: the guard below needs the
-  // STORED state of both, and a night's id survives an edit (the upsert is by
-  // id), so this read always has the right row to compare against.
+  // `venue_secret`, `venue_id` and `venue_revealed_at` ride along on the read
+  // that was already happening, rather than in a second query: the guards below
+  // need the STORED state of all three, and a night's id survives an edit (the
+  // upsert is by id), so this read always has the right row to compare against.
   const { data: existingParties, error: existingError } = await client
     .from("event_parties")
-    .select("id, format_id, venue_secret, venue_revealed_at")
+    .select("id, format_id, venue_secret, venue_id, venue_revealed_at")
     .eq("event_id", eventId);
 
   if (existingError) {
@@ -820,17 +878,22 @@ export async function updateEvent(
     id: string;
     format_id: string | null;
     venue_secret: boolean | null;
+    venue_id: string | null;
     venue_revealed_at: string | null;
   }[];
   const existingIds = new Set(existingRows.map((p) => p.id));
-  /** The stored secrecy of each night, for the one-way-switch guard below. */
+  /** The stored secrecy of each night, for the one-way-switch guards below. */
   const storedSecrecyByNightId = new Map<
     string,
-    { secret: boolean; revealedAt: string | null }
+    { secret: boolean; venueId: string | null; revealedAt: string | null }
   >(
     existingRows.map((p) => [
       p.id,
-      { secret: p.venue_secret ?? false, revealedAt: p.venue_revealed_at },
+      {
+        secret: p.venue_secret ?? false,
+        venueId: p.venue_id,
+        revealedAt: p.venue_revealed_at,
+      },
     ])
   );
   // What each night ALREADY carries — the exception that keeps an archived
@@ -967,20 +1030,41 @@ export async function updateEvent(
       number: party.number ?? null,
     };
 
-    // ── The side door on a one-way switch, closed before the write ────────────
+    // ── The two side doors on a one-way switch, closed before the write ───────
     //
-    // See `venue_secret_locked` on `NightRefusal` for the whole reasoning,
-    // including the residue this deliberately does NOT cover. Compared against
-    // the STORED value, so a save that does not touch the box goes through: the
-    // refusal is about a CHANGE, never about the night having been revealed.
+    // See `venue_secret_locked` and `venue_link_locked` on `NightRefusal` for
+    // the whole reasoning, including the residue they deliberately do NOT cover.
+    // Both are compared against the STORED value, so a save that touches neither
+    // goes through: each refusal is about a CHANGE, never about the night having
+    // been revealed.
+    //
+    // TWO checks and not one condition with an `||`, because they are two
+    // causes: the checkbox sends the person to the reveal panel, the venue field
+    // sends them to a master who must re-hide first, and one sentence covering
+    // both would be the shared bucket this file exists without.
     const stored = party.id ? storedSecrecyByNightId.get(party.id) : undefined;
+    const alreadyRevealed = stored !== undefined && stored.revealedAt !== null;
+
     if (
+      alreadyRevealed &&
       stored &&
-      stored.revealedAt !== null &&
       (party.venue_secret ?? false) !== stored.secret
     ) {
       const refusal: NightRefusal = {
         kind: "venue_secret_locked",
+        sortOrder: party.sort_order,
+        nightTitle: party.title?.trim() || null,
+      };
+      logNightRefusal(refusal, null);
+      return { success: false, error: nightRefusalSentence(refusal), refusal };
+    }
+
+    // Normalised the same way `nightFields.venue_id` is, and that matters: the
+    // form sends `""` for a cleared select, and comparing a raw `""` against a
+    // stored `null` would refuse a save that changed nothing.
+    if (alreadyRevealed && stored && (party.venue_id || null) !== stored.venueId) {
+      const refusal: NightRefusal = {
+        kind: "venue_link_locked",
         sortOrder: party.sort_order,
         nightTitle: party.title?.trim() || null,
       };

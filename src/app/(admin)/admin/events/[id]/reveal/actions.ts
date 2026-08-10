@@ -179,6 +179,36 @@ export type VenueRevealRefusal =
    */
   | "not_secret"
   /**
+   * The night has **no venue linked**, so there is no address to release —
+   * CR-01, and it is refused HERE, before anything irreversible.
+   *
+   * ── Why this is a server refusal and not only a disabled button ─────────────
+   *
+   * The rule used to live in the panel alone (`VenueRevealPanel.tsx:200-201`),
+   * and a server action is a public endpoint with a convenient signature: the
+   * guard sat on the side of the boundary that does not hold one
+   * (`CLAUDE.md` principle 2, `access-gating.md` gate *RLS-e'-il-confine*). The
+   * panel's guard stays — it is UX, and drawing a live button on a night with
+   * nothing to publish invites the press — but it is no longer the only one.
+   *
+   * ── What it prevents, which is not "an act that publishes nothing" ──────────
+   *
+   * It is worse than a wasted act. A secret night with `venue_id` null and a
+   * placeholder in `venue_text` can be revealed today: the act is written, the
+   * mails leave naming the placeholder, `venue_revealed_at` is set. **Then**
+   * somebody completes the night's record and links the real venue — an
+   * ordinary catalogue edit — and from that instant the address is public to
+   * every entitled reader, with the trace naming the act performed on the
+   * placeholder. The other half of that path is closed in
+   * `(admin)/admin/events/actions.ts`, where `venue_id` is now among the fields
+   * a revealed night cannot change.
+   *
+   * `venue_text` deliberately does NOT satisfy this: free text is not an
+   * address, `public.venue_for_parties` joins `public.venues` on `venue_id`, and
+   * a night with only free text has nothing for the public road to return.
+   */
+  | "venue_not_set"
+  /**
    * D-37-19. The second press gets an **answer**, not silence — and the surface
    * reads *when* and *by whom* from {@link getVenueRevealState}, which is the
    * same place the disabled button gets its sentence.
@@ -321,6 +351,17 @@ export type VenueRevealStateResult =
 interface ResolvedNight {
   party: VenueRevealParty;
   revealedAt: string | null;
+  /**
+   * The linked venue, or `null` — read as its own column and NOT deduced from
+   * the `venues(...)` embed being absent.
+   *
+   * The two happen to agree under the service client, and that is exactly why
+   * deducing would be the fragile version: the day this module reads with a
+   * session instead, an embed a reader is not entitled to comes back **empty
+   * rather than raising**, and the deduction would silently answer "no venue" on
+   * a night that has one. The column answers the question that is being asked.
+   */
+  venueId: string | null;
   /** For `revalidatePath` on the public page, which now depends on the column above. */
   slug: string;
 }
@@ -342,8 +383,8 @@ async function resolveNight(
   const { data, error } = await client
     .from("event_parties")
     .select(
-      "id, event_id, title, date, time, venue_text, venue_revealed_at, " +
-        "events(title, slug), venues(name, address)"
+      "id, event_id, title, date, time, venue_text, venue_id, " +
+        "venue_revealed_at, events(title, slug), venues(name, address)"
     )
     .eq("id", partyId)
     .maybeSingle();
@@ -372,6 +413,7 @@ async function resolveNight(
     date: string;
     time: string;
     venue_text: string | null;
+    venue_id: string | null;
     venue_revealed_at: string | null;
     events: { title: string; slug: string };
     venues: { name: string; address: string | null } | null;
@@ -395,6 +437,7 @@ async function resolveNight(
         venue: row.venues,
       },
       revealedAt: row.venue_revealed_at,
+      venueId: row.venue_id,
       slug: row.events.slug,
     },
   };
@@ -728,7 +771,10 @@ function revalidateReveal(eventId: string, slug: string) {
  *
  * ── The order, which IS the decision ─────────────────────────────────────────
  *
- *   1. gate, shape, belonging, actor;
+ *   1. gate, shape, belonging, actor, **and a venue to release** — see
+ *      `venue_not_set`, which is CR-01 and is checked before anything else that
+ *      costs a round trip, because a night with nothing to publish must not
+ *      reach the writer at all;
  *   2. the count — **people**, `emailMap.size`, not the sum of `tickets` and
  *      `rsvps`, which counts twice whoever holds both;
  *   3. the act. If the writer answers `ok: false`, **nothing is sent** — this is
@@ -766,6 +812,20 @@ export async function revealVenueNow(
   const resolved = await resolveNight(client, eventId, partyId);
   if (!resolved.ok) return resolved;
   const { party, slug } = resolved.night;
+
+  // CR-01 — nothing is revealed that is not there. Refused BEFORE the count and
+  // long before the act: this is the server-side half of a rule that used to
+  // live only in the panel, and the panel is UX (`CLAUDE.md` principle 2).
+  //
+  // The condition is the LINKED VENUE and not `venue_text`, deliberately. The
+  // one public road to an address, `public.venue_for_parties`, joins
+  // `public.venues` on `venue_id`; a night carrying only free text publishes no
+  // address through it, and revealing it would spend the one-way switch on a
+  // placeholder — and then the address would come out later, by itself, the
+  // moment somebody linked the real venue from the edit form.
+  if (resolved.night.venueId === null) {
+    return { ok: false, reason: "venue_not_set" };
+  }
 
   const { total: recipientsIntended, unavailable } =
     await countVenueRevealRecipients(client, party);
