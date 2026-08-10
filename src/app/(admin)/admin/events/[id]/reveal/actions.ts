@@ -1,10 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import {
   countVenueRevealRecipients,
+  revealPartyVenue,
   type VenueRevealFailureKind,
   type VenueRevealParty,
 } from "@/lib/venue-reveal/reveal-party-venue";
@@ -465,5 +467,466 @@ export async function getVenueRevealState(
     lastAct: lastRow
       ? { actorName: lastRow.actor_name, at: lastRow.at, act: lastRow.act }
       : null,
+  };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * The three acts — one writer, one send, and every refusal a value.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** PostgreSQL `invalid_parameter_value`. The writer's two argumental refusals. */
+const INVALID_PARAMETER_VALUE = "22023";
+
+/** The five refusal codes `public.record_venue_reveal_act` returns in its `jsonb`. */
+const WRITER_REFUSALS = [
+  "party_not_found",
+  "not_secret",
+  "already_revealed",
+  "not_revealed",
+  "re_hide_requires_master",
+] as const;
+
+/**
+ * The category of a failed `rpc`, from its **CODE alone**.
+ *
+ * Never from a parsed message: Next redacts a Server Action's message in a
+ * production build, and a category read out of a sentence works in `next dev`
+ * and stops working where it matters. The field that carries the failing row is
+ * not touched — see the file comment.
+ *
+ * Note what is NOT in this switch, and it is the point of the whole design:
+ * `already_revealed`, `not_secret`, `not_revealed`, `re_hide_requires_master`
+ * and `party_not_found` never arrive here. The writer returns them as **values**
+ * precisely so that a refusal about a night is not a PostgREST error object
+ * about a row of `public.event_parties` — a row that carries the address.
+ */
+function classifyWriteError(error: {
+  code?: string | null;
+}): VenueRevealRefusal {
+  switch (error.code) {
+    // `venue_reveal.actor_required`. Practically unreachable: the gate refuses a
+    // caller with no identity, and `resolveActorName` refuses a blank name
+    // before the call. Kept for exactly that reason — the day it comes back, one
+    // of those two guards has stopped working, and this value says so instead of
+    // hiding inside `write_failed`.
+    //
+    // The same code's other producer, `venue_reveal.unknown_act`, cannot happen
+    // here: `p_act` is a literal at all three call sites and never a value from
+    // a request.
+    case INVALID_PARAMETER_VALUE:
+      return "actor_name_missing";
+    default:
+      return "write_failed";
+  }
+}
+
+/** Narrowing by equality against the closed set — an unknown string is never forwarded as a typed value. */
+function asWriterRefusal(
+  value: unknown,
+  partyId: string
+): VenueRevealRefusal {
+  if (
+    typeof value === "string" &&
+    (WRITER_REFUSALS as readonly string[]).includes(value)
+  ) {
+    return value as VenueRevealRefusal;
+  }
+
+  // The writer answered a refusal this module does not know. That means its
+  // contract moved underneath its caller, and saying so is the only way anybody
+  // finds out: `npm run build` cannot compare a TypeScript union with a
+  // PL/pgSQL `RETURN`.
+  console.error(
+    `[venue_reveal.unknown_refusal] night ${partyId}: the writer returned a ` +
+      `reason outside the five this module knows.`
+  );
+  return "write_failed";
+}
+
+/**
+ * The actor's full name, resolved **server-side** from the id the gate produced.
+ *
+ * Never from the request body: otherwise whoever calls chooses the name the
+ * trace will carry, and the trace is the entire point of the act (D-37-18).
+ *
+ * A missing name is refused rather than filled with a placeholder. An act
+ * attributed to «Member» is not attributed, and this record outlives the night
+ * it names.
+ *
+ * The name itself is never logged, and never leaves the database except onto a
+ * staff surface: `.planning/` is tracked and public, and artefacts name roles.
+ */
+async function resolveActorName(
+  client: RevealClient,
+  userId: string
+): Promise<
+  { ok: true; name: string } | { ok: false; reason: VenueRevealRefusal }
+> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    // A read that could not run is NOT a missing name, and the two get
+    // different categories for the same reason everything else here does.
+    console.error(
+      `[venue_reveal.actor_name_read_failed] ${error.code ?? "unknown"} — ` +
+        `${error.message}`
+    );
+    return { ok: false, reason: "write_failed" };
+  }
+
+  const row = data as unknown as { full_name: string | null } | null;
+  const name = row?.full_name?.trim();
+
+  if (!name) {
+    console.error(
+      "[venue_reveal.actor_name_missing] a caller holds venue.reveal and " +
+        "their profile carries no full name. The act was NOT recorded: an " +
+        "unattributed reveal is not a degraded reveal."
+    );
+    return { ok: false, reason: "actor_name_missing" };
+  }
+
+  return { ok: true, name };
+}
+
+/**
+ * The one call to the one writer. All three acts pass through here.
+ *
+ * `p_actor_id` is resolved server-side and passed as an argument: under the
+ * service client `auth.uid()` is null, so the database cannot deduce the author
+ * and must never be told it by the request body.
+ *
+ * Two kinds of failure, and they are not the same thing. A `jsonb` with
+ * `ok: false` is an **expected refusal** and carries its own reason; a non-null
+ * `error` is a **fault**, and its category is read from `error.code`.
+ */
+async function recordAct(
+  client: RevealClient,
+  partyId: string,
+  act: VenueRevealAct,
+  actorId: string,
+  actorName: string,
+  recipientsIntended: number
+): Promise<
+  | { ok: true; revealedAt: string | null }
+  | { ok: false; reason: VenueRevealRefusal }
+> {
+  const { data, error } = await client.rpc("record_venue_reveal_act", {
+    p_party_id: partyId,
+    p_act: act,
+    p_actor_id: actorId,
+    p_actor_name: actorName,
+    p_recipients_intended: recipientsIntended,
+  });
+
+  if (error) {
+    console.error(
+      `[venue_reveal.act_failed] ${act} on night ${partyId}: ` +
+        `${error.code ?? "unknown"} — ${error.message}`
+    );
+    return { ok: false, reason: classifyWriteError(error) };
+  }
+
+  const payload = data as {
+    ok?: unknown;
+    reason?: unknown;
+    revealed_at?: unknown;
+  } | null;
+
+  if (payload === null || typeof payload !== "object") {
+    console.error(
+      `[venue_reveal.act_malformed] ${act} on night ${partyId}: the writer ` +
+        `answered something that is not its documented object.`
+    );
+    return { ok: false, reason: "write_failed" };
+  }
+
+  if (payload.ok !== true) {
+    return { ok: false, reason: asWriterRefusal(payload.reason, partyId) };
+  }
+
+  return {
+    ok: true,
+    revealedAt:
+      typeof payload.revealed_at === "string" ? payload.revealed_at : null,
+  };
+}
+
+/**
+ * Every surface that depends on a column this module just moved.
+ *
+ * The public event page reads `venue_revealed_at` now, so without the
+ * invalidation it keeps serving the previous value for as long as Next decides —
+ * which on this domain means the address appearing minutes late, or a re-hidden
+ * night still showing it. `venue-secrecy.md`, gate *cache e pre-render*.
+ *
+ * All three acts call it, including `completed`, which does not move the
+ * column: it moves the trace and therefore the button's own sentence, and one
+ * function for the three keeps the set from drifting apart act by act.
+ */
+function revalidateReveal(eventId: string, slug: string) {
+  revalidatePath(`/admin/events/${eventId}/edit`);
+  revalidatePath("/events");
+  revalidatePath(`/events/${slug}`);
+}
+
+/**
+ * **Reveal this night's address. Irreversible.** VENUE-02, D-37-01.
+ *
+ * ── One act, and it does BOTH things ─────────────────────────────────────────
+ *
+ * The mail with the address to whoever is entitled, and the address open on the
+ * page for whoever has title. There is no mail-only action and no page-only
+ * action: two one-way switches produce states nobody expects, and by definition
+ * neither of them comes back.
+ *
+ * ── The order, which IS the decision ─────────────────────────────────────────
+ *
+ *   1. gate, shape, belonging, actor;
+ *   2. the count — **people**, `emailMap.size`, not the sum of `tickets` and
+ *      `rsvps`, which counts twice whoever holds both;
+ *   3. the act. If the writer answers `ok: false`, **nothing is sent** — this is
+ *      where the second press stops, with an answer instead of a duplicate mail;
+ *   4. **then** the send. The act is written BEFORE the send and that is
+ *      correct: from the instant `venue_revealed_at` exists the page opens, so
+ *      the address is out whether or not the mail leaves. D-37-12 says the
+ *      night stays marked as revealed and the button stays reachable for the
+ *      missing ones — which is a fact in the data, since a batch that did not
+ *      leave marks nobody;
+ *   5. the invalidation, and the numbers back to whoever pressed.
+ *
+ * ── Why the send is bounded by the instant the act just wrote ────────────────
+ *
+ * `createdBefore` is the reveal instant, so a ticket bought in the milliseconds
+ * between the act and the send is **not** mailed — it sees the address on the
+ * page instead. Unbounded, that window would be a mail-on-purchase path arriving
+ * as a side effect, and that path is explicitly deferred (D-37-08).
+ */
+export async function revealVenueNow(
+  eventId: string,
+  partyId: string
+): Promise<VenueRevealActionResult> {
+  const { userId } = await assertVenueReveal();
+
+  if (!UUID_PATTERN.test(partyId)) {
+    return { ok: false, reason: "invalid_party_id" };
+  }
+
+  const client = getServiceClient();
+
+  const actor = await resolveActorName(client, userId);
+  if (!actor.ok) return actor;
+
+  const resolved = await resolveNight(client, eventId, partyId);
+  if (!resolved.ok) return resolved;
+  const { party, slug } = resolved.night;
+
+  const { total: recipientsIntended, unavailable } =
+    await countVenueRevealRecipients(client, party);
+
+  if (unavailable) {
+    // Refused BEFORE anything irreversible. Recording an act that says it meant
+    // to reach zero people, when the truth is that nobody could find out, would
+    // put a false statement in an append-only trace and open the address with no
+    // mail leaving. The fallback in this domain is the secret.
+    return { ok: false, reason: "recipients_unavailable" };
+  }
+
+  const act = await recordAct(
+    client,
+    partyId,
+    "revealed",
+    userId,
+    actor.name,
+    recipientsIntended
+  );
+  if (!act.ok) return act;
+
+  const sent = await revealPartyVenue(
+    client,
+    party,
+    act.revealedAt ? { createdBefore: act.revealedAt } : undefined
+  );
+
+  revalidateReveal(eventId, slug);
+
+  return {
+    ok: true,
+    // The M of "N of M". The send's own count is a measurement and wins when
+    // there was one; when the recipient read failed AFTER the act the send has
+    // no number, and answering 0 there would say "nobody was entitled" — the
+    // exact sentence `recipients_unavailable` exists to keep separate.
+    recipientsTotal:
+      sent.failureKind === "recipients_unavailable"
+        ? recipientsIntended
+        : sent.recipientsTotal,
+    recipientsSent: sent.recipientsSent,
+    recipientsFailed: sent.recipientsFailed,
+    failureKind: sent.failureKind,
+  };
+}
+
+/**
+ * Send the address to the people the reveal did not reach. D-37-20.
+ *
+ * It does **not** move `venue_revealed_at` — the instant of the reveal is the
+ * instant of the first act and it does not drift — and it does **not** re-send
+ * to anybody already reached: the per-recipient filter is `venue_reveal_sent =
+ * false` and it lives inside the sending module, in one copy.
+ *
+ * It is recorded anyway, and that is D-37-20's whole point: it mails the address
+ * to N more people, so it is exactly as attributable as the first act. A
+ * vocabulary with only two acts would make the second, third and fourth send
+ * invisible while each of them is a publication.
+ */
+export async function sendMissingVenueReveal(
+  eventId: string,
+  partyId: string
+): Promise<VenueRevealActionResult> {
+  const { userId } = await assertVenueReveal();
+
+  if (!UUID_PATTERN.test(partyId)) {
+    return { ok: false, reason: "invalid_party_id" };
+  }
+
+  const client = getServiceClient();
+
+  const actor = await resolveActorName(client, userId);
+  if (!actor.ok) return actor;
+
+  const resolved = await resolveNight(client, eventId, partyId);
+  if (!resolved.ok) return resolved;
+  const { party, revealedAt, slug } = resolved.night;
+
+  // NOT a second verdict on anything the writer decides — it is the precondition
+  // for the bound below. "Who is missing" is measured from the instant somebody
+  // pressed, and without that instant the count would be unbounded and would
+  // mail people D-37-08 says get the page and no mail. The writer refuses this
+  // case too, under its own lock, and would answer the same word.
+  if (revealedAt === null) {
+    return { ok: false, reason: "not_revealed" };
+  }
+
+  const { total: missing, unavailable } = await countVenueRevealRecipients(
+    client,
+    party,
+    { createdBefore: revealedAt }
+  );
+
+  if (unavailable) {
+    return { ok: false, reason: "recipients_unavailable" };
+  }
+
+  if (missing === 0) {
+    // Nobody is missing, so there is no act to record: the trace holds acts, not
+    // presses. This is a success with nothing in it, and it is NOT
+    // `recipients_unavailable` — the number was measured and it is zero.
+    revalidateReveal(eventId, slug);
+    return {
+      ok: true,
+      recipientsTotal: 0,
+      recipientsSent: 0,
+      recipientsFailed: 0,
+      failureKind: "no_recipients",
+    };
+  }
+
+  const act = await recordAct(
+    client,
+    partyId,
+    "completed",
+    userId,
+    actor.name,
+    missing
+  );
+  if (!act.ok) return act;
+
+  const sent = await revealPartyVenue(client, party, {
+    createdBefore: act.revealedAt ?? revealedAt,
+  });
+
+  revalidateReveal(eventId, slug);
+
+  return {
+    ok: true,
+    recipientsTotal:
+      sent.failureKind === "recipients_unavailable"
+        ? missing
+        : sent.recipientsTotal,
+    recipientsSent: sent.recipientsSent,
+    recipientsFailed: sent.recipientsFailed,
+    failureKind: sent.failureKind,
+  };
+}
+
+/**
+ * Take the page back to secret. D-37-22 — **master only, and nothing is unsent.**
+ *
+ * ── What makes this honest, and it is a condition and not a detail ───────────
+ *
+ * The trace is append-only and survives this act: the night keeps saying
+ * *revealed on … by …* after going secret again. That is the constraint the
+ * owner's decision rests on. Without it we would have a page saying one thing
+ * and mails that left saying another.
+ *
+ * So this act sends nothing, un-sends nothing, and touches no column that would
+ * pretend the mails had not gone. The one column it does clear is
+ * `venue_revealed_at`, inside the writer, where the widening of a monotone guard
+ * is declared beside the line that performs it.
+ *
+ * ── The role is NOT decided here ─────────────────────────────────────────────
+ *
+ * `re_hide_requires_master` comes back **from the writer**, which reads the
+ * actor's role from `public.profiles` inside itself. This module does not
+ * re-decide it: two verdicts on one question are two places for them to
+ * disagree, and the one that wins is whichever ran last. `party.manage` does not
+ * reach here either, and it is not an omission — D-37-15: a night's assignment
+ * governs the work of that evening, and the reveal happens before it and does
+ * not undo.
+ */
+export async function reHideVenue(
+  eventId: string,
+  partyId: string
+): Promise<VenueRevealActionResult> {
+  const { userId } = await assertVenueReveal();
+
+  if (!UUID_PATTERN.test(partyId)) {
+    return { ok: false, reason: "invalid_party_id" };
+  }
+
+  const client = getServiceClient();
+
+  const actor = await resolveActorName(client, userId);
+  if (!actor.ok) return actor;
+
+  const resolved = await resolveNight(client, eventId, partyId);
+  if (!resolved.ok) return resolved;
+  const { slug } = resolved.night;
+
+  // Zero recipients, and it is the truth rather than a filler: this act reaches
+  // nobody by construction. The column is `NOT NULL`, so a number has to be
+  // given, and the honest one is the one that says no mail was intended.
+  const act = await recordAct(
+    client,
+    partyId,
+    "re_hidden",
+    userId,
+    actor.name,
+    0
+  );
+  if (!act.ok) return act;
+
+  revalidateReveal(eventId, slug);
+
+  return {
+    ok: true,
+    recipientsTotal: 0,
+    recipientsSent: 0,
+    recipientsFailed: 0,
+    failureKind: "none",
   };
 }
