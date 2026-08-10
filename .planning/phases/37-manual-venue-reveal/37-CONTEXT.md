@@ -51,14 +51,22 @@ nel DISCUSSION-LOG.)*
 
   | Chi | Cosa vede | Da quando |
   |---|---|---|
-  | Chi ha comprato il biglietto | l'indirizzo | **subito, all'acquisto** |
-  | Membro approvato senza biglietto | l'indizio, poi l'indirizzo | **all'apertura della finestra** |
+  | Chi ha **un biglietto o un RSVP** | l'indirizzo | **subito, alla conferma** |
+  | Membro approvato senza nessuno dei due | l'indizio, poi l'indirizzo | **all'apertura della finestra** |
   | Esterno, senza login o non approvato | solo l'indizio | mai |
 
-  Il primo livello e' **gia' il comportamento di oggi**
+  Il primo livello e' **gia' il comportamento di oggi per il biglietto**
   (`venue_reveal_on_purchase`, default `true`, letto da `isVenueVisible:103`).
-  Il terzo pure. **Il secondo e' l'unica novita', ed e' un allargamento**: oggi
-  un approvato senza biglietto non vede l'indirizzo mai, prima della serata.
+  Il terzo pure. Due cose sono nuove:
+  1. **Il livello 2 e' un allargamento** — oggi un approvato senza biglietto non
+     vede l'indirizzo mai, prima della serata.
+  2. **L'RSVP entra nel livello 1**, e oggi non c'e': `isVenueVisible` **non ha
+     alcun ingresso per l'RSVP** — `party.userRsvp` e' recuperato e mai passato
+     (sito di chiamata, `page.tsx:682-696`) — mentre il cron gli manda
+     l'indirizzo come a un titolare
+     (`api/cron/venue-reveal/route.ts:63-68`). Il ramo del livello 1 diventa
+     «ha un biglietto **oppure** un RSVP». *(Decisione del proprietario,
+     2026-08-10: l'RSVP conta come biglietto. Chiude D-37-10.)*
 
 - **D-37-03 — Un gate di casa va riscritto nello stesso commit.**
   `venue-secrecy.md`, gate *autorizzazione per destinatario*, dice: «la
@@ -86,9 +94,10 @@ nel DISCUSSION-LOG.)*
   modello.)* Il cron gira una volta al giorno; la finestra si apre quando si
   apre. Le due cose **non coincidono** e non devono: la piattaforma rivela
   all'istante della finestra, la mail arriva alla prima corsa utile del cron.
-  Esempio misurato — serata sabato 22:00, finestra 24 ore: la pagina apre
-  venerdi' 22:00, la mail parte sabato alle 08:00 italiane
-  (`vercel.json`, `0 6 * * *` UTC). **Dieci ore di scarto, e sono corrette.**
+  Esempio misurato — serata sabato 22:00, finestra 25 ore (il minimo di
+  D-37-06): la pagina apre venerdi' 21:00, la mail parte sabato alle 08:00
+  italiane (`vercel.json`, `0 6 * * *` UTC). **Undici ore di scarto, e sono
+  corrette.**
   L'oggetto della mail resta `Venue Revealed` — decisione del proprietario,
   presa dopo che l'alternativa (riscriverla come promemoria) era stata proposta.
 
@@ -99,21 +108,38 @@ nel DISCUSSION-LOG.)*
   → la finestra apre sabato alle 16, la corsa delle 08:00 e' gia' passata → la
   mail arriva domenica mattina. Chi fa login vede; chi aspetta la mail resta a
   casa.
-  **Conseguenza da leggere accanto alla frequenza del cron:** con un cron
-  giornaliero il minimo consentito e' **24 ore**, che e' anche il default
-  attuale — cioe' ogni valore piu' stretto diventa illegale. Alzare la frequenza
-  del cron e allentare questo vincolo sono **la stessa manopola**. Il piano
-  Vercel decide quale numero si puo' scrivere qui.
+  **Il numero, ora che il piano e' noto: minimo 25 ore.** Non 24. Il piano e'
+  **Hobby** (D-37-07), quindi il cron gira una volta al giorno **con una
+  precisione di ±59 minuti**: due corse consecutive possono distare fino a
+  **24h59m**. Una finestra di 24 ore non garantisce quindi di contenere una
+  corsa — c'e' un caso di bordo reale in cui la corsa del giorno cade appena
+  **prima** che la finestra si apra, e la successiva cade **dopo l'inizio della
+  serata**. Il default attuale e' **24**: e' **sotto il minimo sicuro**, e va
+  alzato o il vincolo va imposto a 25.
+  *(Che il livello 2 riveli alla finestra degrada il danno — chi fa login vede
+  comunque — ma non lo elimina: chi aspetta la mail resta senza. Vedi
+  `time-and-scheduling.md`, gate «la finestra di un cron copre il proprio
+  intervallo».)*
 
-- **D-37-07 — La frequenza del cron, e cosa la limita.** Documentazione Vercel
-  verificata alla fonte il 2026-08-10 (pagina aggiornata 2026-07-15): **Hobby →
-  una volta al giorno, precisione ±59 minuti; Pro ed Enterprise → una volta al
-  minuto, precisione al minuto**; 100 cron per progetto su tutti i piani. Su
-  Hobby un'espressione piu' frequente **fallisce al deploy**, non a runtime.
-  Il progetto ha oggi **4 cron giornalieri**, configurazione valida su entrambi
-  i piani: **non discrimina**. `.vercel/project.json` porta un `orgId` con
-  prefisso `team_`, che e' un indizio di Pro/Enterprise, **non una prova**.
-  **Da confermare prima di scrivere un'espressione cron piu' fitta.**
+- **D-37-07 — Il piano e' Hobby, e il cron non si puo' infittire.**
+  *(Confermato dal proprietario il 2026-08-10.)* Documentazione Vercel
+  verificata alla fonte lo stesso giorno (pagina aggiornata 2026-07-15):
+
+  | Piano | Cron per progetto | Intervallo minimo | Precisione |
+  |---|---|---|---|
+  | **Hobby** ← questo progetto | 100 | **una volta al giorno** | **±59 min** |
+  | Pro / Enterprise | 100 | una volta al minuto | al minuto |
+
+  Un'espressione piu' frequente **fallisce al deploy**, non a runtime: non e'
+  una cosa che si scopre in produzione, ma non e' nemmeno una cosa che si prova
+  in locale. **Non scrivere espressioni sotto il giorno.**
+
+  **Conseguenza di prodotto, non tecnica:** su Hobby il bottone manuale **non e'
+  un'eccezione, e' il percorso affidabile**. Il cron puo' arrivare fino a un
+  giorno dopo l'apertura della finestra, e nessuno se ne accorge — non esiste
+  error tracking. Chi pianifica deve trattare il percorso manuale come primario
+  nel disegno della superficie, non come un bottone di servizio nascosto in
+  fondo alla pagina.
 
 - **D-37-08 — Chi acquista dopo la rivelazione lo vede in pagina, senza mail.**
   Nessun invio all'acquisto viene costruito in questa fase. La colonna
@@ -131,14 +157,16 @@ nel DISCUSSION-LOG.)*
   nuovo lo rende molto piu' facile da violare. **Requisito di verifica di fase**,
   non solo di implementazione.
 
-- **[APERTO] D-37-10 — L'RSVP: come un biglietto o come un membro senza
-  biglietto?** Su una serata a RSVP **nessuno ha un biglietto**, quindi con la
-  seconda lettura non vede subito nessuno, nemmeno chi ha dichiarato che viene —
-  mentre il cron gli manda l'indirizzo come a un titolare
-  (`api/cron/venue-reveal/route.ts:63-68`). Oggi `isVenueVisible` **non ha alcun
-  ingresso per l'RSVP**: `party.userRsvp` e' recuperato e mai passato
-  (sito di chiamata, `page.tsx:682-696`). **Domanda posta al proprietario, non
-  ancora chiusa.** Non pianificare il ramo del livello 2 senza la risposta.
+- **D-37-10 — L'RSVP conta come un biglietto: vede subito.** *(Decisione del
+  proprietario, 2026-08-10 — chiusa.)* Su una serata a RSVP **nessuno ha un
+  biglietto**: con la lettura opposta non avrebbe visto subito nessuno, nemmeno
+  chi ha dichiarato che viene, mentre il cron gli manda comunque l'indirizzo
+  come a un titolare. La decisione **elimina un'asimmetria invece di aggiungerne
+  una**: dopo, pagina e mail parlano dello stesso insieme di persone.
+  Conseguenza sul codice: `isVenueVisible` acquisisce un ingresso per l'RSVP che
+  oggi non ha, e il ramo del livello 1 diventa «biglietto **oppure** RSVP».
+  **Non e' un extra: e' il difetto preesistente che questa decisione rende
+  obbligatorio chiudere.**
 
 - **D-37-11 — Nessun limite di anticipo.** Il freno e' la conferma, non un
   orario. Un tetto tecnico verrebbe aggirato spostando la finestra automatica —
@@ -434,6 +462,11 @@ Deciso da chi pianifica, senza tornare dal proprietario:
 - **Registro cronologico di tutte le rivelazioni manuali** — scartato a favore
   della traccia sulla serata (D-37-17). Una seconda superficie sarebbe comunque
   un elenco di indirizzi con una data accanto, da proteggere di suo.
+- **Uno scheduler diverso da Vercel Cron**, se un giorno servisse una finestra
+  piu' stretta di 25 ore. Su Hobby il limite e' del piano, non del codice: le
+  strade sono `pg_cron` su Supabase (gia' nello stack) o un pinger esterno, e
+  ognuna sposta un percorso di rivelazione fuori da Vercel — quindi e' una
+  decisione di architettura, non un'impostazione. **Fuori dalla fase 37.**
 
 ### Reviewed Todos (not folded)
 

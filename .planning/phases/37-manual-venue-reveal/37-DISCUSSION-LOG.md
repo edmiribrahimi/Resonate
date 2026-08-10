@@ -305,3 +305,15 @@ membro senza biglietto (D-37-10). Domanda posta, non ancora chiusa.
 
 **Non ancora noto:** il piano Vercel, che decide se la finestra puo' scendere
 sotto le 24 ore (D-37-06, D-37-07).
+
+### Le due risposte che chiudono la discussione (2026-08-10)
+
+| Domanda | Risposta del proprietario | Effetto |
+|---|---|---|
+| L'RSVP conta come biglietto o come membro senza biglietto? | **Come biglietto — vede subito** | Chiude D-37-10. Obbliga a dare a `isVenueVisible` l'ingresso RSVP che oggi non ha |
+| Piano Vercel | **Hobby** | Chiude D-37-07. Cron giornaliero, precisione ±59 min, nessuna espressione piu' fitta. La finestra minima diventa **25 ore**, non 24 — e 24 e' il default attuale |
+
+**Conseguenza non chiesta ma da registrare:** su Hobby il percorso manuale
+smette di essere un'eccezione e diventa il percorso affidabile. Il cron puo'
+arrivare fino a un giorno dopo l'apertura della finestra, e senza error tracking
+nessuno se ne accorge.
