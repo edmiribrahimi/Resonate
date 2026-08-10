@@ -216,16 +216,33 @@ export async function updateVenue(venueId: string, formData: FormData) {
     updates.photo_url = photoUrl;
   }
 
-  const { error } = await supabase
+  // `.select("slug").single()` is new, and it buys two things at once.
+  //
+  // The address to revalidate: the profile page left `(public)` for
+  // `(admin)/admin/(work)/venues/[slug]` (D-37-23, plan 37-08), and it is keyed
+  // by SLUG. The call this replaces passed `/venues/${venueId}` — an id where a
+  // slug belongs, so it named a path no route has ever served, before or after
+  // the move. It was a no-op wearing the face of a cache invalidation, and
+  // `npm run verify:routes` only started saying so once `/venues/[slug]` left
+  // the public allow-list.
+  //
+  // And a refusal that used to be silent: `.update().eq()` with no matching row
+  // returns no error, so an update blocked by RLS or aimed at a deleted venue
+  // reported `{ success: true }` and changed nothing. `.single()` turns that
+  // into `PGRST116` and a throw. This repository has no error tracking
+  // (`meta-gates.md`): a write that quietly does nothing reaches nobody.
+  const { data: updated, error } = await supabase
     .from("venues")
     .update(updates)
-    .eq("id", venueId);
+    .eq("id", venueId)
+    .select("slug")
+    .single();
 
   if (error) {
     throw new Error(`Failed to update venue: ${error.message}`);
   }
 
   revalidatePath("/admin/venues");
-  revalidatePath(`/venues/${venueId}`);
+  revalidatePath(`/admin/venues/${updated.slug}`);
   return { success: true };
 }

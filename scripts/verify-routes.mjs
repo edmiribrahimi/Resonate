@@ -141,7 +141,13 @@ const PUBLIC_ALLOW = [
   ["/events", "the public event listing — src/app/(public)/events/page.tsx, ungated"],
   ["/events/[slug]", "the public event page — src/app/(public)/events/[slug]/page.tsx, ungated"],
   ["/artists/[slug]", "the public artist page — src/app/(public)/artists/[slug]/page.tsx, ungated"],
-  ["/venues/[slug]", "the public venue page — src/app/(public)/venues/[slug]/page.tsx, ungated"],
+  // `/venues/[slug]` was here until plan 37-08. The page it named moved to
+  // `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx` (D-37-23) and is now a
+  // declared address under `organizer.access`, so it is covered by the map and
+  // has no business on a list of things the map deliberately does not gate.
+  // Leaving the entry would have been the exact defect the docblock above warns
+  // about: an allow-list declaring public an address no file serves — a check
+  // turned into a rubber stamp.
   ["/tickets/[id]", "a member's own ticket — src/app/(public)/tickets/[id]/page.tsx, gated by ownership in the page, not by a route rule"],
 ];
 

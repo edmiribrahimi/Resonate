@@ -1,29 +1,86 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
-import MobileNav from "@/components/layout/MobileNav";
+import { notFound, redirect } from "next/navigation";
 import EditVenueButton from "@/components/venues/EditVenueButton";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
-import type { UserRole, UserStatus } from "@/types/database";
+import { CAP } from "@/lib/capabilities/keys";
 
+/**
+ * The venue profile — moved out of `(public)` (D-37-23, plan 37-08).
+ *
+ * ── What moved, and what did NOT ─────────────────────────────────────────────
+ *
+ * The owner's decision: *«la pagina delle venue puo' solo vederla la produzione.
+ * La pagina delle venue non e' pubblica»*. This file used to be
+ * `src/app/(public)/venues/[slug]/page.tsx` and served `/venues/<slug>` to
+ * anybody, signed in or not. It now serves `/admin/venues/<slug>`.
+ *
+ * **This closes a web ADDRESS, not a data path** (`CLAUDE.md` principio 2: the
+ * route group picks where a request lands, RLS decides which rows come back).
+ * The anonymous read of `public.venues` is closed by a different piece of work
+ * in a different plan — the migration `20260810161000_venues_read_narrowed.sql`
+ * (plan 37-02), which drops `venues_select_public` (`using (true)`) and leaves
+ * `venues_select_staff` as the only SELECT arm. Believing that moving this file
+ * closed the address is research pitfall P3, and it is written down because it
+ * is the mistake this move invites.
+ *
+ * ── Reachability is the map's answer, never this directory's ─────────────────
+ *
+ * `admin` in the URL is an address, not an authorisation
+ * (`nextjs-architecture.md`, gate *il gruppo non autorizza*). What decides is the
+ * row `"/admin/venues/[slug]"` under `CAP.ORGANIZER_ACCESS` in
+ * `src/lib/routes/capability-routes.ts`, next to its sister `"/admin/venues"` —
+ * one entry read by the middleware, by the guard below and by the navigation, so
+ * the three cannot disagree.
+ *
+ * ⚠️ `next build` would NOT have caught a missing row here: the backward
+ * assertion covers only STATIC routes, and this one is dynamic
+ * (`capability-routes.ts:60-77`). The check that sees it is
+ * `npm run verify:routes`, which censuses `page.tsx` files from disk.
+ *
+ * ── R-WORK-ROUTES ────────────────────────────────────────────────────────────
+ *
+ * Only `page.tsx` and `loading.tsx` live under `(work)`. `EditVenueButton` stays
+ * at `src/components/venues/` and the server actions it calls stay at
+ * `src/app/(admin)/admin/venues/actions.ts`; both are imported by absolute
+ * specifier.
+ *
+ * `MobileNav` is NOT mounted here: `(work)/layout.tsx` mounts it — and `StaffNav`
+ * — once for every page in the group (D-34-07). The public version of this file
+ * mounted its own; keeping that would have drawn two.
+ *
+ * ── The reader and the rows: the two sets coincide, measured ─────────────────
+ *
+ * This page reads `public.venues` with the caller's session. Once the narrowing
+ * migration is applied the only granting arm is `venues_select_staff`, which asks
+ * `staff.manage` (`20260810161000_venues_read_narrowed.sql:236-242`), while the
+ * gate below asks `organizer.access`. Different keys — so the question was asked
+ * rather than assumed, and plan 37-02 measured it against
+ * `20260807000000_capability_model.sql:390-423`: the roles holding
+ * `organizer.access` (master, organizer) are **exactly** those holding
+ * `staff.manage`. Had they diverged, this page would open and render an empty
+ * card — no error, no log, nothing for anyone to notice — which is the worst
+ * available failure and the reason the check is written down instead of trusted.
+ */
 export default async function VenuePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  // Role and status come from the session, not from a request header.
-  //
-  // NOTHING below reads either value to decide what is shown about the venue.
-  // `venue.address` and `venue.google_maps_url` render on the same condition
-  // they always did — the field being non-empty — for every visitor including
-  // an anonymous one, and this conversion does not touch that condition.
-  // `venue_reveal_sent` is a one-way switch (`venue-secrecy.md`): it lives on
-  // `tickets` / `rsvps`, is not read here, and nothing here can trip it.
-  const { role, status } = await getAccessContext();
+  // Resolved once by `(work)/layout.tsx` and `cache()`-scoped per request, so
+  // this second ask costs no round trip. The page keeps its own guard: the
+  // middleware and the page give the same verdict because they read the same
+  // entry (D-34-09).
+  const { capabilities, role } = await getAccessContext();
+
+  if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
+    redirect("/dashboard");
+  }
+
+  const supabase = await createClient();
 
   // Fetch venue
   const { data: venue } = await supabase
@@ -38,13 +95,23 @@ export default async function VenuePage({
 
   // Fetch published events where at least one party has this venue_id.
   //
-  // This filter is a page-level MITIGATION, not a fix. `meta-gates.md` is
-  // explicit that the security boundary is RLS, never a page: the rows dropped
-  // below stay readable outside this page, so nothing here makes them private.
-  // The real fix is the RLS narrowing on `event_parties` scheduled for phase
-  // 37; this only stops the public venue page from putting a still-secret
-  // party's event next to this venue's address. Calling it a fix is how the
-  // real fix stops happening.
+  // This filter is a page-level withholding rule, and it STAYS after the move.
+  // `meta-gates.md` is explicit that the security boundary is RLS, never a page:
+  // the rows dropped below stay readable to whoever else the policies admit, so
+  // nothing here makes them private. What changed is only that the remedy this
+  // comment used to describe as future work now exists as written code — the
+  // narrowing of `public.venues` in
+  // `supabase/migrations/20260810161000_venues_read_narrowed.sql` (plan 37-02).
+  // Written, not yet deployed: at the time of writing only the sibling migration
+  // `20260810160000_manual_venue_reveal.sql` is applied in production, so
+  // `venues_select_public` (`using (true)`) is still in force there.
+  //
+  // The filter survives the narrowing for a reason the narrowing does not cover:
+  // the reader of THIS page is entitled to the venue catalogue, which is not the
+  // same as being entitled to a particular night at it. Putting a still-secret
+  // party's event next to this venue's address would hand out the pairing that
+  // `venue-secrecy.md` exists to withhold, and entitlement to an address is
+  // per-ticket and per-RSVP, never per-venue.
   //
   // Predicate: a party at THIS venue withholds its event iff
   //   venue_secret === true && venue_reveal_email_sent !== true
@@ -114,11 +181,14 @@ export default async function VenuePage({
   return (
     <div className="min-h-dvh pb-24">
       <div className="px-6 pt-6">
+        {/* Back to the sister listing, not to the public events index: this page
+            is reached from `/admin/venues` now, and `/events` would send a
+            member of production out of the work surface. */}
         <Link
-          href="/events"
+          href="/admin/venues"
           className="mb-6 inline-flex items-center text-sm text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80"
         >
-          &larr; Back to events
+          &larr; Back to venues
         </Link>
 
         {/* Venue header */}
@@ -142,28 +212,29 @@ export default async function VenuePage({
           </h1>
 
           {/* Edit affordance for master/organizer.
-              The predicate is deliberately UNCHANGED — only its source moved.
+              The predicate is deliberately UNCHANGED by the move.
 
               It decides whether a button is DRAWN, and drawing is not
               protecting: `access-gating.md`, gate *coerenza
               navigazione/permessi*, requires every hidden entry to have its
               own server-side check. This one does. The modal calls
               `updateVenue`, which re-checks the catalogue-manage capability
-              inside itself at `src/app/(admin)/admin/venues/actions.ts:198`
-              (re-measured 2026-08-09, after the module moved out of the
-              organizer tree), and the write is refused again by RLS —
-              `venues_update_organizer`
+              inside itself at `src/app/(admin)/admin/venues/actions.ts:198`,
+              and the write is refused again by RLS — `venues_update_organizer`
               asks the catalogue-manage capability
               (`supabase/migrations/20260807010000_policies_to_capabilities.sql:414-417`),
               which is granted with `requires_approved = true`
               (`20260807000000_capability_model.sql:399-400`).
 
-              So the button's predicate is WIDER than the write it leads to: a
-              PENDING organizer sees it, the action lets them through, and RLS
-              stops them. Narrowing the button to the capability would be an
-              improvement — and improving a verdict is still changing one,
-              which CAP-05 criterion 4 forbids in this phase. Phase 34
-              (STAFF-03) owns both ends and changes them together. */}
+              So the predicate is WIDER than the write it leads to: a PENDING
+              organizer sees the button, the action lets them through, and RLS
+              stops them. The move does not narrow it and does not widen it —
+              `organizer.access` is held by master and organizer only, so
+              everybody who now reaches this page already satisfied the role
+              test. Narrowing the button to the capability is a verdict change
+              and belongs to whoever owns both ends of it; leaving a role test
+              that is currently implied costs nothing and keeps the diff of this
+              plan to the address. */}
           {(role === "master" || role === "organizer") && (
             <EditVenueButton venue={venue} />
           )}
@@ -252,11 +323,6 @@ export default async function VenuePage({
           </div>
         )}
       </div>
-
-      <MobileNav
-        role={role as UserRole | null}
-        status={status as UserStatus | null}
-      />
     </div>
   );
 }
