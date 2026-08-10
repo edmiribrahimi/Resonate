@@ -71,7 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 33: Server Data-Access Layer** - Identity and capability resolved from the session in one server-only place; no surface trusts a request header (completed 2026-08-07)
 - [x] **Phase 43: Role Model & Account Creation** - The fourth role grants entry and nothing else; master and organizer create accounts, and every act that changes who someone is is recorded with its author (executed 2026-08-08 — **verification `human_needed`: nothing deployed, 16/16 manual checks pending**, see `43-VERIFICATION.md`)
 - [x] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit (completed 2026-08-09)
-- [ ] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched
+- [x] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched (completed 2026-08-10)
 - [ ] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format
 - [ ] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
@@ -405,7 +405,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 34-17-PLAN.md — The flip to 308, both redirect walks, the nine written procedures, and `34-VERIFICATION.md`
+- [x] 34-17-PLAN.md — The flip to 308, both redirect walks, the nine written procedures, and `34-VERIFICATION.md`
 
 ### Phase 36: Formats & Series Numbering
 
@@ -522,7 +522,7 @@ Plans:
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
-| 34. One Work Surface | 16/17 | In Progress|  |
+| 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
