@@ -50,6 +50,20 @@ These are not style preferences. Each one has a consequence that cannot be undon
    `uppercase tracking-widest` — copying those classes onto a format chip breaks
    the brand in a way that ships to every visitor.
 
+   **Enforced, not merely stated — added 2026-08-10 after the UI check.**
+   `text-transform` is an **inherited** property, so "we did not add `uppercase`"
+   is not a guarantee: it holds only until `FormatMarker` is mounted inside an
+   ancestor that applies it — an admin table with an uppercase header is the
+   obvious one, and this phase adds an admin surface (S5). The element that
+   renders the name therefore carries **`normal-case` explicitly**, on the
+   component itself, so the invariant survives its own context instead of
+   depending on every future parent.
+
+   This is DS-06 (`re:sonate` written with a normal e everywhere outside the
+   logo) and it is the one rule in this spec whose violation is **published to
+   every visitor at once**. A rule that can only be kept by remembering it is
+   not kept.
+
 4. **Colour is never the only channel.** Every format marker carries its **name
    as text**. The swatch is redundant decoration. Active state is carried by
    `aria-current`, background and ink — never by hue alone.
@@ -185,6 +199,14 @@ carries the format name as text and its state as `aria-current`. Recording the
 number here so that the next person does not "discover" it and raise the opacity
 — raising it would weaken the off/on distinction, which *is* load-bearing.
 
+**The composition ground, recorded so the figure stays checkable — added
+2026-08-10 after the UI check.** The range above is composited over **`#141414`**
+(`--card`). An independent recomputation over `#0a0a0a` (`--background`, which is
+what an *unselected* chip actually sits on, per the anatomy table) gives
+**1.85–2.64:1**. Both fail 3:1, so the decision is unchanged — but the two
+grounds give two slightly different numbers, and without naming which one was
+used the figure cannot be reproduced. **Whoever re-measures: state the ground.**
+
 ### The palette offered by the catalogue colour picker
 
 Six flat colours. Drawn from the sunset scale already committed publicly.
@@ -242,6 +264,21 @@ The filter row sits **above** the tab row and **outside** the swipeable
 container. That placement is the semantics: the format filter applies to both
 halves of the time axis, the tab picks which half. Putting it inside the swipe
 container would translate it with the panels.
+
+**Focal point, stated rather than inferred — added 2026-08-10 after the UI
+check.** The visual anchor of this screen is **the event list itself**, not the
+controls above it. The h1, the filter row and the tab row form one quiet header
+block: they are navigation, and they read as navigation — 12px labels, no fill
+except on the selected chip, no colour except the swatches. **A visitor who
+never touches a filter must lose nothing**, which is why the default state is
+*every format shown* and no chip is pre-selected.
+
+The consequence for whoever implements it: **the filter row must not grow to
+compete with the list.** It stays one line that scrolls horizontally rather than
+wrapping to two, its chips do not gain icons, and it acquires no heading of its
+own. Four chips plus "All" is the design load; if the catalogue ever holds
+enough formats that the row wants a second line, that is a signal to revisit
+this surface — not to let it wrap.
 
 **The filter row**
 
@@ -556,7 +593,7 @@ monotone.**
 
 | Component | New? | Where | Notes |
 |---|---|---|---|
-| `FormatMarker` | new | card (S2), night detail (S3), catalogue row (S5) | swatch + name. Takes `{ name, color }` as props — **no format constant inside it** (D-36-12). `aria-hidden` swatch. |
+| `FormatMarker` | new | card (S2), night detail (S3), catalogue row (S5) | swatch + name. Takes `{ name, color }` as props — **no format constant inside it** (D-36-12). `aria-hidden` swatch. **Carries `normal-case` explicitly on the name element** — see §0 rule 3: it is mounted inside an admin surface, where an uppercase ancestor is plausible, and `text-transform` inherits. |
 | `FormatFilterRow` | new | `/events` (S1) | Server-rendered from the catalogue. Anchors, not buttons. Emits no count. |
 | `FormatSelect` / `SeriesSelect` / `SeriesNumberField` | new | `EventForm.tsx` (S4) | Native controls, existing input styling. |
 | `ColorSwatchPicker` | new | catalogue modal (S5) | `radiogroup`, six flat options, no gradient, no free input. |
