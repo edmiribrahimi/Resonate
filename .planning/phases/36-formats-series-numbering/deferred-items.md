@@ -213,3 +213,81 @@ e' l'unica di questo elenco che non aspetta piu' nessuno.
 server di sviluppo: non dice niente su un dispositivo vero, e **lo swipe non e'
 stato fatto da un dito.** Le quattro righe del catalogo non sono state toccate:
 nessuno ha ancora aperto quelle superfici.
+
+### Aggiornamento del 2026-08-10 — le quattro righe rimanenti sono state guardate
+
+Il piano 36-09 ha montato i tre componenti di 36-08 piu' il proprio
+`RetireFormatDialog`, ha aperto `/admin/formats` a 390x844 con una sessione
+reale, e ha **eseguito le sei procedure manuali** invece di riscriverle. Le
+prove stanno in `36-09-SUMMARY.md`, sezione *Cosa e' stato guardato*.
+
+**Il caso specifico e' chiuso, e l'esito e' quello giusto.** La mappa dei colori
+presi **esclude** i format ritirati: nel selettore la tinta neutra risulta
+libera e senza barra, mentre le quattro tenute da format attivi portano la barra
+e il nome di chi le tiene. Se la mappa fosse stata costruita sull'elenco
+completo, quella sesta tinta sarebbe stata rifiutata pur essendo libera — ed e'
+esattamente cio' che nessuno strumento qui avrebbe intercettato.
+
+**Restano tre affermazioni non provate**, elencate nel SUMMARY: il render e'
+headless e sul server di sviluppo, **nessun dito ha toccato un bersaglio da
+44 px su un telefono vero**, e il rifiuto `color_taken` sul ripristino non e'
+stato **prodotto** — vedi D8, che ne spiega la ragione strutturale.
+
+---
+
+## D7 — Il middleware scrive `?redirect=`, la pagina di login legge `?next=`
+
+**Rilevato da:** il piano 36-09, camminando il rifiuto del proprio indirizzo.
+**Va chiuso da:** un piano successivo — **non e' della fase 36**, che non lo ha
+ne' introdotto ne' peggiorato.
+**File:** `src/lib/supabase/middleware.ts:466` e
+`src/app/(auth)/login/page.tsx:11`.
+
+**Il fatto, misurato.** Una richiesta non autenticata a `/admin/formats`
+risponde `307` verso
+`/login?redirect=%2Fadmin%2Fformats`. La pagina di login legge invece
+`searchParams.get("next")`. I due nomi non coincidono, quindi la destinazione
+viaggia e **non viene raccolta**: dopo il login si finisce sul default, non
+sull'indirizzo che si stava cercando.
+
+**Cosa NON e'.** Non e' un buco d'accesso: il rifiuto avviene e avviene
+correttamente. Si perde il ritorno, non la guardia.
+
+**Perche' non e' stato riparato qui.** Le due righe sono **piu' vecchie di
+questa fase** e valgono per **ogni** indirizzo protetto, non solo per quello che
+questo piano ha aggiunto. E il parametro con cui si torna dopo un login e' un
+percorso di redirect parametrico: `access-gating.md`, gate *redirect validato*,
+lo tratta come materia d'accesso, e la allow-list in
+`src/app/api/auth/callback/route.ts` e' scritta attorno a `next`. Cambiare il
+nome da una parte sola sposta il difetto invece di chiuderlo.
+
+---
+
+## D8 — Il rifiuto `color_taken` sul ripristino non e' producibile oggi
+
+**Rilevato da:** il piano 36-09, provando a produrlo.
+**Va chiuso da:** chiunque crei un secondo format ritirato, o resta debito
+dichiarato.
+**File:** `src/app/(admin)/admin/formats/RetireFormatDialog.tsx`, il ramo
+`color_taken`.
+
+**Il fatto.** L'unico format ritirato esistente porta il colore `#262626`, che
+**non e' fra i sei offerti** dal selettore. Quindi nessun format creato o
+modificato da questa superficie puo' prenderlo, e `restoreFormat` su quella riga
+non puo' essere rifiutata per collisione di colore: riuscirebbe.
+
+**Cosa e' provato lo stesso.** Che la superficie **legge** correttamente la
+condizione: la riga ritirata non mostra la frase *"Its colour is now held by …"*
+proprio perche' quella tinta e' libera, ed e' la stessa mappa che il selettore
+usa e che e' stata verificata dall'altro lato.
+
+**Cosa non e' provato.** Che la frase del rifiuto compaia. Produrla avrebbe
+richiesto di creare un format su una delle sei tinte, ritirarlo e prendergli il
+colore — cioe' **tre scritture su produzione**, una delle quali crea una riga
+che questa superficie, per costruzione, non puo' rimuovere. Il piano si e'
+fermato prima: un verde fabbricato costa piu' di un debito dichiarato.
+
+**Nota di contorno, dallo stesso giro.** `#262626` non e' fra i sei anche in un
+secondo senso: sul fondo della card e' praticamente invisibile. La riga resta
+leggibile **perche' porta la parola `Retired` come testo** — cioe' e' la regola
+4 che funziona, osservata mentre serviva.
