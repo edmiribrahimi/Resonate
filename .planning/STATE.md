@@ -4,13 +4,13 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Completed 36-06-PLAN.md
-last_updated: "2026-08-10T14:28:02.016Z"
+last_updated: "2026-08-10T14:36:12.082Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 96
+  completed_plans: 97
   percent: 46
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
-Plan: 4 of 14
+Plan: 5 of 14
 Status: Ready to execute
 
 Note:
@@ -84,7 +84,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 92%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -110,6 +110,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: 36-06: EventParty.number e' number | null — la migration mette NOT NULL su due colonne di tre; una notte che e' l'atto di un'altra notte non ha progressivo
 - [Phase 36]: 36-06: /admin/formats legato a catalogue.manage (non organizer.access): requires_approved sposta il rifiuto all'indirizzo invece che su ogni bottone
 - [Phase 36]: 36-06: la tab Formats rimandata al piano che crea la pagina (36-09) — StaffTab.href e' Route, un indirizzo statico entra nell'unione generata solo dopo che una page.tsx lo serve
+- [Phase 36]: 36-04: la sonda di scrittura risolve il formato della serie come referenza derivata privilegiata, non come sotto-select — catalogue.manage pretende approved, e quattro celle oggi ok:1 sarebbero diventate 23502
+- [Phase 36]: 36-04: punto container catturato. 966 celle di scrittura e 322 di lettura preesistenti IDENTICHE, zero 23502; sonde di vincolo che rifiutano come dichiarato **3/3**, era 1/1. `party_series_select_published` non e' mai stato esercitato come concessione: il container non pubblica eventi
 
 ## Accumulated Context
 
@@ -137,7 +139,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T14:28:02.012Z
+**Last session:** 2026-08-10T14:36:07.000Z
 **Stopped at:** Completed 36-06-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.

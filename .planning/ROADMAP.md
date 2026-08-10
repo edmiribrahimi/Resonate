@@ -435,7 +435,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 36-04-PLAN.md — the harness keeps measuring: widened probe payloads, the two new tables seeded first, and the two constraint probes that make FMT-03 automated
+- [x] 36-04-PLAN.md — the harness keeps measuring: widened probe payloads, the two new tables seeded first, and the two constraint probes that make FMT-03 automated
 - [x] 36-06-PLAN.md — the contracts: the two types, the capability branch change that opens the catalogue address, and `FormatMarker` with its explicit `normal-case`
 
 **Wave 4** *(blocked on Wave 3)*
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 4/14 | In Progress|  |
+| 36. Formats & Series Numbering | 5/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
