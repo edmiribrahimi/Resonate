@@ -7,7 +7,7 @@ import { slugify } from "@/utils/slugify";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
-import { menuCloseInstant } from "@/utils/datetime";
+import { menuCloseInstant, DEFAULT_VENUE_REVEAL_HOURS } from "@/utils/datetime";
 import {
   assertEventOwnership,
   assertStaffManage,
@@ -414,10 +414,28 @@ function validateEventData(formData: FormData) {
       throw new Error("Venue hint must be 500 characters or less");
     }
     // Validate venue_reveal_hours
+    //
+    // The floor is `DEFAULT_VENUE_REVEAL_HOURS`, imported rather than written as
+    // a number here: a third copy of it in a third file would restart the drift
+    // the constant exists to end (`src/utils/datetime.ts`).
+    //
+    // Two refusals, not one, because they are two different mistakes and a
+    // single sentence covering both would tell the operator neither
+    // (`meta-gates.md`, zero fallimenti silenziosi). And the second one says
+    // WHY: a floor that only refuses is a floor the next person raises, instead
+    // of raising the window (D-37-06 point 2).
     if (party.venue_reveal_hours !== undefined && party.venue_reveal_hours !== null) {
       const hours = Number(party.venue_reveal_hours);
-      if (isNaN(hours) || hours < 1 || !Number.isInteger(hours)) {
-        throw new Error("Reveal hours must be a positive integer");
+      if (!Number.isInteger(hours)) {
+        throw new Error("The reveal window must be a whole number of hours.");
+      }
+      if (hours < DEFAULT_VENUE_REVEAL_HOURS) {
+        throw new Error(
+          `The reveal window must be at least ${DEFAULT_VENUE_REVEAL_HOURS} hours. ` +
+            "Below that the address mail can leave AFTER the party has started: the reveal cron " +
+            "runs once a day, so a window narrower than the gap between two runs can open after " +
+            "the day's run has already gone. Widen the window, not this floor."
+        );
       }
       party.venue_reveal_hours = hours;
     }
