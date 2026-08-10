@@ -1774,6 +1774,113 @@ export const CONSTRAINT_PROBES = [
       ],
     },
   },
+  // ── FMT-03 — two nights cannot share a format, a series and a number ───────
+  //
+  // WHAT MAKES THIS ROW MEASURE ONE RULE AND NOT ANY OTHER. Every other
+  // condition on it is satisfied by COPYING it off a night that already exists:
+  // the event, the format, the series and the number all come from the row
+  // `{{event_parties}}` resolves to. So
+  //
+  //   * `event_parties_series_format_fk` HOLDS — the pair is one a real row
+  //     already carries. This is the trap `36-PATTERNS.md` names: a format
+  //     picked independently of the series makes the probe report `23503`
+  //     instead of `23505`, and the run would then be measuring the composite
+  //     key while claiming to measure the unique one;
+  //   * `event_parties_number_positive` HOLDS — the number is one the database
+  //     has already accepted;
+  //   * `title` and `time` are the ordinary payload's, and `date`, `access_type`
+  //     and `sort_order` take their defaults. `public.event_parties` carries no
+  //     other unique constraint: `UNIQUE (event_id, type)` was dropped together
+  //     with the `type` column in `20260226300000_multi_sub_events.sql:11-17`,
+  //     so nothing else can fire first and steal the measurement.
+  //
+  // The ONLY thing wrong with the row is that the triple repeats. If a run
+  // reports `23505` from a DIFFERENT constraint, the row has drifted — which is
+  // why the constraint's NAME is asserted and not only the SQLSTATE.
+  //
+  // IT DEPENDS ON THE LOWEST NIGHT CARRYING A NUMBER, and that is a real
+  // dependency rather than an assumption worth hiding. `number` is NULLABLE on
+  // purpose (`20260810120000_formats_and_series.sql:806-842`: a night that is
+  // the ACT of another night has no sigla of its own), and in Postgres two NULLs
+  // are DISTINCT — so duplicating a numberless night would be ACCEPTED. The
+  // seed gives every night it plants a number through the `event_parties`
+  // payload above; if that ever stops being true this probe reports *"the insert
+  // SUCCEEDED"*, which is the loudest verdict `runConstraintProbes` has and the
+  // correct one to receive.
+  {
+    id: 'FMT-03',
+    what: 'two nights cannot share a format, a series and a number',
+    table: 'event_parties',
+    sqlstate: '23505',
+    constraint: 'event_parties_format_series_number_unique',
+    insert: {
+      columns: ['event_id', 'title', 'time', 'format_id', 'series_id', 'number'],
+      values: [
+        '(select ep."event_id" from public.event_parties ep where ep."id" = {{event_parties}})',
+        PROBE_TEXT,
+        `'18:00'::time`,
+        '(select ep."format_id" from public.event_parties ep where ep."id" = {{event_parties}})',
+        '(select ep."series_id" from public.event_parties ep where ep."id" = {{event_parties}})',
+        // The duplicate, and the whole point: the SAME triple as a row that is
+        // already there.
+        '(select ep."number" from public.event_parties ep where ep."id" = {{event_parties}})',
+      ],
+    },
+  },
+  // ── FMT-03-FK — a night's format cannot contradict its own series ──────────
+  //
+  // The other half of FMT-03, and a different rule: `10b` refuses a REPEATED
+  // triple, `10a` refuses an INCOHERENT one. A row can satisfy either while
+  // breaking the other, so one probe cannot stand for both.
+  //
+  // WHAT MAKES THIS ROW MEASURE ONE RULE. `series_id` is a real series and
+  // `format_id` is a real format — deliberately NOT that series' format, which
+  // is the single thing wrong with the row. Everything else is satisfied on
+  // purpose:
+  //
+  //   * the number is `max + 1` INSIDE that series, so
+  //     `event_parties_format_series_number_unique` cannot fire first and steal
+  //     the measurement. (It could not anyway — the format differs, so the
+  //     triple differs — but the probe does not rely on that, because relying on
+  //     it would make this probe depend on the other constraint being correct);
+  //   * `coalesce(…, 0) + 1` satisfies `event_parties_number_positive`;
+  //   * `{{events}}`, the sentinel title and the same start time as every other
+  //     night here.
+  //
+  // Both sub-selects run on the PRIVILEGED connection, where no read policy
+  // applies, so neither can answer differently for different callers — this is
+  // the one place in this file where a plain sub-select over an RLS table is
+  // safe, and it is safe for that reason and no other.
+  //
+  // THE DEGENERATE CASE, written down because a future reader is the one who
+  // will meet it: if `public.formats` ever held a SINGLE row, the `<>` would
+  // exclude it, the sub-select would return NULL, and this probe would report
+  // `23502` instead of `23503` — a probe gone quiet, not a rule gone missing.
+  // The migration seeds five formats (`20260810120000:490-517`); somebody who
+  // deletes four of them should be able to read here why the probe changed its
+  // answer.
+  {
+    id: 'FMT-03-FK',
+    what: "a night's format cannot contradict the format of its own series",
+    table: 'event_parties',
+    sqlstate: '23503',
+    constraint: 'event_parties_series_format_fk',
+    insert: {
+      columns: ['event_id', 'title', 'time', 'format_id', 'series_id', 'number'],
+      values: [
+        '{{events}}',
+        PROBE_TEXT,
+        `'18:00'::time`,
+        // Any format EXCEPT the one that series really runs. `order by` and not
+        // a bare `limit 1`: an unordered pick would make two identical runs able
+        // to disagree, and this harness's determinism is what makes a diff mean
+        // anything.
+        '(select f."id" from public.formats f where f."id" <> {{party_series_format}} order by f."id" limit 1)',
+        '{{party_series}}',
+        '(select coalesce(max(ep."number"), 0) + 1 from public.event_parties ep where ep."series_id" = {{party_series}})',
+      ],
+    },
+  },
 ];
 
 /**
