@@ -589,7 +589,7 @@ Plans:
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
-| 37. Manual Venue Reveal | 13/13 | Executed*  | 2026-08-11 |
+| 37. Manual Venue Reveal | 13/13 | Complete   | 2026-08-10 |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
