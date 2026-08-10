@@ -73,7 +73,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit (completed 2026-08-09)
 - [x] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched (completed 2026-08-10)
 - [x] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format (completed 2026-08-10)
-- [ ] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer
+- [x] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer (executed 2026-08-11 — NOT deployed, NOT verified; the anonymous address read is still open in production by owner decision)
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off
 - [ ] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole
@@ -477,7 +477,7 @@ Plans:
   3. A completed manual reveal records who triggered it and when, visible to the staff entitled to see it
   4. A second reveal attempt on a night already revealed changes nothing and says so — the switch stays one-way
 
-**Plans:** 12/13 plans executed
+**Plans:** 13/13 plans complete
 
 Plans:
 - [x] 37-01-PLAN.md — lo schema dell'atto: la tredicesima chiave, l'istante, la traccia append-only e lo scrittore atomico
@@ -492,7 +492,7 @@ Plans:
 - [x] 37-10-PLAN.md — l'atto: gate dentro l'azione, rifiuti per valore, e la porta laterale del form
 - [x] 37-11-PLAN.md — la conferma che conta le persone, il bottone a tre stati e la traccia
 - [x] 37-12-PLAN.md — il redirect dopo il login (todo piegato, commit separato)
-- [ ] 37-13-PLAN.md — la verifica anonima, la strada positiva di D-37-24 e la prova di cache
+- [x] 37-13-PLAN.md — la verifica anonima, la strada positiva di D-37-24 e la prova di cache
 
 **Wave 1** — 37-01, 37-02, 37-04, 37-12
 **Wave 2** *(blocked on Wave 1)* — 37-03 `[BLOCKING]`
@@ -589,12 +589,14 @@ Plans:
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
-| 37. Manual Venue Reveal | 12/13 | In Progress|  |
+| 37. Manual Venue Reveal | 13/13 | Executed*  | 2026-08-11 |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
+
+*`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
 ## Decisions Fixed Before Planning
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T22:41:01.231Z"
-last_activity: 2026-08-10 -- Phase 37 execution started
+stopped_at: Phase 37 executed (13/13) — not deployed, not verified
+last_updated: "2026-08-10T23:04:27.129Z"
+last_activity: 2026-08-11 -- Phase 37 executed, 13/13
 progress:
   total_phases: 13
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 119
-  completed_plans: 118
-  percent: 54
+  completed_plans: 119
+  percent: 62
 ---
 
 # State: Resonate
@@ -32,12 +32,14 @@ Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 11 of 13
+Plan: 13 of 13
 (contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
 uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
-lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. Restano
-37-11 (onda 6) e 37-13 (onda 7), entrambi con un checkpoint.
-Status: Executing Phase 37
+lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Tredici
+SUMMARY su tredici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
+2026-08-11 — con due delle sue misure dichiarate **non eseguibili** invece che
+sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY.
+Status: Executed, NOT deployed, NOT verified
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -83,7 +85,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-10 -- Phase 37 execution started
+Last activity: 2026-08-11 -- Phase 37 executed, 13/13; not deployed, not verified
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -91,7 +93,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -168,11 +170,12 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 - D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
+- Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione (venues_select_public ancora using(true)); il sito deployato pubblica l'indirizzo di una serata segreta su /events e su /venues/<slug>. Chiuso solo da: seconda migration + deploy dell'arretrato, come un atto solo
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T22:41:01.228Z
-**Stopped at:** Phase 37 context gathered
+**Last session:** 2026-08-10T23:04:21.334Z
+**Stopped at:** Phase 37 executed (13/13). Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
