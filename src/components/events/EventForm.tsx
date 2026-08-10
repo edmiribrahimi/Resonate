@@ -12,6 +12,10 @@ import { searchArtists } from "@/app/(admin)/admin/artists/actions";
 import { searchVenues, checkVenueExists } from "@/app/(admin)/admin/venues/actions";
 import type { NightRefusal } from "@/app/(admin)/admin/events/actions";
 import type { AccessType } from "@/types/database";
+// The reveal window has ONE home (plan 37-04). Imported, never retyped as a
+// number here: a copy in this file would be the place where the form and the
+// server drift apart, and the form is where an operator reads the promise.
+import { DEFAULT_VENUE_REVEAL_HOURS } from "@/utils/datetime";
 
 /**
  * The catalogue rows the two pages hand this form.
@@ -1089,16 +1093,29 @@ export default function EventForm({
               >
                 Reveal Hours Before Event
               </label>
+              {/*
+                The window the staff side announces, and the floor it refuses
+                at, both read from `DEFAULT_VENUE_REVEAL_HOURS` — see the twin
+                field on the single-night form below, which carries the full
+                reasoning. `min` is UX, not a control: the real floor is
+                server-side in `validateEventData`.
+              */}
               <input
                 id={`${idPrefix}-reveal-hours`}
                 type="number"
                 value={subEvent.venue_reveal_hours}
                 onChange={(e) => updateSubEvent(index, "venue_reveal_hours", e.target.value)}
-                placeholder="24 (default)"
-                min={1}
+                placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
+                min={DEFAULT_VENUE_REVEAL_HOURS}
                 className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
               />
-              <p className="text-xs text-muted">Approved members see the venue this many hours before the event. An email will be sent when the venue is revealed.</p>
+              <p className="text-xs text-muted">
+                Approved members see the venue this many hours before the night
+                starts. Minimum {DEFAULT_VENUE_REVEAL_HOURS} hours: below that the
+                address mail can leave AFTER the party has started, because the
+                reveal cron runs once a day and a narrower window can open after
+                the day&apos;s run has already gone. Widen the window, not the floor.
+              </p>
             </div>
 
             {/* Reveal on Purchase toggle */}
@@ -1419,16 +1436,47 @@ export default function EventForm({
                 <label htmlFor="main-reveal-hours" className="block text-sm font-medium text-foreground">
                   Reveal Hours Before Event
                 </label>
+                {/*
+                  ── The field announced a number the system no longer applies ──
+
+                  It said `24` and accepted `min={1}`. Both were promises this
+                  form cannot keep: the effective default is
+                  `DEFAULT_VENUE_REVEAL_HOURS` (plan 37-04), and anything under
+                  that floor is refused by `validateEventData` at save time.
+                  Announcing 24 and taking 6 meant the operator discovered the
+                  refusal only after filling the whole form.
+
+                  Both values are built from the imported constant, never
+                  retyped: a literal here would be a fourth home for a number
+                  that phase 37 exists to keep in one.
+
+                  `min` is UX and nothing more. The browser attribute stops a
+                  spinner, not a request — the control that matters is the
+                  server-side floor, and it stays there. The point of this
+                  change is that the refusal is visible BEFORE saving, not that
+                  the browser enforces anything.
+
+                  The helper text names the CAUSE with the server's own words,
+                  so the operator does not read two different explanations of
+                  the same refusal.
+                */}
                 <input
                   id="main-reveal-hours"
                   type="number"
                   value={mainVenueRevealHours}
                   onChange={(e) => setMainVenueRevealHours(e.target.value)}
-                  placeholder="24"
-                  min={1}
+                  placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
+                  min={DEFAULT_VENUE_REVEAL_HOURS}
                   className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
                 />
-                <p className="text-xs text-muted">Approved members see the venue this many hours before. An email will be sent when the venue is revealed.</p>
+                <p className="text-xs text-muted">
+                  Approved members see the venue this many hours before the night
+                  starts. Minimum {DEFAULT_VENUE_REVEAL_HOURS} hours: below that
+                  the address mail can leave AFTER the party has started, because
+                  the reveal cron runs once a day and a narrower window can open
+                  after the day&apos;s run has already gone. Widen the window, not
+                  the floor.
+                </p>
               </div>
 
               {/* Reveal on Purchase toggle */}
