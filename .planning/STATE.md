@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: planning
-stopped_at: Phase 36 UI-SPEC approved
-last_updated: "2026-08-10T11:58:28.623Z"
+status: pronta a `/gsd-execute-phase 36`
+stopped_at: Phase 36 planned — 14 plans, checker passed
+last_updated: "2026-08-10T13:15:37.107Z"
 last_activity: 2026-08-10 -- Phase 36 context gathered
 progress:
   total_phases: 13
   completed_phases: 6
-  total_plans: 92
+  total_plans: 106
   completed_plans: 92
   percent: 46
 ---
@@ -28,17 +28,39 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 36 (Formats & Series Numbering) — CONTEXT + UI-SPEC, not yet planned
-Plan: 0 of 0
-Status: pronta a `/gsd-plan-phase 36`
+Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
+Plan: 0 of 14
+Status: pronta a `/gsd-execute-phase 36`
 
 Note:
-        `36-CONTEXT.md` — 2026-08-10, quattro aree discusse, sedici decisioni.
-        `36-VISUAL-SOURCE.md` — il sistema visivo distillato dal tracker di
-        produzione, che risulta essere gia' un design system implementato.
-        `36-UI-SPEC.md` — contratto di design, checker 6/6, tre raccomandazioni
-        chiuse (l'override esplicito di `text-transform`, il fondo di
-        composizione dei contrasti, il punto focale di `/events`).
+        14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
+        warning documentale chiuso prima del commit. Sei requisiti su sei
+        coperti; due con prova automatica (le sonde di vincolo), quattro con
+        procedure manuali scritte.
+
+        `36-CONTEXT.md` — diciotto decisioni. `36-VISUAL-SOURCE.md` — il sistema
+        visivo distillato dal tracker di produzione, che risulta essere gia' un
+        design system implementato. `36-UI-SPEC.md` — checker 6/6.
+        `36-RESEARCH.md` — 1680 righe misurate. `36-PATTERNS.md` — 15 analoghi
+        su 18 file, 3 lacune dichiarate. `36-VALIDATION.md` —
+        `nyquist_compliant: false` **deliberato**.
+
+        **Vincolo d'ordine, `[BLOCKING]`:** il baseline `pre-36` (piano 36-01) si
+        cattura **prima che esista il file di migration** — un baseline preso
+        dopo il cambiamento non e' un baseline. E la sonda di scrittura del
+        baseline va allargata (piano 36-04) o smette di misurare in silenzio,
+        producendo un verde che significa il contrario.
+
+        **La migration si applica dall'endpoint migrations della Management API**
+        (piano 36-05), non con la CLI, che qui non e' installata.
+
+        **Trovato durante la ricerca, ri-misurato in produzione, NON di questa
+        fase:** l'indirizzo di una serata con `venue_secret = true` e' leggibile
+        con la sola chiave anonima — `venues_select_public` e' `using (true)` e
+        `event_parties.venue_id` e' leggibile per gli eventi pubblicati. Todo
+        `secret-venue-address-readable-by-anon.md`, **assegnato alla fase 37**
+        dal proprietario. Prima di scegliere il rimedio va misurato se lo stesso
+        percorso esista anche via `events` o `event_media`.
 
         **Fasi 31, 32, 33, 43, 35, 34: 92/92 piani eseguiti.** Il disco e questo
         file concordano dal 2026-08-10; fino a quel giorno questo blocco
@@ -100,8 +122,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T11:58:28.620Z
-**Stopped at:** Phase 36 UI-SPEC approved
+**Last session:** 2026-08-10T13:15:37.103Z
+**Stopped at:** Phase 36 planned — 14 plans, checker passed
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
