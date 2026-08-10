@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import FormatMarker from "@/components/formats/FormatMarker";
 import TierSelection from "./TierSelection";
 import RsvpButton from "./RsvpButton";
 
@@ -27,6 +28,20 @@ interface PartyVenue {
   address: string | null;
 }
 
+/**
+ * The one line a visitor reads to know what a night IS.
+ *
+ * `name` is already the decided string: the venue gate at the render site
+ * chooses between the series public name and the format name, per night. There
+ * is no `code` and no stored figure on this shape, and there is none on the
+ * query that feeds it — a visitor reads the name only (D-36-09).
+ */
+interface PartyFormat {
+  name: string;
+  slug: string;
+  color: string;
+}
+
 interface PartyWithTiers {
   id: string;
   title: string;
@@ -41,6 +56,15 @@ interface PartyWithTiers {
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
   venue_reveal_on_purchase: boolean;
+  /**
+   * `null` when the reader was refused the format row — which means an
+   * UNLISTED format, because the same policy gates both. No marker is rendered
+   * then, and that is the correct answer rather than a defect to repair: a
+   * placeholder would announce the format it was standing in for.
+   */
+  format: PartyFormat | null;
+  /** The series' public name, or `null`. Whether it is USED is decided below. */
+  series_name: string | null;
   access_type: AccessType;
   capacity: number | null;
   sort_order: number;
@@ -174,11 +198,51 @@ export default async function EventDetailPage({
   );
 
   // Fetch parties for this event (with venue join)
-  const { data: rawParties } = await supabase
+  //
+  // ── The two new embeds, and the hint that is not decoration ────────────────
+  //
+  // `!event_parties_series_id_fkey` is REQUIRED. Measured against production
+  // with the anonymous key on 2026-08-10 (plan 36-11, same embed on `/events`):
+  // the unqualified form answers `HTTP 300 PGRST201`, *"more than one
+  // relationship was found for 'event_parties' and 'party_series'"* — because
+  // the migration declares two, the plain `series_id` reference and the
+  // composite `event_parties_series_format_fk`. The `formats` embed needs no
+  // hint: `format_id` is the only reference between those two tables.
+  //
+  // And it fails SILENTLY: PostgREST answers `data: null` with no exception, so
+  // nothing throws and the page renders an event with no nights at all. A green
+  // build says nothing about this — no Supabase client here is parameterised
+  // with the generated types, so a query is documentation until it is run.
+  //
+  // NEITHER THE STORED NUMBER NOR EITHER INTERNAL CODE IS SELECTED. The
+  // disclosure matrix says never, on any public surface, and not fetching them
+  // is the narrowest way to keep that true: a column that never arrives cannot
+  // be rendered by a later edit that was not thinking about the rule.
+  const { data: rawParties, error: partiesError } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, access_type, capacity, sort_order, venues(id, name, slug, address)")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, access_type, capacity, sort_order, venues(id, name, slug, address), formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
+
+  // This error was discarded before this phase, and adding two embeds is what
+  // makes discarding it untenable — see the paragraph above. The two causes are
+  // separated because they deserve opposite answers, exactly as `/events` does:
+  //
+  //   * a refusal FROM THE DATABASE carries a SQLSTATE or a `PGRST…` code. It
+  //     is a defect, it will never fix itself, and an event page that quietly
+  //     lost every one of its nights is a healthy-looking lie on a public
+  //     surface — with no error tracking in this project, a log alone reaches
+  //     nobody. It is thrown, so it reaches the error boundary;
+  //   * a transport failure carries no code, and that is the transient case.
+  //     Its behaviour is left exactly as it was.
+  if (partiesError) {
+    console.error(
+      `[event_detail.parties_query_refused] ${partiesError.code || "transport"}: ${partiesError.message}`
+    );
+    if (partiesError.code) {
+      throw new Error(`[event_detail.parties_query_refused] ${partiesError.code}`);
+    }
+  }
 
   // Check if user has a master ticket (event-level, party_id IS NULL)
   let hasMasterTicket = false;
@@ -199,9 +263,17 @@ export default async function EventDetailPage({
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venues: PartyVenue | PartyVenue[] | null; access_type: string; capacity: number | null; sort_order: number };
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venues: PartyVenue | PartyVenue[] | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
       const venueData = party.venues;
       const venue: PartyVenue | null = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
+
+      // An embed arrives as an object or as a one-element array depending on
+      // how PostgREST resolves the relationship; both shapes are unwrapped the
+      // same way the venue above already is.
+      const formatData = party.formats;
+      const format: PartyFormat | null = formatData ? (Array.isArray(formatData) ? formatData[0] ?? null : formatData) : null;
+      const seriesData = party.party_series;
+      const series = seriesData ? (Array.isArray(seriesData) ? seriesData[0] ?? null : seriesData) : null;
 
       // Fetch tiers for paid parties (party-specific)
       let tiers: PartyWithTiers["tiers"] = [];
@@ -279,6 +351,8 @@ export default async function EventDetailPage({
         venue_secret_hint: party.venue_secret_hint ?? null,
         venue_reveal_hours: party.venue_reveal_hours ?? null,
         venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
+        format,
+        series_name: series?.name ?? null,
         access_type: party.access_type as AccessType,
         capacity: party.capacity,
         sort_order: party.sort_order,
@@ -627,6 +701,56 @@ export default async function EventDetailPage({
             >
               {/* Party header */}
               <div className="mb-3">
+                {/*
+                  ── The format, per night, above its title ───────────────────
+                  ────────────────────────────────────────────────────────────
+                  The format is the SOURCE of the name; the title is free text
+                  beneath it. A visitor reads THE NAME ONLY — never the stored
+                  figure, never the raw internal code (D-36-09) — and neither
+                  is fetched by this page, so neither can arrive here.
+
+                  Carrying the reason, because it is the thing a later "why not
+                  show it?" would undo: THE STORED FIGURE IS ITSELF A CHANNEL.
+                  *"the eighteenth"* says that eighteen exist, which announces
+                  every night nobody announced, without showing one — so no
+                  visual inspection of this page could ever catch it. Keeping it
+                  off public surfaces removes that channel before it exists.
+
+                  ── Which name, and WHICH PREDICATE decides ──────────────────
+
+                  A series public name is a stored string published on every
+                  surface its nights touch, so a series named after a venue
+                  publishes that venue every time it renders. When this night is
+                  secret, the marker degrades to the format name.
+
+                  THE PREDICATE IS THE STORED FLAG `venue_secret`, and saying so
+                  is half the decision, because this page holds a second
+                  candidate five lines above: the verdict `isVenueVisible`
+                  returns, which is time- and entitlement-dependent — it opens
+                  once the night has passed, or hours before it for a holder of
+                  a ticket. THEY ARE NOT THE SAME PREDICATE. The stored flag is
+                  the narrower of the two (a night whose venue has since been
+                  revealed still shows the format name), `venue-secrecy.md`'s
+                  default-closed gate says the narrower wins, and it is the same
+                  one the event card uses — so the same night cannot say two
+                  different names in two places.
+
+                  `!== false` and not `=== true`: anything that is not a stored
+                  `false` is treated as secret. The fallback is always the
+                  narrower string.
+                */}
+                {party.format && (
+                  <div className="mb-1">
+                    <FormatMarker
+                      name={
+                        party.venue_secret !== false
+                          ? party.format.name
+                          : party.series_name ?? party.format.name
+                      }
+                      color={party.format.color}
+                    />
+                  </div>
+                )}
                 <p className="text-foreground font-medium">{party.title}</p>
                 <div className="flex items-center gap-3 mt-1 text-sm text-muted">
                   <span className="inline-flex items-center gap-1">
