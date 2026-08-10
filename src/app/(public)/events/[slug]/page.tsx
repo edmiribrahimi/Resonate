@@ -19,13 +19,31 @@ import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
-import { partyStartInstant } from "@/utils/datetime";
+import { partyStartInstant, venueRevealHours } from "@/utils/datetime";
 
-interface PartyVenue {
-  id: string;
+/**
+ * One row of `public.venue_for_parties`, which after plan 37-02 is **the only
+ * public road to a venue address**.
+ *
+ * The shape is the function's `RETURNS TABLE` and nothing else — it is a
+ * contract, and it is written out here because `supabase.rpc()` is untyped in
+ * this repository (no client is parameterised with a `Database` generic) and
+ * `src/types/database.ts` deliberately does NOT declare this function: it does
+ * not exist in the live schema yet, and a type that named it would be a type
+ * that lies about an object's existence (`37-03-SUMMARY.md`). When
+ * `20260810161000_venues_read_narrowed.sql` is applied and the types are
+ * regenerated, this local shape is what gets replaced — not edited.
+ *
+ * A night is returned **with its venue or not at all**: absent means NO
+ * ENTITLEMENT, and the caller renders the hint. There is no partial row.
+ */
+interface VenueForParty {
+  party_id: string;
+  venue_id: string;
   name: string;
   slug: string;
   address: string | null;
+  google_maps_url: string | null;
 }
 
 /**
@@ -50,12 +68,23 @@ interface PartyWithTiers {
   time: string;
   end_time: string | null;
   venue_text: string | null;
-  venue: PartyVenue | null;
   lineup: string[];
   venue_secret: boolean;
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
   venue_reveal_on_purchase: boolean;
+  /**
+   * The instant somebody revealed this night's venue BY HAND, or `null`.
+   *
+   * It is NOT `venue_reveal_email_sent` under a new name, and the difference is
+   * the whole reason a separate column exists: the cron raises that boolean
+   * even on a night with ZERO recipients and without filtering on
+   * `is_published` (`api/cron/venue-reveal/route.ts:108-115`), so a draft night
+   * inside its own window carries it raised already. Reading it here would open
+   * the page on a night that was merely swept. This one says *somebody pressed*,
+   * and that is what makes the manual button OBSERVABLE on this page.
+   */
+  venue_revealed_at: string | null;
   /**
    * `null` when the reader was refused the format row — which means an
    * UNLISTED format, because the same policy gates both. No marker is rendered
@@ -84,37 +113,140 @@ interface PartyWithTiers {
   spotsLeft: number | null;
 }
 
+/**
+ * ── The three-level model of D-37-02, as this page decides it ────────────────
+ *
+ * | Who                                   | Sees            | From when          |
+ * |---------------------------------------|-----------------|--------------------|
+ * | a ticket **or an RSVP** for the night | the address     | at once            |
+ * | an approved member with neither       | hint, then addr | the reveal window  |
+ * | no session, or not approved           | the hint only   | never              |
+ *
+ * TWO THINGS ARE NEW HERE AND EVERYTHING ELSE IS BYTE-FOR-BYTE THE OLD VERDICT.
+ *
+ *  1. **`hasRsvpForParty` joins level 1**, and it joins it OUTSIDE the
+ *     `venueRevealOnPurchase` guard. An RSVP is not a purchase; binding it to
+ *     that flag would mean switching the flag off on an RSVP night takes the
+ *     address away from somebody who said they are coming **while the cron goes
+ *     on mailing it to them** (`api/cron/venue-reveal/route.ts:63-68` never
+ *     consults the flag). That is precisely the asymmetry D-37-10 exists to
+ *     remove — so this is not an extra, it is the pre-existing defect the
+ *     owner's decision makes it compulsory to close. On an RSVP night NOBODY
+ *     holds a ticket, so without this branch nobody would see the address at
+ *     once, on a night whose whole audience declared itself.
+ *  2. **The level-2 branch, added at the tail** — an approved member with
+ *     neither a ticket nor an RSVP. THE ONLY WIDENING OF THIS PHASE: today such
+ *     a member never sees the address before the night. It is per-EVENT
+ *     reasoning applied to a per-recipient secret, which `venue-secrecy.md`
+ *     used to forbid outright; the owner took that decision on 2026-08-10 with
+ *     the cost written down, and the gate is rewritten in the same commit as
+ *     this branch (D-37-03) — otherwise it would keep flagging the intended
+ *     behaviour as a violation until somebody "repaired" it.
+ *
+ * The branch **adds and never modifies** (D-37-04's constraint): it does not
+ * name `hasTicketForParty` or `hasMasterTicket`, so nobody who reached a
+ * verdict before reaches a different one now. Every earlier `if` is unchanged
+ * and still returns first.
+ *
+ * ── This page is UX; the boundary is the database ────────────────────────────
+ *
+ * `CLAUDE.md` principle 2. This predicate decides what is RENDERED;
+ * `public.venue_for_parties` decides what a caller may READ. They stay two
+ * verdicts, ANDed at the render site, so the narrower always wins — which is
+ * `venue-secrecy.md`'s *default chiuso* expressed as a conjunction rather than
+ * as a promise.
+ */
 function isVenueVisible(opts: {
   partyDate: string;
   partyTime: string;
   venueSecret: boolean;
   hasTicketForParty: boolean;
   hasMasterTicket: boolean;
+  /** An RSVP for THIS night. Level 1 (D-37-10) — see the docblock above. */
+  hasRsvpForParty: boolean;
   isApproved: boolean;
   isOrganizer: boolean;
   isMasterRole: boolean;
   venueRevealHours: number | null;
+  /** The manual reveal instant, or `null`. Level 2 (D-37-04). */
+  revealedAt: string | null;
   venueSecretHint: string | null;
   venueRevealOnPurchase: boolean;
 }): { visible: boolean; hint: string | null } {
   if (!opts.venueSecret) return { visible: true, hint: null };
   if (opts.isMasterRole || opts.isOrganizer) return { visible: true, hint: null };
-  // Ticket holders see venue immediately only if venue_reveal_on_purchase is true
-  if (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) {
+  // Ticket holders see venue immediately only if venue_reveal_on_purchase is
+  // true — and an RSVP holder sees it regardless of that flag (D-37-10).
+  if (
+    (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) ||
+    opts.hasRsvpForParty
+  ) {
     return { visible: true, hint: null };
   }
   const partyStart = partyStartInstant(opts.partyDate, opts.partyTime);
   const now = new Date();
+  // The window, resolved ONCE for this call and read from the one place that
+  // owns it. `venueRevealHours` applies DEFAULT_VENUE_REVEAL_HOURS = 25 — never
+  // a literal written here, which is how a fallback ends up living in two files
+  // and drifting between them (plan 37-04).
+  const hours = venueRevealHours(opts.venueRevealHours);
+  const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
+  // A manual reveal counts only when it is a REAL instant. Absent, or a string
+  // that does not parse, is treated as "not revealed" and yields the hint —
+  // T-37-23, and `venue-secrecy.md` *default chiuso*: this is the one domain in
+  // the project where the safe default is to refuse. Written as a positive test
+  // rather than `!== null` on purpose: `undefined !== null` is TRUE, so a column
+  // that stopped being selected would otherwise open the address on every
+  // secret night, silently.
+  const revealedByHand =
+    typeof opts.revealedAt === "string" && !Number.isNaN(Date.parse(opts.revealedAt));
   // Past event → visible for approved members
   if (now > partyStart && opts.isApproved) return { visible: true, hint: null };
   // Approved member with ticket/rsvp → visible X hours before
   if (opts.isApproved && (opts.hasTicketForParty || opts.hasMasterTicket)) {
-    const hours = opts.venueRevealHours ?? 24;
-    const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
     if (hoursUntil <= hours) return { visible: true, hint: null };
+  }
+  // LEVEL 2 (D-37-02, D-37-04) — appended, and the only widening of this phase.
+  // An OR of two entrances: the window, which trips by itself at an instant
+  // nobody writes, and the manual act, which trips when somebody presses.
+  if (opts.isApproved && (revealedByHand || hoursUntil <= hours)) {
+    return { visible: true, hint: null };
   }
   return { visible: false, hint: opts.venueSecretHint };
 }
+
+/**
+ * ── Dynamic BY DECLARATION, and no longer only by derivation (D-37-09) ───────
+ *
+ * This route already renders as `ƒ` because `createClient()` calls `cookies()`,
+ * which excludes static rendering. **Nothing said so.** A later edit that moved
+ * the session read — into a child, into a helper, behind a cache — would make
+ * this page static again with no error and no warning, and nobody would notice
+ * until an address was on a cached page.
+ *
+ * That risk is new, and it is the one D-37-09 names as the main one. The
+ * predicate above now has a temporal component that **trips by itself at a
+ * precise instant**: before, a night's visibility barely moved without somebody
+ * writing something. A cached page CROSSES that instant. Served stale before
+ * it, it shows the hint to somebody entitled to the address — an annoyance.
+ * Served stale after it, to a DIFFERENT reader, it shows the address to
+ * somebody who is not — a leak, and this is the one domain where the leak has
+ * no remedy.
+ *
+ * The service worker is a second cache with a second answer, and it belongs to
+ * plan 37-07; the proof that neither serves this page stale belongs to 37-13.
+ *
+ * THIS ROUTE EXPORTS NO METADATA FUNCTION, and the absence is a decision rather
+ * than an omission (T-37-25). A social preview is public content cached by third
+ * parties — a shared cache entirely outside our control — so an event page that
+ * grew one would have to prove, forever, that no secret address can reach it.
+ * `nextjs-architecture.md`, gate *metadata e Open Graph*, states the rule for
+ * the day somebody adds one. (The identifier itself is not spelled here, so that
+ * a mechanical check for "this page has none" measures the property it means
+ * rather than failing on the paragraph that forbids it — same correction as
+ * `37-02-SUMMARY.md`.)
+ */
+export const dynamic = "force-dynamic";
 
 const WD_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const WD_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -153,17 +285,36 @@ export default async function EventDetailPage({
 
   // ⚠️ VENUE SECRECY. These two keep their `role` / `status` form and only
   // their SOURCE changed — and that is deliberate, because they are NOT merely
-  // presentational. Besides :490 and :637 they are passed into
-  // `isVenueVisible` (:511, :513), which decides whether a SECRET VENUE
-  // ADDRESS is rendered: `isMasterRole` short-circuits it to visible (:76) and
-  // `isApproved` opens the two time-and-ticket branches (:84, :86).
+  // presentational. They are passed into `isVenueVisible`, which decides
+  // whether a SECRET VENUE ADDRESS is rendered: `isMasterRole` short-circuits
+  // it to visible, and `isApproved` opens the time branches.
   //
   // `venue_reveal_sent` is a MONOTONE one-way switch (meta-gates.md), so the
-  // only admissible direction here is "no easier to trip". Keeping the exact
-  // predicates and moving the source from a forgeable header to the session is
-  // strictly non-widening: nobody who could not see an address before can see
-  // one now. Converting either of these to a capability key would be a VERDICT
-  // change on a reveal path and is explicitly out of this plan's scope.
+  // only admissible direction is "no easier to trip" — SAVE FOR AN EXPLICIT
+  // AUTHORISATION DOCUMENTED IN THE COMMIT, which is the clause phase 37 uses.
+  //
+  // ── REWRITTEN 2026-08-10, and the superseded sentence is quoted, not deleted
+  //
+  // Until phase 37 this paragraph ended: *"Converting either of these to a
+  // capability key would be a VERDICT change on a reveal path and is explicitly
+  // out of this plan's scope."* That was correct for phase 34, whose scope was
+  // to move the SOURCE of these two values from a forgeable header to the
+  // session while keeping every verdict byte-identical.
+  //
+  // **D-37-02 authorises a verdict change on this path**, and it is the only
+  // one in the phase: an approved member with neither a ticket nor an RSVP now
+  // sees the address once the reveal window opens, or as soon as somebody
+  // reveals by hand (level 2, the tail branch of `isVenueVisible`). Owner's
+  // decision, 2026-08-10, taken with the cost written down — more people know
+  // the address than walk in, on rooms of 150-300 in private spaces with no
+  // public-entertainment licence (`legal-compliance.md`).
+  //
+  // WHAT SURVIVES THE REWRITE, and it is the part a later reader needs: the
+  // two values are still NOT presentational, `isApproved` is now load-bearing
+  // on MORE branches than before rather than fewer, and any further change to
+  // either of them is still a verdict change on a reveal path — which now needs
+  // its own written authorisation, exactly as this one has. Converting them to
+  // capability keys remains out of scope and is a decision, not an omission.
   const isApproved = status === "approved";
   const isMasterRole = role === "master";
 
@@ -218,9 +369,28 @@ export default async function EventDetailPage({
   // disclosure matrix says never, on any public surface, and not fetching them
   // is the narrowest way to keep that true: a column that never arrives cannot
   // be rendered by a later edit that was not thinking about the rule.
+  //
+  // ── THE VENUE IS NO LONGER EMBEDDED HERE, AND THAT IS THE POINT ──────────
+  //
+  // The nested embed of `public.venues` is gone. After plan 37-02 that table
+  // grants nothing to a reader without `staff.manage`, and **a refused embed
+  // returns empty rather than an error** (D-37-25): left in place it would strip
+  // the venue name from every night, in silence, on a public surface, in a
+  // project with no error tracking. The address now comes from
+  // `public.venue_for_parties` below — one call, and the only road there is.
+  //
+  // ── `venue_revealed_at` IS SELECTED, AND IT HAS TO BE ────────────────────
+  //
+  // It is the level-2 entrance of D-37-04 and the ONE thing that makes the
+  // manual reveal button observable on this page. Dropped from this list it
+  // arrives `undefined`, the tail branch of `isVenueVisible` never opens, and
+  // the button silently stops having any effect a visitor could see — which is
+  // the exact defect phase 37 exists to avoid producing. It is not a secret in
+  // itself: it is an instant, never an address, and the address still comes
+  // only from `public.venue_for_parties` below.
   const { data: rawParties, error: partiesError } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, access_type, capacity, sort_order, venues(id, name, slug, address), formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -263,13 +433,10 @@ export default async function EventDetailPage({
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venues: PartyVenue | PartyVenue[] | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
-      const venueData = party.venues;
-      const venue: PartyVenue | null = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
-
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
       // An embed arrives as an object or as a one-element array depending on
       // how PostgREST resolves the relationship; both shapes are unwrapped the
-      // same way the venue above already is.
+      // same way.
       const formatData = party.formats;
       const format: PartyFormat | null = formatData ? (Array.isArray(formatData) ? formatData[0] ?? null : formatData) : null;
       const seriesData = party.party_series;
@@ -345,12 +512,15 @@ export default async function EventDetailPage({
         time: party.time,
         end_time: party.end_time,
         venue_text: party.venue_text,
-        venue,
         lineup: party.lineup ?? [],
         venue_secret: party.venue_secret ?? false,
         venue_secret_hint: party.venue_secret_hint ?? null,
         venue_reveal_hours: party.venue_reveal_hours ?? null,
         venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
+        // `?? null` and not a bare read: an absent column arrives `undefined`,
+        // and the predicate must never be handed anything but a string or
+        // `null` on a path that decides an address (T-37-23).
+        venue_revealed_at: party.venue_revealed_at ?? null,
         format,
         series_name: series?.name ?? null,
         access_type: party.access_type as AccessType,
@@ -363,6 +533,61 @@ export default async function EventDetailPage({
       };
     })
   );
+
+  // ── The venue, from the one function entitled to hand one out ───────────────
+  //
+  // ONE call for every night on this page, indexed by `party_id`. Not one per
+  // night: the function takes an array precisely so that a page with N nights
+  // costs one round trip, and it resolves the caller from `auth.uid()` — there
+  // is no subject argument, so it cannot be asked about anybody else.
+  //
+  // WHY THIS IS THE BOUNDARY AND THE PREDICATE ABOVE IS NOT. `CLAUDE.md`
+  // principle 2: `isVenueVisible` decides what is RENDERED and this decides
+  // what may be READ. The render site ANDs the two, so the narrower always
+  // wins — which is `venue-secrecy.md` *default chiuso* made structural instead
+  // of promised. Five arms decide entitlement per night (D-37-02): the night is
+  // not secret · `staff.manage` · a ticket or a master ticket · an RSVP · an
+  // approved member at the window or after a manual reveal.
+  //
+  // THE ERROR IS NOT DISCARDED, and the two causes get opposite answers — the
+  // same split the nights query above already applies, for the same reason:
+  //   * a refusal FROM THE DATABASE carries a code. It will never fix itself,
+  //     and a public page that quietly lost every venue is a healthy-looking
+  //     lie. It is thrown, so it reaches the error boundary;
+  //   * a transport failure carries no code and is the transient case. Logged,
+  //     and the page renders with no venue — which on a secret night is the
+  //     hint, and on a public one is a missing name rather than a leak.
+  //
+  // ⚠️ DEPLOY: `public.venue_for_parties` DOES NOT EXIST in the live database
+  // yet. `20260810161000_venues_read_narrowed.sql` was deliberately NOT applied
+  // (owner's decision, `37-03-SUMMARY.md`). Until it is, this call answers
+  // `PGRST202` and the throw above fires. **This file and that migration ship
+  // as ONE act.**
+  const venueByParty = new Map<string, VenueForParty>();
+  if (parties.length > 0) {
+    const { data: venueRows, error: venueError } = await supabase.rpc(
+      "venue_for_parties",
+      { p_party_ids: parties.map((p) => p.id) }
+    );
+
+    if (venueError) {
+      console.error(
+        `[event_detail.venue_for_parties_refused] ${venueError.code || "transport"}: ${venueError.message}`
+      );
+      if (venueError.code) {
+        throw new Error(`[event_detail.venue_for_parties_refused] ${venueError.code}`);
+      }
+    }
+
+    for (const row of (venueRows ?? []) as VenueForParty[]) {
+      // Shape-checked rather than trusted: `.rpc()` is untyped here, so a
+      // function redefined underneath this caller would otherwise put
+      // `undefined` where a name is rendered.
+      if (row && typeof row.party_id === "string" && typeof row.name === "string") {
+        venueByParty.set(row.party_id, row);
+      }
+    }
+  }
 
   // Fetch event-level tiers (party_id IS NULL) -- only when multiple parties exist
   let eventTiers: { id: string; name: string; price: number; quantity: number | null; sold: number; available: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }[] = [];
@@ -686,13 +911,25 @@ export default async function EventDetailPage({
             venueSecret: party.venue_secret,
             hasTicketForParty,
             hasMasterTicket,
+            // `userRsvp` is populated ONLY when `access_type === "free_rsvp"`,
+            // and `userTicket` only when it is `"paid"` (see the block above,
+            // where both are read). That condition is CORRECT and is not to be
+            // touched: an RSVP night sells no tickets and a paid night takes no
+            // RSVPs, so exactly one of the two can ever be non-null. Written
+            // out because the next reader, finding this `null` on a paid night,
+            // would otherwise call it a bug and "fix" it into a second query.
+            hasRsvpForParty: !!party.userRsvp,
             isApproved,
             isOrganizer,
             isMasterRole,
             venueRevealHours: party.venue_reveal_hours,
+            revealedAt: party.venue_revealed_at ?? null,
             venueSecretHint: party.venue_secret_hint,
             venueRevealOnPurchase: party.venue_reveal_on_purchase,
           });
+          // The second verdict. `undefined` here is a REFUSAL and not a gap:
+          // the function returns a night with its venue or not at all.
+          const venueRow = venueByParty.get(party.id);
 
           return (
             <div
@@ -762,25 +999,93 @@ export default async function EventDetailPage({
                   </span>
                 </div>
 
-                {/* Venue display with secret logic */}
-                {(party.venue || party.venue_text || party.venue_secret) && (
+                {/*
+                  ── The venue, and the two verdicts that have to agree ───────
+                  ────────────────────────────────────────────────────────────
+                  `venueVisible && venueRow` — and they stay two. The predicate
+                  is UX and the function is the boundary (`CLAUDE.md` principle
+                  2); ANDed, the narrower always wins, which is the gate
+                  *default chiuso* written as a conjunction. If the reveal state
+                  is not determinable for either of them, the address does not
+                  render.
+
+                  ── The address is rendered HERE, not linked ────────────────
+
+                  There is no link to `/venues/<slug>` any more. That surface
+                  leaves the public tree (D-37-23, plan 37-09), and after the
+                  move the link would send a visitor to an address the
+                  middleware refuses. The name stays readable for everyone
+                  entitled to it, and nobody needs to know where the work
+                  surface went. The Maps link is the venue's own stored one,
+                  never a constructed search.
+
+                  ── WHERE AN ADDRESS CAN LEAVE THIS PAGE, RE-ENUMERATED ─────
+
+                  `venue-secrecy.md`, gate *percorsi enumerati*, requires this
+                  list to be rebuilt by READING the code, because it is dated by
+                  construction. Read on 2026-08-10, for this page only:
+
+                    1. this block — name, address and Maps link, gated by both
+                       verdicts above;
+                    2. `SecretVenueDialog`, below — the HINT and never the
+                       address. The hint is shown only to a signed-in reader,
+                       and `venue-secrecy.md` requires it not to identify the
+                       place on its own;
+                    3. `party.venue_text` — free text on the night, for a night
+                       with no venue row attached. It is NOT gated by the
+                       function, and it is unchanged from before this phase:
+                       whoever types an address into it has published it, and
+                       that is a content decision this code cannot police.
+
+                  What is NO LONGER an exit from this page: the nested embed of
+                  the venues table (removed above) and the link to the public
+                  venue page (removed here). This route exports no metadata
+                  function either, so there is no social-preview exit — an
+                  absence that is a choice (T-37-25, and the docblock at the top
+                  of this file).
+                */}
+                {(venueRow || party.venue_text || party.venue_secret) && (
                   <div className="mt-1">
-                    {venueVisible ? (
-                      party.venue ? (
-                        <Link href={`/venues/${party.venue.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover active:scale-95 active:opacity-80 transition-transform">
-                          <MapPinIcon /> {party.venue.name}
-                        </Link>
-                      ) : party.venue_text ? (
-                        <p className="inline-flex items-center gap-1 text-sm text-muted">
-                          <MapPinIcon /> {party.venue_text}
+                    {venueVisible && venueRow ? (
+                      <div className="text-sm">
+                        <p className="inline-flex items-center gap-1 text-foreground">
+                          <MapPinIcon /> {venueRow.name}
                         </p>
-                      ) : null
+                        {venueRow.address && (
+                          <p className="mt-0.5 text-muted">{venueRow.address}</p>
+                        )}
+                        {venueRow.google_maps_url && (
+                          <a
+                            href={venueRow.google_maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-0.5 inline-block text-accent hover:text-accent-hover active:scale-95 active:opacity-80 transition-transform"
+                          >
+                            Open in Maps
+                          </a>
+                        )}
+                      </div>
+                    ) : venueVisible && party.venue_text ? (
+                      <p className="inline-flex items-center gap-1 text-sm text-muted">
+                        <MapPinIcon /> {party.venue_text}
+                      </p>
                     ) : party.venue_secret ? (
+                      /*
+                        `revealHours` is the window ALREADY RESOLVED by the
+                        server. The dialog used to receive the STORED value and,
+                        on `NULL`, wrote "closer to the event" while the logic
+                        applied the fallback — the page promising one thing and
+                        the system doing another. Resolved here, the client
+                        component never learns the fallback exists and therefore
+                        cannot diverge from it; the way to get it wrong goes away
+                        with it. Plan 37-07 owns that file and narrows the prop
+                        type to `number`.
+                      */
                       <SecretVenueDialog
                         hint={venueHint}
                         isAuthenticated={isAuthenticated}
                         isApproved={isApproved}
-                        revealHours={party.venue_reveal_hours}
+                        revealHours={venueRevealHours(party.venue_reveal_hours)}
                         revealOnPurchase={party.venue_reveal_on_purchase}
                       />
                     ) : null}
