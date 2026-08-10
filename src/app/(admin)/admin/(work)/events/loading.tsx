@@ -1,20 +1,16 @@
-export default function OrganizerEventsLoading() {
+export default function EventsLoading() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="flex items-center justify-between px-6 pt-12 pb-6">
-        <div className="h-9 w-32 animate-pulse rounded-lg bg-card-border/50" />
+        <div className="h-9 w-24 animate-pulse rounded-lg bg-card-border/50" />
         <div className="h-10 w-28 animate-pulse rounded-full bg-card-border/50" />
       </header>
 
-      {/* StaffNav skeleton */}
-      <div className="flex gap-1 px-6 mb-4 overflow-hidden">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-9 w-20 shrink-0 animate-pulse rounded-full bg-card-border/50"
-          />
-        ))}
-      </div>
+      {/* The tab-bar skeleton that stood here is gone: `(work)/layout.tsx` now
+          mounts the real tab bar OUTSIDE this boundary, so a skeleton here
+          would draw a second row of pills under a nav that is already
+          rendered. Same treatment plan 34-05 gave the finance and analytics
+          skeletons; nothing else about this file changed. */}
 
       <div className="px-6">
         {/* Event cards skeleton */}

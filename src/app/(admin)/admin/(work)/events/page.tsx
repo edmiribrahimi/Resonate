@@ -3,20 +3,53 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
-import StaffNav from "@/components/staff/StaffNav";
 import EventList from "@/components/events/EventList";
-import type { UserRole, UserStatus } from "@/types/database";
 
-export default async function OrganizerEventsPage() {
+/**
+ * The single events surface, where `/admin/events` and `/organizer/events` were
+ * two (D-34-05).
+ *
+ * ── Two keys, because they are two questions ─────────────────────────────────
+ *
+ * Reachability is `organizer.access` — *may this account reach the events
+ * surface* — and it is the key `CAPABILITY_ROUTES` binds `/admin/events` to
+ * (`src/lib/routes/capability-routes.ts:254`), so the middleware and this page
+ * read one declaration and cannot disagree (D-34-09).
+ *
+ * The row scope is `master.manage` — *may this account manage events it does
+ * not own*. That key is declared `scope: "table"` in the map
+ * (`capability-routes.ts:315-319`) precisely because it gates rows and reserved
+ * operations, never addresses. Conflating the two would have been the naming
+ * error `keys.ts:38-45` exists to prevent: a key named after its predicate
+ * rather than after its question, invisible until the day the grants diverge.
+ *
+ * ── Nothing widened to make the collapse pass (D-34-06) ──────────────────────
+ *
+ * A master holds both keys, so the query stays unfiltered and this page shows a
+ * master exactly what `/admin/events` showed. An organizer holds
+ * `organizer.access` and not `master.manage`, so it is scoped to
+ * `created_by = <their id>` — exactly what `/organizer/events` showed. The
+ * address a role reaches changed; the rows it sees did not.
+ *
+ * The `admin.access` guard the `/admin` version carried is NOT the more
+ * restrictive behaviour being abandoned: it guarded an address the route map
+ * now binds to `organizer.access`, and it is the `master.manage` filter — taken
+ * from the organizer version — that keeps every row verdict where it was.
+ *
+ * ── Both navs are the layout's ───────────────────────────────────────────────
+ *
+ * `(work)/layout.tsx` mounts the tab bar and the bottom bar once, and holds the
+ * two role/status narrowings both versions of this page used to repeat.
+ * `getAccessContext` is `cache()`-scoped per request, so asking again here for
+ * this page's own guard costs no second round trip — and the page keeps asking,
+ * because a layout is not a guard (D-34-09).
+ */
+export default async function EventsPage() {
   // Identity and capabilities come from the session, not from an inbound
   // request header a client can set.
-  const { capabilities, userId, role, status } = await getAccessContext();
+  const { capabilities, userId } = await getAccessContext();
 
-  // Reachability: "may this person reach the organizer area" —
-  // `organizer.access`, `keys.ts:64`, the same question the middleware asks
-  // for `/organizer/*`.
   if (!capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
@@ -47,13 +80,6 @@ export default async function OrganizerEventsPage() {
     redirect("/dashboard");
   }
 
-  // The resolver types these `string | null` deliberately, so that no decision
-  // can branch on them. They are not a decision here: they are props for two
-  // `"use client"` navs that cannot import the DAL. Phase 34 (STAFF-03)
-  // converts the navs and this pass-through goes with them.
-  const navRole = role as UserRole | null;
-  const navStatus = status as UserStatus | null;
-
   const supabase = await createClient();
 
   const query = supabase
@@ -78,10 +104,10 @@ export default async function OrganizerEventsPage() {
   //
   // The key is `master.manage` because the question is "may this person manage
   // events they do not own" — the reserved-operation question `keys.ts:55`
-  // names. Not `admin.access`, which asks "may they reach the admin area"; this
-  // page is not in the admin area. The two are granted to the same role today
-  // and are not the same question, and picking by predicate instead of by
-  // question is invisible until the day the grants diverge.
+  // names. Not `admin.access`, which asks "may they reach the master-only
+  // surfaces"; this surface is not one of them. The two are granted to the same
+  // role today and are not the same question, and picking by predicate instead
+  // of by question is invisible until the day the grants diverge.
   //
   // This scope is a filter written in Node, not a security boundary. What a
   // caller may actually read from `events` is decided by the row-level
@@ -105,7 +131,6 @@ export default async function OrganizerEventsPage() {
             </p>
           </div>
         </div>
-        <MobileNav role={navRole} status={navStatus} />
       </div>
     );
   }
@@ -114,9 +139,19 @@ export default async function OrganizerEventsPage() {
     <div className="min-h-dvh pb-24">
       <AnimatedSection>
         <header className="flex items-center justify-between px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Organizer</h1>
+          {/*
+            One surface, one heading. `<h1>Admin</h1>` and `<h1>Organizer</h1>`
+            both named a role rather than the surface, and after the collapse
+            this page serves both — so neither survives. "Events" is not an
+            invention: it is the label `staff-tabs.ts:88` already gives this
+            address, so the tab the viewer clicked and the heading they land on
+            now read the same word. The wider vocabulary question — retiring
+            `admin` from the URL and the headings — is Phase 40/41's, and this
+            is not it.
+          */}
+          <h1 className="text-3xl font-bold tracking-tight">Events</h1>
           <Link
-            href="/organizer/events/new"
+            href="/admin/events/new"
             className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
           >
             Create Event
@@ -124,13 +159,9 @@ export default async function OrganizerEventsPage() {
         </header>
       </AnimatedSection>
 
-      <StaffNav capabilities={[...capabilities]} />
-
       <AnimatedSection delay={0.1} className="px-6">
         <EventList events={events ?? []} />
       </AnimatedSection>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
