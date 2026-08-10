@@ -264,4 +264,243 @@ CREATE POLICY venues_select_staff ON public.venues
 -- convenience: it is the only shape in which the question "may THIS reader see
 -- THIS night's address" can be asked at all.
 
+-- =============================================================================
+-- 3. public.venue_for_parties — the one public road, and it decides PER NIGHT
+-- =============================================================================
+--
+-- WHAT IT ANSWERS: of these nights, which ones may THIS caller be told the venue
+-- of, and what is it. It takes an array because both call sites need many nights
+-- at once (`events/page.tsx` renders a list); one round trip per night on the
+-- hottest public page of the site would be the cost of asking the question
+-- badly, not the cost of the question.
+--
+-- ── IT NEVER RETURNS A PARTIAL ROW, AND THAT IS THE DESIGN ───────────────────
+--
+-- A night is either in the result with all four venue fields, or it is absent.
+-- There is no third shape — no name without the address, no "revealed soon".
+-- A fallback row would be a state that none of the three lines of D-37-02
+-- describes, and the page would have to invent a meaning for it. **Absent means
+-- NO ENTITLEMENT**, and the caller renders the hint, never a stand-in
+-- (`venue-secrecy.md`, gate *default chiuso*).
+--
+-- ── SECURITY DEFINER, AND WHY IT IS NOT A HOLE ───────────────────────────────
+--
+-- It must be `SECURITY DEFINER`, because after section 2 the caller cannot read
+-- `public.venues` at all and the whole point is to answer for a caller who
+-- cannot. What keeps that from being an escalation primitive is that the
+-- function is not given a way to name anybody but the caller: it resolves the
+-- subject itself, with `(select auth.uid())` and `private.has_capability`, from
+-- INSIDE the body. There is no user-id argument, so there is nobody else to ask
+-- about — the same shape, and the same reason, as `public.my_access_context`
+-- (`20260807000000_capability_model.sql:226-242`).
+--
+-- `SET search_path = ''` with every reference schema-qualified: a
+-- `SECURITY DEFINER` with a mutable search_path lets the caller choose which
+-- `profiles` the definer reads (`capability_model.sql:166-171`).
+--
+-- `STABLE` and not `VOLATILE`: it reads, it never writes. It is not `IMMUTABLE`
+-- and cannot be — it reads tables, and it reads `now()`.
+--
+-- ── THE ORACLE QUESTION, ANSWERED RATHER THAN IGNORED ────────────────────────
+--
+-- A caller can learn from the absence of a night that the night is secret and
+-- they have no entitlement. That is ACCEPTED, not overlooked: it is exactly what
+-- the public event page already tells the same caller, out loud, by rendering
+-- the hint instead of the address. It leaks no address and no membership. The
+-- usual mitigation for an oracle is rate limiting, and **this repository has
+-- none anywhere**; introducing one is an architecture decision, not a line in a
+-- migration.
+--
+-- ── THE FIVE ARMS OF ENTITLEMENT ─────────────────────────────────────────────
+--
+-- Arms 1-3 and the second half of arm 5 are today's behaviour, moved from an
+-- `if` in a page (`events/[slug]/page.tsx:87-117`) into the tier that
+-- `CLAUDE.md` operating principle 2 says owns this decision. Arm 4 and the
+-- first half of arm 5 are the widening this phase is authorised to make, and
+-- they are the ONLY widening in this file.
+--
+-- The `e.is_published` filter is not one of the arms: it is the floor under all
+-- of them. An unpublished event answers for nobody through this function, staff
+-- included — staff read `public.venues` directly, through
+-- `venues_select_staff`, and do not come here.
+--
+-- ── WHAT PER-NIGHT DOES NOT BUY, MEASURED ON A THROWAWAY CONTAINER ───────────
+--
+-- Deciding per night closes the deduction that comes from a venue being
+-- readable on its own. It does NOT close the one that comes from a venue being
+-- SHARED. Measured, not reasoned: a venue hosting one published NON-secret
+-- night and one secret night returns its address to an anonymous caller for the
+-- open night — including `venue_id` — and that same `venue_id` is on the secret
+-- night's row, which `anon` already reads through
+-- `event_parties_select_published`. The join is one request away.
+--
+-- It is a RESIDUE, not a regression: today an anonymous caller reads every venue
+-- row outright and has nothing to deduce. It is left open because closing it
+-- means WITHHOLDING the venue of the open night — which is the reading the
+-- public venue page already applies to the same edge case
+-- (`src/app/(public)/venues/[slug]/page.tsx:39-72`) and the reading that the
+-- gate *default chiuso* prefers — and that contradicts D-37-24, which is an
+-- owner decision and is not overturned by a migration comment.
+--
+-- Written here so the entry that calls T-37-08 "mitigated" is read with its
+-- scope attached. A threat register that says mitigated where it means
+-- partially mitigated is how the remaining half stops being looked for.
+
+CREATE OR REPLACE FUNCTION public.venue_for_parties(
+  p_party_ids uuid[]
+) RETURNS TABLE (
+  party_id        uuid,
+  venue_id        uuid,
+  name            text,
+  slug            text,
+  address         text,
+  google_maps_url text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    ep.id,
+    v.id,
+    v.name,
+    v.slug,
+    v.address,
+    v.google_maps_url
+  FROM public.event_parties ep
+  JOIN public.events e ON e.id = ep.event_id
+  JOIN public.venues v ON v.id = ep.venue_id
+  WHERE ep.id = ANY(p_party_ids)
+    AND e.is_published
+    AND (
+      -- ARM 1 — the night is not secret (D-37-24). True for a reader with no
+      -- session at all, and that is the decision: it is today's behaviour and it
+      -- matches the posters, which name the venue in full
+      -- (`brand-visual-system.md`, gate *nome e luogo di una venue*). What this
+      -- phase closes is the venues page and the SECRET nights, not the name of a
+      -- public bar.
+      ep.venue_secret = false
+
+      -- ARM 2 — staff. Branch `:101` of today's predicate, and the substitution
+      -- is not like-for-like in either direction, so it is written down: today
+      -- the page grants to `isOrganizer`, which is NOT the role but
+      -- `event.created_by = auth.uid()` (`page.tsx:192`). This key is WIDER
+      -- (every organizer, not only the one who created the event — which is
+      -- D-37-13's requirement, since that person may be unreachable on the very
+      -- Friday the reveal is needed) and far NARROWER than the policy being
+      -- removed, which granted to everybody including sessionless readers. Net
+      -- direction: a restriction.
+      OR (select private.has_capability('staff.manage'))
+
+      -- ARM 3 — a ticket for this night, or a MASTER TICKET for its event
+      -- (`party_id IS NULL`). Level 1 of D-37-02, branch `:103` of today's
+      -- predicate. The two shapes are the ones the cron already treats as
+      -- entitlement (`api/cron/venue-reveal/route.ts:57-76`), read from there
+      -- rather than re-derived.
+      OR EXISTS (
+        SELECT 1
+        FROM public.tickets t
+        WHERE t.user_id = (select auth.uid())
+          AND (
+            t.party_id = ep.id
+            OR (t.party_id IS NULL AND t.event_id = ep.event_id)
+          )
+      )
+
+      -- ARM 4 — an RSVP for this night. Level 1, NEW (D-37-10). Today
+      -- `isVenueVisible` has no RSVP input at all — `party.userRsvp` is fetched
+      -- and never passed — while the cron mails that same person the address
+      -- like any other holder. This arm removes an asymmetry rather than adding
+      -- one: after it, the page and the mail speak about the same set of people.
+      --
+      -- It is deliberately NOT guarded by `venue_reveal_on_purchase`. An RSVP is
+      -- not a purchase, and hanging it on that flag would mean switching the flag
+      -- off on an RSVP night takes the address away from someone who has said
+      -- they are coming WHILE THE CRON KEEPS SENDING IT — which is precisely the
+      -- asymmetry D-37-10 exists to close.
+      OR EXISTS (
+        SELECT 1
+        FROM public.rsvps r
+        WHERE r.user_id = (select auth.uid())
+          AND r.party_id = ep.id
+      )
+
+      -- ARM 5 — an approved member, at the window, or once somebody has revealed
+      -- by hand. Level 2 of D-37-02, and THE ONLY WIDENING OF THIS PHASE: today
+      -- an approved member without a ticket never sees the address before the
+      -- night. It is per-EVENT reasoning applied to a per-recipient secret, which
+      -- `venue-secrecy.md` used to forbid outright; the owner took that decision
+      -- with the cost written down (more people know the address than walk in —
+      -- neighbours, a 150-300 room, private spaces with no public-entertainment
+      -- licence), and the gate itself is rewritten in the same phase (D-37-03),
+      -- or it would keep flagging the intended behaviour as a violation until
+      -- somebody "repaired" it.
+      --
+      -- The OR of three terms is D-37-04, and each one has a job:
+      --   * `venue_revealed_at IS NOT NULL` — the manual act. This is what makes
+      --     the button OBSERVABLE: pressed before the window, the page opens.
+      --     It is deliberately NOT `venue_reveal_email_sent`, which the cron
+      --     raises even on a night with ZERO recipients
+      --     (`route.ts:108-115`) — that boolean would open the page on a night
+      --     that was merely swept.
+      --   * the window — `now()` past `start - venue_reveal_hours`.
+      --   * the night has started — branch `:109` of today's predicate. It looks
+      --     subsumed by the window term and it is not, for a negative
+      --     `venue_reveal_hours`: the column is a bare `integer` with no CHECK,
+      --     and on a negative value the window term opens AFTER the doors while
+      --     this one still opens at them.
+      --
+      -- On `coalesce(ep.venue_reveal_hours, 25)`: this is the SECOND HOME of that
+      -- number. The first is `DEFAULT_VENUE_REVEAL_HOURS` in
+      -- `src/utils/datetime.ts` (plan 37-04). Postgres does not import
+      -- TypeScript, so the duplication is unavoidable — and therefore it is
+      -- DECLARED here and in the COMMENT below rather than suffered. 25 and not
+      -- 24 because the plan is Hobby: the cron runs once a day with +-59 minutes
+      -- of jitter, so two consecutive runs can be 24h59m apart, and a 24-hour
+      -- window is not guaranteed to contain one (D-37-06/D-37-07).
+      OR (
+        EXISTS (
+          SELECT 1
+          FROM public.profiles p
+          WHERE p.id = (select auth.uid())
+            AND p.status = 'approved'
+        )
+        AND (
+          ep.venue_revealed_at IS NOT NULL
+          OR now() >= public.party_start_instant(ep.date, ep.time)
+               - make_interval(hours => coalesce(ep.venue_reveal_hours, 25))
+          OR now() > public.party_start_instant(ep.date, ep.time)
+        )
+      )
+    );
+$$;
+
+-- REVOKE first and GRANT second, in that order and as two statements rather
+-- than assumed: Postgres grants EXECUTE to PUBLIC by default on every new
+-- function, so the GRANT alone would leave the default in place. Same shape as
+-- `20260808002000_membership_register.sql:479-488`.
+REVOKE ALL ON FUNCTION public.venue_for_parties(uuid[]) FROM public;
+
+-- `anon` is on this grant ON PURPOSE and it is not a slip. It is the road
+-- D-37-24 needs: a visitor with no login, on a NON-secret night, must still get
+-- the venue name and address, and after section 2 there is no other way for
+-- them to get it. The function grants them nothing else — for `anon`,
+-- `auth.uid()` is null, so arms 3, 4 and 5 can only ever answer false, and
+-- `private.has_capability` finds no profile row, so arm 2 answers false too.
+-- Arm 1 is the whole of what an anonymous caller can reach.
+GRANT EXECUTE ON FUNCTION public.venue_for_parties(uuid[]) TO anon, authenticated;
+
+COMMENT ON FUNCTION public.venue_for_parties(uuid[]) IS
+  'The ONE public road to a venue address, and it decides PER NIGHT, never per venue. '
+  'A night is returned with all four venue fields or not at all: absent means NO ENTITLEMENT, and the caller renders the hint. '
+  'Five arms (D-37-02): (1) the night is not secret; (2) staff.manage; (3) a ticket for the night or a master ticket for its event; '
+  '(4) an RSVP for the night, deliberately NOT gated on venue_reveal_on_purchase since an RSVP is not a purchase (D-37-10); '
+  '(5) an approved member, once venue_revealed_at is set, or at the reveal window, or after the night has started (D-37-04). '
+  'It exists because closing the anonymous read of public.venues without it would silently strip the venue name from every night: '
+  'a nested PostgREST embed a reader is not entitled to returns EMPTY, not an error. '
+  'SECURITY DEFINER with no subject argument: it resolves the caller itself and cannot be asked about anybody else. '
+  'THE 25 IN coalesce(venue_reveal_hours, 25) LIVES IN TWO PLACES - here and DEFAULT_VENUE_REVEAL_HOURS in src/utils/datetime.ts. '
+  'Postgres cannot import TypeScript. Changing one without the other does not fail loudly: it moves a window, and behind this window is an address.';
+
 COMMIT;
