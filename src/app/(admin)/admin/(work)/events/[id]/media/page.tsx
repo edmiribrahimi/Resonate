@@ -6,6 +6,10 @@ import { CAP } from "@/lib/capabilities/keys";
 import MediaReviewGrid from "@/components/media/MediaReviewGrid";
 
 /**
+ * Media moderation for one event — the collapsed surface.
+ *
+ * ── Cache: declared, not inherited ───────────────────────────────────────────
+ *
  * Operational data, and the name of whoever uploaded each file. It must never be
  * served from a cache: `nextjs-architecture.md`, gate *cache esplicita* — a
  * surface showing per-user or operational data declares itself uncacheable
@@ -13,7 +17,8 @@ import MediaReviewGrid from "@/components/media/MediaReviewGrid";
  *
  * It is not redundant with the `cookies()` call inside `getAccessContext()`.
  * That opt-out is real but implicit and one import away, so a refactor that
- * moved the resolution would silently make this page cacheable again.
+ * moved the resolution would silently make this page cacheable again. It came
+ * from the organizer twin; the `/admin` version did not have it.
  */
 export const dynamic = "force-dynamic";
 
@@ -21,53 +26,69 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function OrganizerMediaReviewPage({ params }: PageProps) {
+export default async function MediaReviewPage({ params }: PageProps) {
   const { id: eventId } = await params;
-  const supabase = await createClient();
 
   // Identity and permission from the session, in one resolution.
   //
-  // Until this commit the ONLY check on this page was "is somebody logged in",
-  // and everything else was delegated to the middleware's `organizer.access`
-  // rule. The middleware decides where somebody may GO; it is not a boundary
-  // (`CLAUDE.md`, operating principle 2), and a page that leans on it is a page
-  // whose boundary moves whenever the middleware does — which plan 35-17 is
-  // doing to that very rule, in this very wave.
+  // This replaces the `supabase.auth.getUser()` call and the bare signed-in
+  // test that followed it. The state that test guarded — D-34-08 state 1, "no
+  // session" — is kept below and asked of the same context that answers the
+  // capability question, so the page resolves once instead of twice.
+  //
+  // The token is deliberately not spelled anywhere in this file's prose: a
+  // criterion a comment can defeat is a criterion nobody can run (plan 34-03).
   const ctx = await getAccessContext();
 
   // Two causes, never collapsed into one. "Nobody is here" and "this person may
-  // not" are different, and they were already distinguished on this path.
+  // not" are different, and they were already distinguished on the twin's path.
   if (!ctx.userId) redirect("/login");
 
-  // ── Why `staff.manage`, and why not the three obvious neighbours ────────────
+  // ── FINDING F1: this address had NO capability check of its own ──────────────
   //
-  //   * It is what the two actions this page invokes already demand.
-  //     `updateMediaStatus` and `deleteMedia`
-  //     (`src/app/(public)/events/[slug]/actions.ts`) both require
-  //     `CAP.STAFF_MANAGE`. A page gate with a DIFFERENT predicate would render
-  //     a screen on which every button refuses — a worse way to fail than a
-  //     refusal, because it looks like a fault.
-  //   * **Not `media.upload`.** Uploading and moderating are two questions, and
-  //     a key is named after the question it answers (`keys.ts:38-45`). Handing
-  //     moderation to a photographer assigned to one night would mint the key
-  //     from the surface instead of from the question, and none of this phase's
-  //     eight requirements asks for it.
-  //   * **Not `organizer.access`.** That is the middleware's own rule — the one
-  //     this task stops treating as sufficient.
+  // Until this commit the `/admin` version of this page held exactly one guard
+  // — a redirect to `/login` for an absent session — and nothing else. What kept
+  // it shut was
+  // the middleware's `/admin/*` → `admin.access` PREFIX RULE, and **D-34-02
+  // dissolved that rule**: after the collapse `/admin` is an address, not an
+  // authorisation. Left as it was, this media-moderation surface would have been
+  // reachable by any signed-in account.
   //
-  // This is a **defense-in-depth redirect, not the security boundary**: what
-  // decides what may be READ are this table's policies, unchanged by this
-  // commit. Read with `venue-secrecy.md` in hand — this page shows files shot
-  // inside a night's venue — the answer is that this change only ever narrows:
-  // it adds a refusal and widens nothing.
+  // **The gate below was taken from the organizer twin, not chosen.** That twin
+  // already asked `staff.manage` at this exact point, and `staff.manage` is the
+  // key `src/lib/routes/capability-routes.ts` binds to this address — so the
+  // middleware and this page read the same entry and give the same verdict
+  // (D-34-09). Nobody who could not already reach the twin gains anything: this
+  // is a page getting its own check for the first time, not a widening.
+  //
+  // Its grants are `('master','staff.manage',false)` and
+  // `('organizer','staff.manage',false)`
+  // (`20260807000000_capability_model.sql:392-393`) — role only, status ignored,
+  // so a `pending` organizer is not newly refused. The `staff` role is granted
+  // `staff.manage` by no row: the key is named after the QUESTION *"may this
+  // person manage a staff surface"*, never after the role that shares its word.
+  //
+  // Why not the neighbours, restated so the next reader does not re-derive it:
+  //   * **Not `media.upload`.** Uploading and moderating are two questions, and a
+  //     key is named after the question it answers. Handing moderation to a
+  //     photographer assigned to one night would mint the key from the surface.
+  //   * **Not `organizer.access`.** That is the routing question, and it is the
+  //     one the dissolved prefix rule was standing in for.
+  //   * It is also what the two actions this page invokes already demand —
+  //     `updateMediaStatus` and `deleteMedia` both require `CAP.STAFF_MANAGE`.
+  //     A page gate with a different predicate would draw a screen on which every
+  //     button refuses, which looks like a fault rather than a refusal.
+  //
+  // **This comment is the gate's reason, and it is here so that nobody deletes
+  // the gate as redundant** — the failure mode Phase 43's D-06 recorded for
+  // `door.operate`. It is a defense-in-depth redirect and NOT the security
+  // boundary: what may be READ is decided by this table's policies, unchanged by
+  // this commit.
   if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
     redirect("/dashboard");
   }
 
-  // Nothing else on this page changes. Not the queries, not what is shown, and
-  // deliberately **no per-night filter**: now that a media row carries its
-  // night, filtering this review by night would change what an organizer SEES,
-  // which is not a boundary change and is in none of the eight requirements.
+  const supabase = await createClient();
 
   // Fetch event title
   const { data: event } = await supabase
@@ -80,7 +101,7 @@ export default async function OrganizerMediaReviewPage({ params }: PageProps) {
     return (
       <div className="min-h-dvh px-6 pt-12">
         <p className="text-muted">Event not found.</p>
-        <Link href="/organizer/events" className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover">
+        <Link href="/admin/events" className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover">
           Back to events
         </Link>
       </div>
@@ -124,7 +145,7 @@ export default async function OrganizerMediaReviewPage({ params }: PageProps) {
   return (
     <div className="min-h-dvh px-6 pt-12 pb-24">
       <Link
-        href="/organizer/events"
+        href="/admin/events"
         className="mb-6 inline-block text-sm text-muted hover:text-foreground transition-colors"
       >
         &larr; Back to events

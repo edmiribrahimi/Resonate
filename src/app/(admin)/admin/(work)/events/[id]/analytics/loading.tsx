@@ -1,4 +1,4 @@
-export default function OrganizerAnalyticsLoading() {
+export default function AnalyticsLoading() {
   return (
     <div className="min-h-dvh pb-24">
       {/* Header skeleton */}

@@ -5,11 +5,35 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
 import SalesDashboard from "@/components/events/SalesDashboard";
-import type { UserRole, UserStatus } from "@/types/database";
 
-export default async function OrganizerSalesPage({
+/**
+ * The takings of one event — the collapsed surface.
+ *
+ * ── The money question, asked before the merge and answered here ─────────────
+ *
+ * Neither version showed a refund control, a takings figure or a payout detail
+ * the other did not. Both mounted `SalesDashboard` with the same six props, and
+ * `SalesDashboard` mounts `RefundActions` for every buyer row unconditionally
+ * (`SalesDashboard.tsx:215,255`) — so the refund control was already on both,
+ * and this merge neither adds nor removes it. The one difference was the
+ * **guest-list tile**, which the organizer version had and the `/admin` one did
+ * not; it is kept, and the grant that permits it is named at its own comment.
+ *
+ * ── Reachability: the more restrictive of the two, not the fuller one ────────
+ *
+ * The `/admin` version asked `admin.access` and did **no** ownership check
+ * ("master sees all"); the organizer version asked `organizer.access` and then
+ * `ownsOrIsMaster`. The merged page asks `organizer.access` — the key
+ * `src/lib/routes/capability-routes.ts` binds to this address, so the middleware
+ * and the page give the same verdict (D-34-09) — **and keeps the ownership
+ * check**. Verdict-identical per role: a master clears `ownsOrIsMaster` through
+ * its `master.manage` branch before the row is read, so it still sees every
+ * event; an organizer reached this content at the twin under exactly these two
+ * conditions. Dropping the ownership check would have let any organizer read any
+ * event's service-role data — a widening D-34-06 forbids.
+ */
+export default async function SalesPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -19,19 +43,24 @@ export default async function OrganizerSalesPage({
   // Identity from the session, not from an inbound header.
   const ctx = await getAccessContext();
 
-  // `MobileNav` is a `"use client"` component that still takes role and status as
-  // props; phase 34 (STAFF-03) converts it. No decision on this page reads them.
-  const navRole = ctx.role as UserRole | null;
-  const navStatus = ctx.status as UserStatus | null;
-
-  // Defense in depth: may this person reach the organizer area at all.
+  // Defense in depth, and it stays (D-34-09). The nav mount and the two
+  // role/status narrowings that stood here are gone: `admin/(work)/layout.tsx`
+  // resolves the context once for the whole tree and draws both navs (D-34-07).
+  // `getAccessContext` is `cache()`-scoped per request, so this second ask costs
+  // no round trip.
+  //
+  // Neither the nav's name nor the cast syntax is spelled in this file's prose,
+  // so the sweep grep that asserts their absence cannot be defeated by a comment
+  // (plan 34-03).
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
   const supabase = await createClient();
 
-  // Fetch event
+  // `created_by` is selected because the ownership check below needs it. The
+  // `/admin` twin selected only `id, title`, which is the shape of a page that
+  // does not ask the question.
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select("id, title, created_by")
@@ -39,7 +68,7 @@ export default async function OrganizerSalesPage({
     .single();
 
   if (eventError || !event) {
-    redirect("/organizer/events");
+    redirect("/admin/events");
   }
 
   // Ownership — one call, never a re-inlined comparison.
@@ -47,12 +76,12 @@ export default async function OrganizerSalesPage({
   // This page later reads `tickets` and `profiles` with the **service-role
   // client**, which bypasses every row-level policy (`access-gating.md`, gate
   // *service role*), and ships buyer names and email addresses into a client
-  // component. On that path this `if` is the only boundary there is. The client is
-  // retained unchanged by this conversion — the phase converts who decides, not
-  // who reads — and the statement is recorded here because `meta-gates.md`
-  // requires it in writing.
+  // component. On that path this `if` is the only boundary there is. The client
+  // is retained unchanged by this collapse — the phase changes where a verdict
+  // is asked, never what the verdict is — and the statement is recorded here
+  // because `meta-gates.md` requires it in writing.
   if (!ownsOrIsMaster(ctx, event.created_by)) {
-    redirect("/organizer/events");
+    redirect("/admin/events");
   }
 
   // Fetch tiers
@@ -82,7 +111,20 @@ export default async function OrganizerSalesPage({
     })
   );
 
-  // Count guest list tickets separately
+  // Count guest list tickets separately.
+  //
+  // **Drift, resolved towards more, and the grant that says so is
+  // `('master','organizer.access',false)`** (`20260807000000_capability_model.
+  // sql:411`). This tile existed only on the organizer twin. Keeping it shows it
+  // to a master, who did not see it at the `/admin` address — but a master holds
+  // `organizer.access` and therefore already reached the twin, where this tile
+  // was drawn. Nobody sees a figure they could not already open; the collapse
+  // removes a difference between two addresses the same person could open, which
+  // is the drift D-34-05 exists to remove.
+  //
+  // It is a COUNT OF UNPAID ADMISSIONS, not a takings figure: `ticketing-
+  // payments.md`'s guest-list gate calls an entry an ingresso non pagato, and
+  // showing how many there are is what makes them countable.
   const { count: guestListCount } = await supabase
     .from("tickets")
     .select("*", { count: "exact", head: true })
@@ -184,7 +226,7 @@ export default async function OrganizerSalesPage({
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <Link
-          href="/organizer/events"
+          href="/admin/events"
           className="text-sm text-muted hover:text-foreground transition-colors"
         >
           &larr; Back to Events
@@ -209,8 +251,6 @@ export default async function OrganizerSalesPage({
           discountSummary={discountSummaryData}
         />
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
