@@ -10,7 +10,52 @@ import VenueProfilePrompt from "@/components/venues/VenueProfilePrompt";
 import CreateVenueModal from "@/components/venues/CreateVenueModal";
 import { searchArtists } from "@/app/(admin)/admin/artists/actions";
 import { searchVenues, checkVenueExists } from "@/app/(admin)/admin/venues/actions";
+import type { NightRefusal } from "@/app/(admin)/admin/events/actions";
 import type { AccessType } from "@/types/database";
+
+/**
+ * The catalogue rows the two pages hand this form.
+ *
+ * `color` is carried even though a native `<option>` cannot render a swatch —
+ * see `renderCatalogueFields` — so that the surfaces which can (S2, S3, S5)
+ * take it from the same prop rather than from a constant in the code (D-36-12).
+ */
+export interface FormatOption {
+  id: string;
+  name: string;
+  color: string;
+  retired_at: string | null;
+}
+
+export interface SeriesOption {
+  id: string;
+  format_id: string;
+  name: string;
+  /**
+   * A WATER LEVEL, not a count of nights.
+   *
+   * The database raises it with `GREATEST` through a trigger, so it never falls
+   * — which is the whole reason the suggestion reads it. `updateEvent` really
+   * deletes the nights removed from the form, so a suggestion derived from the
+   * highest stored number, or from how many nights a series has, would
+   * re-propose a number that is already on a poster; a progressivo assigned is
+   * appended, never renumbered (`meta-gates.md`, guardie monotone).
+   */
+  highest_assigned: number;
+}
+
+/**
+ * The one place the stored-not-recalculated contract is stated to the person
+ * typing.
+ *
+ * A constant and not two copies: the field is rendered on the per-night block
+ * AND on the single-night Event Details block, and the two must not be able to
+ * drift into saying different things about the same rule. Verbatim from the
+ * copywriting contract of `36-UI-SPEC.md` §S4 — it is the contract, not
+ * decoration, and it is not to be dropped as such.
+ */
+const SERIES_NUMBER_HELP =
+  "Suggested from the last number in this series. What you save is stored as written and never recalculated — moving or deleting a night does not renumber the others.";
 
 interface SubEventFormState {
   id?: string;
@@ -31,6 +76,10 @@ interface SubEventFormState {
   access_type: AccessType;
   capacity: string;
   sort_order: number;
+  format_id: string;
+  series_id: string;
+  /** Held as a string, the convention this file already uses for numbers in form state. */
+  number: string;
 }
 
 function defaultSubEvent(sortOrder: number): SubEventFormState {
@@ -52,6 +101,9 @@ function defaultSubEvent(sortOrder: number): SubEventFormState {
     access_type: "paid",
     capacity: "",
     sort_order: sortOrder,
+    format_id: "",
+    series_id: "",
+    number: "",
   };
 }
 
@@ -74,6 +126,14 @@ export interface PartyInitialData {
   access_type: AccessType;
   capacity: number | null;
   sort_order: number;
+  format_id: string | null;
+  series_id: string | null;
+  /**
+   * `number | null` and not `number`: a night that is the ACT of another night
+   * carries that night's format and series and no number of its own, and one
+   * such row exists in production (36-06, §9a of the migration).
+   */
+  number: number | null;
 }
 
 interface EventFormProps {
@@ -88,9 +148,17 @@ interface EventFormProps {
     is_published: boolean;
     parties: PartyInitialData[];
   };
+  /** The assignable catalogue, read by the page with the caller's own client. */
+  formats: FormatOption[];
+  series: SeriesOption[];
   action: (
     formData: FormData
-  ) => Promise<{ success: boolean; id?: string; error?: string }>;
+  ) => Promise<{
+    success: boolean;
+    id?: string;
+    error?: string;
+    refusal?: NightRefusal;
+  }>;
   submitLabel: string;
 }
 
@@ -123,11 +191,16 @@ function subEventFromInitial(p: PartyInitialData): SubEventFormState {
     access_type: p.access_type,
     capacity: p.capacity?.toString() ?? "",
     sort_order: p.sort_order,
+    format_id: p.format_id ?? "",
+    series_id: p.series_id ?? "",
+    number: p.number?.toString() ?? "",
   };
 }
 
 export default function EventForm({
   initialData,
+  formats,
+  series,
   action,
   submitLabel,
 }: EventFormProps) {
@@ -245,6 +318,21 @@ export default function EventForm({
     isMainEventParty && singleParty.capacity ? singleParty.capacity.toString() : ""
   );
 
+  // Format, series and number for the single-night path. The Event Details
+  // block writes a row of `event_parties` exactly as a sub-event block does, and
+  // both `format_id` and `series_id` are NOT NULL — a night saved from here
+  // without them would be refused by the database with nothing on screen
+  // explaining why.
+  const [mainFormatId, setMainFormatId] = useState(
+    isMainEventParty ? (singleParty.format_id ?? "") : ""
+  );
+  const [mainSeriesId, setMainSeriesId] = useState(
+    isMainEventParty ? (singleParty.series_id ?? "") : ""
+  );
+  const [mainNumber, setMainNumber] = useState(
+    isMainEventParty ? (singleParty.number?.toString() ?? "") : ""
+  );
+
   // Sub-events state: 1 party = main event, 2+ parties = sub-events
   const initialSubEvents = initialData?.parties && initialData.parties.length > 1
     ? initialData.parties.map(subEventFromInitial)
@@ -282,6 +370,52 @@ export default function EventForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  /**
+   * The named refusal of the last save, kept apart from `error`.
+   *
+   * `error` is the sentence at the top of the form; this is the CATEGORY, and
+   * it is what lets the duplicate-number refusal be attached to the night and
+   * the field that caused it. It arrives as a returned value and never as the
+   * message of a thrown error, because Next redacts those in a production build
+   * (`src/lib/capabilities/server.ts:59-63`).
+   */
+  const [refusal, setRefusal] = useState<NightRefusal | null>(null);
+
+  const seriesById = new Map(series.map((s) => [s.id, s]));
+
+  /**
+   * The refusal sentence, upgraded with the series' own NAME where the action
+   * could only carry an id. Three different failures — a network failure, a
+   * permission refusal and a duplicate number — produce three different
+   * sentences on this form; there is no shared "something went wrong".
+   */
+  function refusalSentence(r: NightRefusal): string {
+    if (r.kind === "duplicate_number") {
+      const seriesName = r.seriesId ? seriesById.get(r.seriesId)?.name : undefined;
+      if (r.number !== null && seriesName) {
+        return `Number ${r.number} is already assigned in ${seriesName}. Pick another.`;
+      }
+      if (r.number !== null) {
+        return `Number ${r.number} is already assigned in this series. Pick another.`;
+      }
+      return "One of these nights carries a number already assigned in its series. Pick another.";
+    }
+    if (r.kind === "number_not_positive") {
+      return "A series number must be a whole number of 1 or more.";
+    }
+    return "";
+  }
+
+  /** True when the last refusal was about THIS night's number field. */
+  function numberRefusalFor(sortOrder: number): string | null {
+    if (!refusal) return null;
+    if (refusal.kind !== "duplicate_number" && refusal.kind !== "number_not_positive") {
+      return null;
+    }
+    if (refusal.sortOrder !== sortOrder) return null;
+    return refusalSentence(refusal) || null;
+  }
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -350,6 +484,7 @@ export default function EventForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setRefusal(null);
     setIsSubmitting(true);
 
     try {
@@ -383,6 +518,11 @@ export default function EventForm({
           access_type: se.access_type,
           capacity: se.capacity ? parseInt(se.capacity, 10) : null,
           sort_order: index,
+          format_id: se.format_id,
+          series_id: se.series_id,
+          // An empty field is the real state "this night has no number of its
+          // own" (§9a), so it travels as null and is not coerced to 0.
+          number: se.number ? parseInt(se.number, 10) : null,
         }));
         // Aggregated values for event level
         const allLineup = new Set<string>();
@@ -413,6 +553,9 @@ export default function EventForm({
           access_type: mainAccessType,
           capacity: mainCapacity ? parseInt(mainCapacity, 10) : null,
           sort_order: 0,
+          format_id: mainFormatId,
+          series_id: mainSeriesId,
+          number: mainNumber ? parseInt(mainNumber, 10) : null,
         }];
         eventLineup = lineup;
         eventVenueSecret = venueSecret;
@@ -443,7 +586,16 @@ export default function EventForm({
         // to a 308 the browser caches and does not come back from.
         router.push("/admin/events");
       } else {
-        setError(result.error ?? "Something went wrong.");
+        // The category first, so the sentence can be attached to the night and
+        // the field that caused it; the top-of-form sentence second. A refused
+        // save that arrived with no reason at all says exactly that instead of
+        // collapsing into a shared "something went wrong" — the newsletter form
+        // is the recorded precedent not to repeat (`meta-gates.md`).
+        setRefusal(result.refusal ?? null);
+        setError(
+          result.error ??
+            "The save was refused and no reason travelled back. Reload the page and try again."
+        );
       }
     } catch (err) {
       setError(
@@ -487,6 +639,219 @@ export default function EventForm({
           />
         </button>
       </div>
+    );
+  }
+
+  /**
+   * Format, series and number — the three fields, rendered once and used by
+   * both the per-night block and the single-night Event Details block.
+   *
+   * ── Why one function and not two copies ──────────────────────────────────
+   *
+   * Both blocks write a row of `event_parties`. A field added to one and
+   * forgotten on the other is the same class of defect as a field added to one
+   * of the three parallel shapes above: the value silently never reaches the
+   * action, and the database refuses a `NOT NULL` column with nothing on screen
+   * to explain it.
+   *
+   * ── Why no swatch here ───────────────────────────────────────────────────
+   *
+   * A native `<option>` renders text and nothing else, so `FormatMarker` — the
+   * one component that draws a format's colour — cannot be mounted inside this
+   * select. The name alone is the accessible content (`36-UI-SPEC.md` §S4), and
+   * the colour reaches the surfaces that can draw it through the same prop this
+   * one reads. No colour constant is introduced here to compensate (D-36-12).
+   */
+  function renderCatalogueFields(opts: {
+    idPrefix: string;
+    sortOrder: number;
+    formatId: string;
+    seriesId: string;
+    number: string;
+    required: boolean;
+    onChange: (patch: {
+      format_id?: string;
+      series_id?: string;
+      number?: string;
+    }) => void;
+  }) {
+    const { idPrefix, sortOrder, formatId, seriesId, number, required, onChange } = opts;
+
+    // Active formats — plus, and ONLY, the retired one this night already
+    // carries. Without that exception, merely opening the edit form and saving
+    // would silently reassign an archived night, and archived nights are not
+    // rewritten (D-36-10). The select's job is to be able to display the truth;
+    // refusing a *change to* a retired format is the action's job.
+    const formatOptions = formats.filter(
+      (f) => f.retired_at === null || f.id === formatId
+    );
+    const carriedFormatIsRetired = formats.some(
+      (f) => f.id === formatId && f.retired_at !== null
+    );
+
+    // Never typed text. A venue spelled two slightly different ways would
+    // silently start a second numbering from 1, which is the whole reason a
+    // series is a catalogue row and not a string on the night (D-36-05).
+    const seriesOptions = series.filter((s) => s.format_id === formatId);
+
+    // ── The row this caller cannot READ ──────────────────────────────────────
+    //
+    // The catalogue arrives through the cookie client, so an organizer who does
+    // not hold `catalogue.manage` sees the listed formats and no others. A night
+    // recorded under an UNLISTED format would therefore reach a select that does
+    // not contain it, the control would fall back to the placeholder, and saving
+    // would reassign the night to whatever was picked instead — the same silent
+    // data loss the retired exception exists to prevent, arriving down a
+    // different road.
+    //
+    // The id is kept as its own option so the value round-trips unchanged. No
+    // name is invented for it: this form does not know one, and `updateEvent`
+    // admits it precisely because the night already carries it.
+    const carriedFormatIsUnreadable =
+      formatId !== "" && !formats.some((f) => f.id === formatId);
+    const carriedSeriesIsUnreadable =
+      seriesId !== "" && !series.some((s) => s.id === seriesId);
+
+    const numberError = numberRefusalFor(sortOrder);
+    const helpId = `${idPrefix}-number-help`;
+    const errorId = `${idPrefix}-number-error`;
+
+    return (
+      <>
+        {/* Format */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-format`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Format {required && <span className="text-red-400">*</span>}
+          </label>
+          <select
+            id={`${idPrefix}-format`}
+            value={formatId}
+            required={required}
+            onChange={(e) =>
+              // Changing the format clears the series AND the number: a series
+              // belongs to exactly one format, so keeping either would leave a
+              // pair the composite key refuses to store.
+              onChange({ format_id: e.target.value, series_id: "", number: "" })
+            }
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground normal-case outline-none focus:ring-1 focus:ring-accent/50"
+          >
+            <option value="">Choose a format…</option>
+            {carriedFormatIsUnreadable && (
+              <option value={formatId}>
+                This night&apos;s format (not one you can see)
+              </option>
+            )}
+            {formatOptions.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.retired_at !== null ? `${f.name} (retired)` : f.name}
+              </option>
+            ))}
+          </select>
+          {carriedFormatIsRetired && (
+            <p className="text-xs text-muted">
+              This night was recorded under a retired format and keeps it. Pick another
+              format only if you mean to move the night.
+            </p>
+          )}
+          {carriedFormatIsUnreadable && (
+            <p className="text-xs text-muted">
+              This night carries a format your account cannot see. It is kept as it is
+              unless you pick another one.
+            </p>
+          )}
+        </div>
+
+        {/* Series */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-series`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Series {required && <span className="text-red-400">*</span>}
+          </label>
+          <select
+            id={`${idPrefix}-series`}
+            value={seriesId}
+            required={required}
+            disabled={formatId === ""}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              const chosen = seriesById.get(nextId);
+              // THE SUGGESTION, and it is a WATERMARK READ, never a count.
+              // `highest_assigned` only rises, so the proposal cannot land on a
+              // number a deleted night already used — which taking the highest
+              // stored number, or the length of the list plus one, would do the
+              // moment a night is removed.
+              //
+              // A count-like affordance is allowed HERE: this surface sits
+              // behind a capability, and the no-count rule governs the public
+              // ones. Said out loud because over-applying it would remove the
+              // one thing that makes the field usable.
+              onChange({
+                series_id: nextId,
+                number: chosen ? String(chosen.highest_assigned + 1) : "",
+              });
+            }}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground normal-case outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50"
+          >
+            <option value="">
+              {formatId === "" ? "Pick a format first…" : "Choose a series…"}
+            </option>
+            {carriedSeriesIsUnreadable && (
+              <option value={seriesId}>
+                This night&apos;s series (not one you can see)
+              </option>
+            )}
+            {seriesOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {carriedSeriesIsUnreadable && (
+            <p className="text-xs text-muted">
+              This night carries a series your account cannot see. It is kept as it is
+              unless you pick another one.
+            </p>
+          )}
+        </div>
+
+        {/* Number */}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefix}-number`}
+            className="block text-sm font-medium text-foreground"
+          >
+            Number
+          </label>
+          <input
+            id={`${idPrefix}-number`}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={number}
+            // The typed value is NEVER cleared by a refusal: the person came
+            // here with a number from a poster, and clearing it would lose the
+            // only copy on screen.
+            onChange={(e) => onChange({ number: e.target.value })}
+            placeholder="Leave empty for a night with no number of its own"
+            aria-invalid={numberError ? true : undefined}
+            aria-describedby={numberError ? `${errorId} ${helpId}` : helpId}
+            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground tabular-nums placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
+          />
+          {numberError && (
+            <p id={errorId} className="text-sm text-red-400">
+              {numberError}
+            </p>
+          )}
+          <p id={helpId} className="text-xs text-muted">
+            {SERIES_NUMBER_HELP}
+          </p>
+        </div>
+      </>
     );
   }
 
@@ -547,6 +912,21 @@ export default function EventForm({
             className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y"
           />
         </div>
+
+        {/* Format, series and number — a sub-event always becomes a night, so
+            the two catalogue fields are always required here. */}
+        {renderCatalogueFields({
+          idPrefix,
+          sortOrder: index,
+          formatId: subEvent.format_id,
+          seriesId: subEvent.series_id,
+          number: subEvent.number,
+          required: true,
+          onChange: (patch) =>
+            setSubEvents((prev) =>
+              prev.map((se, i) => (i === index ? { ...se, ...patch } : se))
+            ),
+        })}
 
         {/* Date */}
         <div className="space-y-2">
@@ -940,6 +1320,25 @@ export default function EventForm({
             <input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required
               className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
           </div>
+
+          {/* Format, series and number.
+              `required` only once a start time exists, because that is exactly
+              when this block produces a night: an event saved with no time
+              writes no row of `event_parties`, and demanding a format for a
+              night that will not exist would refuse a save for nothing. */}
+          {renderCatalogueFields({
+            idPrefix: "main",
+            sortOrder: 0,
+            formatId: mainFormatId,
+            seriesId: mainSeriesId,
+            number: mainNumber,
+            required: mainTime !== "",
+            onChange: (patch) => {
+              if (patch.format_id !== undefined) setMainFormatId(patch.format_id);
+              if (patch.series_id !== undefined) setMainSeriesId(patch.series_id);
+              if (patch.number !== undefined) setMainNumber(patch.number);
+            },
+          })}
 
           {/* Time row */}
           <div className="grid grid-cols-2 gap-4">

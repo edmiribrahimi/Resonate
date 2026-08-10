@@ -6,6 +6,7 @@ import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import EventForm from "@/components/events/EventForm";
 import { updateEvent } from "@/app/(admin)/admin/events/actions";
+import type { NightRefusal } from "@/app/(admin)/admin/events/actions";
 import type { AccessType } from "@/types/database";
 
 /**
@@ -74,6 +75,28 @@ import type { AccessType } from "@/types/database";
  *
  * `getAccessContext` is `cache()`-scoped per request, so asking it again after
  * the layout costs no second round trip.
+ *
+ * ── The catalogue read, and its two deliberate non-filters ───────────────────
+ *
+ * 1. **Not filtered on `listed`.** `listed` and `retired_at` are different axes:
+ *    `retired_at` says NO NEW NIGHT MAY BE ASSIGNED TO THIS, `listed` says A
+ *    PERSON HAS DECIDED THIS MAY BE SEEN. A format must be assignable to a night
+ *    before it is announced — the entire point of the separation D-36-17
+ *    introduced — so filtering the select on `listed` would make a format
+ *    unusable until the moment it becomes public.
+ *
+ * 2. **Not filtered on `retired_at` either, unlike the create page.** A night on
+ *    this page may already carry a retired format, and the select has to be able
+ *    to display the truth: omitting the row would mean that merely opening this
+ *    form and saving would silently reassign an archived night, and archived
+ *    nights are not rewritten (D-36-10). `EventForm` does the filtering — active
+ *    formats, plus the retired one this particular night already carries — and
+ *    `updateEvent` refuses a *change to* a retired format, which is the half
+ *    that survives a forged POST.
+ *
+ * Both queries use the COOKIE client, so the caller's own capabilities decide
+ * what comes back: the listed formats to everyone, and everything to a holder
+ * of `catalogue.manage`.
  */
 
 interface EditEventPageProps {
@@ -110,12 +133,66 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     redirect("/admin/events");
   }
 
-  // Fetch parties for this event (with venue join)
+  // Fetch parties for this event (with venue join).
+  //
+  // `format_id`, `series_id` and `number` are on this projection, and they have
+  // to be: a field added to the form's shape but not to what the page reads
+  // arrives as `undefined`, the select opens empty on a night that HAS a format,
+  // and saving reassigns it. `npm run build` cannot catch it — no Supabase
+  // client in this repository is parameterised with `Database`.
   const { data: parties } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, menu_closes_at, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venues(name)")
+    .select("id, title, description, date, time, end_time, menu_closes_at, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, format_id, series_id, number, venues(name)")
     .eq("event_id", eventId)
     .order("sort_order", { ascending: true });
+
+  const [{ data: formats, error: formatsError }, { data: series, error: seriesError }] =
+    await Promise.all([
+      supabase
+        .from("formats")
+        .select("id, name, color, retired_at")
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("party_series")
+        .select("id, format_id, name, highest_assigned")
+        .order("name", { ascending: true }),
+    ]);
+
+  // A failed catalogue read does NOT render a form with empty selects.
+  //
+  // `/events` turns a failed read into an empty list (`page.tsx:135-139`) and
+  // `meta-gates.md` names that shape as the one not to repeat. Here it would be
+  // worse than an empty page: the selects would open blank on nights that
+  // already have a format and a series, and saving would rewrite them.
+  if (formatsError || seriesError) {
+    console.error(
+      `[events.catalogue_read_failed] event=${eventId} ` +
+        `formats=${formatsError?.code ?? "ok"} series=${seriesError?.code ?? "ok"}`
+    );
+    return (
+      <div className="min-h-dvh pb-24">
+        <header className="px-6 pt-12 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Edit Event</h1>
+        </header>
+        <div className="px-6">
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+            <p className="text-sm text-red-400">
+              The list of formats and series could not be loaded, so this form cannot be
+              shown. Editing now would open the format and series fields blank on nights
+              that already have them, and saving would rewrite those nights. Reload the
+              page.
+            </p>
+          </div>
+          <Link
+            href="/admin/events"
+            className="inline-flex items-center gap-2 rounded-xl border border-card-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:border-accent/50 transition-colors mt-4"
+          >
+            Back to Events
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // The page guard above does NOT extend to this action. Next.js is explicit
   // that a page-level check does not cover the Server Actions defined inside
@@ -127,7 +204,16 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   // behaviour must not change.
   async function boundUpdateEvent(
     formData: FormData
-  ): Promise<{ success: boolean; id?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    id?: string;
+    error?: string;
+    // The named refusal travels through this binding as a VALUE. Widening the
+    // return type is what makes that possible: Next redacts the message of an
+    // error thrown out of a Server Action in a production build, so a category
+    // carried as a message would work in `next dev` and stop where it counts.
+    refusal?: NightRefusal;
+  }> {
     "use server";
     return updateEvent(eventId, formData);
   }
@@ -190,9 +276,16 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
                 access_type: p.access_type as AccessType,
                 capacity: p.capacity as number | null,
                 sort_order: p.sort_order as number,
+                format_id: p.format_id as string | null,
+                series_id: p.series_id as string | null,
+                // NOT `?? 0`: null is the real state of a night that is the ACT
+                // of another night and has no number of its own (§9a).
+                number: p.number as number | null,
               };
             }),
           }}
+          formats={formats ?? []}
+          series={series ?? []}
           action={boundUpdateEvent}
           submitLabel="Save Changes"
         />
