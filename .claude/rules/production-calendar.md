@@ -27,7 +27,7 @@ podcast e after movie, e ognuno di questi ha un'ancora temporale precisa.
 ## I quattro format, come sono davvero
 
 > **Perlone non e' un format.** E' il club di Nizza che ci ospita, e la serata
-> e' una **notte Resonate** portata li': titolo `Resonate x Perlone`, sigla
+> e' una **notte re:sonate** portata li': titolo `re:sonate x Perlone`, sigla
 > `RSNT-PRLN-###`, numerazione propria. Sta nella tabella qui sotto come
 > **serie** di `RSNT`, non come quinta identita'. Confonderli significa
 > inventare un format che non esiste — e prima o poi disegnargli una palette.
@@ -95,7 +95,7 @@ aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 - **Gate una sigla ritirata non si cita**: Il giovedi' e' `RMDB-BZ-###` e `RMDB-MR-###`, **una sigla per locale, con progressivo che corre per locale**. La sigla precedente del giovedi' e' stata **ritirata il 4 agosto 2026**: non ha una coda aperta e non va piu' nominata, nemmeno per spiegare la storia. Al prossimo cambio di sigla vale comunque il principio: ogni cambio va accompagnato da una ricognizione di cosa e' gia' uscito, **e la ricognizione si chiude dichiarandola chiusa** — altrimenti il gate resta acceso su un lavoro che non esiste piu'.
 - **Gate il calendario batte il tracker**: Quando il calendario e un documento di lavoro piu' vecchio dicono cose diverse, **vince il calendario** — e l'altro documento non e' "una versione alternativa": e' **la fonte da correggere**. Precedente registrato e chiuso il 5 agosto 2026: sull'orario del secondo atto della serata doppia il tracker di luglio divergeva dal calendario; **l'orario e' quello di `RSNT`, 22:00 → 06:00**, e il tracker era da correggere. Finche' una divergenza del genere resta aperta, **blocca la timetable**: e' un dato che si stampa.
 - **Gate quattro pezzi, non due**: Il piano editoriale di un satellite non e' "listing e podcast". Chi consegna due pezzi su quattro non e' in ritardo su un dettaglio: ha saltato il pezzo del giorno stesso — quello che intercetta chi decide la serata nel pomeriggio — e il recap che alimenta l'evidenza.
-- **Gate progressivo per sede o per format, ancora aperto**: Per MotionLab la sigla porta il codice della sede, e con una sede diversa ogni volta il progressivo per sede ripartirebbe **sempre da 001**. Se numerare per sede o per format **non e' deciso**: finche' non lo e', ogni materiale che mostra un progressivo MotionLab e' provvisorio quanto il suo giorno.
+- **Gate progressivo per sede — deciso il 2026-08-10**: Per MotionLab il progressivo **riparte da 001 a ogni sede**, come per RamaDub, dove Booze e Muro hanno numerazioni separate. Con una sede diversa ogni volta questo significa che **ogni edizione MotionLab e' la n° 001 del proprio spazio**, ed e' la conseguenza accettata, non un effetto collaterale scoperto dopo. *(Decisione del proprietario in fase 36, D-36-07; prima di quella data questo gate era aperto e rendeva provvisorio ogni materiale che mostrasse un progressivo MotionLab. Non lo e' piu': il numero si puo' stampare.)* Il giorno della settimana, invece, **resta un segnaposto** — vedi il gate qui sopra.
 - **Gate il calendario e' la fonte**: Le coordinate certe di un format (orario, giorno, cadenza, pipeline) si leggono dal calendario. Cio' che il calendario non dice — l'identita' sonora di Resonate, RamaDub e MotionLab — **non e' ancora scritto**, e inventarlo significa scrivere il brand al posto di chi lo possiede. Dire "non e' deciso" e' una risposta corretta.
 
 ## Imperative Behaviors

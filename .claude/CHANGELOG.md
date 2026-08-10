@@ -3,6 +3,71 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.8.0] - 2026-08-10
+
+### Added — quattro gate nati da un incidente reale (fase 36)
+
+Durante la verifica finale della fase 36 un agente ha **cancellato per errore i
+due eventi di produzione e, in cascata, 63 righe in sette tabelle**. Eventi e
+serate sono stati ripristinati da un'istantanea; le 63 righe no, e il progetto
+non ha PITR. La causa: uno snippet cercava i pulsanti di cancellazione
+**risalendo il DOM** dal titolo di scarto, e la risalita ha raggiunto un
+antenato che conteneva l'intera lista.
+
+Quattro gate in `ai-engineering.md`, ognuno con l'incidente scritto accanto —
+perche' un gate senza la situazione che lo fa scattare e' una decorazione:
+
+- **Gate una rimozione si fa per chiave, mai per interfaccia.** Il verso
+  dell'errore e' il punto: un selettore troppo largo cancella **di piu'**; una
+  chiave primaria sbagliata non trova nulla. Fra i due modi di fallire ne esiste
+  uno solo che non distrugge dati.
+- **Gate il contatore di controllo non legge la superficie che sta muovendo.**
+  Nell'incidente il conteggio leggeva la stessa lista su cui stava cliccando: ha
+  visto sparire esattamente quello che si aspettava. Una misura presa con lo
+  strumento che ha causato l'effetto e' un'eco, non una misura.
+- **Gate un'istantanea prima copre cio' che si tocca, non cio' che si crea.**
+  L'istantanea copriva eventi e serate — ed e' la ragione per cui sono tornati —
+  ma non le sette tabelle che vi pendevano da un `ON DELETE CASCADE`. Una
+  cascata e' un percorso di scrittura che nessuno ha dichiarato: si enumera
+  leggendo i vincoli.
+- **Gate l'autorizzazione a scrivere in produzione e' un atto, non un
+  permesso.** Si consuma una volta, copre cio' che e' stato descritto, e non si
+  estende a uno strumento diverso da quello concordato.
+
+Piu' quattro `Imperative Behaviors` corrispondenti.
+
+**Nessun `paths:` e' cambiato**, quindi il caso peggiore del context budget non
+si sposta: resta `src/app/(admin)/admin/scanner/ScannerClient.tsx`, che non
+carica `ai-engineering.md`. Il budget non e' stato rimisurato perche' non c'era
+niente da rimisurare — e questa frase esiste perche' il gate lo pretende
+esplicitamente quando un `paths:` si allarga, e qui non si e' allargato.
+
+### Changed — due gate chiusi dalla fase 36, in `production-calendar.md`
+
+- **Il progressivo di MotionLab riparte a ogni sede** (D-36-07, decisione del
+  proprietario). Il gate diceva *«non e' deciso»* e rendeva provvisorio ogni
+  materiale che mostrasse un progressivo MotionLab. **Adesso il numero si puo'
+  stampare.** La conseguenza accettata e dichiarata: con una sede diversa ogni
+  volta, ogni edizione e' la n° 001 del proprio spazio. Il **giorno**, invece,
+  resta un segnaposto: i due erano aperti insieme e solo uno si e' chiuso.
+- **La serie di Nizza si scrive `re:sonate x Perlone`**, con la e normale.
+  `production-calendar.md` scriveva `Resonate x Perlone` mentre
+  `brand-visual-system.md` impone la e normale ovunque fuori dal logo: due fonti
+  che dicevano cose diverse sullo stesso nome, cioe' un errore che prima o poi
+  qualcuno stampa. Deciso dal proprietario in fase 36.
+
+### Scenario carica-e-scatta (gate eval)
+
+**File reale nello scope:** un prompt d'agente che chiede di rimuovere righe di
+test create in produzione — cioe' `.claude/**`, che carica `ai-engineering.md`
+(governa se stesso).
+**Moduli che devono caricarsi:** `ai-engineering.md` + `meta-gates.md`.
+**Gate che deve scattare su una modifica-tipo:** un prompt che dice *«rimuovi le
+righe che hai creato»* senza dire **come** viola il gate *una rimozione si fa per
+chiave*; il gate pretende gli id catturati alla creazione e la cancellazione per
+chiave primaria. La modifica-tipo che lo fa scattare e' esattamente il prompt che
+l'orchestratore ha scritto il 2026-08-10, e che oggi non passerebbe.
+
 ## [1.7.0] - 2026-08-10
 
 ### Changed — il route group non e' piu' il pubblico (fase 34, D-34-17)

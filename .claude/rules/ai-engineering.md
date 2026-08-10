@@ -54,6 +54,18 @@ della delega. Questo modulo governa se stesso: modificarlo carica questo file.
 
 - **Gate prova per mutazione**: Ogni controllo aggiunto a `scripts/verify-persona.mjs` va provato rompendo deliberatamente l'invariante e verificando che scatti, poi ripristinando. **E la mutazione va verificata di per se': se la sostituzione non e' andata a segno, il verde che ne segue e' un falso negativo.** E' successo scrivendo questo script — una sostituzione `perl` non ha matchato e il controllo B e' sembrato rotto quando funzionava. Nella direzione opposta lo stesso errore avrebbe certificato come funzionante un controllo morto. Asserisci che la mutazione sia stata applicata, prima di leggerne l'esito.
 
+- **Gate una rimozione si fa per chiave, mai per interfaccia**: Quando un agente crea righe in produzione per una verifica, **la lista dei loro identificatori si cattura al momento della creazione**, e la rimozione avviene **per chiave primaria** su quella lista. **Mai cliccando un controllo di cancellazione in una pagina**, e mai selezionando per titolo, per etichetta o risalendo un albero di elementi.
+
+  **Situazione che lo fa scattare, ed e' successa il 2026-08-10, alla fase 36.** La verifica V1/V2 doveva rimuovere le righe che si era creata. Uno snippet cercava i pulsanti di cancellazione risalendo il DOM dal titolo di scarto; la risalita e' arrivata a un antenato che conteneva **l'intera lista**, quindi ha corrisposto a **ogni** pulsante. Sono stati cancellati i due eventi reali di produzione e, in cascata, **63 righe in sette tabelle** — biglietti, ordini e token del bar, listino, voci di guest list. Eventi e serate sono stati ripristinati da un'istantanea; le 63 righe no, e il progetto non ha PITR.
+
+  **Il verso dell'errore e' il punto.** Un selettore troppo largo cancella **di piu'** di quanto doveva; un selettore per chiave primaria, se sbaglia, non trova nulla. Fra i due modi di fallire ne esiste uno solo che non distrugge dati, e non e' una preferenza di stile: e' l'unico compatibile con una verifica che dichiara *«la produzione resta come l'ho trovata»*.
+
+- **Gate il contatore di controllo non legge la superficie che sta muovendo**: Un agente che verifica quante righe ha rimosso **non lo chiede alla pagina che ha appena manipolato**. Nello stesso incidente il conteggio di controllo leggeva la stessa lista su cui stava cliccando, quindi ha visto sparire esattamente quello che si aspettava di veder sparire e **non ha protestato**. La conferma si chiede a una fonte diversa da quella su cui si e' agito — il database per una rimozione fatta dall'interfaccia, l'interfaccia per una fatta dal database. Una misura presa con lo strumento che ha causato l'effetto non e' una misura: e' un'eco.
+
+- **Gate un'istantanea prima copre cio' che si tocca, non cio' che si crea**: Prima di una verifica che scrive in produzione, l'istantanea si prende **su ogni tabella raggiungibile per cascata dalle righe toccate**, non solo su quelle che l'agente intende modificare. Nell'incidente l'istantanea copriva eventi e serate — ed e' la ragione per cui quelli sono tornati — ma non le sette tabelle che vi pendevano da una chiave esterna `ON DELETE CASCADE`. **Una cascata e' un percorso di scrittura che nessuno ha dichiarato**, e va enumerata leggendo i vincoli, non ricordandola.
+
+- **Gate l'autorizzazione a scrivere in produzione e' un atto, non un permesso**: Un'autorizzazione del proprietario a seminare dati per una verifica **si consuma una volta**, copre esattamente cio' che e' stato descritto quando e' stata chiesta, e **non si estende alla rimozione con uno strumento diverso da quello concordato**. Chi la riceve dichiara nel proprio registro quando l'ha usata e quando l'ha esaurita. *(Il precedente positivo esiste nella stessa fase: un agente si e' rifiutato di riseminare perche' il ciclo era chiuso e non c'era una misura in piu' da raccogliere.)*
+
 - **Gate multi-agent**: `.planning/config.json` ha `parallelization: true` e il workflow GSD genera agenti. Nessun lavoro multi-agente senza: invarianti condivise replicate in ogni prompt d'agente (in particolare l'irreversibilita' della rivelazione del venue), protocollo di handoff esplicito, risoluzione dei conflitti definita nell'orchestratore, e **Principio di Autorita' Minima** — nessun agente con tool o permessi oltre il necessario. Due agenti che toccano `CLAUDE.md` o lo stesso modulo in parallelo vanno **sequenziati**, non parallelizzati.
 
 ## Imperative Behaviors
@@ -71,4 +83,8 @@ della delega. Questo modulo governa se stesso: modificarlo carica questo file.
 - When writing anything into `.planning/`: name roles, never people — it is published
 - When a spec holds material that cannot ship: keep it in `docs/`, uncommitted, and say why
 - When changing a module: write the load-and-fire scenario, since no test can be run
+- When an agent creates production rows for a check: capture their ids at creation and delete by primary key, never by clicking a delete control
+- When confirming how many rows were removed: ask a source other than the one you acted on
+- When snapshotting before a production write: cover every table reachable by cascade, read from the constraints
+- When given authorisation to seed production: use it once, for what was described, and record when it was spent
 - When two agents would touch the same persona file: sequence them
