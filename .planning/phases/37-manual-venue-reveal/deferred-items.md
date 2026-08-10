@@ -223,3 +223,30 @@ e' stata chiusa sul posto.
   Due strade, entrambe economiche: nominare il dominio per esteso nel piano,
   oppure introdurre una variabile distinta per l'indirizzo **pubblico** e
   lasciare `NEXT_PUBLIC_APP_URL` al suo uso locale.
+
+---
+
+## 8. Il pannello arma un bottone che il server ora rifiuta, su una serata con solo testo libero
+
+- **Trovata durante:** 37-14, Task 1, chiudendo l'estremita' A di CR-01.
+- **Cosa:** il pannello arma il bottone su `venueName ?? venue_text`
+  (`edit/page.tsx:294`, `VenueRevealPanel.tsx:200-201`); da questo piano il
+  server rifiuta con `venue_not_set` su `venue_id === null`. Su una serata
+  segreta che porta **solo testo libero** le due condizioni divergono: il
+  bottone risulta acceso e la pressione riceve il rifiuto.
+- **Il verso e' quello sicuro:** si spreca un clic, non si pubblica un
+  indirizzo. Il rifiuto e' tipizzato, nomina la causa e dice cosa fare — non e'
+  un fallimento silenzioso.
+- **Perche' non e' stato chiuso qui:** il piano 37-14 dichiara che la guardia
+  del pannello **resta**, e non chiede di estenderla; la superficie e' fuori dai
+  `files_modified` del piano, e allargare il diff di un piano che tocca il
+  percorso della rivelazione avrebbe reso piu' difficile verificare l'unica
+  domanda che quel diff deve reggere.
+- **Nessun commento del codice dichiara oggi una proprieta' che non ha:** il
+  paragrafo del pannello parla del caso «nessun nome e nessun testo», che resta
+  vero. La frase che diverge sta nel piano, non nel repo.
+- **Cosa costa chiuderla:** passare al pannello se la sede e' **collegata**, non
+  solo nominata — due file di superficie (`edit/page.tsx` e
+  `VenueRevealPanel.tsx`), nessuna modifica alla regola.
+- **Chi la dovrebbe prendere:** il prossimo piano che tocca il pannello della
+  rivelazione.

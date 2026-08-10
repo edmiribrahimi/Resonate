@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
-stopped_at: Phase 37 executed (13/13) — not deployed, not verified
-last_updated: "2026-08-10T23:04:27.129Z"
-last_activity: 2026-08-11 -- Phase 37 executed, 13/13
+status: verifying
+stopped_at: "Phase 37 executed (14/14), NOT deployed, NOT verified. Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed"
+last_updated: "2026-08-10T23:55:12.307Z"
+last_activity: 2026-08-11 -- Phase 37 executed, 14/14; not deployed, not verified
 progress:
   total_phases: 13
   completed_phases: 8
-  total_plans: 119
-  completed_plans: 119
+  total_plans: 120
+  completed_plans: 120
   percent: 62
 ---
 
@@ -32,11 +32,11 @@ Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 13 of 13
+Plan: 14 of 14
 (contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
 uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
-lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Tredici
-SUMMARY su tredici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
+lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Quattordici
+SUMMARY su quattordici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 2026-08-11 — con due delle sue misure dichiarate **non eseguibili** invece che
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY.
 Status: Executed, NOT deployed, NOT verified
@@ -85,7 +85,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-11 -- Phase 37 executed, 13/13; not deployed, not verified
+Last activity: 2026-08-11 -- Phase 37 executed, 14/14; not deployed, not verified
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -143,6 +143,10 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 37]: 37-10: il rifiuto di un percorso di segretezza torna come VALORE, mai come messaggio lanciato — Next redige i messaggi di una Server Action in produzione
 - [Phase 37]: 37-10: un conteggio che alimenta un atto irreversibile dichiara se ha potuto misurare (unavailable), non solo quanto
 - [Phase 37]: 37-10: nessun secondo verdetto sul ruolo — re_hide_requires_master lo decide la funzione SQL, che legge il ruolo al proprio interno
+- [Phase 37]: 37-14: su una bozza chi ha staff.manage vede il nome del locale — is_published governa i quattro rami del pubblico e non quello dello staff. Non e' un allargamento: quella chiave legge gia' public.venues per venues_select_staff, misurato da 37-13 (0 righe dalla funzione, 2 leggendo diretto)
+- [Phase 37]: 37-14: la precondizione della rivelazione manuale e' la SEDE COLLEGATA (venue_id), non il testo libero — la strada pubblica verso un indirizzo fa JOIN public.venues ON v.id = ep.venue_id, e una serata con solo testo libero spenderebbe l'interruttore su un segnaposto
+- [Phase 37]: 37-14: cambiare la sede di una serata gia' rivelata e' rifiutato con una categoria propria (venue_link_locked), non sotto la frase di venue_secret_locked — le due mandano la persona in due posti diversi
+- [Phase 37]: 37-14: sulla lettura dell'evento in pagina pubblica anche il fallimento di trasporto viene lanciato, non degradato — li' l'unica alternativa alla verita' e' dichiarare a un visitatore, e a un crawler, che l'evento non esiste
 
 ## Accumulated Context
 
@@ -174,8 +178,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T23:04:21.334Z
-**Stopped at:** Phase 37 executed (13/13). Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed
+**Last session:** 2026-08-10T23:53:25.615Z
+**Stopped at:** Phase 37 executed (14/14), NOT deployed, NOT verified. Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
