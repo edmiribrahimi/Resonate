@@ -1,35 +1,40 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import MobileNav from "@/components/layout/MobileNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
-import StaffNav from "@/components/staff/StaffNav";
 import MemberGrowthChart from "@/components/analytics/MemberGrowthChart";
 import GrowthSummaryCard from "@/components/analytics/GrowthSummaryCard";
 import { fetchMemberGrowth } from "@/lib/analytics/member-queries";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import type { UserRole, UserStatus } from "@/types/database";
 
+/**
+ * Master-only, and it stays master-only across the collapse.
+ *
+ * `capability-routes.ts` binds `/admin/members/growth` to `admin.access` while
+ * binding its parent `/admin/members` to `organizer.access`. Longest-literal
+ * match is what makes the child's binding win over the parent's — proved by
+ * mutation in plan 34-01 — so opening the members surface to organizers does
+ * not open this one. **The guard below is unchanged in key and in meaning.**
+ */
 export default async function MemberGrowthPage({
   searchParams,
 }: {
   searchParams: Promise<{ granularity?: string }>;
 }) {
-  const { capabilities, role, status } = await getAccessContext();
+  // Resolved once by `(work)/layout.tsx`, which also mounts both navs and now
+  // holds the two `UserRole` / `UserStatus` casts that used to sit here.
+  // `getAccessContext` is `cache()`-scoped per request, so asking again for
+  // this page's own guard costs no second round trip.
+  const { capabilities } = await getAccessContext();
 
-  // The SAME question the middleware asks for `/admin/*`, of the same
-  // authority, instead of a role read out of a request header. Never a role
-  // list: a fourth role arrives in phase 34.
+  // The SAME question the middleware asks of this route, of the same authority
+  // — both read the same entry in `src/lib/routes/capability-routes.ts`
+  // (D-34-09). `admin.access` is granted to `master` alone, so no role's reach
+  // moves. Never a role list.
   if (!capabilities.has(CAP.ADMIN_ACCESS)) {
     redirect("/dashboard");
   }
-
-  // The nav components are typed to the `UserRole` / `UserStatus` unions; the
-  // resolver answers `string | null`. Same cast the header read already made,
-  // from a better source. Phase 34 (STAFF-03) owns these props.
-  const navRole = role as UserRole | null;
-  const navStatus = status as UserStatus | null;
 
   const { granularity: granularityParam } = await searchParams;
   const granularity: "weekly" | "monthly" =
@@ -45,8 +50,6 @@ export default async function MemberGrowthPage({
           <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
         </header>
       </AnimatedSection>
-
-      <StaffNav capabilities={[...capabilities]} />
 
       <AnimatedSection delay={0.1} className="px-6 space-y-4">
         {/* Granularity toggle */}
@@ -81,8 +84,6 @@ export default async function MemberGrowthPage({
           <MemberGrowthChart data={data} />
         </div>
       </AnimatedSection>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
