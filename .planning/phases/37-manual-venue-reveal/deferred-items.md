@@ -67,6 +67,26 @@ e' stata chiusa sul posto.
 
 ## 4. `venue_for_parties` filtra `is_published` PRIMA dei cinque rami — una bozza non ha nome del locale per nessuno
 
+> **CHIUSA il 2026-08-11, dal piano 37-14, Task 3.** La condizione e' stata
+> spostata **dentro** i rami: governa i quattro rami del pubblico (1, 3, 4, 5) e
+> **non** il ramo dello staff. Su una bozza risponde solo `staff.manage`.
+>
+> **La ragione, che e' la risposta alla domanda non tecnica posta qui sotto:
+> si', su una bozza chi ha `staff.manage` deve vedere il nome del locale — e
+> concederglielo non allarga niente.** Chi ha quella chiave legge gia'
+> `public.venues` per intero, dalla policy `venues_select_staff` creata dalla
+> stessa migration; la funzione che gli negava il nome su una bozza gli chiudeva
+> una strada mentre un'altra era aperta. E' l'incoerenza misurata da 37-13 —
+> stesso master, **0 righe** dalla funzione e **2 righe** leggendo
+> `public.venues` diretto — non una protezione.
+>
+> Fatta **adesso** per la ragione scritta qui sotto: la migration non era
+> applicata, quindi e' costata la modifica di un file. Provata su container
+> usa-e-getta con entrambe le migration: staff su bozza **1 riga**, membro
+> approvato su bozza **0**, anonimo su bozza **0**, anonimo su serata pubblicata
+> non segreta **1**. La ragione e' scritta **dentro la migration**, accanto alla
+> modifica, non solo qui.
+
 - **Trovata durante:** 37-05 e 37-06, **indipendentemente**, nella stessa onda.
   Due agenti che non si parlavano hanno misurato lo stesso fatto: e' un indizio
   che sia una proprieta' della funzione, non un'impressione.
