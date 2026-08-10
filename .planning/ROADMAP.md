@@ -477,7 +477,30 @@ Plans:
   3. A completed manual reveal records who triggered it and when, visible to the staff entitled to see it
   4. A second reveal attempt on a night already revealed changes nothing and says so — the switch stays one-way
 
-**Plans**: TBD
+**Plans:** 13 plans in 7 waves
+
+Plans:
+- [ ] 37-01-PLAN.md — lo schema dell'atto: la tredicesima chiave, l'istante, la traccia append-only e lo scrittore atomico
+- [ ] 37-02-PLAN.md — la lettura anonima degli indirizzi chiusa, e la funzione che concede per titolo
+- [ ] 37-03-PLAN.md — [BLOCKING] le due migration applicate in produzione, i tipi allineati
+- [ ] 37-04-PLAN.md — la finestra di 25 ore in un posto solo, e il pavimento che dice perche'
+- [ ] 37-05-PLAN.md — la fuga nel payload RSC della lista eventi
+- [ ] 37-06-PLAN.md — il modello a tre livelli sulla pagina della serata, e il gate di casa riscritto
+- [ ] 37-07-PLAN.md — il dialogo dell'indizio, e la pagina fuori dalle cache del service worker
+- [ ] 37-08-PLAN.md — la scheda delle sedi esce dal pubblico, e i tre anelli tornano a concordare
+- [ ] 37-09-PLAN.md — il cuore condiviso, il cron che completa, e il gate che segue il codice
+- [ ] 37-10-PLAN.md — l'atto: gate dentro l'azione, rifiuti per valore, e la porta laterale del form
+- [ ] 37-11-PLAN.md — la conferma che conta le persone, il bottone a tre stati e la traccia
+- [ ] 37-12-PLAN.md — il redirect dopo il login (todo piegato, commit separato)
+- [ ] 37-13-PLAN.md — la verifica anonima, la strada positiva di D-37-24 e la prova di cache
+
+**Wave 1** — 37-01, 37-02, 37-04, 37-12
+**Wave 2** *(blocked on Wave 1)* — 37-03 `[BLOCKING]`
+**Wave 3** *(blocked on Wave 2)* — 37-05, 37-06
+**Wave 4** *(blocked on Wave 3)* — 37-07, 37-08, 37-09
+**Wave 5** *(blocked on Wave 4)* — 37-10
+**Wave 6** *(blocked on Wave 5)* — 37-11
+**Wave 7** *(blocked on Wave 6)* — 37-13
 
 ### Phase 38: Live Attendance Freshness
 
