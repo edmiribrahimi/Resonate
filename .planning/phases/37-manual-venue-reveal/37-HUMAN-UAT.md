@@ -61,20 +61,28 @@ result: [pending]
 expected: su una serata con finestra `NULL` il dialogo scrive **25 hours**, non tace, e nomina il caso RSVP.
 result: [pending]
 
-### 9. La decisione su `is_published` — **da prendere prima del deploy**
-expected: una decisione esplicita del proprietario: su una **bozza**, `venue_for_parties` deve rispondere a chi ha `staff.manage`?
-misurato: oggi no — la funzione filtra `is_published` **prima** dei cinque rami, quindi su una bozza non restituisce il nome del locale **a nessuno**, staff compreso, mentre lo stesso master leggendo `public.venues` direttamente ottiene le righe.
-costo: **una riga in una migration non ancora applicata oggi; una migration in piu' dopo il deploy.** E' l'unica voce di questa lista il cui prezzo cresce col tempo.
+### 9. La decisione su `is_published` — **CHIUSA il 2026-08-11 (piano 37-14)**
+expected: su una **bozza**, `venue_for_parties` risponde a chi ha `staff.manage`.
+deciso: si'. `is_published` e' stato spostato **dentro** i rami: i quattro rami del pubblico continuano a richiederlo, il ramo dello staff no.
+ragione: **non e' un allargamento.** Chi ha `staff.manage` legge gia' `public.venues` direttamente per la policy `venues_select_staff` — misurato da 37-13. La funzione che gli negava il nome su una bozza non lo proteggeva da niente: gli chiudeva una strada mentre un'altra restava aperta. Toglie un'incoerenza, non aggiunge un lettore.
+verificato: container Postgres con entrambe le migration — su una bozza: staff 1 riga, membro approvato 0, anonimo 0. Il pavimento della pubblicazione regge per i quattro rami del pubblico.
+result: [resolved]
+
+### 10. La cucitura fra il pannello e il server sulla sede testuale
+expected: su una serata segreta con la sola sede testuale, il bottone non dovrebbe armarsi.
+misurato: il pannello arma su `venueName ?? venue_text`, il server rifiuta su `venue_id === null`. Il bottone risulta acceso e la pressione riceve il rifiuto tipizzato.
+perche' e' aperta e non urgente: **il verso e' quello sicuro** — si spreca un clic, non esce un indirizzo. Chiuderla costa due file di superficie e nessun cambio di regola. `deferred-items.md` voce 8.
 result: [pending]
 
 ## Summary
 
-total: 9
+total: 10
 passed: 0
 issues: 0
 pending: 9
 skipped: 0
 blocked: 0
+resolved: 1
 
 ## Gaps
 

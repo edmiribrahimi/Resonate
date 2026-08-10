@@ -42,6 +42,41 @@ human_verification:
 
 # Fase 37: Manual Venue Reveal — Report di Verifica
 
+> **Addendum del 2026-08-11, dopo il piano 37-14 — questo report e' datato per
+> costruzione e questa nota e' la sua scadenza controllata.**
+>
+> Questa verifica e' stata scritta **prima** del code review e del piano di
+> chiusura che ne e' seguito. Da allora sono cambiate quattro cose nel codice, e
+> una in questo documento:
+>
+> 1. **CR-01 chiuso** — esisteva un percorso ordinario che pubblicava un
+>    indirizzo **senza atto, senza conferma e senza riga nella traccia**: rivelare
+>    una serata con la sola sede testuale, poi collegare la sede vera. Il ramo 5
+>    di `venue_for_parties` guarda solo `venue_revealed_at`. Chiuso alle **due**
+>    estremita': precondizione lato server prima dell'atto, e `venue_id` fra i
+>    campi che `venue_secret_locked` blocca su una serata rivelata.
+> 2. **WR-01 chiuso** — il ramo 3 di `venue_for_parties` lasciava cadere
+>    `venue_reveal_on_purchase`: su una serata configurata `false` un titolare di
+>    biglietto leggeva l'indirizzo chiamando la RPC direttamente, mentre la pagina
+>    glielo negava. Provato **per mutazione** su container.
+> 3. **WR-07 e WR-05 chiusi** — una lettura che scartava il proprio errore (il
+>    quarto fallimento silenzioso di questa fase), e un docblock che dichiarava un
+>    confine di sicurezza dove il controllo e' una verifica di coerenza.
+> 4. **`is_published` spostato dentro i rami** — `deferred-items.md` voce 4
+>    chiusa. Non e' un allargamento: `staff.manage` legge gia' `public.venues` per
+>    `venues_select_staff`.
+>
+> **Cio' che questo addendum NON cambia: lo stato resta `human_needed`, e per la
+> stessa ragione.** Le correzioni migliorano codice che continua a non essere
+> deployato e a non essere stato esercitato con una sessione vera. Il distinguo
+> fra **costruito** e **esercitato** — che e' il punto di tutto il report qui
+> sotto — vale identico dopo il 37-14 come prima.
+>
+> Le nove voci di `37-HUMAN-UAT.md` restano aperte tranne la nona, chiusa dal
+> 37-14. Una decima e' nata: `deferred-items.md` voce 8, la cucitura fra il
+> pannello che arma su `venue_text` e il server che rifiuta su `venue_id` — verso
+> sicuro, si spreca un clic e non esce un indirizzo.
+
 **Obiettivo di fase:** La rivelazione programmata resta il percorso normale; un percorso manuale esiste per master e organizer, dietro conferma esplicita, e ogni suo uso e' registrato.
 **Verificato:** 2026-08-11
 **Stato:** `human_needed`
