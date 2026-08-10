@@ -143,3 +143,73 @@ export function zonedDateString(instant: Date): string {
     day: "2-digit",
   }).format(instant);
 }
+
+// ─── The venue reveal window ─────────────────────────────────────────────────
+//
+// Not an instant like the rest of this file, but a time rule all the same, and
+// this module is the declared home of those — see the paragraph above about a
+// boundary a caller needs being added here rather than computed there.
+
+/**
+ * How long before a night starts its venue is revealed, when the night carries
+ * no window of its own.
+ *
+ * `event_parties.venue_reveal_hours` is an `integer` with **no `DEFAULT`**
+ * (`20260226500000_venue_secret_hint_reveal_hours.sql`), so this default has
+ * always lived in code — and, before this constant, in more than one copy.
+ *
+ * ── Why it is not 24, which is the number everyone expects ───────────────────
+ *
+ * `vercel.json` runs the `venue-reveal` cron at `0 6 * * *` UTC — 08:00 in
+ * Turin in summer, 07:00 in winter. This project is on Vercel's **Hobby**
+ * plan, where a cron may run once per day and its timing precision is **±59
+ * minutes**: a job set for 06:00 fires anywhere between 06:00 and 06:59.
+ *
+ * Two consecutive runs can therefore be **24h59m** apart — 06:00 on one day,
+ * 06:59 on the next. A 24-hour window is not guaranteed to contain a run; this
+ * one is, by **one minute**. The margin is that thin, which is exactly why the
+ * arithmetic is written out here: rounded down to a day "because a day is a
+ * day", the window stops containing its own cron interval
+ * (`time-and-scheduling.md`, gate *la finestra di un cron copre il proprio
+ * intervallo*).
+ *
+ * ── What a shorter window actually does ──────────────────────────────────────
+ *
+ * It does not move the reveal by the difference. **The mail leaves after the
+ * night has started.** A Saturday 22:00 night with a six-hour window opens at
+ * 16:00 that Saturday — by which time the morning's run has already passed —
+ * and the next run lands on the Sunday. Whoever signs in still sees the
+ * address, because the page opens at the window and not at the mail; whoever
+ * waits for the mail stays home. That is the reason the validation floor in
+ * `src/app/(admin)/admin/events/actions.ts` states rather than merely
+ * enforces: a floor that only refuses gets raised by the next person, instead
+ * of the window.
+ *
+ * ── The second home of this number, which cannot be removed ──────────────────
+ *
+ * `public.venue_for_parties` applies the same fallback in SQL, as
+ * `coalesce(ep.venue_reveal_hours, 25)`
+ * (`supabase/migrations/20260810161000_venues_read_narrowed.sql`). It exists
+ * because Postgres does not import TypeScript, and because the address has to
+ * be withheld *inside* the read rather than after it.
+ *
+ * This is the same deliberate duplication as `partyEndInstant` and
+ * `public.party_end_instant` above, and it carries the same warning:
+ * **changing one half without the other is the defect**, and it would not fail
+ * loudly. No build breaks, no error is raised, and this repository has no test
+ * runner. The only symptom is a window that moved.
+ */
+export const DEFAULT_VENUE_REVEAL_HOURS = 25;
+
+/**
+ * The reveal window of a night, from whatever that night has stored.
+ *
+ * Exported as a **function** and not only as a constant, on purpose. A bare
+ * constant still leaves every caller writing its own `?? DEFAULT` — two places
+ * to diverge instead of one place to change, which is precisely the shape that
+ * produced the six-variant drift this module was centralised to end. Callers
+ * ask this; they do not re-apply the fallback.
+ */
+export function venueRevealHours(stored: number | null): number {
+  return stored ?? DEFAULT_VENUE_REVEAL_HOURS;
+}
