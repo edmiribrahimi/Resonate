@@ -3,8 +3,13 @@ created: 2026-08-10
 source: 36-RESEARCH (reperto fuori scope) — ri-misurato dall'orchestratore prima di riferirlo
 severity: critical
 area: venue-secrecy, supabase-data, access-gating
-resolves_phase:
+resolves_phase: 37
 ---
+
+> **Assegnato alla fase 37 dal proprietario il 2026-08-10.** La fase 36 prosegue
+> e non tocca la relazione venue. Prima di scegliere il rimedio va misurato se lo
+> stesso percorso esista anche via `events` o `event_media` — vedi *Cosa e' stato
+> verificato, e cosa no*.
 
 # L'indirizzo di un venue segreto e' leggibile con la sola chiave anonima
 

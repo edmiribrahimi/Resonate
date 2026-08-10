@@ -234,6 +234,44 @@ di chi vede cosa.
   quello che sopravvive e' sempre quello piu' ricco. Un solo percorso e' anche
   l'unico che una persona puo' verificare in una sessione.
 
+### Presa dopo la ricerca, il 2026-08-10
+
+- **D-36-17: esistere in catalogo e mostrarsi nel filtro sono due gesti
+  distinti.** Una riga di format porta un interruttore proprio: creare un format
+  **non** ne fa comparire il chip su `/events`. *Ragione:* con la sola esistenza
+  della riga come criterio, **l'annuncio di un format nuovo lo farebbe il
+  prodotto** nel momento in cui qualcuno salva, non una persona quando decide —
+  e un format creato per preparare una stagione comparirebbe nel filtro di
+  chiunque prima che sia stato annunciato niente. E' la stessa separazione che
+  gli eventi hanno gia' con `is_published`, applicata al catalogo.
+
+  **Questa decisione non contraddice D-36-13** (i chip nascono dal catalogo, non
+  dai dati): il catalogo resta la sorgente, e l'interruttore dice **quale parte
+  del catalogo e' catalogo pubblico**. La lista continua a non dipendere da
+  quante serate esistono, che era il punto di D-36-13.
+
+  *Situazione concreta che questo gate impedisce:* un quinto format viene creato
+  a settembre per una serie che parte a novembre; senza l'interruttore, il chip
+  e' online da settembre e chiunque guardi `/events` sa che sta arrivando
+  qualcosa. (proprietario, 2026-08-10)
+
+- **D-36-18: il difetto del venue non entra in questa fase.** La ricerca ha
+  trovato — e l'orchestratore ha **ri-misurato in produzione** — che l'indirizzo
+  di una serata con `venue_secret = true` e' leggibile con la sola chiave
+  anonima, perche' `venues_select_public` e' `using (true)`
+  (`20260226200000_venues.sql:25-27`) e `event_parties.venue_id` e' leggibile per
+  gli eventi pubblicati. E' registrato in
+  `.planning/todos/pending/secret-venue-address-readable-by-anon.md` e
+  **assegnato alla fase 37** dal proprietario.
+
+  **Per questa fase vale una sola cosa, e va detta perche' e' l'errore che si
+  farebbe naturalmente:** il ragionamento *«tanto le sedi sono gia' pubbliche,
+  quindi il nome di una serie che contiene una sede puo' esserlo»* e' **falso**.
+  Una porta gia' aperta non e' un argomento per aprirne una seconda. D-36-13, la
+  regola di degrado dell'UI-SPEC e il divieto di `USING (true)` su `party_series`
+  restano in piedi indipendentemente da quel difetto, e **non si rilassano
+  citandolo**. (proprietario, 2026-08-10)
+
 ### Claude's Discretion
 
 - **La forma del catalogo** (una tabella dei format piu' una delle serie, oppure
