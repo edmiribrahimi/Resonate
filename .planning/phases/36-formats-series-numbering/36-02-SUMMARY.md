@@ -10,9 +10,9 @@ requires:
     provides: the route↔capability map the catalogue surface will enter
 provides:
   - The three production nights read read-only, with their uuids
-  - A proposed format/series/number assignment for each night, every cell labelled PROPOSED
-  - The catalogue seed list, filtered to names already published in a tracked rules file
-  - One structural finding plan 36-03 would otherwise have hit at write time
+  - The confirmed assignment - night id → format, series, number - which plan 36-03 transcribes verbatim
+  - The catalogue rows the migration may seed, every name cleared by the owner for a public file
+  - The reason `number` stays nullable while `format_id` and `series_id` do not
 affects: [36-03, 36-05, 36-07, 36-09]
 
 # Tech tracking
@@ -20,6 +20,7 @@ tech-stack:
   added: []
   patterns:
     - "Grep-before-write: a venue name enters a tracked file only if the identical string is already in .claude/rules/production-calendar.md or .claude/rules/brand-visual-system.md"
+    - "A night may carry no number: the number is what makes a sigla, and an act of another night has no sigla of its own"
 
 key-files:
   created:
@@ -27,37 +28,42 @@ key-files:
   modified: []
 
 key-decisions:
-  - "Night titles and venue names of all three nights are deliberately absent from this file — identification is by date, slot, hours and uuid"
-  - "Nothing is CONFIRMED until the owner answers; this file ships with every assignment cell PROPOSED"
+  - "Night A is the first act of night B, not an edition: same format, same series, NO number"
+  - "`number` stays nullable on event_parties; `format_id` and `series_id` become NOT NULL"
+  - "Nights B and C are re:sonate 001 and 002 - the owner's answer, against the RSNT-008 counter-evidence this plan raised"
+  - "Five series names cleared for a public file; MotionLab ships with none, and the absence is the point"
+  - "The public name of the Nice series is `re:sonate x Perlone`; production-calendar.md still writes `Resonate x Perlone` and is owed an alignment"
+  - "Night titles and venue names of all three nights are deliberately absent - identification is by date and uuid"
 
 patterns-established:
   - "A proposal file states the counter-evidence beside the hypothesis when the value is monotone"
+  - "A CONFIRMED block, dated, is what a downstream migration reads - never the proposal above it"
 
-requirements-completed: []
+requirements-completed: [FMT-01, FMT-02, FMT-05]
 
 # Metrics
-duration: 14min
+duration: 21min
 completed: 2026-08-10
 ---
 
-# Phase 36 Plan 02: What the three nights were, proposed and not yet decided — Summary
+# Phase 36 Plan 02: What the three nights were, confirmed — Summary
 
-**Production holds exactly the three nights the plan expects; two of them read as `re:sonate` on the calendar's own coordinates, the third matches none of the four formats — and the numbers cannot be derived from this side at all.**
+**Two `re:sonate` nights numbered 001 and 002, and a third that is the first act of one of them and therefore carries no number at all — which is why `number` stays nullable while the format and the series do not.**
 
 ## Performance
 
-- **Duration:** ~14 min
-- **Tasks:** 1 of 2 (task 2 is the owner's gate, still open)
+- **Duration:** ~21 min
+- **Tasks:** 2 of 2
 - **Files modified:** 1
 - **Database writes:** 0 — every Management API call carried `{"read_only": true}`
 
 ---
 
-## Status: PROPOSED — the owner has not answered
+## Status: CONFIRMED by the owner, 2026-08-10
 
-**Nothing below is CONFIRMED.** This plan is `autonomous: false` and its second
-task is a blocking decision. Plan 36-03 must not transcribe this file until the
-`CONFIRMED` block at the bottom has been filled in with a date.
+Every cell below is the owner's answer, not an inference. Plan 36-03 reads the
+`CONFIRMED` block near the bottom of this file and transcribes it into three
+explicit statements against three known uuids.
 
 ---
 
@@ -86,8 +92,8 @@ publication. Two things were dropped on purpose, and their absence is the point:
 - **The title of each night.** One of the two titles is a play on its venue's
   name; the other collides with a word this phase must keep out of its files
   entirely (`sound-manifesto.md`). Neither is needed: date, slot and door hours
-  identify each night without ambiguity, and the orchestrator can say the titles
-  aloud when it asks — speaking is not publishing.
+  identify each night without ambiguity, and the owner was asked with the titles
+  spoken aloud — speaking is not publishing.
 
 The uuids are written, and that is deliberate too: a uuid names nothing, and for
 a published event it is already readable with the anonymous key
@@ -95,122 +101,85 @@ a published event it is already readable with the anonymous key
 
 ---
 
-## The three nights — PROPOSED
+## The three nights — CONFIRMED
 
-| # | Night uuid | When | Slot | Doors | Access | Venue kept secret | Selectors | Format | Series | Number |
-|---|---|---|---|---|---|---|---|---|---|---|
-| A | `fd975999-95df-4402-bc82-03a95424831b` | Sat 7 Feb 2026 | first act (`sort_order` 0) | 20:00 → 00:00 | free RSVP | no | 1 | **PROPOSED — none of the four fits. See below.** | **PROPOSED — withheld** | **PROPOSED — see below** |
-| B | `11e43718-2e37-42b1-91b7-cc2d0754474e` | Sat 7 Feb 2026 | second act (`sort_order` 1) | 22:00 → 06:00 | paid | yes | 4 | **`re:sonate` — PROPOSED** | **`re:sonate` (`RSNT`) — PROPOSED** | **`001` — PROPOSED, low confidence** |
-| C | `3db716af-8ce3-446e-a327-62b110bfe7ce` | Fri 8 May 2026 | only act (`sort_order` 0) | 22:00 → 04:00 | paid | yes | 4 | **`re:sonate` — PROPOSED** | **`re:sonate` (`RSNT`) — PROPOSED** | **`002` — PROPOSED, low confidence** |
+| # | Night uuid | When | Slot | Doors | Format | Series | Number |
+|---|---|---|---|---|---|---|---|
+| A | `fd975999-95df-4402-bc82-03a95424831b` | Sat 7 Feb 2026 | first act (`sort_order` 0) | 20:00 → 00:00 | **`re:sonate`** — CONFIRMED | **`re:sonate` (`RSNT`)** — CONFIRMED | **none** — CONFIRMED |
+| B | `11e43718-2e37-42b1-91b7-cc2d0754474e` | Sat 7 Feb 2026 | second act (`sort_order` 1) | 22:00 → 06:00 | **`re:sonate`** — CONFIRMED | **`re:sonate` (`RSNT`)** — CONFIRMED | **`1`** (`RSNT-001`) — CONFIRMED |
+| C | `3db716af-8ce3-446e-a327-62b110bfe7ce` | Fri 8 May 2026 | only act (`sort_order` 0) | 22:00 → 04:00 | **`re:sonate`** — CONFIRMED | **`re:sonate` (`RSNT`)** — CONFIRMED | **`2`** (`RSNT-002`) — CONFIRMED |
 
 Nights A and B are the two acts of one event; night C is its own event.
 
-### The sentence behind each proposal
+### Night A: the first act of B, not an edition
 
-**Night B — `re:sonate`.** `production-calendar.md:36`:
+The owner's answer closed the cell this plan deliberately left open. **A is the
+first act of the night B, not an edition of its own.** It therefore takes B's
+format and B's series and **carries no number**.
 
-> `RSNT` | Resonate — la notte | **22:00 → 06:00** | **venerdi' o sabato** | irregolare…
+The proposal had documented four exclusions — `SNST` out twice (hours, and
+February against the April–October window), `RMDB` out on the weekday
+(«giovedì, senza eccezioni su 27 date», that Saturday), `MTNLB` out on the hours,
+`RSNT` matching the weekday but not the hours. The answer explains all four at
+once: A's coordinates match no format **because it is not a format's edition** —
+it is the opening half of one, and the calendar's table describes editions.
 
-The doors are 22:00 → 06:00 to the minute, and 7 Feb 2026 is a Saturday. No
-other format in the table starts at 22:00. It is also what D-36-03 already
-settled: *«il secondo tempo di una serata SunSet e' una notte re:sonate, con nome
-e numero propri»* — the second act is a night with its own name and its own
-number, not the after of the first act. This is the strongest cell in the table.
+### Nights B and C: `re:sonate`, 001 and 002
 
-**Night C — `re:sonate`.** Same row of the same table: 8 May 2026 is a Friday,
-and the doors open at 22:00. **One divergence, flagged rather than smoothed
-over:** the night closes at 04:00, not 06:00. That moves no format — nothing else
-in the calendar opens at 22:00 — but it is a real difference from the declared
-coordinate and the owner should see it stated, not discover it later.
+`production-calendar.md:36` — «`RSNT` | Resonate — la notte | **22:00 → 06:00** |
+**venerdì o sabato**». The 7th of February is a Saturday, the 8th of May a
+Friday, both open at 22:00, and no other format in that table opens at 22:00.
+D-36-03 had already settled that the second act of a double bill is a night with
+its own name and its own number.
 
-**Night A — no format in the catalogue fits it.** This is the finding of the
-plan, and it is why this cell is left open rather than filled with a plausible
-guess. Each of the four was checked against `production-calendar.md:35-39` and
-each is excluded by that file's own words:
+**On the numbers, and what was raised against them.** This plan flagged that
+`production-calendar.md:86` cites, as a live example, «l'after movie di
+**RSNT-008** attende RSNT-009» — a night numbered 008 that has already run, which
+argues the calendar's counter is nowhere near 001. **Raising it was right; the
+owner's answer is `001` and `002`, and it stands.** Recorded, not reopened. The
+monotone guard (`meta-gates.md`) now applies: these two are appended to, never
+renumbered.
 
-| Format | Its declared coordinate | Night A | Verdict |
-|---|---|---|---|
-| `SNST` SunSet | 18:00 → 22:00, **3 date l'anno, solo aprile–ottobre** | 20:00 → 00:00, **February** | Excluded twice — by the hours and by the seasonal window. *Gate finestra stagionale:* a winter date «contraddice l'identita' del format, non solo il calendario» |
-| `RMDB` RamaDub | 18:00 → 22:00, **giovedi', senza eccezioni su 27 date** | 20:00 → 00:00, **Saturday** | Excluded by the weekday, which that file states as a verified fact over 27 dates |
-| `MTNLB` MotionLab | 18:00 → 22:00, one every 6 weeks | 20:00 → 00:00 | Excluded by the hours. Its weekday is an undecided placeholder, so it argues nothing either way |
-| `RSNT` re:sonate | 22:00 → 06:00, Friday or Saturday | 20:00 → 00:00 | Weekday matches, hours do not — and night B, on the same evening, already is the 22:00 night |
-
-Night A is a free-entry first act at a public venue with one selector, opening at
-20:00 on a Saturday in February and closing at midnight. It is recognisably the
-warm-up half of a double bill — but D-36-04 makes the format mandatory, and there
-is no honest way to derive **which** format that is from this side. Only the
-owner knows.
-
-**Three ways night A can be answered, with what each costs:**
-
-1. **It was a satellite** (`RamaDub`, or a format whose Saturday/February
-   exception the calendar does not record). Then its series would carry its
-   venue's name — **and that name is not in either tracked file**, so
-   `withhold-series` applies. See the structural note below before choosing this.
-2. **It was a fifth thing the catalogue does not hold yet.** Then a fifth format
-   row is seeded and the owner names it, its code and its colour — but D-36-11
-   fixed only four colours, and the colour of an active format is unique by
-   construction (`36-03-PLAN.md:106`), so a fifth needs a fifth colour decided.
-3. **It goes to the `unclassified` fallback** that `36-03-PLAN.md:183-187` adds,
-   retired at birth. **This has a cross-plan cost that must be said out loud:**
-   `36-05-PLAN.md:201` asserts *«the count of nights on the fallback format in
-   production is `0`»* as an acceptance criterion. Choosing this makes it 1, and
-   plan 36-05 has to be amended rather than silently failed.
-
-### The numbers — the cell this side genuinely cannot fill
-
-`meta-gates.md` lists the series numbering among the three monotone guards: an
-assigned progressivo is already on a poster, so it is appended, never renumbered.
-So the hypothesis is given with its counter-evidence beside it, not on its own:
-
-- **For `001` / `002`:** the app's archive holds these two `re:sonate` nights and
-  no others, in this order, February before May. The February event's own slug
-  calls it the opening.
-- **Against `001` / `002`:** `production-calendar.md:86` cites, as a live
-  example, *«l'after movie di RSNT-008 attende RSNT-009»* — a night numbered
-  **008** that has already run. The calendar's counter is nowhere near 001 today.
-  The two nights in the database are not the two nights in the calendar's
-  sequence; the app only started holding events recently, and *gate il calendario
-  e' la fonte* says the calendar decides, not the table.
-
-**This is a straight ask, not a proposal to approve:** the two integers come off
-the calendar. If the answer is not `001` and `002`, correcting them now costs
-nothing; correcting them after the migration ships costs a renumbering, which the
-monotone guard forbids.
+**One archive fact, flagged and not corrected: night C closes at 04:00, not
+06:00** as the `RSNT` coordinate declares. That is what that night was. The
+migration records it; it does not tidy it.
 
 ---
 
-## Structural note plan 36-03 would otherwise hit at write time
+## Why `number` stays nullable — the constraint change this answer forces
 
-`36-03-PLAN.md:274` adds
-`event_parties_series_format_fk FOREIGN KEY (series_id, format_id) REFERENCES public.party_series (id, format_id)`,
-and `:271` sets all three columns `NOT NULL`.
+Plan 36-03 was amended on 2026-08-10, by the orchestrator, before this SUMMARY
+closed: **`format_id` and `series_id` become `NOT NULL`, and `number` does
+not.** The reason belongs here so 36-03 finds it already written rather than
+having to reconstruct it:
 
-**Consequence: a night's series must belong to the night's format.** So the
-`withhold-series` option, as `36-02-PLAN.md:156` words it — *«that night's
-backfill uses the deliberately-retired fallback series»* — is only writable if
-the night also takes the `unclassified` **format**, because that fallback series
-hangs under `unclassified`. Format-known-but-series-withheld and
-fallback-series are mutually exclusive under the composite key.
+> A night without a number is a night that is **the act of another night**, and
+> it has no sigla of its own. With `number NOT NULL` night A's row is not
+> writable at all: giving it B's number gets it refused by the uniqueness
+> constraint, and giving it a number of its own enters it into the sequence as an
+> edition — which writes a false fact about what that night was. FMT-02 says the
+> code and the number **compose** the sigla; it does not say every night has one.
+> In Postgres two `NULL`s are distinct, so
+> `UNIQUE (format_id, series_id, number)` keeps working and two numberless acts
+> are not a duplicate.
 
-**The clean form of `withhold-series`, which does work:** seed a series under the
-night's real format whose **name carries no venue** — the same shape as the plain
-`re:sonate` series proposed for nights B and C, whose sigla in the calendar
-(`RSNT-###`) carries no venue code either. The night attaches to that, and the
-venue-named series is created through the catalogue surface after the phase
-ships, when the venue may be named. Nothing is published that should not be.
+**Consequence for the guard in the migration:** the `DO` block counts the rows
+still carrying a null **`format_id`**. It must **not** count the rows carrying a
+null `number` — under this decision that count is legitimately non-zero, and a
+guard that failed on it would refuse the very row it exists to protect.
 
-Recorded here so 36-03 does not have to guess. Not acted on: the owner's answer
-decides whether it is needed at all.
+This also narrows what FMT-03 rejects, and the narrowing is intended: the
+uniqueness constraint refuses two *editions* sharing a triple, and says nothing
+about two acts that are not editions.
 
 ---
 
-## Catalogue seed list — PROPOSED
+## Catalogue seed list — CONFIRMED, cleared for a public file 2026-08-10
 
 ### The four formats, all `listed = true`
 
 The colours are adopted, not invented (D-36-11, `36-UI-SPEC.md:186-189`). They
-are already decided and already public; this table re-states them, it does not
+were already decided and already public; this table re-states them, it does not
 re-open them.
 
 | Name (verbatim, as a visitor reads it) | Slug | Code | Colour |
@@ -221,99 +190,109 @@ re-open them.
 | `re:sonate` | `resonate` | `RSNT` | `#A874E8` |
 
 The fifth row `36-03-PLAN.md:183` adds — `unclassified`, `listed = false`,
-retired at birth — is structural and names nothing, so it is not part of what the
-owner clears.
+retired at birth — is structural and names nothing, so it was not part of what
+the owner cleared. **It is expected to hold zero rows in production**, and this
+answer keeps it that way: all three nights land on `re:sonate`.
 
-### The series — only names already published in a tracked file
+### The series — five names, each cleared by the owner
 
 Each row was grepped before being written. The evidence column carries the
-`file:line` where the name already exists.
+`file:line` where the name already existed.
 
 | Format | Series name | Code | Already published at | Seed? |
 |---|---|---|---|---|
-| `re:sonate` | `re:sonate` | `RSNT` | `production-calendar.md:36` — the sigla is `RSNT`, with no venue code in it | **yes** — and it is the series nights B and C need |
-| `re:sonate` | `re:sonate x Perlone` | `PRLN` | `production-calendar.md:30, 41` — «titolo `Resonate x Perlone`, sigla `RSNT-PRLN-###`» | **yes** — see the spelling note |
+| `re:sonate` | `re:sonate` | `RSNT` | `production-calendar.md:36` — the sigla is `RSNT`, with no venue code in it | **yes** — and it is the series all three nights take |
+| `re:sonate` | `re:sonate x Perlone` | `PRLN` | `production-calendar.md:30, 41` | **yes** — spelling decided, see below |
 | `RamaDub` | `RamaDub x Booze` | `BZ` | `production-calendar.md:38, 43`; the venue's own wording at `brand-visual-system.md:69` | **yes** |
 | `RamaDub` | `RamaDub x Muro` | `MR` | `production-calendar.md:38, 44` | **yes** |
 | `SunSet` | `SunSet` | `SNST` | `production-calendar.md:37` — the sigla is `SNST`, with no venue code | **yes** — names no venue |
-| `MotionLab` | — | — | **nothing.** `production-calendar.md:46-48`: *«La sede di MotionLab non si nomina qui»* | **no — and its absence is the point** |
+| `MotionLab` | — | — | **nothing.** `production-calendar.md:46-48`: «La sede di MotionLab non si nomina qui» | **no — and its absence is the point** |
 
-**MotionLab ships with no series.** That is not an omission to fix in 36-03: its
+**MotionLab ships with no series.** That is not an omission for 36-03 to fix: its
 series is created through the catalogue surface after the phase ships, by a
-person, on the day the venue may be named. D-36-07 already decided that
-MotionLab's progressivo restarts per venue, so the series it needs is a
-venue-named one — exactly the kind that cannot be written into a public file
-today.
+person, on the day the venue may be named. D-36-07 already decided MotionLab's
+progressivo restarts per venue, so the series it needs is a venue-named one —
+exactly the kind that cannot be written into a public file today.
 
-**Spelling note, for question 3.** `production-calendar.md` writes the Nice
-series as `Resonate x Perlone`, with a capital R. `brand-visual-system.md` holds
-that the brand is written `re:sonate` with a normal e *«nelle grafiche, nell'app,
-nelle mail, in prosa, ovunque»*, and that *«il nome sull'app e' il nome del
-format»*. Since this string is the **public name a visitor reads on a card**, the
-proposal above writes it `re:sonate x Perlone`. If the owner prefers the
-calendar's casing, say so and it is written that way instead — but the two files
-should then be reconciled, because one of them is wrong.
+**Spelling, decided: `re:sonate x Perlone`, with the normal e.**
+`brand-visual-system.md` holds that the brand is written `re:sonate` «nelle
+grafiche, nell'app, nelle mail, in prosa, ovunque», and that «il nome sull'app è
+il nome del format». This string is the public name a visitor reads on a card, so
+it takes the brand's spelling.
 
----
-
-## The three questions for the owner
-
-1. **Is this what each night was?** Nights B and C read as `re:sonate` on the
-   calendar's own hours and weekday. **Night A matches none of the four** — what
-   was it?
-2. **Is this the number each carries?** `001` and `002` are a hypothesis from the
-   app's archive, and `production-calendar.md:86` already names an `RSNT-008`
-   that has run. What are the two integers on the calendar?
-3. **May each of these names be written into a public file today?** The list is
-   `re:sonate`, `re:sonate x Perlone`, `RamaDub x Booze`, `RamaDub x Muro`,
-   `SunSet`, and the four format names. MotionLab's series is deliberately not on
-   it.
+**Owed, and not this phase's work:** `production-calendar.md:30` still writes
+`Resonate x Perlone` with a capital R. Aligning it is an update to a persona
+module — version bump, changelog, `npm run verify:persona`
+(`ai-engineering.md`) — and is recorded here so it is not lost, not folded in.
+It joins the deferred item this phase already owes that module: D-36-07 closes
+the gate *progressivo per sede o per format*, which `production-calendar.md`
+still holds open.
 
 ---
 
-## CONFIRMED — to be filled by task 2
+## CONFIRMED — what plan 36-03 transcribes
 
-> **Empty by design.** Plan 36-03 reads this block, not the proposal above. If it
-> is still empty, the migration cannot be written.
+**Confirmed by the owner on 2026-08-10.** Three explicit statements, three known
+uuids, no question left for 36-03 to ask anyone.
 
-| Night uuid | Format | Series | Number | Confirmed on |
-|---|---|---|---|---|
-| `fd975999-95df-4402-bc82-03a95424831b` | — | — | — | — |
-| `11e43718-2e37-42b1-91b7-cc2d0754474e` | — | — | — | — |
-| `3db716af-8ce3-446e-a327-62b110bfe7ce` | — | — | — | — |
+| Night uuid | Format | Series | Number |
+|---|---|---|---|
+| `fd975999-95df-4402-bc82-03a95424831b` | `re:sonate` (`RSNT`) | `re:sonate` (`RSNT`) | **NULL** — it is an act, not an edition |
+| `11e43718-2e37-42b1-91b7-cc2d0754474e` | `re:sonate` (`RSNT`) | `re:sonate` (`RSNT`) | `1` |
+| `3db716af-8ce3-446e-a327-62b110bfe7ce` | `re:sonate` (`RSNT`) | `re:sonate` (`RSNT`) | `2` |
 
-**Catalogue rows cleared for the migration:** — *(pending)*
+**Catalogue rows cleared for the migration:** the four formats above with their
+fixed colours and `listed = true`; the five series above. **No MotionLab series.**
 
-**Fallback in use, if any:** — *(pending)*
+**Fallback in use:** **none.** All three nights carry a real format and a real
+series, so the `unclassified` format and its series hold **zero** rows in
+production — which is what `36-05-PLAN.md:201` asserts and now measures true.
+
+**Nullability, as amended:** `format_id` `NOT NULL`, `series_id` `NOT NULL`,
+`number` **nullable**. The guard counts null `format_id` only.
 
 ---
 
 ## Decisions Made
 
+- **Night A is an act, not an edition** — same format and series as B, no number.
+  This is the owner's answer and it resolves, in one sentence, the four
+  exclusions this plan had documented: A matches no format's coordinates because
+  the calendar's table describes editions, and A is not one.
+- **`number` stays nullable.** Recorded above with its full reasoning, because it
+  is the column a later reader would tighten to `NOT NULL` as tidying and thereby
+  make night A's row unwritable.
+- **`001` and `002` stand**, against the `RSNT-008` counter-evidence this plan
+  raised. Raising it was correct; the answer is the owner's and is now monotone.
 - **Venue names and night titles left out of this file.** The grep against the
   two tracked rules files returned nothing for any of the three venues, so
   invariant 1 forbids writing them. The titles were dropped by the same
   reasoning — one is derived from its venue's name, the other contains a word
-  this phase keeps out of its files. Identification is by date, slot, hours and
-  uuid, which is unambiguous and publishes nothing.
-- **Night A's format is left open rather than guessed.** Four exclusions are
-  documented with the line that produces each. A filled cell here would be a
-  machine inferring what a night was, which is exactly what the plan's objective
-  forbids.
-- **The number hypothesis ships with its counter-evidence attached.** On a
+  this phase keeps out of its files. Identification is by date and uuid, which is
+  unambiguous and publishes nothing.
+- **The number hypothesis shipped with its counter-evidence attached.** On a
   monotone value, a proposal the owner can approve without seeing the
-  counter-argument is worse than no proposal.
+  counter-argument is worse than no proposal — and here it is what made the
+  answer a decision instead of a nod.
 
 ## Deviations from Plan
 
-None. The read returned the expected count, and the plan halts at task 2 by
-design.
+None in execution: the read returned the expected count, and the plan halted at
+its blocking gate by design.
 
-One thing was **added** and not asked for — the structural note about the
-composite foreign key versus the `withhold-series` option. It is recorded because
-plan 36-03 would otherwise write a backfill statement the constraint refuses, and
-`36-02-PLAN.md:165` asks that the fallback be recorded explicitly *«so plan 36-03
-does not have to guess»*.
+Two things were **added** and not asked for, both recorded rather than acted on:
+
+1. **The structural note on the composite foreign key.**
+   `36-03-PLAN.md:274` adds
+   `event_parties_series_format_fk (series_id, format_id) → public.party_series (id, format_id)`,
+   so a night's series must belong to the night's format. That makes the
+   `withhold-series` option, as `36-02-PLAN.md:156` words it, unwritable in the
+   shape it describes: the fallback series hangs under `unclassified`, so
+   format-known-with-series-withheld and fallback-series are mutually exclusive.
+   **Moot under the confirmed answer** — no series was withheld — but left here
+   because the option survives in the plan text and the next reader would try it.
+2. **The `number` nullability change**, decided by the orchestrator and recorded
+   above at its request.
 
 ## Issues Encountered
 
@@ -331,20 +310,34 @@ does not have to guess»*.
   `.claude/rules/production-calendar.md` and
   `.claude/rules/brand-visual-system.md`: `Booze`, `Muro`, `Perlone` present;
   the three real venues absent, therefore unwritten (threat T-36-02-01).
+- Every night is `CONFIRMED`, none `PROPOSED`. Every number written is an
+  integer greater than zero; night A carries no number at all, by decision.
+- The decision carries its date: 2026-08-10 (threat T-36-02-04).
 - Nothing in this file says what any format sounds like — no style, no tempo, no
   adjective that reads as a promise (`sound-manifesto.md`).
 - Spelling: `re:sonate` with a normal e throughout; `SunSet`, `RamaDub`,
   `MotionLab` in CamelCase.
 
+**What this file does not prove.** It records what three nights were, on the
+owner's word. It is not evidence that the migration writes them correctly — that
+is plan 36-03's to produce, and plan 36-05's to measure. In a repository with no
+test runner for the product, saying which is which is the whole discipline
+(`meta-gates.md`).
+
 ## Next Phase Readiness
 
-**Blocked on the owner.** Plan 36-03 needs the `CONFIRMED` block filled. Until
-then it has three uuids and no assignments, and `36-03-PLAN.md:252` requires one
-explicit statement per night.
+**Plan 36-03 is unblocked.** It has three uuids, one format, one series, two
+numbers and one deliberate absence of a number, plus the nullability the last of
+those forces and the guard's narrowed scope.
 
-Downstream to watch: if night A lands on the `unclassified` fallback,
-`36-05-PLAN.md:201` needs amending, because it asserts that count is zero.
+Two things it must carry, both stated above rather than left to be rediscovered:
+`number` nullable with the guard counting `format_id` only; and no MotionLab
+series in the seed.
+
+Owed elsewhere, recorded not done: `production-calendar.md` writes
+`Resonate x Perlone` and the public name is `re:sonate x Perlone` — a persona
+module update, with the D-36-07 gate closure, when the phase ships.
 
 ---
 *Phase: 36-formats-series-numbering*
-*Proposal written: 2026-08-10 — awaiting the owner's answer*
+*Proposed and confirmed: 2026-08-10*
