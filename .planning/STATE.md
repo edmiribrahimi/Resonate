@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: verifying
-stopped_at: Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
-last_updated: "2026-08-10T17:09:29.261Z"
+stopped_at: Phase 37 context gathered
+last_updated: "2026-08-10T18:21:38.981Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
@@ -165,8 +165,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T17:09:12.099Z
-**Stopped at:** Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
+**Last session:** 2026-08-10T18:21:38.978Z
+**Stopped at:** Phase 37 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
