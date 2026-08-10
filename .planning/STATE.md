@@ -4,13 +4,13 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Completed 36-11-PLAN.md
-last_updated: "2026-08-10T15:11:17.179Z"
+last_updated: "2026-08-10T15:30:01.419Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 101
+  completed_plans: 102
   percent: 46
 ---
 
@@ -32,7 +32,7 @@ Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format 
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 8 of 14
+Plan: 9 of 14
 Status: Ready to execute
 
 Note:
@@ -87,7 +87,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 95%
+Progress: [██████████] 96%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -123,6 +123,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: 36-11: la riga dei chip non riceve i risultati. La garanzia che nessuna proprieta' di un chip dipenda dai dati e' la LISTA DELLE PROP, non una regola da ricordare: uno slug ritirato che esiste davvero si comporta identico a uno inventato (misurato), e nessun conteggio raggiunge una label, un `aria-label` o un `title`
 - [Phase 36]: 36-10: la categoria di un rifiuto viaggia come VALORE di ritorno e mai come messaggio lanciato — Next redige i messaggi delle Server Action in produzione
 - [Phase 36]: 36-10: i tre campi di catalogo stanno anche sul blocco a serata singola, perche' anche quello scrive una riga di event_parties
+- [Phase 36]: 36-08: le tabelle dei rifiuti sono ristrette ai rifiuti raggiungibili invece che totali su CatalogueRefusal — un Record totale avrebbe scritto nel modale il token che il gate 'questo form non puo' annunciare un format' vieta
+- [Phase 36]: 36-08: il vincolo sul gradiente e' reso inesprimibile invece che validato — il controllo colore offre solo campiture piatte e non esiste input attraverso cui un gradiente possa arrivare
+- [Phase 36]: 36-08: il catch dei due modali ramifica sulla FORMA del fallimento, non sul messaggio, perche' una build di produzione redige il messaggio di un errore lanciato da una Server Action
 
 ## Accumulated Context
 
@@ -150,7 +153,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T15:11:17.175Z
+**Last session:** 2026-08-10T15:29:42.503Z
 **Stopped at:** Completed 36-11-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
