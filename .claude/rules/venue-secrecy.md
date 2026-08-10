@@ -1,5 +1,6 @@
 ---
 paths:
+  - "src/lib/venue-reveal/**"
   - "src/app/api/cron/venue-reveal/**"
   - "src/emails/venue-reveal.tsx"
   - "src/app/(public)/events/**"
@@ -37,7 +38,7 @@ autorizzazione esplicita documentata nel commit.
 ## Quality Gates
 
 - **Gate irreversibilita'**: Ogni modifica a un percorso che puo' rivelare un venue e' Critical e richiede validazione esplicita. Non esiste "lo sistemiamo dopo": dopo, l'indirizzo e' pubblico.
-- **Gate percorsi enumerati**: L'indirizzo puo' uscire da piu' punti. Enumerati leggendo il codice il 2026-08-05: `src/app/(public)/events/[slug]/page.tsx` e il suo `SecretVenueDialog.tsx`, `events/EventTabs.tsx`, `events/page.tsx`, `venues/[slug]/page.tsx`, `tickets/[id]/page.tsx`, `components/events/EventForm.tsx`, `components/venues/**`, il cron di rivelazione e la mail. **A questi si aggiungono i percorsi che non sono codice**: il capitolato al grafico esterno, il brief a chi va in console, un post o una storia. Prima di modificare, **rienumera leggendo il codice**, non elencando quelli che ti vengono in mente: questa lista e' datata per costruzione. Un percorso dimenticato e' una fuga.
+- **Gate percorsi enumerati**: L'indirizzo puo' uscire da piu' punti. **Rienumerati leggendo il codice il 2026-08-10**: `src/lib/venue-reveal/reveal-party-venue.ts` — **il cuore condiviso, l'unico posto che spedisce** — con i suoi due chiamanti, `api/cron/venue-reveal/**` e il percorso manuale; la mail `emails/venue-reveal.tsx`; `(public)/events/[slug]/page.tsx` col suo `SecretVenueDialog.tsx`, `(public)/events/EventTabs.tsx`, `(public)/events/page.tsx`, `(public)/tickets/[id]/page.tsx`, `components/events/EventForm.tsx`, `components/venues/**`, e la superficie di lavoro `admin/(work)/venues/**`. **Uscito dalla lista**: la pagina pubblica di una sede non esiste piu' (D-37-23). **Fuori dai `paths:` di questo modulo, e dichiarato invece che taciuto**: `(public)/tickets/[id]/page.tsx`, dove il gate non si carica. **A questi si aggiungono i percorsi che non sono codice**: il capitolato al grafico esterno, il brief a chi va in console, un post o una storia. Prima di modificare, **rienumera leggendo il codice**: questa lista e' datata per costruzione, e un percorso dimenticato e' una fuga.
 
 - **Gate il capitolato e' un percorso di uscita**: Le locandine della notte le produce **un grafico esterno**: quello che esce da noi e' il capitolato. E' un percorso di rivelazione a tutti gli effetti — con l'aggravante che finisce a un terzo, fuori da ogni sistema che possiamo controllare. Nel capitolato l'after party e' **`@ Secret Venue`**, mai l'indirizzo; se il grafico ha bisogno di sapere dove si svolge, non ne ha bisogno per disegnare. Vale identico per il brief ai selector (`sound-manifesto.md`).
 - **Gate default chiuso**: Se lo stato di rivelazione non e' determinabile — dato mancante, errore di query, utente non identificato — il venue **non si mostra**. Il fallback e' il segreto, mai l'indirizzo. E' l'unico dominio del progetto in cui il default sicuro e' negare (contrapposto a `checkin-offline.md`, dove il default e' ammettere: li' l'errore e' recuperabile, qui no).

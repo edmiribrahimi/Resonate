@@ -3,6 +3,105 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.10.0] - 2026-08-10
+
+### Added — `src/lib/venue-reveal/**` entra nei `paths:` di `venue-secrecy` (fase 37, piano 09)
+
+Il piano 37-09 ha estratto il cuore della rivelazione — le tre query dei
+destinatari, la deduplicazione per email, i lotti e la marcatura — da
+`src/app/api/cron/venue-reveal/route.ts` a
+**`src/lib/venue-reveal/reveal-party-venue.ts`**, perche' il percorso manuale
+del piano 37-10 e il cron devono spedire dallo stesso codice: due copie della
+deduplicazione significano **due numeri diversi per lo stesso atto
+irreversibile**.
+
+Nessun `paths:` copriva `src/lib/venue-reveal/**`. Il modulo `venue-secrecy`
+elencava `src/app/api/cron/venue-reveal/**` e altri cinque glob, tutti sotto
+`src/app/` e `src/emails/`: **il file piu' critico della fase sarebbe nato fuori
+dal raggio del proprio gate**, che e' il difetto che `ai-engineering.md` (gate
+*un gate deve poter caricarsi*) descrive come gia' avvenuto in questo repo fino
+alla v1.4. Un gate giusto agganciato al path sbagliato e' indistinguibile da un
+gate assente, con l'aggravante che sembra presidiato.
+
+Tre modifiche coordinate, nello stesso commit che crea la directory:
+
+- **`venue-secrecy.md`** — `paths:` += `src/lib/venue-reveal/**`, in testa alla
+  lista: e' il cuore, non un satellite;
+- **`CLAUDE.md`** — la riga di indice del dominio Venue Secrecy allineata allo
+  stesso insieme di glob (controlli **B** e **C**);
+- **`meta-gates.md`** — una riga nella tabella di priorita' per
+  `src/lib/venue-reveal/**`, con `venue-secrecy` primario e
+  `comms-analytics, ticketing-payments` supplementari. La tabella e' un secondo
+  indice e il controllo **G** pretende che il primario si carichi davvero li'.
+
+### Changed — il gate *percorsi enumerati* rifatto leggendo il codice
+
+Il gate dichiara di se' che la sua lista e' **datata per costruzione** e chiede
+di rifarla, non di ricordarla. Rifatta il 2026-08-10 con `grep` su `src/`, non a
+memoria. Tre differenze rispetto alla lista del 2026-08-05:
+
+1. **Entra** `src/lib/venue-reveal/reveal-party-venue.ts`, marcato come l'unico
+   posto che spedisce, coi suoi due chiamanti nominati accanto;
+2. **Esce** `(public)/venues/[slug]/page.tsx`: non esiste piu' — la pagina delle
+   sedi e' una superficie di lavoro (D-37-23), e oggi vive sotto
+   `admin/(work)/venues/**`, che la lista ora nomina;
+3. **Dichiarato invece che taciuto**: `(public)/tickets/[id]/page.tsx` mostra
+   l'indirizzo e **nessun `paths:` di questo modulo lo raggiunge**. Non e' stato
+   allargato in questo commit — sarebbe stato un secondo glob fuori dal
+   perimetro del piano — ma una lista che nomina un file su cui il gate non si
+   carica deve dirlo, o e' esattamente il «sembra presidiato» che il gate sopra
+   condanna. **Debito dichiarato, con la sua data.**
+
+### Context budget — 152 token spesi dei 957 disponibili
+
+Misurato con `npm run verify:persona`, non stimato. Il caso peggiore **non ha
+cambiato file**: resta `src/app/(public)/events/EventTabs.tsx`, dove
+`venue-secrecy` si carica insieme a `nextjs-architecture` e
+`ticketing-payments`.
+
+| | v1.9.0 | v1.10.0 |
+|---|---|---|
+| File peggiore | `src/app/(public)/events/EventTabs.tsx` | invariato |
+| Byte | 39.756 | **40.302** |
+| Token | 11.043 | **11.195** |
+| Margine sul tetto di 12.000 | 957 | **805** |
+
+I 152 token si spartiscono cosi': ~120 la rienumerazione del gate *percorsi
+enumerati*, ~25 la riga nuova della tabella di `meta-gates.md` (che si carica su
+**ogni** file), ~8 il glob aggiunto all'indice. Nessuna prosa e' stata tagliata
+per compensare, e la ragione va scritta invece che sottintesa: il gate *context
+budget* dice di tagliare la **descrizione** e non la regola, e qui i 152 token
+**sono** regola — una lista di percorsi di fuga e una riga di routing. Tagliare
+descrizione altrove per far quadrare un numero avrebbe scambiato una perdita
+reale con un guadagno contabile.
+
+**805 token restano per il piano 37-10**, che tocca lo stesso dominio.
+
+### Scenario di carico e scatto (`ai-engineering.md`, gate *eval*)
+
+Obbligatorio per ogni modulo modificato, perche' nessun test puo' girare.
+
+**File reale:** `src/lib/venue-reveal/reveal-party-venue.ts`.
+
+**Cosa deve caricarsi:** `CLAUDE.md`, `meta-gates.md`, `venue-secrecy.md` —
+verificato dal controllo **G**, che sulla riga nuova pretende che
+`venue-secrecy` si carichi davvero su quel glob. Prima di questo commit si
+caricavano solo i primi due, e il modulo che governa la rivelazione **non era
+fra questi**.
+
+**Modifica-tipo che deve far scattare un gate:** sostituire il valore di ritorno
+di un lotto caduto con un `console.error` e un `continue` — cioe' rimettere il
+pattern che il cron aveva. Deve scattare **zero fallimenti silenziosi**
+(`meta-gates.md`): questo progetto non ha error tracking, quindi il log non
+raggiunge nessuno, e un invio parziale che non torna **come valore** e'
+indistinguibile da uno riuscito per chi ha premuto.
+
+**Seconda modifica-tipo, sull'altro gate:** riportare la marcatura di
+`venue_reveal_sent` da «per lotto» a «da tutti i destinatari a fine ciclo». Deve
+scattare *idempotenza del cron* di `venue-secrecy.md` **letto per intero**, non
+per la sua prima frase: marcare chi non ha ricevuto nulla non e' marcare «prima
+o insieme», e' marcare **al posto di** un invio che non c'e' stato.
+
 ## [1.9.0] - 2026-08-10
 
 ### Changed — il gate *autorizzazione per destinatario* riscritto (fase 37, D-37-02/03)
