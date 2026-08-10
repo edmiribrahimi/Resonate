@@ -153,11 +153,36 @@ export type VenueRevealRefusal =
    * anywhere** in this repository (`access-gating.md`). The precedent is
    * `[id]/assignments/actions.ts:244-250`.
    *
-   * It is not a formality either: the gate proves the caller may reveal, it
-   * proves nothing about *this* night, which arrives on the same untrusted body.
-   * Without this check the `eventId` in the signature would be decoration and
-   * the service client — which bypasses every row-level policy — would publish
-   * the address of a night belonging to somebody else's event.
+   * ── WHAT THIS CHECK IS, stated correctly after WR-05 of the phase review ────
+   *
+   * It is a **coherence check between two parameters**, and it is NOT a security
+   * boundary. This paragraph used to claim it was one — that without it *"the
+   * service client would publish the address of a night belonging to somebody
+   * else's event"* — and that was false in a way worth naming, because a gate
+   * that declares a boundary it does not hold is worse than no gate: it tells
+   * the next reader somebody is watching (`ai-engineering.md`, gate *un gate
+   * deve poter fallire*).
+   *
+   * It cannot be a boundary, for one reason: **both** identifiers arrive on the
+   * same request body, and there is nothing to stop a caller sending the right
+   * pair. The right pair is readable from any public event page. And `venue.reveal`
+   * is deliberately **not per-event** — D-37-13: every approved organizer, on any
+   * night, because the person who created the event may be unreachable on the
+   * very Friday the reveal is needed. So there is no per-event rule here for this
+   * check to enforce.
+   *
+   * What it actually buys, which is worth keeping:
+   *   * an incoherent pair never reaches the writer, so a caller's own bug
+   *     — a stale `eventId` on a page, a night moved between events — refuses
+   *     instead of publishing an address on the night it happens to name;
+   *   * it denies the oracle, by answering the same word for *"not yours"* and
+   *     *"no such night"*.
+   *
+   * If per-event authorisation were ever wanted, this is not the place: it would
+   * belong in `record_venue_reveal_act`, which already reads the actor's role
+   * from `public.profiles` and could read `events.created_by` beside it. Writing
+   * that here would put the verdict on the side of the boundary that does not
+   * hold one — which is the whole of what this note is about.
    */
   | "party_not_in_event"
   /**
@@ -419,6 +444,9 @@ async function resolveNight(
     venues: { name: string; address: string | null } | null;
   } | null;
 
+  // A COHERENCE check between two parameters of the same body, not a boundary —
+  // the reasoning, and what it does and does not buy, is on `party_not_in_event`
+  // in the refusal union. Both branches answer the same word on purpose.
   if (!row || row.event_id !== eventId) {
     return { ok: false, reason: "party_not_in_event" };
   }

@@ -334,7 +334,34 @@ export default async function EventDetailPage({
     eventQuery.eq("is_published", true);
   }
 
-  const { data: event } = await eventQuery.single();
+  // The error is READ, and it was not — WR-07, the fourth of this family in this
+  // phase and the last one left on this page, two reads above the two already
+  // corrected below.
+  //
+  // Written `const { data: event } = …`, an RLS refusal, a changed policy or any
+  // `PGRST…` produced `event === null` and therefore a **404**: the night stops
+  // existing, for everybody, and nobody knows. *«Not found»* and *«could not find
+  // out»* are two different sentences and this page must not render one for the
+  // other.
+  //
+  // `PGRST116` is `.single()`'s way of saying **no row matched**, which here is
+  // genuinely a 404 and stays one. Everything else is thrown, and that includes
+  // the case with NO code — which is where this differs, deliberately, from the
+  // parties read below, whose transport failure is left to degrade. That one has
+  // a degraded middle available: an event rendered without its nights is poorer,
+  // not false. This read has none. Its only alternative to the truth is claiming
+  // the event does not exist — to a visitor, and to a crawler — so a transient
+  // failure gets the error boundary, which is honest and which a reload fixes.
+  const { data: event, error: eventError } = await eventQuery.single();
+
+  if (eventError && eventError.code !== "PGRST116") {
+    console.error(
+      `[event_detail.event_query_refused] ${eventError.code || "transport"}: ${eventError.message}`
+    );
+    throw new Error(
+      `[event_detail.event_query_refused] ${eventError.code || "transport"}`
+    );
+  }
 
   if (!event) {
     notFound();
