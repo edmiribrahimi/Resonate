@@ -394,18 +394,51 @@ AS $$
       OR (select private.has_capability('staff.manage'))
 
       -- ARM 3 — a ticket for this night, or a MASTER TICKET for its event
-      -- (`party_id IS NULL`). Level 1 of D-37-02, branch `:103` of today's
-      -- predicate. The two shapes are the ones the cron already treats as
+      -- (`party_id IS NULL`), **and only where buying is configured to unlock
+      -- the address**. Level 1 of D-37-02, and it mirrors the ticket branch of
+      -- `isVenueVisible` (`events/[slug]/page.tsx:178-185`), which is the
+      -- SOURCE this was read from rather than reconstructed from memory:
+      --
+      --     (venueRevealOnPurchase && (hasTicketForParty || hasMasterTicket))
+      --
+      -- The two ticket shapes are the ones the cron already treats as
       -- entitlement (`api/cron/venue-reveal/route.ts:57-76`), read from there
       -- rather than re-derived.
-      OR EXISTS (
-        SELECT 1
-        FROM public.tickets t
-        WHERE t.user_id = (select auth.uid())
-          AND (
-            t.party_id = ep.id
-            OR (t.party_id IS NULL AND t.event_id = ep.event_id)
-          )
+      --
+      -- ── The conjunct was missing, and it is not a cosmetic difference ────────
+      --
+      -- Written without it, a night deliberately configured
+      -- `venue_reveal_on_purchase = false` — *the ticket does not unlock the
+      -- address* — would refuse the address on the page and hand it over to the
+      -- same person through `POST /rest/v1/rpc/venue_for_parties` with their own
+      -- JWT, since this function is granted to `authenticated`. In a project
+      -- whose first principle is *the page is UX, the RLS is the boundary*, that
+      -- means the flag in the form promises a control the boundary does not
+      -- apply. Two verdicts on one question, and the one that counts was the
+      -- looser one.
+      --
+      -- `coalesce(…, true)` and not a bare read, because that is the page's
+      -- semantics and not a choice made here: the column is a nullable
+      -- `boolean DEFAULT true` (`20260305200000_venue_reveal_on_purchase.sql:2-3`),
+      -- and the page normalises it with `?? true` before the predicate sees it
+      -- (`page.tsx:519`). A bare `ep.venue_reveal_on_purchase` would evaluate
+      -- NULL — hence not true — on any pre-default row, and this arm would go
+      -- silently closed for a ticket holder the page shows the address to.
+      --
+      -- Arm 4 (RSVP) is deliberately NOT under this flag, and arm 5 is not
+      -- either: an RSVP is not a purchase, and an approved member at the window
+      -- is not entitled through a ticket. See each arm's own note.
+      OR (
+        coalesce(ep.venue_reveal_on_purchase, true)
+        AND EXISTS (
+          SELECT 1
+          FROM public.tickets t
+          WHERE t.user_id = (select auth.uid())
+            AND (
+              t.party_id = ep.id
+              OR (t.party_id IS NULL AND t.event_id = ep.event_id)
+            )
+        )
       )
 
       -- ARM 4 — an RSVP for this night. Level 1, NEW (D-37-10). Today
@@ -494,7 +527,8 @@ GRANT EXECUTE ON FUNCTION public.venue_for_parties(uuid[]) TO anon, authenticate
 COMMENT ON FUNCTION public.venue_for_parties(uuid[]) IS
   'The ONE public road to a venue address, and it decides PER NIGHT, never per venue. '
   'A night is returned with all four venue fields or not at all: absent means NO ENTITLEMENT, and the caller renders the hint. '
-  'Five arms (D-37-02): (1) the night is not secret; (2) staff.manage; (3) a ticket for the night or a master ticket for its event; '
+  'Five arms (D-37-02): (1) the night is not secret; (2) staff.manage; '
+  '(3) a ticket for the night or a master ticket for its event, AND venue_reveal_on_purchase (coalesced to true), which is the same conjunction the page predicate applies; '
   '(4) an RSVP for the night, deliberately NOT gated on venue_reveal_on_purchase since an RSVP is not a purchase (D-37-10); '
   '(5) an approved member, once venue_revealed_at is set, or at the reveal window, or after the night has started (D-37-04). '
   'It exists because closing the anonymous read of public.venues without it would silently strip the venue name from every night: '
