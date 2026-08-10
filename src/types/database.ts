@@ -68,6 +68,99 @@ export interface Event {
   updated_at: string;
 }
 
+/**
+ * The catalogue of formats and of series — phase 36, plan 06 (FMT-01, FMT-05),
+ * mirroring `supabase/migrations/20260810120000_formats_and_series.sql` §1 and §2.
+ *
+ * ── The honest limit, stated again here because this is where it will bite ────
+ *
+ * **None of the four Supabase clients is parameterised with `Database`**
+ * (`src/lib/supabase/client.ts:4`, `server.ts:7`, `middleware.ts:211`,
+ * `service.ts:4`), and this file declares no `Database` type at all. So the two
+ * interfaces below are DOCUMENTATION AND NOT ENFORCEMENT: a `.select()` naming
+ * `format_di` compiles, runs, and returns `undefined` — on a surface, with
+ * nothing logged, in a repository with no error tracking (`meta-gates.md`).
+ *
+ * The sentence is not new — `MembershipActRow`, `EventMediaRow` and
+ * `Attendance.entry_role` each carry their own copy, for their own columns. It
+ * is repeated a fourth time because it is the reason **every later plan in this
+ * phase verifies its queries by RUNNING them and not by compiling them**, and a
+ * reader who arrives at `Format` from the migration rather than from one of
+ * those three would otherwise not meet it. It is recorded in
+ * `.planning/STATE.md` as well.
+ *
+ * `supabase-data.md`, gate *tipi allineati*, is still a hard requirement. It
+ * just buys less than it looks like it does.
+ */
+export interface Format {
+  id: string;
+  /**
+   * The address: `/events?format=<slug>` (D-36-15). It travels inside a link
+   * somebody may have sent to somebody else, so changing it breaks that link.
+   */
+  slug: string;
+  /**
+   * The string a visitor reads, stored verbatim — `re:sonate` with a normal e,
+   * `SunSet` / `RamaDub` / `MotionLab` in CamelCase. No surface derives it from
+   * the slug or from the code: FMT-05 says the label comes from the data.
+   */
+  name: string;
+  /** Internal (`RSNT`, `SNST`, `RMDB`, `MTNLB`). Never a public surface alone. */
+  code: string;
+  /**
+   * The identification colour, `#RRGGBB`, constrained by
+   * `formats_color_hex_check`. In the data and not in a component (D-36-12), so
+   * changing one needs no deploy — and because Tailwind cannot generate a class
+   * from a runtime value, it reaches the DOM through an inline `style`.
+   */
+  color: string;
+  /**
+   * *A person has decided this may be seen.* NOT the same question as
+   * `retired_at`, which says *no new night may be assigned to this* (D-36-17).
+   * The public read policy `formats_select_listed` asks this column.
+   */
+  listed: boolean;
+  /** Retirement is not deletion (D-36-10). `null` means active. */
+  retired_at: string | null;
+  /** Display order only. Freely rewritable — unlike `EventParty.number`. */
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One numbered run of one format. The SERIES carries the counter, never the
+ * format: a format that visits several venues has one series per venue and the
+ * progressivo restarts inside each (D-36-07).
+ *
+ * `name` is **the one string in this phase that publishes** — it may contain a
+ * venue, which is why `public.party_series` is readable only through a
+ * published night (`venue-acquisition.md`, gate *uno spazio non acquisito non
+ * si nomina*; migration §4b).
+ */
+export interface PartySeries {
+  id: string;
+  format_id: string;
+  /** The public name, verbatim. Same spelling rules as `Format.name`. */
+  name: string;
+  /** Internal (`BZ`, `MR`, `PRLN`, `RSNT`, `SNST`). Never public alone. */
+  code: string;
+  /** `null` means active. */
+  retired_at: string | null;
+  /**
+   * The water level: the highest progressivo this series has ever handed out.
+   * **Not** the count of its nights and **not** `max(number)` — the trigger
+   * `event_parties_bump_series_watermark` raises it with `GREATEST`, so a
+   * deleted night cannot lower it and a number already on a poster is never
+   * proposed twice (`meta-gates.md`, monotone guard 3).
+   */
+  highest_assigned: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EventParty {
   id: string;
   event_id: string;
@@ -85,6 +178,41 @@ export interface EventParty {
   venue_secret: boolean;
   venue_secret_hint: string | null;
   venue_reveal_hours: number | null;
+  /**
+   * WHAT THIS NIGHT IS, and WHICH RUN of it. Both `NOT NULL` after
+   * `20260810120000_formats_and_series.sql` §9 — FMT-01: a night cannot be
+   * saved without saying what format it is. Neither carries a database default,
+   * deliberately: a constant default would write the same format onto every
+   * night that any path forgot to set (§3).
+   *
+   * They cannot contradict each other. `event_parties_series_format_fk` points
+   * at `party_series (id, format_id)`, so a night whose format disagrees with
+   * the format of its own series is **not writable** — there is nothing to
+   * reconcile because the contradiction cannot be stored.
+   */
+  format_id: string;
+  series_id: string;
+  /**
+   * The progressivo of this night inside its series.
+   *
+   * **NULLABLE ON PURPOSE, and the plan for this file said otherwise.** The
+   * migration sets `NOT NULL` on `format_id` and `series_id` only (§9); §9a
+   * argues `number` at length and the column carries the same sentence as a
+   * `COMMENT`. A night that is an ACT of another night — the first act of a
+   * double bill — carries that night's format and that night's series and **no
+   * number of its own**, because the code and the number COMPOSE a sigla and an
+   * act has no sigla. One such row exists in production today.
+   *
+   * Typing this `number` would be a type that lies, and a type that lies is
+   * worse than no type: the compiler would confirm an assumption the database
+   * refuses. Do not tighten it here, and do not tighten the column.
+   *
+   * Uniqueness still holds: `event_parties_format_series_number_unique` refuses
+   * two nights sharing the triple, and in Postgres two `NULL`s are DISTINCT —
+   * so two numberless acts are not a duplicate. That is the correct reading and
+   * not a hole.
+   */
+  number: number | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
