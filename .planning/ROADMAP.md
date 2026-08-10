@@ -444,9 +444,9 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 36-07-PLAN.md — the catalogue actions, where the guard is the whole boundary and every refusal is a returned value
-- [ ] 36-10-PLAN.md — format, series and number on the work surface, and the end of `updateEvent`'s swallowed per-night errors
-- [ ] 36-11-PLAN.md — `/events`: two parameters, one chip row for everyone, and a card that degrades to the narrower name
+- [x] 36-07-PLAN.md — the catalogue actions, where the guard is the whole boundary and every refusal is a returned value
+- [x] 36-10-PLAN.md — format, series and number on the work surface, and the end of `updateEvent`'s swallowed per-night errors
+- [x] 36-11-PLAN.md — `/events`: two parameters, one chip row for everyone, and a card that degrades to the narrower name
 
 **Wave 6** *(blocked on Wave 5)*
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 6/14 | In Progress|  |
+| 36. Formats & Series Numbering | 9/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |

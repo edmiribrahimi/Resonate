@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Completed 36-05-PLAN.md
-last_updated: "2026-08-10T14:50:41.720Z"
+stopped_at: Completed 36-11-PLAN.md
+last_updated: "2026-08-10T15:11:17.179Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 98
+  completed_plans: 101
   percent: 46
 ---
 
@@ -32,7 +32,7 @@ Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format 
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 6 of 14
+Plan: 8 of 14
 Status: Ready to execute
 
 Note:
@@ -87,7 +87,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 92%
+Progress: [██████████] 95%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -118,6 +118,11 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: 36-05: migration APPLICATA in produzione dall'endpoint migrations, versione `20260810144239`. I diciotto scarti della history precedono la fase; non e' stata aggiunta la diciannovesima, e ripararli resta una chiamata del proprietario (`PUT` fa upsert senza applicare)
 - [Phase 36]: 36-05: `party_series_select_published` visto CONCEDERE per la prima volta — con la chiave anonima la produzione restituisce UNA serie su sei (`RSNT`, l'unica con una serata pubblicata). Le cinque invisibili — `BZ`, `MR`, `PRLN`, `SNST`, `UNCL` — includono le quattro che portano un luogo nel nome. Prova a livello di identita' di riga (`pk_md5`), non di conteggio
 - [Phase 36]: 36-05: `event_parties_select_published` byte-identico fra `pre-36` e `post-36` (md5 `43e7f547`), 72 policy preesistenti su 72 immobili, 322 celle di lettura condivise con 0 mosse. Le tre serate portano l'assegnazione confermata da 36-02 e il format di ripiego tiene **0** righe
+- [Phase 36]: 36-11: il cancello sul nome di un marker usa la BANDIERA MEMORIZZATA `venue_secret`, non `isVenueVisible` — dei due candidati vince il piu' stretto (`venue-secrecy.md`, default chiuso), e il predicato e' dichiarato nel codice. `!== false`, cosi' una riga mancante o un join fallito valgono come segreto
+- [Phase 36]: 36-11: un embed PostgREST di `party_series` attraverso `event_parties` deve portare `!event_parties_series_id_fkey`. MISURATO contro la produzione con la chiave anonima: la forma non qualificata risponde `HTTP 300 PGRST201` — due relazioni esistono — e fallisce in SILENZIO, perche' PostgREST restituisce `data: null` senza eccezione e la pagina renderebbe «nessun evento»
+- [Phase 36]: 36-11: la riga dei chip non riceve i risultati. La garanzia che nessuna proprieta' di un chip dipenda dai dati e' la LISTA DELLE PROP, non una regola da ricordare: uno slug ritirato che esiste davvero si comporta identico a uno inventato (misurato), e nessun conteggio raggiunge una label, un `aria-label` o un `title`
+- [Phase 36]: 36-10: la categoria di un rifiuto viaggia come VALORE di ritorno e mai come messaggio lanciato — Next redige i messaggi delle Server Action in produzione
+- [Phase 36]: 36-10: i tre campi di catalogo stanno anche sul blocco a serata singola, perche' anche quello scrive una riga di event_parties
 
 ## Accumulated Context
 
@@ -145,8 +150,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T14:50:41.717Z
-**Stopped at:** Completed 36-05-PLAN.md
+**Last session:** 2026-08-10T15:11:17.175Z
+**Stopped at:** Completed 36-11-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

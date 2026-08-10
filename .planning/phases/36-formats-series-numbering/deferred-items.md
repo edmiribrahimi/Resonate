@@ -39,3 +39,52 @@ Three ways out were weighed and two rejected:
 (`access-gating.md`, gate *coerenza navigazione/permessi*); the refusal is the
 middleware's and it is already in place. What the wait avoids is the opposite
 failure — a staff member drawn a link to a 404.
+
+---
+
+## D2 — Every validation message of `admin/events/actions.ts` is redacted in production
+
+**Found by:** plan 36-10, task 1.
+**Must be closed by:** a later plan — it is **not** phase 36's, and phase 36 made
+it neither better nor worse.
+**File:** `src/app/(admin)/admin/events/actions.ts`, `validateEventData` and the
+`throw new Error` sites around it.
+
+**The fact.** `validateEventData` refuses with fifteen-odd distinct sentences
+(*"Title must be between 3 and 100 characters"*, and now *"Pick a format. A night
+cannot be saved without one."*). Next **redacts** the message of an error thrown
+out of a Server Action in a production build
+(`src/lib/capabilities/server.ts:59-63`), so every one of them reaches a person
+in `next dev` and none of them reaches a person in production, where the form
+shows Next's generic replacement instead.
+
+**Why plan 36-10 did not fix it.** It is pre-existing and file-wide: converting
+three of the fifteen throws to returned values would leave one function speaking
+two languages, and converting all fifteen is a rewrite of the whole validation
+contract plus every caller. The three causes this plan added follow the loop's
+existing form on purpose, and the gap is compensated where a person actually
+meets it: `format` and `series` are `required` in the browser, so those two
+refusals happen before the action is called at all. The **database** refusals —
+duplicate number, series/format mismatch — do travel as returned values, which
+is the half that could not be compensated any other way.
+
+**What would close it.** A `ValidationRefusal` union alongside `NightRefusal`,
+returned rather than thrown, and `EventForm` rendering it per field.
+
+---
+
+## D3 — A refused create still costs a slug
+
+**Found by:** plan 36-10, task 1.
+**Must be closed by:** a later plan.
+**File:** `src/app/(admin)/admin/events/actions.ts`, `createEvent`.
+
+`createEvent` inserts the event row first and its nights second. When the nights
+are refused, plan 36-10 now deletes the event row it just created — otherwise a
+mistyped number would leave an empty draft behind every time, and after phase 36
+a mistyped number is an ordinary outcome rather than a rarity.
+
+**What is still true.** The slug uniqueness probe runs before the insert, so a
+retried save after a refusal may produce a `-<suffix>` slug where the first
+attempt would have had a clean one, if anything else claimed the name in between.
+Small, cosmetic, and named here so it is not rediscovered as a bug.
