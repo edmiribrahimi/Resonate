@@ -92,12 +92,12 @@ Decided by the project owner on 2026-08-06 and recorded in
 
 ### Formats & Series
 
-- [ ] **FMT-01**: Each night carries its format, so one event can hold two nights of different formats
-- [ ] **FMT-02**: A series code and its number compose the sigla; the number is stored, never recomputed from a count
-- [ ] **FMT-03**: The database refuses two nights with the same format, series and number
-- [ ] **FMT-04**: A visitor can see all events or filter to one format, and the choice survives navigation and can be shared as a link
-- [ ] **FMT-05**: Format labels and colours come from data, so a retired sigla cannot appear and a colour can change without a deploy
-- [ ] **FMT-06**: No count, label or code on a public surface reveals an unannounced night or a secret venue
+- [x] **FMT-01**: Each night carries its format, so one event can hold two nights of different formats *(observed by hand — V1, 2026-08-10: one card, two markers in `sort_order` joined by `×`, each night its own marker on the detail page, no number and no code anywhere in the document. Seen on a drafts-visible surface; not on a published event)*
+- [x] **FMT-02**: A series code and its number compose the sigla; the number is stored, never recomputed from a count *(observed by hand — V2, 2026-08-10: 2 and 3 assigned, the one carrying 2 deleted, the survivor still 3, and the form then proposed **4**. A count would have proposed 2)*
+- [x] **FMT-03**: The database refuses two nights with the same format, series and number *(the only requirement of this phase with an automated proof — constraint probes under `npm run baseline:container`, 36-04; the four named constraints exist in production, 36-05)*
+- [x] **FMT-04**: A visitor can see all events or filter to one format, and the choice survives navigation and can be shared as a link *(observed by hand — V4, 2026-08-10: survives entering an event and coming back, survives a cold open in a new tab, each axis preserves the other; an unknown, empty, repeated or wrong-case value gives the complete list with `All` current, no error and no redirect. The swipe was performed by the owner's thumb on a second device, 36-13)*
+- [x] **FMT-05**: Format labels and colours come from data, so a retired sigla cannot appear and a colour can change without a deploy *(observed by hand — V5, 2026-08-10: `#8C82A6 → #F6B6D2` on the public chip with the same server process and an untouched `BUILD_ID`; retiring removed the chip (6→5) and the assignment entry (5→4) while the night that carried it kept its marker. See D11 for a divergence between the written procedure and the measured restore)*
+- [x] **FMT-06**: No count, label or code on a public surface reveals an unannounced night or a secret venue *(observed by hand — V3, 2026-08-10, 36-13: an unannounced night seeded on purpose, three rows asked for **by primary key** answered `[]` to the anonymous key, eight declared needles absent from six rendered documents including the RSC payload)*
 
 ### Live Attendance Freshness
 
@@ -217,12 +217,12 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | ASSIGN-06 | Phase 35 | Pending |
 | ASSIGN-07 | Phase 35 | Pending |
 | ASSIGN-08 | Phase 35 | Pending |
-| FMT-01 | Phase 36 | Pending |
-| FMT-02 | Phase 36 | Pending |
-| FMT-03 | Phase 36 | Pending |
-| FMT-04 | Phase 36 | Pending |
-| FMT-05 | Phase 36 | Pending |
-| FMT-06 | Phase 36 | Pending |
+| FMT-01 | Phase 36 | Complete (observed by hand — V1, 2026-08-10) |
+| FMT-02 | Phase 36 | Complete (observed by hand — V2, 2026-08-10) |
+| FMT-03 | Phase 36 | Complete (constraint probe — `baseline:container`) |
+| FMT-04 | Phase 36 | Complete (observed by hand — V4, 2026-08-10) |
+| FMT-05 | Phase 36 | Complete (observed by hand — V5, 2026-08-10) |
+| FMT-06 | Phase 36 | Complete (observed by hand — V3, 2026-08-10) |
 | VENUE-01 | Phase 37 | Pending |
 | VENUE-02 | Phase 37 | Pending |
 | LIVE-01 | Phase 38 | Pending |

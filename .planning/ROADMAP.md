@@ -72,7 +72,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 43: Role Model & Account Creation** - The fourth role grants entry and nothing else; master and organizer create accounts, and every act that changes who someone is is recorded with its author (executed 2026-08-08 — **verification `human_needed`: nothing deployed, 16/16 manual checks pending**, see `43-VERIFICATION.md`)
 - [x] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit (completed 2026-08-09)
 - [x] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched (completed 2026-08-10)
-- [ ] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format
+- [x] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format (completed 2026-08-10)
 - [ ] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off
@@ -463,7 +463,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 36-14-PLAN.md — V1, V2, V4, V5, and a validation record that keeps `nyquist_compliant: false` on purpose
+- [x] 36-14-PLAN.md — V1, V2, V4, V5, and a validation record that keeps `nyquist_compliant: false` on purpose
 
 ### Phase 37: Manual Venue Reveal
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 13/14 | In Progress|  |
+| 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |

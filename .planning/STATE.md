@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
+status: verifying
 stopped_at: Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
-last_updated: "2026-08-10T16:35:45.524Z"
+last_updated: "2026-08-10T17:09:29.261Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 106
-  completed_plans: 105
-  percent: 46
+  completed_plans: 106
+  percent: 54
 ---
 
 # State: Resonate
@@ -36,7 +36,7 @@ Plan: 14 of 14 — **i piani da 01 a 13 hanno tutti il proprio SUMMARY su disco*
 (contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
 uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
 indietro di due. Corretto sul conteggio dei file, non su una stima.
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -90,7 +90,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -133,6 +133,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: 36-09: nessuna scrittura su produzione per fabbricare un verde — il rifiuto color_taken sul ripristino resta dichiarato come D8
 - [Phase 36]: V3: la sessione e' stata coniata con la service key su autorizzazione esplicita e datata del proprietario (2026-08-10), dopo che l'esecutore si e' fermato a chiederla invece di procurarsela — Nessuno strumento del repository puo' autenticarsi come un ruolo (rls-baseline simula le persona via set_config). La strada alternativa — copiare il profilo Chrome del proprietario — e' un'estrazione di credenziali e non era autorizzata. Sessione revocata globalmente a fine procedura e revoca verificata.
 - [Phase 36]: V3: la serata seminata porta number NULL, contro un criterio del piano che lo vuole non nullo — bump_series_watermark alza highest_assigned con GREATEST e non lo abbassa mai, nemmeno cancellando la serata: un numero avrebbe lasciato un salto permanente nel progressivo di una serie, prodotto da un test, su una delle tre guardie monotone. Il campo non e' obbligatorio e il form dichiara quella forma nel placeholder.
+- [Phase ?]: D-36-19 onorata: i sei FMT-* spuntati una volta sola, dalla verifica di fase, con l'evidenza accanto a ciascuno
+- [Phase ?]: nyquist_compliant di fase 36 resta false: cinque requisiti su sei si provano solo a mano
 
 ## Accumulated Context
 
@@ -159,10 +161,11 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ()
 
 - D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
+- D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T16:35:45.520Z
+**Last session:** 2026-08-10T17:09:12.099Z
 **Stopped at:** Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.

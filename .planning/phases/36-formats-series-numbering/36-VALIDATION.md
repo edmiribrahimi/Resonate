@@ -13,7 +13,8 @@ closed: 2026-08-10
 > Contratto di validazione della fase. Distillato da `36-RESEARCH.md`
 > § *Validation Architecture*, che porta le misure.
 >
-> **`nyquist_compliant: false` e' deliberato, non un lavoro da finire.** Cinque
+> **Il `nyquist_compliant` del frontmatter e' `false` per scelta, e non e' un
+> lavoro da finire.** Cinque
 > requisiti su sei non hanno alcuna prova automatica possibile in questo
 > repository, e chiamarli coperti sarebbe una bugia che poi qualcuno userebbe
 > per chiudere la fase. Il precedente esiste: `31-VALIDATION.md` fa lo stesso,
