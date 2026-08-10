@@ -244,12 +244,32 @@ export const CAPABILITY_ROUTES = {
    * prefix rule that was holding it up. `organizer.access` is the LEAST of the
    * capabilities any collapsed surface needs, so an unentitled visitor is
    * refused before the redirect runs.
+   *
+   * ── `/admin/venues/[slug]` — plan 37-08, D-37-23 ────────────────────────────
+   *
+   * The venue profile used to serve `/venues/<slug>` to anybody, signed in or
+   * not; it is a production surface now. It takes its sister's key deliberately:
+   * one audience for the listing and for the rows the listing opens. Two things
+   * about this entry are worth the ink.
+   *
+   *   · **`next build` cannot see it.** `_everyStaffRouteIsBound` below reads the
+   *     GENERATED union, which holds no dynamic route, so a missing row here
+   *     would have raised no type error — only a middleware resolving `null` and
+   *     refusing everybody, with nothing in a log and no CI to notice. The check
+   *     that sees it is `npm run verify:routes`, which censuses `page.tsx` from
+   *     disk.
+   *   · **It is unambiguous, measured rather than assumed.** Three segments, one
+   *     dynamic in third position; `node scripts/verify-routes.mjs
+   *     --print-patterns` lists no other pattern of that shape. The loop at the
+   *     foot of this file throws on the FIRST import when two patterns tie, so
+   *     being wrong here costs the whole application rather than one page.
    */
   [CAP.ORGANIZER_ACCESS]: {
     routes: [
       "/admin",
       "/admin/artists",
       "/admin/venues",
+      "/admin/venues/[slug]",
       "/admin/members",
       "/admin/events",
       "/admin/events/new",
