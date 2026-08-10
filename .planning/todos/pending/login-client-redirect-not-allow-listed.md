@@ -80,3 +80,39 @@ Da guardare nello stesso passaggio, perche' e' la stessa famiglia:
   `/dashboard`. E' un difetto di **usabilita'**, non di sicurezza, ed e'
   preesistente alla fase 34 — ma va corretto insieme, perche' unificare la
   validazione senza unificare il nome del parametro lascia meta' del problema.
+
+---
+
+## Aggiornamento del 2026-08-10 — i due difetti si mascherano a vicenda
+
+**Rilevato dall'esecutore del piano 36-09, ri-misurato dall'orchestratore.**
+
+Il middleware e la pagina di login **non usano lo stesso nome di parametro**:
+
+- `src/lib/supabase/middleware.ts:466` — `url.searchParams.set("redirect", pathname)`
+- `src/app/(auth)/login/page.tsx:11` — `searchParams.get("next")`
+
+Conseguenza diretta, e va detta per prima perche' e' quella che si vede: **ogni
+indirizzo protetto perde la propria destinazione dopo il login.** Chi viene
+rimbalzato su `/login` da una pagina gated torna sempre a `/dashboard`, mai dove
+stava andando. E' un difetto di prodotto, non solo di sicurezza.
+
+**Ma l'interazione con il difetto qui sopra e' la parte che conta.**
+
+Oggi il percorso del middleware **non popola** `?next=`, quindi la riga senza
+allow-list a `login/page.tsx:52` non e' raggiungibile *da quel percorso*. Resta
+raggiungibile da un link costruito a mano — l'apertura descritta sopra e' reale —
+ma il volume e' zero perche' nessuna parte del prodotto genera quel parametro.
+
+**Quindi: riparare i nomi di parametro SENZA aggiungere l'allow-list attiva
+l'apertura.** Un `?next=` improvvisamente popolato dal prodotto rende quel
+percorso normale, atteso e frequentato, e la riga che lo esegue senza validarlo
+diventa un open redirect su un flusso che tutti usano.
+
+**I due si riparano insieme, in quest'ordine:** prima l'allow-list, poi
+l'allineamento del nome. Fatto al contrario, esiste una finestra in cui il
+difetto e' peggiore di adesso.
+
+**Non verificato:** se altri percorsi oltre al middleware costruiscano un URL di
+login con l'uno o l'altro nome. Va guardato prima di scegliere quale dei due
+nomi tenere.
