@@ -291,3 +291,49 @@ fermato prima: un verde fabbricato costa piu' di un debito dichiarato.
 secondo senso: sul fondo della card e' praticamente invisibile. La riga resta
 leggibile **perche' porta la parola `Retired` come testo** — cioe' e' la regola
 4 che funziona, osservata mentre serviva.
+
+---
+
+## D9 — Il cron della rivelazione raggiunge le bozze, e su una bozza senza destinatari alza comunque la bandiera
+
+**Rilevato da:** il piano 36-13, mentre decideva cosa fosse sicuro seminare.
+**Va chiuso da:** la fase 37, che possiede il dominio del venue. **Non e' un
+difetto di questa fase e non e' stato riparato qui** (invariante 3 del piano:
+un difetto riparato in silenzio durante la propria verifica non e' stato
+verificato).
+**File:** `src/app/api/cron/venue-reveal/route.ts:25-29` e `:108-115`.
+
+**Il fatto, letto riga per riga.** La query che sceglie le serate da rivelare
+e' filtrata su `venue_secret = true` e `venue_reveal_email_sent = false`, e su
+**nient'altro**: `events.is_published` non compare, ne' come filtro ne' come
+condizione sull'embed. Una serata su un evento **non pubblicato** e' quindi
+dentro l'insieme che il cron considera ogni notte.
+
+Piu' avanti, quando per quella serata non esiste alcun destinatario:
+
+```
+if (emailMap.size === 0) {
+  // No recipients but still mark as sent to avoid re-processing
+  await supabase.from("event_parties")
+    .update({ venue_reveal_email_sent: true }).eq("id", party.id);
+  continue;
+}
+```
+
+**Perche' conta.** `venue_reveal_email_sent` e' una **guardia monotona**
+(`meta-gates.md`): dice *la mail e' partita*. Su una bozza la mail non e'
+partita — non c'era nessuno a cui mandarla — ma la bandiera si alza lo stesso.
+Se quell'evento viene pubblicato **dopo** che la sua finestra di rivelazione si
+e' aperta, e poi vende biglietti, **la rivelazione non partira' mai**: il cron
+salta la serata perche' la considera gia' fatta. Nessun errore, nessun log,
+nessun tracking degli errori in questo progetto — il guasto si manifesta come
+una fila davanti a una porta di cui nessuno ha ricevuto l'indirizzo.
+
+**Quanto e' raggiungibile.** Serve una bozza che resti non pubblicata fin
+**dentro** la propria finestra di rivelazione. E' il caso ordinario di un evento
+preparato in anticipo e annunciato tardi, non un caso di laboratorio.
+
+**Cosa questo piano ha fatto invece di ripararlo.** Ha seminato la propria
+serata con `venue_secret = false` e una data lontana, cosi' che **nessuno dei
+due predicati del cron possa selezionarla**. La misura di FMT-06 non doveva
+introdurre un effetto collaterale in un dominio che non stava misurando.
