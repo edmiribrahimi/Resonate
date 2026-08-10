@@ -271,3 +271,37 @@ errore, **restituisce vuoto**, e la serata perde il nome del locale in silenzio.
 - `profiles-email-not-unique` — nessun legame con la rivelazione
 - `unchecked-count-reads-decide-money-paths` — alto, merita una fase propria:
   materia di `ticketing-payments.md`
+
+---
+
+## Ripensamento sul modello di visibilita' (stessa sessione, 2026-08-10)
+
+Il proprietario ha **riaperto e rovesciato** la decisione «solo chi ha biglietto
+o RSVP», in tre passaggi successivi. La versione finale e' in CONTEXT.md,
+D-37-02. Qui la traccia del percorso, perche' la prima decisione era stata presa
+esplicitamente e va detto perche' non vale piu'.
+
+| Passaggio | Cosa ha chiesto | Cosa e' stato risposto |
+|---|---|---|
+| 1 | «chi compra vede subito; membro approvato vede solo al reveal» | Meta' era gia' il comportamento di oggi; l'altra meta' e' un allargamento che contraddice il gate *autorizzazione per destinatario* |
+| 2 | tre livelli espliciti: ticket / approvato senza ticket / esterno | Funziona; resta da fissare **quale istante** e' «il reveal», perche' finestra e cron distano ore |
+| 3 | «il cron non puo' girare esattamente quando si apre la finestra?» | No: la finestra e' un istante diverso per ogni serata, un cron ha orario fisso. Puo' solo passare piu' spesso — e la frequenza dipende dal piano Vercel |
+| 4 | «la piattaforma rivela alla finestra, la mail e' una notifica che arriva dopo» | Scioglie l'obiezione: lo scarto non e' un'incoerenza. Il predicato della pagina diventa un **OR** — finestra aperta **oppure** rivelato a mano |
+
+**Costo messo per iscritto e accettato:** piu' persone conoscono l'indirizzo di
+quante ne entrano — vicinato, capienza 150–300, spazi privati senza licenza di
+pubblico spettacolo. Il gate `venue-secrecy.md` *autorizzazione per destinatario*
+va riscritto nello stesso commit (D-37-03).
+
+**Proposte respinte dal proprietario, registrate perche' non tornino:**
+
+| Proposta | Esito |
+|---|---|
+| Riscrivere l'oggetto della mail da `Venue Revealed` a promemoria | **Respinta** — resta `Venue Revealed` |
+| Legare il livello 2 al fatto della rivelazione invece che alla finestra | **Respinta** — vince la finestra, con il ramo manuale in OR |
+
+**Aperto alla chiusura della discussione:** l'RSVP conta come biglietto o come
+membro senza biglietto (D-37-10). Domanda posta, non ancora chiusa.
+
+**Non ancora noto:** il piano Vercel, che decide se la finestra puo' scendere
+sotto le 24 ore (D-37-06, D-37-07).
