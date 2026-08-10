@@ -35,17 +35,23 @@
  * one sweep it exists to perform. The status is emitted from the middleware
  * instead, in plan 34-03.
  *
- * ── What is NOT yet measured, stated rather than assumed ─────────────────────
+ * ── What the build does NOT carry, measured rather than assumed ──────────────
  *
- * **Nothing imports this module yet.** Plan 34-03 wires it into
- * `src/middleware.ts`. Until then the three throws below are proved by
- * importing the module directly — mutation D of plan 34-01 — and **not** by
- * `npm run build`, which does not bundle a module nothing reaches. The one
- * half that IS carried by the build today is the one-directionality, because
- * `ORGANIZER_REDIRECTS` is typed: a `from` outside `/organizer` or a `to`
- * outside `/admin` fails to compile. The `/scanner` half is a runtime throw
- * until 34-03 lands, and saying so is the point — a reader who assumed the
- * build covered it would be trusting a check that does not run.
+ * `src/middleware.ts` imports this module (plan 34-03), and **that did not make
+ * the throws below build-enforced.** Plan 34-01 hoped it would; 34-03 measured
+ * that it does not, with the import in place: a row naming the scanner still
+ * exits `npm run build` 0, because importing a module gets it bundled and does
+ * not get it evaluated. Module-load code in a middleware bundle runs when the
+ * runtime instantiates the bundle — **the first request after deploy**.
+ *
+ * The one half the build DOES carry is the one-directionality, and it is a type
+ * rather than a throw: `RedirectRow` types `from` as `/organizer…` and `to` as
+ * `/admin…`, so a reverse row fails to compile. The `/scanner` half is a
+ * first-request throw, and saying so is the point — a reader who assumed the
+ * build covered it would be trusting a check that does not run. What the throw
+ * buys instead is a loud 500 on every covered route on the first request, which
+ * in a product with no error tracking beats a door that quietly refuses the
+ * people rostered to work it.
  */
 
 import { resolveRoute } from "@/lib/routes/capability-routes";
@@ -54,16 +60,29 @@ import { resolveRoute } from "@/lib/routes/capability-routes";
 type RedirectRow = readonly [from: `/organizer${string}`, to: `/admin${string}`];
 
 /**
- * 307, deliberately, and only **while the phase is in flight** (D-34-15).
+ * 308 — permanent, since **2026-08-10**, and the order in which it got here is
+ * the whole safeguard (D-34-04, D-34-15).
  *
  * A 308 is a fourth monotone guard in the sense of `.claude/rules/meta-gates.md`:
  * a browser caches it and it does not come back, so a wrong one cannot be
- * withdrawn from a client that has already seen it. The rule for the other
- * three applies unchanged — a change may only make it harder to trip. The flip
- * to 308 is an acceptance criterion of plan 34-17, with the fifteen-address
- * walk re-run after the flip.
+ * withdrawn from a client that has already seen it. The rule for the other three
+ * applies unchanged — a change may only make it harder to trip.
+ *
+ * The table therefore ran at **307 for the whole phase**, and the flip happened
+ * only **after** a green fifteen-row walk against a running server: fifteen rows,
+ * each answering 307 at its declared destination, `/admin/scanner` answering the
+ * unauthenticated bounce to `/login` and not a relocation. The walk was then
+ * **re-run after the flip**, because a walk before and a walk after are two
+ * different measurements and only the second one describes what ships. Both are
+ * recorded in `.planning/phases/34-one-work-surface/34-VERIFICATION.md`.
+ *
+ * `scripts/verify-organizer-redirects.sh` reads this constant rather than
+ * hardcoding a number, so re-walking after any future change to it needs no edit
+ * to the script. Changing it back to a temporary status would not un-cache the
+ * 308 already served, which is why there is no "revert" for this line — only a
+ * new address.
  */
-export const REDIRECT_STATUS = 307;
+export const REDIRECT_STATUS = 308;
 
 /**
  * `/organizer` points at `/admin/events` and **not** at `/admin`.
