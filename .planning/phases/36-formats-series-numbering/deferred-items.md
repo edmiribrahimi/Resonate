@@ -138,3 +138,40 @@ instead, and both are green. Whoever closes it should move the two reads into
 state or into the handlers, and check the swipe by hand afterwards: the rule is
 about correctness under concurrent rendering, so a green lint here proves less
 than a finger on a phone.
+
+## D5 — Sei componenti di questa fase non sono mai stati renderizzati
+
+**Rilevato da:** l'orchestratore, alla chiusura dell'onda 6, consolidando tre
+dichiarazioni separate che stavano per disperdersi in tre SUMMARY diversi.
+**Va chiuso da:** i piani 36-09 (che monta i componenti del catalogo) e 36-13
+(la procedura V3), o resta debito dichiarato alla chiusura della fase.
+
+Tre piani hanno dichiarato — ognuno per conto proprio, ognuno correttamente —
+che il proprio lavoro visivo **non e' stato guardato da nessuno**. Prese una alla
+volta sono note oneste; prese insieme sono un elenco, e un elenco si verifica in
+una sessione sola invece che tre volte a caso.
+
+| Componente | Scritto da | Montato? | Guardato? |
+|---|---|---|---|
+| `FormatMarker` | 36-06 | si', da 36-11 e 36-12 | **no** |
+| `FormatFilterRow` | 36-11 | si', su `/events` | **no** |
+| `ColorSwatchPicker` | 36-08 | **no** — lo monta 36-09 | **no** |
+| `CreateFormatModal` | 36-08 | **no** — lo monta 36-09 | **no** |
+| `CreateSeriesModal` | 36-08 | **no** — lo monta 36-09 | **no** |
+| `RetireFormatDialog` | 36-09 | 36-09 | **no** |
+
+**Perche' non e' pedanteria.** Le affermazioni che restano non verificate non
+sono estetiche: sono le frecce che spostano il fuoco dentro un gruppo di scelta,
+la leggibilita' di un segno di spunta sul grigio, i 44 px sotto un pollice, e il
+casing di un nome di format sotto un antenato che potrebbe maiuscolare. L'ultima
+e' quella che si pubblica a ogni visitatore.
+
+**Il caso specifico che nessuno strumento qui intercetterebbe**, segnalato da
+36-08: se la mappa dei colori gia' presi includesse per errore anche i format
+ritirati, il selettore rifiuterebbe un colore che in realta' e' libero. Il build
+e' verde in entrambi i casi. Si vede solo aprendo la pagina e provando a
+riprendere il colore di un format ritirato — che e' anche il caso di D-36-10 e
+dell'asimmetria del ripristino.
+
+**Le sei procedure manuali** che 36-08 ha scritto nel proprio SUMMARY sono il
+punto di partenza: non vanno riscritte, vanno eseguite.
