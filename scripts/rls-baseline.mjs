@@ -1221,10 +1221,75 @@ export const PROBE_PAYLOADS = {
     },
     update: 'caption',
   },
-  // A party needs its event, a title and a start time. `venue_secret` defaults
-  // to false, so nothing here creates a row that could later be revealed.
+  // A party needs its event, a title, a start time — and, since
+  // `20260810120000_formats_and_series.sql`, a FORMAT and a SERIES, both
+  // `NOT NULL`. `venue_secret` defaults to false, so nothing here creates a row
+  // that could later be revealed.
+  //
+  // (The sentence that stood here until plan 36-04 said a party needs its event,
+  // a title and a start time. It became false the moment section 9 of that
+  // migration ran, and leaving it is how the next person learns the wrong
+  // contract — so it was rewritten rather than appended to.)
+  //
+  // ── WHY THIS ROW IS THE ONE `36-VALIDATION.md` WARNS ABOUT ────────────────
+  //
+  // With three columns and two of them `NOT NULL`, the old payload would fail
+  // `23502` for EVERY persona, and `baseline:compare` would report a *permission
+  // movement* on fourteen cells that had simply stopped measuring. That is a
+  // green which means the opposite of what it looks like, and everything below
+  // exists to keep this row measuring the INSERT POLICY and nothing else.
+  //
+  // ── WHY `format_id` IS NOT AN INDEPENDENT `{{formats}}` ───────────────────
+  //
+  // `event_parties_series_format_fk` is `(series_id, format_id) REFERENCES
+  // public.party_series (id, format_id)` (`20260810120000:871-885`): the two
+  // columns are ONE fact. A format resolved independently of the series
+  // contradicts it on any database where those two minima disagree —
+  // `resolveProbeReferences` resolves each placeholder with its own
+  // `min(id::text)` and nothing correlates them — and every cell of this row
+  // would then refuse `23503`. A refusal for the wrong reason is exactly as
+  // fatal to the measurement as the `23502` this payload was widened to avoid,
+  // and harder to notice, because it looks like a policy decision.
+  //
+  // `{{party_series_format}}` is the format OF THAT SERIES, resolved once on the
+  // privileged connection. See `DERIVED_PROBE_REFERENCES` below for why it is
+  // not a scalar sub-select — that is the same trap `event_media` fell into
+  // above, and here it would cost four cells that the `pre-36` capture records
+  // as `ok:1`.
+  //
+  // ── AND WHY `number` IS A SUB-SELECT, WHICH IS SAFE HERE AND ONLY HERE ────
+  //
+  // `event_parties_format_series_number_unique` refuses a repeated triple, so a
+  // CONSTANT would collide with a seeded night whenever `{{party_series}}`
+  // resolved to a series that already had one — and the catalogue rows the
+  // migration inserts carry `gen_random_uuid()` ids, so WHICH series is lowest
+  // differs from run to run. A cell that is `ok:1` in one capture and `23505` in
+  // the next is not a measurement.
+  //
+  // `max(number) + 1` reads `public.event_parties` under the persona, and unlike
+  // the `party_series` read it would replace, that is harmless — because the
+  // personas whose computed value can matter are exactly the six the INSERT
+  // policy admits, and `event_parties_insert_admin` and
+  // `event_parties_select_admin` are THE SAME PREDICATE
+  // (`20260225150000_party_architecture.sql:40-45`). Every persona that can
+  // insert sees every night and computes the true next number; the eight the
+  // policy refuses are refused `42501` before a unique index is ever consulted,
+  // since index insertion happens after the RLS `WITH CHECK` and not before it.
+  //
+  // `coalesce(…, 0) + 1` is also what satisfies `event_parties_number_positive`
+  // (`number > 0`) on an empty series.
   event_parties: {
-    insert: { columns: ['event_id', 'title', 'time'], values: ['{{events}}', PROBE_TEXT, `'18:00'::time`] },
+    insert: {
+      columns: ['event_id', 'title', 'time', 'format_id', 'series_id', 'number'],
+      values: [
+        '{{events}}',
+        PROBE_TEXT,
+        `'18:00'::time`,
+        '{{party_series_format}}',
+        '{{party_series}}',
+        '(select coalesce(max(ep."number"), 0) + 1 from public.event_parties ep where ep."series_id" = {{party_series}})',
+      ],
+    },
     update: 'description',
   },
   // `slug` is unique; `is_published` defaults to false, so the probe row would
@@ -1232,6 +1297,46 @@ export const PROBE_PAYLOADS = {
   events: {
     insert: { columns: ['slug', 'title', 'date'], values: [PROBE_TEXT, PROBE_TEXT, 'current_date'] },
     update: 'description',
+  },
+  // ── THE CATALOGUE OF IDENTITIES (plan 36-04) ───────────────────────────────
+  //
+  // `slug`, `name` and `code` are three separate axes and all three take the
+  // sentinel, which `materialise` rewrites to `seed-formats-<n>` per seeded row
+  // — so `formats_slug_unique` and `formats_code_unique` hold for BOTH rows the
+  // seed plants, without this payload having to know how many rows that is.
+  //
+  // THE COLOUR IS THE ONE THAT NEEDS THOUGHT, and a constant would break the
+  // SEED rather than the probe. `formats_color_active_unique` is a PARTIAL
+  // unique index over `color` where `retired_at IS NULL`
+  // (`20260810120000_formats_and_series.sql:183-185`), and both seeded rows are
+  // active, so a hard-coded `'#123456'` would refuse row 2 with `23505` and the
+  // seed would stop before a single night existed. The value is therefore
+  // DERIVED FROM THE SENTINEL — six hex characters of its md5 — which differs
+  // per seeded row, is deterministic (two identical runs must build the same
+  // database, which is what makes a diff between two captures mean anything),
+  // and satisfies `formats_color_hex_check` (`^#[0-9A-Fa-f]{6}$`) because md5
+  // renders lowercase hex. No random, for the same reason the seed silences the
+  // membership-code trigger.
+  //
+  // `listed` IS DELIBERATELY NOT SET and defaults to false. A probe row must
+  // never be one the anonymous key could read, and `formats_select_listed` is
+  // `USING (listed = true)`; the seeded rows inherit the same default, which is
+  // also what makes the `formats` READ cell discriminate — the four listed
+  // catalogue rows for everyone, and the unlisted ones only for whoever holds
+  // `catalogue.manage`.
+  //
+  // This table has RLS on and **no INSERT, UPDATE or DELETE policy at all**,
+  // deliberately (`20260810120000_formats_and_series.sql:452-476`): writes
+  // arrive with the service client. So every insert cell of this row is expected
+  // to refuse `42501` for EVERY persona including `master/approved` — the same
+  // shape as `party_credits`, `party_assignments`, `membership_acts`, `profiles`
+  // and `tickets`.
+  formats: {
+    insert: {
+      columns: ['slug', 'name', 'code', 'color'],
+      values: [PROBE_TEXT, PROBE_TEXT, PROBE_TEXT, `'#' || substr(md5(${PROBE_TEXT}), 1, 6)`],
+    },
+    update: 'name',
   },
   // `added_by` references `profiles` and is NOT NULL: the subject adds the guest.
   guest_list_entries: {
@@ -1404,6 +1509,33 @@ export const PROBE_PAYLOADS = {
     },
     update: 'sort_order',
   },
+  // ── WHICH RUN of a format a night belongs to (plan 36-04) ─────────────────
+  //
+  // `format_id` takes the placeholder BARE, per the quoting note on
+  // `event_media` above. `{{formats}}` is why `formats` joins the referenceable
+  // list below: `party_series.format_id` is `NOT NULL REFERENCES public.formats`,
+  // so the nil uuid would make the insert fail `23503` on every persona and
+  // measure the foreign key instead of the policy — the same sentence the
+  // `artists` entry earned in plan 35-05.
+  //
+  // `party_series_format_code_unique` is `(format_id, code)` and the code
+  // carries the sentinel, so the two seeded rows differ there even if they were
+  // to share a format — which they do not: row n points at `formats` row n.
+  //
+  // Like `public.formats`, this table has RLS on and **no write policy at all**
+  // (`20260810120000_formats_and_series.sql:452-476`), so every insert cell of
+  // this row is expected to refuse `42501` for EVERY persona. What is NOT
+  // expected to be uniform is the READ cell: this table is readable only
+  // through `catalogue.manage` or through a PUBLISHED night, and the container
+  // publishes no event — so the read row is a gate that answers for two personas
+  // and refuses twelve, which is the whole point of section 4b of that migration.
+  party_series: {
+    insert: {
+      columns: ['format_id', 'name', 'code'],
+      values: ['{{formats}}', PROBE_TEXT, PROBE_TEXT],
+    },
+    update: 'name',
+  },
   // A checkout the subject started, against an existing tier.
   pending_purchases: {
     insert: {
@@ -1463,6 +1595,12 @@ export const PROBE_PAYLOADS = {
  * `artists` was added by plan 35-05 for `party_credits.artist_id`, which is
  * `NOT NULL` against it: without a real id there, the probe would fail `23503`
  * on every persona and measure the foreign key instead of the policy.
+ *
+ * `formats` was added by plan 36-04 for `party_series.format_id`, and
+ * `party_series` for `event_parties.series_id`. Both are `NOT NULL` against
+ * their table since `20260810120000_formats_and_series.sql`, and both earn their
+ * place for exactly the reason `artists` did: without a real id the row measures
+ * a key instead of a policy.
  */
 export const PROBE_REFERENCE_TABLES = [
   'artists',
@@ -1470,8 +1608,58 @@ export const PROBE_REFERENCE_TABLES = [
   'drink_orders',
   'event_parties',
   'events',
+  'formats',
+  'party_series',
   'profiles',
   'ticket_tiers',
+];
+
+/**
+ * ── A SECOND KIND OF REFERENCE: a COLUMN of the row another one picked ────────
+ *
+ * `{{table}}` above resolves to the lowest id of a table, and that is enough
+ * while every foreign key on a probe row is INDEPENDENT of every other. Plan
+ * 36-04 introduced the first row where two of them are not:
+ * `event_parties_series_format_fk` demands that `(series_id, format_id)` name a
+ * PAIR that really exists in `public.party_series`, so a format resolved as "the
+ * lowest format" contradicts "the lowest series" on any database where those two
+ * minima disagree — and `23503` on every persona is a row that has stopped
+ * measuring the policy, which is the failure `36-VALIDATION.md` names.
+ *
+ * ── WHY THIS IS NOT A SCALAR SUB-SELECT IN THE PAYLOAD ───────────────────────
+ *
+ * `(select format_id from public.party_series where id = …)` is the shorter
+ * answer and the wrong one, and the reason is measurable rather than stylistic:
+ * that sub-select runs under the PERSONA'S read policies, and
+ * `public.party_series` is readable only through
+ * `party_series_select_catalogue_manage` or through a published night.
+ * `catalogue.manage` carries `requires_approved = true`
+ * (`20260807000000_capability_model.sql:399-400`) while INSERT on
+ * `public.event_parties` does not — the `pre-36` capture records `ok:1` for
+ * `master/pending`, `master/rejected`, `organizer/pending` and
+ * `organizer/rejected`. Those four would read NULL, insert NULL into a `NOT
+ * NULL` column and report `23502`, which D-19 records as INCONCLUSIVE. Four
+ * measured grants would become four cells that measure nothing, and the
+ * comparator would call it a movement.
+ *
+ * `event_media` met the same problem in plan 35-18 and solved it with
+ * `private.party_event_id(uuid)`, a `SECURITY DEFINER` function that answers the
+ * SAME VALUE FOR EVERY PERSONA. There is no such function for a series, and a
+ * harness does not get to add one to the schema. Resolving the value HERE —
+ * once, on the privileged connection, in the same breath as every other
+ * reference — buys the same invariant without touching the database.
+ *
+ * THE DEGENERATE CASE, stated rather than met: if the base reference is the nil
+ * uuid (its table is empty) the derived value is the nil uuid too, and the
+ * insert fails `23503` — which D-19 records as inconclusive, not as a refusal.
+ */
+const DERIVED_PROBE_REFERENCES = [
+  {
+    name: 'party_series_format',
+    from: 'party_series',
+    column: 'format_id',
+    why: "a night's format must be the format of its own series",
+  },
 ];
 
 const PROBE_VERBS = ['delete', 'insert', 'update'];
@@ -1617,7 +1805,28 @@ async function resolveProbeReferences(target) {
   for (const t of PROBE_REFERENCE_TABLES) {
     if (!(t in refs)) refs[t] = NIL_UUID;
   }
+  // AFTER the union and never inside it: a derived reference is a column of the
+  // row the union just picked, so it cannot be read until that row is known.
+  // Same connection, same privileged role, same one-value-for-every-persona
+  // guarantee — see `DERIVED_PROBE_REFERENCES`.
+  for (const derived of DERIVED_PROBE_REFERENCES) {
+    refs[derived.name] = await resolveDerivedReference(target, refs, derived);
+  }
   return refs;
+}
+
+/** One derived reference: `<column>` of the row `<from>` resolved to. */
+async function resolveDerivedReference(target, refs, { from, column }) {
+  const base = refs[from];
+  if (!base || base === NIL_UUID) return NIL_UUID;
+  const rows = await target.query(
+    `select "${column}"::text as ref from public."${from}" where "id" = '${base}'::uuid`,
+    { readOnly: true }
+  );
+  const value = rows[0]?.ref ?? null;
+  if (!value) return NIL_UUID;
+  registerSecret(value);
+  return value;
 }
 
 /**
@@ -1639,7 +1848,12 @@ async function resolveProbeKeys(target, tables) {
 
 export function substituteReferences(expression, refs) {
   return expression.replace(/\{\{([a-z_]+)\}\}/g, (_, table) => {
-    if (!(table in refs)) throw new Error(`probe payload references unknown table "${table}"`);
+    if (!(table in refs)) {
+      throw new Error(
+        `probe payload references "${table}", which is neither a table of PROBE_REFERENCE_TABLES ` +
+          'nor a name in DERIVED_PROBE_REFERENCES'
+      );
+    }
     return `'${refs[table]}'::uuid`;
   });
 }

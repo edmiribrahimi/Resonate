@@ -88,8 +88,25 @@ const OWNER_COLUMN_PRIORITY = [
  * Seeding order. Not alphabetical: a foreign key has to point at a row that
  * already exists. Everything not named here is seeded afterwards, in sorted
  * order, and by then every referenced table is populated.
+ *
+ * `formats` and `party_series` were added by plan 36-04, BEFORE `event_parties`
+ * and in that order, and neither could have been left to `rest`. Sorting is what
+ * carries `artists` (see below) and it is not enough here: `event_parties` is
+ * INSIDE this list, so it is seeded before a single sorted table is touched — a
+ * table the night points at must therefore be inside this list too, or its rows
+ * do not exist yet and the run stops with the message `referencedBy` raises.
+ * `formats` precedes `party_series` for the same reason one step down:
+ * `party_series.format_id` is `NOT NULL REFERENCES public.formats`.
  */
-const SEED_ORDER = ['events', 'event_parties', 'ticket_tiers', 'discount_codes', 'drink_orders'];
+const SEED_ORDER = [
+  'events',
+  'formats',
+  'party_series',
+  'event_parties',
+  'ticket_tiers',
+  'discount_codes',
+  'drink_orders',
+];
 
 /**
  * The tables a `{{placeholder}}` in a payload may point at.
@@ -97,6 +114,9 @@ const SEED_ORDER = ['events', 'event_parties', 'ticket_tiers', 'discount_codes',
  * `artists` was added by plan 35-05 for `party_credits.artist_id`. It is not in
  * `SEED_ORDER` and does not need to be: `rest` is sorted, and `artists` sorts
  * before `party_credits`, so its ids exist by the time the credits are seeded.
+ *
+ * `formats` and `party_series` were added by plan 36-04 and DO need `SEED_ORDER`
+ * as well, for the reason written above them.
  */
 const REFERENCEABLE = [
   'artists',
@@ -104,9 +124,31 @@ const REFERENCEABLE = [
   'drink_orders',
   'event_parties',
   'events',
+  'formats',
+  'party_series',
   'profiles',
   'ticket_tiers',
 ];
+
+/**
+ * ── The references that are a COLUMN of another reference's row ──────────────
+ *
+ * `rls-baseline.mjs` resolves `{{party_series_format}}` by READING the database
+ * on the privileged connection: the format of the series `{{party_series}}`
+ * picked. Here there is nothing to read yet — the row is being written — but
+ * there is something better than a read. Row n of every table points at ROW n of
+ * every table it references, so the format of `party_series` row n IS `formats`
+ * row n, and the derived reference is simply the base table's row at the same
+ * index.
+ *
+ * THAT ALIGNMENT IS NOT TAKEN ON TRUST, and it does not need its own assertion:
+ * `event_parties_series_format_fk` is `(series_id, format_id) REFERENCES
+ * public.party_series (id, format_id)`, so a seed that got the pairing wrong
+ * could not insert a single night — it would stop here with `23503` naming that
+ * constraint. That is the direction this file always chooses: a refused run,
+ * never a green matrix built on a row that is not what it claims to be.
+ */
+const DERIVED_REFERENCES = { party_series_format: 'formats' };
 
 /**
  * ── The pre-registered declaration of ROLE-02's rule ──────────────────────
@@ -400,15 +442,21 @@ function materialise(expression, { ownerId, refs, table, index }) {
  * The tables a payload's `{{placeholder}}`s actually name. Anything outside
  * `REFERENCEABLE` is a typo in the payload table and is refused rather than
  * silently resolved to nothing.
+ *
+ * A DERIVED name resolves to the table it derives FROM — `{{party_series_format}}`
+ * needs `formats` seeded and nothing else — so the seeding loop below asks for
+ * the same rows the derivation will read.
  */
 function referencedBy(payload) {
   const found = new Set();
   for (const value of payload.values) {
-    for (const [, table] of String(value).matchAll(/\{\{([a-z_]+)\}\}/g)) {
+    for (const [, name] of String(value).matchAll(/\{\{([a-z_]+)\}\}/g)) {
+      const table = DERIVED_REFERENCES[name] ?? name;
       if (!REFERENCEABLE.includes(table)) {
         throw new Error(
-          `a probe payload references "${table}", which the seed cannot provide. Known referenceable ` +
-            `tables: ${REFERENCEABLE.join(', ')}.`
+          `a probe payload references "${name}", which the seed cannot provide. Known referenceable ` +
+            `tables: ${REFERENCEABLE.join(', ')}. Known derived references: ` +
+            `${Object.keys(DERIVED_REFERENCES).join(', ')}.`
         );
       }
       found.add(table);
@@ -655,6 +703,13 @@ export async function seedContainer(admin) {
               'a seed that silently inserts a null foreign key produces a row no policy can be about.'
           );
         }
+      }
+
+      // The derived references, taken from the rows just chosen.
+      // `substituteReferences` does not know the difference and does not need
+      // to: it only requires the key to be present in `refs`.
+      for (const [derived, base] of Object.entries(DERIVED_REFERENCES)) {
+        if (base in refs) refs[derived] = refs[base];
       }
 
       const columns = [...payload.columns];
