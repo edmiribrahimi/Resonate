@@ -1,5 +1,5 @@
 /**
- * The twelve capability keys, named once.
+ * The thirteen capability keys, named once.
  *
  * This module is the source. It imports nothing — not even
  * `@/types/database`, which imports *from here* — for the same reason
@@ -28,7 +28,7 @@
  *
  * The check that closes the gap is `scripts/verify-capabilities.mjs`, added by
  * plan `32-10`: it reads `private.capabilities` and asserts that the set below
- * and the catalogue are the same twelve strings. Until it runs, the guarantee
+ * and the catalogue are the same thirteen strings. Until it runs, the guarantee
  * here is a convention, not a mechanism.
  *
  * **Editing this file means editing the migration in the same commit** — the
@@ -37,7 +37,7 @@
  *
  * ── Named by the question, not by the predicate ──────────────────────────────
  *
- * Three of these nine resolve to the same predicate today — `STAFF_MANAGE`,
+ * Three of these thirteen resolve to the same predicate today — `STAFF_MANAGE`,
  * `ORGANIZER_ACCESS` and `DOOR_OPERATE` are all "role ∈ {master, organizer},
  * status ignored". They are deliberately three keys and not one, because they
  * are three different questions. A later phase that grants one night's door
@@ -82,13 +82,38 @@
  * keys nobody asks for — a WARNING, deliberately, and the one Phase 34's CAP-02
  * will later turn into a build failure. It is arriving early on purpose; it is
  * not silenced.
+ *
+ * ── The thirteenth, added by plan 37-01 ──────────────────────────────────────
+ *
+ * `VENUE_REVEAL` is the naming rule applied a fourth time, and the key whose
+ * predicate is `CATALOGUE_MANAGE`'s exactly — role ∈ {master, organizer} AND
+ * status = approved. It is separate for the reason `REGISTER_READ` is separate,
+ * and the direction of the mistake is what makes it worth a key of its own:
+ *
+ *   - On `STAFF_MANAGE` it would inherit `requires_approved = false`, so an
+ *     organizer whose own access was never approved could publish a night's
+ *     address. That flag is `false` for the DOOR's reason — a pending organizer
+ *     must not be refused in front of a queue — and nobody is standing in a
+ *     queue while an address goes out. The reason does not travel.
+ *   - On `CATALOGUE_MANAGE` the shape would be right and the question wrong:
+ *     *may this subject create an artist or a venue* is not *may this subject
+ *     make an address public*, and merging them means the day somebody wants a
+ *     catalogue editor who may not publish, there is no key to take away.
+ *   - On `PARTY_MANAGE` it would arrive from a per-night assignment and expire
+ *     with the night (D-37-15). The reveal happens BEFORE the night and does not
+ *     expire, because it cannot be undone.
+ *
+ * It gates an ACT, not an address: the button lives on `/admin/events/[id]/edit`,
+ * which `ORGANIZER_ACCESS` already opens, so its entry in
+ * `src/lib/routes/capability-routes.ts` is on the `scope: "table"` branch.
  */
 
 /**
- * The twelve keys. Spelled exactly as the rows of `private.capabilities`
+ * The thirteen keys. Spelled exactly as the rows of `private.capabilities`
  * (`supabase/migrations/20260807000000_capability_model.sql` section 7,
- * `20260808002000_membership_register.sql` section 1 for the ninth, and
- * `20260809001000_assignment_resolver.sql` section 1 for the last three).
+ * `20260808002000_membership_register.sql` section 1 for the ninth,
+ * `20260809001000_assignment_resolver.sql` section 1 for the tenth to twelfth,
+ * and `20260810160000_manual_venue_reveal.sql` section 1 for the thirteenth).
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -123,6 +148,8 @@ export const CAP = {
   MEDIA_UPLOAD: "media.upload",
   /** Manage one night's operational surfaces. Not `ORGANIZER_ACCESS`, which is the area. */
   PARTY_MANAGE: "party.manage",
+  /** Reveal a night's secret venue by hand. Role AND approved. */
+  VENUE_REVEAL: "venue.reveal",
 } as const;
 
 export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
@@ -131,15 +158,18 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * One sentence per key, for the humans who read a permission decision.
  *
  * Typed as a **total** `Record` over the union on purpose, exactly as
- * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a thirteenth key to
+ * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a fourteenth key to
  * `CAP` without a description here is a `npm run build` error, and removing a
  * key leaves an unreachable entry that is also an error. It is the one part of
  * this file's contract the compiler can hold — and it held it when the ninth key
- * landed, and again when the tenth, eleventh and twelfth did, which in a
- * repository with no test runner is worth saying rather than assuming.
+ * landed, again when the tenth, eleventh and twelfth did, and again for the
+ * thirteenth, which in a repository with no test runner is worth saying rather
+ * than assuming.
  *
- * It cannot hold the other part — that these strings match the twelve rows in
- * `private.capabilities`. That is `scripts/verify-capabilities.mjs`'s job.
+ * It cannot hold the other part — that these strings match the thirteen rows in
+ * `private.capabilities`. That is `scripts/verify-capabilities.mjs`'s job, and
+ * that check needs a live database: it is RED between the commit that adds a key
+ * here and the deploy that applies the migration adding the row.
  */
 export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
   "staff.manage":
@@ -164,4 +194,6 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Upload media to a night. The per-night work upload — the photographer uploading to the night they worked — not the member-level contribution, which is membership.active.",
   "party.manage":
     "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
+  "venue.reveal":
+    "Reveal a night's secret venue by hand, before the automatic window, and send the address to everyone entitled to it. Requires an APPROVED staff role on both grants (D-37-14) because the act is irreversible — staff.manage ignores status ON PURPOSE, so a pending organizer is not refused in front of a queue, and that reason does not exist here.",
 };
