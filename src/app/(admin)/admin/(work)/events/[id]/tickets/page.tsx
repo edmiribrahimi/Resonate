@@ -1,17 +1,91 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
 import TierCard from "@/components/tickets/TierCard";
 import AddTierForm from "@/components/tickets/AddTierForm";
 import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
 import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
-import type { UserRole, UserStatus } from "@/types/database";
+
+/**
+ * Ticket tiers, discount codes, sold tickets and pending refunds — the two
+ * former pages, collapsed into one (D-34-05).
+ *
+ * ── This is a route collapse, and nothing on the money path moved ────────────
+ *
+ * `actions.ts` (tiers and discount codes) and `RefundActions.tsx` stayed at
+ * `src/app/(admin)/admin/events/[id]/tickets/`, outside `(work)` —
+ * R-WORK-ROUTES, declared in plan 34-07. A route group governs routing and
+ * nothing else, so a non-route module gains nothing by entering it while moving
+ * it would change the specifier in six files this plan does not own, one of them
+ * `components/events/SalesDashboard.tsx` — the second mount of `RefundActions`,
+ * and a sibling plan's file in this same wave. That is why the import above is
+ * absolute. **Neither of those two files was renamed and neither has a hunk in
+ * this plan's diff**, which is the claim being made here: not that the refund
+ * path still works — there is no test runner for this product — but that not one
+ * of its lines changed.
+ *
+ * ── Which of the two versions decided each difference ────────────────────────
+ *
+ * 138 lines differed across 13 hunks, and the fuller file did NOT win by being
+ * fuller. The verdicts, in short:
+ *
+ *  - **The guard is `organizer.access`**, because that is the key
+ *    `/admin/events/[id]/tickets` is bound to in
+ *    `src/lib/routes/capability-routes.ts` — the same entry the middleware reads
+ *    (D-34-09). Granted to `master` and `organizer`
+ *    (`20260807000000_capability_model.sql:411-412`). The `/admin` twin guarded
+ *    on `admin.access`, granted to `master` alone (`:408`); the `/organizer` twin
+ *    guarded on `organizer.access`. **No audience gains anything**: an organizer
+ *    holding `organizer.access` already opened this exact surface at
+ *    `/organizer/events/[id]/tickets`, which now answers with a redirect here.
+ *    The address collapsed; the entitlement did not move.
+ *
+ *  - **The ownership branch below came from the `/organizer` twin and is kept**,
+ *    because it is the more restrictive of the two behaviours and D-34-06 forbids
+ *    resolving a divergence towards *more* without a grant that already says so.
+ *    The `/admin` twin had **no ownership check at all** — it did not need one
+ *    while `admin.access` made `master` its only visitor. On `organizer.access`
+ *    it is load-bearing, and it is the reason this collapse does not widen a
+ *    service-role read.
+ *
+ *  - **There is no master-only control on this surface**, and none was invented.
+ *    `master.manage` appears exactly once, as the short-circuit that lets a
+ *    master skip the ownership read — the reserved-operation question
+ *    (`keys.ts`), asked as `capabilities.has(CAP.MASTER_MANAGE)` and never as a
+ *    role string. Both twins already agreed on that; there is no `role ===`
+ *    comparison in this file.
+ *
+ * ── The service-role read, and what is actually holding it ───────────────────
+ *
+ * Buyer names, buyer emails and pending refunds are read below through
+ * `getServiceClient()`, which bypasses every row-level policy
+ * (`access-gating.md`, gate *service role*). On that path THE CODE IS THE ONLY
+ * BOUNDARY — there is no RLS behind a service-role read to catch a mistake. So
+ * the ownership branch is not defence in depth here: together with the
+ * capability check it is the whole of the defence, and it must stay **above**
+ * the service client, where it is.
+ *
+ * The `/organizer` twin built that client inline from the two environment
+ * variables; this file uses the shared `getServiceClient()` helper the `/admin`
+ * twin used. Byte-equivalent (`src/lib/supabase/service.ts:3-8`) — the same two
+ * variables, in the same order — so this is not a privilege change but a
+ * question of how many places construct a service client.
+ *
+ * ── Both navs are gone from this file ────────────────────────────────────────
+ *
+ * `admin/(work)/layout.tsx` resolves the access context once for the whole tree
+ * and mounts `StaffNav` and `MobileNav` (D-34-07), so the `MobileNav` mount and
+ * the `as UserRole` / `as UserStatus` casts both twins carried are deleted here.
+ * `getAccessContext` is `cache()`-scoped per request, so the guard below costs
+ * no second round trip. It **throws** `capabilities.resolve_failed` and is
+ * deliberately not wrapped: an infrastructure fault dressed as a permission
+ * denial is a silent failure with an alibi (D-34-08, state 3).
+ */
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -23,30 +97,33 @@ export default async function TicketTiersPage({ params }: PageProps) {
   // Identity from the session, not from an inbound header.
   const ctx = await getAccessContext();
 
-  // `MobileNav` is a `"use client"` component that still takes role and status as
-  // props; phase 34 (STAFF-03) converts it. No decision on this page reads them.
-  const navRole = ctx.role as UserRole | null;
-  const navStatus = ctx.status as UserStatus | null;
-
-  // Defense in depth: may this person reach the organizer area at all.
+  // Reachability. The middleware and this page give the same verdict because
+  // they read the same entry — `/admin/events/[id]/tickets` is bound to
+  // `organizer.access` in `src/lib/routes/capability-routes.ts` (D-34-09). A
+  // page that stops asking is a page protected by a redirect alone, and
+  // `access-gating.md` is explicit that a redirect is not a boundary.
   if (!ctx.capabilities.has(CAP.ORGANIZER_ACCESS)) {
     redirect("/dashboard");
   }
 
   const supabase = await createClient();
 
-  // Verify event ownership. This page differs from its six siblings: the
-  // ownership row is fetched **only** when it is needed, so a master pays no
-  // round trip. That is preserved deliberately — asking `ownsOrIsMaster`
-  // unconditionally would be correct and would add a Supabase read for every
-  // master on every visit, changing no verdict. The whole reason the guard's
-  // first line is the master branch is so a caller can skip the read.
+  // Verify event ownership. Carried across from the `/organizer` twin unchanged
+  // in structure, with only its two redirect destinations moved to the collapsed
+  // address — the destination is the same page, one hop shorter.
+  //
+  // This page differs from its six siblings: the ownership row is fetched
+  // **only** when it is needed, so a master pays no round trip. That is
+  // preserved deliberately — asking `ownsOrIsMaster` unconditionally would be
+  // correct and would add a Supabase read for every master on every visit,
+  // changing no verdict. The whole reason the guard's first line is the master
+  // branch is so a caller can skip the read.
   //
   // `MASTER_MANAGE` and not `ADMIN_ACCESS`: the question is "may this person
   // manage an event they do not own" — the reserved-operation question
-  // (`keys.ts:55`). This is not the admin area.
+  // (`keys.ts:55`).
   if (!ctx.capabilities.has(CAP.MASTER_MANAGE)) {
-    const { data: event, error } = await supabase
+    const { data: ownerRow, error } = await supabase
       .from("events")
       .select("created_by")
       .eq("id", eventId)
@@ -64,19 +141,19 @@ export default async function TicketTiersPage({ params }: PageProps) {
         eventId,
         code: error.code,
       });
-      redirect("/organizer/events");
+      redirect("/admin/events");
     }
 
     // "There is no such row" — distinct from both of the others.
-    if (!event) {
-      redirect("/organizer/events");
+    if (!ownerRow) {
+      redirect("/admin/events");
     }
 
     // "You may not" — the one call, never a re-inlined comparison. Inside this
     // branch the master line can only be false, so what it decides here is the
     // identity refusal, the unowned-row refusal, and then the comparison.
-    if (!ownsOrIsMaster(ctx, event.created_by)) {
-      redirect("/organizer/events");
+    if (!ownsOrIsMaster(ctx, ownerRow.created_by)) {
+      redirect("/admin/events");
     }
   }
 
@@ -88,7 +165,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
     .single();
 
   if (!event) {
-    redirect("/organizer/events");
+    redirect("/admin/events");
   }
 
   // Count ALL parties for this event (to decide if event pass section is relevant)
@@ -107,26 +184,24 @@ export default async function TicketTiersPage({ params }: PageProps) {
     .eq("access_type", "paid")
     .order("sort_order", { ascending: true });
 
-  // Fetch all tiers for this event
+  // Fetch all tiers and group by party
   const { data: tiers } = await supabase
     .from("ticket_tiers")
     .select("*")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
-  // For each tier, fetch sold count
   const tiersWithSold = await Promise.all(
     (tiers ?? []).map(async (tier) => {
       const { count } = await supabase
         .from("tickets")
         .select("*", { count: "exact", head: true })
         .eq("tier_id", tier.id);
-
       return { ...tier, sold: count ?? 0 };
     })
   );
 
-  // Separate event-level tiers (party_id IS NULL) and party-specific tiers
+  // Separate event-level tiers and party-specific tiers
   const eventLevelTiers = tiersWithSold.filter((t) => !t.party_id);
   const tiersByParty = new Map<string, typeof tiersWithSold>();
   for (const tier of tiersWithSold) {
@@ -146,7 +221,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
     .in("party_id", (parties ?? []).map((p) => p.id))
     .order("created_at", { ascending: true });
 
-  // Compute usage counts for each discount code
   const discountCodesWithUsage = await Promise.all(
     (discountCodes ?? []).map(async (dc) => {
       const { count } = await supabase
@@ -154,7 +228,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
         .select("*", { count: "exact", head: true })
         .eq("discount_code_id", dc.id);
 
-      // Get tier names for restricted codes
       const restrictedTierIds = (
         dc.discount_code_tiers ?? []
       ).map((t: { tier_id: string }) => t.tier_id);
@@ -178,7 +251,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
     })
   );
 
-  // Group discount codes by party
   const discountsByParty = new Map<string, typeof discountCodesWithUsage>();
   for (const dc of discountCodesWithUsage) {
     if (!discountsByParty.has(dc.party_id)) {
@@ -187,32 +259,37 @@ export default async function TicketTiersPage({ params }: PageProps) {
     discountsByParty.get(dc.party_id)!.push(dc);
   }
 
-  // Fetch sold tickets for this event
-  const serviceClient = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
+  // Fetch sold tickets with buyer info.
+  //
+  // The narrower of the two column lists, kept deliberately. The `/organizer`
+  // twin also selected `tickets.party_id` and, on the refund read below,
+  // `ticket_refunds.status` and `ticket_refunds.requested_by` — none of the three
+  // is rendered by either twin. They are dead payload on a **service-role** read
+  // of buyer identities, and `requested_by` is a person's id. D-34-06 resolves a
+  // divergence towards the more restrictive side; here the more restrictive side
+  // is also the smaller one.
+  const serviceClient = getServiceClient();
   const { data: soldTickets } = await serviceClient
     .from("tickets")
-    .select("id, user_id, amount_paid, tier_id, party_id, created_at, profiles(full_name, email), ticket_tiers(name)")
+    .select("id, user_id, amount_paid, tier_id, created_at, profiles(full_name, email), ticket_tiers(name)")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
 
-  // Fetch pending refund requests for this event's tickets
+  // Fetch pending refund requests. The row set is identical to the twin's — same
+  // `.in(ticketIds)`, same `.eq("status","pending")`, same order — so this is a
+  // narrower projection of the same rows, not a different set of refunds.
   const ticketIds = (soldTickets ?? []).map((t: { id: string }) => t.id);
-  let pendingRefunds: { id: string; ticket_id: string; reason: string | null; amount: number; created_at: string; status: string; requested_by: string }[] = [];
+  let pendingRefunds: { id: string; ticket_id: string; reason: string | null; amount: number; created_at: string }[] = [];
   if (ticketIds.length > 0) {
     const { data } = await serviceClient
       .from("ticket_refunds")
-      .select("id, ticket_id, reason, amount, created_at, status, requested_by")
+      .select("id, ticket_id, reason, amount, created_at")
       .in("ticket_id", ticketIds)
       .eq("status", "pending")
       .order("created_at", { ascending: true });
     pendingRefunds = data ?? [];
   }
 
-  // Map ticket id to buyer name for refund display
   const ticketBuyerMap = new Map<string, string>();
   for (const t of soldTickets ?? []) {
     const rawProfile = t.profiles as unknown;
@@ -228,29 +305,24 @@ export default async function TicketTiersPage({ params }: PageProps) {
   }
 
   function formatPrice(price: number) {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price);
+    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(price);
   }
 
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <Link
-          href="/organizer/events"
+          href="/admin/events"
           className="text-xs text-muted hover:text-foreground transition-colors"
         >
           &larr; Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight mt-2">
-          Ticket Tiers
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight mt-2">Ticket Tiers</h1>
         <p className="text-sm text-muted mt-1">{event.title}</p>
       </header>
 
       <div className="px-6 space-y-8">
-        {/* Event Pass Tiers (event-level) -- only show when multiple parties exist */}
+        {/* Event Pass Tiers -- only show when multiple parties exist */}
         {showEventPass && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">
@@ -317,9 +389,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                   />
                   {(discountsByParty.get(party.id) ?? []).length === 0 ? (
                     <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
-                      <p className="text-muted text-sm">
-                        Nessun codice sconto per questo sub-event.
-                      </p>
+                      <p className="text-muted text-sm">No discount codes for this sub-event.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -341,6 +411,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
             );
           })
         )}
+
         {/* Pending Refund Requests */}
         {pendingRefunds.length > 0 && (
           <div className="space-y-4">
@@ -362,9 +433,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     </p>
                   </div>
                   {refund.reason && (
-                    <p className="text-xs text-muted mb-3">
-                      &ldquo;{refund.reason}&rdquo;
-                    </p>
+                    <p className="text-xs text-muted mb-3">&ldquo;{refund.reason}&rdquo;</p>
                   )}
                   <RefundActions refundId={refund.id} />
                 </div>
@@ -406,8 +475,6 @@ export default async function TicketTiersPage({ params }: PageProps) {
           </div>
         )}
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }
