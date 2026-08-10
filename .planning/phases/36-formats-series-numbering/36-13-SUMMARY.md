@@ -19,6 +19,8 @@ provides:
   - "The first refusal in this phase observed against something that actually existed to hide"
   - "The chip row measured identical between an anonymous reader and a drafts-visible one, on the same address"
   - "The series-name branch proved APART from its fallback — the thing 36-12 declared unobservable"
+  - "The swipe performed by a thumb on a second device with no session — 36-12's own open debt, closed"
+  - "FMT-04's address contract measured: aria-current follows the address, and an unknown slug is answered like a bare one"
   - "A production database left byte-identical to how it was found, verified row by row"
 affects: [36-14, phase verification]
 
@@ -281,21 +283,50 @@ Lo strumento e' `docs/36-13-v3/probe-source.py` e non e' prosa: stampa cosa ha
 cercato accanto a cosa ha trovato, cosi' che la prossima persona esegua la stessa
 domanda invece di ricordarsela.
 
-### 4 · Il link condiviso su un secondo dispositivo — **in attesa del proprietario**
+### 4 · Il secondo dispositivo — **osservata dal proprietario il 2026-08-10**
 
-**Non saltata, non passata: in attesa.** Il proprietario la esegue di persona,
-in navigazione privata dal telefono sulla stessa rete, su
-`…/events?format=resonate`, per verificare che il link condiviso apra gia' sul
-filtro e per provare lo swipe con un pollice vero — che 36-12 ha lasciato aperto
-dichiarandolo (*«that it does not wait is an argument from the shape, not an
-observation»*).
+Da un secondo dispositivo, **in navigazione privata, senza alcuna sessione**,
+sulla rete locale, contro il dev server. Cosa ha visto lui, sullo schermo:
 
-Il server ha gia' servito richieste da quel dispositivo. **Cosa abbia visto lo
-dice lui, e il posto per la sua osservazione e' questo:**
+- **La riga di chip rende il nome del format con la e normale e in minuscolo**,
+  a otto pixel da `UPCOMING` e `PAST` che sono in maiuscolo pieno. E'
+  l'invariante che si pubblica a ogni visitatore nello stesso istante, e fino a
+  oggi era una classe in cui qualcuno confidava: adesso e' una cosa che una
+  persona ha visto, **su uno schermo vero e su un dispositivo che non e' quello
+  di sviluppo**.
+- **Nessun conteggio su nessun chip.**
+- **Lo swipe fra Upcoming e Past, provato con un dito.** E' il debito che
+  `36-12-SUMMARY.md` aveva lasciato aperto dichiarandolo — *«that it does not
+  wait is an argument from the shape, not an observation»*. **Chiuso, e chiuso
+  da un pollice.**
+- Le due card mostrano il **nome del format**, non quello della serie: e' il
+  degrado corretto, perche' entrambe hanno una serata con il venue segreto. E'
+  la stessa cosa che 36-11 aveva misurato sul payload, vista qui sulla superficie.
 
-> _(osservazione del proprietario, dal telefono, in attesa)_
+**E una distinzione che non va collassata.** Nella sua schermata il chip corrente
+era `All`, perche' aveva aperto **l'indirizzo nudo**: quindi cio' che ha
+osservato *sul dispositivo* e' il casing, lo swipe, l'assenza di conteggi e il
+degrado del nome — **non** che un link filtrato apra gia' sul filtro. Quella
+meta' e' stata **misurata dal sorgente reso**, non dedotta dalla schermata, ed e'
+il contratto d'indirizzo di FMT-04:
 
-Il dev server e' stato lasciato in piedi apposta.
+| Indirizzo | `aria-current="true"` su | Card |
+|---|---|---|
+| l'indirizzo nudo | `All` | 2 |
+| filtrato su un format del catalogo | **quel chip**, con `border-color` preso dal catalogo (`#A874E8`) | 2 |
+| filtrato su uno slug inesistente | `All`, lista **completa**, **nessun redirect, nessun errore** | 2 |
+
+L'ultima riga e' la proprieta' che tiene la pagina lontana dall'essere un
+oracolo: uno slug ignoto **non** risponde *«questo format non esiste»*, che
+sarebbe enumerazione una sonda alla volta.
+
+**E la garanzia sul casing e' strutturale, non fortunata.** Il chip corrente
+**perde** `normal-case` dal contenitore esterno — ma ogni elemento che rende un
+nome di format se lo porta addosso, misurato su entrambi i nomi in entrambi gli
+stati. E' esattamente perche' quell'override e' stato messo sul componente,
+invece di dipendere dall'assenza di `uppercase` su un antenato, che il chip
+selezionato non e' il caso in cui saltava. `36-11-SUMMARY.md` lo aveva scelto per
+questa ragione; qui la ragione si e' vista funzionare.
 
 ### 5 · La meta' dell'ammissione — osservata **senza pubblicare niente**
 
@@ -356,6 +387,12 @@ hash presi prima:
 | `party_series` | `7e32d216…` | `7e32d216…` | 6 → 6 | 0 | 0 | **0** |
 | `event_parties` | `452f5397…` | `452f5397…` | 3 → 3 | 0 | 0 | **0** |
 | `events` | `96cda598…` | `96cda598…` | 2 → 2 | 0 | 0 | **0** |
+
+**L'autorizzazione e' stata consumata una volta sola.** La semina, la misura e la
+rimozione sono un ciclo chiuso: la bozza non e' stata ricreata dopo la
+cancellazione, e non doveva esserlo. Una seconda semina sarebbe stata una
+scrittura in piu' su un database dichiarato «come l'ho trovato», senza una sola
+misura in piu' da raccogliere.
 
 **Byte-identiche, e per chiave primaria: nessuna riga aggiunta, rimossa o
 cambiata.** Le tre serate, le sei serie, i cinque format e i due eventi sono
@@ -435,9 +472,10 @@ Scritto invece che aggirato, e con la stessa cura del resto.
 3. **Il Task 1 non ha un commit.** Non ha modificato alcun file tracciato: la
    scrittura e' stata una riga di database, poi rimossa. Un commit li' sarebbe
    stato vuoto. Stessa forma della deviazione 2 di `36-05-SUMMARY.md`.
-4. **L'osservazione 4 e' registrata come *in attesa*, non come saltata.** Il
-   proprietario la esegue di persona e il posto per la sua frase e' lasciato
-   aperto nel testo.
+4. **L'osservazione 4 e' stata eseguita dal proprietario, non dall'esecutore.**
+   Richiede un secondo dispositivo e un dito, e nessuno dei due esiste qui. E'
+   registrata con cio' che ha visto lui e con la distinzione fra cio' che ha
+   osservato sullo schermo e cio' che e' stato misurato dal sorgente.
 5. **Il Task 3 e' un checkpoint del piano, ma la sua parte automatizzabile e'
    stata eseguita invece di essere consegnata.** Le osservazioni 1, 2, 3 e 5
    sono letture di sorgente e di database: consegnarle a una persona avrebbe
@@ -494,7 +532,7 @@ Nessuno. Questo piano non aggiunge codice di prodotto.
 | T-36-13-01 · la bozza che diventa visibile | Non e' mai stata pubblicata, per nemmeno un istante; titolo che grida cosa e'; nessuna sede, nessuna data reale, nessuna line-up; rimossa e la rimozione riletta con la service key |
 | T-36-13-02 · l'output delle sonde in un file tracciato | Conteggi, verdetti e prefissi di uuid. **Nessun nome di serie, sede o indirizzo** e' entrato in questo file; gli artefatti stanno in `docs/`, ignorato e verificato tale |
 | T-36-13-03 · un conteggio sopravvissuto nel sorgente | Otto aghi su sei documenti, payload compreso → 0. Ogni cifra del testo visibile spiegata per nome. Un solo `aria-label`, senza cifre |
-| T-36-13-04 · una procedura dichiarata passata senza essere stata eseguita | Ogni osservazione porta cio' che si e' visto; la 4 e' **in attesa** e detta tale |
+| T-36-13-04 · una procedura dichiarata passata senza essere stata eseguita | Ogni osservazione porta cio' che si e' visto, e **da chi**: la 4 e' del proprietario, e dentro la 4 e' scritto quale meta' e' stata vista sullo schermo e quale misurata dal sorgente |
 | T-36-13-05 · sondare dalla service client invece che dal percorso vero | La serata nasce da `POST /admin/events/new` (nel log del server); le sonde usano la chiave anonima, che e' quella che ha un visitatore. La service key ha fatto solo letture e la cancellazione finale |
 | T-36-13-SC · installazioni di pacchetti | Nessun pacchetto installato |
 
@@ -520,5 +558,6 @@ chiuso.
 ---
 *Phase: 36-formats-series-numbering*
 *V3 eseguita e datata: **2026-08-10**. Seminata alle 15:22 UTC, misurata, rimossa,
-e il catalogo riletto byte per byte alle 16:31 UTC. Una sola osservazione resta
-al proprietario, ed e' segnata in attesa invece che passata.*
+e il catalogo riletto byte per byte alle 16:31 UTC. **Tutte e cinque le
+osservazioni sono state fatte** — quattro da uno strumento, una da una persona
+con un secondo dispositivo e un dito, e il testo dice sempre quale delle due.*
