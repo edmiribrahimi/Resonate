@@ -7,11 +7,51 @@ import type { UserRole, UserStatus } from "@/types/database";
 import EventTabs from "./EventTabs";
 import FormatFilterRow from "./FormatFilterRow";
 
+/**
+ * DECLARED, not derived — and the declaration is the whole point.
+ *
+ * This page is already `ƒ` today, because `getAccessContext()` and
+ * `createClient()` both read the cookie store and that alone excludes static
+ * rendering. So this line changes NOTHING that is measurable right now. What it
+ * changes is the reason: the dynamism stops being a side effect of how the
+ * client happens to be built and becomes a decision somebody made, which means
+ * removing it is visible in a diff instead of happening by accident three
+ * refactors from now.
+ *
+ * Why it matters HERE and not on an arbitrary page: the venue predicate this
+ * page depends on has a TIME COMPONENT that fires on its own, at a precise
+ * instant, with nobody deploying anything — the reveal window of
+ * `public.venue_for_parties`. A copy of this list rendered before that instant
+ * and served after it shows the wrong side of a one-way switch, and
+ * `venue-secrecy.md`'s *cache e pre-render* gate says a surface that can show a
+ * venue is marked dynamic and uncacheable rather than observed to be so.
+ */
+export const dynamic = "force-dynamic";
+
+/**
+ * One venue marker on one card, and NO ADDRESS — which is a security boundary,
+ * not a trimmed payload.
+ *
+ * This shape is handed to `EventTabs`, a `"use client"` component, so every
+ * field here is serialised into the RSC payload and travels to every visitor,
+ * SECRET NIGHTS INCLUDED, whether or not anything renders it. Until this phase
+ * it also carried the street address and the Maps link of the venue, which no
+ * surface in `src/` ever rendered: two dead props, readable by anyone who
+ * opened `/events` and looked at the document instead of the page.
+ *
+ * Those two names are deliberately not spelled out anywhere in this file: an
+ * automatic check counts their occurrences and expects none, and a mention in
+ * prose would read fine to a human while quietly defeating the check.
+ *
+ * The rule the next person needs, because they will be tempted: if the list one
+ * day has to show the address of a NON-secret night, it comes from
+ * `public.venue_for_parties` like the name does — through the entitlement check
+ * — and it is added here only once something actually renders it. A field
+ * declared "for when we need it" is already published.
+ */
 interface VenueInfo {
   venue_name: string | null;
   venue_text: string | null;
-  venue_address: string | null;
-  venue_google_maps_url: string | null;
   venue_secret: boolean;
   venue_secret_hint: string | null;
 }
@@ -167,6 +207,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // and would turn both into "no upcoming events" — see the block below it.
   let queryRefusalCode: string | null = null;
 
+  // Its own variable, and never merged with the one above. A refused catalogue
+  // of nights and a refused set of venue names produce two different broken
+  // pages, and collapsing distinct causes into one message is the shape
+  // `meta-gates.md` forbids by name.
+  let venueNamesRefusalCode: string | null = null;
+
   try {
     const today = new Date().toISOString().split("T")[0];
 
@@ -207,9 +253,20 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     // Neither `code` nor `number` is selected, on either side. The disclosure
     // matrix says never, on any public surface, and a column that is not fetched
     // cannot be rendered by an edit that was not thinking about the rule.
+    //
+    // THE `venues(…)` EMBED IS GONE, and it was not removed for tidiness. After
+    // `20260810161000_venues_read_narrowed.sql` an anonymous reader holds no
+    // SELECT on `public.venues` at all, and a nested embed the reader is not
+    // entitled to DOES NOT RAISE — PostgREST returns it empty, per element. The
+    // night would still be here, its venue simply `null`, and every card would
+    // quietly lose the name of the bar: no code, no exception, nothing for the
+    // `error.code` branch below to catch, and no error tracking in this project
+    // to notice afterwards. That is D-37-25's failure shape, and the road to the
+    // name of a NON-secret venue that D-37-24 requires has to be BUILT rather
+    // than hoped for. It is built below.
     const query = supabase
       .from("events")
-      .select("slug, title, date, venue_secret, lineup, is_published, event_parties(id, date, venue_text, sort_order, venue_secret, venue_secret_hint, lineup, format_id, series_id, venues(name, address, google_maps_url), formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
+      .select("slug, title, date, venue_secret, lineup, is_published, event_parties(id, date, venue_text, sort_order, venue_secret, venue_secret_hint, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
       .order("date", { ascending: true });
 
     if (!canSeeDrafts) {
@@ -239,6 +296,78 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       if (eventsError.code) queryRefusalCode = eventsError.code;
     }
 
+    // =========================================================================
+    // The venue names, resolved BY TITLE — one call for the whole page
+    // =========================================================================
+    //
+    // `public.venue_for_parties(p_party_ids uuid[])` answers, per night, whether
+    // THIS caller may be told the venue, and returns nothing for the nights
+    // where the answer is no. Absent means NO TITLE: the card then renders
+    // `Secret Venue` or the free-text venue, never a stand-in. The five arms of
+    // that decision live in the migration, in SQL, once — this page does not
+    // re-derive any of them, and must not start.
+    //
+    // ONE round trip for the entire list, not one per night: this is the most
+    // visited public page of the site and it renders every night of every event.
+    //
+    // `.select("party_id, name")` is a column filter on the result set, and it
+    // is the narrowest available form. The function returns six columns — the
+    // two identifiers, the name, the slug, the street address and the Maps link
+    // — and this page renders exactly one of them. Asking for two means the
+    // other four never cross the wire at all, and a value that never leaves the
+    // database cannot be leaked by a later edit: the same reasoning that keeps
+    // `code` and `number` out of the query above.
+    const partyIds: string[] = [];
+    for (const e of events ?? []) {
+      const parties =
+        (e as { event_parties?: { id: string }[] | null }).event_parties ?? [];
+      for (const p of parties) partyIds.push(p.id);
+    }
+
+    // `Map<partyId, name>` and not an array: the lookup below runs once per
+    // night, and the absent key IS the answer rather than a value to test for.
+    const venueNames = new Map<string, string>();
+
+    // An empty argument would be a valid call answering nothing. Skipped because
+    // a round trip that cannot change the outcome is a cost with no question
+    // behind it — not because the empty case is unsafe.
+    if (partyIds.length > 0) {
+      const { data: venueRows, error: venueError } = await supabase
+        .rpc("venue_for_parties", { p_party_ids: partyIds })
+        .select("party_id, name");
+
+      // Treated exactly like the events query above, and for the same written
+      // reason: a database-level refusal carries a code, will never fix itself,
+      // and is thrown past the catch so it reaches the error boundary. Its own
+      // category, never folded into `events.query_refused`, because the two say
+      // different things to whoever reads them — one means the list failed, this
+      // one means the list is intact and every venue name on it is missing.
+      //
+      // AND IT IS THROWN RATHER THAN SWALLOWED because the silent alternative is
+      // the exact defect this plan exists to prevent: a page that renders a
+      // complete, healthy-looking list of nights with the venue quietly stripped
+      // from all of them is a lie on the shop window that nothing here would
+      // ever report.
+      //
+      // Note for whoever deploys this: until
+      // `20260810161000_venues_read_narrowed.sql` is applied, this function DOES
+      // NOT EXIST and PostgREST answers `PGRST202` — so this page fails loudly
+      // rather than degrading. The code and that migration ship as ONE act.
+      if (venueError) {
+        console.error(
+          `[events.venue_names_refused] ${venueError.code || "transport"}: ${venueError.message}`
+        );
+        if (venueError.code) venueNamesRefusalCode = venueError.code;
+      }
+
+      for (const row of (venueRows ?? []) as {
+        party_id: string;
+        name: string | null;
+      }[]) {
+        if (row.name) venueNames.set(row.party_id, row.name);
+      }
+    }
+
     function transformEvent(e: Record<string, unknown>): EventCard {
       const evt = e as {
         slug: string;
@@ -247,7 +376,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         venue_secret: boolean;
         lineup: string[] | null;
         is_published: boolean;
-        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; venue_secret_hint: string | null; lineup: string[] | null; format_id: string | null; series_id: string | null; venues: { name: string; address: string | null; google_maps_url: string | null } | { name: string; address: string | null; google_maps_url: string | null }[] | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
+        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; venue_secret_hint: string | null; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
       const sortedDates = parties.map((p) => p.date).sort();
@@ -259,17 +388,19 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       const venues: VenueInfo[] = [];
       const sorted = [...parties].sort((a, b) => a.sort_order - b.sort_order);
       for (const p of sorted) {
-        const venueData = p.venues;
-        const venue = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
-        const key = venue?.name ?? p.venue_text ?? "";
+        // The name arrives from the entitlement decision, never from a join this
+        // page performed itself. `undefined` — the night is not in the result —
+        // means NO TITLE, which is the same answer as "no venue recorded" as far
+        // as this card is concerned: `venue_secret` below decides what stands in
+        // its place, and it is the STORED FLAG, not a computed verdict (D-36-11).
+        const venueName = venueNames.get(p.id) ?? null;
+        const key = venueName ?? p.venue_text ?? "";
         if (!key && !p.venue_secret) continue;
         if (key && seen.has(key)) continue;
         if (key) seen.add(key);
         venues.push({
-          venue_name: venue?.name ?? null,
+          venue_name: venueName,
           venue_text: p.venue_text ?? null,
-          venue_address: venue?.address ?? null,
-          venue_google_maps_url: venue?.google_maps_url ?? null,
           venue_secret: p.venue_secret ?? false,
           venue_secret_hint: p.venue_secret_hint ?? null,
         });
@@ -382,6 +513,13 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // very block whose behaviour it exists to refuse.
   if (queryRefusalCode) {
     throw new Error(`[events.query_refused] ${queryRefusalCode}`);
+  }
+
+  // Same placement, same reason, second category. Thrown AFTER the one above
+  // because a refused list of nights is the more fundamental failure: if both
+  // fire, the first message is the one worth reading.
+  if (venueNamesRefusalCode) {
+    throw new Error(`[events.venue_names_refused] ${venueNamesRefusalCode}`);
   }
 
   return (

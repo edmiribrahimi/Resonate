@@ -7,11 +7,37 @@ import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList"
 import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
 
+/**
+ * One venue marker on one card — four fields, and the two that are missing are
+ * the point of this docblock.
+ *
+ * THIS FILE IS `"use client"`, so every field declared here is serialised into
+ * the RSC payload and shipped to the browser of every visitor, for every night
+ * on the page, SECRET ONES INCLUDED — whether or not anything renders it. That
+ * is `nextjs-architecture.md`, gate *segreti nel bundle*: everything in a client
+ * component ends up in the browser.
+ *
+ * Until this phase this interface also declared the street address and the Maps
+ * link of the venue. Nothing in `src/` ever rendered either of them — the only
+ * rendering of a venue on this page is the `venue_secret ? "Secret Venue" :
+ * venue_name ?? venue_text` below — so they were dead props that travelled
+ * anyway, readable by anyone who opened `/events` and looked at the document
+ * rather than at the page. Removing them changes NO PIXEL; it changes what
+ * leaves the server.
+ *
+ * Their names are deliberately not written out here: an automatic check counts
+ * occurrences in this file and expects none, and a prose mention would satisfy
+ * a reader while defeating the check.
+ *
+ * The rule for the next person, who will want to show an address here: it does
+ * not get declared ahead of a renderer. It comes from
+ * `public.venue_for_parties`, through the same per-night entitlement check the
+ * name already goes through, and it arrives in the same commit as the thing
+ * that displays it. A field added "for when we need it" is already published.
+ */
 interface VenueInfo {
   venue_name: string | null;
   venue_text: string | null;
-  venue_address: string | null;
-  venue_google_maps_url: string | null;
   venue_secret: boolean;
   venue_secret_hint: string | null;
 }
