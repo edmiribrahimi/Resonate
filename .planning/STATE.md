@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Fase 36 — piano 36-01 eseguito, baseline pre-36 catturato
-last_updated: "2026-08-10T13:26:19.603Z"
+stopped_at: Completed 36-02-PLAN.md
+last_updated: "2026-08-10T14:00:40.045Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 93
+  completed_plans: 94
   percent: 46
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
-Plan: 1 of 14
+Plan: 2 of 14
 Status: Ready to execute
 
 Note:
@@ -84,7 +84,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 89%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -99,6 +99,12 @@ Fixed by the project owner before planning — not re-opened at plan time:
   esista un file di migration di fase 36 — la precondizione e' asserita da un comando
   incatenato alla cattura, non dichiarata a memoria. Figure di partenza: 72 policy,
   23 tabelle con RLS, **1/1** sonde di vincolo che rifiutano come dichiarato
+
+- [Phase 36]: La serata del 7 feb 2026, primo tempo, e' l'atto di apertura della notte e non un'edizione: stesso format e stessa serie della notte, NESSUN numero (proprietario, 2026-08-10)
+- [Phase 36]: number resta nullable su event_parties mentre format_id e series_id diventano NOT NULL — una serata senza numero e' un atto e non ha sigla propria; la guardia della migration conta solo i format_id nulli
+- [Phase 36]: Le due notti in archivio sono RSNT-001 e RSNT-002, confermate contro la controprova RSNT-008 citata in production-calendar.md:86 — da qui in poi la numerazione e' monotona
+- [Phase 36]: Cinque nomi di serie autorizzati per un file pubblico: re:sonate, re:sonate x Perlone, RamaDub x Booze, RamaDub x Muro, SunSet. MotionLab parte senza serie e l'assenza e' il punto
+- [Phase 36]: Il nome pubblico della serie di Nizza e' 're:sonate x Perlone'; production-calendar.md scrive ancora 'Resonate x Perlone' e va allineato come aggiornamento del modulo persona, fuori da questa fase
 
 ## Accumulated Context
 
@@ -126,8 +132,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T13:26:19.600Z
-**Stopped at:** Fase 36 — piano 36-01 eseguito, baseline pre-36 catturato
+**Last session:** 2026-08-10T14:00:40.042Z
+**Stopped at:** Completed 36-02-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

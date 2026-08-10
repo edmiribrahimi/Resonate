@@ -39,7 +39,7 @@ patterns-established:
   - "A proposal file states the counter-evidence beside the hypothesis when the value is monotone"
   - "A CONFIRMED block, dated, is what a downstream migration reads - never the proposal above it"
 
-requirements-completed: [FMT-01, FMT-02, FMT-05]
+requirements-completed: []  # deliberately empty — see "Requirements: not marked complete"
 
 # Metrics
 duration: 21min
@@ -337,6 +337,35 @@ series in the seed.
 Owed elsewhere, recorded not done: `production-calendar.md` writes
 `Resonate x Perlone` and the public name is `re:sonate x Perlone` — a persona
 module update, with the D-36-07 gate closure, when the phase ships.
+
+## Requirements: not marked complete, on purpose
+
+This plan's frontmatter carries `requirements: [FMT-01, FMT-02, FMT-05]`, and the
+standard closing step would tick them in `.planning/REQUIREMENTS.md`. **They were
+ticked and then reverted**, and the reversal is the honest answer:
+
+- This plan decided an assignment. It wrote **no column, no constraint, no
+  catalogue row** — `format_id`, `series_id` and `number` do not exist yet, and
+  nothing reads a label or a colour from data. FMT-01, FMT-02 and FMT-05 are met
+  by plans 36-03 and after, not by this one.
+- **Eleven of the phase's fourteen plans carry these same three IDs.** Ticking
+  them at plan 2 of 14 makes `REQUIREMENTS.md` — the traceability source — assert
+  something no file in the repository can support.
+- `meta-gates.md`, *il gate della verifica in un repo senza test*: a document must
+  not claim what it cannot prove, and saying which is which is the whole
+  discipline here.
+
+The three lines stay `Pending` until the code that satisfies them exists. Left
+for the orchestrator to note, not silently absorbed: the closing step's default
+is to tick on every plan that names an ID, which on a fourteen-plan phase marks a
+requirement complete twelve times before it is true.
+
+## Self-Check: PASSED
+
+- `.planning/phases/36-formats-series-numbering/36-02-SUMMARY.md` — present
+- `df1a50f` — the proposal — present in git history
+- `85c39b2` — the confirmed assignment — present in git history
+- No tracked file deleted by either commit
 
 ---
 *Phase: 36-formats-series-numbering*

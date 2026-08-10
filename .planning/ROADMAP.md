@@ -427,7 +427,7 @@ Plans:
 **Wave 1**
 
 - [x] 36-01-PLAN.md — the `pre-36` baseline, on both targets, taken before a phase-36 migration exists on disk
-- [ ] 36-02-PLAN.md — what the catalogue holds on day one, and what each of the three existing nights carries — a blocking decision
+- [x] 36-02-PLAN.md — what the catalogue holds on day one, and what each of the three existing nights carries — a blocking decision
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 1/14 | In Progress|  |
+| 36. Formats & Series Numbering | 2/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
