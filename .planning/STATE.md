@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: pronta a `/gsd-execute-phase 36`
-stopped_at: Phase 36 planned — 14 plans, checker passed
-last_updated: "2026-08-10T13:15:37.107Z"
-last_activity: 2026-08-10 -- Phase 36 context gathered
+status: executing
+stopped_at: Fase 36 — piano 36-01 eseguito, baseline pre-36 catturato
+last_updated: "2026-08-10T13:26:19.603Z"
+last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 92
+  completed_plans: 93
   percent: 46
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
-Plan: 0 of 14
-Status: pronta a `/gsd-execute-phase 36`
+Plan: 1 of 14
+Status: Ready to execute
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -76,7 +76,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-10 -- Phase 36 context gathered
+Last activity: 2026-08-10
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -84,7 +84,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: phase 31 — 13/13 plans executed, 1/4 checkpoints closed ·
+Progress: [█████████░] 88%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -95,6 +95,10 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - Undoing a check-in requires a **supervising capability** — door-only assignment cannot undo (Phase 35)
 - Venue reveal stays scheduled **plus** a manual path for master and organizer, confirmed and recorded (Phase 37)
 - The interface stays **English only** — no translation work this milestone
+- [Phase 36]: Il baseline `pre-36` e' catturato su entrambi i bersagli **prima** che
+  esista un file di migration di fase 36 — la precondizione e' asserita da un comando
+  incatenato alla cattura, non dichiarata a memoria. Figure di partenza: 72 policy,
+  23 tabelle con RLS, **1/1** sonde di vincolo che rifiutano come dichiarato
 
 ## Accumulated Context
 
@@ -122,8 +126,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T13:15:37.103Z
-**Stopped at:** Phase 36 planned — 14 plans, checker passed
+**Last session:** 2026-08-10T13:26:19.600Z
+**Stopped at:** Fase 36 — piano 36-01 eseguito, baseline pre-36 catturato
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
