@@ -318,10 +318,68 @@ export const CAPABILITY_ROUTES = {
       "Gates rows and server-side operations, not addresses; the guard is `guards.ownsOrIsMaster` in `src/lib/capabilities/guards.ts`.",
   },
 
+  /**
+   * The catalogue of formats and series — phase 36, plan 06.
+   *
+   * ── This entry CHANGED BRANCH, and the branch is the whole change ───────────
+   *
+   * Until today this key sat on the second branch as `{ scope: "table" }`, which
+   * opens **no address at all**: `resolveRoute` returns `null` for a page bound
+   * to a table-only key, every caller must treat `null` as a refusal, and the
+   * middleware fails closed. Adding `/admin/formats` was therefore never a
+   * string appended to a list — a page bound to the old entry would have been
+   * unreachable **for everyone**, with no build error and nothing in a log.
+   *
+   * `alsoGatesTables: true` is carried across because the old `reason` is still
+   * true: this key does gate rows. It is **optional** on this branch, so
+   * omitting it would have produced no error either — just a declaration that
+   * lies by omission, which is the lie D-34-11 exists to prevent. The sentence
+   * it used to carry, in full and unedited:
+   *
+   *   *Gates rows, not addresses; the enforcement is the four `artists` /
+   *   `venues` organizer policies in the migrations.*
+   *
+   * Phase 36 adds two more tables to that list — `public.formats` and
+   * `public.party_series`, whose read arms both ask
+   * `(select private.has_capability('catalogue.manage'))`
+   * (`20260810120000_formats_and_series.sql` §4a, §4b). The row half of this key
+   * grew; it did not move.
+   *
+   * ── The divergence from the two sibling catalogue surfaces, DECLARED ────────
+   *
+   * `/admin/venues` and `/admin/artists` are bound to `organizer.access` above,
+   * while their **actions** re-ask `catalogue.manage` inside themselves —
+   * `(work)/venues/page.tsx:38-40` already writes that divergence down and calls
+   * it *"a different question from reachability, and one that
+   * `requires_approved` where this one does not."*
+   *
+   * **This surface is reached through `catalogue.manage` itself**, and the
+   * asymmetry with its two siblings is a choice rather than an oversight.
+   * `catalogue.manage` is granted `requires_approved = true` to both roles that
+   * hold it (`20260807000000_capability_model.sql:399-400`), so a **pending**
+   * organizer is refused at the address instead of being shown a catalogue where
+   * every button then refuses them — a silent failure with a neutral face, and
+   * the precedent this project has already paid for once. Moving a refusal
+   * EARLIER is the only direction `meta-gates.md` permits without an
+   * authorisation, so the two surfaces are not made to match by loosening this
+   * one.
+   *
+   * `staff` holds neither key (`20260808000500_staff_role.sql:143-152`), so the
+   * choice does not change what a member of staff reaches: nothing, either way.
+   *
+   * ── The page is not on disk yet, and that is not an error ───────────────────
+   *
+   * `_everyStaffRouteIsBound` below asks the opposite direction — *a route in
+   * the generated union with no binding* — so it will not see `/admin/formats`
+   * until plan 36-09 creates the page and a build puts the address in the union.
+   * A map entry with no page is a plan not yet run, exactly as the module
+   * docblock records for `/admin/events/[id]/assignments`. The direction that IS
+   * covered — a page nobody bound — is `npm run verify:routes`, which starts
+   * covering this address the moment that page exists.
+   */
   [CAP.CATALOGUE_MANAGE]: {
-    scope: "table",
-    reason:
-      "Gates rows, not addresses; the enforcement is the four `artists` / `venues` organizer policies in the migrations.",
+    routes: ["/admin/formats"],
+    alsoGatesTables: true,
   },
 
   [CAP.MEMBERSHIP_ACTIVE]: {

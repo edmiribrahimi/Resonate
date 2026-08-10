@@ -89,6 +89,35 @@ const DECLARED = [
   { href: "/admin/members", label: "Members", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/artists", label: "Artists", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/venues", label: "Venues", capability: CAP.ORGANIZER_ACCESS },
+  // ── THE EIGHTH TAB BELONGS HERE, AND CANNOT LAND BEFORE ITS PAGE ───────────
+  //
+  //     { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
+  //
+  // Phase 36, plan 06 bound `/admin/formats` to `catalogue.manage` in
+  // `CAPABILITY_ROUTES` — that half is done, and the middleware and the page
+  // guard both read it. This line is **not** done, and the reason is measured
+  // rather than argued:
+  //
+  //     Type error: Type '"/admin/formats"' is not assignable to type 'Route'.
+  //     src/lib/routes/staff-tabs.ts:92:5
+  //
+  // `StaffTab.href` is `Route`, and a STATIC address enters the generated union
+  // only once a `page.tsx` serves it. The map can hold an address with no page
+  // — `RoutePattern` carries a second arm for exactly that, with the price
+  // written in that module's docblock — and this file deliberately does not:
+  // both consumers pass `tab.href` straight into `<Link href>`
+  // (`StaffNav.tsx:68-73`, `ManagementSection.tsx:51`), so widening it here
+  // would turn off `typedRoutes` for all seven tabs above and push casts into
+  // two more files. A per-entry `as Route` would compile and would be worse: it
+  // is a hole that outlives the week it was needed, on the one file whose job
+  // is that a menu cannot promise an address nobody serves.
+  //
+  // **Add the line above in the same plan that creates
+  // `src/app/(admin)/admin/(work)/formats/page.tsx` (36-09).** Adding it any
+  // earlier does not protect anything and does draw a staff a link to a 404:
+  // the runtime check below only asks whether the map agrees with the tab, and
+  // it would agree. Recorded in
+  // `.planning/phases/36-formats-series-numbering/deferred-items.md`.
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
   { href: "/admin/finance", label: "Finance", capability: CAP.ADMIN_ACCESS },
   { href: "/admin/analytics", label: "Analytics", capability: CAP.ADMIN_ACCESS },
