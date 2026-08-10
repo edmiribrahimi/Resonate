@@ -348,11 +348,11 @@ sentence was kept and the code-level grep is reported instead.
    server component so the filter works without any. The second ask wins because
    FMT-04 depends on it. The current chip carries `scroll-margin-inline: 24px`,
    so the scroll a browser performs on its own — the one it does when a chip
-   takes keyboard focus — lands on the gutter. **This belongs in
-   `deferred-items.md` and is not there:** a parallel executor held uncommitted
-   changes in that file for the whole of this plan's execution, and appending to
-   it would have swept their work into one of these commits. It is recorded here
-   instead, and the next plan to touch that file should move it across.
+   takes keyboard focus — lands on the gutter. Recorded as **D4** in
+   `deferred-items.md`, and recorded there only after plan 36-10 had committed
+   its own entries: that file was held uncommitted by a parallel executor for
+   most of this plan's execution, and appending to it earlier would have swept
+   their work into one of these commits.
 
 ### Not done, on purpose
 

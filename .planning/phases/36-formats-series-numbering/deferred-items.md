@@ -88,3 +88,27 @@ a mistyped number is an ordinary outcome rather than a rarity.
 retried save after a refusal may produce a `-<suffix>` slug where the first
 attempt would have had a clean one, if anything else claimed the name in between.
 Small, cosmetic, and named here so it is not rediscovered as a bug.
+
+---
+
+## D4 — The current chip is not scrolled into view on mount
+
+**Found by:** plan 36-11, task 3.
+**Must be closed by:** a later plan, or accepted — it is a nicety, not a gate.
+**File:** `src/app/(public)/events/FormatFilterRow.tsx`.
+
+`36-UI-SPEC.md` §S1 asks that the current chip be scrolled into view on mount.
+That needs JavaScript, and the same section requires this component to be a
+**server** component so the filter works without any. The two asks meet here and
+the second wins, because it is the one FMT-04 depends on.
+
+**What is done instead.** The current chip carries `scroll-margin-inline: 24px`,
+so any scroll the browser performs on its own — the one it does when a chip
+receives keyboard focus — lands it on the page gutter rather than flush against
+the edge.
+
+**What is not done.** Nothing scrolls the row on first paint. With four chips
+plus `All` the current one is reachable on a phone without scrolling, so the gap
+is invisible today; it becomes visible the day the catalogue grows, which
+`36-UI-SPEC.md` already names as the signal to revisit this surface rather than
+let the row wrap.
