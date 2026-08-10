@@ -152,8 +152,13 @@ const REFUSAL_SENTENCE: Record<VenueRevealRefusal, string> = {
  * than borrowing a sentence written for something else — the newsletter form's
  * *"Qualcosa è andato storto"* is the recorded precedent for what happens when a
  * surface has one bucket (`.planning/codebase/CONCERNS.md`).
+ *
+ * Exported so the panel's failed state read speaks the **same** vocabulary. A
+ * second table of sentences would be a second place for a refusal to be
+ * described differently depending on which call happened to hit it, and the
+ * person reading is the same person.
  */
-function describeRefusal(reason: VenueRevealRefusal): string {
+export function describeRefusal(reason: VenueRevealRefusal): string {
   const known = (REFUSAL_SENTENCE as Record<string, string | undefined>)[reason];
   return (
     known ??

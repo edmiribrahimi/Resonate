@@ -249,7 +249,7 @@ export type VenueRevealActionResult =
     }
   | { ok: false; reason: VenueRevealRefusal };
 
-/** The most recent act on a night, as the work surface renders it (D-37-17/18). */
+/** One act on a night, as the work surface renders it (D-37-17/18). */
 export interface VenueRevealLastAct {
   /** The person's full name. Never copied into anything under `.planning/`. */
   actorName: string;
@@ -257,6 +257,21 @@ export interface VenueRevealLastAct {
   at: string;
   act: VenueRevealAct;
 }
+
+/**
+ * How many acts of the trace travel to the surface.
+ *
+ * NOT exported: every export of a `"use server"` module must be an async
+ * function, and a constant here would be a build error rather than a stylistic
+ * choice.
+ *
+ * The bound exists because this is a read on a work surface, not because the
+ * trace is expected to be long: three acts is a busy night. Fifty leaves the
+ * first `revealed` visible under any realistic sequence of completions and
+ * re-hides — which is the property D-37-22 rests on, since a night that stopped
+ * saying *revealed on … by …* would be a page contradicting mails that left.
+ */
+const TRACE_LIMIT = 50;
 
 /**
  * What the three-state button reads (D-37-19), and what the confirmation counts
@@ -278,7 +293,27 @@ export type VenueRevealStateResult =
       recipientsTotal: number;
       /** How many would be mailed if the button were pressed right now. */
       recipientsPending: number;
+      /**
+       * The most recent act, which is what the spent button's own sentence
+       * reads — *revealed on … by …* (D-37-19). Always `acts[0]`.
+       */
       lastAct: VenueRevealLastAct | null;
+      /**
+       * The trace, most recent first, bounded by {@link TRACE_LIMIT}.
+       *
+       * ── Why the whole list and not only the last act ─────────────────────
+       *
+       * D-37-22 is honest only because the trace is append-only and **survives
+       * a re-hide**: the night keeps saying *revealed on … by …* after going
+       * secret again. With the last act alone, a re-hidden night would show
+       * *taken back to secret by …* and nothing else — the page would have
+       * stopped saying the thing that the mails already out are saying, which
+       * is exactly the contradiction the decision was granted on condition of
+       * avoiding.
+       *
+       * It costs nothing extra: it is the same read, with its `limit` widened.
+       */
+      acts: VenueRevealLastAct[];
     }
   | { ok: false; reason: VenueRevealRefusal };
 
@@ -415,14 +450,13 @@ export async function getVenueRevealState(
   // somebody would have to guess. The first is what the surface prints; the
   // second is the M of "N of M", taken from the record of the act instead of
   // recomputed — a recomputed M drifts every time a ticket sells.
-  const [lastActRead, lastRevealRead] = await Promise.all([
+  const [traceRead, lastRevealRead] = await Promise.all([
     client
       .from("venue_reveal_acts")
       .select("act, actor_name, at")
       .eq("party_id", partyId)
       .order("at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(TRACE_LIMIT),
     client
       .from("venue_reveal_acts")
       .select("recipients_intended")
@@ -433,7 +467,7 @@ export async function getVenueRevealState(
       .maybeSingle(),
   ]);
 
-  for (const read of [lastActRead, lastRevealRead]) {
+  for (const read of [traceRead, lastRevealRead]) {
     if (read.error) {
       // Refused rather than answered with an empty trace. A night that says
       // "never revealed" because its trace could not be read is the surface
@@ -446,15 +480,21 @@ export async function getVenueRevealState(
     }
   }
 
-  const lastRow = lastActRead.data as unknown as {
+  const traceRows = (traceRead.data ?? []) as unknown as Array<{
     act: VenueRevealAct;
     actor_name: string;
     at: string;
-  } | null;
+  }>;
 
   const revealRow = lastRevealRead.data as unknown as {
     recipients_intended: number;
   } | null;
+
+  const acts: VenueRevealLastAct[] = traceRows.map((row) => ({
+    actorName: row.actor_name,
+    at: row.at,
+    act: row.act,
+  }));
 
   return {
     ok: true,
@@ -464,9 +504,11 @@ export async function getVenueRevealState(
         ? recipientsPending
         : revealRow?.recipients_intended ?? recipientsPending,
     recipientsPending,
-    lastAct: lastRow
-      ? { actorName: lastRow.actor_name, at: lastRow.at, act: lastRow.act }
-      : null,
+    // Derived from the list rather than read a second time: two reads of "the
+    // most recent act" are two places for them to disagree, and the ordering is
+    // already the database's.
+    lastAct: acts.length > 0 ? acts[0] : null,
+    acts,
   };
 }
 
