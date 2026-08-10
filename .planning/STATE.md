@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T20:19:17.283Z"
-last_activity: 2026-08-10 -- Phase 37 planning complete
+last_updated: "2026-08-10T20:22:47.896Z"
+last_activity: 2026-08-10 -- Phase 37 execution started
 progress:
   total_phases: 13
   completed_phases: 7
@@ -24,19 +24,19 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 36 — Formats & Series Numbering
+**Current Focus:** Phase 37 — manual-venue-reveal
 
 ## Current Position
 
-Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format e
+Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 14 of 14 — **i piani da 01 a 13 hanno tutti il proprio SUMMARY su disco**
+Plan: 1 of 13
 (contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
 uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
 indietro di due. Corretto sul conteggio dei file, non su una stima.
-Status: Ready to execute
+Status: Executing Phase 37
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -82,7 +82,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-10 -- Phase 37 planning complete
+Last activity: 2026-08-10 -- Phase 37 execution started
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
