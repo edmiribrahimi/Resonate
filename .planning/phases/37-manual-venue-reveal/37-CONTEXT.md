@@ -23,9 +23,11 @@ raggiungibile — quello e' gia' avvenuto alla creazione della riga. Una fase ch
 aggiungesse un rubinetto senza chiudere la perdita risolverebbe il problema
 sbagliato.
 
-**Fuori perimetro:** la finestra automatica e i suoi parametri per serata
-restano come sono; nessun cambio al testo o al layout della mail di
-rivelazione; nessuna nuova superficie pubblica.
+**Fuori perimetro:** nessun cambio al testo o al layout della mail di
+rivelazione (l'oggetto resta `Venue Revealed`, D-37-05); nessuna nuova
+superficie pubblica; nessun cambio di scheduler.
+*(La finestra per serata **non** e' fuori perimetro: D-37-06 le impone un
+minimo, e il default attuale e' sotto quel minimo.)*
 
 </domain>
 
@@ -133,6 +135,12 @@ nel DISCUSSION-LOG.)*
   Un'espressione piu' frequente **fallisce al deploy**, non a runtime: non e'
   una cosa che si scopre in produzione, ma non e' nemmeno una cosa che si prova
   in locale. **Non scrivere espressioni sotto il giorno.**
+
+  **Non ri-dedurre il piano dai file.** I 4 cron attuali sono tutti giornalieri,
+  quindi la configurazione e' valida su ogni piano e **non discrimina**. E il
+  prefisso `team_` dell'`orgId` in `.vercel/project.json` **non e' un indicatore
+  di piano**: l'inferenza e' stata tentata durante questa discussione ed era
+  sbagliata. Il piano si chiede, non si deduce.
 
   **Conseguenza di prodotto, non tecnica:** su Hobby il bottone manuale **non e'
   un'eccezione, e' il percorso affidabile**. Il cron puo' arrivare fino a un
