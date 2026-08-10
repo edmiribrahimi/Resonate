@@ -47,15 +47,55 @@ evidenza `file:riga` o output osservato.
 
 ## Per-Task Verification Map
 
-> Compilata da chi pianifica: una riga per task, con il comando meccanico se
-> esiste e `human_needed` se non esiste. **Una riga senza colonna «Automated
-> Command» ne' `human_needed` esplicito e' una riga non verificata.**
+> Una riga per task reale, derivata dai 13 PLAN.md. **Una riga senza comando
+> meccanico ne' `human_needed` esplicito sarebbe una riga non verificata:** qui
+> non ce ne sono. La colonna «Comando» riporta il gate del task, non l'intero
+> blocco `<verify>` — la fonte resta il PLAN.md.
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 37-XX-XX | XX | X | VENUE-01 / VENUE-02 | T-37-XX / — | {comportamento sicuro atteso} | build / probe / manual | `npm run build` \| `curl` con chiave anonima \| `human_needed` | — | ⬜ pending |
+| Task ID | Plan | Wave | Req | Cosa prova | Tipo | Comando | Status |
+|---|---|---|---|---|---|---|---|
+| 37-01-01 | 01 | 1 | VENUE-02 | La migration e' una sola transazione | source | `grep -c "BEGIN;" supabase/migrations/20260810160000_manual_venue_reveal.sql` | ⬜ |
+| 37-01-02 | 01 | 1 | VENUE-02 | Lo scrittore revoca prima di concedere; il rifiuto non porta la riga | source | `grep -n "REVOKE ALL ON FUNCTION public.record_venue_reveal_act" …` | ⬜ |
+| 37-01-03 | 01 | 1 | VENUE-02 | I due lettori TypeScript concordano con la riga nel database | build | `npm run build` | ⬜ |
+| 37-02-01 | 02 | 1 | VENUE-01 | `using (true)` non sopravvive alla migration | source | `grep -c "USING (true)\|using (true)" …_venues_read_narrowed.sql` | ⬜ |
+| 37-02-02 | 02 | 1 | VENUE-01 | La concessione e' per serata, non per sede | source | `grep -n "GRANT EXECUTE ON FUNCTION public.venue_for_parties" …` | ⬜ |
+| 37-12-01 | 12 | 1 | VENUE-01 | Una sola allow-list, estratta non riscritta | build | `npm run build` | ⬜ |
+| 37-12-02 | 12 | 1 | VENUE-01 | Il login smette di fidarsi di `?next=` | build | `npm run build` | ⬜ |
+| 37-04-01 | 04 | 1 | VENUE-01 | La costante 25h vive in un posto solo | build | `npm run build` | ⬜ |
+| 37-04-02 | 04 | 1 | VENUE-01 | Il pavimento rifiuta **e dice perche'** | build | `npm run build` | ⬜ |
+| 37-04-03 | 04 | 1 | VENUE-01 | Le serate sotto 25h sono **elencate**, mai riscritte | **checkpoint** | `human_needed` — decisione del proprietario, una serata per volta | ⬜ |
+| 37-03-01 | 03 | 2 | VENUE-01/02 | Autorizzazione a scrivere in produzione + istantanea sulle 17 tabelle | **checkpoint** | `human_needed` — `gate="blocking"`, include «rimanda la push» | ⬜ |
+| 37-03-02 | 03 | 2 | VENUE-01/02 | Le due migration applicate, in ordine | probe | `npm run verify:capabilities` | ⬜ |
+| 37-03-03 | 03 | 2 | VENUE-01/02 | I tipi allineati allo schema vivo | build+probe | `npm run build && npm run verify:capabilities && npm run verify:routes` | ⬜ |
+| 37-05-01 | 05 | 3 | VENUE-01 | La lista risolve i nomi per titolo, non per embed | build+source | `npm run build && grep -c "google_maps_url" "src/app/(public)/events/page.tsx"` | ⬜ |
+| 37-05-02 | 05 | 3 | VENUE-01 | I due campi escono dal payload RSC verso il client | build | `npm run build` | ⬜ |
+| 37-06-01 | 06 | 3 | VENUE-01/02 | Il ramo livello 2 si **aggiunge**; il gate di casa riscritto nello stesso commit | build+persona | `npm run build && npm run verify:persona` | ⬜ |
+| 37-06-02 | 06 | 3 | VENUE-01/02 | L'indirizzo arriva dalla funzione di titolo, non dall'embed | build+source | `npm run build && grep -c "venues(" "src/app/(public)/events/[slug]/page.tsx"` | ⬜ |
+| 37-06-03 | 06 | 3 | VENUE-01/02 | Il dialogo mostra la finestra **effettiva**; dinamicita' dichiarata | build + osservazione | `npm run build` + `human_needed` | ⬜ |
+| 37-07-01 | 07 | 4 | VENUE-01 | Il dialogo dell'indizio dice la finestra vera e i tre livelli | build | `npm run build` | ⬜ |
+| 37-07-02 | 07 | 4 | VENUE-01 | La pagina serata esce dalle tre cache `NetworkFirst` | build | `npm run build` | ⬜ |
+| 37-08-01 | 08 | 4 | VENUE-01 | `/venues` non esiste piu' sotto `(public)` | source+build | `test ! -f "src/app/(public)/venues/[slug]/page.tsx" && npm run build` | ⬜ |
+| 37-08-02 | 08 | 4 | VENUE-01 | Mappa e allow-list dicono la verita' sul disco | probe | `npm run build && npm run verify:routes && npm run verify:capabilities` + `human_needed` | ⬜ |
+| 37-09-01 | 09 | 4 | VENUE-01/02 | Un solo cuore di rivelazione; la marcatura dice la verita' | build+source | `npm run build && head -1 src/lib/venue-reveal/reveal-party-venue.ts` | ⬜ |
+| 37-09-02 | 09 | 4 | VENUE-01/02 | Il cron completa i mancanti e smette di alzare la guardia sulle bozze | build+source | `npm run build && git diff --name-only \| grep -c vercel.json` | ⬜ |
+| 37-09-03 | 09 | 4 | VENUE-01/02 | Il gate copre il codice che governa (`src/lib/venue-reveal/**`) | persona | `npm run verify:persona` + `human_needed` (context budget rimisurato) | ⬜ |
+| 37-10-01 | 10 | 5 | VENUE-02 | Capability **dentro** l'azione; `partyId` validato come uuid | build | `npm run build` | ⬜ |
+| 37-10-02 | 10 | 5 | VENUE-02 | Tre atti, un solo scrittore; **nessun** `error.details` | build+source | `npm run build && grep -c "error.details" ".../reveal/actions.ts"` (atteso `0`) | ⬜ |
+| 37-10-03 | 10 | 5 | VENUE-02 | La porta laterale del form e' chiusa **e il resto e' dichiarato** | build | `npm run build` + `human_needed` | ⬜ |
+| 37-11-01 | 11 | 6 | VENUE-02 | La conferma nomina posto, **numero**, irreversibilita'; nessuna digitazione | build | `npm run build` | ⬜ |
+| 37-11-02 | 11 | 6 | VENUE-02 | Tre stati, una posizione, la traccia accanto | build | `npm run build` | ⬜ |
+| 37-11-03 | 11 | 6 | VENUE-02 | La prova sull'atto **vero** — riga creata e rimossa per chiave primaria | **produzione** | `human_needed` — un solo ciclo, senza risemina | ⬜ |
+| 37-13-01 | 13 | 7 | VENUE-01/02 | Istantanea + sonde per chiave primaria con la sola chiave anonima | probe | `curl … /rest/v1/venues?select=id&limit=1 -H "apikey: $ANON"` | ⬜ |
+| 37-13-02 | 13 | 7 | VENUE-01/02 | Il **sorgente**, non il rendering: aghi dichiarati sull'intero documento | probe | `curl -s … "$NEXT_PUBLIC_APP_URL/events"` | ⬜ |
+| 37-13-03 | 13 | 7 | VENUE-01/02 | La cache attraverso l'istante, in due direzioni; il debito che resta | **osservazione** | `human_needed` — finestra privata + finestra gia' visitata | ⬜ |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+**Continuita' di campionamento:** nessun blocco di tre task consecutivi senza un
+gate meccanico. I cinque `human_needed` puri (37-04-03, 37-03-01, 37-11-03,
+37-13-03, piu' le tre voci di ruolo dichiarate sotto) sono **checkpoint
+dichiarati**, non buchi: tre di essi sono esattamente i punti in cui la fase
+tocca la produzione o chiede una decisione al proprietario.
 
 ---
 

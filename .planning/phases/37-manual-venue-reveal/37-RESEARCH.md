@@ -1568,7 +1568,12 @@ non appartiene a questa fase.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — chiuse dai piani il 2026-08-10)
+
+> Tutte e sei sono state chiuse in fase di pianificazione. Ognuna porta sotto il
+> piano che la chiude e **come**. Nessuna resta aperta all'esecuzione: se un
+> esecutore trova una di queste domande ancora viva nel codice, e' un segnale che
+> il piano corrispondente ha deviato, non che la domanda non avesse risposta.
 
 1. **Il cron che completa deve raggiungere chi ha comprato DOPO la rivelazione?**
    - *Cosa sappiamo:* D-37-21 dice «completa cio' che manca»; D-37-08 dice «chi
@@ -1581,6 +1586,8 @@ non appartiene a questa fase.
      onora entrambe le decisioni, ed e' implementabile con una condizione.
      Se chi pianifica sceglie L2, **va portata al proprietario**, perche' crea
      un percorso di mail dichiarato differito.
+   - **CHIUSA — piano 37-09:** adottata L1. Il completamento si limita ai
+     destinatari creati **prima** di `venue_revealed_at`. D-37-08 resta intatta.
 
 2. **La sede che ospita sia una serata pubblica sia una segreta.**
    - *Cosa sappiamo:* la pagina pubblica delle sedi sceglie gia' oggi di
@@ -1591,6 +1598,12 @@ non appartiene a questa fase.
    - *Raccomandazione:* replicarla. E' il gate *default chiuso*, ed e' gia' la
      scelta di casa. Costo: il nome di un locale pubblico sparisce dalla lista
      finche' una serata segreta lo usa.
+   - **CHIUSA — superata da D-37-23, piano 37-02/37-08:** la domanda presupponeva
+     una policy che discrimina sede per sede. Il rimedio scelto revoca `anon` su
+     `public.venues` **per intero** e concede **per serata** via
+     `public.venue_for_parties(uuid[])`, quindi il caso di bordo «una sede, due
+     serate di regime diverso» si risolve alla serata e non alla sede: non esiste
+     piu' una scelta da replicare.
 
 3. **Il link `/venues/<slug>` sulla pagina evento dopo D-37-23.**
    - *Cosa sappiamo:* `events/[slug]/page.tsx:770` linka li' quando il venue e'
@@ -1598,6 +1611,11 @@ non appartiene a questa fase.
    - *Raccomandazione:* per chi non ha la capability, rendere il **nome come
      testo**, non come link. Piu' stretto, e non richiede di conoscere il nuovo
      indirizzo lato pubblico.
+   - **CHIUSA — piano 37-06, Task 2:** nome come testo, link rimosso. E lo stesso
+     piano chiude il difetto che la domanda nascondeva: tolta `/venues` dal
+     pubblico, un titolare di biglietto non avrebbe piu' avuto **dove** leggere
+     l'indirizzo — quindi 37-06 rende nome, indirizzo e link Maps **in pagina**
+     per chi ha titolo.
 
 4. **Se la traccia debba essere una tabella nuova o due colonne + `membership_acts`.**
    - *Cosa sappiamo:* D-37-22 richiede almeno due atti sulla stessa serata;
@@ -1605,6 +1623,11 @@ non appartiene a questa fase.
      persona.
    - *Raccomandazione:* tabella propria (§ D.4). Registrato come discrezione di
      chi pianifica, con la raccomandazione motivata.
+   - **CHIUSA — piano 37-01:** tabella append-only propria
+     `public.venue_reveal_acts`, scritta con la riga dallo stesso
+     `SECURITY DEFINER`. **Tre** atti, non due: `revealed`, `completed`,
+     `re_hidden` — l'invio ai mancanti di D-37-20 manda indirizzi a N persone ed
+     e' attribuibile quanto il primo.
 
 5. **Come si prova un rifiuto per ruolo, senza sessioni di ruolo in produzione.**
    - *Cosa sappiamo:* il debito e' registrato, 32 voci `human_needed`.
@@ -1613,12 +1636,18 @@ non appartiene a questa fase.
    - *Raccomandazione:* **non aggirarlo e non fingerlo.** Dichiararlo nel
      VERIFICATION.md come voce `human_needed` propria, e dire che la fase
      costruisce sopra un modello di permessi mai visto rifiutare qualcuno.
+   - **CHIUSA — piani 37-08 / 37-10 / 37-11 / 37-13, piu' `37-VALIDATION.md`:**
+     tre voci `human_needed` dichiarate come tali (organizer approvato non
+     proprietario che riesce, organizer non approvato respinto, cron che
+     completa). Portate avanti, non silenziate.
 
 6. **Se `EventTabs` debba perdere `venue_address`/`venue_google_maps_url` in
    questa fase o in un piano suo.**
    - *Raccomandazione:* **in questa fase.** E' due righe, chiude una fuga
      misurata, e lasciarla aperta significa che il rimedio RLS sembrera'
      completo mentre non lo e'.
+   - **CHIUSA — piano 37-05, Task 2:** i due campi escono da `EventTabs`, in
+     questa fase.
 
 ---
 
