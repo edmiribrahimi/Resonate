@@ -74,10 +74,15 @@ export default async function AdminVenuesPage() {
           <p className="text-center text-muted py-12">No venues yet.</p>
         ) : (
           <div className="space-y-2">
+            {/* The profile left `(public)` for `(work)` (D-37-23, plan 37-08),
+                so this listing points at `/admin/venues/<slug>` and not at
+                `/venues/<slug>`, which no route serves any more. Left unchanged
+                it would have been a link to a 404 from the one surface that
+                exists to open these profiles. */}
             {venues.map((venue) => (
               <Link
                 key={venue.id}
-                href={`/venues/${venue.slug}`}
+                href={`/admin/venues/${venue.slug}`}
                 className="flex items-center gap-3 rounded-xl border border-card-border bg-card p-3 hover:bg-card/80 transition-colors"
               >
                 {venue.photo_url ? (
