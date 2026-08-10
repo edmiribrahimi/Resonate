@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
-stopped_at: Phase 36 context gathered
-last_updated: "2026-08-10T11:29:47.210Z"
+status: planning
+stopped_at: Phase 36 UI-SPEC approved
+last_updated: "2026-08-10T11:58:28.623Z"
 last_activity: 2026-08-10 -- Phase 36 context gathered
 progress:
   total_phases: 13
@@ -28,10 +28,17 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 36 (Formats & Series Numbering) — CONTEXT GATHERED, not yet planned
+Phase: 36 (Formats & Series Numbering) — CONTEXT + UI-SPEC, not yet planned
 Plan: 0 of 0
-Status: `36-CONTEXT.md` scritto il 2026-08-10 — quattro aree discusse, sedici
-        decisioni. Prossimo passo `/gsd-plan-phase 36`.
+Status: pronta a `/gsd-plan-phase 36`
+
+Note:
+        `36-CONTEXT.md` — 2026-08-10, quattro aree discusse, sedici decisioni.
+        `36-VISUAL-SOURCE.md` — il sistema visivo distillato dal tracker di
+        produzione, che risulta essere gia' un design system implementato.
+        `36-UI-SPEC.md` — contratto di design, checker 6/6, tre raccomandazioni
+        chiuse (l'override esplicito di `text-transform`, il fondo di
+        composizione dei contrasti, il punto focale di `/events`).
 
         **Fasi 31, 32, 33, 43, 35, 34: 92/92 piani eseguiti.** Il disco e questo
         file concordano dal 2026-08-10; fino a quel giorno questo blocco
@@ -93,8 +100,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T11:29:47.207Z
-**Stopped at:** Phase 36 context gathered
+**Last session:** 2026-08-10T11:58:28.620Z
+**Stopped at:** Phase 36 UI-SPEC approved
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
