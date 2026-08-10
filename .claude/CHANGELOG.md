@@ -3,6 +3,83 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.9.0] - 2026-08-10
+
+### Changed — il gate *autorizzazione per destinatario* riscritto (fase 37, D-37-02/03)
+
+`venue-secrecy.md` diceva che la rivelazione e' **per-biglietto e per-RSVP, mai
+per-evento**, e che un percorso «a tutti quelli dell'evento» salta il controllo
+su chi ha titolo. La fase 37 introduce un **livello 2 che e' per-evento**: un
+membro **approvato** vede l'indirizzo in pagina all'apertura della finestra, o
+appena qualcuno rivela a mano, **anche senza biglietto ne' RSVP**.
+
+Lasciato com'era, il gate avrebbe segnalato come violazione **il comportamento
+voluto**, e la «riparazione» di fra sei mesi sarebbe stata una regressione su un
+percorso irreversibile. Riscritto quindi **nello stesso commit** che introduce il
+ramo, nella forma di `20260809002000_assignment_acts.sql:110-203`: **il paragrafo
+superato resta citato**, e il testo nuovo dice quale dei due governa.
+
+Il gate ora separa **due canali con criteri diversi**, e la separazione e' la
+sostanza:
+
+- **la mail resta per-destinatario**, sempre, con la marcatura sulla riga del
+  biglietto o dell'RSVP. Nessun percorso puo' spedire «a tutti quelli
+  dell'evento»: quel divieto **non e' stato toccato**;
+- **la pagina** ha tre livelli, e solo il secondo e' nuovo.
+
+Piu' quattro divieti espliciti (serve `approved`; non esiste livello 2 senza
+finestra; la finestra non scende sotto le 25 ore; senza login solo l'indizio) e
+tre `Imperative Behaviors` al posto di uno. Quello vecchio — *«When revealing:
+check per-ticket / per-RSVP entitlement, never per-event»* — era **ambiguo fra i
+due canali**, e ora ne nomina uno per riga.
+
+**Allargamento di una guardia monotona, dichiarato:** il livello 2 rende
+`venue_reveal_sent` raggiungibile da un insieme di persone piu' largo. E'
+autorizzato da D-37-02, decisione del proprietario del 2026-08-10, presa dopo che
+il costo era stato messo per iscritto — piu' persone conoscono l'indirizzo di
+quante ne entrano, su sedi da 150–300 posti in spazi privati senza licenza di
+pubblico spettacolo.
+
+### Context budget — il caso peggiore ha cambiato file, di nuovo
+
+**Nessun `paths:` e' cambiato**, e il numero si e' mosso lo stesso: la prosa
+aggiunta a `venue-secrecy.md` e' bastata a spostare il caso peggiore. Misurato
+con `npm run verify:persona`, non stimato:
+
+| | v1.8.0 | v1.9.0 |
+|---|---|---|
+| File peggiore | `src/app/(admin)/admin/scanner/ScannerClient.tsx` | **`src/app/(public)/events/EventTabs.tsx`** |
+| Moduli caricati | CLAUDE.md · meta-gates · access-gating · checkin-offline · nextjs-architecture | CLAUDE.md · meta-gates · nextjs-architecture · ticketing-payments · **venue-secrecy** |
+| Token | 10.622 | **11.043** |
+| Margine sul tetto di 12.000 | 1.378 | **957** |
+
+La prima stesura della riscrittura misurava **11.225 token** (margine 775) ed e'
+stata **accorciata** invece di essere accettata: il gate *context budget* dice che
+quando il budget stringe si taglia la **descrizione**, non la regola. Nessuno dei
+quattro divieti, nessuna riga della tabella e nessun `Imperative Behavior` e'
+stato tolto — solo la prosa che li spiegava due volte.
+
+Il gate chiede anche di **guardare** un cambio di file peggiore invece di
+registrarlo soltanto. E' la terza volta (v1.4 la porta, v1.5 la pagina pubblica
+dell'evento, v1.7 di nuovo la porta), e questa volta **non e' il prodotto che si
+e' spostato**: sono le regole del venue che sono cresciute, sull'unica superficie
+pubblica dove `venue-secrecy`, `ticketing-payments` e `nextjs-architecture` si
+caricano insieme. **La fase 37 tocca ancora questo file (piano 37-09): i 957
+token restanti sono il budget di quel piano, e vanno pesati prima di scrivere.**
+
+### Scenario carica-e-scatta (gate eval)
+
+**File reale nello scope:** `src/app/(public)/events/[slug]/page.tsx` — carica
+`venue-secrecy.md` (primario per la tabella di `meta-gates.md`),
+`ticketing-payments.md`, `nextjs-architecture.md` e `meta-gates.md`.
+**Gate che deve scattare su una modifica-tipo:** una modifica che estenda il
+livello 2 **alla mail** — un invio a tutti gli approvati di un evento — viola la
+riga *«Nessun percorso spedisce a tutti quelli dell'evento»*, e la viola **anche
+dopo l'allargamento**: e' esattamente cio' che la riscrittura doveva preservare,
+ed e' la ragione per cui il gate e' stato riscritto invece che cancellato. La
+modifica-tipo opposta — un ramo di pagina che apre l'indirizzo a un `pending` —
+scatta sulla riga *«Il livello 2 richiede `approved`»*.
+
 ## [1.8.0] - 2026-08-10
 
 ### Added — quattro gate nati da un incidente reale (fase 36)

@@ -19,7 +19,7 @@ import MediaGallerySection from "./MediaGallerySection";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
-import { partyStartInstant } from "@/utils/datetime";
+import { partyStartInstant, venueRevealHours } from "@/utils/datetime";
 
 interface PartyVenue {
   id: string;
@@ -57,6 +57,18 @@ interface PartyWithTiers {
   venue_reveal_hours: number | null;
   venue_reveal_on_purchase: boolean;
   /**
+   * The instant somebody revealed this night's venue BY HAND, or `null`.
+   *
+   * It is NOT `venue_reveal_email_sent` under a new name, and the difference is
+   * the whole reason a separate column exists: the cron raises that boolean
+   * even on a night with ZERO recipients and without filtering on
+   * `is_published` (`api/cron/venue-reveal/route.ts:108-115`), so a draft night
+   * inside its own window carries it raised already. Reading it here would open
+   * the page on a night that was merely swept. This one says *somebody pressed*,
+   * and that is what makes the manual button OBSERVABLE on this page.
+   */
+  venue_revealed_at: string | null;
+  /**
    * `null` when the reader was refused the format row — which means an
    * UNLISTED format, because the same policy gates both. No marker is rendered
    * then, and that is the correct answer rather than a defect to repair: a
@@ -84,34 +96,104 @@ interface PartyWithTiers {
   spotsLeft: number | null;
 }
 
+/**
+ * ── The three-level model of D-37-02, as this page decides it ────────────────
+ *
+ * | Who                                   | Sees            | From when          |
+ * |---------------------------------------|-----------------|--------------------|
+ * | a ticket **or an RSVP** for the night | the address     | at once            |
+ * | an approved member with neither       | hint, then addr | the reveal window  |
+ * | no session, or not approved           | the hint only   | never              |
+ *
+ * TWO THINGS ARE NEW HERE AND EVERYTHING ELSE IS BYTE-FOR-BYTE THE OLD VERDICT.
+ *
+ *  1. **`hasRsvpForParty` joins level 1**, and it joins it OUTSIDE the
+ *     `venueRevealOnPurchase` guard. An RSVP is not a purchase; binding it to
+ *     that flag would mean switching the flag off on an RSVP night takes the
+ *     address away from somebody who said they are coming **while the cron goes
+ *     on mailing it to them** (`api/cron/venue-reveal/route.ts:63-68` never
+ *     consults the flag). That is precisely the asymmetry D-37-10 exists to
+ *     remove — so this is not an extra, it is the pre-existing defect the
+ *     owner's decision makes it compulsory to close. On an RSVP night NOBODY
+ *     holds a ticket, so without this branch nobody would see the address at
+ *     once, on a night whose whole audience declared itself.
+ *  2. **The level-2 branch, added at the tail** — an approved member with
+ *     neither a ticket nor an RSVP. THE ONLY WIDENING OF THIS PHASE: today such
+ *     a member never sees the address before the night. It is per-EVENT
+ *     reasoning applied to a per-recipient secret, which `venue-secrecy.md`
+ *     used to forbid outright; the owner took that decision on 2026-08-10 with
+ *     the cost written down, and the gate is rewritten in the same commit as
+ *     this branch (D-37-03) — otherwise it would keep flagging the intended
+ *     behaviour as a violation until somebody "repaired" it.
+ *
+ * The branch **adds and never modifies** (D-37-04's constraint): it does not
+ * name `hasTicketForParty` or `hasMasterTicket`, so nobody who reached a
+ * verdict before reaches a different one now. Every earlier `if` is unchanged
+ * and still returns first.
+ *
+ * ── This page is UX; the boundary is the database ────────────────────────────
+ *
+ * `CLAUDE.md` principle 2. This predicate decides what is RENDERED;
+ * `public.venue_for_parties` decides what a caller may READ. They stay two
+ * verdicts, ANDed at the render site, so the narrower always wins — which is
+ * `venue-secrecy.md`'s *default chiuso* expressed as a conjunction rather than
+ * as a promise.
+ */
 function isVenueVisible(opts: {
   partyDate: string;
   partyTime: string;
   venueSecret: boolean;
   hasTicketForParty: boolean;
   hasMasterTicket: boolean;
+  /** An RSVP for THIS night. Level 1 (D-37-10) — see the docblock above. */
+  hasRsvpForParty: boolean;
   isApproved: boolean;
   isOrganizer: boolean;
   isMasterRole: boolean;
   venueRevealHours: number | null;
+  /** The manual reveal instant, or `null`. Level 2 (D-37-04). */
+  revealedAt: string | null;
   venueSecretHint: string | null;
   venueRevealOnPurchase: boolean;
 }): { visible: boolean; hint: string | null } {
   if (!opts.venueSecret) return { visible: true, hint: null };
   if (opts.isMasterRole || opts.isOrganizer) return { visible: true, hint: null };
-  // Ticket holders see venue immediately only if venue_reveal_on_purchase is true
-  if (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) {
+  // Ticket holders see venue immediately only if venue_reveal_on_purchase is
+  // true — and an RSVP holder sees it regardless of that flag (D-37-10).
+  if (
+    (opts.venueRevealOnPurchase && (opts.hasTicketForParty || opts.hasMasterTicket)) ||
+    opts.hasRsvpForParty
+  ) {
     return { visible: true, hint: null };
   }
   const partyStart = partyStartInstant(opts.partyDate, opts.partyTime);
   const now = new Date();
+  // The window, resolved ONCE for this call and read from the one place that
+  // owns it. `venueRevealHours` applies DEFAULT_VENUE_REVEAL_HOURS = 25 — never
+  // a literal written here, which is how a fallback ends up living in two files
+  // and drifting between them (plan 37-04).
+  const hours = venueRevealHours(opts.venueRevealHours);
+  const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
+  // A manual reveal counts only when it is a REAL instant. Absent, or a string
+  // that does not parse, is treated as "not revealed" and yields the hint —
+  // T-37-23, and `venue-secrecy.md` *default chiuso*: this is the one domain in
+  // the project where the safe default is to refuse. Written as a positive test
+  // rather than `!== null` on purpose: `undefined !== null` is TRUE, so a column
+  // that stopped being selected would otherwise open the address on every
+  // secret night, silently.
+  const revealedByHand =
+    typeof opts.revealedAt === "string" && !Number.isNaN(Date.parse(opts.revealedAt));
   // Past event → visible for approved members
   if (now > partyStart && opts.isApproved) return { visible: true, hint: null };
   // Approved member with ticket/rsvp → visible X hours before
   if (opts.isApproved && (opts.hasTicketForParty || opts.hasMasterTicket)) {
-    const hours = opts.venueRevealHours ?? 24;
-    const hoursUntil = (partyStart.getTime() - now.getTime()) / 3600000;
     if (hoursUntil <= hours) return { visible: true, hint: null };
+  }
+  // LEVEL 2 (D-37-02, D-37-04) — appended, and the only widening of this phase.
+  // An OR of two entrances: the window, which trips by itself at an instant
+  // nobody writes, and the manual act, which trips when somebody presses.
+  if (opts.isApproved && (revealedByHand || hoursUntil <= hours)) {
+    return { visible: true, hint: null };
   }
   return { visible: false, hint: opts.venueSecretHint };
 }
@@ -153,17 +235,36 @@ export default async function EventDetailPage({
 
   // ⚠️ VENUE SECRECY. These two keep their `role` / `status` form and only
   // their SOURCE changed — and that is deliberate, because they are NOT merely
-  // presentational. Besides :490 and :637 they are passed into
-  // `isVenueVisible` (:511, :513), which decides whether a SECRET VENUE
-  // ADDRESS is rendered: `isMasterRole` short-circuits it to visible (:76) and
-  // `isApproved` opens the two time-and-ticket branches (:84, :86).
+  // presentational. They are passed into `isVenueVisible`, which decides
+  // whether a SECRET VENUE ADDRESS is rendered: `isMasterRole` short-circuits
+  // it to visible, and `isApproved` opens the time branches.
   //
   // `venue_reveal_sent` is a MONOTONE one-way switch (meta-gates.md), so the
-  // only admissible direction here is "no easier to trip". Keeping the exact
-  // predicates and moving the source from a forgeable header to the session is
-  // strictly non-widening: nobody who could not see an address before can see
-  // one now. Converting either of these to a capability key would be a VERDICT
-  // change on a reveal path and is explicitly out of this plan's scope.
+  // only admissible direction is "no easier to trip" — SAVE FOR AN EXPLICIT
+  // AUTHORISATION DOCUMENTED IN THE COMMIT, which is the clause phase 37 uses.
+  //
+  // ── REWRITTEN 2026-08-10, and the superseded sentence is quoted, not deleted
+  //
+  // Until phase 37 this paragraph ended: *"Converting either of these to a
+  // capability key would be a VERDICT change on a reveal path and is explicitly
+  // out of this plan's scope."* That was correct for phase 34, whose scope was
+  // to move the SOURCE of these two values from a forgeable header to the
+  // session while keeping every verdict byte-identical.
+  //
+  // **D-37-02 authorises a verdict change on this path**, and it is the only
+  // one in the phase: an approved member with neither a ticket nor an RSVP now
+  // sees the address once the reveal window opens, or as soon as somebody
+  // reveals by hand (level 2, the tail branch of `isVenueVisible`). Owner's
+  // decision, 2026-08-10, taken with the cost written down — more people know
+  // the address than walk in, on rooms of 150-300 in private spaces with no
+  // public-entertainment licence (`legal-compliance.md`).
+  //
+  // WHAT SURVIVES THE REWRITE, and it is the part a later reader needs: the
+  // two values are still NOT presentational, `isApproved` is now load-bearing
+  // on MORE branches than before rather than fewer, and any further change to
+  // either of them is still a verdict change on a reveal path — which now needs
+  // its own written authorisation, exactly as this one has. Converting them to
+  // capability keys remains out of scope and is a decision, not an omission.
   const isApproved = status === "approved";
   const isMasterRole = role === "master";
 
@@ -218,9 +319,19 @@ export default async function EventDetailPage({
   // disclosure matrix says never, on any public surface, and not fetching them
   // is the narrowest way to keep that true: a column that never arrives cannot
   // be rendered by a later edit that was not thinking about the rule.
+  //
+  // ── `venue_revealed_at` IS SELECTED, AND IT HAS TO BE ────────────────────
+  //
+  // It is the level-2 entrance of D-37-04 and the ONE thing that makes the
+  // manual reveal button observable on this page. Dropped from this list it
+  // arrives `undefined`, the tail branch of `isVenueVisible` never opens, and
+  // the button silently stops having any effect a visitor could see — which is
+  // the exact defect phase 37 exists to avoid producing. It is not a secret in
+  // itself: it is an instant, never an address, and the address still comes
+  // only from `public.venue_for_parties` below.
   const { data: rawParties, error: partiesError } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, access_type, capacity, sort_order, venues(id, name, slug, address), formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, venues(id, name, slug, address), formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -263,7 +374,7 @@ export default async function EventDetailPage({
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venues: PartyVenue | PartyVenue[] | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; venues: PartyVenue | PartyVenue[] | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
       const venueData = party.venues;
       const venue: PartyVenue | null = venueData ? (Array.isArray(venueData) ? venueData[0] ?? null : venueData) : null;
 
@@ -351,6 +462,10 @@ export default async function EventDetailPage({
         venue_secret_hint: party.venue_secret_hint ?? null,
         venue_reveal_hours: party.venue_reveal_hours ?? null,
         venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
+        // `?? null` and not a bare read: an absent column arrives `undefined`,
+        // and the predicate must never be handed anything but a string or
+        // `null` on a path that decides an address (T-37-23).
+        venue_revealed_at: party.venue_revealed_at ?? null,
         format,
         series_name: series?.name ?? null,
         access_type: party.access_type as AccessType,
@@ -686,10 +801,19 @@ export default async function EventDetailPage({
             venueSecret: party.venue_secret,
             hasTicketForParty,
             hasMasterTicket,
+            // `userRsvp` is populated ONLY when `access_type === "free_rsvp"`,
+            // and `userTicket` only when it is `"paid"` (see the block above,
+            // where both are read). That condition is CORRECT and is not to be
+            // touched: an RSVP night sells no tickets and a paid night takes no
+            // RSVPs, so exactly one of the two can ever be non-null. Written
+            // out because the next reader, finding this `null` on a paid night,
+            // would otherwise call it a bug and "fix" it into a second query.
+            hasRsvpForParty: !!party.userRsvp,
             isApproved,
             isOrganizer,
             isMasterRole,
             venueRevealHours: party.venue_reveal_hours,
+            revealedAt: party.venue_revealed_at ?? null,
             venueSecretHint: party.venue_secret_hint,
             venueRevealOnPurchase: party.venue_reveal_on_purchase,
           });
