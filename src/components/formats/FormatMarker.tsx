@@ -72,12 +72,30 @@ interface FormatMarkerProps {
   readonly color: string;
   /** Layout only, applied to the wrapper. Never used to restyle the name. */
   readonly className?: string;
+  /**
+   * The **off** state of a filter chip (`36-UI-SPEC.md` §S1, chip anatomy): the
+   * square drops to `opacity .4` and the name to `text-muted`. Nothing else
+   * changes — `normal-case` least of all, which is the whole reason this file
+   * exists.
+   *
+   * Added by plan 36-11, which is the first surface to mount this component,
+   * and added rather than re-implemented for exactly the reason in the docblock
+   * above: a chip that hand-rolled its own label would be a second element
+   * rendering a format name with no guarantee about its own casing.
+   *
+   * **It says nothing about the data.** It answers *"is this the chip the
+   * address selected?"* — never *"does this format have anything to show?"*.
+   * The second question is a count with one bit of resolution, and the surface
+   * that asks it announces an unannounced night by lighting up.
+   */
+  readonly dimmed?: boolean;
 }
 
 export default function FormatMarker({
   name,
   color,
   className,
+  dimmed = false,
 }: FormatMarkerProps) {
   return (
     <span
@@ -85,7 +103,7 @@ export default function FormatMarker({
     >
       <span
         aria-hidden="true"
-        className="h-2 w-2 shrink-0 rounded-[2px]"
+        className={`h-2 w-2 shrink-0 rounded-[2px]${dimmed ? " opacity-40" : ""}`}
         style={{ background: color }}
       />
       {/*
@@ -93,7 +111,11 @@ export default function FormatMarker({
         and not the widest step: at 12px the widest step pulls a name apart at a
         colon, and one of the four names has one.
       */}
-      <span className="text-xs font-semibold tracking-wide normal-case text-foreground">
+      <span
+        className={`text-xs font-semibold tracking-wide normal-case ${
+          dimmed ? "text-muted" : "text-foreground"
+        }`}
+      >
         {name}
       </span>
     </span>

@@ -5,6 +5,7 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
 import EventTabs from "./EventTabs";
+import FormatFilterRow from "./FormatFilterRow";
 
 interface VenueInfo {
   venue_name: string | null;
@@ -383,6 +384,18 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <header className="px-6 pt-12 pb-6">
           <h1 className="text-3xl font-bold tracking-tight">Events</h1>
         </header>
+      </AnimatedSection>
+
+      {/* Above the tab row and outside the swipeable container, because that
+          placement IS the semantics: the format filter applies to both halves
+          of the time axis, and the tab picks which half. Inside the swipe
+          container it would translate with the panels. */}
+      <AnimatedSection delay={0.05}>
+        <FormatFilterRow
+          formats={formatOptions}
+          activeFormat={activeFormat}
+          activeTab={activeTab}
+        />
       </AnimatedSection>
 
       {/* The two filtered arrays and the tab the address asked for. Nothing
