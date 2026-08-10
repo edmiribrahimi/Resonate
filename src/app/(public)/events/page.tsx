@@ -15,6 +15,21 @@ interface VenueInfo {
   venue_secret_hint: string | null;
 }
 
+/**
+ * One marker on one card: the identification colour, the name a visitor may
+ * read, and the slug the filter compares against.
+ *
+ * `slug` is an axis, not a label — it is never rendered. `name` is already the
+ * decided string: the venue gate in `transformEvent` chooses between the series
+ * public name and the format name BEFORE the value reaches this shape, so no
+ * later surface can pick the wider one by accident.
+ */
+interface CardFormat {
+  slug: string;
+  name: string;
+  color: string;
+}
+
 interface EventCard {
   slug: string;
   title: string;
@@ -22,6 +37,7 @@ interface EventCard {
   end_date: string;
   venues: VenueInfo[];
   lineup: string[];
+  formats: CardFormat[];
   is_draft?: boolean;
 }
 
@@ -224,7 +240,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         venue_secret: boolean;
         lineup: string[] | null;
         is_published: boolean;
-        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; venue_secret_hint: string | null; lineup: string[] | null; venues: { name: string; address: string | null; google_maps_url: string | null } | { name: string; address: string | null; google_maps_url: string | null }[] | null }[];
+        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; venue_secret_hint: string | null; lineup: string[] | null; format_id: string | null; series_id: string | null; venues: { name: string; address: string | null; google_maps_url: string | null } | { name: string; address: string | null; google_maps_url: string | null }[] | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
       const sortedDates = parties.map((p) => p.date).sort();
@@ -252,6 +268,64 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         });
       }
 
+      // =====================================================================
+      // The format axis — one card per event, never one card per night
+      // =====================================================================
+      //
+      // The formats travel the road venues and lineup already travel above:
+      // collected from the nights, sorted by `sort_order`, deduplicated. A
+      // double bill is one piece with two names, which is how it is
+      // communicated, so two nights of the same format produce ONE marker.
+      //
+      // ── The venue gate on the name, which is not a display choice ─────────
+      //
+      // A series public name is a STORED STRING PUBLISHED ON EVERY SURFACE ITS
+      // NIGHTS TOUCH, so a series named after a venue publishes that venue every
+      // time it is rendered. If any night on this card is secret, every marker
+      // on it degrades to the format name — which also produces the brand's own
+      // string for a double bill without anyone special-casing it.
+      //
+      // THE PREDICATE IS THE STORED FLAG `venue_secret`, and saying which one is
+      // half the decision, because two candidates exist and they are not the
+      // same: the stored flag, and the time- and entitlement-dependent verdict
+      // `isVenueVisible` returns on the night detail. This phase uses the stored
+      // flag ON BOTH PUBLIC SURFACES, because it is the narrower of the two — a
+      // night whose venue has since been revealed still shows the format name —
+      // and `venue-secrecy.md`'s default-closed gate says the narrower wins.
+      // Using a different predicate per surface would make the same night say
+      // two different names in two places.
+      //
+      // `!== false` and not `=== true`: anything that is not a stored `false` —
+      // a missing row, a failed join, an absent column — is treated as secret.
+      // The fallback is always the narrower string.
+      const anyNightSecret = sorted.some((p) => p.venue_secret !== false);
+
+      const seenFormats = new Set<string>();
+      const formats: CardFormat[] = [];
+      for (const p of sorted) {
+        const formatData = p.formats;
+        const format = formatData ? (Array.isArray(formatData) ? formatData[0] ?? null : formatData) : null;
+
+        // AN ABSENT FORMAT ROW MEANS NO MARKER, and that is the correct answer
+        // rather than a defect to repair. The embed is refused by the same RLS
+        // that refuses the catalogue — `formats_select_listed` — so an absent
+        // row means an UNLISTED format, which means a format nobody has
+        // announced. Rendering a placeholder here would announce it. Do not
+        // "fix" this into a fallback label.
+        if (!format) continue;
+        if (seenFormats.has(format.slug)) continue;
+        seenFormats.add(format.slug);
+
+        const seriesData = p.party_series;
+        const series = seriesData ? (Array.isArray(seriesData) ? seriesData[0] ?? null : seriesData) : null;
+
+        formats.push({
+          slug: format.slug,
+          name: anyNightSecret ? format.name : series?.name ?? format.name,
+          color: format.color,
+        });
+      }
+
       // Collect unique lineup from parties, fallback to event-level
       const allLineup = new Set<string>();
       for (const p of sorted) {
@@ -268,17 +342,27 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         end_date: endDate,
         venues,
         lineup: [...allLineup].sort(),
+        formats,
         is_draft: !evt.is_published,
       };
     }
 
     const allEvents = (events ?? []).map(transformEvent);
 
+    // The filter is applied ON THE ARRAY ALREADY RENDERED, never as a second
+    // query. A separate *"does this format have anything?"* read is exactly the
+    // shape that would see a draft and turn it into a visible difference —
+    // FMT-06 failing in the one place nobody would look for it. Whatever the
+    // reader above was refused, this line cannot un-refuse.
+    const shownEvents = activeFormat
+      ? allEvents.filter((e) => e.formats.some((f) => f.slug === activeFormat))
+      : allEvents;
+
     // An event is upcoming if its end_date >= today
-    upcoming = allEvents
+    upcoming = shownEvents
       .filter((e) => e.end_date >= today)
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
-    past = allEvents
+    past = shownEvents
       .filter((e) => e.end_date < today)
       .sort((a, b) => b.start_date.localeCompare(a.start_date));
   } catch {
@@ -301,8 +385,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         </header>
       </AnimatedSection>
 
+      {/* The two filtered arrays and the tab the address asked for. Nothing
+          else crosses this boundary: no total, no per-format tally, no "how
+          many were hidden". A child cannot render a number it was never
+          given. */}
       <AnimatedSection delay={0.1}>
-        <EventTabs upcoming={upcoming} past={past} />
+        <EventTabs upcoming={upcoming} past={past} activeTab={activeTab} />
       </AnimatedSection>
 
       {/* Presentation only. Cast at the page boundary because MobileNav is a

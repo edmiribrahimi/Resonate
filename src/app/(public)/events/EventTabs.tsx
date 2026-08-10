@@ -27,6 +27,22 @@ interface EventCard {
 interface EventTabsProps {
   upcoming: EventCard[];
   past: EventCard[];
+  /**
+   * The tab `?tab=` asked for, already resolved by the page — `past` only when
+   * the value is exactly that, `upcoming` for everything else.
+   *
+   * Optional, and only the initial value: this component still owns the tab as
+   * local state, because that state drives `baseOffset` and therefore the
+   * swipe animation, and a gesture that waits on a navigation is a broken
+   * gesture on the page that is the shop window. Honouring the parameter on
+   * first render is what makes a shared `?tab=past` link open on Past.
+   *
+   * The other half — writing the address back on every tap and swipe, and
+   * resyncing when the prop changes — belongs to plan 36-12, which owns this
+   * file. This prop is the seam that lets the format chips preserve the time
+   * axis before that lands.
+   */
+  activeTab?: "upcoming" | "past";
 }
 
 const WEEKDAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -113,8 +129,12 @@ function EventList({ events, isPast }: { events: EventCard[]; isPast: boolean })
   );
 }
 
-export default function EventTabs({ upcoming, past }: EventTabsProps) {
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+export default function EventTabs({
+  upcoming,
+  past,
+  activeTab: activeTabFromUrl = "upcoming",
+}: EventTabsProps) {
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">(activeTabFromUrl);
   const [dragX, setDragX] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
