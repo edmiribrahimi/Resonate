@@ -116,12 +116,48 @@ nel DISCUSSION-LOG.)*
   **24h59m**. Una finestra di 24 ore non garantisce quindi di contenere una
   corsa — c'e' un caso di bordo reale in cui la corsa del giorno cade appena
   **prima** che la finestra si apra, e la successiva cade **dopo l'inizio della
-  serata**. Il default attuale e' **24**: e' **sotto il minimo sicuro**, e va
-  alzato o il vincolo va imposto a 25.
+  serata**.
   *(Che il livello 2 riveli alla finestra degrada il danno — chi fa login vede
   comunque — ma non lo elimina: chi aspetta la mail resta senza. Vedi
   `time-and-scheduling.md`, gate «la finestra di un cron copre il proprio
   intervallo».)*
+
+  **Deciso dal proprietario il 2026-08-10: il default diventa 25 ore.** Quattro
+  cose che ne discendono, misurate leggendo il codice:
+
+  1. **Il «default 24» non e' nel database: e' un fallback scritto due volte nel
+     codice** — `isVenueVisible:112` e `api/cron/venue-reveal/route.ts:43`, in
+     due file diversi, entrambi `?? 24`. La colonna
+     (`20260226500000_venue_secret_hint_reveal_hours.sql:3`) e' un `integer`
+     **senza `DEFAULT`**. Portarlo a 25 in due posti e' come sono nate le sei
+     varianti di conversione oraria che `time-and-scheduling.md` racconta:
+     **la costante va in un posto solo**, `src/utils/datetime.ts`, che e' gia'
+     la casa dichiarata delle regole temporali.
+  2. **La validazione oggi accetta 1.** `admin/events/actions.ts:419` controlla
+     `hours < 1`: si puo' salvare una finestra di un'ora. Il pavimento va
+     portato a **25**, e il messaggio d'errore deve dire **perche'** — «sotto le
+     25 ore la mail puo' partire dopo la serata» — o al primo rifiuto qualcuno
+     alzera' il limite invece di alzare la finestra.
+  3. **Alzare il fallback e' un allargamento, piccolo ma reale, e va dichiarato
+     nel commit.** Ogni serata con `venue_reveal_hours` a `NULL` oggi rivela a
+     T−24h; da domani rivelera' a **T−25h**, cioe' **un'ora prima**. E'
+     `venue_reveal_sent`, una guardia monotona: la regola di `meta-gates.md`
+     vuole che una modifica la renda solo *piu' difficile* da far scattare,
+     salvo autorizzazione esplicita documentata. Questa la rende piu' facile di
+     un'ora, ed e' autorizzata.
+  4. **Le righe che hanno gia' un valore esplicito sotto 25 NON si sanano in
+     silenzio.** Portare una serata da 6 a 25 sposta la sua rivelazione
+     **diciannove ore prima**: e' l'allargamento del punto 3 moltiplicato, su
+     una serata gia' programmata. La fase le **elenca** e le porta al
+     proprietario una per una; non le riscrive con un `UPDATE`.
+     *(La produzione ha oggi due serate con `venue_secret = true`: e' una lista
+     corta, non un problema di scala — ed e' esattamente per questo che va
+     guardata invece che automatizzata.)*
+  5. **Il dialogo dell'indizio mostra il valore memorizzato, non quello
+     effettivo.** `SecretVenueDialog.tsx:68-69` scrive «N hours before the
+     event» solo quando il valore c'e'; con `NULL` non dice nulla, mentre la
+     logica applica il fallback. Deve mostrare **la finestra effettiva**, o la
+     pagina promette una cosa e il sistema ne fa un'altra.
 
 - **D-37-07 — Il piano e' Hobby, e il cron non si puo' infittire.**
   *(Confermato dal proprietario il 2026-08-10.)* Documentazione Vercel
