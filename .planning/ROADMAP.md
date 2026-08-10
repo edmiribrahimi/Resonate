@@ -391,12 +391,12 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 34-09-PLAN.md — `artists` and `venues` collapse onto `organizer.access`
-- [ ] 34-10-PLAN.md — The `members` tree collapses, and the folded register defect closes by construction
-- [ ] 34-11-PLAN.md — `events` and `events/new` collapse, and `EventList` loses its `basePath`
-- [ ] 34-12-PLAN.md — `events/[id]/edit` and `events/[id]/drinks` collapse, with the drinks money path untouched
-- [ ] 34-13-PLAN.md — `events/[id]/tickets` collapses alone — 140 changed lines on a money path
-- [ ] 34-14-PLAN.md — `sales`, `guest-list`, `analytics` and `media` collapse; the media surface gets the gate it never had
+- [x] 34-09-PLAN.md — `artists` and `venues` collapse onto `organizer.access`
+- [x] 34-10-PLAN.md — The `members` tree collapses, and the folded register defect closes by construction
+- [x] 34-11-PLAN.md — `events` and `events/new` collapse, and `EventList` loses its `basePath`
+- [x] 34-12-PLAN.md — `events/[id]/edit` and `events/[id]/drinks` collapse, with the drinks money path untouched
+- [x] 34-13-PLAN.md — `events/[id]/tickets` collapses alone — 140 changed lines on a money path
+- [x] 34-14-PLAN.md — `sales`, `guest-list`, `analytics` and `media` collapse; the media surface gets the gate it never had
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -522,7 +522,7 @@ Plans:
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
-| 34. One Work Surface | 8/17 | In Progress|  |
+| 34. One Work Surface | 14/17 | In Progress|  |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
