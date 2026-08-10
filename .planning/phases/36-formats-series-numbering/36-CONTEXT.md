@@ -189,8 +189,17 @@ di chi vede cosa.
   (`brand-visual-system.md`, gate *il colore non si eredita*; DS-03 della fase
   40). *Ragione:* obbligare a scegliere impedisce il vuoto; permettere di
   scegliere il tramonto altrui farebbe perdere a un format l'identita' prima di
-  averla. Un format senza palette decisa sceglie il neutro, e la scelta e'
-  registrata come scelta.
+  averla.
+
+  **Risolta il 2026-08-10 leggendo il tracker di produzione** — vedi
+  `36-VISUAL-SOURCE.md`. Il tracker separa due cose che a parole si chiamano
+  entrambe *colore*: il **colore di identificazione** (il pallino su un chip, la
+  sottolineatura di una scheda) e la **palette dei materiali** (come si vede una
+  locandina). MotionLab **ha** il primo e **non ha** la seconda. Il colore che
+  questa fase memorizza e' **il primo**, e per tutti e quattro i format **esiste
+  gia'**: `SunSet #FFB25E` · `RamaDub #FF7A2F` · `MotionLab #FF5C93` ·
+  `re:sonate #A874E8`. **Non c'e' niente da inventare: c'e' da adottare.** E' la
+  distinzione di DS-02, e toglie la tensione col gate senza indebolirlo.
 
 - **D-36-12: etichette e colori vengono dai dati, non dal codice** (FMT-05).
   Cambiare l'etichetta o il colore di un format **non richiede un deploy**.
@@ -293,6 +302,21 @@ implementare.**
   nessuno dei quattro client Supabase e' parametrizzato con `Database`, quindi
   nessun nome di colonna in nessuna query e' controllato dal build.** Una colonna
   nuova non produce errori di tipo se scritta male.
+
+### La sorgente visiva — DA LEGGERE PRIMA DI QUALUNQUE DECISIONE DI UI
+
+- `.planning/phases/36-formats-series-numbering/36-VISUAL-SOURCE.md` — distillato
+  del tracker di produzione (`re:sonate — Production`, sezione *Visual System* e
+  il suo foglio di stile), letto il 2026-08-10. **Il tracker e' gia' un design
+  system implementato, non un moodboard:** token di fondo, inchiostro e linea; la
+  scala tramonto; **un colore di identificazione per format**; semantici tenuti
+  separati dagli accenti di brand; due famiglie tipografiche per l'interfaccia
+  (mono per i dati, sans per la prosa) con `tabular-nums` sui numeri; tema scuro
+  per scelta dichiarata, **niente tema chiaro**; e **la riga di chip per format
+  gia' costruita**, con lo stato in `aria-pressed` e il quadratino di colore.
+  Il file porta anche cio' che **non** attraversa — le regole che valgono solo
+  per le locandine — e il fatto che **l'artifact non entra nel repo**, perche'
+  contiene sedi, date e line-up e questo repository e' pubblico.
 
 ### I gate di dominio che governano questa fase
 
