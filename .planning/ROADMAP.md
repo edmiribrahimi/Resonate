@@ -477,7 +477,7 @@ Plans:
   3. A completed manual reveal records who triggered it and when, visible to the staff entitled to see it
   4. A second reveal attempt on a night already revealed changes nothing and says so — the switch stays one-way
 
-**Plans:** 11/13 plans executed
+**Plans:** 12/13 plans executed
 
 Plans:
 - [x] 37-01-PLAN.md — lo schema dell'atto: la tredicesima chiave, l'istante, la traccia append-only e lo scrittore atomico
@@ -490,7 +490,7 @@ Plans:
 - [x] 37-08-PLAN.md — la scheda delle sedi esce dal pubblico, e i tre anelli tornano a concordare
 - [x] 37-09-PLAN.md — il cuore condiviso, il cron che completa, e il gate che segue il codice
 - [x] 37-10-PLAN.md — l'atto: gate dentro l'azione, rifiuti per valore, e la porta laterale del form
-- [ ] 37-11-PLAN.md — la conferma che conta le persone, il bottone a tre stati e la traccia
+- [x] 37-11-PLAN.md — la conferma che conta le persone, il bottone a tre stati e la traccia
 - [x] 37-12-PLAN.md — il redirect dopo il login (todo piegato, commit separato)
 - [ ] 37-13-PLAN.md — la verifica anonima, la strada positiva di D-37-24 e la prova di cache
 
@@ -589,7 +589,7 @@ Plans:
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
-| 37. Manual Venue Reveal | 11/13 | In Progress|  |
+| 37. Manual Venue Reveal | 12/13 | In Progress|  |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
