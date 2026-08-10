@@ -194,6 +194,35 @@ export type NightRefusal =
   | { kind: "format_retired"; sortOrder: number | null; nightTitle: string | null }
   /** A format id this caller cannot read. Unknown means refused, never assumed. */
   | { kind: "format_unknown"; sortOrder: number | null; nightTitle: string | null }
+  /**
+   * The side door on a one-way switch, closed — phase 37, D-37-22.
+   *
+   * `venue_secret` is a checkbox on this form and it ticks and unticks freely,
+   * **leaving no trace of any kind**. From the moment a night has been revealed
+   * by hand, that is a second path onto an act which everywhere else writes an
+   * append-only row: a revealed night could go back to secret from here, and
+   * nobody would know who did it.
+   *
+   * So a change to `venue_secret` on a night whose `venue_revealed_at` is set is
+   * refused, and the sentence names the surface where it is genuinely possible.
+   * An UNCHANGED value passes: merely opening the edit form and saving must keep
+   * working, the same principle D-36-10 applies to a retired format.
+   *
+   * ── The perimeter, declared rather than left to be discovered ────────────────
+   *
+   * This covers nights **already revealed by hand**. A night that was never
+   * revealed still behaves exactly as it does today — the form may make it
+   * secret or not secret, with no trace — and that residue is real, not an
+   * oversight: unticking `venue_secret` on a never-revealed night opens the
+   * address to everybody just the same, through a path with no register. It is
+   * outside this phase's declared perimeter and is written down in
+   * `.planning/todos/pending/form-untick-venue-secret-leaves-no-trace.md`.
+   */
+  | {
+      kind: "venue_secret_locked";
+      sortOrder: number | null;
+      nightTitle: string | null;
+    }
   /** Any other database failure. That night was not written. */
   | { kind: "write_failed"; sortOrder: number | null; nightTitle: string | null; code: string | null };
 
@@ -269,6 +298,14 @@ function nightRefusalSentence(refusal: NightRefusal): string {
       return `${where}that format has been retired. Nights already recorded under it keep it; a new night cannot be assigned to it.`;
     case "format_unknown":
       return `${where}that format is not one you can assign. Reload the form and pick again.`;
+    case "venue_secret_locked":
+      return (
+        `${where}this sub-event's address has already been revealed, so the ` +
+        `secret-venue box cannot be changed from this form. Do it from the ` +
+        `reveal panel on the sub-event itself: only a master can put the ` +
+        `address back behind the secret, and the act is recorded with who did ` +
+        `it and when.`
+      );
     case "write_failed":
       return `${where}saving this night failed (${refusal.code ?? "no code"}). Nothing was written for it.`;
   }
@@ -754,9 +791,13 @@ export async function updateEvent(
   // falls to the INSERT arm below, and the event silently ends up with its
   // nights duplicated. Refusing here is the only thing between that and an
   // archive nobody can trust.
+  // `venue_secret` and `venue_revealed_at` ride along on the read that was
+  // already happening, rather than in a second query: the guard below needs the
+  // STORED state of both, and a night's id survives an edit (the upsert is by
+  // id), so this read always has the right row to compare against.
   const { data: existingParties, error: existingError } = await client
     .from("event_parties")
-    .select("id, format_id")
+    .select("id, format_id, venue_secret, venue_revealed_at")
     .eq("event_id", eventId);
 
   if (existingError) {
@@ -778,13 +819,32 @@ export async function updateEvent(
   const existingRows = (existingParties ?? []) as {
     id: string;
     format_id: string | null;
+    venue_secret: boolean | null;
+    venue_revealed_at: string | null;
   }[];
   const existingIds = new Set(existingRows.map((p) => p.id));
+  /** The stored secrecy of each night, for the one-way-switch guard below. */
+  const storedSecrecyByNightId = new Map<
+    string,
+    { secret: boolean; revealedAt: string | null }
+  >(
+    existingRows.map((p) => [
+      p.id,
+      { secret: p.venue_secret ?? false, revealedAt: p.venue_revealed_at },
+    ])
+  );
   // What each night ALREADY carries — the exception that keeps an archived
   // night from being rewritten just because its format was later retired.
+  //
+  // The predicate narrows the row it was given rather than restating its shape:
+  // written as a standalone `{ id, format_id }` it stopped compiling the moment
+  // this read grew two columns, which is the drift a `&` avoids.
   const carriedFormatByNightId = new Map<string, string>(
     existingRows
-      .filter((p): p is { id: string; format_id: string } => p.format_id !== null)
+      .filter(
+        (p): p is (typeof existingRows)[number] & { format_id: string } =>
+          p.format_id !== null
+      )
       .map((p) => [p.id, p.format_id])
   );
 
@@ -906,6 +966,27 @@ export async function updateEvent(
       // a progressivo already assigned is already on a poster.
       number: party.number ?? null,
     };
+
+    // ── The side door on a one-way switch, closed before the write ────────────
+    //
+    // See `venue_secret_locked` on `NightRefusal` for the whole reasoning,
+    // including the residue this deliberately does NOT cover. Compared against
+    // the STORED value, so a save that does not touch the box goes through: the
+    // refusal is about a CHANGE, never about the night having been revealed.
+    const stored = party.id ? storedSecrecyByNightId.get(party.id) : undefined;
+    if (
+      stored &&
+      stored.revealedAt !== null &&
+      (party.venue_secret ?? false) !== stored.secret
+    ) {
+      const refusal: NightRefusal = {
+        kind: "venue_secret_locked",
+        sortOrder: party.sort_order,
+        nightTitle: party.title?.trim() || null,
+      };
+      logNightRefusal(refusal, null);
+      return { success: false, error: nightRefusalSentence(refusal), refusal };
+    }
 
     let nightError: WriteError | null = null;
 
