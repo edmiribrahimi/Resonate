@@ -4,13 +4,13 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T21:11:31.158Z"
+last_updated: "2026-08-10T22:13:40.007Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 119
-  completed_plans: 111
+  completed_plans: 117
   percent: 54
 ---
 
@@ -32,7 +32,7 @@ Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 3 of 13
+Plan: 4 of 13
 (contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
 uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
 indietro di due. Corretto sul conteggio dei file, non su una stima.
@@ -90,7 +90,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 93%
+Progress: [██████████] 98%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -137,6 +137,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase ?]: nyquist_compliant di fase 36 resta false: cinque requisiti su sei si provano solo a mano
 - [Phase 37]: applicata SOLO la prima delle due migration in produzione (versione 20260810210214). 20260810161000_venues_read_narrowed.sql resta applicata a zero per scelta del proprietario: revocare anon su public.venues rompe le pagine pubbliche SENZA deploy (sono tutte dinamiche) mentre la riparazione (37-05/37-06) ne richiede uno, e il ramo di lavoro e' 181 commit avanti a origin/main
 - [Phase 37]: Inventario cascate corretto: 18 tabelle da event_parties, non 17 — discount_code_tiers arriva a due salti, via discount_codes e via ticket_tiers
+- [Phase 37]: 37-10: il rifiuto di un percorso di segretezza torna come VALORE, mai come messaggio lanciato — Next redige i messaggi di una Server Action in produzione
+- [Phase 37]: 37-10: un conteggio che alimenta un atto irreversibile dichiara se ha potuto misurare (unavailable), non solo quanto
+- [Phase 37]: 37-10: nessun secondo verdetto sul ruolo — re_hide_requires_master lo decide la funzione SQL, che legge il ruolo al proprio interno
 
 ## Accumulated Context
 
@@ -167,7 +170,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T21:11:24.429Z
+**Last session:** 2026-08-10T22:13:17.837Z
 **Stopped at:** Phase 37 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
