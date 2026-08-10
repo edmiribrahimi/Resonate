@@ -145,3 +145,61 @@ e' stata chiusa sul posto.
   **VENUE-02 non si spunta**: il percorso esiste da capo a fondo e non e' mai
   stato percorso, e un verde su un requisito di rivelazione mai esercitato e' la
   categoria peggiore in cui averne uno.
+- **Stato al 2026-08-11 (37-13):** **ancora aperta**, e onorata — `VENUE-02` non
+  e' spuntato. 37-13 ha pero' esercitato lo scrittore **in container**, con
+  entrambe le migration applicate: i sette rifiuti e il ciclo intero
+  `revealed → completed → re_hidden` si comportano come scritto, e la traccia
+  sopravvive al ri-nascondere. Resta non provato cio' che un container non puo'
+  dire: l'invio, i lotti, la deduplicazione, e il comportamento sotto una
+  sessione autenticata vera.
+
+---
+
+## 6. `npm run baseline:container` non e' piu' eseguibile
+
+- **Trovata durante:** 37-13, montando l'harness per misurare la strada positiva
+  di D-37-24.
+- **Cosa:** `scripts/container/seed.mjs` **rifiuta di girare** con
+  *«PROBE_PAYLOADS has no entry for: venue_reveal_acts. The seed cannot invent a
+  row shape the write matrix does not declare — one declaration, two readers.»*
+  La tabella e' quella creata dal piano 37-01; il seed non la conosce.
+- **Il rifiuto e' corretto**, ed e' esattamente la guardia che quel file esiste
+  per avere. La conseguenza pero' e' che **`npm run baseline:container` e
+  `npm run baseline:compare` non producono piu' nulla** finche' la voce non
+  viene aggiunta: il prossimo baseline RLS di container non e' catturabile.
+- **Perche' non e' stata chiusa qui:** 37-13 dichiara `files_modified: []` ed e'
+  un piano di verifica. Allargarne il diff all'harness dei baseline avrebbe reso
+  piu' difficile verificare l'unica domanda che quel diff deve reggere. Le sonde
+  di 37-13 sono state eseguite con `withContainer(..., { seed: false })` e
+  fixture proprie.
+- **Chi la dovrebbe prendere:** il prossimo piano che cattura un baseline RLS,
+  oppure un piano di manutenzione. **Va fatta prima**, non quando servira'
+  il baseline: e' il momento in cui costa una voce in una tabella invece di un
+  blocco.
+
+---
+
+## 7. `NEXT_PUBLIC_APP_URL` in `.env.local` non nomina il sito, e un controllo di piano ci si e' appoggiato
+
+- **Trovata durante:** 37-13, Task 2, guardando i byte prima dei risultati.
+- **Cosa:** in `.env.local` la variabile vale **`http://localhost:3000`**, e su
+  quella porta, su questa macchina, ascolta **un container Docker estraneo al
+  progetto**. Il blocco `<verify>` del Task 2 di `37-13-PLAN.md` e'
+  `curl … "$NEXT_PUBLIC_APP_URL/events"`, quindi **misura quel container**.
+- **Cosa e' successo davvero:** la prima tornata di letture ha restituito
+  `HTTP 404` e **zero occorrenze per tutti e 18 gli aghi**, su sei documenti. Un
+  verde perfetto, prodotto da un servizio che non e' il nostro. E' stato
+  scoperto perche' i sei documenti pesavano **tutti esattamente 64 622 byte**,
+  che non e' una cosa che sei pagine diverse fanno.
+- **Il sito vero e' `https://www.resonatemotion.com`**; il dominio nudo risponde
+  `307` verso `www`. Le letture sono state rifatte la', e **nessun risultato
+  della prima tornata e' finito in `37-13-SUMMARY.md`**.
+- **Perche' conta oltre questo piano:** e' la forma piu' pura del difetto che la
+  fase 36 ha pagato — *una misura presa con lo strumento sbagliato non e' una
+  misura debole, e' un'eco*. Ogni futuro `<verify>` che si appoggia a
+  `$NEXT_PUBLIC_APP_URL` per parlare della **produzione** e' un controllo che
+  puo' rispondere verde senza aver guardato niente.
+- **Chi la dovrebbe prendere:** chi scrive il prossimo piano con una sonda HTTP.
+  Due strade, entrambe economiche: nominare il dominio per esteso nel piano,
+  oppure introdurre una variabile distinta per l'indirizzo **pubblico** e
+  lasciare `NEXT_PUBLIC_APP_URL` al suo uso locale.
