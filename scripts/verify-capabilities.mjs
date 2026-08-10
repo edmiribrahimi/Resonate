@@ -171,16 +171,28 @@ const SRC_DIR = `${ROOT}/src`;
  * point — it is Phase 34's CAP-02 failure arriving early and cheaply — and
  * nothing here is adjusted to suppress it.
  *
+ * Raised to THIRTEEN on 2026-08-10 by plan 37-01, which mints `venue.reveal` in
+ * `supabase/migrations/20260810160000_manual_venue_reveal.sql` section 1 — the
+ * key that authorises letting a night's secret address out BY HAND (VENUE-02,
+ * D-37-14). It arrives with a decision for all four roles, in this same commit,
+ * and its two REFUSALS are the load-bearing half: `staff` and `member` must
+ * never acquire a row for a key that publishes an address, and this is the only
+ * place that statement is checkable.
+ *
+ * **Its consumer does not arrive with it either.** The server action lands in
+ * plan 37-10, so side 4 reports it as a key nobody asks for until then — the
+ * same deliberate, unsilenced warning as the three above.
+ *
  * Written here, not derived from either side, for the reason
  * `rls-baseline.mjs:113-130` states about its floors: a check that reads its
  * expectation off the thing it is checking cannot fail.
  *
- * **If this trips, look at the capability model, not at this constant.** Ten
- * keys means a capability was added — which is a design decision that belongs
- * in a plan, with a grant row and a policy or a route to go with it. Eight
- * means one was removed, and something is still asking for it.
+ * **If this trips, look at the capability model, not at this constant.**
+ * Fourteen keys means a capability was added — which is a design decision that
+ * belongs in a plan, with a grant row and a policy or a route to go with it.
+ * Twelve means one was removed, and something is still asking for it.
  */
-const EXPECTED_KEY_COUNT = 12;
+const EXPECTED_KEY_COUNT = 13;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -278,6 +290,11 @@ const ROLE_GRANTS = {
     // approved has no business on either.
     'media.upload': true,
     'party.manage': true,
+    // D-37-14, plan 37-01. `true`, and for this key the flag is not a copy of
+    // `catalogue.manage`'s: publishing an address is irreversible, and there is
+    // no queue anywhere near it, so the one reason this project accepts for
+    // ignoring status does not apply.
+    'venue.reveal': true,
   },
   organizer: {
     'staff.manage': false,
@@ -315,6 +332,13 @@ const ROLE_GRANTS = {
     // `true` on both, plan 35-03. Neither is at the door.
     'media.upload': true,
     'party.manage': true,
+    // D-37-13, plan 37-01, AND THIS IS THE ROW THE KEY EXISTS FOR. Every
+    // APPROVED organizer, not only the one who created the night: that person
+    // can be unreachable on exactly the evening the button exists for, and a
+    // reveal that waits for one person is a reveal that happens through a
+    // channel leaving no trace. `true` and not `false`: unlike the door, nothing
+    // here is refused in front of a queue, and the act cannot be undone.
+    'venue.reveal': true,
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -397,6 +421,13 @@ const ROLE_GRANTS = {
     // Refused (D-03). A night's back office is a night's, and `staff` has no
     // organizer surface at all — `NAV_ITEMS` shows it none.
     'party.manage': 'REFUSED',
+    // Refused (D-03, D-37-15), and this is the refusal with the worst
+    // consequence if it ever acquires a row. Somebody who worked one night would
+    // be able to publish the address of EVERY later night, permanently, because
+    // a role does not expire the way an assignment does. The reveal is also not
+    // a night's work: it happens before the night, and `venue-secrecy.md` says
+    // the error has no remedy — the mail has left and the screenshot exists.
+    'venue.reveal': 'REFUSED',
   },
   member: {
     'staff.manage': 'REFUSED',
@@ -425,28 +456,36 @@ const ROLE_GRANTS = {
     'door.supervise': 'REFUSED',
     'media.upload': 'REFUSED',
     'party.manage': 'REFUSED',
+    // Refused, plan 37-01. A member holding this key could make any night's
+    // secret address public — which is not a permission boundary being crossed
+    // by degrees, it is the mechanism `PROJECT.md` calls the reason the community
+    // is worth something. Nothing else in the model would say no.
+    'venue.reveal': 'REFUSED',
   },
 };
 
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 48 pairs = 4 roles × 12 capabilities. 26 grants: the sixteen the capability
+ * 52 pairs = 4 roles × 13 capabilities. 28 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
  * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
  * `20260808002000_membership_register.sql` adds for `register.read`, plus the
  * six `20260809001000_assignment_resolver.sql` adds for the three per-night
- * keys. 22 refusals — the eight that were already every pair the first migration
- * does NOT insert, plus the six `staff` refusals of D-02, plus the two
+ * keys, plus the two `20260810160000_manual_venue_reveal.sql` adds for
+ * `venue.reveal`. 24 refusals — the eight that were already every pair the first
+ * migration does NOT insert, plus the six `staff` refusals of D-02, plus the two
  * `register.read` refusals of D-19 (`staff` and `member`), plus the six the
- * three per-night keys owe to `staff` and `member`.
+ * three per-night keys owe to `staff` and `member`, plus the two `venue.reveal`
+ * owes to the same two roles.
  *
- * The three numbers have now moved three times, all on 2026-08-08 and all
- * because the MODEL changed, which is the one legitimate reason to touch them:
+ * The three numbers have now moved four times, each because the MODEL changed,
+ * which is the one legitimate reason to touch them:
  *
  *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
  *   32/18/14 → 36/20/16   plan 43-07, a ninth CAPABILITY
  *   36/20/16 → 48/26/22   plan 35-03, THREE per-night CAPABILITIES
+ *   48/26/22 → 52/28/24   plan 37-01, a thirteenth CAPABILITY (2026-08-10)
  *
  * Lowering a total to make a run pass is the failure this constant exists to
  * catch, and it has a recorded shape: mutation C of plan 43-02 did exactly that
@@ -456,9 +495,9 @@ const ROLE_GRANTS = {
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
-const EXPECTED_PAIR_COUNT = 48;
-const EXPECTED_GRANT_COUNT = 26;
-const EXPECTED_REFUSAL_COUNT = 22;
+const EXPECTED_PAIR_COUNT = 52;
+const EXPECTED_GRANT_COUNT = 28;
+const EXPECTED_REFUSAL_COUNT = 24;
 
 /** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
 const REFUSED = 'REFUSED';
@@ -1097,7 +1136,7 @@ async function run(target, targetLabel) {
           'is itself under src/, so binding a key MAKES it asked-for by this side ' +
           '(finding F3 in the docblock). This stays a WARNING because promoting it would ' +
           'make the production build depend on a live database (D-34-11/D-34-12), and ' +
-          'because five of the twelve keys gate TABLES rather than routes — each with its ' +
+          'because five of the thirteen keys gate TABLES rather than routes — each with its ' +
           'reason written beside it in that same file.'
       );
     warn(

@@ -150,7 +150,7 @@ type Binding =
        * what the allow-list exists to prevent.
        */
       assignmentOpenable?: true;
-      /** True when the key ALSO gates rows. Four of the twelve do. */
+      /** True when the key ALSO gates rows. Four of the thirteen do. */
       alsoGatesTables?: true;
     }
   | {
@@ -160,11 +160,11 @@ type Binding =
     };
 
 /**
- * The twelve keys, each accounted for.
+ * The thirteen keys, each accounted for.
  *
  * `as const satisfies` and not a type annotation, and the difference is the
  * whole second half of CAP-02: `satisfies` keeps the totality error (a
- * thirteenth key with no entry fails the build), while `as const` keeps each
+ * fourteenth key with no entry fails the build), while `as const` keeps each
  * `routes` array a tuple of string LITERALS instead of widening it to
  * `RoutePattern[]`. Without `as const` the union of listed routes widens to
  * `string` and `_everyStaffRouteIsBound` becomes a decoration.
@@ -398,6 +398,31 @@ export const CAPABILITY_ROUTES = {
     scope: "table",
     reason:
       "Gates a Route Handler, not a page; the guard is `src/lib/media/may-upload.ts`. See D-34-13 in the module docblock.",
+  },
+
+  /**
+   * The manual venue reveal — phase 37, plan 01.
+   *
+   * ── Why this is on the SECOND branch, and why that is not laziness ──────────
+   *
+   * **The key opens no new address.** The button lives on
+   * `/admin/events/[id]/edit`, which is already bound to `organizer.access`
+   * above (`:256`), and the trace it renders lives on the same page. This key
+   * governs an ACT — *may this subject make this night's address public, now?* —
+   * not a place to stand.
+   *
+   * Adding `routes: [...]` here would be the mistake this file already records
+   * once, in the opposite direction, at the `CATALOGUE_MANAGE` entry: a page
+   * bound to a `scope: "table"` key is unreachable **for everyone**, with no
+   * build error and nothing in a log. The symmetric mistake is this one — moving
+   * an address onto a key that gates an act — and it would take
+   * `/admin/events/[id]/edit` away from every organizer who may edit a night but
+   * not reveal it, which is a widening's mirror image and just as unintended.
+   */
+  [CAP.VENUE_REVEAL]: {
+    scope: "table",
+    reason:
+      "Gates an act, not an address: the button sits on `/admin/events/[id]/edit`, already opened by `organizer.access`. The real guard is the server action in `src/app/(admin)/admin/events/[id]/reveal/actions.ts`, which re-asks this key inside itself, and `public.record_venue_reveal_act`, which is executable by `service_role` alone.",
   },
 } as const satisfies Record<CapabilityKey, Binding>;
 
