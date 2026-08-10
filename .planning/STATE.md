@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T22:13:40.007Z"
-last_activity: 2026-08-10
+last_updated: "2026-08-10T22:15:03.382Z"
+last_activity: 2026-08-10 -- Phase 37 execution started
 progress:
   total_phases: 13
   completed_phases: 7
@@ -32,11 +32,12 @@ Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 4 of 13
-(contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
-uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
-indietro di due. Corretto sul conteggio dei file, non su una stima.
-Status: Ready to execute
+Plan: 11 of 13
+(contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
+uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
+lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. Restano
+37-11 (onda 6) e 37-13 (onda 7), entrambi con un checkpoint.
+Status: Executing Phase 37
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -82,7 +83,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-10
+Last activity: 2026-08-10 -- Phase 37 execution started
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
