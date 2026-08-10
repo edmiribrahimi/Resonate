@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
 import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
+import FormatMarker from "@/components/formats/FormatMarker";
 
 interface VenueInfo {
   venue_name: string | null;
@@ -14,6 +16,21 @@ interface VenueInfo {
   venue_secret_hint: string | null;
 }
 
+/**
+ * One marker on one card: the identification colour, the name a visitor may
+ * read, and the slug the filter compares against.
+ *
+ * `name` is already the decided string — the page's venue gate chose between
+ * the series public name and the format name BEFORE the value reached this
+ * component, so nothing here can pick the wider one by accident. `slug` is an
+ * axis and is never rendered as a label.
+ */
+interface CardFormat {
+  slug: string;
+  name: string;
+  color: string;
+}
+
 interface EventCard {
   slug: string;
   title: string;
@@ -21,7 +38,22 @@ interface EventCard {
   end_date: string;
   venues: VenueInfo[];
   lineup: string[];
+  formats: CardFormat[];
   is_draft?: boolean;
+}
+
+/**
+ * The format the address selected, already validated by the page against the
+ * active catalogue — so `null` covers absent, unknown, retired and repeated
+ * alike, which is what makes this page no oracle for whether a format exists.
+ *
+ * Two fields and no third: the `name` is only ever read back to a visitor in
+ * an empty state, and the `slug` only ever travels in an href. There is no
+ * results total here, and there is nothing to derive one from.
+ */
+interface ActiveFormat {
+  slug: string;
+  name: string;
 }
 
 interface EventTabsProps {
@@ -31,18 +63,19 @@ interface EventTabsProps {
    * The tab `?tab=` asked for, already resolved by the page — `past` only when
    * the value is exactly that, `upcoming` for everything else.
    *
-   * Optional, and only the initial value: this component still owns the tab as
-   * local state, because that state drives `baseOffset` and therefore the
-   * swipe animation, and a gesture that waits on a navigation is a broken
-   * gesture on the page that is the shop window. Honouring the parameter on
-   * first render is what makes a shared `?tab=past` link open on Past.
-   *
-   * The other half — writing the address back on every tap and swipe, and
-   * resyncing when the prop changes — belongs to plan 36-12, which owns this
-   * file. This prop is the seam that lets the format chips preserve the time
-   * axis before that lands.
+   * It is the INITIAL value and the resync source, not the live one: this
+   * component still owns the tab as local state, because that state drives
+   * `baseOffset` and therefore the swipe animation, and a gesture that waits
+   * on a navigation is a broken gesture on the page that is the shop window.
+   * See `goToTab` below for the two halves of every change.
    */
   activeTab?: "upcoming" | "past";
+  /**
+   * The other axis, so every tab href can preserve it. Picking Past must not
+   * silently drop the format a visitor chose, and picking a format must not
+   * silently return them to Upcoming — the second half is `FormatFilterRow`'s.
+   */
+  activeFormat?: ActiveFormat | null;
 }
 
 const WEEKDAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -63,12 +96,76 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
-function EventList({ events, isPast }: { events: EventCard[]; isPast: boolean }) {
+function EventList({
+  events,
+  isPast,
+  activeFormat,
+}: {
+  events: EventCard[];
+  isPast: boolean;
+  activeFormat: ActiveFormat | null;
+}) {
   if (events.length === 0) {
+    // =======================================================================
+    // The four empty states, and the one sentence that had to be chosen
+    // =======================================================================
+    //
+    // COMPUTED FROM THE ARRAY ALREADY ON SCREEN — `events.length === 0` — and
+    // never from a second read. A separate *"does this format have anything?"*
+    // query is exactly the shape that would see a night nobody has announced
+    // and turn it into a visible difference, in the one place where nobody
+    // would look for it.
+    //
+    // The filtered sentence is THE SAME STRING FOR EVERY FORMAT, and that is
+    // the whole point of it. A sentence that differed per format — anything
+    // warmer for one, anything apologetic for another — would be a tally with
+    // one bit of resolution, and would leak the same fact a tally leaks.
+    //
+    // The wording states what is true, that nothing has been ANNOUNCED,
+    // without asserting anything about what exists. Do not "improve" it into
+    // a claim about the database.
+    //
+    // No figure appears here, in any state, in any attribute.
     return (
-      <p className="text-muted text-sm py-8 text-center">
-        {isPast ? "No past events yet." : "No upcoming events -- check back soon."}
-      </p>
+      <div className="py-8 text-center">
+        {activeFormat ? (
+          <>
+            {/*
+              `normal-case` is not decoration here. This is the ONE place on
+              this surface where a format name is rendered outside
+              `FormatMarker`, which carries that declaration itself — and the
+              property is INHERITED, so "we did not ask for a transform" holds
+              only until an ancestor asks for one. Two elements on this very
+              page transform their labels. A name shouted or flattened here is
+              published to every visitor at once.
+            */}
+            <p className="text-muted text-sm normal-case">
+              {isPast
+                ? `No past events for ${activeFormat.name}`
+                : `Nothing announced for ${activeFormat.name}`}
+            </p>
+            {/*
+              Clears the format and keeps the tab. Deliberately NOT in the
+              interaction accent: that hue is reserved for the active tab, the
+              lineup pills, the venue link and the focus ring, and the format
+              axis never borrows it.
+            */}
+            <Link
+              href={isPast ? "/events?tab=past" : "/events"}
+              className="mt-2 inline-block text-sm text-foreground underline underline-offset-4 transition-opacity active:opacity-80"
+            >
+              Show all events
+            </Link>
+          </>
+        ) : isPast ? (
+          <p className="text-muted text-sm">No past events yet</p>
+        ) : (
+          <>
+            <p className="text-muted text-sm">No upcoming events</p>
+            <p className="text-muted text-sm">Check back soon.</p>
+          </>
+        )}
+      </div>
     );
   }
 
@@ -87,6 +184,45 @@ function EventList({ events, isPast }: { events: EventCard[]; isPast: boolean })
               <p className="mb-1 text-sm text-muted">
                 {formatDateRange(event.start_date, event.end_date)}
               </p>
+              {/*
+                The format row sits BETWEEN the date and the title, because the
+                format is the source of the name and the title is free text
+                beneath it. One marker per distinct format, in the order the
+                page collected them (`sort_order`), duplicates already
+                collapsed: a double bill is one piece with two names, which is
+                how it is communicated, so two nights of one format make one
+                marker.
+
+                The name each marker shows was decided by the page's venue
+                gate, not here. Nothing on this card renders a stored figure or
+                a raw internal code, and neither ever reaches this component:
+                the page does not fetch them.
+              */}
+              {event.formats.length > 0 && (
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  {event.formats.map((format, i) => (
+                    <span
+                      key={format.slug}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      {/*
+                        The joiner is supplied by the UI and is the brand's own
+                        form for a double bill. It is `aria-hidden` because it
+                        is punctuation between two names, not a name. The
+                        lower-case letter that appears INSIDE a series name is
+                        a different glyph and comes from the stored string — it
+                        is never synthesised here.
+                      */}
+                      {i > 0 && (
+                        <span aria-hidden="true" className="text-xs text-muted">
+                          &#215;
+                        </span>
+                      )}
+                      <FormatMarker name={format.name} color={format.color} />
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-base font-semibold">{event.title}</h3>
                 {event.is_draft && (
@@ -133,7 +269,13 @@ export default function EventTabs({
   upcoming,
   past,
   activeTab: activeTabFromUrl = "upcoming",
+  activeFormat = null,
 }: EventTabsProps) {
+  const router = useRouter();
+  // The pending flag is deliberately not read: nothing on this page waits for
+  // the navigation, which is the entire reason the navigation is in here.
+  const [, startTabNavigation] = useTransition();
+
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">(activeTabFromUrl);
   const [dragX, setDragX] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -141,8 +283,80 @@ export default function EventTabs({
   const locked = useRef<"horizontal" | "vertical" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // The object identity of the prop changes on every render; the slug does
+  // not. Depending on the string is what keeps the callbacks below stable.
+  const activeFormatSlug = activeFormat?.slug ?? null;
+
   // Base offset: 0% for upcoming, -50% for past
   const baseOffset = activeTab === "upcoming" ? 0 : -50;
+
+  // What makes a SHARED LINK and the BACK BUTTON work. The address is the
+  // source of truth between renders; the local state is the source of truth
+  // during a gesture. This is the line that reconciles them, and without it
+  // going Back would move the address while the panel stayed put.
+  useEffect(() => {
+    setActiveTab(activeTabFromUrl);
+  }, [activeTabFromUrl]);
+
+  // ===========================================================================
+  // Every tab change does BOTH things, and the order is the whole design
+  // ===========================================================================
+  //
+  //   1. `setActiveTab` immediately, so the panel translates at the speed of a
+  //      finger. `baseOffset` is derived from this state and from nothing
+  //      else, so the animation never waits on anything.
+  //   2. `router.replace` INSIDE A TRANSITION, so the address follows without
+  //      the navigation blocking the gesture. `/events` is a Request-time
+  //      page: a navigation here is a real round trip, and a swipe that waits
+  //      on the network is a broken swipe on the page that is the shop window.
+  //
+  // Both lists stay props, so the navigation does not change what this
+  // component holds and the re-render costs nothing on the content.
+  //
+  // `replace` and NOT `push`: a view toggle is not a destination, and
+  // `handleTouchEnd` can fire on every gesture, which would fill the history
+  // stack with the same page. The format chips are the opposite case — choosing
+  // a format is a deliberate act worth a Back — and they push, from anchors, in
+  // `FormatFilterRow`.
+  //
+  // THE ADDRESS IS WRITTEN HERE AND READ NOWHERE HERE. The tab arrives as a
+  // prop, resolved once by the Server Component; this file holds no client-side
+  // reader of the query string, deliberately. Reading it here would force a
+  // `<Suspense>` boundary and move the read out of the single construction path
+  // this phase requires — one query, one path, the same row for everybody.
+  //
+  // Each href is a template literal AT THE CALL SITE, with a ternary so every
+  // branch is one: a bare `string` variable does not compile under this
+  // project's typed routes. The other axis is carried through, and a default is
+  // never written into the address — the canonical bare address stays
+  // `/events`.
+  const goToTab = useCallback(
+    (tab: "upcoming" | "past") => {
+      setIsAnimating(true);
+      setDragX(0);
+      setActiveTab(tab);
+      setTimeout(() => setIsAnimating(false), 300);
+
+      startTabNavigation(() => {
+        if (tab === "past") {
+          router.replace(
+            activeFormatSlug
+              ? `/events?format=${encodeURIComponent(activeFormatSlug)}&tab=past`
+              : "/events?tab=past",
+            { scroll: false }
+          );
+        } else {
+          router.replace(
+            activeFormatSlug
+              ? `/events?format=${encodeURIComponent(activeFormatSlug)}`
+              : "/events",
+            { scroll: false }
+          );
+        }
+      });
+    },
+    [router, activeFormatSlug]
+  );
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isAnimating) return;
@@ -179,30 +393,21 @@ export default function EventTabs({
     const threshold = 80;
 
     if (dragX < -threshold && activeTab === "upcoming") {
-      setIsAnimating(true);
-      setDragX(0);
-      setActiveTab("past");
-      setTimeout(() => setIsAnimating(false), 300);
+      goToTab("past");
     } else if (dragX > threshold && activeTab === "past") {
-      setIsAnimating(true);
-      setDragX(0);
-      setActiveTab("upcoming");
-      setTimeout(() => setIsAnimating(false), 300);
+      goToTab("upcoming");
     } else {
       setDragX(0);
     }
 
     touchStart.current = null;
     locked.current = null;
-  }, [dragX, activeTab, isAnimating]);
+  }, [dragX, activeTab, isAnimating, goToTab]);
 
   const switchTab = useCallback((tab: "upcoming" | "past") => {
     if (isAnimating || tab === activeTab) return;
-    setIsAnimating(true);
-    setDragX(0);
-    setActiveTab(tab);
-    setTimeout(() => setIsAnimating(false), 300);
-  }, [isAnimating, activeTab]);
+    goToTab(tab);
+  }, [isAnimating, activeTab, goToTab]);
 
   const viewportWidth = containerRef.current?.offsetWidth ?? 1;
   const dragPercent = (dragX / viewportWidth) * 50;
@@ -252,10 +457,10 @@ export default function EventTabs({
           }}
         >
           <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60vh" }}>
-            <EventList events={upcoming} isPast={false} />
+            <EventList events={upcoming} isPast={false} activeFormat={activeFormat} />
           </div>
           <div className="w-1/2 shrink-0 min-w-0 px-6 pb-4" style={{ minHeight: "60vh" }}>
-            <EventList events={past} isPast={true} />
+            <EventList events={past} isPast={true} activeFormat={activeFormat} />
           </div>
         </div>
       </div>

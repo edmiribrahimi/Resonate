@@ -150,8 +150,14 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // AND NO REDIRECT, deliberately. If an unknown slug redirected and a known
   // one did not, the redirect itself would answer *"is this a real format?"*
   // one probe at a time. Uniform behaviour gives no oracle.
-  const activeFormat =
-    formatOptions.find((f) => f.slug === formatParam)?.slug ?? null;
+  //
+  // Resolved to the ROW rather than to the slug, because two children need two
+  // different halves of it: the chip row compares the slug, and a filtered
+  // empty state reads the name back to the visitor. One lookup, one answer —
+  // two lookups would be two places for the allow-list to drift apart.
+  const activeFormatOption =
+    formatOptions.find((f) => f.slug === formatParam) ?? null;
+  const activeFormat = activeFormatOption?.slug ?? null;
 
   let upcoming: EventCard[] = [];
   let past: EventCard[] = [];
@@ -398,12 +404,23 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         />
       </AnimatedSection>
 
-      {/* The two filtered arrays and the tab the address asked for. Nothing
-          else crosses this boundary: no total, no per-format tally, no "how
-          many were hidden". A child cannot render a number it was never
-          given. */}
+      {/* The two filtered arrays, the tab the address asked for, and the two
+          fields of the active format — its slug, so every tab href preserves
+          the other axis, and its name, so a filtered empty state can say which
+          format it is empty for. Nothing else crosses this boundary: no total,
+          no per-format tally, no "how many were hidden". A child cannot render
+          a number it was never given. */}
       <AnimatedSection delay={0.1}>
-        <EventTabs upcoming={upcoming} past={past} activeTab={activeTab} />
+        <EventTabs
+          upcoming={upcoming}
+          past={past}
+          activeTab={activeTab}
+          activeFormat={
+            activeFormatOption
+              ? { slug: activeFormatOption.slug, name: activeFormatOption.name }
+              : null
+          }
+        />
       </AnimatedSection>
 
       {/* Presentation only. Cast at the page boundary because MobileNav is a
