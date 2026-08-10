@@ -434,7 +434,14 @@ export default function EventForm({
       const result = await action(formData);
 
       if (result.success) {
-        router.push("/organizer/events");
+        // The collapsed events surface. This was `/organizer/events` until plan
+        // 34-11 merged the two lists into one address; that page no longer
+        // exists, so `typedRoutes` refuses the old literal — which is how this
+        // line was found, since no grep on a module path can see an address.
+        // Not left to the redirect table on purpose: this is the destination
+        // after creating or editing an event, and D-34-15 flips those redirects
+        // to a 308 the browser caches and does not come back from.
+        router.push("/admin/events");
       } else {
         setError(result.error ?? "Something went wrong.");
       }

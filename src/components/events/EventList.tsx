@@ -21,26 +21,42 @@ interface EventItem {
 interface EventListProps {
   events: EventItem[];
   showCreator?: boolean;
-  /**
-   * Narrowed from `string` to the two addresses that are actually passed
-   * (plan 34-01). This is what lets the six hrefs below stay UNANNOTATED and
-   * still be checked: form 2 of the plan — `<Link>` is generic, so `RouteType`
-   * is inferred from the template, and the dynamic arm of `RouteImpl`
-   * resolves. With `basePath: string` the same templates widen to
-   * `${string}/${string}/edit`, which checks nothing and is exactly what
-   * `typedRoutes` refused.
-   *
-   * The `/organizer/events` default survives this task deliberately: deleting
-   * it belongs to plan 34-11, and doing it here would touch a file that plan
-   * rewrites.
-   */
-  basePath?: "/organizer/events" | "/admin/events";
 }
 
+/**
+ * ── The tree-prefix prop is gone, and the six hrefs below stay UNANNOTATED ────
+ *
+ * There were two events surfaces and this component was shared by both, so it
+ * took the tree it was being drawn in as a prop. Plan 34-01 narrowed that prop
+ * from `string` to the two literals actually passed; plan 34-11 collapsed the
+ * surfaces, which left it with **one caller and one value**. A prop nobody can
+ * vary is an option nobody has, and options nobody has are where the next
+ * divergence starts — so the one surviving address is inlined instead.
+ *
+ * That inlining is what makes the six hrefs checkable, and the check is
+ * `<Link>`'s inference rather than an annotation. Measured 2026-08-09 against
+ * the generated `.next/types/link.d.ts` of `next@16.1.6`: the bare route type is
+ * parameterised by `string`, and `RouteImpl`'s dynamic arm collapses to `never`
+ * when it is — so annotating one of these templates with it is a TS2322, while
+ * passing the same template straight to `<Link>` compiles and a template with a
+ * bogus final segment does not. `Link` is generic
+ * (`Link<RouteType>(props: LinkProps<RouteType>)`), so `RouteType` is inferred
+ * from the template and the dynamic arm resolves.
+ *
+ * **So do not annotate these hrefs, and above all do not cast them to the route
+ * type.** The annotation does not compile, and the cast that would make it
+ * compile switches the check off entirely — which is the outcome this note
+ * exists to prevent. A stale link in this component is a build error today; a
+ * cast would demote it to a 404 found by whoever clicks it.
+ *
+ * The tokens this paragraph deliberately does not spell — the prop's name, and
+ * the cast — are the ones the plan's acceptance criteria grep this file for.
+ * Plans 34-03 and 34-06 both recorded the same self-inflicted failure: a
+ * criterion a comment can defeat is a criterion nobody can run.
+ */
 export default function EventList({
   events,
   showCreator = false,
-  basePath = "/organizer/events",
 }: EventListProps) {
   const [isPending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -173,42 +189,42 @@ export default function EventList({
           {/* Actions */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <Link
-              href={`${basePath}/${event.id}/edit`}
+              href={`/admin/events/${event.id}/edit`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Edit
             </Link>
 
             <Link
-              href={`${basePath}/${event.id}/tickets`}
+              href={`/admin/events/${event.id}/tickets`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Manage Tickets
             </Link>
 
             <Link
-              href={`${basePath}/${event.id}/sales`}
+              href={`/admin/events/${event.id}/sales`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Sales
             </Link>
 
             <Link
-              href={`${basePath}/${event.id}/guest-list`}
+              href={`/admin/events/${event.id}/guest-list`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Guest List
             </Link>
 
             <Link
-              href={`${basePath}/${event.id}/media`}
+              href={`/admin/events/${event.id}/media`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Media
             </Link>
 
             <Link
-              href={`${basePath}/${event.id}/analytics`}
+              href={`/admin/events/${event.id}/analytics`}
               className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
             >
               Analytics
