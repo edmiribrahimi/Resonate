@@ -438,10 +438,13 @@ export async function updateSession(request: NextRequest) {
   // `/organizer` is gone from this list, and it is dead rather than relaxed: a
   // `/organizer/*` address answers with a redirect emitted in
   // `src/middleware.ts` before `updateSession` is called, so no such request
-  // reaches this line. Measured — the redirect table's fifteen rows are exactly
-  // the fifteen `page.tsx` files under `src/app/(organizer)`, one for one, so
-  // every organizer address that renders anything is translated first and every
-  // other one is a 404 with no page behind it.
+  // reaches this line. Measured while the second tree still stood — the
+  // redirect table's fifteen rows were exactly its fifteen `page.tsx` files,
+  // one for one — so every organizer address that ever rendered anything is
+  // translated first and every other one is a 404 with no page behind it. The
+  // tree itself was deleted in plan 34-15; the redirect table is now the only
+  // record of what those fifteen addresses were, which is why it is walked
+  // rather than trusted (`scripts/verify-organizer-redirects.sh`).
   //
   // The other four are all still real and are untouched. This is a **prefix**
   // test and it stays one, deliberately: it decides only whether an anonymous
