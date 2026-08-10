@@ -309,7 +309,12 @@ export default function VenueRevealPanel({
         )}
       </div>
 
-      <VenueRevealTrace acts={state?.acts ?? []} loading={panel.phase === "loading"} />
+      {/*
+        The phase travels, not a boolean. An unread trace and an empty one are
+        different facts and the list must not print the same sentence for both —
+        see the component.
+      */}
+      <VenueRevealTrace acts={state?.acts ?? []} phase={panel.phase} />
 
       {/*
         Taking a night back to secret is a SEPARATE, secondary act — not an undo
@@ -362,14 +367,33 @@ export default function VenueRevealPanel({
  *
  * Most recent first. A re-hide **adds** a line, it does not remove the reveal
  * above it: after taking a night back to secret this list still reads
- * *Revealed — … — <name>*, which is the condition D-37-22 was granted on.
+ * *Revealed — … — <name>* while the button has gone back to *Reveal now*, and
+ * that pair is the condition D-37-22 was granted on. It is therefore mounted
+ * **outside** every `revealed` guard, deliberately: a trace that disappeared
+ * with the state it records would leave the page saying one thing and the mails
+ * that went out saying another.
+ *
+ * ── Three states, not two, and the third is the reason this is a component ───
+ *
+ * `loading`, `unread` and `empty` used to be two: a failed read arrived here as
+ * an empty array and printed *"Nothing has been done to this night's venue
+ * yet."* — an **affirmative sentence, stated as fact, about a night whose
+ * history nobody could read**. The red box above said the read had failed and
+ * this line contradicted it one paragraph down; on an already-revealed night it
+ * is the sentence that invites the second press D-37-19 exists to prevent.
+ *
+ * It is the same defect this phase removed twice underneath — `no_recipients`
+ * against `recipients_unavailable` in the sender, then `unavailable` on the
+ * count — surfacing a third time in the **view**. `venue-secrecy.md`, gate
+ * *default chiuso*: an undeterminable state is not an empty one, and that holds
+ * for a sentence on a screen exactly as it holds for a number in a column.
  */
 function VenueRevealTrace({
   acts,
-  loading,
+  phase,
 }: {
   readonly acts: readonly VenueRevealLastAct[];
-  readonly loading: boolean;
+  readonly phase: PanelState["phase"];
 }) {
   return (
     <div className="mt-5 border-t border-card-border pt-4">
@@ -377,12 +401,18 @@ function VenueRevealTrace({
         Acts on this night
       </h4>
 
-      {loading ? (
+      {phase === "loading" ? (
         <p className="mt-2 text-xs text-muted">Reading…</p>
+      ) : phase === "failed" ? (
+        <p className="mt-2 text-xs text-red-400">
+          The trace could not be read, so what has been done to this night is
+          unknown. This is NOT “nothing has been done”: if this night has
+          already been revealed, that act happened and this list cannot show it.
+          Reload before deciding anything.
+        </p>
       ) : acts.length === 0 ? (
-        // An empty trace and an unread trace are not the same thing, and they
-        // are not drawn the same way: an unread one takes the red box above and
-        // the button goes out with it.
+        // Reached only on a successful read, so the sentence is a measurement
+        // and may be stated as one.
         <p className="mt-2 text-xs text-muted">
           Nothing has been done to this night&apos;s venue yet.
         </p>
