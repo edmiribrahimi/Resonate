@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Completed 36-11-PLAN.md
-last_updated: "2026-08-10T15:30:01.419Z"
+stopped_at: Completed 36-12-PLAN.md
+last_updated: "2026-08-10T15:34:19.481Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 102
+  completed_plans: 103
   percent: 46
 ---
 
@@ -32,7 +32,7 @@ Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format 
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 9 of 14
+Plan: 10 of 14
 Status: Ready to execute
 
 Note:
@@ -87,7 +87,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 96%
+Progress: [██████████] 97%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -153,8 +153,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T15:29:42.503Z
-**Stopped at:** Completed 36-11-PLAN.md
+**Last session:** 2026-08-10T15:34:19.478Z
+**Stopped at:** Completed 36-12-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
