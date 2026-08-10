@@ -4,13 +4,13 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T20:22:47.896Z"
-last_activity: 2026-08-10 -- Phase 37 execution started
+last_updated: "2026-08-10T21:11:31.158Z"
+last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 119
-  completed_plans: 106
+  completed_plans: 111
   percent: 54
 ---
 
@@ -32,11 +32,11 @@ Phase: 37 (manual-venue-reveal) — EXECUTING
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 1 of 13
+Plan: 3 of 13
 (contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
 uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
 indietro di due. Corretto sul conteggio dei file, non su una stima.
-Status: Executing Phase 37
+Status: Ready to execute
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -82,7 +82,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-10 -- Phase 37 execution started
+Last activity: 2026-08-10
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -90,7 +90,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -135,6 +135,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: V3: la serata seminata porta number NULL, contro un criterio del piano che lo vuole non nullo — bump_series_watermark alza highest_assigned con GREATEST e non lo abbassa mai, nemmeno cancellando la serata: un numero avrebbe lasciato un salto permanente nel progressivo di una serie, prodotto da un test, su una delle tre guardie monotone. Il campo non e' obbligatorio e il form dichiara quella forma nel placeholder.
 - [Phase ?]: D-36-19 onorata: i sei FMT-* spuntati una volta sola, dalla verifica di fase, con l'evidenza accanto a ciascuno
 - [Phase ?]: nyquist_compliant di fase 36 resta false: cinque requisiti su sei si provano solo a mano
+- [Phase 37]: applicata SOLO la prima delle due migration in produzione (versione 20260810210214). 20260810161000_venues_read_narrowed.sql resta applicata a zero per scelta del proprietario: revocare anon su public.venues rompe le pagine pubbliche SENZA deploy (sono tutte dinamiche) mentre la riparazione (37-05/37-06) ne richiede uno, e il ramo di lavoro e' 181 commit avanti a origin/main
+- [Phase 37]: Inventario cascate corretto: 18 tabelle da event_parties, non 17 — discount_code_tiers arriva a due salti, via discount_codes e via ticket_tiers
 
 ## Accumulated Context
 
@@ -165,7 +167,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T18:21:38.978Z
+**Last session:** 2026-08-10T21:11:24.429Z
 **Stopped at:** Phase 37 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.

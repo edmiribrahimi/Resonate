@@ -477,12 +477,12 @@ Plans:
   3. A completed manual reveal records who triggered it and when, visible to the staff entitled to see it
   4. A second reveal attempt on a night already revealed changes nothing and says so — the switch stays one-way
 
-**Plans:** 4/13 plans executed
+**Plans:** 5/13 plans executed
 
 Plans:
 - [x] 37-01-PLAN.md — lo schema dell'atto: la tredicesima chiave, l'istante, la traccia append-only e lo scrittore atomico
 - [x] 37-02-PLAN.md — la lettura anonima degli indirizzi chiusa, e la funzione che concede per titolo
-- [ ] 37-03-PLAN.md — [BLOCKING] le due migration applicate in produzione, i tipi allineati
+- [x] 37-03-PLAN.md — [BLOCKING] le due migration applicate in produzione, i tipi allineati
 - [x] 37-04-PLAN.md — la finestra di 25 ore in un posto solo, e il pavimento che dice perche'
 - [ ] 37-05-PLAN.md — la fuga nel payload RSC della lista eventi
 - [ ] 37-06-PLAN.md — il modello a tre livelli sulla pagina della serata, e il gate di casa riscritto
@@ -589,7 +589,7 @@ Plans:
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
-| 37. Manual Venue Reveal | 4/13 | In Progress|  |
+| 37. Manual Venue Reveal | 5/13 | In Progress|  |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
