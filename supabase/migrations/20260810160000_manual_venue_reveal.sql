@@ -1,5 +1,6 @@
 -- The manual venue reveal — the key that authorises it, the fact that records
--- it, and the trace that attributes it
+-- it, the trace that attributes it, and the one writer that may perform any of
+-- the three acts
 -- Phase 37, Plan 01: VENUE-02, with D-37-13 … D-37-22 written beside the lines
 -- that implement them
 --
@@ -14,29 +15,50 @@
 --    with its author BY NAME (D-37-18) and how many people it meant to reach
 -- 4. RLS on that table: enabled, one SELECT policy, and DELIBERATELY no write
 --    policy
+-- 5. public.record_venue_reveal_act(...) — the SECURITY DEFINER writer that
+--    performs the `event_parties` write and the trace insert in ONE transaction,
+--    and is executable by `service_role` alone
 --
--- Four changes, ONE transaction. A half-applied version of this file is strictly
+-- Five changes, ONE transaction. A half-applied version of this file is strictly
 -- worse than none of it, and each half is bad in its own way:
 --
 --   * the capability without the rest is a thirteenth key that
 --     `scripts/verify-capabilities.mjs` and `src/lib/capabilities/keys.ts` both
 --     hold, all three agreeing about a permission over nothing;
---   * the column without the trace is a night that can say *the address went
---     out* and cannot say who let it out — the untraced act D-37-17 forbids;
---   * the trace without the column records acts about a fact that does not
---     exist, so the surface has nothing to render the button's state from;
+--   * the column without the writer is a fact nothing can set, so the page
+--     predicate D-37-19 depends on is permanently NULL and the button never
+--     turns off — on an act that cannot be undone;
+--   * the trace without the writer is a register with no writer, and since the
+--     table has no write policy at all it would be permanently empty — which
+--     reads, to anybody who opens it, as *no address has ever been let out*;
+--   * the writer without the trace raises `42P01` at the moment somebody presses
+--     the button, which is the worst possible moment for this particular button:
+--     the operator learns the act failed and has no way to learn whether the
+--     mail left;
 --   * the trace without its RLS is the whole register readable by anyone holding
---     the anonymous key, which is a list of which nights are no longer secret.
+--     the anonymous key, which is a list of which nights are no longer secret;
+--   * the writer without its REVOKE is a `SECURITY DEFINER` writer of
+--     `public.event_parties.venue_revealed_at` reachable by any authenticated
+--     session, which is a path to publishing an address and not a partial
+--     feature.
 --
 -- So `BEGIN; ... COMMIT;` is not decoration here either.
 --
--- WHAT THIS FILE DOES NOT YET CONTAIN, so the gap is not read as an oversight:
--- **the writer**. Nothing can set the column or insert into the trace until
--- `public.record_venue_reveal_act` lands in the next commit of this same plan.
--- Until it does, the table has no write policy and no function, so it is
--- permanently empty BY CONSTRUCTION — which is the correct state for a register
--- of acts nobody has been able to perform yet, and not a defect to repair with a
--- policy.
+-- WHY A `SECURITY DEFINER` WRITER AT ALL, since the obvious thing is a
+-- PostgREST `.update()` from the organizer's own session. It does not work, and
+-- the reason is a policy that already exists: `event_parties_update_own`
+-- (`20260807020000_wrap_auth_uid.sql:145-155`) requires `staff.manage` AND
+-- (master OR owner of the parent event). D-37-13 wants precisely the organizer
+-- who did NOT create the night — the person who created it can be unreachable on
+-- exactly the Friday the button exists for. The early symptom of getting this
+-- wrong is *"it works in development"*, where whoever is testing is almost
+-- always the owner.
+--
+-- AND WHY ONE FUNCTION AND NOT TWO CALLS. Two PostgREST calls cannot be atomic,
+-- so a reveal that succeeded while its trace failed is representable — and it is
+-- the ONE outcome D-37-17 exists to forbid. It would also be invisible: this
+-- product has no error tracking (`meta-gates.md`), so nothing would report the
+-- divergence and the night would show an address let out by nobody.
 --
 -- ── IDEMPOTENZA, voce per voce ──────────────────────────────────────────────
 --
@@ -45,7 +67,11 @@
 --     a second run cannot rewrite an existing value;
 --   * `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`;
 --   * `DROP POLICY IF EXISTS` before the policy;
---   * `COMMENT ON COLUMN` is a replacement by construction.
+--   * `CREATE OR REPLACE` for the function — the idempotent form for an object
+--     that cannot take `IF NOT EXISTS`;
+--   * `COMMENT ON COLUMN` and `COMMENT ON FUNCTION` are replacements by
+--     construction;
+--   * `REVOKE` and `GRANT` are idempotent by nature.
 --
 -- Ri-eseguire deve essere sicuro, o nessuno ri-esegue quando dovrebbe.
 
@@ -289,5 +315,303 @@ CREATE POLICY venue_reveal_acts_select_staff ON public.venue_reveal_acts
 -- records edit it. Two other tables in this repository omit their write policies
 -- on purpose, for the same reason: `20260805120000_door_scan_events.sql:158-163`
 -- and `20260808002000_membership_register.sql:337-349`.
+
+-- =============================================================================
+-- 5. public.record_venue_reveal_act — the write and its trace, one transaction
+-- =============================================================================
+--
+-- ── WHY ONE FUNCTION AND NOT THREE ──────────────────────────────────────────
+--
+-- It covers revealing, completing and re-hiding. Three functions of the same
+-- shape diverge: the day somebody adds a check, a lock or a refusal rule, they
+-- add it to the one they were looking at. The `p_act` argument is what keeps the
+-- three branches in one file, under one grant, under one comment.
+--
+-- ── WHY THE ACTOR IS AN ARGUMENT AND NOT `auth.uid()` ───────────────────────
+--
+-- Every path that reaches this function goes through the SERVICE client, under
+-- which `auth.uid()` is **null** (measured, `32-06-SUMMARY.md` § F1, quoted at
+-- `src/lib/capabilities/server.ts:26-29`). A trigger or an internal
+-- `auth.uid()` would record NOBODY, on every act, which is precisely the
+-- unattributed act D-37-18 forbids. The actor is resolved server-side by the
+-- caller and passed in — and the caller cannot lie about the one thing that
+-- matters, because the ROLE is read here (see the `re_hidden` branch) and never
+-- accepted as an argument.
+--
+-- ── WHY THE REFUSALS ARE RETURNED VALUES AND NOT EXCEPTIONS ─────────────────
+--
+-- This is the divergence from `record_party_assignment_act`, and it is not
+-- style. On a constraint violation PostgREST returns the ENTIRE failing row in
+-- `error.details` (`20260808001000_role_implies_approved.sql:194-201`). The
+-- failing row here is a row of `public.event_parties`, which carries
+-- `venue_text`, `venue_id`, `venue_secret_hint` and every reveal parameter. A
+-- refusal that hands back the address is a self-inflicted disclosure by the very
+-- function written to control the address, and it is one careless
+-- `console.error(error)` away from a log. So the guards below are `RETURN`s, and
+-- there is no `error` object for anybody to log by mistake.
+--
+-- ── WHAT IS DELIBERATELY NOT READ HERE ──────────────────────────────────────
+--
+-- `venue_text`, `venue_id`, `venue_secret_hint` and the actor's email. Any of
+-- them would be one interpolation away from a `RAISE EXCEPTION`, and a raised
+-- message reaches a log and a log reaches a screenshot on a PUBLIC repository.
+-- The two messages below name an IDENTIFIER and nothing else.
+--
+-- ── WHAT NO BRANCH TOUCHES: `venue_reveal_email_sent` ───────────────────────
+--
+-- That column means *the mails left*, and once they have left they have left.
+-- `meta-gates.md` names it as one of this product's three one-way switches, and
+-- lowering it in the `re_hidden` branch is the obvious-looking edit this
+-- paragraph exists to refuse: D-37-22 authorises the PAGE going back to secret,
+-- never the pretence that the send never happened. A night coming back from
+-- `re_hidden` is a night whose address is already in fifty inboxes, and a flag
+-- that said otherwise would send the cron out to mail it again.
+--
+-- `SET search_path = ''` with every reference schema-qualified, per
+-- `20260807000000_capability_model.sql:166-171`: a SECURITY DEFINER function
+-- with a mutable search_path lets the CALLER choose which `event_parties` the
+-- definer reads.
+--
+-- THE RETURN CONTRACT, which the server action of plan 37-10 and the surface of
+-- plan 37-11 read:
+--
+--   success  {"ok": true,  "act_id": "<uuid>", "revealed_at": <timestamptz|null>}
+--   refusal  {"ok": false, "reason": "<code>", "revealed_at": <timestamptz|null>}
+--
+--   reasons  party_not_found · not_secret · already_revealed · not_revealed ·
+--            re_hide_requires_master
+
+CREATE OR REPLACE FUNCTION public.record_venue_reveal_act(
+  p_party_id            uuid,
+  p_act                 text,
+  p_actor_id            uuid,
+  p_actor_name          text,
+  p_recipients_intended integer
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_venue_secret  boolean;
+  v_revealed_at   timestamptz;
+  v_event_title   text;
+  v_party_date    date;
+  v_actor_role    text;
+  v_act_id        uuid;
+BEGIN
+  -- ── 1. The argumental refusals, first, each with its own name ─────────────
+  --
+  -- These are PROGRAMMING errors, not user paths: no surface can produce them,
+  -- and a caller cannot recover from one. They are exceptions rather than
+  -- returned values for exactly that reason — and neither of them touches a row
+  -- of `public.event_parties`, so neither can carry an address in
+  -- `error.details`.
+
+  IF p_act NOT IN ('revealed', 'completed', 're_hidden') THEN
+    RAISE EXCEPTION 'venue_reveal.unknown_act: %', p_act
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- An unattributed reveal is refused HERE, with its own name, rather than
+  -- downstream. Without this it still fails — `actor_name` is NOT NULL and its
+  -- CHECK refuses blank — but it fails as two different codes depending on
+  -- which half is missing, and a caller cannot branch on the CAUSE. The message
+  -- names the PARTY and never the actor: a person's name in a raised message is
+  -- the one thing this table's own column is authorised to hold and its
+  -- artefacts are not.
+  IF p_actor_id IS NULL OR btrim(coalesce(p_actor_name, '')) = '' THEN
+    RAISE EXCEPTION 'venue_reveal.actor_required: %', p_party_id
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- ── 2. The night, as it is IN THIS STATEMENT ──────────────────────────────
+  --
+  -- `FOR UPDATE OF ep` is not caution. Two people pressing the button within the
+  -- same second is the ordinary case this exists to close: without the lock both
+  -- read `venue_revealed_at IS NULL`, both pass the guard, and the address is
+  -- mailed twice by two acts each believing it was the first. `OF ep` and not a
+  -- bare `FOR UPDATE`, so the join to `public.events` does not lock the event
+  -- row as well — a night is revealed while its event is being edited, and
+  -- neither should wait on the other.
+  SELECT ep.venue_secret, ep.venue_revealed_at, ep.date, e.title
+    INTO v_venue_secret, v_revealed_at, v_party_date, v_event_title
+    FROM public.event_parties ep
+    JOIN public.events e ON e.id = ep.event_id
+   WHERE ep.id = p_party_id
+     FOR UPDATE OF ep;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'party_not_found',
+      'revealed_at', NULL
+    );
+  END IF;
+
+  -- ── 3. The guards, as VALUES ──────────────────────────────────────────────
+
+  IF p_act = 'revealed' THEN
+
+    -- A night that was never secret has no address to release. This is not a
+    -- no-op to be swallowed: it means the surface and the database disagree
+    -- about what this night is, and the operator is looking at a button that
+    -- should not have been there.
+    IF NOT coalesce(v_venue_secret, false) THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 'not_secret',
+        'revealed_at', v_revealed_at
+      );
+    END IF;
+
+    -- D-37-19: the second press gets an ANSWER, not silence. `revealed_at`
+    -- travels back in the refusal precisely so the surface can say *when*, which
+    -- is what turns a dead button into a record of what already happened.
+    IF v_revealed_at IS NOT NULL THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 'already_revealed',
+        'revealed_at', v_revealed_at
+      );
+    END IF;
+
+  ELSIF p_act = 'completed' THEN
+
+    -- D-37-20 sends to the people the first act missed. There is nothing to
+    -- complete before something has begun, and calling this on a night that was
+    -- never revealed would record a publication with no first publication —
+    -- a trace that reads backwards a season later.
+    IF v_revealed_at IS NULL THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 'not_revealed',
+        'revealed_at', NULL
+      );
+    END IF;
+
+  ELSE  -- p_act = 're_hidden'
+
+    IF v_revealed_at IS NULL THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 'not_revealed',
+        'revealed_at', NULL
+      );
+    END IF;
+
+    -- D-37-22: master alone. **THE ROLE IS READ HERE AND IS NOT AN ARGUMENT.**
+    -- A `p_actor_role text` parameter would let whoever calls declare their own
+    -- role, which on a function reachable only by `service_role` sounds
+    -- harmless right up to the day a second caller is written by somebody who
+    -- read the signature and not this paragraph. A missing profile falls through
+    -- to the same refusal: `v_actor_role` stays NULL and NULL is not 'master'.
+    SELECT p.role
+      INTO v_actor_role
+      FROM public.profiles p
+     WHERE p.id = p_actor_id;
+
+    IF v_actor_role IS DISTINCT FROM 'master' THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 're_hide_requires_master',
+        'revealed_at', v_revealed_at
+      );
+    END IF;
+
+  END IF;
+
+  -- ── 4. The row ────────────────────────────────────────────────────────────
+
+  IF p_act = 'revealed' THEN
+
+    UPDATE public.event_parties
+       SET venue_revealed_at = now()
+     WHERE id = p_party_id
+    RETURNING venue_revealed_at INTO v_revealed_at;
+
+  ELSIF p_act = 're_hidden' THEN
+
+    -- ── THE ONE WIDENING IN THIS FILE, AND IT IS DECLARED ──────────────────
+    --
+    -- `meta-gates.md` allows a monotone guard to be made easier to trip only
+    -- with an authorisation documented in the commit. This is that line:
+    -- clearing `venue_revealed_at` means a later `revealed` act no longer meets
+    -- `already_revealed`, so the same night can be revealed a second time. That
+    -- is D-37-22 as the owner decided it, and it is bounded by three things:
+    -- only a master reaches this branch, the trace of the first reveal cannot be
+    -- deleted, and the second reveal writes its own row beside the first.
+    --
+    -- The two columns this branch writes are the two it is allowed to write. The
+    -- column it must NOT write is named in the function docblock above, under
+    -- *WHAT NO BRANCH TOUCHES*, and the reason lives there rather than here so
+    -- that this branch cannot be read as the only place the rule applies.
+    UPDATE public.event_parties
+       SET venue_revealed_at = NULL,
+           venue_secret      = true
+     WHERE id = p_party_id;
+
+    v_revealed_at := NULL;
+
+  -- `completed` deliberately performs NO update. The instant of the reveal is
+  -- the instant of the FIRST act and it does not move: if a completing send
+  -- rewrote it, *who was there when the address went out* would drift forward
+  -- every time somebody topped up the recipients, and the count of who was
+  -- missing would be measured from the wrong moment.
+  END IF;
+
+  -- ── 5. The act, in the same transaction as the write above ────────────────
+  --
+  -- `party_label` is composed HERE, from the two values read under the lock at
+  -- step 2, and from nothing else. Neither `venue_text` nor `venue_id` nor
+  -- `venue_secret_hint` is in scope in this function — that is by construction
+  -- and not by discipline.
+  INSERT INTO public.venue_reveal_acts (
+    party_id, party_label, act, actor_id, actor_name, recipients_intended
+  ) VALUES (
+    p_party_id,
+    v_event_title || ' — ' || to_char(v_party_date, 'YYYY-MM-DD'),
+    p_act,
+    p_actor_id,
+    btrim(p_actor_name),
+    p_recipients_intended
+  )
+  RETURNING id INTO v_act_id;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'act_id', v_act_id,
+    'revealed_at', v_revealed_at
+  );
+END;
+$$;
+
+-- ── THE LOCK-DOWN, AND IT IS NOT OPTIONAL ───────────────────────────────────
+--
+-- This function is `SECURITY DEFINER` and it PUBLISHES ADDRESSES. PostgREST
+-- exposes functions in `public` by default and the exposed-schema list on this
+-- project is `public, graphql_public` (verified 2026-08-06), so without the two
+-- statements below it is live at `/rest/v1/rpc/record_venue_reveal_act` and any
+-- signed-in member can flip a night to revealed — which, once the surfaces of
+-- plans 37-04 and 37-11 read that flag, is an address on a public page.
+--
+-- REVOKE first and GRANT second, in that order and as two statements rather than
+-- assumed: Postgres grants EXECUTE to PUBLIC by default on every new function,
+-- so the GRANT alone would leave the default in place. Same shape as
+-- `20260809002000_assignment_acts.sql:485-489`.
+
+REVOKE ALL ON FUNCTION public.record_venue_reveal_act(uuid, text, uuid, text, integer)
+  FROM public, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.record_venue_reveal_act(uuid, text, uuid, text, integer)
+  TO service_role;
+
+COMMENT ON FUNCTION public.record_venue_reveal_act(uuid, text, uuid, text, integer) IS
+  'VENUE-02: performs the event_parties write and its venue_reveal_acts trace in ONE transaction, so an address cannot be released while the record of who released it fails — a divergence nothing in this product would report, since there is no error tracking. '
+  'ONE function for three acts, not three: three functions of the same shape diverge, and the next check gets added only to the one somebody was looking at. '
+  'The refusals are RETURNED VALUES and not exceptions, deliberately: on a constraint violation PostgREST returns the entire failing row in error.details, and the failing row here carries venue_text, venue_id and venue_secret_hint. '
+  'The actor is an argument because auth.uid() is null under the service client; the actor ROLE is read here from public.profiles and is never an argument, so a caller cannot declare itself master to reach the re_hidden branch (D-37-22). '
+  'venue_reveal_email_sent is not touched by any branch: re-hiding returns the page to secret, never the mails. '
+  'SECURITY DEFINER and it publishes addresses: execute is revoked from public, anon and authenticated, and granted to service_role alone.';
 
 COMMIT;
