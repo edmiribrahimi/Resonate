@@ -80,9 +80,216 @@ interface PartyInput {
   access_type: AccessType;
   capacity?: number | null;
   sort_order: number;
+  /** FMT-01. `NOT NULL` in the database — a night cannot be saved without one. */
+  format_id: string;
+  /** FMT-02. `NOT NULL`, and it must belong to `format_id` (composite key). */
+  series_id: string;
+  /**
+   * FMT-03, and **nullable on purpose**.
+   *
+   * A night that is the *act* of another night carries that night's format and
+   * series and no number of its own (§9a of the migration; one such row exists
+   * in production). `null` here is a real state, not a missing value.
+   */
+  number?: number | null;
 }
 
 const VALID_ACCESS_TYPES: AccessType[] = ["free_public", "free_rsvp", "paid"];
+
+/** The same shape as `[id]/assignments/actions.ts:85`. */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** PostgreSQL `not_null_violation`. */
+const NOT_NULL_VIOLATION = "23502";
+/** PostgreSQL `foreign_key_violation`. */
+const FOREIGN_KEY_VIOLATION = "23503";
+/** PostgreSQL `unique_violation`. */
+const UNIQUE_VIOLATION = "23505";
+/** PostgreSQL `check_violation`. */
+const CHECK_VIOLATION = "23514";
+
+/**
+ * The three constraint names phase 36 added to `public.event_parties`.
+ *
+ * They are matched against `error.message`, which carries the constraint name
+ * for both `23505` and `23503` — and **not** against the error's `details`
+ * field, which on a violation carries the entire rejected row
+ * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`).
+ */
+const DUPLICATE_NUMBER_CONSTRAINT = "event_parties_format_series_number_unique";
+const SERIES_FORMAT_CONSTRAINT = "event_parties_series_format_fk";
+const NUMBER_POSITIVE_CONSTRAINT = "event_parties_number_positive";
+
+/**
+ * Every way writing ONE night can be refused, one value each.
+ *
+ * ── Why a returned value and not a thrown message ────────────────────────────
+ *
+ * Next **redacts** the message of an error thrown out of a Server Action in a
+ * production build (`src/lib/capabilities/server.ts:59-63`). A client that
+ * branches on message text works in `next dev` and stops working where it
+ * counts. The category therefore travels as a value, modelled on
+ * `AssignmentRefusal` (`[id]/assignments/actions.ts:106-166`).
+ *
+ * There is no shared "something went wrong": the recorded precedent in this
+ * repository is the newsletter form collapsing three causes into one sentence
+ * (`.planning/codebase/CONCERNS.md`), and this product has **no error tracking**
+ * (`meta-gates.md`), so this returned value is the only place a refusal exists
+ * for a human.
+ *
+ * `sortOrder` is how the surface knows **which** night was refused. It is null
+ * only where the write was a bulk insert and the database named no row —
+ * `createEvent`; saying "one of these nights" is honest, guessing which is not.
+ */
+export type NightRefusal =
+  /**
+   * `event_parties_format_series_number_unique` — FMT-03, reached at the
+   * database.
+   *
+   * **Deliberately not pre-checked in the application.** Two people with two
+   * tabs open receive the same proposal from the series watermark; the second
+   * write has to be refused by something both of them are behind, and no
+   * application-level check is that thing (D-36-08). An app-side pre-check here
+   * would be a race condition with a reassuring face.
+   */
+  | {
+      kind: "duplicate_number";
+      sortOrder: number | null;
+      nightTitle: string | null;
+      seriesId: string | null;
+      number: number | null;
+    }
+  /**
+   * `event_parties_series_format_fk` — the chosen series does not belong to the
+   * chosen format.
+   *
+   * The form filters the series select by the chosen format, so this arriving
+   * is **evidence that the filtering has stopped working**. It gets its own
+   * value rather than hiding inside `write_failed` for exactly that reason: the
+   * day it is returned, a person needs to be told to reload rather than to
+   * retry.
+   */
+  | { kind: "series_format_mismatch"; sortOrder: number | null; nightTitle: string | null }
+  /**
+   * `event_parties_number_positive`, reached at the database.
+   *
+   * Practically unreachable now that `validateEventData` refuses a non-positive
+   * number first, and kept for that reason: the day it is returned, the
+   * application guard has stopped working and this value says so. The `CHECK`
+   * is the RULE; the guard is the SENTENCE A PERSON READS — one keeps the row
+   * from existing, the other tells the operator what happened instead of
+   * handing them a constraint name.
+   */
+  | { kind: "number_not_positive"; sortOrder: number | null; nightTitle: string | null; number: number | null }
+  /**
+   * `23502` on `format_id` or `series_id`.
+   *
+   * Both columns are `NOT NULL`. Reaching this means the form submitted a night
+   * without them — the fields were added to one of the three parallel shapes in
+   * `EventForm.tsx` and not the others.
+   */
+  | { kind: "catalogue_missing"; sortOrder: number | null; nightTitle: string | null }
+  /** A retired format on a night that did not already carry it (D-36-10). */
+  | { kind: "format_retired"; sortOrder: number | null; nightTitle: string | null }
+  /** A format id this caller cannot read. Unknown means refused, never assumed. */
+  | { kind: "format_unknown"; sortOrder: number | null; nightTitle: string | null }
+  /** Any other database failure. That night was not written. */
+  | { kind: "write_failed"; sortOrder: number | null; nightTitle: string | null; code: string | null };
+
+/** What every event write returns. `refusal` is present only when `success` is false. */
+export type EventWriteResult = {
+  success: boolean;
+  id?: string;
+  error?: string;
+  refusal?: NightRefusal;
+};
+
+/** The only shape of a PostgREST error this file reads. `details` is not in it, on purpose. */
+type WriteError = { code?: string | null; message?: string | null };
+
+/** Turn a database refusal of ONE night into a named category. */
+function classifyNightWriteError(
+  error: WriteError,
+  night: { sort_order: number; title: string; series_id: string; number?: number | null } | null
+): NightRefusal {
+  const sortOrder = night?.sort_order ?? null;
+  const nightTitle = night?.title?.trim() || null;
+  const code = error.code ?? null;
+  const message = error.message ?? "";
+
+  if (code === UNIQUE_VIOLATION && message.includes(DUPLICATE_NUMBER_CONSTRAINT)) {
+    return {
+      kind: "duplicate_number",
+      sortOrder,
+      nightTitle,
+      seriesId: night?.series_id ?? null,
+      number: night?.number ?? null,
+    };
+  }
+  if (code === FOREIGN_KEY_VIOLATION && message.includes(SERIES_FORMAT_CONSTRAINT)) {
+    return { kind: "series_format_mismatch", sortOrder, nightTitle };
+  }
+  if (code === CHECK_VIOLATION && message.includes(NUMBER_POSITIVE_CONSTRAINT)) {
+    return { kind: "number_not_positive", sortOrder, nightTitle, number: night?.number ?? null };
+  }
+  if (code === NOT_NULL_VIOLATION) {
+    return { kind: "catalogue_missing", sortOrder, nightTitle };
+  }
+  return { kind: "write_failed", sortOrder, nightTitle, code };
+}
+
+/**
+ * The one sentence per category, written here so the same words reach a caller
+ * that does not know the catalogue.
+ *
+ * `EventForm` upgrades `duplicate_number` with the series' own name, which it
+ * can do and this file cannot: the action holds a `series_id`, not a name, and
+ * reading one back purely to phrase an error would be a round trip on a path
+ * that is already refusing.
+ */
+function nightRefusalSentence(refusal: NightRefusal): string {
+  const where =
+    refusal.sortOrder !== null
+      ? `Sub-event ${refusal.sortOrder + 1}: `
+      : "";
+
+  switch (refusal.kind) {
+    case "duplicate_number":
+      return refusal.number !== null
+        ? `${where}number ${refusal.number} is already assigned in this series. Pick another.`
+        : `${where}one of these nights carries a number already assigned in its series. Pick another.`;
+    case "series_format_mismatch":
+      return `${where}that series does not belong to the chosen format. Reload the form and pick the series again.`;
+    case "number_not_positive":
+      return `${where}a series number must be a whole number of 1 or more.`;
+    case "catalogue_missing":
+      return `${where}this night reached the server without a format or a series. Reload the form and pick them again.`;
+    case "format_retired":
+      return `${where}that format has been retired. Nights already recorded under it keep it; a new night cannot be assigned to it.`;
+    case "format_unknown":
+      return `${where}that format is not one you can assign. Reload the form and pick again.`;
+    case "write_failed":
+      return `${where}saving this night failed (${refusal.code ?? "no code"}). Nothing was written for it.`;
+  }
+}
+
+/**
+ * Log a refusal with its CODE and its MESSAGE, and nothing else.
+ *
+ * Never the whole error object and never its `details` field: on a violation
+ * PostgREST returns the entire rejected row, and roughly twenty sites in this
+ * repository already pass the whole object to `console.error`
+ * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`). This path now
+ * fails routinely — a number already in use is an ordinary operator mistake —
+ * so it must not become the twenty-first.
+ */
+function logNightRefusal(refusal: NightRefusal, error: WriteError | null) {
+  console.error(
+    `[event_parties.${refusal.kind}] sort_order=${refusal.sortOrder ?? "unknown"} ` +
+      `code=${error?.code ?? "none"} message=${error?.message ?? "none"}`
+  );
+}
 
 /**
  * Validate event form data. Returns validated fields or throws on error.
@@ -153,6 +360,40 @@ function validateEventData(formData: FormData) {
     if (!VALID_ACCESS_TYPES.includes(party.access_type)) {
       throw new Error("Invalid access type for a sub-event");
     }
+    // ── FMT-01 / FMT-02 / FMT-03: the three new per-night causes ─────────────
+    //
+    // One `throw new Error` per distinct cause, following this loop's existing
+    // form. WHAT THAT FORM CANNOT DO, said rather than left to be discovered:
+    // Next redacts the message of an error thrown out of a Server Action in a
+    // production build, so these twelve-plus sentences reach a person in
+    // `next dev` and not in production. That is a pre-existing property of every
+    // throw in this function, not something these three introduce — and it is
+    // why the *format* and *series* controls are `required` in the browser
+    // (`EventForm.tsx`), so the refusal a person actually meets happens before
+    // the action is called, and why the DATABASE refusals below travel back as
+    // returned values instead.
+    if (!party.format_id || !UUID_PATTERN.test(party.format_id)) {
+      throw new Error("Pick a format. A night cannot be saved without one.");
+    }
+    if (!party.series_id || !UUID_PATTERN.test(party.series_id)) {
+      throw new Error("Pick a series before choosing a number.");
+    }
+    // The number is OPTIONAL — see `PartyInput.number`. An empty field is the
+    // real state "this night has no number of its own", so it is normalised to
+    // null here rather than being coerced to 0 by `Number("")`.
+    if (
+      party.number === undefined ||
+      party.number === null ||
+      String(party.number).trim() === ""
+    ) {
+      party.number = null;
+    } else {
+      const n = Number(party.number);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new Error("A series number must be a whole number of 1 or more.");
+      }
+      party.number = n;
+    }
     if (party.capacity !== undefined && party.capacity !== null) {
       const cap = Number(party.capacity);
       if (isNaN(cap) || cap < 1) {
@@ -186,6 +427,26 @@ function validateEventData(formData: FormData) {
     }
   }
 
+  // Two nights in ONE submission carrying the same (format, series, number).
+  //
+  // NOT the application-level pre-check D-36-08 forbids: that one asks the
+  // database whether a number is free, which two tabs beat. This compares the
+  // rows of a single payload to each other, where there is no second writer and
+  // therefore no race. Its only job is attribution — `createEvent` writes the
+  // nights in ONE bulk insert, so without this the database refuses `23505` and
+  // names no row, and the operator is told "one of these" instead of which.
+  const seenTriples = new Set<string>();
+  for (const party of parties) {
+    if (party.number === null || party.number === undefined) continue;
+    const triple = `${party.format_id}|${party.series_id}|${party.number}`;
+    if (seenTriples.has(triple)) {
+      throw new Error(
+        `Two sub-events in this form carry number ${party.number} in the same series. A number belongs to one night.`
+      );
+    }
+    seenTriples.add(triple);
+  }
+
   // Date: derive from sub-events if any, otherwise require explicit date from form
   const eventDateRaw = formData.get("date") as string;
   const date = parties.length > 0
@@ -207,6 +468,93 @@ function validateEventData(formData: FormData) {
   };
 }
 
+/**
+ * The two clients this file writes events with. Exactly the union the master
+ * branch already produces (`ctx.capabilities.has(CAP.MASTER_MANAGE) ? … : …`).
+ */
+type EventWriteClient =
+  | Awaited<ReturnType<typeof createClient>>
+  | ReturnType<typeof getServiceClient>;
+
+/**
+ * T-36-10-04 — an archived night must not be silently reassigned, and a NEW
+ * night must not be assigned to a retired format.
+ *
+ * `EventForm` keeps a retired format in the select **only** for the night that
+ * already carries it, preselected, so that merely opening the edit form and
+ * saving does not rewrite an archived night (D-36-10). That is the select being
+ * able to display the truth. Refusing a *change to* a retired format is this
+ * function's job, and it is the half that survives a forged POST.
+ *
+ * ── Why an unreadable format is refused rather than allowed ──────────────────
+ *
+ * The read uses the SAME client that performs the write, so it sees exactly the
+ * rows that caller may see: `formats_select_listed` plus, for a holder of
+ * `catalogue.manage`, everything. A format id that comes back with no row is
+ * therefore one this caller cannot read — and unknown means refused, never
+ * assumed (`venue-secrecy.md`, gate *default chiuso*, applied to a catalogue).
+ *
+ * Returns the refusal, or null when every night's format is assignable.
+ */
+async function refuseUnassignableFormats(
+  client: EventWriteClient,
+  parties: PartyInput[],
+  /** format_id each existing night ALREADY carries, by night id. Empty on create. */
+  carriedFormatByNightId: Map<string, string>
+): Promise<NightRefusal | null> {
+  const submitted = [...new Set(parties.map((p) => p.format_id))];
+  if (submitted.length === 0) return null;
+
+  const { data: rows, error } = await client
+    .from("formats")
+    .select("id, retired_at")
+    .in("id", submitted);
+
+  if (error) {
+    // A catalogue read that failed is NOT permission to write whatever was
+    // submitted. It is refused with its own category, because "the check could
+    // not run" and "the check passed" are different facts.
+    const refusal: NightRefusal = {
+      kind: "format_unknown",
+      sortOrder: null,
+      nightTitle: null,
+    };
+    logNightRefusal(refusal, error);
+    return refusal;
+  }
+
+  const retiredById = new Map<string, boolean>(
+    (rows ?? []).map((f: { id: string; retired_at: string | null }) => [
+      f.id,
+      f.retired_at !== null,
+    ])
+  );
+
+  for (const party of parties) {
+    const alreadyCarried =
+      party.id !== undefined && carriedFormatByNightId.get(party.id) === party.format_id;
+    if (alreadyCarried) continue;
+
+    const retired = retiredById.get(party.format_id);
+    if (retired === undefined) {
+      return {
+        kind: "format_unknown",
+        sortOrder: party.sort_order,
+        nightTitle: party.title?.trim() || null,
+      };
+    }
+    if (retired) {
+      return {
+        kind: "format_retired",
+        sortOrder: party.sort_order,
+        nightTitle: party.title?.trim() || null,
+      };
+    }
+  }
+
+  return null;
+}
+
 /** Revalidate all paths that display events */
 function revalidateEventPaths(slug?: string) {
   revalidatePath("/admin/events");
@@ -223,7 +571,7 @@ function revalidateEventPaths(slug?: string) {
 /**
  * Create a new event as a draft.
  */
-export async function createEvent(formData: FormData) {
+export async function createEvent(formData: FormData): Promise<EventWriteResult> {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
@@ -238,6 +586,21 @@ export async function createEvent(formData: FormData) {
   }
 
   const data = validateEventData(formData);
+
+  // Every night here is NEW, so nothing "already carries" a format: an empty
+  // map means a retired format is refused for all of them.
+  const formatRefusal = await refuseUnassignableFormats(
+    supabase,
+    data.parties,
+    new Map()
+  );
+  if (formatRefusal) {
+    return {
+      success: false,
+      error: nightRefusalSentence(formatRefusal),
+      refusal: formatRefusal,
+    };
+  }
 
   // Generate slug from title, ensure uniqueness
   let slug = slugify(data.title);
@@ -291,6 +654,9 @@ export async function createEvent(formData: FormData) {
     access_type: p.access_type,
     capacity: p.capacity ?? null,
     sort_order: p.sort_order,
+    format_id: p.format_id,
+    series_id: p.series_id,
+    number: p.number ?? null,
   }));
 
   const { error: partyError } = await supabase
@@ -298,7 +664,30 @@ export async function createEvent(formData: FormData) {
     .insert(partyRows);
 
   if (partyError) {
-    throw new Error(`Failed to create parties: ${partyError.message}`);
+    // ONE bulk insert, so the database names no row. The refusal therefore
+    // carries `sortOrder: null` and the sentence says "one of these nights"
+    // rather than inventing a position — `validateEventData` already caught the
+    // case this path CAN attribute (two nights of one payload sharing a triple).
+    const refusal = classifyNightWriteError(partyError, null);
+    logNightRefusal(refusal, partyError);
+
+    // The event row exists and has no nights. Before phase 36 this insert
+    // essentially never failed; a duplicate number makes it an ordinary
+    // outcome, so leaving a draft behind on every mistyped number would turn a
+    // typo into a growing list of empty drafts. Undone here, and a failure to
+    // undo is said out loud rather than swallowed.
+    const { error: cleanupError } = await supabase
+      .from("events")
+      .delete()
+      .eq("id", inserted.id);
+    if (cleanupError) {
+      console.error(
+        `[events.orphan_draft] event=${inserted.id} could not be removed after its ` +
+          `nights were refused. code=${cleanupError.code ?? "none"} message=${cleanupError.message}`
+      );
+    }
+
+    return { success: false, error: nightRefusalSentence(refusal), refusal };
   }
 
   revalidateEventPaths();
@@ -308,7 +697,10 @@ export async function createEvent(formData: FormData) {
 /**
  * Update an existing event.
  */
-export async function updateEvent(eventId: string, formData: FormData) {
+export async function updateEvent(
+  eventId: string,
+  formData: FormData
+): Promise<EventWriteResult> {
   const supabase = await createClient();
   const ctx = await assertStaffManage();
 
@@ -337,15 +729,59 @@ export async function updateEvent(eventId: string, formData: FormData) {
     throw new Error(`Failed to update event: ${error.message}`);
   }
 
-  // Fetch existing parties for this event
-  const { data: existingParties } = await client
+  // Fetch existing parties for this event.
+  //
+  // `{ error }` is destructured and acted on, and it is not a formality: a
+  // failed read leaves `existingIds` empty, every incoming night with an id
+  // falls to the INSERT arm below, and the event silently ends up with its
+  // nights duplicated. Refusing here is the only thing between that and an
+  // archive nobody can trust.
+  const { data: existingParties, error: existingError } = await client
     .from("event_parties")
-    .select("id")
+    .select("id, format_id")
     .eq("event_id", eventId);
 
-  const existingIds = new Set(
-    (existingParties ?? []).map((p: { id: string }) => p.id)
+  if (existingError) {
+    const refusal: NightRefusal = {
+      kind: "write_failed",
+      sortOrder: null,
+      nightTitle: null,
+      code: existingError.code ?? null,
+    };
+    logNightRefusal(refusal, existingError);
+    return {
+      success: false,
+      error:
+        "The nights of this event could not be read, so nothing was changed. Reload and try again.",
+      refusal,
+    };
+  }
+
+  const existingRows = (existingParties ?? []) as {
+    id: string;
+    format_id: string | null;
+  }[];
+  const existingIds = new Set(existingRows.map((p) => p.id));
+  // What each night ALREADY carries — the exception that keeps an archived
+  // night from being rewritten just because its format was later retired.
+  const carriedFormatByNightId = new Map<string, string>(
+    existingRows
+      .filter((p): p is { id: string; format_id: string } => p.format_id !== null)
+      .map((p) => [p.id, p.format_id])
   );
+
+  const formatRefusal = await refuseUnassignableFormats(
+    client,
+    data.parties,
+    carriedFormatByNightId
+  );
+  if (formatRefusal) {
+    return {
+      success: false,
+      error: nightRefusalSentence(formatRefusal),
+      refusal: formatRefusal,
+    };
+  }
 
   // Determine which parties to update, insert, or delete
   const incomingIds = new Set(
@@ -353,12 +789,31 @@ export async function updateEvent(eventId: string, formData: FormData) {
   );
   const idsToDelete = [...existingIds].filter((id) => !incomingIds.has(id));
 
-  // Check if parties to delete have sold tickets
+  // Check if parties to delete have sold tickets.
+  //
+  // `{ error }` too: a failed count returns `count === null`, the guard passes,
+  // and a night that has sold tickets is deleted. That is money and a door
+  // list, so an unreadable count is a refusal and not a zero.
   for (const partyId of idsToDelete) {
-    const { count } = await client
+    const { count, error: countError } = await client
       .from("tickets")
       .select("*", { count: "exact", head: true })
       .eq("party_id", partyId);
+    if (countError) {
+      const refusal: NightRefusal = {
+        kind: "write_failed",
+        sortOrder: null,
+        nightTitle: null,
+        code: countError.code ?? null,
+      };
+      logNightRefusal(refusal, countError);
+      return {
+        success: false,
+        error:
+          "Whether a removed sub-event has sold tickets could not be checked, so nothing was changed.",
+        refusal,
+      };
+    }
     if (count && count > 0) {
       throw new Error(
         "Cannot remove a sub-event that has sold tickets"
@@ -366,56 +821,98 @@ export async function updateEvent(eventId: string, formData: FormData) {
     }
   }
 
-  // Delete removed parties
+  // Delete removed parties — checked, for the same reason as everything else in
+  // this function: a delete that silently fails leaves a night on the public
+  // page that the operator has been told is gone.
   for (const partyId of idsToDelete) {
-    await client.from("event_parties").delete().eq("id", partyId);
+    const { error: deleteError } = await client
+      .from("event_parties")
+      .delete()
+      .eq("id", partyId);
+    if (deleteError) {
+      const refusal: NightRefusal = {
+        kind: "write_failed",
+        sortOrder: null,
+        nightTitle: null,
+        code: deleteError.code ?? null,
+      };
+      logNightRefusal(refusal, deleteError);
+      return {
+        success: false,
+        error: "A removed sub-event could not be deleted. Reload and try again.",
+        refusal,
+      };
+    }
   }
 
-  // Upsert parties
+  // ── Upsert parties ──────────────────────────────────────────────────────────
+  //
+  // THE DEFECT THIS PHASE CLOSES. Until now neither write below destructured
+  // its result, while `createEvent` twenty lines up did. The named constraint
+  // D-36-08 adds — `event_parties_format_series_number_unique` — would have
+  // fired here, the loop would have carried on, `revalidateEventPaths()` would
+  // have run and this action would have returned `{ success: true }`: the
+  // organizer saves, the save does nothing, and the number they typed is not
+  // the number stored. `meta-gates.md` is explicit that in a repository with no
+  // error tracking a failure that counts must have an OBSERVABLE effect.
+  //
+  // The loop is NOT collapsed into one failure message: the operator needs to
+  // know which night was refused, and `sortOrder` is how the form knows which
+  // field to attach the sentence to.
+  //
+  // It stops at the first refusal rather than carrying on. A partially applied
+  // save is worse than a refused one: the nights before the failure are
+  // written, so the screen and the archive disagree, and the person is the only
+  // one who could tell them apart.
   for (const party of data.parties) {
+    const nightFields = {
+      title: party.title.trim(),
+      description: party.description?.trim() || null,
+      date: party.date,
+      time: party.time,
+      end_time: party.end_time || null,
+      menu_closes_at: party.menu_closes_at || null,
+      venue_text: party.venue_text?.trim() || null,
+      venue_id: party.venue_id || null,
+      lineup: party.lineup ?? [],
+      venue_secret: party.venue_secret ?? false,
+      venue_secret_hint: party.venue_secret_hint?.trim() || null,
+      venue_reveal_hours: party.venue_reveal_hours ?? null,
+      venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
+      access_type: party.access_type,
+      capacity: party.capacity ?? null,
+      sort_order: party.sort_order,
+      format_id: party.format_id,
+      series_id: party.series_id,
+      // Stored as typed, never recomputed. D-36-06, and a monotone guard:
+      // a progressivo already assigned is already on a poster.
+      number: party.number ?? null,
+    };
+
+    let nightError: WriteError | null = null;
+
     if (party.id && existingIds.has(party.id)) {
-      await client
+      const { error: updateError } = await client
         .from("event_parties")
-        .update({
-          title: party.title.trim(),
-          description: party.description?.trim() || null,
-          date: party.date,
-          time: party.time,
-          end_time: party.end_time || null,
-          menu_closes_at: party.menu_closes_at || null,
-          venue_text: party.venue_text?.trim() || null,
-          venue_id: party.venue_id || null,
-          lineup: party.lineup ?? [],
-          venue_secret: party.venue_secret ?? false,
-          venue_secret_hint: party.venue_secret_hint?.trim() || null,
-          venue_reveal_hours: party.venue_reveal_hours ?? null,
-          venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
-          access_type: party.access_type,
-          capacity: party.capacity ?? null,
-          sort_order: party.sort_order,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ...nightFields, updated_at: new Date().toISOString() })
         .eq("id", party.id);
+      nightError = updateError;
     } else {
-      await client.from("event_parties").insert({
-        event_id: eventId,
-        title: party.title.trim(),
-        description: party.description?.trim() || null,
-        date: party.date,
-        time: party.time,
-        end_time: party.end_time || null,
-        menu_closes_at: party.menu_closes_at || null,
-        venue_text: party.venue_text?.trim() || null,
-        venue_id: party.venue_id || null,
-        lineup: party.lineup ?? [],
-        venue_secret: party.venue_secret ?? false,
-        venue_secret_hint: party.venue_secret_hint?.trim() || null,
-        venue_reveal_hours: party.venue_reveal_hours ?? null,
-        venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
-        access_type: party.access_type,
-        capacity: party.capacity ?? null,
+      const { error: insertError } = await client
+        .from("event_parties")
+        .insert({ event_id: eventId, ...nightFields });
+      nightError = insertError;
+    }
+
+    if (nightError) {
+      const refusal = classifyNightWriteError(nightError, {
         sort_order: party.sort_order,
+        title: party.title,
+        series_id: party.series_id,
+        number: party.number ?? null,
       });
+      logNightRefusal(refusal, nightError);
+      return { success: false, error: nightRefusalSentence(refusal), refusal };
     }
   }
 
