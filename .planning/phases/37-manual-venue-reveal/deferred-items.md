@@ -62,3 +62,33 @@ e' stata chiusa sul posto.
   esistesse, quindi non la contiene: e' corretto per quel baseline e va saputo da
   chi lo confronta.
 - **Chi la dovrebbe prendere:** 37-13.
+
+---
+
+## 4. `venue_for_parties` filtra `is_published` PRIMA dei cinque rami — una bozza non ha nome del locale per nessuno
+
+- **Trovata durante:** 37-05 e 37-06, **indipendentemente**, nella stessa onda.
+  Due agenti che non si parlavano hanno misurato lo stesso fatto: e' un indizio
+  che sia una proprieta' della funzione, non un'impressione.
+- **Cosa:** `public.venue_for_parties(uuid[])` applica `AND e.is_published`
+  **prima** di valutare i cinque rami di titolo. Su un evento non pubblicato non
+  restituisce nulla **a nessuno** — nemmeno a chi ha `staff.manage`. Sulla lista
+  eventi lo staff le bozze le vede, e da oggi le vedrebbe **senza il nome del
+  locale**; sul dettaglio, chi prepara una bozza segreta vede l'indizio invece
+  dell'indirizzo.
+- **Il verso dell'errore e' quello sicuro:** si perde un nome, non se ne mostra
+  uno che non si doveva. E' la ragione per cui nessuno dei due agenti l'ha
+  forzato.
+- **Perche' non e' stato riparato nell'onda:** le due strade erano modificare la
+  migration — che a quel punto era **gia' scritta per l'applicazione**, e non si
+  tocca una migration in attesa di push — oppure rimettere un secondo embed
+  condizionato, cioe' **due percorsi di costruzione per lo stesso valore**, che e'
+  esattamente il difetto che i commenti di quei file esistono per impedire.
+- **La decisione che serve, e non e' tecnica:** su una bozza, chi ha
+  `staff.manage` deve vedere il nome del locale? Se si', la condizione va
+  spostata dentro i rami invece che davanti — ed e' una modifica alla migration
+  **non ancora applicata**, quindi **oggi costa poco e dopo il deploy costa una
+  migration in piu'**.
+- **Chi la dovrebbe prendere:** va decisa **prima** che
+  `20260810161000_venues_read_narrowed.sql` venga applicata, perche' quello e' il
+  momento in cui il costo cambia. Verifica in 37-13.
