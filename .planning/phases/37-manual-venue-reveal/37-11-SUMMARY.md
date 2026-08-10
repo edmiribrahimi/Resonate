@@ -42,6 +42,9 @@ key-decisions:
   - "Una serata senza sede e senza testo libero non arma il bottone: un atto che non pubblica niente scrive comunque un record che non si toglie"
   - "L'esito dell'atto resta sullo schermo finche' non lo si chiude, e `onDone` scatta subito: chiudere dal fondale non puo' lasciare un pannello vecchio"
   - "VENUE-02 NON e' spuntato: il percorso esiste, non e' mai stato percorso, e non e' in produzione"
+  - "Checkpoint del Task 3 chiuso `rimanda` dal proprietario il 2026-08-11: con zero destinatari l'atto non esercita l'invio, quindi la prova costerebbe un'irreversibilita' per la meta' meno interessante del comportamento"
+  - "La serata di prova creata apposta NON e' una strada pulita: `venue_reveal_acts` punta a `event_parties` con ON DELETE SET NULL, quindi cancellarla lascia righe di traccia orfane con un nome dentro"
+  - "Nessuna autorizzazione a scrivere in produzione chiesta ne' concessa: non c'e' nulla di consumato, e chi riprendera' la prova ne deve chiedere una nuova"
 
 requirements-completed: []
 
@@ -142,6 +145,14 @@ Una serata non segreta non ha un indirizzo sotto chiave, e `revealVenueNow` le r
 
 `EventParty` continua a non dichiarare `venue_reveal_on_purchase` e `venue_reveal_email_sent`. 37-10 la passava a 37-11. **Questo piano non la chiude**, e la ragione e' misurata invece che comoda: nessuno dei tre file toccati legge quelle due colonne — il pannello lavora su `venue_revealed_at`, e `venue_reveal_email_sent` non compare in nessuno di essi (zero occorrenze, verificato). Chiuderla qui sarebbe stato allargare il diff di un piano che monta un percorso di rivelazione, per una deriva che non lo tocca. **Va assegnata a 37-13.**
 
+### 7. [Rule 1 — bug] La traccia non letta diceva «non e' stato fatto niente»
+
+- **Trovata durante:** la verifica di D-37-22 che il proprietario ha chiesto al checkpoint. **Non e' stata trovata scrivendo il codice: e' stata trovata rileggendolo per rispondere a una domanda precisa**, ed e' l'argomento migliore che questa pagina abbia per quella domanda.
+- **Il problema:** su `phase === "failed"` lo stato e' `null`, quindi la lista riceveva `acts ?? []` — un array vuoto — e con `loading` falso cadeva nel ramo che stampa **«Nothing has been done to this night's venue yet.»** Una frase **affermativa, data per fatto**, su una serata la cui storia nessuno ha potuto leggere. La scatola rossa sopra diceva che la lettura era fallita, e questa riga la contraddiceva un paragrafo sotto — e il commento dentro il componente sosteneva gia' l'opposto di cio' che il componente faceva, che e' peggio di entrambe le cose separate.
+- **Perche' conta piu' di quanto sembri:** su una serata **gia' rivelata** e' la frase che invita il secondo tentativo che D-37-19 esiste per impedire. Ed e' lo **stesso difetto che questa fase ha gia' rimosso due volte piu' in basso** — `no_recipients` contro `recipients_unavailable` nell'invio (37-09), poi `unavailable` sul conteggio (37-10) — riaffiorato una terza volta nella **vista**. `venue-secrecy.md`, gate *default chiuso*: uno stato non determinabile non e' uno stato vuoto, e vale per una frase su uno schermo esattamente come per un numero in una colonna.
+- **Fatto:** tre stati invece di due. La fase viaggia al componente al posto di un booleano, e la lettura fallita ha la sua riga, che nomina la causa e dice esplicitamente che **non** significa «non e' successo niente».
+- **Commit:** `0937868`.
+
 ---
 
 ## Verifica — e cosa significa in un repo senza test runner
@@ -169,9 +180,51 @@ Una serata non segreta non ha un indirizzo sotto chiave, e `revealVenueNow` le r
 
 ---
 
+## L'esito del checkpoint: **`rimanda`** — 2026-08-11
+
+Il proprietario ha accolto la raccomandazione. **Nessuna delle due strade**, e la ragione in una riga: **con zero destinatari l'atto non esercita l'invio**, quindi la prova costerebbe un'irreversibilita' e comprerebbe la meta' meno interessante del comportamento.
+
+**Nessuna autorizzazione a scrivere in produzione e' stata chiesta ne' concessa** — e quindi **non c'e' nulla di consumato**. Non e' una formalita' del registro: `ai-engineering.md` chiede che chi riceve un'autorizzazione dichiari quando l'ha esaurita, e qui la voce corretta e' che non ne esiste una. La direzione «non scrivere» e' la sola che si possa prendere senza permesso.
+
+### Cosa resta non provato
+
+Non addolcito, perche' e' la parte che conta:
+
+1. Che lo scrittore **rifiuti il secondo atto** sotto il proprio lock.
+2. Che `venue_revealed_at` si valorizzi e la traccia scriva **una** riga con nome e istante.
+3. Che il pannello ricaricato mostri lo **spento con data e nome**.
+4. Che il **ri-nascondere lasci in piedi la riga precedente** — nel database. *(Nel codice reso e' verificato: vedi sotto.)*
+
+E il quinto, che non e' del bottone: che la pagina pubblica torni all'indizio.
+
+> **Il codice e' letto e compilato, mai eseguito.** Nessuno ha premuto questo bottone: non in produzione, non in locale, non una volta.
+
+### La strada B non era pulita, e la ragione va scritta per chi ci ripassera'
+
+Era stata presentata come l'alternativa che non tocca una serata vera: crearne una apposta, catturarne la chiave alla creazione, rimuoverla per chiave primaria. **Non funziona come pulizia**, ed e' una scoperta sulla **procedura di prova**, non sul prodotto:
+
+`venue_reveal_acts` punta a `event_parties` con **`ON DELETE SET NULL`**, non con `CASCADE` — e' la voce 3 di `deferred-items.md`, deliberata. Cancellare la serata di prova per chiave primaria quindi **non rimuove le righe di traccia**: restano, **orfane**, con un nome per esteso dentro, su un progetto **senza PITR**. Una rimozione che lascia in piedi cio' che doveva pulire non e' una rimozione: e' un residuo che il prossimo lettore dell'istantanea trovera' senza sapere cos'e' — e che conterebbe fra le tabelle *modificate* invece che fra quelle svuotate.
+
+**Chiunque provera' questa verifica in futuro deve saperlo prima di scegliere la strada, non dopo.**
+
+### La verifica che il proprietario ha chiesto: D-37-22 regge, nel codice **reso**
+
+La domanda era la piu' stretta possibile: il dato arriva, o la **vista** lo mostra? Sono due cose diverse, e la seconda vanificherebbe la condizione su cui la decisione e' stata concessa. Letto il codice, non dedotto:
+
+| | |
+|---|---|
+| `<VenueRevealTrace>` e' montato a `VenueRevealPanel.tsx:317` | **fuori da ogni guardia su `revealed`** — nessun `revealed && …` lo avvolge |
+| dopo un ri-nascondere `state.revealedAt` torna `null` | il bottone torna a **«Reveal now»**, e la lista **non cambia** |
+| `ACT_LABEL` e' un `Record` **totale** sui tre atti | `revealed` ha la sua etichetta e non puo' rendere vuoto |
+| ordine | il piu' recente per primo: *«Taken back to secret»* sopra, *«Revealed — … — nome»* sotto |
+
+**Il dato arriva e la vista lo rende.** La serata continua a dire di essere stata rivelata mentre la sua pagina ha ripreso a nascondere l'indirizzo, che e' esattamente la coppia di stati su cui D-37-22 poggia.
+
+**La stessa lettura ha pero' trovato un difetto — e non nel percorso del ri-nascondere.** Vedi la deviazione 7.
+
 ## Il Task 3, e perche' la sua prova non e' stata compiuta
 
-Il Task 3 chiede la procedura in nove punti su una serata vera. **Il codice e' fatto e committato** (`d1521ff`); **la prova no**, ed e' portata al proprietario come checkpoint bloccante. Le tre ragioni sono misurate, non argomentate.
+Il Task 3 chiede la procedura in nove punti su una serata vera. **Il codice e' fatto e committato** (`d1521ff`); **la prova no**, ed e' stata portata al proprietario come checkpoint bloccante — che ha risposto **`rimanda`** (sezione sopra). Le tre ragioni sono misurate, non argomentate.
 
 **1. L'autorizzazione a scrivere in produzione non esiste, e non si eredita.** `ai-engineering.md`: e' un atto, copre esattamente cio' che e' stato descritto quando e' stata chiesta, e si consuma una volta. Quella di questa fase copriva **una migration** e si e' esaurita al suo `HTTP 200` (37-03). Non copre la creazione di righe ne' la scrittura di `venue_revealed_at`.
 
@@ -194,7 +247,7 @@ Con **zero destinatari**, l'atto non esercita l'invio: il punto 4 della procedur
 
 Cosa resta **non provato** se il proprietario declina, detto senza vestirlo da evidenza: che lo scrittore rifiuti il secondo atto sotto il proprio lock; che `venue_revealed_at` si valorizzi e la traccia scriva una riga con nome e istante; che il pannello ricaricato mostri lo spento con data e nome; che il ri-nascondere lasci la riga precedente; che la pagina pubblica torni all'indizio. **Il codice e' letto, non eseguito, e finche' resta cosi' va detto ogni volta che se ne parla.**
 
-Le due strade e il loro costo stanno nel checkpoint restituito all'orchestratore.
+Le due strade, il loro costo e la ragione per cui **nessuna delle due e' stata presa** stanno nella sezione sopra. Il momento in cui la prova va fatta, e chi la prende, sono in `deferred-items.md` voce 5.
 
 ---
 
@@ -223,7 +276,7 @@ Nessuno. Cio' che manca non e' un pezzo non cablato: e' **una prova non compiuta
 
 ## Debito dichiarato
 
-1. **La prova sull'atto vero.** Il checkpoint del Task 3, con le due strade e il loro costo.
+1. **La prova sull'atto vero — rimandata dal proprietario il 2026-08-11, non dimenticata.** Registrata come voce **5** di `deferred-items.md`, con il momento in cui va fatta (dopo il deploy della seconda migration e dell'arretrato, quando la pagina pubblica funziona e la procedura si puo' fare **intera**) e con il difetto della strada B scritto accanto, perche' chi la prendera' non lo riscopra a cose fatte.
 2. **`deferred-items.md` voce 1 resta aperta** e passa a 37-13: `EventParty` non dichiara `venue_reveal_on_purchase` ne' `venue_reveal_email_sent`. Nessuno dei file di questo piano le tocca.
 3. **VENUE-02 non e' spuntato.** Il percorso e' completo da capo a fondo e **non e' mai stato percorso**, ne' e' in produzione. Spuntarlo sarebbe un verde falso su un requisito di rivelazione, che e' la categoria peggiore in cui averne uno — e' la stessa scelta che 37-03 ha fatto e scritto. Lo chiude 37-13, dopo un atto osservato.
 4. **Le due voci `human_needed` sul modello dei permessi** restano intere, e sono la parte piu' importante di questa pagina.
@@ -235,17 +288,20 @@ Nessuno. Cio' che manca non e' un pezzo non cablato: e' **una prova non compiuta
 | 1 | `31f1ef6` | la conferma che nomina il posto, il numero e l'irreversibilita', e dieci rifiuti da un `Record` totale |
 | 2 | `ab52547` | un bottone, tre stati, una posizione, la traccia accanto — piu' `acts` sul contratto di lettura |
 | 3 (codice) | `d1521ff` | il montaggio, e il punto 3 del docblock riscritto invece che cancellato |
-| 3 (prova) | — | **checkpoint bloccante: non compiuta** |
+| — | `c495841` | il SUMMARY, STATE e ROADMAP al checkpoint |
+| — | `0937868` | **[Rule 1]** la traccia non letta smette di dire «non e' stato fatto niente» — trovata rispondendo alla domanda del proprietario su D-37-22 |
+| 3 (prova) | — | **checkpoint chiuso `rimanda` il 2026-08-11. Non compiuta, nessuna autorizzazione chiesta ne' concessa** |
 
 ---
 
 ## Self-Check: PASSED
 
-- I quattro file dichiarati esistono su disco; i tre commit esistono in `git log`.
-- **Nessuna cancellazione di file tracciati** in nessuno dei tre commit (`git diff --diff-filter=D` vuoto su tutti e tre).
+- I quattro file dichiarati esistono su disco; i cinque commit esistono in `git log`.
+- **Nessuna cancellazione di file tracciati** in nessuno dei commit (`git diff --diff-filter=D` vuoto su tutti).
 - **Tre affermazioni sono state corrette da questo controllo, non dopo di esso.** Le righe di `grep` su `err.message`, sul numero di `<button>` e su `venue_reveal_sent` dicevano «0» dove un `grep -c` ne torna rispettivamente 1, 3 e 3 — tutte prosa nei docblock. Erano vere nella sostanza e **false come numero**, ed e' la specie di scarto che fa concludere al lettore successivo che il documento menta. Le righe ora portano il numero che il comando restituisce davvero, con accanto perche'.
 - **Zero scritture in produzione.** L'unica interrogazione al database vive e' passata da `/database/query` con `read_only: true` — sessione `supabase_read_only_user`, dove un `INSERT` fallisce `25006` — e ha prodotto soltanto conteggi aggregati. Nessun `INSERT`, `UPDATE`, `DELETE`; nessun controllo di cancellazione premuto; nessuna riga creata, quindi nessuna chiave da catturare e nessuna rimozione da fare.
+- **Il checkpoint ha prodotto un difetto vero.** La domanda del proprietario su D-37-22 non ha confermato e basta: ha fatto rileggere il componente e ha scoperto la riga che diceva «non e' stato fatto niente» su una traccia non letta (deviazione 7, commit `0937868`). E' l'argomento per cui un checkpoint bloccante su una superficie irreversibile non e' un costo di processo.
 
 ---
 *Phase: 37-manual-venue-reveal*
-*Completed: 2026-08-11 — build completo, prova sull'atto vero al checkpoint*
+*Completed: 2026-08-11 — build completo. Prova sull'atto vero: checkpoint chiuso `rimanda`, registrata come `deferred-items.md` voce 5.*

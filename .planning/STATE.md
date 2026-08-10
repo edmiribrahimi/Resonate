@@ -4,7 +4,7 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 37 context gathered
-last_updated: "2026-08-10T22:34:38.035Z"
+last_updated: "2026-08-10T22:41:01.231Z"
 last_activity: 2026-08-10 -- Phase 37 execution started
 progress:
   total_phases: 13
@@ -171,7 +171,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T22:34:38.031Z
+**Last session:** 2026-08-10T22:41:01.228Z
 **Stopped at:** Phase 37 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
