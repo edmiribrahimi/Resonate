@@ -269,7 +269,7 @@ export async function approveRefund(refundId: string) {
     }
 
     revalidatePath("/events");
-    revalidatePath("/organizer/events");
+    revalidatePath("/admin/events");
     return { success: true };
   }
 
@@ -390,7 +390,7 @@ export async function approveRefund(refundId: string) {
   })();
 
   revalidatePath("/events");
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
   return { success: true };
 }
 
@@ -476,7 +476,7 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
   })();
 
   revalidatePath("/events");
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
   return { success: true };
 }
 
@@ -589,6 +589,6 @@ export async function adminRefund(ticketId: string, reason?: string) {
   }
 
   revalidatePath("/events");
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
   return { success: true };
 }

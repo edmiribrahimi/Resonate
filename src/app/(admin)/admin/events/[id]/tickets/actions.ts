@@ -106,7 +106,7 @@ export async function createTier(eventId: string, partyId: string | null, formDa
     throw new Error(`Failed to create tier: ${error.message}`);
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 
@@ -166,7 +166,7 @@ export async function updateTier(
     throw new Error(`Failed to update tier: ${error.message}`);
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 
@@ -206,7 +206,7 @@ export async function deleteTier(tierId: string, eventId: string) {
     throw new Error(`Failed to delete tier: ${error.message}`);
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 
@@ -307,7 +307,7 @@ export async function createDiscountCode(
     }
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 
@@ -415,7 +415,7 @@ export async function updateDiscountCode(
     }
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 
@@ -458,7 +458,7 @@ export async function deleteDiscountCode(
     throw new Error(`Failed to delete discount code: ${error.message}`);
   }
 
-  revalidatePath(`/organizer/events/${eventId}/tickets`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
   return { success: true };
 }
 

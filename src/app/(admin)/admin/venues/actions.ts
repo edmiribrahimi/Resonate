@@ -179,7 +179,7 @@ export async function createVenue(formData: FormData) {
     throw new Error(`Failed to create venue: ${error.message}`);
   }
 
-  revalidatePath("/venues");
+  revalidatePath("/admin/venues");
   return { success: true, id: venue.id, slug: venue.slug };
 }
 
@@ -225,7 +225,7 @@ export async function updateVenue(venueId: string, formData: FormData) {
     throw new Error(`Failed to update venue: ${error.message}`);
   }
 
-  revalidatePath("/venues");
+  revalidatePath("/admin/venues");
   revalidatePath(`/venues/${venueId}`);
   return { success: true };
 }

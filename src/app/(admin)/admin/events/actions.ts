@@ -209,7 +209,6 @@ function validateEventData(formData: FormData) {
 
 /** Revalidate all paths that display events */
 function revalidateEventPaths(slug?: string) {
-  revalidatePath("/organizer/events");
   revalidatePath("/admin/events");
   revalidatePath("/events");
   if (slug) {
@@ -869,7 +868,7 @@ export async function addDrinkItem(
     throw new Error(`Failed to add drink item: ${error.message}`);
   }
 
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
   return data as DrinkItem;
 }
 
@@ -897,7 +896,7 @@ export async function updateDrinkItem(
     throw new Error(`Failed to update drink item: ${error.message}`);
   }
 
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
 }
 
 /**
@@ -916,7 +915,7 @@ export async function removeDrinkItem(itemId: string): Promise<void> {
     throw new Error(`Failed to remove drink item: ${error.message}`);
   }
 
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
 }
 
 /**
@@ -952,7 +951,7 @@ export async function reorderDrinkItems(
     )
   );
 
-  revalidatePath("/organizer/events");
+  revalidatePath("/admin/events");
   return { success: true };
 }
 

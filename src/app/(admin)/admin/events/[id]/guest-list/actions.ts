@@ -193,7 +193,7 @@ export async function addGuest(
       );
     }
 
-    revalidatePath(`/organizer/events/${eventId}/guest-list`);
+    revalidatePath(`/admin/events/${eventId}/guest-list`);
 
     const posthog = getPostHogServer();
     posthog.capture({
@@ -245,7 +245,7 @@ export async function removeGuest(entryId: string, eventId: string) {
       return { error: `Failed to remove guest: ${deleteError.message}` };
     }
 
-    revalidatePath(`/organizer/events/${eventId}/guest-list`);
+    revalidatePath(`/admin/events/${eventId}/guest-list`);
 
     const posthog = getPostHogServer();
     posthog.capture({
