@@ -746,3 +746,355 @@ export async function restoreFormat(formatId: string): Promise<CatalogueResult> 
   revalidatePath("/events");
   return { ok: true, id: formatId };
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * public.party_series — WHICH RUN of a format a night belongs to
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** `null` means the read itself failed — never "no". */
+async function seriesCodeHeldInFormat(
+  client: ServiceClient,
+  formatId: string,
+  code: string,
+  exceptId: string | null
+): Promise<boolean | null> {
+  let query = client
+    .from("party_series")
+    .select("id")
+    .eq("format_id", formatId)
+    .eq("code", code)
+    .limit(1);
+
+  if (exceptId) query = query.neq("id", exceptId);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(
+      `[catalogue.precheck_failed] series code lookup: ${error.code ?? "unknown"} ${error.message}`
+    );
+    return null;
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * The series half of `classifyFormatDuplicate` — same discipline, same reason:
+ * the cause is decided by a read, never by looking for
+ * `party_series_format_code_unique` inside a message string.
+ */
+async function classifySeriesDuplicate(
+  client: ServiceClient,
+  formatId: string,
+  code: string,
+  exceptId: string | null
+): Promise<CatalogueRefusal> {
+  const held = await seriesCodeHeldInFormat(client, formatId, code, exceptId);
+  if (held) return "duplicate_series_code";
+  return "duplicate_refused_by_database";
+}
+
+/**
+ * Create a series under a format.
+ *
+ * ── The name, which is the one field in this phase that PUBLISHES ─────────────
+ *
+ * `party_series.name` is the string a visitor reads on **every night in the
+ * series**, on every surface those nights touch. So a series named after a venue
+ * publishes that venue every time one of its nights appears — and a venue that
+ * has not been acquired in writing may not be named anywhere
+ * (`venue-acquisition.md`; `brand-visual-system.md` repeats it).
+ *
+ * Two things stand behind that sentence and they are **not** the same thing:
+ *
+ *   · the helper text under the field (`36-UI-SPEC.md` § S5) is ADVICE — it tells
+ *     a person before they type, which is the only moment the decision is still
+ *     theirs;
+ *   · the degradation in `36-UI-SPEC.md` § S2 is THE RULE — a card falls back to
+ *     the format name alone when any night in the series is secret, whatever the
+ *     operator typed.
+ *
+ * Neither replaces the other: advice that is ignored costs nothing because the
+ * rule is structural, and a rule that fires silently teaches nobody, which is why
+ * the advice exists.
+ *
+ * ── And there is deliberately NO validation of the name's content ─────────────
+ *
+ * No check here inspects a series name for venue-like content. There is no test
+ * that could tell a venue from a word; a rejected string would teach the operator
+ * to work around the check rather than to think about the question; and the § S2
+ * fallback already holds the line structurally. A filter would buy the appearance
+ * of a guarantee and spend the real one.
+ */
+export async function createSeries(
+  formatId: string,
+  name: string,
+  code: string
+): Promise<CatalogueResult> {
+  // Asked ONCE, first, before any read. See `createFormat`.
+  const { userId } = await assertCatalogueManage();
+  const client = getServiceClient();
+
+  if (typeof formatId !== "string" || !UUID_PATTERN.test(formatId)) {
+    return { ok: false, reason: "invalid_id" };
+  }
+
+  const checkedName = checkName(name);
+  if (!checkedName.ok) return checkedName;
+
+  const checkedCode = checkCode(code);
+  if (!checkedCode.ok) return checkedCode;
+
+  const { data: format, error: formatError } = await client
+    .from("formats")
+    .select("id, retired_at")
+    .eq("id", formatId)
+    .maybeSingle();
+
+  if (formatError) {
+    console.error(
+      `[catalogue.precheck_failed] createSeries format read: ${formatError.code ?? "unknown"} ${formatError.message}`
+    );
+    return { ok: false, reason: "precheck_failed" };
+  }
+  if (!format) return { ok: false, reason: "format_not_found" };
+
+  // The only half there is. No constraint anywhere reads `formats.retired_at`,
+  // so deleting this check opens the operation rather than moving it.
+  if (format.retired_at) return { ok: false, reason: "format_retired" };
+
+  const codeHeld = await seriesCodeHeldInFormat(client, formatId, checkedCode.value, null);
+  if (codeHeld === null) return { ok: false, reason: "precheck_failed" };
+  if (codeHeld) return { ok: false, reason: "duplicate_series_code" };
+
+  const { data: created, error } = await client
+    .from("party_series")
+    .insert({
+      format_id: formatId,
+      name: checkedName.value,
+      code: checkedCode.value,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    console.error(
+      `[catalogue.write_failed] createSeries under ${formatId}: ${error?.code ?? "unknown"} ${error?.message ?? "no row returned"}`
+    );
+    if (error?.code === UNIQUE_VIOLATION) {
+      return {
+        ok: false,
+        reason: await classifySeriesDuplicate(client, formatId, checkedCode.value, null),
+      };
+    }
+    return { ok: false, reason: "write_failed" };
+  }
+
+  // `/admin/formats` only. A series with no nights is on no public surface at
+  // all: `party_series_select_published` grants a read only THROUGH a published
+  // night (`20260810120000_formats_and_series.sql` §4b), so there is nothing on
+  // `/events` for this write to have changed.
+  revalidatePath("/admin/formats");
+  return { ok: true, id: created.id };
+}
+
+/**
+ * Update a series' public name and code.
+ *
+ * ── It does NOT accept a format, and that is not an omission ──────────────────
+ *
+ * A series belongs to a format for its whole life. The database already refuses
+ * the change: `event_parties_series_format_fk` is `ON UPDATE NO ACTION` (the
+ * default), so repointing a series that already carries nights fails — and it
+ * should, because moving it would rewrite what those nights were, which D-36-10
+ * forbids.
+ *
+ * Refusing it **here**, by not offering the argument at all, is the other half.
+ * The two do not substitute for each other, exactly as
+ * `[id]/assignments/actions.ts:123-140` argues about its own pair: the constraint
+ * keeps the contradiction from being stored, this signature means the operator
+ * meets *"this series already has nights; its format does not change"* as a
+ * property of the form instead of meeting a constraint name after pressing save.
+ * And the database's half is CONDITIONAL — a series with no nights yet would be
+ * repointed happily — so removing this one would open the operation for exactly
+ * the rows where nobody would notice.
+ */
+export async function updateSeries(
+  seriesId: string,
+  name: string,
+  code: string
+): Promise<CatalogueResult> {
+  await assertCatalogueManage();
+  const client = getServiceClient();
+
+  if (typeof seriesId !== "string" || !UUID_PATTERN.test(seriesId)) {
+    return { ok: false, reason: "invalid_id" };
+  }
+
+  const checkedName = checkName(name);
+  if (!checkedName.ok) return checkedName;
+
+  const checkedCode = checkCode(code);
+  if (!checkedCode.ok) return checkedCode;
+
+  const { data: existing, error: readError } = await client
+    .from("party_series")
+    .select("id, format_id")
+    .eq("id", seriesId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error(
+      `[catalogue.precheck_failed] updateSeries read: ${readError.code ?? "unknown"} ${readError.message}`
+    );
+    return { ok: false, reason: "precheck_failed" };
+  }
+  if (!existing) return { ok: false, reason: "series_not_found" };
+
+  const codeHeld = await seriesCodeHeldInFormat(
+    client,
+    existing.format_id,
+    checkedCode.value,
+    seriesId
+  );
+  if (codeHeld === null) return { ok: false, reason: "precheck_failed" };
+  if (codeHeld) return { ok: false, reason: "duplicate_series_code" };
+
+  const { error } = await client
+    .from("party_series")
+    .update({
+      name: checkedName.value,
+      code: checkedCode.value,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", seriesId);
+
+  if (error) {
+    console.error(
+      `[catalogue.write_failed] updateSeries ${seriesId}: ${error.code ?? "unknown"} ${error.message}`
+    );
+    if (error.code === UNIQUE_VIOLATION) {
+      return {
+        ok: false,
+        reason: await classifySeriesDuplicate(
+          client,
+          existing.format_id,
+          checkedCode.value,
+          seriesId
+        ),
+      };
+    }
+    return { ok: false, reason: "write_failed" };
+  }
+
+  revalidatePath("/admin/formats");
+  // The public name travels to every published night in this series.
+  revalidatePath("/events");
+  return { ok: true, id: seriesId };
+}
+
+/**
+ * Retire a series — the mirror of `retireFormat`, and the same rule.
+ *
+ * No delete. `event_parties.series_id` is `ON DELETE RESTRICT`, so a series that
+ * carries nights cannot be removed at all, and a series that carries none would
+ * still be a name somebody chose. Retirement stops new nights from being assigned
+ * to it and rewrites nothing that already happened.
+ */
+export async function retireSeries(seriesId: string): Promise<CatalogueResult> {
+  await assertCatalogueManage();
+  const client = getServiceClient();
+
+  if (typeof seriesId !== "string" || !UUID_PATTERN.test(seriesId)) {
+    return { ok: false, reason: "invalid_id" };
+  }
+
+  const { data: existing, error: readError } = await client
+    .from("party_series")
+    .select("id, retired_at")
+    .eq("id", seriesId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error(
+      `[catalogue.precheck_failed] retireSeries read: ${readError.code ?? "unknown"} ${readError.message}`
+    );
+    return { ok: false, reason: "precheck_failed" };
+  }
+  if (!existing) return { ok: false, reason: "series_not_found" };
+  if (existing.retired_at) return { ok: false, reason: "series_already_retired" };
+
+  const now = new Date().toISOString();
+  const { error } = await client
+    .from("party_series")
+    .update({ retired_at: now, updated_at: now })
+    .eq("id", seriesId);
+
+  if (error) {
+    console.error(
+      `[catalogue.write_failed] retireSeries ${seriesId}: ${error.code ?? "unknown"} ${error.message}`
+    );
+    return { ok: false, reason: "write_failed" };
+  }
+
+  // `/admin/formats` only, and the asymmetry with `retireFormat` is deliberate:
+  // a retired FORMAT leaves the public chip row, which is a visitor-visible
+  // change. A retired SERIES leaves no public surface — its published nights keep
+  // rendering the name they ran under, because the archive is not rewritten
+  // (D-36-10).
+  revalidatePath("/admin/formats");
+  return { ok: true, id: seriesId };
+}
+
+/**
+ * Restore a retired series.
+ *
+ * A separate act with its own confirmation, for the reason written above
+ * `restoreFormat`: a retired sigla is not cited again
+ * (`production-calendar.md`), so bringing one back into circulation is a decision
+ * and not an undo.
+ *
+ * Unlike `restoreFormat` this cannot be refused for a collision: a series holds
+ * no colour, and `party_series_format_code_unique` is total, so its code was
+ * never released by the retirement.
+ */
+export async function restoreSeries(seriesId: string): Promise<CatalogueResult> {
+  await assertCatalogueManage();
+  const client = getServiceClient();
+
+  if (typeof seriesId !== "string" || !UUID_PATTERN.test(seriesId)) {
+    return { ok: false, reason: "invalid_id" };
+  }
+
+  const { data: existing, error: readError } = await client
+    .from("party_series")
+    .select("id, retired_at")
+    .eq("id", seriesId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error(
+      `[catalogue.precheck_failed] restoreSeries read: ${readError.code ?? "unknown"} ${readError.message}`
+    );
+    return { ok: false, reason: "precheck_failed" };
+  }
+  if (!existing) return { ok: false, reason: "series_not_found" };
+  if (!existing.retired_at) return { ok: false, reason: "series_not_retired" };
+
+  const { error } = await client
+    .from("party_series")
+    .update({ retired_at: null, updated_at: new Date().toISOString() })
+    .eq("id", seriesId);
+
+  if (error) {
+    console.error(
+      `[catalogue.write_failed] restoreSeries ${seriesId}: ${error.code ?? "unknown"} ${error.message}`
+    );
+    return { ok: false, reason: "write_failed" };
+  }
+
+  revalidatePath("/admin/formats");
+  return { ok: true, id: seriesId };
+}
