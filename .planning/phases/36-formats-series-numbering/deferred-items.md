@@ -112,3 +112,29 @@ plus `All` the current one is reachable on a phone without scrolling, so the gap
 is invisible today; it becomes visible the day the catalogue grows, which
 `36-UI-SPEC.md` already names as the signal to revisit this surface rather than
 let the row wrap.
+
+---
+
+## D5 — `npm run lint` fails on `EventTabs.tsx`, and did before this phase
+
+**Found by:** plan 36-12, task 1.
+**Must be closed by:** a later plan, or accepted deliberately.
+**File:** `src/app/(public)/events/EventTabs.tsx`, the swipe machinery.
+
+Four `react-hooks/refs` errors — *"Cannot access refs during render"* — on the
+two lines that read a ref while rendering: the viewport width used to convert a
+drag in pixels into a percentage, and the `touchAction` style that depends on
+which axis the gesture locked onto.
+
+**Why it was not fixed here.** Both lines are **older than this phase** and
+untouched by it (`git diff` for this plan contains neither). The scope-boundary
+rule says a plan repairs what its own changes broke; repairing the drag maths
+means changing how the gesture measures itself, which is the one behaviour this
+plan was written to conserve.
+
+**What it costs today.** `npm run lint` is red on this file, so it cannot be used
+as a gate for the surface — `npm run build` and `npx tsc --noEmit` were used
+instead, and both are green. Whoever closes it should move the two reads into
+state or into the handlers, and check the swipe by hand afterwards: the rule is
+about correctness under concurrent rendering, so a green lint here proves less
+than a finger on a phone.
