@@ -12,10 +12,17 @@ import { CAP } from "@/lib/capabilities/keys";
  * Master-only, and it stays master-only across the collapse.
  *
  * `capability-routes.ts` binds `/admin/members/growth` to `admin.access` while
- * binding its parent `/admin/members` to `organizer.access`. Longest-literal
- * match is what makes the child's binding win over the parent's — proved by
- * mutation in plan 34-01 — so opening the members surface to organizers does
- * not open this one. **The guard below is unchanged in key and in meaning.**
+ * binding its parent `/admin/members` to `organizer.access`. **The mechanism
+ * that keeps them apart is stronger than a precedence rule, and worth naming
+ * precisely rather than by the shorthand:** patterns in that map are EXACT, not
+ * prefixes. `matchesPattern` refuses any candidate whose segment count differs
+ * (`capability-routes.ts:523`), so `/admin/members` — two segments — cannot
+ * match this three-segment address at all. The parent binding is not beaten
+ * here; it never competes. The dynamic-count tiebreak below it settles a
+ * different kind of case (`/admin/events/new` against an `[id]` sibling).
+ *
+ * So opening the members surface to organizers does not open this one, and the
+ * guard below is unchanged in key and in meaning.
  */
 export default async function MemberGrowthPage({
   searchParams,
