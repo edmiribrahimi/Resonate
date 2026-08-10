@@ -1563,9 +1563,33 @@ proprietario e costa un `PUT` per file, sullo stesso endpoint, senza applicare n
 
 ---
 
-## Open Questions
+## Open Questions (TUTTE RISOLTE — chiuse il 2026-08-10, dopo la pianificazione)
+
+> Aggiornato dopo il plan-checker, che ha giustamente segnalato che questa
+> sezione si leggeva ancora come aperta mentre tutte e quattro avevano una
+> risposta. **Una domanda risolta lasciata scritta come aperta e' un invito a
+> ri-deciderla**, e chi la ri-decide non ha il contesto di chi l'ha chiusa.
+
+| # | Esito | Chiusa da |
+|---|---|---|
+| 1 | **RISOLTA — accolta, e portata piu' in profondita'** | D-36-17 (proprietario) + piano 36-03 |
+| 2 | **RISOLTA — accettata come raccomandato** | piano 36-03 (la frase va nella migration) |
+| 3 | **RISOLTA — `catalogue.manage` sulla rotta** | piano 36-06, con la divergenza dichiarata |
+| 4 | **NON PERTINENTE** — resta aperta fuori da questa fase | — |
+
+**Su (1), la differenza vale la pena di essere scritta.** La raccomandazione qui
+sotto proponeva l'interruttore come criterio per *costruire la riga di chip*,
+lasciando la lettura della tabella incondizionata. Il proprietario ha deciso la
+separazione (D-36-17) e il piano 36-03 l'ha portata **dentro la policy**:
+`formats_select_listed USING (listed = true)`. La ragione e' che con la lettura
+incondizionata il nome di un format preparato in anticipo resta leggibile con la
+chiave anonima — **annunciato lo stesso, solo per un'altra porta**. La UI che non
+disegna un chip non e' un cancello.
+
+---
 
 1. **Un format nuovo diventa pubblico nel momento in cui la riga viene creata.**
+   **→ RISOLTA.** Vedi la tabella sopra: D-36-17 e piano 36-03.
    - *Quello che sappiamo:* `formats_select_public USING (true)` è ciò che D-36-13 e
      D-36-16 richiedono, ed è sicuro per i quattro format esistenti, che sono già
      pubblici in file tracciati.
@@ -1580,6 +1604,7 @@ proprietario e costa un `PUT` per file, sullo stesso endpoint, senza applicare n
      pianificazione**, con questa frase e non con il vocabolario dello schema.
 
 2. **`code` e `number` non hanno una difesa a livello di riga, solo a livello di query.**
+   **→ RISOLTA — accettata come raccomandato**, con la frase scritta nella migration (piano 36-03).
    - *Quello che sappiamo:* il `36-UI-SPEC.md` § *Surface Disclosure Matrix* dice **mai**
      per il codice di format, il codice di serie, il numero e la sigla composta su una
      superficie pubblica. La pagina rispetterà la regola selezionando le colonne che le
@@ -1599,6 +1624,9 @@ proprietario e costa un `PUT` per file, sullo stesso endpoint, senza applicare n
      frase va nella migration**, o il prossimo lettore lo prende per una svista.
 
 3. **Quale capability apre la superficie di catalogo.**
+   **→ RISOLTA — `catalogue.manage` sulla rotta** (piano 36-06), con la divergenza
+   dalle gemelle dichiarata: sposta il rifiuto **prima**, che e' l'unica direzione
+   permessa da `access-gating.md`.
    - Le due gemelle (`/admin/venues`, `/admin/artists`) sono legate a `organizer.access`,
      con le azioni su `catalogue.manage`. Raccomandazione: **`catalogue.manage` per la
      rotta**, § domanda 5 — ma è una divergenza dalle gemelle, e va dichiarata nel piano.
