@@ -368,3 +368,121 @@ testo, non logo.
 scelta deliberata di chi possiede il brand. Ma allora e' la **regola** a dover
 cambiare, non il file a restare in silenzio in disaccordo con essa: oggi i due
 dicono cose diverse e nessuno dei due sa dell'altro.
+
+---
+
+## D11 — Ritirare un format non lo toglie da `/events`; ripristinarlo ce lo rimette senza che nessuno lo decida
+
+**Rilevato da:** il piano 36-14, eseguendo V5.
+**Va deciso da:** il proprietario, o una fase successiva. **Non riparato qui**:
+un difetto riparato in silenzio durante la propria verifica non e' stato
+verificato.
+**File:** `src/app/(admin)/admin/formats/actions.ts`, `retireFormat`
+(`:645-683`) e `restoreFormat` (`:686-…`); `src/app/(public)/events/page.tsx`,
+il filtro del catalogo.
+
+**Il fatto, misurato.** `retireFormat` scrive **solo** `retired_at` e non tocca
+`listed`. Un format **elencato** che viene ritirato conserva quindi
+`listed = true`: il suo chip sparisce da `/events` unicamente perche' la pagina
+filtra anche `retired_at`, non perche' qualcuno lo abbia spubblicato. Al
+ripristino, il chip **torna immediatamente** — misurato: da 5 chip a 6, con la
+chiave anonima, subito dopo `Restore format`.
+
+**Perche' conta.** D-36-17 esiste precisamente perche' *«l'annuncio di un format
+nuovo non lo faccia il prodotto nel momento in cui qualcuno salva, ma una
+persona quando decide»*. Un ripristino che ripubblica un chip senza un secondo
+gesto e' quella stessa cosa che rientra dalla porta di servizio: chi ripristina
+sta decidendo *«nuove serate possono di nuovo essere assegnate»*, e si ritrova
+ad aver deciso anche *«ogni visitatore lo vede»*.
+
+**Le due letture, e nessuna delle due e' stata applicata:**
+
+1. **Il codice e' coerente e la procedura scritta e' imprecisa.** Ritiro e
+   elenco sono due assi ortogonali per disegno — la superficie lo dice a parole
+   (*«Nights under it are unaffected either way»*) — e l'asimmetria *«il chip
+   torna solo dopo averlo elencato»* riguarda la **creazione** (un format nasce
+   `listed = false`), che e' stata misurata e regge. In questa lettura si
+   corregge la frase di V5, non il codice.
+2. **Il ritiro dovrebbe spegnere anche `listed`**, cosi' che il ripristino sia
+   davvero un atto solo sull'assegnabilita' e la ripubblicazione resti un
+   secondo gesto deliberato. In questa lettura si cambia `retireFormat`, e la
+   copia della conferma va riscritta di conseguenza.
+
+**Cosa e' provato in entrambe le letture:** il ritiro toglie il chip da
+`/events` (6 → 5), toglie la voce dal selettore per un'assegnazione nuova
+(5 → 4), e **lascia intatta la serata che gia' portava quel format**, che
+continua a rendere il proprio marker. FMT-05 come e' scritto e' soddisfatto.
+
+---
+
+## D12 — 63 righe di produzione cancellate durante la verifica, in sette tabelle, e non recuperate
+
+> **Questa e' la voce piu' importante di questo elenco.** Non e' debito
+> scoperto: e' danno prodotto.
+
+**Causato da:** il piano 36-14, task 1, il 2026-08-10 alle ~16:56 UTC.
+**Va deciso da:** il proprietario, **subito**.
+**Recuperato:** in parte. Vedi sotto.
+
+**Cosa e' successo.** Per rimuovere i due eventi creati apposta per V1 e V2,
+l'esecutore ha guidato la superficie `/admin/events` con uno snippet che
+cercava i pulsanti `Delete` e li abbinava alla card giusta risalendo l'albero
+del DOM in cerca del titolo usa-e-getta. **La risalita arriva a un antenato che
+contiene l'intera lista**, quindi dopo i primi due passaggi il criterio
+corrispondeva a **qualunque** pulsante `Delete`. Il ciclo ha premuto quattro
+volte. I due eventi reali sono stati cancellati, e con loro — in cascata — le
+righe che li referenziavano.
+
+**Cosa e' tornato, ed e' verificato riga per riga.** `events` (2 righe) e
+`event_parties` (3 righe) sono state **ripristinate da un'istantanea presa prima
+di toccare qualsiasi cosa**, con gli id, gli slug, i `created_at` e ogni colonna
+originali. Confronto riga per riga contro l'istantanea di partenza **e** contro
+quella che il piano 36-13 aveva lasciato: **0 aggiunte, 0 rimosse, 0 cambiate**,
+md5 identici. Anche `formats` e `party_series` sono byte-identiche.
+
+**Cosa NON e' tornato.** Nessuna istantanea copriva queste tabelle, e il
+progetto **non ha PITR** (`pitr_enabled: false`, nessun backup elencato
+dall'API di gestione il 2026-08-10 alle 17:00 UTC):
+
+| Tabella | Righe alle 16:43 UTC | Righe dopo |
+|---|---|---|
+| `drink_orders` | **28** | 0 |
+| `drink_tokens` | **16** | 0 |
+| `drink_items` | **10** | 0 |
+| `pending_purchases` | **6** | 0 |
+| `tickets` | **1** | 0 |
+| `ticket_tiers` | **1** | 0 |
+| `guest_list_entries` | **1** | 0 |
+
+**63 righe.** Il conteggio del *prima* non e' una stima: viene da
+`32-BASELINE-reads.post-36.json`, catturato **oggi alle 16:43 UTC**, che porta
+`table_row_counts` per venticinque tabelle. Ogni altra tabella — `profiles` 4,
+`venues` 5, `artists` 7, `drink_items`… — e' stata riconfrontata una per una:
+**si sono mosse solo quelle sette**.
+
+**Cosa significa, in concreto.** I due eventi sono **passati** (febbraio e
+maggio 2026): nessuna porta di stasera e nessuna vendita in corso dipendono da
+queste righe. Quello che si e' perso e' **il registro applicativo** di
+consumazioni acquistate, token, un biglietto e una voce di guest list. **La
+verita' finanziaria non e' persa**: le transazioni stanno su SumUp, e
+`drink_orders.sumup_transaction_code` era il ponte fra le due — e' il ponte che
+e' andato.
+
+**Le opzioni, e sono del proprietario:**
+
+1. **Backup lato Supabase.** L'API di gestione risponde `pitr_enabled: false` e
+   non elenca backup, ma `walg_enabled: true`: **la dashboard va guardata di
+   persona** prima di dare la perdita per definitiva. Se un backup fisico
+   giornaliero esiste, un ripristino riporterebbe tutto — e riporterebbe anche
+   ogni altra cosa allo stesso istante, che oggi non e' un costo perche' nulla
+   d'altro si e' mosso.
+2. **Ricostruzione parziale da SumUp.** Gli ordini possono essere riletti
+   dall'estratto delle transazioni; token, biglietto e guest list no.
+3. **Accettare la perdita e dichiararla**, con la data e questo elenco.
+
+**Cosa e' cambiato nel modo di lavorare, gia' adesso.** Le cancellazioni
+successive nella stessa sessione sono state fatte **per chiave primaria, con una
+guardia che rilegge la riga e rifiuta se il codice non e' quello atteso**, e la
+rimozione e' stata riletta dal database. **Nessun atto distruttivo va guidato
+per corrispondenza di testo su una superficie**: e' il modo in cui un ciclo
+scritto per due righe ne colpisce quattro senza che nulla protesti.
