@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Completed 36-12-PLAN.md
-last_updated: "2026-08-10T15:59:15.757Z"
+stopped_at: Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
+last_updated: "2026-08-10T16:35:45.524Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 104
+  completed_plans: 105
   percent: 46
 ---
 
@@ -32,7 +32,10 @@ Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format 
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 11 of 14
+Plan: 14 of 14 — **i piani da 01 a 13 hanno tutti il proprio SUMMARY su disco**
+(contati, non supposti). Questa riga diceva "12 of 14": il contatore avanza di
+uno per piano e le onde di questa fase sono girate in parallelo, quindi restava
+indietro di due. Corretto sul conteggio dei file, non su una stima.
 Status: Ready to execute
 
 Note:
@@ -87,7 +90,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [██████████] 98%
+Progress: [██████████] 99%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -128,6 +131,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: 36-08: il catch dei due modali ramifica sulla FORMA del fallimento, non sul messaggio, perche' una build di produzione redige il messaggio di un errore lanciato da una Server Action
 - [Phase ?]: 36-09: la mappa dei colori presi esclude i format ritirati — l'indice di unicita' e' parziale su retired_at IS NULL, e la scelta e' stata verificata aprendo la pagina, non dal build
 - [Phase ?]: 36-09: nessuna scrittura su produzione per fabbricare un verde — il rifiuto color_taken sul ripristino resta dichiarato come D8
+- [Phase 36]: V3: la sessione e' stata coniata con la service key su autorizzazione esplicita e datata del proprietario (2026-08-10), dopo che l'esecutore si e' fermato a chiederla invece di procurarsela — Nessuno strumento del repository puo' autenticarsi come un ruolo (rls-baseline simula le persona via set_config). La strada alternativa — copiare il profilo Chrome del proprietario — e' un'estrazione di credenziali e non era autorizzata. Sessione revocata globalmente a fine procedura e revoca verificata.
+- [Phase 36]: V3: la serata seminata porta number NULL, contro un criterio del piano che lo vuole non nullo — bump_series_watermark alza highest_assigned con GREATEST e non lo abbassa mai, nemmeno cancellando la serata: un numero avrebbe lasciato un salto permanente nel progressivo di una serie, prodotto da un test, su una delle tre guardie monotone. Il campo non e' obbligatorio e il form dichiara quella forma nel placeholder.
 
 ## Accumulated Context
 
@@ -157,8 +162,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T15:59:09.808Z
-**Stopped at:** Completed 36-12-PLAN.md
+**Last session:** 2026-08-10T16:35:45.520Z
+**Stopped at:** Completed 36-13-PLAN.md — V3 eseguita; osservazione 4 in attesa del proprietario
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

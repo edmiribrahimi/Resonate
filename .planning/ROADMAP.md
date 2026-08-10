@@ -459,7 +459,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7)*
 
-- [ ] 36-13-PLAN.md — V3: an unannounced night seeded on purpose, the anonymous key asked directly, and the source read rather than the rendering
+- [x] 36-13-PLAN.md — V3: an unannounced night seeded on purpose, the anonymous key asked directly, and the source read rather than the rendering
 
 **Wave 9** *(blocked on Wave 8)*
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 12/14 | In Progress|  |
+| 36. Formats & Series Numbering | 13/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
