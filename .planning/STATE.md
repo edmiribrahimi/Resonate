@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Completed 36-02-PLAN.md
-last_updated: "2026-08-10T14:00:40.045Z"
+stopped_at: Completed 36-03-PLAN.md
+last_updated: "2026-08-10T14:16:47.073Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 94
+  completed_plans: 95
   percent: 46
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
-Plan: 2 of 14
+Plan: 3 of 14
 Status: Ready to execute
 
 Note:
@@ -84,7 +84,7 @@ checkpoints is now closed (the migration is applied); three remain, plus the RLS
 half of the fourth. `31-VALIDATION.md` keeps `nyquist_compliant: false`
 deliberately.
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 90%
           phase 32 — 11 plans, 0 executed
 
 ## Decisions
@@ -105,6 +105,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: Le due notti in archivio sono RSNT-001 e RSNT-002, confermate contro la controprova RSNT-008 citata in production-calendar.md:86 — da qui in poi la numerazione e' monotona
 - [Phase 36]: Cinque nomi di serie autorizzati per un file pubblico: re:sonate, re:sonate x Perlone, RamaDub x Booze, RamaDub x Muro, SunSet. MotionLab parte senza serie e l'assenza e' il punto
 - [Phase 36]: Il nome pubblico della serie di Nizza e' 're:sonate x Perlone'; production-calendar.md scrive ancora 'Resonate x Perlone' e va allineato come aggiornamento del modulo persona, fuori da questa fase
+- [Phase 36]: la migration di format e serie e' scritta e verificata in container, NON applicata. Le colonne stanno prima della RLS: la policy nomina ep.series_id, e Postgres rifiuta una policy che legge una colonna inesistente
+- [Phase 36]: il join della policy delle serie e' qualificato — ep.series_id = party_series.id. La forma non qualificata sarebbe USING (true) travestita
 
 ## Accumulated Context
 
@@ -132,7 +134,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T14:00:40.042Z
+**Last session:** 2026-08-10T14:16:32.618Z
 **Stopped at:** Completed 36-02-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.

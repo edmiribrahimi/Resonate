@@ -431,7 +431,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 36-03-PLAN.md — the migration: two catalogue tables with opposite read policies, three columns on the night, the backfill and its raising guard, the composite key and the named unique
+- [x] 36-03-PLAN.md — the migration: two catalogue tables with opposite read policies, three columns on the night, the backfill and its raising guard, the composite key and the named unique
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 2/14 | In Progress|  |
+| 36. Formats & Series Numbering | 3/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
