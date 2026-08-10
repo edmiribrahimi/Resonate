@@ -215,6 +215,39 @@ function isVenueVisible(opts: {
   return { visible: false, hint: opts.venueSecretHint };
 }
 
+/**
+ * ── Dynamic BY DECLARATION, and no longer only by derivation (D-37-09) ───────
+ *
+ * This route already renders as `ƒ` because `createClient()` calls `cookies()`,
+ * which excludes static rendering. **Nothing said so.** A later edit that moved
+ * the session read — into a child, into a helper, behind a cache — would make
+ * this page static again with no error and no warning, and nobody would notice
+ * until an address was on a cached page.
+ *
+ * That risk is new, and it is the one D-37-09 names as the main one. The
+ * predicate above now has a temporal component that **trips by itself at a
+ * precise instant**: before, a night's visibility barely moved without somebody
+ * writing something. A cached page CROSSES that instant. Served stale before
+ * it, it shows the hint to somebody entitled to the address — an annoyance.
+ * Served stale after it, to a DIFFERENT reader, it shows the address to
+ * somebody who is not — a leak, and this is the one domain where the leak has
+ * no remedy.
+ *
+ * The service worker is a second cache with a second answer, and it belongs to
+ * plan 37-07; the proof that neither serves this page stale belongs to 37-13.
+ *
+ * THIS ROUTE EXPORTS NO METADATA FUNCTION, and the absence is a decision rather
+ * than an omission (T-37-25). A social preview is public content cached by third
+ * parties — a shared cache entirely outside our control — so an event page that
+ * grew one would have to prove, forever, that no secret address can reach it.
+ * `nextjs-architecture.md`, gate *metadata e Open Graph*, states the rule for
+ * the day somebody adds one. (The identifier itself is not spelled here, so that
+ * a mechanical check for "this page has none" measures the property it means
+ * rather than failing on the paragraph that forbids it — same correction as
+ * `37-02-SUMMARY.md`.)
+ */
+export const dynamic = "force-dynamic";
+
 const WD_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const WD_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MO_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -1006,9 +1039,10 @@ export default async function EventDetailPage({
 
                   What is NO LONGER an exit from this page: the nested embed of
                   the venues table (removed above) and the link to the public
-                  venue page (removed here). No `generateMetadata` exists on
-                  this route, so there is no social-preview exit either — an
-                  absence that is a choice (T-37-25).
+                  venue page (removed here). This route exports no metadata
+                  function either, so there is no social-preview exit — an
+                  absence that is a choice (T-37-25, and the docblock at the top
+                  of this file).
                 */}
                 {(venueRow || party.venue_text || party.venue_secret) && (
                   <div className="mt-1">
@@ -1036,11 +1070,22 @@ export default async function EventDetailPage({
                         <MapPinIcon /> {party.venue_text}
                       </p>
                     ) : party.venue_secret ? (
+                      /*
+                        `revealHours` is the window ALREADY RESOLVED by the
+                        server. The dialog used to receive the STORED value and,
+                        on `NULL`, wrote "closer to the event" while the logic
+                        applied the fallback — the page promising one thing and
+                        the system doing another. Resolved here, the client
+                        component never learns the fallback exists and therefore
+                        cannot diverge from it; the way to get it wrong goes away
+                        with it. Plan 37-07 owns that file and narrows the prop
+                        type to `number`.
+                      */
                       <SecretVenueDialog
                         hint={venueHint}
                         isAuthenticated={isAuthenticated}
                         isApproved={isApproved}
-                        revealHours={party.venue_reveal_hours}
+                        revealHours={venueRevealHours(party.venue_reveal_hours)}
                         revealOnPurchase={party.venue_reveal_on_purchase}
                       />
                     ) : null}
