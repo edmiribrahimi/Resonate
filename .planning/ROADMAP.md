@@ -420,8 +420,50 @@ Plans:
   4. A format's label and colour change without a deploy, and a retired sigla cannot appear on any surface
   5. No count, label or code on a public surface reveals an unannounced night or a secret venue
 
-**Plans**: TBD
+**Plans**: 14 plans, in 9 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 36-01-PLAN.md — the `pre-36` baseline, on both targets, taken before a phase-36 migration exists on disk
+- [ ] 36-02-PLAN.md — what the catalogue holds on day one, and what each of the three existing nights carries — a blocking decision
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 36-03-PLAN.md — the migration: two catalogue tables with opposite read policies, three columns on the night, the backfill and its raising guard, the composite key and the named unique
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 36-04-PLAN.md — the harness keeps measuring: widened probe payloads, the two new tables seeded first, and the two constraint probes that make FMT-03 automated
+- [ ] 36-06-PLAN.md — the contracts: the two types, the capability branch change that opens the catalogue address, and `FormatMarker` with its explicit `normal-case`
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 36-05-PLAN.md — apply through the Management API migrations endpoint, then read the policy predicates back from `pg_policies`
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 36-07-PLAN.md — the catalogue actions, where the guard is the whole boundary and every refusal is a returned value
+- [ ] 36-10-PLAN.md — format, series and number on the work surface, and the end of `updateEvent`'s swallowed per-night errors
+- [ ] 36-11-PLAN.md — `/events`: two parameters, one chip row for everyone, and a card that degrades to the narrower name
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 36-08-PLAN.md — the colour control that cannot express a gradient, and the two catalogue modals
+- [ ] 36-12-PLAN.md — the tab in the address without breaking the swipe, and the marker on every night
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 36-09-PLAN.md — the catalogue surface, and the only destructive confirmation in the phase
+
+**Wave 8** *(blocked on Wave 7)*
+
+- [ ] 36-13-PLAN.md — V3: an unannounced night seeded on purpose, the anonymous key asked directly, and the source read rather than the rendering
+
+**Wave 9** *(blocked on Wave 8)*
+
+- [ ] 36-14-PLAN.md — V1, V2, V4, V5, and a validation record that keeps `nyquist_compliant: false` on purpose
 
 ### Phase 37: Manual Venue Reveal
 
