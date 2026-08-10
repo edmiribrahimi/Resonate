@@ -305,17 +305,36 @@ async function markBatchReached(
  *
  * It does not send, and it does not write.
  *
- * A failed read answers **0**, and the caller must not read that as "nobody is
- * entitled": use {@link revealPartyVenue}'s `failureKind` for the send itself.
- * The failure is logged with its own category by `collectRecipients`.
+ * ── `unavailable`, and why `{ total: 0 }` alone was not a usable answer ───────
+ *
+ * A failed read makes `total` **0**, which is indistinguishable from a night
+ * nobody is entitled to — and the caller of this function is about to write an
+ * **irreversible** act carrying that number as `recipients_intended`. Recording
+ * *"this act meant to reach 0 people"* when the truth is *"we could not find
+ * out"* puts a false statement in an append-only trace, and opens the address
+ * on the page with no mail leaving.
+ *
+ * So the flag travels with the number. It is the same distinction
+ * {@link VenueRevealFailureKind} already draws between `no_recipients` and
+ * `recipients_unavailable` on the sending side; the counting side was missing
+ * it, which meant the manual path could only learn about a failed read
+ * **after** the point of no return. `venue-secrecy.md`, gate *default chiuso*:
+ * an undeterminable state is not an empty one.
+ *
+ * The failure is logged with its own category by `collectRecipients`; the flag
+ * is what reaches a person, because this project has no error tracking.
  */
 export async function countVenueRevealRecipients(
   supabase: SupabaseClient,
   party: VenueRevealParty,
   opts?: VenueRevealOptions
-): Promise<{ total: number }> {
-  const { recipients } = await collectRecipients(supabase, party, opts);
-  return { total: recipients.size };
+): Promise<{ total: number; unavailable: boolean }> {
+  const { recipients, unavailable } = await collectRecipients(
+    supabase,
+    party,
+    opts
+  );
+  return { total: recipients.size, unavailable };
 }
 
 /**
