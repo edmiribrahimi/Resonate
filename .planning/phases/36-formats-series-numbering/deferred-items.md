@@ -5,10 +5,28 @@
 
 ---
 
-## D1 — The `Formats` staff tab
+## D1 — The `Formats` staff tab — **CHIUSA il 2026-08-10**
+
+> **Chiusa dal piano 36-09, task 4.** Il task 1 dello stesso piano ha creato
+> `src/app/(admin)/admin/(work)/formats/page.tsx`, l'indirizzo e' entrato
+> nell'unione generata, e la riga e' stata riaccesa **senza cast e senza
+> allargare il tipo**: `StaffTab.href` e' ancora `Route`, e
+> `grep -c "as Route" src/lib/routes/staff-tabs.ts` restituisce 0.
+>
+> La prova non e' un'affermazione: `npm run build` esce 0, ed e' esattamente il
+> controllo che in 36-06 falliva con
+> `Type error: Type '"/admin/formats"' is not assignable to type 'Route'`.
+> `npm run verify:routes` conta ora 24 pagine sotto `(admin)` e 24 pattern nella
+> mappa, entrambi verdi.
+>
+> **La terza opzione della tabella qui sotto e' quella presa, e ha funzionato.**
+> Le altre due restano scartate, e la ragione e' scritta accanto alla riga in
+> `staff-tabs.ts` — non nel commento di lavoro che e' stato rimosso, ma nella
+> prosa permanente: il tipo `Route` e' la ragione per cui un menu non puo'
+> promettere un indirizzo che nessuno serve, ed e' lui ad aver avuto ragione.
 
 **Found by:** plan 36-06, task 2.
-**Must be closed by:** plan 36-09 (the plan that creates the page).
+**Closed by:** plan 36-09, task 4, il 2026-08-10.
 **File:** `src/lib/routes/staff-tabs.ts` — the line is written out, commented,
 next to `Venues`.
 

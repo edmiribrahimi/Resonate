@@ -1,5 +1,5 @@
 /**
- * The seven staff tabs — address, label, and the capability that opens the
+ * The eight staff tabs — address, label, and the capability that opens the
  * address — declared once, for both staff menus.
  *
  * Before this module there were **three** hand-maintained menus, not the two
@@ -75,7 +75,7 @@ export interface StaffTab {
 }
 
 /**
- * The seven, in the order they have always been drawn.
+ * The eight, in the order they are drawn.
  *
  * The first four were the tabs an organizer already saw; the last three were the
  * ones carrying `roles: ["master"]`. That role filter is not translated — it is
@@ -83,41 +83,39 @@ export interface StaffTab {
  * `admin.access` for all three. The two happen to select the same accounts today
  * (`master` alone holds `admin.access`), and that coincidence is not what makes
  * the entry correct: reading the same declaration as the server is.
+ *
+ * The eighth arrived with phase 36 and is the first entry here that asks neither
+ * `organizer.access` nor `admin.access` — see the comment beside it.
  */
 const DECLARED = [
   { href: "/admin/events", label: "Events", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/members", label: "Members", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/artists", label: "Artists", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/venues", label: "Venues", capability: CAP.ORGANIZER_ACCESS },
-  // ── THE EIGHTH TAB BELONGS HERE, AND CANNOT LAND BEFORE ITS PAGE ───────────
+  // ── THE EIGHTH TAB, AND WHY IT COULD NOT LAND BEFORE ITS PAGE ──────────────
   //
-  //     { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
+  // `StaffTab.href` is `Route` and NOT `string`, and that is the property that
+  // makes this file's promise keepable: a menu cannot draw a link to an address
+  // nobody serves, because a STATIC address enters the generated union only once
+  // a `page.tsx` serves it. Which is exactly why this entry could not be written
+  // when `/admin/formats` was bound in `CAPABILITY_ROUTES` (phase 36, plan 06)
+  // and the page did not exist yet — `next build` refused it by name.
   //
-  // Phase 36, plan 06 bound `/admin/formats` to `catalogue.manage` in
-  // `CAPABILITY_ROUTES` — that half is done, and the middleware and the page
-  // guard both read it. This line is **not** done, and the reason is measured
-  // rather than argued:
+  // The two ways to make it compile early were weighed and rejected, and they
+  // stay rejected: widening `href` would turn `typedRoutes` off for every tab
+  // above and push the loosening into both consumers, which pass `tab.href`
+  // straight into `<Link href>` (`StaffNav.tsx:68-73`,
+  // `ManagementSection.tsx:51`); and asserting the type on this one entry — the
+  // cast is deliberately not spelled here, so the check that forbids it cannot
+  // go green on the sentence forbidding it — would compile, and would be a hole
+  // outliving the week it was needed, on the one file whose whole job is this
+  // guarantee. Plan 36-09 created the page instead, and the type was the one
+  // that had been right all along.
   //
-  //     Type error: Type '"/admin/formats"' is not assignable to type 'Route'.
-  //     src/lib/routes/staff-tabs.ts:92:5
-  //
-  // `StaffTab.href` is `Route`, and a STATIC address enters the generated union
-  // only once a `page.tsx` serves it. The map can hold an address with no page
-  // — `RoutePattern` carries a second arm for exactly that, with the price
-  // written in that module's docblock — and this file deliberately does not:
-  // both consumers pass `tab.href` straight into `<Link href>`
-  // (`StaffNav.tsx:68-73`, `ManagementSection.tsx:51`), so widening it here
-  // would turn off `typedRoutes` for all seven tabs above and push casts into
-  // two more files. A per-entry `as Route` would compile and would be worse: it
-  // is a hole that outlives the week it was needed, on the one file whose job
-  // is that a menu cannot promise an address nobody serves.
-  //
-  // **Add the line above in the same plan that creates
-  // `src/app/(admin)/admin/(work)/formats/page.tsx` (36-09).** Adding it any
-  // earlier does not protect anything and does draw a staff a link to a 404:
-  // the runtime check below only asks whether the map agrees with the tab, and
-  // it would agree. Recorded in
-  // `.planning/phases/36-formats-series-numbering/deferred-items.md`.
+  // `catalogue.manage`, and not `organizer.access` like the four above: it is
+  // what the map binds to this address, and it `requires_approved`, so a pending
+  // organizer is neither drawn the tab nor let through to the page.
+  { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
   { href: "/admin/finance", label: "Finance", capability: CAP.ADMIN_ACCESS },
   { href: "/admin/analytics", label: "Analytics", capability: CAP.ADMIN_ACCESS },
@@ -150,7 +148,7 @@ for (const tab of DECLARED) {
   }
 }
 
-/** The seven, verified against the map. */
+/** The eight, verified against the map. */
 export const STAFF_TABS: readonly StaffTab[] = DECLARED;
 
 /**
