@@ -337,3 +337,34 @@ preparato in anticipo e annunciato tardi, non un caso di laboratorio.
 serata con `venue_secret = false` e una data lontana, cosi' che **nessuno dei
 due predicati del cron possa selezionarla**. La misura di FMT-06 non doveva
 introdurre un effetto collaterale in un dominio che non stava misurando.
+
+---
+
+## D10 — La e rovesciata e' nel `<title>` del sito, ed e' l'unico posto che questa fase non ha grepato
+
+**Rilevato da:** il piano 36-13, leggendo il sorgente reso di `/events` per V3.
+**Va deciso da:** il proprietario del brand. **Non riparato qui**: non e' un
+percorso di divulgazione, e questo piano non ripara cio' che trova.
+**File:** `src/app/layout.tsx:15,19,25,32`.
+
+**Il fatto.** I quattro titoli dei metadati — `title`, e i titoli OpenGraph,
+Twitter e web-app — portano `re:sonatɘ` **con la e rovesciata**. Il sorgente
+reso di ogni pagina pubblica lo conferma: `<title>re:sonatɘ</title>`.
+
+**Perche' e' notevole proprio qui.** Ogni piano di questa fase porta nel proprio
+riepilogo una riga *«la e rovesciata → 0»*, misurata sui file che tocca. Il
+conteggio e' vero e non serve a niente se l'unico posto in cui quel carattere
+**viene effettivamente spedito** non e' fra i file toccati da nessuno. Un gate
+misurato ovunque tranne dove il difetto vive e' un gate che si autocertifica.
+
+**Cosa dice la regola.** `brand-visual-system.md`, gate *grafia del brand*: la
+`ɘ` **esiste solo dentro il logo**, perche' e' un segno disegnato e non un
+carattere da digitare — incollarla in un testo produce una parola che i motori
+di ricerca e i lettori di schermo non riconoscono. Un `<title>` e' la scheda del
+browser, il risultato di ricerca e cio' che uno screen reader annuncia: e'
+testo, non logo.
+
+**Perche' e' scritto come una domanda e non come un verdetto.** Puo' essere una
+scelta deliberata di chi possiede il brand. Ma allora e' la **regola** a dover
+cambiare, non il file a restare in silenzio in disaccordo con essa: oggi i due
+dicono cose diverse e nessuno dei due sa dell'altro.
