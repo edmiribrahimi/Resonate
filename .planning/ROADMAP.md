@@ -440,7 +440,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 36-05-PLAN.md — apply through the Management API migrations endpoint, then read the policy predicates back from `pg_policies`
+- [x] 36-05-PLAN.md — apply through the Management API migrations endpoint, then read the policy predicates back from `pg_policies`
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -565,7 +565,7 @@ Plans:
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
-| 36. Formats & Series Numbering | 5/14 | In Progress|  |
+| 36. Formats & Series Numbering | 6/14 | In Progress|  |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
 | 39. The Door's Own Address | 0/TBD | Not started | - |

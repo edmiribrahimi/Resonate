@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Completed 36-06-PLAN.md
-last_updated: "2026-08-10T14:36:12.082Z"
+stopped_at: Completed 36-05-PLAN.md
+last_updated: "2026-08-10T14:50:41.720Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 106
-  completed_plans: 97
+  completed_plans: 98
   percent: 46
 ---
 
@@ -28,8 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 36 (Formats & Series Numbering) — PLANNED, not yet executed
-Plan: 5 of 14
+Phase: 36 (Formats & Series Numbering) — IN ESECUZIONE. **Lo schema di format e
+serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
+questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
+falsa contro un database.
+Plan: 6 of 14
 Status: Ready to execute
 
 Note:
@@ -112,6 +115,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 36]: 36-06: la tab Formats rimandata al piano che crea la pagina (36-09) — StaffTab.href e' Route, un indirizzo statico entra nell'unione generata solo dopo che una page.tsx lo serve
 - [Phase 36]: 36-04: la sonda di scrittura risolve il formato della serie come referenza derivata privilegiata, non come sotto-select — catalogue.manage pretende approved, e quattro celle oggi ok:1 sarebbero diventate 23502
 - [Phase 36]: 36-04: punto container catturato. 966 celle di scrittura e 322 di lettura preesistenti IDENTICHE, zero 23502; sonde di vincolo che rifiutano come dichiarato **3/3**, era 1/1. `party_series_select_published` non e' mai stato esercitato come concessione: il container non pubblica eventi
+- [Phase 36]: 36-05: migration APPLICATA in produzione dall'endpoint migrations, versione `20260810144239`. I diciotto scarti della history precedono la fase; non e' stata aggiunta la diciannovesima, e ripararli resta una chiamata del proprietario (`PUT` fa upsert senza applicare)
+- [Phase 36]: 36-05: `party_series_select_published` visto CONCEDERE per la prima volta — con la chiave anonima la produzione restituisce UNA serie su sei (`RSNT`, l'unica con una serata pubblicata). Le cinque invisibili — `BZ`, `MR`, `PRLN`, `SNST`, `UNCL` — includono le quattro che portano un luogo nel nome. Prova a livello di identita' di riga (`pk_md5`), non di conteggio
+- [Phase 36]: 36-05: `event_parties_select_published` byte-identico fra `pre-36` e `post-36` (md5 `43e7f547`), 72 policy preesistenti su 72 immobili, 322 celle di lettura condivise con 0 mosse. Le tre serate portano l'assegnazione confermata da 36-02 e il format di ripiego tiene **0** righe
 
 ## Accumulated Context
 
@@ -139,8 +145,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T14:36:07.000Z
-**Stopped at:** Completed 36-06-PLAN.md
+**Last session:** 2026-08-10T14:50:41.717Z
+**Stopped at:** Completed 36-05-PLAN.md
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
