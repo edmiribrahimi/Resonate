@@ -49,6 +49,7 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/api/auth/**`, `src/app/(auth)/**` | access-gating | comms-analytics |
 | `src/app/(admin)/**` | access-gating | nextjs-architecture, ticketing-payments |
 | `src/app/api/webhooks/**` | ticketing-payments | supabase-data |
+| `src/lib/venue-reveal/**` | venue-secrecy | comms-analytics, ticketing-payments |
 | `src/app/api/cron/venue-reveal/**` | venue-secrecy | ticketing-payments, comms-analytics |
 | `src/app/api/cron/**` (gli altri) | ticketing-payments | comms-analytics, time-and-scheduling |
 | `src/utils/formatTime.ts`, `vercel.json` | time-and-scheduling | ticketing-payments |
