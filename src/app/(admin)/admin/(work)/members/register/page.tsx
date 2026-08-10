@@ -3,12 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
-import type {
-  MembershipActRow,
-  UserRole,
-  UserStatus,
-} from "@/types/database";
+import type { MembershipActRow } from "@/types/database";
 
 /**
  * The membership register, read.
@@ -134,10 +129,11 @@ function Transition({
 }
 
 export default async function MembershipRegisterPage() {
+  // Resolved once by `(work)/layout.tsx`, which also mounts both navs and now
+  // holds the `UserRole` / `UserStatus` casts that used to sit here.
+  // `getAccessContext` is `cache()`-scoped per request, so asking again for
+  // this page's own guard costs no second round trip.
   const ctx = await getAccessContext();
-
-  const navRole = ctx.role as UserRole | null;
-  const navStatus = ctx.status as UserStatus | null;
 
   // ── Two layers, and the surface needs both ──────────────────────────────────
   //
@@ -148,14 +144,22 @@ export default async function MembershipRegisterPage() {
   // holding the anonymous key, which is `CLAUDE.md` operating principle 2 in
   // its plainest form: the middleware is UX, the RLS is security.
   //
-  // KNOWN, and recorded rather than left to be discovered: `register.read` is
-  // granted to master AND organizer (43-07), while `/admin/*` is gated on
-  // `admin.access`, which is the master alone
-  // (`src/lib/supabase/middleware.ts`). So at this address an organizer holding
-  // the capability is bounced before this file runs. That is the route's
-  // verdict, not this page's, and it is not corrected here by loosening
-  // anything: phase 34 collapses the duplicated admin and organizer trees, and
-  // an organizer-reachable address for this register belongs to that collapse.
+  // ── The paragraph that stood here described a defect, and the defect is gone
+  //
+  // It recorded that `register.read` was granted to master AND organizer
+  // (43-07) while everything under `/admin` was judged by `admin.access` — the
+  // master alone — so an organizer holding the capability was bounced before
+  // this file ran. Corrected rather than carried, because a stale comment
+  // survives a rewrite and is then re-read as current.
+  //
+  // What closed it: **D-34-02 dissolved the prefix rule**, and
+  // `capability-routes.ts` binds this route to `register.read` — one entry,
+  // read by the middleware and by the guard below, which is why they cannot
+  // disagree (D-34-09). **No permission was edited.** The grant
+  // `('organizer','register.read',true)` is where it always was, in
+  // `20260808002000_membership_register.sql:130`, and its
+  // `requires_approved = true` is D-19's non-negotiable requirement: a pending
+  // organizer is refused here, by the capability set, exactly as intended.
   if (!ctx.capabilities.has(CAP.REGISTER_READ)) {
     redirect("/dashboard");
   }
@@ -426,8 +430,6 @@ export default async function MembershipRegisterPage() {
           </p>
         ) : null}
       </div>
-
-      <MobileNav role={navRole} status={navStatus} />
     </div>
   );
 }

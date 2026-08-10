@@ -1,19 +1,14 @@
-export default function AdminMembersLoading() {
+export default function MembersLoading() {
   return (
     <div className="min-h-dvh pb-24">
       <header className="px-6 pt-12 pb-6">
         <div className="h-9 w-24 animate-pulse rounded-lg bg-card-border/50" />
       </header>
 
-      {/* StaffNav skeleton */}
-      <div className="flex gap-1 px-6 mb-4 overflow-hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-9 w-20 shrink-0 animate-pulse rounded-full bg-card-border/50"
-          />
-        ))}
-      </div>
+      {/* The tab-bar skeleton that stood here is gone: `(work)/layout.tsx` now
+          mounts the real tab bar OUTSIDE this boundary, so a skeleton here
+          would draw a second row of pills under a nav that is already
+          rendered. Nothing else about this file changed. */}
 
       <div className="px-6">
         {/* Search bar skeleton */}
