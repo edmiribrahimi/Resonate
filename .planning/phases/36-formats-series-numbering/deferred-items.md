@@ -139,7 +139,13 @@ state or into the handlers, and check the swipe by hand afterwards: the rule is
 about correctness under concurrent rendering, so a green lint here proves less
 than a finger on a phone.
 
-## D5 — Sei componenti di questa fase non sono mai stati renderizzati
+## D6 — Sei componenti di questa fase non sono mai stati renderizzati
+
+> **Rinumerata da D5 a D6 dal piano 36-12.** Questa voce e l'altra sono state
+> scritte a pochi minuti di distanza da due esecutori in parallelo, ed erano
+> arrivate allo stesso numero. In un elenco di debito due voci con lo stesso
+> identificativo sono una voce che qualcuno chiudera' credendo di aver chiuso
+> l'altra.
 
 **Rilevato da:** l'orchestratore, alla chiusura dell'onda 6, consolidando tre
 dichiarazioni separate che stavano per disperdersi in tre SUMMARY diversi.
@@ -153,8 +159,8 @@ una sessione sola invece che tre volte a caso.
 
 | Componente | Scritto da | Montato? | Guardato? |
 |---|---|---|---|
-| `FormatMarker` | 36-06 | si', da 36-11 e 36-12 | **no** |
-| `FormatFilterRow` | 36-11 | si', su `/events` | **no** |
+| `FormatMarker` | 36-06 | si', da 36-11 e 36-12 | **si'** — 36-12, vedi sotto |
+| `FormatFilterRow` | 36-11 | si', su `/events` | **si'** — 36-12, vedi sotto |
 | `ColorSwatchPicker` | 36-08 | **no** — lo monta 36-09 | **no** |
 | `CreateFormatModal` | 36-08 | **no** — lo monta 36-09 | **no** |
 | `CreateSeriesModal` | 36-08 | **no** — lo monta 36-09 | **no** |
@@ -175,3 +181,17 @@ dell'asimmetria del ripristino.
 
 **Le sei procedure manuali** che 36-08 ha scritto nel proprio SUMMARY sono il
 punto di partenza: non vanno riscritte, vanno eseguite.
+
+**Le prime due righe sono state chiuse dopo che questa voce e' stata scritta**
+(36-12, `36-12-SUMMARY.md`, sezione *What was seen*). `/events` e' stato reso a
+390x844 e guardato: la riga dei chip scorre con un chip parziale al bordo, il
+chip corrente si distingue per fondo e inchiostro, i quadratini spenti sono
+leggibili come decorazione ridondante — e soprattutto **il casing tiene**:
+`re:sonate` e `SunSet` restano se stessi a otto pixel da due elementi che li
+avrebbero appiattiti. Era l'affermazione che si pubblica a ogni visitatore, ed
+e' l'unica di questo elenco che non aspetta piu' nessuno.
+
+**Cosa resta aperto anche su quelle due righe.** Il render e' headless e sul
+server di sviluppo: non dice niente su un dispositivo vero, e **lo swipe non e'
+stato fatto da un dito.** Le quattro righe del catalogo non sono state toccate:
+nessuno ha ancora aperto quelle superfici.
