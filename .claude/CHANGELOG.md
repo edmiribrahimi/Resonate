@@ -3,6 +3,68 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.7.0] - 2026-08-10
+
+### Changed — il route group non e' piu' il pubblico (fase 34, D-34-17)
+
+La fase 34 ha collassato i due alberi di lavoro in uno solo e ha **cancellato
+`src/app/(organizer)/`**. La persona lo dichiarava in cinque punti, e quei
+cinque punti sono corretti **nello stesso commit della cancellazione** — non
+per ordine ma per necessita': il controllo **A** (`npm run verify:persona`)
+sarebbe andato rosso su due `paths:` morti, e attraverso quello **B** (indice
+↔ frontmatter) e **G** (la tabella di priorita' di `meta-gates.md`). Erano i
+tre controlli a rischio, e sono tornati verdi con la cancellazione.
+
+**Le cinque correzioni meccaniche:**
+- `access-gating.md` e `nextjs-architecture.md` — il glob `src/app/(organizer)/**`
+  esce da entrambi i frontmatter
+- `CLAUDE.md` — esce dalle due righe corrispondenti dell'indice (**il controllo
+  B confronta i due lati: separarli avrebbe fallito da una parte o dall'altra**)
+- `meta-gates.md` — la riga della tabella di priorita' resta con il solo
+  `src/app/(admin)/**`
+
+**La correzione che conta di piu' e' prosa, non glob.**
+`nextjs-architecture.md` diceva *«Quattro route group, e il gruppo **e' il
+pubblico»***. Era **vero quando e' stato scritto** — due alberi, e il segmento
+nell'URL diceva davvero chi ci stava sopra — ed e' **rovesciato, non tolto in
+silenzio**, con la stessa regola di casa che il docblock di
+`scanner/page.tsx` gia' applica a una decisione ribaltata. Dopo D-34-02
+`admin` in un indirizzo e' **un indirizzo, non un'autorizzazione**: chi
+raggiunge una superficie lo vincola `src/lib/routes/capability-routes.ts`, e
+**il confine resta la RLS**. Un gate che dicesse a chi legge che mettere un
+file in `(admin)` e' una decisione d'accesso, quando non lo e' piu', e'
+esattamente il fallimento che `meta-gates.md` registra come **peggio di
+nessuna tabella**.
+
+Con la geografia sono cambiati anche il gate e l'imperativo che ripetevano la
+stessa cosa (`Gate gruppo = pubblico` → **`Gate il gruppo non autorizza`**), e
+la sezione registra ora il gruppo annidato `(work)`, la regola
+**R-WORK-ROUTES** — *solo file di rotta ci entrano* — con la sua ragione in una
+riga, e il fatto che **`/admin/scanner` sta fuori di proposito**, perche'
+nessun layout deve avvolgere la porta.
+
+### Measured — il caso peggiore del context budget ha cambiato file
+
+Rimisurato: **`src/app/(admin)/admin/scanner/ScannerClient.tsx`, 38.240 byte ≈
+10.622 token** su un tetto di 12.000 (margine 1.378). Non e' piu'
+`EventTabs.tsx`: la fase 34 ha portato tutte le superfici di lavoro sotto
+`(admin)`, dove `access-gating` e `nextjs-architecture` si caricano insieme a
+`checkin-offline`. Il numero registrato dentro il `Gate context budget` di
+`ai-engineering.md` e' aggiornato — una misura datata dentro il gate che
+impone di misurare e' la `Gate documentazione datata` applicata a se stessa.
+
+### Scenario carica-e-scatta (obbligo del `Gate eval`)
+
+- **File reale:** `src/app/(admin)/admin/(work)/artists/page.tsx`
+- **Moduli attesi:** `CLAUDE.md` + `meta-gates` + `access-gating` +
+  `nextjs-architecture`
+- **Modifica-tipo:** aggiungere una superficie di lavoro sotto `(admin)` senza
+  la sua riga in `capability-routes.ts`
+- **Gate che deve scattare:** `Gate il gruppo non autorizza` — e dopo di lui
+  `next build`, che rifiuta una rotta dell'unione generata senza binding
+- **Cosa NON scatta piu':** nessun gate della persona si carica su
+  `src/app/(organizer)/**`, perche' non esiste piu' alcun file li' sotto
+
 ## [1.6.3] - 2026-08-05
 
 ### Added — `ai-engineering.md`, gate la pianificazione e' pubblica

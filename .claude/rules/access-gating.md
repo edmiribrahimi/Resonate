@@ -6,7 +6,6 @@ paths:
   - "src/app/api/auth/**"
   - "src/app/(auth)/**"
   - "src/app/(admin)/**"
-  - "src/app/(organizer)/**"
   - "src/app/api/drinks/**"
 ---
 
