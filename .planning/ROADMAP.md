@@ -400,8 +400,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 34-15-PLAN.md — `src/app/(organizer)/` is deleted and the persona is corrected in the same commit
-- [ ] 34-16-PLAN.md — The literal sweep: 36 `revalidatePath` calls, and side 4's message re-pointed at the map
+- [x] 34-15-PLAN.md — `src/app/(organizer)/` is deleted and the persona is corrected in the same commit
+- [x] 34-16-PLAN.md — The literal sweep: 36 `revalidatePath` calls, and side 4's message re-pointed at the map
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -522,7 +522,7 @@ Plans:
 | 33. Server Data-Access Layer | 14/14 | Complete    | 2026-08-07 |
 | 43. Role Model & Account Creation | 15/15 | Complete   | 2026-08-08 |
 | 35. Per-Night Assignments | 22/22 | Complete   | 2026-08-09 |
-| 34. One Work Surface | 14/17 | In Progress|  |
+| 34. One Work Surface | 16/17 | In Progress|  |
 | 36. Formats & Series Numbering | 0/TBD | Not started | - |
 | 37. Manual Venue Reveal | 0/TBD | Not started | - |
 | 38. Live Attendance Freshness | 0/TBD | Not started | - |
