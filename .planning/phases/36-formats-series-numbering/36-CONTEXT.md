@@ -272,6 +272,25 @@ di chi vede cosa.
   restano in piedi indipendentemente da quel difetto, e **non si rilassano
   citandolo**. (proprietario, 2026-08-10)
 
+### Regola di esecuzione, decisa il 2026-08-10 all'onda 1
+
+- **D-36-19: i sei `FMT-*` restano `Pending` in `REQUIREMENTS.md` fino alla
+  verifica di fase.** Nessun piano li spunta, nemmeno quelli che li dichiarano
+  nel proprio frontmatter. *Ragione:* undici piani su quattordici portano gli
+  stessi ID, e il passo di chiusura standard spunterebbe a ogni piano che ne
+  nomina uno. Un requisito spuntato al piano 2 di 14 fa affermare a
+  `REQUIREMENTS.md` — che e' la fonte di tracciabilita' — qualcosa che nessun
+  file del repository puo' ancora sostenere: al piano 2 non esiste una colonna,
+  non esiste un vincolo, non esiste una riga di catalogo.
+
+  Vale in modo particolare per **FMT-06**, la cui unica prova e' una procedura
+  manuale (V3) che gira all'onda 8: spuntarlo prima significherebbe dichiarare
+  provata l'assenza di un canale che nessuno ha ancora guardato.
+
+  **Chi spunta: la verifica di fase, una volta, con l'evidenza accanto.**
+  Sollevata dall'esecutore del piano 36-02 e decisa dall'orchestratore sotto
+  discrezione tecnica delegata, per non ridiscuterla dodici volte.
+
 ### Claude's Discretion
 
 - **La forma del catalogo** (una tabella dei format piu' una delle serie, oppure
