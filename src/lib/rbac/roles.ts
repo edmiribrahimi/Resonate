@@ -1,6 +1,6 @@
 import type { Route } from "next";
 import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
-import { resolveRoute } from "@/lib/routes/capability-routes";
+import { CAPABILITY_ROUTES } from "@/lib/routes/capability-routes";
 import type { UserRole, UserStatus } from "@/types/database";
 
 /**
@@ -43,42 +43,44 @@ import type { UserRole, UserStatus } from "@/types/database";
  * serving the same surface permanently and as a real page (D-39-02); it is
  * simply not what the nav points at.
  *
- * ── The throw below is a BUILD failure, not a first-request one ──────────────
+ * ── The guard is a TYPE, and it had to go back to being one ─────────────────
  *
- * This module is imported by `MobileNav` and is therefore evaluated while pages
- * are prerendered — unlike the middleware's own door assertion, which is
- * module-load code in a middleware bundle and fires on the first request after
- * deploy. And its transitive closure reaches **no server module** (`keys.ts`
- * imports nothing; `capability-routes.ts` imports `keys.ts` and `next`), which
- * is D-34-10 and must not be broken: this file is read from a `"use client"`
- * navigation.
+ * The first version of this repair replaced the tuple with a module-scope
+ * `throw` that read the map through `resolveRoute` — and justified it with the
+ * sentence *"this module is imported by `MobileNav` and is therefore evaluated
+ * while pages are prerendered"*. **That sentence was an inference, and it was
+ * wrong.** All thirteen `MobileNav` mount sites call `getAccessContext()`,
+ * which reads `cookies()`, so **none of them is prerendered** — and the
+ * paragraph above states, correctly, that this file is read from a
+ * `"use client"` navigation, which means the throw shipped in the *client*
+ * bundle and would have fired during hydration of every page, public ones
+ * included. Two other assertions written in this same phase measured the
+ * opposite mechanism and said so with the word *Measured*
+ * (`middleware.ts`, `organizer-redirects.ts`); this one said *is therefore*.
+ * A build guarantee traded for a runtime throw that cannot fire where it
+ * claims is a guard that got weaker while reading as if it got stronger.
+ *
+ * So the guard is a type again — but it asks the **meaning** question the tuple
+ * only stood in for. `DoorAddress` is the addresses the map binds **to
+ * `door.operate` specifically**, read through `as const`. If `/door` is dropped
+ * from that entry, or moved to another key, this line stops compiling and names
+ * this file. That is the same failure the tuple produced, on the question that
+ * actually matters, and it costs nothing at runtime.
+ *
+ * The two lazier repairs above stay refused. So does a third, now visible: a
+ * runtime assertion standing in for a compile-time one. `ai-engineering.md`
+ * asks of every guard *"which concrete situation makes it fire?"* — and the
+ * honest answer for the throw was *"none that this bundle reaches"*.
+ *
+ * D-34-10 is unbroken: `capability-routes.ts` was already imported here, its
+ * transitive closure still reaches no server module (`keys.ts` imports nothing;
+ * `capability-routes.ts` imports `keys.ts` and `next`), and `CAPABILITY_ROUTES`
+ * is read in type position only.
  */
-const DOOR_HREF: Route = "/door";
+type DoorAddress =
+  (typeof CAPABILITY_ROUTES)[typeof CAP.DOOR_OPERATE]["routes"][number];
 
-// Two failures, two sentences — the `staff-tabs.ts` shape. An address nobody
-// bound and an address bound to the wrong key are different mistakes with
-// different repairs, and one message covering both would be the collapsed-catch
-// pattern this project has already paid for once.
-{
-  const doorBinding = resolveRoute(DOOR_HREF);
-
-  if (doorBinding === null) {
-    throw new Error(
-      `roles: the Check-in entry points at "${DOOR_HREF}", which no entry of ` +
-        `CAPABILITY_ROUTES binds. Bind the address in the map, or change the ` +
-        `entry — a drawn entry with no server-side rule is a promise nothing keeps.`
-    );
-  }
-
-  if (doorBinding.key !== CAP.DOOR_OPERATE) {
-    throw new Error(
-      `roles: the Check-in entry points at "${DOOR_HREF}" expecting ` +
-        `"${CAP.DOOR_OPERATE}", but CAPABILITY_ROUTES binds that address to ` +
-        `"${doorBinding.key}" (pattern "${doorBinding.pattern}"). The map is the ` +
-        `source; correct the map or the entry, never this comparison.`
-    );
-  }
-}
+const DOOR_HREF: Extract<DoorAddress, Route> = "/door";
 
 // Re-export types for convenience
 export type { UserRole, UserStatus };
@@ -257,6 +259,19 @@ const NAV_ITEMS: NavItem[] = [
  *   hidden and Check-in is **not**, because the door is filtered on
  *   `door.operate` and that key is granted with `requires_approved = false`
  *   (D-06 of Phase 43). This row is the one D-39-06 changed.
+ * - Organizer or master, **rejected**: same as the row above — Events,
+ *   Check-in, Account. Written down because its absence read as an oversight:
+ *   `has_capability` is `and (not rc.requires_approved or p.status =
+ *   'approved')` (`20260807000000_capability_model.sql:215`), so with
+ *   `requires_approved = false` the status is **not consulted at all** and the
+ *   subject genuinely holds the key. The nav therefore agrees with the server
+ *   here, which is the whole point of D-39-06 — this is not a drawn entry the
+ *   server refuses. It is also **unrepresentable in production**: the CHECK at
+ *   `20260808001000_role_implies_approved.sql:117` forbids a non-approved
+ *   organizer, master or staff row. Both facts are stated because either one
+ *   alone invites the wrong repair — a status check added here would lock a
+ *   pending organizer out of the door, in front of a queue, which is the
+ *   failure `requires_approved = false` exists to prevent.
  * - Staff: Events, Gallery, Account — **plus Check-in when rostered to a
  *   night**, since `staff` does not hold `door.operate` by role and holds it
  *   only through a live assignment
