@@ -1,18 +1,25 @@
 ---
 phase: 41
 slug: shared-primitives-three-tier-layout
-status: draft
-nyquist_compliant: false
+status: reconciled
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-11
-derived_from: 41-RESEARCH.md § Validation Architecture
+reconciled: 2026-08-11
+derived_from: 41-RESEARCH.md § Validation Architecture, then 41-UI-SPEC.md §13 and §0
 ---
 
 # Phase 41 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
-> **Draft.** Three of the five gates below cannot be finalised until the owner
-> and the UI-SPEC settle what they measure against — see *Blocked on decisions*.
+>
+> **Reconciled 2026-08-11, after `41-UI-SPEC.md` was approved 6/6.** The three
+> decisions this document was blocked on now have numbers, and the gate count
+> goes from five to seven — see *Unblocked* below. `nyquist_compliant: true`
+> means the **strategy** is complete: every criterion has either a gate with a
+> threshold or a written manual procedure, and every gate has an exemption list
+> that exists before it does. `wave_0_complete` stays **false** until the scripts
+> exist on disk — a plan is not an artifact.
 
 ---
 
@@ -102,7 +109,9 @@ owns Phase 40's H1/H3 and Phase 39's door pass.
 - [ ] `scripts/verify-conversion.mjs` — G1 (DS-07, criterion 1)
 - [ ] `scripts/verify-dialogs.mjs` — G2 (DS-08, criterion 2)
 - [ ] `scripts/verify-tables.mjs` — G3 (DS-09, criterion 3), **exemption list decided first**
-- [ ] `scripts/verify-touch-targets.mjs` — G5 (RESP-03, criterion 5), **scoped and path-exempted, or not written at all**
+- [ ] `scripts/verify-touch-targets.mjs` — G5 (RESP-03, criterion 5), **scoped and path-exempted, and proven on `MemberTable.tsx` — or not written at all**
+- [ ] `scripts/verify-breakpoints.mjs` — G6, no exception
+- [ ] `scripts/verify-no-viewport-read.mjs` — G7, no exception
 - [ ] **The conversion manifest** — the one artifact G1 and G4 both read, and the thing that makes criterion 1 mechanically meaningful rather than rhetorical
 - [ ] **`npm run verify` — an aggregate script.** `40-REVIEW.md` WR-09 is still open: no CI exists, and every gate runs only when a human types its name. This phase would take the count from 10 to 14. **Four more gates nobody runs is not verification, it is four more files.** Cheapest high-value item in the phase, and it closes a Phase 40 warning at the same time
 - [ ] A release-pass document carrying H41-1 … H41-6, written **before** the sitting
@@ -110,17 +119,59 @@ owns Phase 40's H1/H3 and Phase 39's door pass.
 
 ---
 
-## Blocked on Decisions
+## Unblocked — the three decisions, now with numbers
 
-This document cannot reach `nyquist_compliant: true` until three things are
-settled elsewhere. Recording them here rather than guessing keeps the gates from
-being written against a target that then moves.
+All three were settled and none was guessed. Recorded here so the gates are
+written against a target that has stopped moving.
 
-| Blocked | Needs | Why it blocks |
+| Was blocked on | Settled by | The value |
 |---|---|---|
-| G1 and G4's manifest | **Owner** — what counts as one converted surface, and whether a spine-first wave is allowed | Criterion 1 read literally fuses 24 of 41 pages into one indivisible unit of 104 files. Converting a 14-file spine first breaks it into 34 units. The gate measures whichever answer is chosen |
-| G5's threshold | **UI-SPEC** — the target size, and the tier boundaries | A gate cannot assert `min-h-11` before the contract says 44 px |
-| G3's exemption list | **Owner** — whether the copy-out diagnostic grid should become cards at all | An exemption discovered on the gate's first red run is an exemption nobody trusts |
+| G1 and G4's manifest | **Owner delegate** — `41-CONTEXT.md` D-41-01 | **Spine-first.** A fourteen-file spine converts in Wave 0, breaking the 104-file indivisible unit into **34 units, 31 of them a single page**. This does not violate criterion 1: the criterion protects a *user* from meeting a half-converted surface, and the spine has no surface of its own |
+| G5's threshold | **UI-SPEC** §6 | **`min-h-11` = 44 px**, unprefixed default, with one 36 px shrink site behind `@custom-variant pointer-fine-only` |
+| G3's exemption list | **Owner delegate** — D-41-16 | `ReviewListClient.tsx` stays a table, exempt, **with the reason written into the script before the script runs**. The six tables that already render cards consolidate onto **one** breakpoint: `md` |
+
+## Two gates added by the UI-SPEC — both cheap, both without a legitimate exception
+
+The count goes from five to seven. Neither of these was in the research; both
+exist because the contract fixed a value that made them checkable.
+
+| Gate | Asserts | Exemptions |
+|---|---|---|
+| **G6 breakpoints** | no `sm:`, `xl:` or `2xl:` in a converted file — the contract names three tiers and `md`/`lg` express them (D-41-05) | **none.** Having no legitimate exception is what makes it worth writing |
+| **G7 no viewport read** | `matchMedia`, `useSyncExternalStore` and `innerWidth` have **zero** occurrences under `src/` | **none.** Zero today; the gate keeps it zero. The sheet↔window switch is CSS-only precisely so this stays true |
+
+## The other thresholds the UI-SPEC fixed
+
+| Gate | Threshold | Exemptions, written now |
+|---|---|---|
+| **G1 conversion** | — | the raw-palette regex must not match `bg-black/60`, `/80`, `/90` (modal scrims) nor the nine two-stop accent fades; `globals.css` and `ColorSwatchPicker.tsx` exempt; `refuse()` → exit 2 on an empty manifest |
+| **G2 dialogs** | the primitive's signature is `showModal()` + `items-end md:items-center`; no file outside it declares `fixed inset-0 z-[60]`; no file rendering `Dialog` imports `useToast` | `Lightbox.tsx` (full-bleed media viewer, `bg-black/90`); `MyMediaSection.tsx:184`, the tree's only `role="dialog"` and not a `<dialog>` |
+| **G4 container** | the shell declares `max-w-5xl` / `max-w-7xl` / `max-w-sm`; every converted page's outermost element comes from it | the `wide` and `focus` lists in UI-SPEC §4 **are** the manifest G4 reads |
+
+## G5's proof obligation, which is not optional
+
+`41-UI-SPEC.md` §13 makes D-41-19 concrete for the gate the research flagged as
+most dangerous. **Before G5 is committed** it must be:
+
+- proven **red**, by mutating one `min-h-11` to `min-h-8` in a converted file —
+  **with the mutation asserted to have landed before its result is read**; and
+- proven **green** on the hardest correct file in the tree,
+  `components/admin/MemberTable.tsx` — 1 395 lines, both branches, checkboxes,
+  row actions and wrappers.
+
+**If it cannot go green on that file, it is not written.** A gate that fires on
+correct code gets switched off, and a switched-off gate guards nothing while
+looking like it does.
+
+Two further obligations the plan must not discover late:
+
+- **`@custom-variant pointer-fine-only` must be proven to emit by `npm run build`
+  before any consumer is written.** Zero pointer variants exist under `src/`
+  today, so nothing in the tree proves the variant compiles.
+- **`'control'` enters `KNOWN_TOKEN_NAMES` in the same commit that declares the
+  token** (D-41-14), and `verify-tokens.mjs` check A must be confirmed green
+  against the `@media` `:root` block before that commit lands — this is WR-02's
+  failure mode, and Phase 40 already paid for it once.
 
 ---
 
@@ -130,9 +181,15 @@ being written against a target that then moves.
 - [ ] Sampling continuity: no 3 consecutive tasks without an automated verify
 - [ ] Every gate assessed against **both** Phase 40 failure modes before it is committed
 - [ ] Every new gate proven able to go **red**, with the mutation asserted to have landed before its result is read
-- [ ] G5 proven green on the hardest correct file in the tree, or not written
-- [ ] `npm run verify` aggregates every gate
+- [ ] G5 proven green on `components/admin/MemberTable.tsx`, or not written
+- [ ] `@custom-variant pointer-fine-only` proven to emit before any consumer exists
+- [ ] `'control'` in `KNOWN_TOKEN_NAMES` in the commit that declares the token
+- [ ] `npm run verify` aggregates all fourteen gates
 - [ ] H41-1 … H41-6 written and scheduled before the phase closes
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending — blocked on the three decisions above.
+**Approval:** reconciled 2026-08-11 — the strategy is complete and cleared for
+planning. **It is not evidence of anything yet:** every box above is unticked
+because the scripts do not exist, and two criteria (RESP-01, and criterion 5's
+real content) will end this phase as human observations no matter how many gates
+go green.
