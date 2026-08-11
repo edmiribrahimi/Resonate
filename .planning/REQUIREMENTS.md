@@ -107,7 +107,7 @@ Decided by the project owner on 2026-08-06 and recorded in
 - [ ] **LIVE-04**: An infrequent safety reload runs underneath the live channel, so a channel that dies silently cannot leave a stale list
 - [ ] **LIVE-05**: Staff can see whether the list is live and how fresh it is, and can force a refresh by hand
 - [ ] **LIVE-06**: Only a person assigned to that night can listen to that night's updates
-- [ ] **LIVE-07**: The door and the bar do not share an offline mechanism
+- [x] **LIVE-07**: The door and the bar do not share an offline mechanism — *closed by 38-VERIFICATION.md: `grep -rln 'from "@/lib/offline/checkin-store"' src` returns exactly one file, `ScannerClient.tsx`, re-run at every wave; zero new files under `src/lib/`; `src/lib/supabase/client.ts` byte-identical to its scaffolding commit. The only LIVE requirement with no human test outstanding*
 
 ### Venue Reveal
 
@@ -231,7 +231,7 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | LIVE-04 | Phase 38 | Pending |
 | LIVE-05 | Phase 38 | Pending |
 | LIVE-06 | Phase 38 | Pending |
-| LIVE-07 | Phase 38 | Pending |
+| LIVE-07 | Phase 38 | Complete |
 | STAFF-04 | Phase 39 | Pending |
 | DS-01 | Phase 40 | Pending |
 | DS-02 | Phase 40 | Pending |
