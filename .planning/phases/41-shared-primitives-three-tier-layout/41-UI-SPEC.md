@@ -392,11 +392,21 @@ a refactor.* Concretely, it buys two things nothing else buys:
   the border is the tertiary text colour, which is a coincidence of value and not
   a statement of role.
 
-**The name deliberately does not begin with `line-`.** A gate forbidding
-`border-line*` on a control would match `border-line-control` and go red on the
-one file that is right — the `event-media` / `event-media-quarantine` prefix trap
-recorded verbatim at `verify-media-strip.mjs:51-62`. The trap is avoided by
-naming, before the gate exists.
+**The name deliberately does not begin with `line-`, and the reason is the
+triage — not a prefix trap.** *(Corrected after review: an earlier draft argued
+that a gate forbidding `border-line*` on a control would match
+`border-line-control`, citing the `event-media` / `event-media-quarantine` trap
+at `verify-media-strip.mjs:51-62`. **That argument does not hold against the gate
+this repository actually has:** `scripts/verify-tokens.mjs` already builds its
+consumer pattern from a longest-first ordered alternation with leading and
+trailing boundary guards, precisely so a nested name cannot match its own prefix
+— `--line` and `--line-soft` / `--line-strong` already coexist correctly under
+it. The claim is withdrawn rather than smoothed over.)*
+
+The name stands on the independent argument above: **406 `border-card-border`
+sites triage into two destinations**, a card edge and a control boundary, and a
+name that reads as a variant of `line` would invite them back into one. A rule
+that can only be kept by remembering which `line-` you meant is not kept.
 
 **Two edits, one commit (D-41-14):** `--control: #A493C0;` in `:root`,
 `--color-control: var(--control);` in `@theme inline`, and `'control'` in
@@ -848,11 +858,16 @@ Interactive card (`PressableCard`) adds the focus expression from §5.4 and
 sets the height — `min-h-11` does** — so the ladder is horizontal padding and
 type size, and it has three steps and one icon form.
 
+**Every horizontal padding on this ladder is a step §3.1 names** — 16 · 24 · 32.
+The tree's incumbent `px-5` (20px) is a multiple of 4 and **not** a named step,
+which is the `mb-3` argument again: a ladder with an unnamed rung between two
+named ones is how a scale acquires a value nobody decided.
+
 | Size | Class | Height | Use |
 |---|---|---|---|
 | `sm` | `min-h-11 rounded-full px-4 text-xs font-semibold` | 44px | dense row actions, secondary actions inside a card |
-| **`md`** (default) | `min-h-11 rounded-full px-5 text-sm font-semibold` | 44px | every ordinary button |
-| `lg` | `min-h-12 rounded-full px-6 text-sm font-semibold` | 48px | the single primary action on a `focus` screen |
+| **`md`** (default) | `min-h-11 rounded-full px-6 text-sm font-semibold` | 44px | every ordinary button |
+| `lg` | `min-h-12 rounded-full px-8 text-sm font-semibold` | 48px | the single primary action on a `focus` screen |
 | `icon` | `min-h-11 min-w-11 rounded-full p-0` | 44×44 | dialog close, remove, inline edit |
 
 | Variant | Fill | Ink | Boundary | Computed |
@@ -869,8 +884,14 @@ become on a phone, what the two filter rows on `/admin/analytics/compare` and
 `/admin/members/growth` become, and what the 20px lineup `<Link>` at
 `(public)/events/[slug]/page.tsx:1136` becomes.
 
-**`Badge` — not interactive, and therefore not a target.** `rounded-full px-2.5
-py-0.5 text-xs font-semibold` — **no `min-h`**. This is the correct destination
+**`Badge` — not interactive, and therefore not a target.** `rounded-full px-2
+py-1 text-xs font-semibold` — **no `min-h`**. 8px and 4px: the `sm` and `xs`
+steps of §3.1, chosen over the tree's incumbent `px-2.5 py-0.5` because 10px and
+2px are **not multiples of 4 and not steps this ladder names** — the same
+argument that rejects `mb-3` two sections above, and it applies *a fortiori*
+here, since `mb-3` at least was a multiple of 4. The resulting badge is ~24px
+tall against the `Chip`'s 44px, so the two stay visually distinct without a
+`min-h` doing it. This is the correct destination
 for most of the 36 `py-0.5` sites, and it is why G5 scans interactive elements
 only. **A badge that is a `<Link>` or a `<button>` is a Chip, not a Badge** —
 that single sentence is the difference between a correct file and a 20px target.
