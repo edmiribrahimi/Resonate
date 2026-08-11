@@ -1175,7 +1175,7 @@ self.addEventListener("activate", (event) => {
 
 ---
 
-## 17. Open Questions
+## 17. Open Questions (Q4 RESOLVED)
 
 The three from `40-UI-SPEC.md` stand unchanged and none blocks planning. Research
 adds one, and it is a **decision to put to the owner, not a gap**.
@@ -1189,6 +1189,12 @@ adds one, and it is a **decision to put to the owner, not a gap**.
    door keeps its current green unchanged until answered.
 
 4. **NEW — the release purge touches the door, so the owner should say yes.**
+   **`[RESOLVED 2026-08-11 → D-40-13]`** Put to the owner, who delegated the call
+   to the expert persona; settled in the recommended direction — the `activate`
+   purge **and** `cacheOnNavigation: false`, both halves. `deploymentId`,
+   `navigateFallback` and the inlined `:root` are recorded as refused. See
+   `40-CONTEXT.md` D-40-13 for the accepted cost. **Do not reopen this as an open
+   question.** The three below stand.
    - *What we know:* §6.4 proves the orphan is real and names its two causing
      lines. §6.5's purge closes it structurally, reloads nothing, and needs no
      component. The cost is that the first open of a page after a release must be

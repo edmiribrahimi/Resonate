@@ -1,11 +1,19 @@
 ---
 phase: 40
 slug: brand-tokens-typography
-status: draft
-nyquist_compliant: false
+status: reconciled
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-11
+reconciled: 2026-08-11
 ---
+
+> **Reconciled against the five plans, 2026-08-11.** `nyquist_compliant: true`
+> means the *strategy* is satisfied by the plans as written: every gate has a
+> named home, every requirement has an automated command or a declared manual
+> procedure, and G1 lands strictly before the first token moves.
+> `wave_0_complete` stays **false** until the scripts exist on disk — a plan is
+> not an artifact.
 
 # Phase 40 — Validation Strategy
 
@@ -53,16 +61,28 @@ created: 2026-08-11
 Task IDs are assigned by the planner; this table binds each requirement to its
 gate so the planner can attach the command as `acceptance_criteria`.
 
-| Gate | Plan/Wave | Requirement | Threat Ref | Asserts | Test Type | Automated Command | File Exists | Status |
-|------|-----------|-------------|------------|---------|-----------|-------------------|-------------|--------|
-| G1 | TBD / Wave 0 | DS-01, DS-10 c.3 | — | Every token a utility reads is declared; no token renamed out from under a consumer. Fail on any consumer with no declaration | structural | `node scripts/verify-tokens.mjs` | ❌ W0 | ⬜ pending |
-| G2 | TBD / Wave 0 | DS-02 | — | Both directions: no `--sem-*` where a format is identified; no brand/format token expressing a state | structural | `node scripts/verify-semantic-separation.mjs` | ❌ W0 | ⬜ pending |
-| G3 | TBD / Wave 0 | DS-03 | — | The four-stop `94deg` gradient string appears exactly once (its declaration); files applying it: zero. Excludes its own declaration site | structural | `node scripts/verify-sunset-gradient.mjs` | ❌ W0 | ⬜ pending |
-| G4 | TBD | DS-10 c.2 | — | No `var(--token, #hex)` fallback anywhere in `src` — 0 today | structural | `grep -rnE "var\(--[a-z0-9-]+, *#" src` → empty | ✅ (grep) | ⬜ pending |
-| G5 | TBD | DS-10 c.1 | — | Exactly one CSS chunk emitted, and exactly one file in it declares `:root{` | structural | `ls .next/static/css` → 1 file; `grep -c ":root{" .next/static/css/*.css` → 1 | ✅ (shell) | ⬜ pending |
-| G6 | TBD | DS-06 | — | `public/manifest.json` reads `re:sonate` in `name` and `short_name`, `#0A0712` in both colours; `src/app/layout.tsx` likewise | structural | `grep` | ✅ (grep) | ⬜ pending |
-| G7 | TBD | DS-06 | — | `ɘ` appears nowhere outside a comment and outside `public/images/` | structural | `grep -rn "ɘ" src public *.json *.ts` → 1 hit at `layout.tsx:16` | ✅ (grep) | ⬜ pending |
-| G8 | all | all | — | The build is green | build | `npm run build` → exit 0 | ✅ | ⬜ pending |
+| Gate | Plan / Wave | Requirement | Threat Ref | Asserts | Test Type | Automated Command | File Exists | Status |
+|------|-------------|-------------|------------|---------|-----------|-------------------|-------------|--------|
+| G1 | **40-01 / Wave 1** | DS-01, DS-10 c.3 | T-40-01…04 | Every token a utility reads is declared; no token renamed out from under a consumer. Fail on any consumer with no declaration | structural | `node scripts/verify-tokens.mjs` (checks A–D) | ❌ → created by 40-01 | ⬜ pending |
+| G2 | **40-04 / Wave 3** | DS-02 | T-40-19…21 | Both directions: no `--sem-*` where a format is identified; no brand/format token expressing a state; plus the palette's single-source assertion | structural | `node scripts/verify-semantic-separation.mjs` | ❌ → created by 40-04 | ⬜ pending |
+| G3 | **40-04 / Wave 3** | DS-03 | T-40-22…23 | The four-stop `94deg` gradient string appears exactly once (its declaration); files applying it: zero. Excludes its own declaration site | structural | `node scripts/verify-sunset-gradient.mjs` | ❌ → created by 40-04 | ⬜ pending |
+| G4 | **40-01 / Wave 1** (as check E) | DS-10 c.2 | T-40-03 | No `var(--token, #hex)` fallback anywhere in `src` — 0 today. **Folded into `verify-tokens.mjs` rather than given its own script**, so it has a permanent reader instead of a one-off grep | structural | `node scripts/verify-tokens.mjs` (check E) | ❌ → created by 40-01 | ⬜ pending |
+| G5 | **40-03 / Wave 3** | DS-10 c.1 | T-40-14 | Exactly one CSS chunk emitted, and exactly one file in it declares `:root{` | structural | `ls .next/static/css \| wc -l` → 1; `grep -c ":root{" .next/static/css/*.css` → 1 | ✅ (shell) | ⬜ pending |
+| G6 | **40-03 / Wave 3** (as check F) | DS-06 | T-40-13 | `public/manifest.json` reads `re:sonate` in `name` and `short_name`, `#0A0712` in both colours; `src/app/layout.tsx` likewise. **A rule JSON cannot carry as a comment needs a permanent reader** — hence check F, appended in the same commit as the manifest change so no wave is left red | structural | `node scripts/verify-tokens.mjs` (check F) + `grep -c "Resonate" public/manifest.json` → 0 | ❌ → extended by 40-03 | ⬜ pending |
+| G7 | **40-03 / Wave 3** (as check F) | DS-06 | T-40-13 | `ɘ` appears nowhere outside a comment and outside `public/images/`. **Must not go red on `src/app/layout.tsx:16`** — that hit is the comment explaining the rule | structural | `grep -rn "ɘ" src public *.json *.ts` → 1 hit at `layout.tsx:16` | ❌ → extended by 40-03 | ⬜ pending |
+| G8 | **all plans, every task** | all | — | The build is green | build | `npm run build` → exit 0 | ✅ | ⬜ pending |
+
+**Ordering invariant, and it is the one that matters:** G1 is created in **Wave 1**
+(`40-01`, `depends_on: []`) and the first plan that retargets a token is **Wave 2**
+(`40-02`, `depends_on: ["40-01"]`). The gate therefore exists before the first
+rename, which is the whole point — a rename is silent, so a gate that arrives
+afterwards cannot say how many commits already carried the loss.
+
+**Every new script must be proven able to go red.** `40-01` and `40-04` both
+carry mutation tasks that break the invariant deliberately, observe the failure,
+and restore. A script that has never failed is indistinguishable from one that
+measures nothing — and `refuse()` → **exit 2** is the convention that keeps
+"measured nothing" from reading as green.
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -73,16 +93,25 @@ gate so the planner can attach the command as `acceptance_criteria`.
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/verify-tokens.mjs` — G1, covers DS-01 and DS-10 clause 3. **The
-      highest-value item in the phase:** the only thing standing between a token
-      rename and a silent colour loss.
-- [ ] `scripts/verify-semantic-separation.mjs` — G2, covers DS-02
-- [ ] `scripts/verify-sunset-gradient.mjs` — G3, covers DS-03
+- [ ] `scripts/verify-tokens.mjs` — G1 + G4 + G6/G7, covers DS-01 and DS-10
+      clause 3. **The highest-value item in the phase:** the only thing standing
+      between a token rename and a silent colour loss. → **`40-01`, Wave 1**
+      (checks A–E); check F appended by **`40-03`, Wave 3**
+- [ ] `scripts/verify-semantic-separation.mjs` — G2, covers DS-02 → **`40-04`, Wave 3**
+- [ ] `scripts/verify-sunset-gradient.mjs` — G3, covers DS-03 → **`40-04`, Wave 3**
 - [ ] `package.json` — `verify:tokens`, `verify:semantic-separation`,
-      `verify:sunset-gradient` entries, matching the form of the seven existing ones
-- [ ] Written H1/H2/H3 procedures, in `39-DOOR-PASS.md`'s shape, filed into the
-      end-of-v1.5 human batch
+      `verify:sunset-gradient` entries, matching the form of the existing ones.
+      **House style is `.mjs`, six to one** — the single `.sh` (`verify-organizer-redirects.sh`)
+      is the exception, not a precedent
+- [ ] `40-RELEASE-PASS.md` — the written H1/H2/H3 procedures, in
+      `39-DOOR-PASS.md`'s shape, every `Result: pending`, filed into the
+      end-of-v1.5 human batch → **`40-05`, Wave 4**
 - Framework install: **none.** Deliberate.
+
+> **"Wave 0" is a label from the template, not a wave in this phase.** These
+> items are distributed across Waves 1, 3 and 4; what the template means by
+> Wave 0 — *the verification must exist before the thing it verifies* — is held
+> by the ordering invariant above, not by a separate wave.
 
 Each new script carries its own **"WHAT A GREEN DOES NOT MEAN"** header section,
 following `scripts/verify-media-strip.mjs:1-45`.
@@ -107,12 +136,26 @@ they do not invent a second sitting.
 
 ## Validation Sign-Off
 
-- [ ] All tasks carry an automated verify command or a Wave 0 dependency
-- [ ] Sampling continuity: no 3 consecutive tasks without an automated verify
-- [ ] Wave 0 covers all MISSING references (G1, G2, G3 scripts + package.json entries)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120 s
-- [ ] H1–H3 procedures written and filed before the phase closes
-- [ ] `nyquist_compliant: true` set in frontmatter
+Checked against the five plans on 2026-08-11, after the plan-checker returned
+0 blockers.
 
-**Approval:** pending
+- [x] All tasks carry an automated verify command — every `<verify><automated>`
+      across the five plans is `npm run build`, `npm run verify:*`, or
+      `node scripts/verify-*.mjs`. **No task claims verification by tests**, and
+      none could: there is no test runner for the product
+- [x] Sampling continuity: no 3 consecutive tasks without an automated verify
+- [x] Every MISSING reference has a named home (G1 → `40-01`; G2, G3 → `40-04`;
+      check F → `40-03`; `package.json` entries alongside each script)
+- [x] The gate precedes the change it guards — G1 in Wave 1, first token move in Wave 2
+- [x] No watch-mode flags
+- [x] Feedback latency < 120 s
+- [ ] H1–H3 procedures written and filed before the phase closes → **`40-05` Task 3**
+- [x] `nyquist_compliant: true` set in frontmatter
+
+**Approval:** reconciled 2026-08-11 — cleared for execution.
+
+**What this sign-off does not mean.** Two of the six requirements end the phase
+`human_needed` and no green anywhere can change that: **H1** (the installed app
+name — one attempt per phone, since a manifest label cannot be re-tested without
+uninstalling) and **H3** (the version boundary at the door — a device, a release,
+a switched-off radio). They are **scheduled**, and scheduled is not verified.
