@@ -553,7 +553,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 39-02-PLAN.md — The second address and its bindings: two thin pages on one guarded surface, one map entry, the assertion and the bounce
+- [x] 39-02-PLAN.md — The second address and its bindings: two thin pages on one guarded surface, one map entry, the assertion and the bounce
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -621,7 +621,7 @@ Plans:
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
-| 39. The Door's Own Address | 1/4 | In Progress|  |
+| 39. The Door's Own Address | 2/4 | In Progress|  |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
