@@ -215,7 +215,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 - D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
-- Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione (venues_select_public ancora using(true)); il sito deployato pubblica l'indirizzo di una serata segreta su /events e su /venues/<slug>. Chiuso solo da: seconda migration + deploy dell'arretrato, come un atto solo
+- ~~Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione~~ → **RISOLTO il 2026-08-11.** Seconda migration applicata e arretrato deployato come un atto solo, nell'ordine migration→deploy (l'inverso avrebbe fatto lanciare /events con PGRST202: pagine giu' invece che degradate). `venues_select_public` non esiste piu'; la strada pubblica e' `venue_for_parties`, che concede per serata. Misurato sul sito vero da anonimo senza cookie: 8 aghi dichiarati su 4 documenti reali → 0 occorrenze, mentre il nome del locale della serata NON segreta compare 4 volte negli stessi documenti
 
 ## Session Continuity
 
