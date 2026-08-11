@@ -691,15 +691,6 @@ export async function revealPartyVenue(
       continue;
     }
 
-    if (batch.length === 1) {
-      // Already the smallest unit there is. Nothing is marked, so this person
-      // stays reachable — which is what makes "send to the N still missing" a
-      // fact in the data rather than a sentence on a screen.
-      recipientsFailed += 1;
-      noteFailure(attempt.outlook);
-      continue;
-    }
-
     // ── The fallback, and it happens exactly once ─────────────────────────────
     //
     // The provider validates the whole call, so one problematic address refuses
@@ -708,21 +699,34 @@ export async function revealPartyVenue(
     // a single that fails here has been tried once as part of a batch and once
     // on its own, and a third attempt inside the same run would only turn a
     // reportable fact into a longer wait.
-    for (const one of batch) {
-      const single = [one];
-      const singleAttempt = await attemptGroup(single);
-      if (singleAttempt.delivered) {
-        await recordDelivered(single);
-      } else {
-        recipientsFailed += 1;
-        // The single's own verdict, not the batch's. The batch was refused
-        // BECAUSE of one of these people; inheriting its reason would say
-        // "same answer" about the ninety-nine the fallback just rescued —
-        // or, worse, would attribute a rate limit to somebody whose address
-        // the provider has suppressed.
-        noteFailure(singleAttempt.outlook);
+    //
+    // The condition is `length > 1` and not its negation because that is what
+    // it says: a group of more than one is worth taking apart, and a group of
+    // one has nothing left to take apart.
+    if (batch.length > 1) {
+      for (const one of batch) {
+        const single = [one];
+        const singleAttempt = await attemptGroup(single);
+        if (singleAttempt.delivered) {
+          await recordDelivered(single);
+        } else {
+          recipientsFailed += 1;
+          // The single's own verdict, not the batch's. The batch was refused
+          // BECAUSE of one of these people; inheriting its reason would say
+          // "same answer" about the ninety-nine the fallback just rescued —
+          // or, worse, would attribute a rate limit to somebody whose address
+          // the provider has suppressed.
+          noteFailure(singleAttempt.outlook);
+        }
       }
+      continue;
     }
+
+    // Already the smallest unit there is. Nothing is marked, so this person
+    // stays reachable — which is what makes "send to the N still missing" a
+    // fact in the data rather than a sentence on a screen.
+    recipientsFailed += 1;
+    noteFailure(attempt.outlook);
   }
 
   return {
