@@ -143,9 +143,43 @@ da inventare: c'e' da **adottare**."*
   stylesheet, a precache ordering rule, or something the research finds — is the
   planner's, subject to D-40-11.
 
+- **D-40-13 (settled 2026-08-11, after research, on the owner's delegation): the
+  mechanism for D-40-12 is a purge of the document caches on service-worker
+  `activate`, together with turning `cacheOnNavigation` off.** Research replaced
+  the assumed failure with the measured one. Next already refuses to stitch an
+  old document to new chunks on a navigation (`fetch-server-response.js:142-144`)
+  and rejects a stale prefetch rather than navigating — so the "half-applied
+  page" cannot be produced by a link, and **no mechanism should be built for
+  it**. The real hole is narrower: `Serwist.handleActivate` deletes every
+  precache entry absent from the new manifest, CSS filenames are content hashes,
+  and the cached *documents* naming the deleted stylesheet survive. An `activate`
+  listener fires only on a release, so the release boundary is already an event —
+  no version bookkeeping to invent, nothing reloads (D-40-11 satisfied by
+  construction), and the door's IndexedDB queue is a different storage API and is
+  untouched.
+
+  `cacheOnNavigation: true` (`next.config.ts:7`) goes with it: it writes
+  documents straight into the `pages` bucket and **never refreshes what it
+  wrote** — the second route to the same defect. It is not the library default
+  and, unlike its neighbour, carries no written reason.
+
+  **`deploymentId` is refused, and recorded so it is not re-proposed:** it
+  appends `?dpl=` to CSS chunk URLs too, which Serwist's precache does not strip
+  — every asset would miss the precache, i.e. no JavaScript at the door with the
+  radio off. **Inlining `:root` into the document is also refused:** the
+  utilities stay external, so an orphaned document would have tokens and no rule
+  to consume them.
+
+  **The accepted cost, stated plainly:** after a release, the first open of any
+  page on a device must be online. For `/door` the runbook already requires an
+  online open on that phone that evening — this makes an existing step
+  load-bearing in one more situation. It applies the trade already decided on
+  2026-08-11 (`checkin-offline.md:59`) in the direction it was decided.
+
 ### Claude's Discretion
 
-- The exact mechanism for D-40-12 within Serwist's existing structure.
+- ~~The exact mechanism for D-40-12 within Serwist's existing structure.~~
+  **Settled 2026-08-11 — see D-40-13.** No longer discretionary.
 - Whether the token set lives in `globals.css`, a dedicated file, or a
   `@theme` block — as long as one file is the thing a person edits.
 - The naming scheme for the tokens, provided the artifact's **roles**
