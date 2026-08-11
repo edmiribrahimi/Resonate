@@ -516,7 +516,22 @@ Plans:
   4. Staff can see whether the list is live and how fresh it is, and can force a reload by hand at any moment
   5. A person not assigned to a night receives no updates for that night, and the door's offline mechanism and the bar's remain separate implementations
 
-**Plans**: TBD
+**Plans:** 7 plans in 5 waves
+
+Plans:
+- [ ] 38-01-PLAN.md — the realtime baseline captured before any migration file exists, the emit-path privileges measured, and P1–P7 written before they are run
+- [ ] 38-02-PLAN.md — the migration written: the private fan-out helper with its EXECUTE revoked, four AFTER triggers, one SELECT policy on realtime.messages
+- [ ] 38-03-PLAN.md — one reload entry point that defers behind a scan in progress, the freshness measurement, and the re-armed foreground-only safety reload
+- [ ] 38-04-PLAN.md — `[BLOCKING]` apply the migration through the Management API migrations endpoint, then measure the boundary as Postgres renders it
+- [ ] 38-05-PLAN.md — one private channel per night, the resume signal assembled by hand, and the heartbeat — with the door's offline mechanism left ungeneralised
+- [ ] 38-06-PLAN.md — the counter row becomes the freshness display and the reload control, and the staleness band is derived state rather than a stored notice
+- [ ] 38-07-PLAN.md — the evidence: every B/G/S check pasted, and P1–P7 executed with their observations and times
+
+**Wave 1** — 38-01
+**Wave 2** *(blocked on Wave 1)* — 38-02, 38-03
+**Wave 3** *(blocked on Wave 2)* — 38-04 `[BLOCKING]`, 38-05
+**Wave 4** *(blocked on Wave 3)* — 38-06
+**Wave 5** *(blocked on Wave 4)* — 38-07
 
 ### Phase 39: The Door's Own Address
 
