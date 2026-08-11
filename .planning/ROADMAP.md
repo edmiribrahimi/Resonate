@@ -90,7 +90,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
 - [~] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (5/5 plans executed 2026-08-11 — **verification `human_needed`**, not complete: DS-10 and DS-06's home-screen half are proven only by `40-RELEASE-PASS.md` H1/H3, every `Result: pending`, in the end-of-v1.5 sitting. Scheduled is not verified.)
-- [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - Recurring patterns become shared components that change form by device, adopted surface by surface
+- [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces
+- [ ] **Phase 41.1: Work-Surface Conversion** - The 22 remaining work pages convert onto the layer, and the work-surface gates stop being ratchets
+- [ ] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, and the three knots — the bar, the event form, the refunds — are taken on their own
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
 - [ ] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository
 - [ ] **Phase 45: Production Sections, Section by Section** - Each production section is entitled separately, because they do not carry the same risk
@@ -611,16 +613,32 @@ Plans:
 
 ### Phase 41: Shared Primitives & Three-Tier Layout
 
-**Goal**: Recurring patterns become shared components that change form by device, adopted one whole surface at a time until every surface is workable on phone, tablet and desktop.
+**Goal**: The shared layer exists — one implementation per recurring pattern, three tiers, finger-sized targets — and is proven on its first eight whole surfaces. The remaining surfaces convert in 41.1 and 41.2 onto this layer, unchanged.
+
 **Depends on**: Phase 40
-**Requirements**: DS-07, DS-08, DS-09, RESP-01, RESP-02, RESP-03, RESP-04
+**Requirements**: DS-07, DS-08, DS-09, RESP-01, RESP-02, RESP-03, RESP-04 — **all seven partially delivered here; RESP-01 closes only after 41.2**
+
+> **The goal was restated on 2026-08-12, and the restatement is the point.** It
+> previously read *"…until every surface is workable on phone, tablet and
+> desktop"*, which these twelve plans do not achieve and were never going to:
+> 141 of 181 `.tsx` files still read a legacy token. Leaving the old wording and
+> ticking the phase would have recorded a requirement as closed that says
+> *every* surface. The owner took the three-way split on 2026-08-12; the wording
+> now describes what this phase delivers, and 41.1/41.2 carry the rest.
+
 **Success Criteria** (what must be TRUE):
 
-  1. A recurring pattern is one shared component with one implementation, and a surface shows it only once that whole surface has been converted — no surface is left half-converted
+  1. A recurring pattern is one shared component with one implementation, and a surface shows it only once that whole surface has been converted — **no surface is left half-converted**. This holds absolutely: it is about what a person meets, and it is as true of eight surfaces as of thirty-four
   2. A dialog opens as a sheet on a phone and as a window on tablet and desktop from a single implementation, and closes with Escape
   3. A dense table reads as cards on a phone instead of scrolling sideways
-  4. Every converted surface is workable on phone, tablet and desktop; content stops widening on large screens instead of stretching; and work-surface filters and navigation are visible without opening a menu from tablet width up
-  5. Touch targets stay finger-sized wherever the input is a finger, large touch screens included
+  4. Every **converted** surface is workable on phone, tablet and desktop; content stops widening on large screens instead of stretching; and **work-surface filters and navigation are visible without opening a menu from tablet width up — this one lands whole here**, for all 24 work pages at once, because the navigation has a single mount point
+  5. Touch targets stay finger-sized wherever the input is a finger, large touch screens included — on every converted surface
+
+**What "partially delivered" means here, so it is not read as a hedge:** the
+*layer* is complete — the primitives, the three tiers, the tokens, the seven
+gates. What is partial is the *manifest of surfaces that have adopted it*: eight
+of roughly thirty-four. Criterion 1 is what makes that honest rather than
+half-finished — an unconverted surface is untouched, not half-converted.
 
 **Plans**: 12 plans, 9 waves — the layer and its first eight surfaces. The remaining
 conversion units are **not** covered by these twelve; see the note below.
@@ -639,14 +657,59 @@ Plans:
 - [ ] 41-11-PLAN.md — G5 touch targets, proven red and proven green on MemberTable — or not written
 - [ ] 41-12-PLAN.md — `npm run verify`, and 41-RELEASE-PASS.md with H41-1 … H41-6
 
-> **Scope note, 2026-08-12.** The seven requirements are delivered as a system plus a
-> declared manifest of converted surfaces. **141 of 181 `.tsx` files still read a legacy
-> token and 74 carry a raw palette colour**; these twelve plans convert the spine plus
-> eight whole surfaces. The remaining ~26 conversion units — the work group, the
-> public/member surfaces, and the three knots (drinks/token, event-form, ticketing) —
-> need their own phase. A split is recommended and awaits the owner's decision.
+> **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
+> system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
+> read a legacy token and 74 carry a raw palette colour**; these twelve plans convert the
+> spine plus eight whole surfaces. The remaining ~26 conversion units go to **41.1** (the
+> work group) and **41.2** (public, member, and the three knots). **Owner decision,
+> 2026-08-12: three-way split accepted**, on the ground that the riskiest surfaces — the
+> bar, where money and venue secrecy meet on one page; the 1 668-line event form; the
+> refunds — deserve a phase that looks at them directly, rather than arriving as the tail
+> of a thirty-plan phase, which is exactly where attention drops.
 
 **UI hint**: yes
+
+### Phase 41.1: Work-Surface Conversion
+
+**Goal**: The 22 remaining work pages convert onto the layer Phase 41 built, and the gates that shipped as ratchets stop being ratchets for the work group.
+**Depends on**: Phase 41
+**Requirements**: DS-07, DS-09, RESP-01, RESP-02, RESP-03 *(continued from Phase 41)*
+**Success Criteria** (what must be TRUE):
+
+  1. Every page under the work surface has converted whole, and the `(work)` layout shim Phase 41 wrote to protect the unconverted ones is **deleted**, not left behind
+  2. The five analytics tables and the finance transaction list read as cards on a phone, and G3's `REMAINING` list is empty for the work group
+  3. No file under the work surface reads a legacy token name or carries a raw palette colour
+  4. G6's `REMAINING` list is empty for the work group — no `sm:`, `xl:` or `2xl:` survives there
+
+**Plans**: TBD
+**UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
+
+> Includes the review surface, the guest list, the events surface, and
+> `ReviewListClient.tsx`, which **stays a table** by D-41-16 and whose exemption
+> must survive this phase rather than be quietly converted.
+
+### Phase 41.2: Public, Member and Money Surfaces
+
+**Goal**: The public and member surfaces convert, and the three knots — where a mistake costs money or reveals an address — are taken deliberately and on their own.
+**Depends on**: Phase 41.1
+**Requirements**: DS-07, DS-08, RESP-01, RESP-02, RESP-03 *(RESP-01 closes here, and only here)*
+**Success Criteria** (what must be TRUE):
+
+  1. The public and member surfaces have each converted whole
+  2. **The three knots are converted with their domain gates held, not despite them:** the bar and its tokens carry money **and** the venue's secrecy on the same pages; the event form is 1 668 lines; the refunds move money. A visual conversion here is Critical, not cosmetic
+  3. `RevealVenueDialog` adopts the Dialog primitive — deliberately last, because the reveal is **monotone**: once the mail is sent the address is public and there is no undo
+  4. Every `REMAINING` list in every ratchet gate is empty, and the gates become the absolutes the UI-SPEC wrote them as
+  5. **RESP-01 is finally true in its own words** — *every* surface is usable on phone, tablet and desktop — and is closed by the written human pass, since no script can close it
+
+**Plans**: TBD
+**UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
+
+> **Why the knots are last and together.** They are the only surfaces in the
+> conversion where the failure is not visual: a wrong query on the bar's pages
+> can show an address before its reveal, and a refund path is money. Phase 41's
+> own plans deliberately kept `RevealVenueDialog` away from the Dialog
+> primitive's first use for the same reason — *"prove it on the hardest correct
+> file"* is not *"convert the most dangerous surface first."*
 
 ### Phase 42: Scanner Conversion
 

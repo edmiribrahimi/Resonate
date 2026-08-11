@@ -248,13 +248,13 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | DS-05 | Phase 40 | Pending |
 | DS-06 | Phase 40 | Pending |
 | DS-10 | Phase 40 | Pending |
-| DS-07 | Phase 41 | Pending |
-| DS-08 | Phase 41 | Pending |
-| DS-09 | Phase 41 | Pending |
-| RESP-01 | Phase 41 | Pending |
-| RESP-02 | Phase 41 | Pending |
-| RESP-03 | Phase 41 | Pending |
-| RESP-04 | Phase 41 | Pending |
+| DS-07 | Phase 41 → 41.1 → 41.2 | Pending — layer in 41, adoption completes in 41.2 |
+| DS-08 | Phase 41 → 41.2 | Pending — primitive in 41; `RevealVenueDialog` adopts it last, in 41.2 |
+| DS-09 | Phase 41 → 41.1 | Pending — primitive in 41; the five analytics tables and finance in 41.1 |
+| RESP-01 | Phase 41 → 41.1 → **41.2** | Pending — **says *every* surface, so it closes only in 41.2**, and by a written human pass; no script can close it |
+| RESP-02 | Phase 41 → 41.1 → 41.2 | Pending — the shell owns the maximum from 41; every surface inherits it as it converts |
+| RESP-03 | Phase 41 → 41.1 → 41.2 | Pending — the size is fixed in 41; measured on a device, per converted surface |
+| RESP-04 | Phase 41 | Pending — **lands whole in 41**: the navigation has one mount point, so all 24 work pages get both tiers at once |
 | DS-04 | Phase 42 | Pending |
 | RESP-05 | Phase 42 | Pending |
 | PROD-01 | Phase 44 | Pending |

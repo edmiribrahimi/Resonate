@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 40 executed — human_needed: H1 e H3 di 40-RELEASE-PASS.md attendono la seduta di fine v1.5
-last_updated: "2026-08-11T18:28:24.030Z"
-last_activity: 2026-08-11 -- Phase 40 executed, verification human_needed
+stopped_at: Phase 41 UI-SPEC approved 6/6 — context, research and validation reconciled; planner next
+last_updated: "2026-08-11T22:35:56.708Z"
+last_activity: 2026-08-11 -- Phase 41 planning complete
 progress:
-  total_phases: 15
-  completed_phases: 10
-  total_plans: 137
-  completed_plans: 132
-  percent: 67
+  total_phases: 17
+  completed_phases: 11
+  total_plans: 149
+  completed_plans: 137
+  percent: 65
 ---
 
 # State: Resonate
@@ -75,7 +75,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Phase 40 EXECUTED, NOT VERIFIED — 5/5 plans, verification human_needed
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -156,7 +156,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-11 -- Phase 40 executed, verified human_needed
+Last activity: 2026-08-11 -- Phase 41 planning complete
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -275,8 +275,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T17:08:52.370Z
-**Stopped at:** Phase 40 executed, verification `human_needed` — DS-10 e la meta' home-screen di DS-06 si chiudono solo con `40-RELEASE-PASS.md` H1/H3, alla seduta di fine v1.5
+**Last session:** 2026-08-11T21:27:13.858Z
+**Stopped at:** Phase 41 UI-SPEC approved 6/6 — context, research and validation reconciled; planner next
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
