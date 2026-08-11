@@ -1,11 +1,21 @@
 ---
 phase: 39
 slug: the-door-s-own-address
-status: draft
-nyquist_compliant: false
+status: ready
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-11
+updated: 2026-08-11
 ---
+
+> `nyquist_compliant: true` was set after the plan-checker re-checked the four finished
+> plans against Dimension 8: every task carries a concrete automated command (no `MISSING`
+> placeholders), none uses a full E2E suite or a watch-mode flag, latency stays under the
+> ~150 s ceiling, and no run of three consecutive implementation tasks lacks an automated
+> verify.
+>
+> `wave_0_complete` stays **false** on purpose: it flips when plan `39-01` actually writes
+> `39-DOOR-PASS.md`, not when the plan promising it is approved.
 
 # Phase 39 — Validation Strategy
 
@@ -54,11 +64,20 @@ Until then the phase is *executed*, not *complete*.
 > `Test Type` here is one of: `build` · `source-assertion` · `script` · `devtools` ·
 > `dark-room`. There is no `unit` row in this phase and there should not be one.
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| *(filled by planner)* | | | | | | | | | ⬜ pending |
+The four plans carry their per-task verification inline, in each task's
+`<acceptance_criteria>`, together with the `T-39-NN` threat reference from that plan's
+`<threat_model>`. Duplicating them here would create a second copy that drifts from the
+first — which is the failure this project already knows by name (`ai-engineering.md`,
+gate *documentazione datata*). The plans are the map:
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+| Plan | Wave | Tasks | Requirement | Where its verification lives |
+|------|------|-------|-------------|------------------------------|
+| `39-01` | 1 | 2 | STAFF-04 | docs only — the acceptance is that `39-DOOR-PASS.md` exists with every `Result` reading `pending` |
+| `39-02` | 2 | 3 | STAFF-04 | `npm run build` · `verify:routes` · `verify:redirects` · source assertions per task |
+| `39-03` | 3 | 3 | STAFF-04 | `npm run build` · count assertions on the mount sites · a diff assertion that the server-side guard is unchanged |
+| `39-04` | 3 | 2 | STAFF-04 | `npm run verify:persona` 7/7 · `npm run build` |
+
+*Status per task is tracked by `/gsd:execute-phase` in the phase manifest, not here.*
 
 ---
 
@@ -105,15 +124,18 @@ no-test-runner constraint rather than work around it.*
 
 ## Validation Sign-Off
 
-- [ ] Every task carries an automated verify (`build` / `script` / source assertion) or is
+- [x] Every task carries an automated verify (`build` / `script` / source assertion) or is
       explicitly marked `dark-room` and mapped to a door-pass section
-- [ ] Sampling continuity: no 3 consecutive tasks without an automated verify
-- [ ] Wave 0 delivers `39-DOOR-PASS.md` before any code task runs
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 150 s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] Sampling continuity: no 3 consecutive tasks without an automated verify
+- [x] Wave 0 delivers `39-DOOR-PASS.md` before any code task runs — `39-01` is wave 1, all
+      code is wave 2 and later
+- [x] No watch-mode flags
+- [x] Feedback latency < 150 s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-08-11 for execution — with the standing condition that the
+phase does **not** close on a green build. Criteria 2 and 3 close only when
+`39-DOOR-PASS.md` §8 comes back filled in from the sitting (D-39-07).
 
 ---
 

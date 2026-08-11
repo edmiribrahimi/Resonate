@@ -1551,9 +1551,17 @@ included.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All four carry a disposition, and each disposition is threaded into the plans. Recorded
+> here on 2026-08-11 during plan-phase, so that a mechanical scan does not read this phase
+> as carrying open research. **Resolved does not mean answered** — OQ3 is resolved *as a
+> deferral*, which is a decision with a named route back.
 
 1. **Does the middleware see `/door` or `/admin/scanner` under a `rewrites()` mechanism?**
+   **RESOLVED — moot.** `rewrites()` was rejected (§A); the recommended mechanism is two
+   thin pages over one component, so the question does not arise. Plan `39-02` asserts it
+   mechanically: `grep -c 'rewrites' next.config.ts` = 0.
    - **Known:** rewrites are applied to client-side routing and mask the destination
      [CITED: nextjs.org rewrites]; a default-array rewrite is checked after the filesystem.
    - **Unclear:** where `src/middleware.ts` sits in that order on next@16.1.6 — the docs
@@ -1565,6 +1573,9 @@ included.
      read the value. Do not ship a rewrite without that reading.
 
 2. **Which Cache Storage bucket actually holds a navigation document for the door?**
+   **RESOLVED — operationalised, not answered here.** It is a DevTools reading and it lives
+   in `39-DOOR-PASS.md` §0.5, as a precondition of interpreting §8. It is deliberately not
+   a plan's verification step, because it needs a browser.
    - **Known:** four candidate buckets and their exact handlers (§C.5); the
      `cacheOnNavigation` worker writes explicitly to `pages`.
    - **Unclear:** A1 above.
@@ -1576,6 +1587,11 @@ included.
      it is a procedure step and not a task.
 
 3. **Should the door get an explicit runtime cache rule with a longer life than 24 hours?**
+   **RESOLVED as a deferral — and the deferral is the decision.** Not settled in a plan.
+   The phase ships with the existing runtime rules plus the warm-up step; the question
+   returns to `/gsd:discuss-phase` **after** §8, with the dark-room observation attached.
+   Recorded in plans `39-01` and `39-02`. How stale a door may be is a product decision,
+   not a planner's.
    - **Known:** `pages`/`others` expire at 24 h with a 32-entry LRU (§C.5); the runbook
      gate already demands a same-day test (C12).
    - **Unclear:** whether the owner wants a door document served from a cache older than a
@@ -1587,6 +1603,9 @@ included.
      lifetime for the door is a product decision about how old a door may be.
 
 4. **Does D-39-07's list include `38-HUMAN-UAT` test 8?**
+   **RESOLVED — folded in, visibly.** Test 8 is `39-DOOR-PASS.md` §8.6, marked so that one
+   line removes it if the owner disagrees. Same room, same minute; leaving it out would
+   force the second trip D-39-07 exists to avoid.
    - **Known:** seven items are pending; D-39-07 enumerates six; STATE.md says seven; test
      8 has no P number and is a dark-room, one-handed, minimum-brightness observation.
    - **Recommendation:** fold it in, and **say so in the plan** rather than silently. It is

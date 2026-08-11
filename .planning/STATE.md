@@ -4,12 +4,12 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 39 context gathered — /door deciso, vecchio indirizzo permanente, un solo passaggio alla porta a fine v1.5
-last_updated: "2026-08-11T13:30:07.045Z"
-last_activity: 2026-08-11 -- Phase 38 execution started
+last_updated: "2026-08-11T14:26:24.468Z"
+last_activity: 2026-08-11 -- Phase 39 planning complete
 progress:
   total_phases: 13
   completed_phases: 9
-  total_plans: 128
+  total_plans: 132
   completed_plans: 128
   percent: 69
 ---
@@ -72,7 +72,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 38
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -153,7 +153,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-11 -- Phase 38 execution started
+Last activity: 2026-08-11 -- Phase 39 planning complete
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
