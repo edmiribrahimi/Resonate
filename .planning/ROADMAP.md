@@ -549,7 +549,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 39-01-PLAN.md — The door pass, written before the code: one document for the dark room, absorbing Phase 38's deferred procedures
+- [x] 39-01-PLAN.md — The door pass, written before the code: one document for the dark room, absorbing Phase 38's deferred procedures
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -621,7 +621,7 @@ Plans:
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
-| 39. The Door's Own Address | 0/TBD | Not started | - |
+| 39. The Door's Own Address | 1/4 | In Progress|  |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
