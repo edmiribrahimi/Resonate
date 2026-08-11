@@ -1,0 +1,224 @@
+{
+  "captured_at": "2026-08-11T10:46:52.013Z",
+  "precondition": "No supabase/migrations/*live_attendance_channel* file existed on disk when this capture ran — asserted by the capture script itself, which exits non-zero and writes nothing if one is found.",
+  "newest_migration_on_disk": "20260810161000_venues_read_narrowed.sql",
+  "probe_method": "POST /v1/projects/{ref}/database/query with read_only: true (runs as supabase_read_only_user), plus GET /v1/projects/{ref}/config/realtime. Nothing was written to the database.",
+  "realtime_policies": [],
+  "realtime_policies__query": "select policyname, cmd, roles::text, qual from pg_policies where schemaname = 'realtime'",
+  "messages_relstate": [
+    {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relowner": "supabase_realtime_admin"
+    }
+  ],
+  "messages_relstate__query": "select relrowsecurity, relforcerowsecurity, relowner::regrole::text from pg_class where oid = 'realtime.messages'::regclass",
+  "probe_role": [
+    {
+      "current_user": "supabase_read_only_user",
+      "session_user": "supabase_read_only_user"
+    }
+  ],
+  "probe_role__query": "select current_user, session_user",
+  "messages_grants": [],
+  "messages_grants__query": "select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'realtime' and table_name = 'messages' order by grantee, privilege_type",
+  "messages_acl": [
+    {
+      "relacl": "{supabase_realtime_admin=arwdDxtm/supabase_realtime_admin,postgres=arwdDxtm/supabase_realtime_admin,dashboard_user=arwdDxtm/supabase_realtime_admin,anon=arw/supabase_realtime_admin,authenticated=arw/supabase_realtime_admin,service_role=arw/supabase_realtime_admin}",
+      "owner": "supabase_realtime_admin"
+    }
+  ],
+  "messages_acl__query": "select relacl::text as relacl, relowner::regrole::text as owner from pg_class where oid = 'realtime.messages'::regclass",
+  "messages_acl_expanded": [
+    {
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "authenticated",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "DELETE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "MAINTAIN",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "REFERENCES",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "TRIGGER",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "dashboard_user",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "DELETE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "MAINTAIN",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "DELETE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "INSERT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "MAINTAIN",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "REFERENCES",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "TRIGGER",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": false
+    },
+    {
+      "grantee": "supabase_realtime_admin",
+      "privilege_type": "UPDATE",
+      "is_grantable": false
+    }
+  ],
+  "messages_acl_expanded__query": "select grantee::regrole::text as grantee, privilege_type, is_grantable from pg_class c, aclexplode(c.relacl) a where c.oid = 'realtime.messages'::regclass order by grantee, privilege_type",
+  "source_table_triggers": [],
+  "source_table_triggers__query": "select tgname, tgrelid::regclass::text as tbl from pg_trigger where not tgisinternal and tgrelid::regclass::text in ('door_scan_events','tickets','guest_list_entries','ticket_refunds') order by tbl, tgname",
+  "has_capability_def": [
+    {
+      "prosecdef": true,
+      "provolatile": "s",
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "def": "CREATE OR REPLACE FUNCTION private.has_capability(p_capability text, p_party_id uuid DEFAULT NULL::uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  -- ARM 1 — the role grant. Byte-identical to\n  -- `20260807000000_capability_model.sql:209-216`.\n  select exists (\n    select 1\n    from public.profiles p\n    join private.role_capabilities rc on rc.role = p.role\n    where p.id = (select auth.uid())\n      and rc.capability = p_capability\n      and (not rc.requires_approved or p.status = 'approved')\n  )\n  -- ARM 2 — the per-night assignment. A subject holds a capability if ANY\n  -- source says so, and this is the second and last source today.\n  or exists (\n    select 1\n    from public.party_assignments pa\n    -- ASSIGN-01, and it is the FIRST condition on purpose. Every existing\n    -- caller passes no night, so this is what keeps one night's assignment\n    -- from becoming a permission everywhere. See the paragraph above.\n    where p_party_id is not null\n      and pa.party_id = p_party_id\n      and pa.user_id = (select auth.uid())\n      and pa.capability = p_capability\n      -- ASSIGN-03: a revocation is a row that was updated, never one that was\n      -- removed.\n      and pa.revoked_at is null\n      -- ASSIGN-02, on the server's clock, which no device can move.\n      and now() < pa.ends_at\n  );\n$function$\n"
+    }
+  ],
+  "has_capability_def__query": "select p.prosecdef, p.provolatile, p.proconfig::text, pg_get_functiondef(p.oid) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'private' and p.proname = 'has_capability'",
+  "messages_grants_note": "messages_grants came back EMPTY, and that is an artefact of the probe, not a fact about the table. information_schema.role_table_grants only shows grants where the current user is the grantor, the grantee, or a member of the grantee role; read_only: true runs as supabase_read_only_user, which is none of those for anon/authenticated. The unfiltered answer is in messages_acl / messages_acl_expanded, read from pg_class.relacl. Recorded rather than corrected in place, so a later reader does not repeat the same empty probe and read it as \"no grants exist\".",
+  "realtime_config": {
+    "max_concurrent_users": 200,
+    "max_events_per_second": 100,
+    "max_joins_per_second": 100,
+    "max_channels_per_client": 100,
+    "max_bytes_per_second": 100000,
+    "max_presence_events_per_second": 20,
+    "max_payload_size_in_kb": 256,
+    "suspend": false,
+    "presence_enabled": false
+  },
+  "realtime_config_note": "private_only is NOT returned by GET /v1/projects/{ref}/config/realtime — the keys above are everything the endpoint echoes back. Recording its absence is the honest form: a later claim that private_only was applied needs a behavioural proof (attempt a public join, observe PrivateOnly), never this key."
+}
