@@ -594,16 +594,16 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 40-01-PLAN.md — The token gate, written before the first token moves: G1, because the build is proven blind to a rename
+- [x] 40-01-PLAN.md — The token gate, written before the first token moves: G1, because the build is proven blind to a rename
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 40-02-PLAN.md — The token layer: the artifact's colours adopted, the semantics held apart, the gradient declared once, and the legacy names aliased so nothing goes dark
+- [x] 40-02-PLAN.md — The token layer: the artifact's colours adopted, the semantics held apart, the gradient declared once, and the legacy names aliased so nothing goes dark
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 40-03-PLAN.md — Three faces and one document shell: Inter at the root, the local escape deleted, one CSS chunk, and the brand where the OS reads it
-- [ ] 40-04-PLAN.md — The two gates that hold DS-02 and DS-03, each proven able to go red and blind to an accent fade
+- [x] 40-03-PLAN.md — Three faces and one document shell: Inter at the root, the local escape deleted, one CSS chunk, and the brand where the OS reads it
+- [x] 40-04-PLAN.md — The two gates that hold DS-02 and DS-03, each proven able to go red and blind to an accent fade
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -655,7 +655,7 @@ Plans:
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
-| 40. Brand Tokens & Typography | 0/TBD | Not started | - |
+| 40. Brand Tokens & Typography | 4/5 | In Progress|  |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
