@@ -53,15 +53,25 @@ import type { UserRole, UserStatus } from "@/types/database";
  * two askers. The middleware is still UX and the RLS is still the boundary —
  * mounting a nav from a resolved context changes neither.
  *
- * ── `MobileNav` keeps `role` / `status`, deliberately ────────────────────────
+ * ── `MobileNav` now takes the capability set too, and the count that used to
+ *    justify otherwise was wrong ──────────────────────────────────────────────
  *
- * Plan 34-04 did not change its signature: it is mounted on 44 pages, including
- * the door's, and its three public entries are not capability-gated. So the two
- * casts survive — but **once, here, instead of twice on every page**. They are
- * the same narrowing the pages performed: `AccessContextResult` types both
- * fields `string | null` because they come back from an untyped `rpc()`, and
- * the nav declares the narrower unions. Nothing in this file branches on them.
- * `StaffNav` takes the held capability keys, as rewritten by plan 34-04.
+ * This paragraph used to say plan 34-04 did not change `MobileNav`'s signature
+ * because it is mounted on **44** pages. That number was already stale when it
+ * was written: it predates plan 34-05, which introduced this very layout and
+ * folded every work surface into a single mount. **Measured: 13 mount sites**,
+ * of which this file is one. Plan 39-03 changed the signature and threaded all
+ * 13 — a stale count in prose used to justify leaving a signature alone is how
+ * a decision outlives its reason.
+ *
+ * So `MobileNav` and `StaffNav` now take **the same shape**: serialisable
+ * capability keys, resolved here in the Server Component because both are
+ * `"use client"` and cannot import the DAL. The two `role` / `status` casts
+ * survive alongside them — the nav still draws four entries that no capability
+ * governs — but **once, here, instead of twice on every page**. They are the
+ * same narrowing the pages performed: `AccessContextResult` types both fields
+ * `string | null` because they come back from an untyped `rpc()`, and the nav
+ * declares the narrower unions. Nothing in this file branches on them.
  */
 export default async function WorkSurfaceLayout({
   children,

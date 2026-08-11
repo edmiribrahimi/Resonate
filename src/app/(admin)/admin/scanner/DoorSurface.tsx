@@ -71,11 +71,20 @@ import type { UserRole, UserStatus } from "@/types/database";
  * deliberately: the causes are the middleware's vocabulary for a routing
  * decision, and reaching this line means the routing already said yes.
  *
- * `<MobileNav>` and `<StaffNav>` keep taking `role` and `status` as props: they
- * are `"use client"` components and cannot import the DAL. Resolving in the
- * parent Server Component and passing values down is Next.js's own guidance for
- * that case. Converting them to consume capabilities against four roles is
- * STAFF-03, phase 34.
+ * `<MobileNav>` and `<StaffNav>` are `"use client"` components and cannot
+ * import the DAL, so the values they need are resolved in the parent Server
+ * Component and passed down — Next.js's own guidance for that case. **What they
+ * take has changed:** `StaffNav` has taken serialisable capability keys since
+ * plan 34-04, and `MobileNav` takes them as of plan 39-03, which is what lets
+ * the Check-in entry be drawn on `door.operate` — the same key the guard below
+ * asks — instead of on a role list plus an approval flag (D-39-06). It still
+ * takes `role` and `status` as well, because four of its five entries are
+ * governed by no capability at all.
+ *
+ * That is a **visibility** change and nothing else. The guard below is
+ * unchanged by it, and so is `requireDoorOperator({ partyId })` in the three
+ * door Route Handlers, which is where the boundary on the door's data actually
+ * is.
  *
  * ── Why this is a component and no longer a page — phase 39 ──────────────────
  *

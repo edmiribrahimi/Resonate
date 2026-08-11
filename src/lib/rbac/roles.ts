@@ -167,46 +167,68 @@ const NAV_ITEMS: NavItem[] = [
     capability: null,
   },
   {
-    // `roles` stays `["master", "organizer"]` after the fourth role landed, and
-    // that is CORRECT AS-IS rather than an omission. D-02 refuses
-    // `door.operate` to `staff`, so the Check-in tab must not appear for it;
-    // and the middleware refuses the door's address independently, which is what
-    // actually protects the route — hiding a nav item is not protecting it
-    // (`access-gating.md`, gate *coerenza navigazione/permessi*). Adding
-    // `"staff"` here would show a tab that leads to a redirect, which is the
-    // worst of both: a promise at the door that the server then breaks.
+    // ── The divergence Phase 34 wrote down, and its closure — D-39-06
     //
-    // ── The divergence that remains open, stated rather than implied
+    // **What it was.** This entry used to be filtered by a role list plus an
+    // approval flag, while the middleware and the door's own guard ask
+    // `door.operate` — a key granted with `requires_approved = false`
+    // **deliberately** (D-06 of Phase 43: a pending organizer must not be
+    // refused in front of a queue). The two disagreed in exactly one cell:
+    // **an organizer in status `pending` was admitted by the server and shown
+    // no Check-in tab.**
     //
-    // This entry is filtered by ROLE and by `requireApproved: true`. The
-    // middleware asks `door.operate`, and `door.operate` is granted with
-    // `requires_approved = false` **deliberately** (D-06 of Phase 43: a pending
-    // organizer must not be refused in front of a queue). So the two do not
-    // agree in one cell: **a `pending` organizer is admitted by the server and
-    // shown no Check-in tab.**
+    // **Why Phase 34 left it open rather than patched it.** It was the SAFE
+    // direction of the two — a hidden entry the server would have allowed,
+    // never a drawn entry the server refuses. Closing it meant giving this
+    // function the capability set, which meant changing `MobileNav`'s props,
+    // which meant editing the door's own surface: the file this project least
+    // wants opened by accident. The owner assigned it here rather than to a
+    // later phase, because this phase opens that file anyway
+    // (`34-04-SUMMARY.md:197`, `34-VERIFICATION.md:431`).
     //
-    // That is the SAFE direction of the two — a hidden entry the server would
-    // have allowed, rather than a drawn entry the server refuses — which is why
-    // it is left open rather than patched here. Closing it means giving this
-    // function the capability set, and this function serves `MobileNav`, which
-    // is mounted on 44 pages including the door's own. Editing the door's page
-    // is what this phase does not do. **Owner: Phase 39**, together with
-    // STAFF-04, which moves this address anyway.
+    // **How it is closed.** By filtering on **the same key the server refuses
+    // on**, `CAP.DOOR_OPERATE`, instead of on role and approval. That is
+    // possible because `@/lib/capabilities/keys` imports nothing (D-34-10), so
+    // one filter serves both sides of the client boundary — the nav reads the
+    // key from a `"use client"` component and the middleware reads it from the
+    // edge, and neither had to invent its own vocabulary.
     //
-    // Until then the gap has a shape and a size: one role, one status, one tab.
-    // It is written down because a divergence closed silently and a divergence
-    // never noticed leave the same trace, which is none.
+    // ── The widening this carries, stated rather than absorbed
+    //
+    // The filter below reads the live-assignment set as well as the held one,
+    // because the middleware admits the door on **role or live assignment** and
+    // the page guard repeats that predicate. Without it, a member of staff
+    // rostered to tonight's door — who holds `door.operate` by assignment and
+    // by nothing else, `staff` being one of the six declared refusals of the
+    // role — would be drawn no tab, and D-39-06 would close one half under a
+    // heading that says closed.
+    //
+    // The cost is real and is this: `liveAssignmentCapabilities` is coarse and
+    // **does not name a night** — *"wider than the real permission, always and
+    // by construction"* (`capabilities/server.ts`). So somebody assigned to a
+    // **different** night is drawn the tab, the middleware admits them, the
+    // page admits them, and **they do not find their night in the list** (the
+    // night list is filtered by assignment, plan 35-10). No refusal anywhere,
+    // which is the asymmetry `checkin-offline.md` optimises for: a false
+    // refusal happens in front of a queue, an extra tab does not.
+    //
+    // ── This is a visibility change and nothing else
+    //
+    // Hiding a link is not protecting a route (`access-gating.md`, gate
+    // *coerenza navigazione/permessi*). The server-side control for this entry
+    // is the coarse guard in `admin/scanner/DoorSurface.tsx`, mounted by both
+    // of the door's addresses; the real boundary on the door's **data** is
+    // `requireDoorOperator({ partyId })` in the three door Route Handlers,
+    // which write with the service client and see no policy at all. **Neither
+    // is touched by this phase.** Drawing this entry more honestly grants
+    // nobody anything.
     href: DOOR_HREF,
     label: "Check-in",
     icon: "qrcode",
-    roles: ["master", "organizer"],
-    requireApproved: true,
+    roles: null,
+    requireApproved: false,
     requireAuth: true,
     hideWhenAuth: false,
-    // Declared here in task 1 of plan 39-03 and **not yet read by the filter**:
-    // this task widens the shape and moves no verdict. Task 3 of the same plan
-    // is where the entry starts being filtered on it and the two lines above
-    // come off.
     capability: CAP.DOOR_OPERATE,
   },
   {
@@ -222,47 +244,52 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 /**
- * Filter navigation items based on user role and status.
+ * Filter navigation items on what the subject is, and on what the subject may
+ * do.
  *
- * Logic:
- * - Unauthenticated (role=null): Home, Events, Gallery (3 tabs)
- * - Pending/rejected member: Events, Account (2 tabs -- Gallery hidden)
+ * Outcomes, rewritten against the filter as it stands after plan 39-03:
+ * - Unauthenticated: Home, Events, Gallery (3 tabs) — the capability set is
+ *   empty, so Check-in is filtered out exactly as it always was
+ * - Pending / rejected member: Events, Account (2 tabs — Gallery hidden)
  * - Approved member: Events, Gallery, Account (3 tabs)
- * - Organizer (approved): Events, Gallery, Check-in, Account (4 tabs)
- * - Master (approved): Events, Gallery, Check-in, Account (4 tabs)
- * - Staff (always approved, see D-04): Events, Gallery, Account (3 tabs)
+ * - Organizer or master, **approved**: Events, Gallery, Check-in, Account
+ * - Organizer or master, **pending**: Events, Check-in, Account — Gallery is
+ *   hidden and Check-in is **not**, because the door is filtered on
+ *   `door.operate` and that key is granted with `requires_approved = false`
+ *   (D-06 of Phase 43). This row is the one D-39-06 changed.
+ * - Staff: Events, Gallery, Account — **plus Check-in when rostered to a
+ *   night**, since `staff` does not hold `door.operate` by role and holds it
+ *   only through a live assignment
  *
- * The staff line needs no code: the three tabs it sees come from the
- * `roles: null` entries, and Check-in is excluded by the role restriction that
- * was already there. That is exactly D-01 — the role is a way back in through
- * the membership card, not a back office.
+ * The staff row no longer *"needs no code"*. That sentence was true while the
+ * entry was role-filtered and it is not the reason any more: staff now sees or
+ * does not see the tab according to the same live-assignment set the middleware
+ * reads, which is code and is below.
+ *
+ * ── The mount count, corrected because the stale one was load-bearing
+ *
+ * This docblock used to put the `MobileNav` mount count at **44**, and that
+ * number was the reason given for *not* changing this signature. **Measured on
+ * this tree: 13 mount sites.** The count collapsed when plan 34-05 introduced
+ * `admin/(work)/layout.tsx` and folded every work surface into a single mount.
+ * A stale count in prose used to justify leaving a decision alone is exactly
+ * how a decision outlives its reason — so it is corrected here rather than
+ * left to rot, and the same correction is made in `(work)/layout.tsx`.
+ *
+ * @param capabilities the keys the subject holds by role
+ * @param liveAssignmentCapabilities the coarser set held by a live per-night
+ *   assignment, or `null` when the payload did not carry the key. **Both are
+ *   required**: all 13 `<MobileNav>` mount sites pass them, so a fourteenth
+ *   that forgets is a build error naming the file — the same discipline the
+ *   one-element tuple at the top of this file enforced before this phase spent
+ *   it.
  */
 export function getVisibleNavItems(
   role: UserRole | null,
   status: UserStatus | null,
-  /**
-   * The capability keys the subject holds by role, and the coarser set it holds
-   * by a live per-night assignment. Serialisable arrays rather than `Set`s,
-   * because the only caller is a `"use client"` component and the values cross
-   * the server/client boundary as props — the shape `StaffNav` has taken since
-   * plan 34-04.
-   *
-   * **Both defaults are temporary and belong to task 1 of plan 39-03 alone.**
-   * They exist so that the thirteen `<MobileNav>` mount sites still compile
-   * while task 2 threads them, and **task 3 of the same plan removes them**, so
-   * a fourteenth mount site that forgets is a build error naming the file. A
-   * defaulted parameter left in place is how a staging step quietly becomes the
-   * permanent shape; if you are reading this after task 3 has run, the defaults
-   * survived a step they should not have.
-   */
-  capabilities: readonly CapabilityKey[] = [],
-  liveAssignmentCapabilities: readonly string[] | null = null
+  capabilities: readonly CapabilityKey[],
+  liveAssignmentCapabilities: readonly string[] | null
 ): NavItem[] {
-  // Deliberately unread in task 1 of plan 39-03: this task widens the shape and
-  // moves no verdict. Task 3 spends them.
-  void capabilities;
-  void liveAssignmentCapabilities;
-
   const isAuthenticated = role !== null;
   const isApproved = status === "approved";
 
@@ -278,7 +305,8 @@ export function getVisibleNavItems(
     }
 
     // Check approval requirement
-    // Gallery & Check-in: visible to unauthenticated users AND approved members, but NOT pending/rejected
+    // Gallery: visible to unauthenticated users AND approved members, but NOT
+    // pending/rejected. Check-in no longer answers this clause — see below.
     if (item.requireApproved) {
       if (isAuthenticated && !isApproved) {
         return false;
@@ -288,6 +316,31 @@ export function getVisibleNavItems(
     // Check role restriction
     if (item.roles !== null) {
       if (!role || !item.roles.includes(role)) {
+        return false;
+      }
+    }
+
+    // Check capability requirement — the clause D-39-06 added, and the only
+    // one the Check-in entry answers.
+    //
+    // Role **or** live assignment, read in that order, which is the middleware's
+    // own predicate (`src/lib/supabase/middleware.ts`) and the door guard's
+    // (`admin/scanner/DoorSurface.tsx`). Not "similar to": the same. A stricter
+    // test here would draw no tab for somebody the server then admits, which is
+    // the divergence this clause exists to close; a looser one would draw a tab
+    // the server refuses, which is worse, because a refusal happens at the door.
+    //
+    // `liveAssignmentCapabilities === null` refuses, and that is deliberate:
+    // `null` means the payload did not carry the key — one known cause, an
+    // unapplied migration — and admitting on an absent key would widen the nav
+    // the moment a migration lagged. Empty means asked and answered.
+    if (item.capability !== null) {
+      const heldByRole = capabilities.includes(item.capability);
+      const heldByAssignment =
+        liveAssignmentCapabilities !== null &&
+        liveAssignmentCapabilities.includes(item.capability);
+
+      if (!heldByRole && !heldByAssignment) {
         return false;
       }
     }

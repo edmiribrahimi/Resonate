@@ -32,14 +32,21 @@ import type { CapabilityKey } from "@/lib/capabilities/keys";
 interface MobileNavProps {
   role: UserRole | null;
   status: UserStatus | null;
-  /** Held by role. Empty for an anonymous visitor — `ANONYMOUS_CONTEXT`. */
-  capabilities?: readonly CapabilityKey[];
+  /**
+   * Held by role. Empty for an anonymous visitor — `ANONYMOUS_CONTEXT`.
+   *
+   * **Required, deliberately.** All 13 mount sites pass it, so a fourteenth
+   * that forgets is a build error naming the file rather than a surface that
+   * compiles, renders, and draws a plausible but wrong navigation — which this
+   * repository has no error tracking to notice.
+   */
+  capabilities: readonly CapabilityKey[];
   /**
    * Held by a live per-night assignment, or `null` when the payload did not
    * carry the key. `null` is **not** flattened to `[]` on the way in: absent and
    * empty are different facts (`capabilities/server.ts`).
    */
-  liveAssignmentCapabilities?: readonly string[] | null;
+  liveAssignmentCapabilities: readonly string[] | null;
 }
 
 const icons: Record<string, React.ReactNode> = {
