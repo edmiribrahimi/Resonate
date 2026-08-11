@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type { UserRole, UserStatus } from "@/types/database";
 import { getVisibleNavItems } from "@/lib/rbac/roles";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
+import { FOCUS_RING } from "@/components/ui/Button";
 
 /**
  * The product navigation, in both tiers.
@@ -152,9 +153,18 @@ const ROW_RESPONSIVE =
   `${ROW_PHONE} md:h-full md:max-w-none md:flex-col md:items-stretch md:gap-1 ` +
   "md:overflow-y-auto md:px-4 md:py-6";
 
+/**
+ * The focus expression is imported from the ladder, never respelled (§5.4).
+ *
+ * The incumbent bar had **none**: a keyboard user tabbing along the navigation
+ * saw nothing move. That is not a style gap, it is the indicator WCAG 2.4.7
+ * requires, and it is added here rather than deferred to the surface that
+ * notices — nobody was going to notice, because this repository has no error
+ * tracking and a missing focus ring raises nothing.
+ */
 const ENTRY_PHONE =
   "relative flex min-h-11 flex-1 flex-col items-center justify-center gap-1 " +
-  "text-xs transition-all active:scale-95 active:opacity-80";
+  `text-xs transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`;
 
 const ENTRY_RESPONSIVE =
   `${ENTRY_PHONE} md:min-h-11 md:flex-none md:flex-row md:items-center ` +
