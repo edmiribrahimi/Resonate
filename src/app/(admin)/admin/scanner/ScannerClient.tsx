@@ -305,6 +305,26 @@ function formatListAge(ageMs: number): string {
   return `updated ${Math.floor(seconds / 60)}m ago`;
 }
 
+/**
+ * What the staleness band says — an age, and at most one transport fact.
+ *
+ * **It never names a permission** (D-38-04). `channelLive` being false covers an
+ * expired token, a join rate limit and a Realtime restart exactly as readily as
+ * a refused join; the four are indistinguishable from this device, so the door
+ * reports what it can observe — that it is not receiving live updates — and does
+ * not guess at why. One place decides who the operator is, and it is not here.
+ */
+function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
+  const minutes = Math.floor(ageMs / 60_000);
+  const age =
+    minutes < 1
+      ? "less than a minute old"
+      : `${minutes} minute${minutes === 1 ? "" : "s"} old`;
+  return channelIsLive
+    ? `This list is ${age} — tap to reload.`
+    : `This device is not receiving live updates. The list is ${age} — tap to reload.`;
+}
+
 type FilterTab = "all" | "not_arrived" | "checked_in";
 
 /**
@@ -2587,6 +2607,25 @@ export default function ScannerClient() {
       : performance.now() - lastFetchAtRef.current;
   const listAgeLabel = listAgeMs === null ? null : formatListAge(listAgeMs);
 
+  // ── D-38-09: when the list cannot be trusted. Derived, never stored ─────────
+  //
+  // Two ways to be stale, and the second is why `channelLive` exists at all:
+  //
+  // - **the channel is not live** — nothing will tell this device that the list
+  //   changed, so it is as old as its last fetch and will stay that way;
+  // - **the age is past `SAFETY_RELOAD_MS`** — five minutes is the threshold
+  //   because it is the point at which the parachute has **itself** already
+  //   failed. Before that, silence is accurate, and a screen that cried wolf
+  //   every time a night was opened would be a screen nobody reads by 01:00.
+  //
+  // `listAgeMs !== null` is the third clause and it is deliberate: before the
+  // first successful fetch of a night there is nothing to say about freshness,
+  // and the failure that matters there already has a voice — the three early
+  // returns of `fetchAttendance` each raise their own notice, and with the radio
+  // off the Offline pill is already saying so.
+  const listIsStale =
+    listAgeMs !== null && (!channelLive || listAgeMs > SAFETY_RELOAD_MS);
+
   const FILTER_TABS: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: "All", count: totalAttendees },
     { key: "not_arrived", label: "Not Arrived", count: totalNotArrived },
@@ -3089,6 +3128,55 @@ export default function ScannerClient() {
             aria-live="polite"
           >
             {cameraFault}
+          </div>
+        )}
+
+        {/*
+          ── F2 / D-38-19: the band is DERIVED state, and it is not in the array ──
+
+          It belongs to the family below — same container semantics, same two
+          tone class sets, same "stays until it is no longer true" behaviour, and
+          just as deliberately not a toast. It does **not** belong to that
+          family's storage, and the distinction is the whole point.
+
+          `setCacheNotices` replaces its array **wholesale** on every fetch,
+          including on each of the three early-return failure branches of
+          `fetchAttendance` (unreachable, non-ok, unparseable). A band pushed
+          into that array would therefore be erased by a **failed** refresh —
+          which is precisely the moment it is the only thing telling anyone that
+          the list cannot be trusted. It would vanish exactly when it mattered,
+          and would look correct in review.
+
+          So: computed at render from `channelLive` and the age, rendered here as
+          its own element, and `setCacheNotices` stays the single writer of its
+          own array. If you are here to "simplify" this into the notices array,
+          this paragraph is the reason not to.
+
+          Two absences that are also decisions:
+
+          - **Nothing at all while healthy.** Not an empty container, not a green
+            tick. The door's screen is the busiest in the product and every
+            element proposed for it has to justify itself against that; a badge
+            that says "fine" 99% of the night is how the 1% stops being read.
+          - **The band never names a permission** (D-38-04). It reports a
+            transport fact and an age, and nothing else. See `stalenessBandText`
+            for why the four causes behind that fact are not distinguishable
+            from here — and why guessing between them would put a second verdict
+            about the operator on a screen that already has one.
+        */}
+        {listIsStale && listAgeMs !== null && (
+          <div className="mb-4" role="status" aria-live="polite">
+            <button
+              type="button"
+              onClick={() => requestReload("band")}
+              className={`w-full rounded-xl border px-3 py-2.5 text-left text-xs leading-relaxed transition-colors ${
+                channelLive
+                  ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-500 active:bg-yellow-500/20"
+                  : "border-red-500/40 bg-red-500/10 text-red-400 active:bg-red-500/20"
+              }`}
+            >
+              {stalenessBandText(channelLive, listAgeMs)}
+            </button>
           </div>
         )}
 
