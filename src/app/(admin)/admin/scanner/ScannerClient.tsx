@@ -319,6 +319,21 @@ interface QueueCounts {
  */
 const CLOCK_DRIFT_WORTH_SAYING_MS = 5 * 60 * 1000;
 
+/**
+ * How long a burst of reasons to reload is allowed to collapse into one fetch.
+ *
+ * A rush at the door produces one `door_scan_events` row per scan and the
+ * ticket `UPDATE` fires its own trigger, so several signals arrive for one
+ * list. Collapsing them costs a fraction of a second of freshness and saves a
+ * fetch per person in the queue.
+ *
+ * **This number is assumption `A3`, not a measurement** (`38-RESEARCH.md`
+ * § Assumptions Log). What would settle it is counting `scanner:reload` lines
+ * over a night. Changing it is therefore a decision with a number written down,
+ * never a tweak.
+ */
+const RELOAD_COALESCE_MS = 500;
+
 /** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
 function readDoorAuthPayload(body: unknown): CachedDoorAuth | null {
   if (typeof body !== "object" || body === null) return null;
@@ -875,6 +890,83 @@ export default function ScannerClient() {
     [selectedPartyId, refreshQueueCounts]
   );
 
+  /**
+   * A reload that arrived while a verdict was being produced, waiting to be
+   * drained. Never a queue: several deferred reasons still mean one stale list.
+   */
+  const pendingReloadRef = useRef(false);
+  /** The coalescing timeout, so a burst of reasons produces one fetch. */
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * ── LIVE-02 / D-38-02: the ONE way to ask for the attendee list to reload ───
+   *
+   * Every reason — a message on the channel, a reconnection, the safety timer, a
+   * tap by the operator — comes through here, and here calls the fetch site the
+   * scanner already has. There is deliberately **no second fetch site**: a second
+   * one would be a second place where a `mergeAttendees` refusal can be dropped
+   * without reaching the person holding the phone, which is exactly the defect
+   * FIX-06 closed (`fetchAttendance`, the merge block above).
+   *
+   * This function never fetches, never merges, never reads or writes `doorAuth`,
+   * and never renders a sentence. It defers, it coalesces, it delegates.
+   */
+  const requestReload = useCallback(
+    (reason: string) => {
+      // ── D-38-08 / LIVE-02. A verdict is being produced right now: it waits ──
+      //
+      // The reason is **not** React rendering. `mergeAttendees` opens a
+      // `readwrite` transaction on the same IndexedDB object store the offline
+      // verdict reads, and IndexedDB serialises `readwrite` transactions on a
+      // store — so an unguarded merge really can put itself between a scan and
+      // its answer, in front of a queue, while looking in review like two
+      // ordinary `await`s. The lock is taken in the camera decode callback and
+      // released in `dismissFlash`, which is where this is drained.
+      if (isProcessingRef.current) {
+        pendingReloadRef.current = true;
+        return;
+      }
+
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = setTimeout(() => {
+        reloadTimerRef.current = null;
+        // Its own category, so a reload is attributable to the reason that asked
+        // for it. `meta-gates.md`: no path collapses into a generic line.
+        console.info("scanner:reload", { reason });
+        // ── D-38-22, accepted rather than fixed ──────────────────────────────
+        //
+        // A reload while a search is active refreshes what is on screen and
+        // **deliberately does not merge into the offline cache**: `fetchAttendance`
+        // skips the merge when `search` is set, and the cache catches up on the
+        // next unfiltered fetch.
+        //
+        // Turning this into a merge of a filtered list would feed `mergeAttendees`
+        // a shrinking payload, which it refuses as a typed value — so the "fix"
+        // produces a refusal notice at a door, not a fresher cache.
+        fetchAttendance(searchQuery || undefined);
+      }, RELOAD_COALESCE_MS);
+    },
+    [fetchAttendance, searchQuery]
+  );
+
+  /**
+   * The coalescing timeout, torn down — on unmount, and on every change of night.
+   *
+   * `S4` of this file's own patterns: every timer is cleared in the same cleanup
+   * that armed it. Keying it on `selectedPartyId` rather than on nothing is the
+   * per-night discipline the `doorAuth` effect above already states — a reload
+   * armed for the night last opened would land on the night now open and repaint
+   * its list with the previous one's.
+   */
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+    };
+  }, [selectedPartyId]);
+
   // Initial party load
   useEffect(() => {
     fetchParties();
@@ -996,12 +1088,21 @@ export default function ScannerClient() {
   const dismissFlash = useCallback(() => {
     setFlash(null);
     isProcessingRef.current = false;
+    // The verdict is out, so the reload that waited for it may go. Drained
+    // unconditionally and on purpose: this may cost one extra GET when the scan's
+    // own reload was going to fire anyway, and that is the correct side to err
+    // on — a duplicated fetch costs one request, a dropped one leaves a stale
+    // list at a door, which is the whole subject of this phase.
+    if (pendingReloadRef.current) {
+      pendingReloadRef.current = false;
+      requestReload("deferred");
+    }
     // Resume scanner decoding
     const scanner = scannerInstanceRef.current as { resume: () => void } | null;
     if (scanner) {
       try { scanner.resume(); } catch { /* ignore if already running */ }
     }
-  }, []);
+  }, [requestReload]);
 
   const toggleTorch = useCallback(async () => {
     const track = videoTrackRef.current;
@@ -1894,6 +1995,11 @@ export default function ScannerClient() {
     setFailedEntries(null);
     setBlockedResult(null);
     isProcessingRef.current = false;
+    // The second release point of the scan lock, and the one that does **not**
+    // drain. A reset is the operator abandoning the current scan and leaving the
+    // night; the effect keyed on `selectedPartyId` fetches for whatever is
+    // opened next, so draining here would be a second fetch for the same list.
+    pendingReloadRef.current = false;
     // Sync any pending check-ins before switching party
     syncPendingCheckins()
       .catch((error) => {
