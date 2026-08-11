@@ -7,6 +7,7 @@ import type { UserRole, UserStatus } from "@/types/database";
 import { getVisibleNavItems } from "@/lib/rbac/roles";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
 import { FOCUS_RING } from "@/components/ui/Button";
+import { SectionHeading } from "@/components/ui/Typography";
 
 /**
  * The product navigation, in both tiers.
@@ -238,9 +239,7 @@ export default function AppNav({
         */}
         {!isPhone && workNav ? (
           <div className="hidden md:mt-6 md:block">
-            <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-widest text-muted">
-              Work
-            </h2>
+            <SectionHeading>Work</SectionHeading>
             {workNav}
           </div>
         ) : null}
