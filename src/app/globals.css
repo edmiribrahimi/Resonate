@@ -482,3 +482,57 @@ input[type="time"] {
 @utility bg-grad-sunset {
   background-image: var(--grad-sunset);
 }
+
+/*
+ * The pointer query — written ONCE, and only ever used to SHRINK.
+ *
+ * 41-UI-SPEC.md §6.2. Sizing keys off the POINTER, never viewport width,
+ * because a 1024px iPad is touched. But the rule is deliberately not written on
+ * `any-pointer: coarse`: MDN records that `fine` and `coarse` can BOTH match on
+ * one device, and hot-plugging does not always re-evaluate promptly. So the
+ * construction is inverted.
+ *
+ * 44px IS THE UNPREFIXED DEFAULT. This variant only ever makes a target
+ * smaller, and only where no coarse pointer exists AT ALL. A wrong answer then
+ * costs a slightly-too-large button and never a too-small one — which is
+ * checkin-offline.md's asymmetry applied to a control: rifiutare un ospite
+ * valido e' peggio che ammetterne uno doppio. The error that happens in front of
+ * a queue is the one the default must protect against.
+ *
+ * Composing `any-pointer-fine:` with `not-any-pointer-coarse:` would emit the
+ * same CSS and would depend on Tailwind's variant ORDERING — not something a
+ * touch-target criterion should rest on. A @custom-variant is a first-class
+ * Tailwind v4 feature and adds no package (D-41-20).
+ *
+ * THE ALLOW-LIST IS CLOSED AT ONE ITEM, before any consumer exists (§6.3): a
+ * 36px minimum-height floor, permitted only on the row-action buttons inside the
+ * DataTable primitive's desktop branch — a branch that is `hidden md:block` and
+ * therefore never renders on a phone. Floor 36px, never lower. Everything else
+ * is 44px unconditionally, at every tier, on every device.
+ *
+ * The exact class string of that one item is NOT written out here, and the
+ * omission is deliberate. Tailwind extracts candidates from the files it scans,
+ * so a class name spelled inside a comment is indistinguishable from a class
+ * name in use: it would emit a rule with no consumer, and it would make the
+ * probe-removal check below unable to tell a leftover probe from its own
+ * documentation. Same discipline as REVERSED_E in scripts/verify-tokens.mjs.
+ *
+ * PROVEN TO EMIT, NOT ASSUMED: zero pointer variants existed in this tree, so
+ * nothing showed this compiles. A temporary `@source inline(...)` probe was
+ * added, `npm run build` run, and the emitted stylesheet read with grep for
+ * `any-pointer` — the rule was there, with the negated clause intact. The
+ * output is recorded verbatim in 41-01-SUMMARY.md.
+ *
+ * THE PROBE'S REMOVAL IS ASSERTED BY THE DIFF, NOT BY THE BUILT CSS, and the
+ * reason is a finding this plan did not expect. Tailwind's automatic source
+ * detection scans `.planning/`, so the class strings written in this phase's
+ * planning documents are live candidates: after the probe was removed the rule
+ * was STILL emitted, from the documents. Attribution was measured rather than
+ * argued — `max-w-7xl` appears in zero files under `src/`, only in
+ * `.planning/*.md`, and is present in the built stylesheet. So "the rule is
+ * gone" was never available as a proof here, and claiming it would have been a
+ * measurement taken with the instrument that caused the effect. Deferred, with
+ * the evidence, in this phase's deferred-items.md: it is a build-configuration
+ * decision for the whole phase, not for the plan that happened to trip over it.
+ */
+@custom-variant pointer-fine-only (@media (any-pointer: fine) and (not (any-pointer: coarse)));
