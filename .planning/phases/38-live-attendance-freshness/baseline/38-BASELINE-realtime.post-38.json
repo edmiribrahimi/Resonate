@@ -1,0 +1,259 @@
+{
+  "what_this_is": "The after-figure for phase 38. Read against baseline/38-BASELINE-realtime.pre-38.json, which was captured before this migration existed on disk. A number with no before is not evidence of a change, so every probe here names its pre-38 counterpart.",
+  "captured_at": "2026-08-11T11:18:13.294Z",
+  "probe_method": "POST /v1/projects/{ref}/database/query with read_only: true (runs as supabase_read_only_user) for every probe, plus GET /v1/projects/{ref}/config/realtime. The single write was the migrations-endpoint apply recorded under `apply`. Nothing else wrote to production.",
+  "version": "20260811111530",
+  "applied_at": "2026-08-11T11:15:31.330Z",
+  "apply": {
+    "endpoint": "POST /v1/projects/{ref}/database/migrations",
+    "why_not_database_query": "/database/query applies DDL while writing nothing into the project migration history. Using it here would have added a nineteenth gap to the eighteen that already predate this phase. Precedent: phase 36 applied 20260810144239 through the migrations endpoint, phase 37 applied 20260810210214.",
+    "name_sent": "live_attendance_channel",
+    "version_assigned": "20260811111530",
+    "file": "supabase/migrations/20260811120000_live_attendance_channel.sql",
+    "file_sha256": "4f92bee212c6d923eef84b7ab74f6ff765bc0983a6e0b7e463412f0d8aa5421a",
+    "bytes_sent": 32756,
+    "lines_sent": 621,
+    "sent_byte_for_byte": true,
+    "response_status": 200,
+    "response_body": "[]",
+    "history_head_before": [
+      {
+        "version": "20260811001927",
+        "name": "venues_read_narrowed"
+      },
+      {
+        "version": "20260810210214",
+        "name": "manual_venue_reveal"
+      },
+      {
+        "version": "20260810144239",
+        "name": "formats_and_series"
+      }
+    ],
+    "history_head_after": [
+      {
+        "version": "20260811111530",
+        "name": "live_attendance_channel"
+      },
+      {
+        "version": "20260811001927",
+        "name": "venues_read_narrowed"
+      },
+      {
+        "version": "20260810210214",
+        "name": "manual_venue_reveal"
+      }
+    ],
+    "note_on_the_assigned_version": "The endpoint assigns its own wall-clock version (20260811111530) and does not adopt the filename's timestamp (20260811120000). Same behaviour as phases 36 and 37, and the reason the version is recorded here rather than inferred from the filename."
+  },
+  "preflight": {
+    "at": "2026-08-11T11:14Z",
+    "realtime_policies_before_apply": 0,
+    "source_table_triggers_before_apply": 0,
+    "helper_existed_before_apply": false,
+    "nights_in_progress": 0,
+    "nights_starting_within_the_next_day": 0,
+    "version_already_in_history": 0,
+    "why": "The four triggers land on the check-in write path and a DDL transaction takes locks on those tables for the moment it runs. T-38-04-06 accepts that risk only outside a night, so it was measured rather than assumed. Counts only — no name, no date, no venue: this repository is public."
+  },
+  "cascade_enumeration": {
+    "method": "Every foreign key in the database was read from pg_constraint (contype = 'f') — 102 edges — and the graph was walked in BOTH directions from the four trigger tables until closure. Not remembered, not eyeballed: phase 37 found the true count was 18 and not 17 because discount_code_tiers arrives at two hops through two different paths.",
+    "seeds": [
+      "public.door_scan_events",
+      "public.tickets",
+      "public.guest_list_entries",
+      "public.ticket_refunds"
+    ],
+    "edges_read": 102,
+    "gated_set_size": 27,
+    "gated_set": [
+      "private.capabilities",
+      "private.role_capabilities",
+      "public.artists",
+      "public.attendances",
+      "public.discount_code_tiers",
+      "public.discount_codes",
+      "public.door_scan_events",
+      "public.drink_items",
+      "public.drink_orders",
+      "public.drink_tokens",
+      "public.event_media",
+      "public.event_parties",
+      "public.events",
+      "public.formats",
+      "public.guest_list_entries",
+      "public.membership_acts",
+      "public.party_assignments",
+      "public.party_credits",
+      "public.party_series",
+      "public.pending_purchases",
+      "public.profiles",
+      "public.rsvps",
+      "public.ticket_refunds",
+      "public.ticket_tiers",
+      "public.tickets",
+      "public.venue_reveal_acts",
+      "public.venues"
+    ],
+    "gated_set_composition": "The public-schema closure (25 tables) plus the two private-schema tables the closure reaches. The migration creates into `private`, so those belong under the gate.",
+    "observed_but_not_gated": [
+      "auth.identities",
+      "auth.mfa_amr_claims",
+      "auth.mfa_challenges",
+      "auth.mfa_factors",
+      "auth.oauth_authorizations",
+      "auth.oauth_clients",
+      "auth.oauth_consents",
+      "auth.one_time_tokens",
+      "auth.refresh_tokens",
+      "auth.sessions",
+      "auth.users",
+      "auth.webauthn_challenges",
+      "auth.webauthn_credentials"
+    ],
+    "why_auth_is_observed_and_not_gated": "The 13 auth-schema tables are in the full closure (public.profiles references auth.users) but the auth service writes auth.sessions, auth.refresh_tokens and auth.one_time_tokens on any login or token refresh, independently of this transaction. Gating on them would manufacture a false failure that hides the signal the gate exists to carry. They are counted on both sides anyway and reported — and they did not move either.",
+    "reachability_paths": {
+      "public.door_scan_events": "seed",
+      "public.tickets": "seed",
+      "public.guest_list_entries": "seed",
+      "public.ticket_refunds": "seed",
+      "public.event_parties": "public.door_scan_events -[door_scan_events_party_id_fkey]-> public.event_parties (references)",
+      "public.events": "public.door_scan_events -[door_scan_events_event_id_fkey]-> public.events (references)",
+      "public.pending_purchases": "public.pending_purchases -[pending_purchases_ticket_id_fkey, ondelete=n]-> public.tickets (referenced by)",
+      "public.discount_codes": "public.tickets -[tickets_discount_code_id_fkey]-> public.discount_codes (references)",
+      "public.ticket_tiers": "public.tickets -[tickets_tier_id_fkey]-> public.ticket_tiers (references)",
+      "public.profiles": "public.guest_list_entries -[guest_list_entries_added_by_fkey]-> public.profiles (references)",
+      "public.attendances": "public.attendances -[attendances_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.drink_items": "public.drink_items -[drink_items_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.drink_orders": "public.drink_orders -[drink_orders_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.drink_tokens": "public.drink_tokens -[drink_tokens_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.event_media": "public.event_media -[event_media_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.formats": "public.event_parties -[event_parties_format_id_fkey]-> public.formats (references)",
+      "public.party_series": "public.event_parties -[event_parties_series_format_fk]-> public.party_series (references)",
+      "public.venues": "public.event_parties -[event_parties_venue_id_fkey]-> public.venues (references)",
+      "public.membership_acts": "public.membership_acts -[membership_acts_party_id_fkey, ondelete=n]-> public.event_parties (referenced by)",
+      "public.party_assignments": "public.party_assignments -[party_assignments_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.party_credits": "public.party_credits -[party_credits_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.rsvps": "public.rsvps -[rsvps_party_id_fkey, ondelete=c]-> public.event_parties (referenced by)",
+      "public.venue_reveal_acts": "public.venue_reveal_acts -[venue_reveal_acts_party_id_fkey, ondelete=n]-> public.event_parties (referenced by)",
+      "public.discount_code_tiers": "public.discount_code_tiers -[discount_code_tiers_discount_code_id_fkey, ondelete=c]-> public.discount_codes (referenced by)",
+      "public.artists": "public.party_credits -[party_credits_artist_id_fkey]-> public.artists (references)"
+    },
+    "d12": "All seven tables of the 2026-08-10 incident (D12 — 63 rows lost, no PITR) are inside the gated set: drink_orders, drink_tokens, drink_items, pending_purchases, tickets, ticket_tiers, guest_list_entries."
+  },
+  "rowcounts_before": {
+    "private.capabilities": 13,
+    "private.role_capabilities": 28,
+    "public.artists": 7,
+    "public.attendances": 0,
+    "public.discount_code_tiers": 0,
+    "public.discount_codes": 0,
+    "public.door_scan_events": 0,
+    "public.drink_items": 7,
+    "public.drink_orders": 0,
+    "public.drink_tokens": 0,
+    "public.event_media": 0,
+    "public.event_parties": 3,
+    "public.events": 2,
+    "public.formats": 5,
+    "public.guest_list_entries": 0,
+    "public.membership_acts": 0,
+    "public.party_assignments": 0,
+    "public.party_credits": 0,
+    "public.party_series": 6,
+    "public.pending_purchases": 0,
+    "public.profiles": 4,
+    "public.rsvps": 0,
+    "public.ticket_refunds": 0,
+    "public.ticket_tiers": 1,
+    "public.tickets": 0,
+    "public.venue_reveal_acts": 0,
+    "public.venues": 5
+  },
+  "rowcounts_before_at": "2026-08-11T11:14:35.935Z",
+  "rowcounts_after": {
+    "private.capabilities": 13,
+    "private.role_capabilities": 28,
+    "public.artists": 7,
+    "public.attendances": 0,
+    "public.discount_code_tiers": 0,
+    "public.discount_codes": 0,
+    "public.door_scan_events": 0,
+    "public.drink_items": 7,
+    "public.drink_orders": 0,
+    "public.drink_tokens": 0,
+    "public.event_media": 0,
+    "public.event_parties": 3,
+    "public.events": 2,
+    "public.formats": 5,
+    "public.guest_list_entries": 0,
+    "public.membership_acts": 0,
+    "public.party_assignments": 0,
+    "public.party_credits": 0,
+    "public.party_series": 6,
+    "public.pending_purchases": 0,
+    "public.profiles": 4,
+    "public.rsvps": 0,
+    "public.ticket_refunds": 0,
+    "public.ticket_tiers": 1,
+    "public.tickets": 0,
+    "public.venue_reveal_acts": 0,
+    "public.venues": 5
+  },
+  "rowcounts_after_at": "2026-08-11T11:15:39.385Z",
+  "rowcounts_comparison": "All 27 tables in the gated cascade set hold an identical count before and after the apply — 81 rows in total on both sides. Zero rows were written, updated or deleted. Demonstrated, not asserted.",
+  "rowcounts_observed_before": {
+    "auth.identities": 4,
+    "auth.mfa_amr_claims": 2,
+    "auth.mfa_challenges": 0,
+    "auth.mfa_factors": 0,
+    "auth.oauth_authorizations": 0,
+    "auth.oauth_clients": 0,
+    "auth.oauth_consents": 0,
+    "auth.one_time_tokens": 1,
+    "auth.refresh_tokens": 7,
+    "auth.sessions": 2,
+    "auth.users": 4,
+    "auth.webauthn_challenges": 0,
+    "auth.webauthn_credentials": 0
+  },
+  "rowcounts_observed_after": {
+    "auth.identities": 4,
+    "auth.mfa_amr_claims": 2,
+    "auth.mfa_challenges": 0,
+    "auth.mfa_factors": 0,
+    "auth.oauth_authorizations": 0,
+    "auth.oauth_clients": 0,
+    "auth.oauth_consents": 0,
+    "auth.one_time_tokens": 1,
+    "auth.refresh_tokens": 7,
+    "auth.sessions": 2,
+    "auth.users": 4,
+    "auth.webauthn_challenges": 0,
+    "auth.webauthn_credentials": 0
+  },
+  "rowcounts_observed_comparison": "The 13 observed auth-schema tables also hold identical counts before and after.",
+  "migration_history_head": [
+    {
+      "version": "20260811111530",
+      "name": "live_attendance_channel"
+    },
+    {
+      "version": "20260811001927",
+      "name": "venues_read_narrowed"
+    },
+    {
+      "version": "20260810210214",
+      "name": "manual_venue_reveal"
+    },
+    {
+      "version": "20260810144239",
+      "name": "formats_and_series"
+    },
+    {
+      "version": "20260806161753",
+      "name": "20260807020000_wrap_auth_uid"
+    }
+  ],
+  "migration_history_note": "The pre-existing drift in this project migration history predates this phase and is the owner's call to repair: 20260508000000_drink_token_active_state.sql is applied in production but absent from the history (STATE.md:276-281). It was not touched. Separately, and worth flagging rather than acting on: the history now carries version 20260811001927 venues_read_narrowed, while STATE.md:178 records that migration as deliberately left applied to zero. Somebody applied it on 2026-08-11 at 00:19. That is a stale line in STATE.md, not a finding of this plan, and this plan does not own that file."
+}
