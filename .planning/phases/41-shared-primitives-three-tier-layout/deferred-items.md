@@ -169,3 +169,85 @@ candidate out of `.planning/`, so the built stylesheet will carry a
 than left for whoever next greps the emitted CSS and concludes a surface paints
 a warning. This entry is not scanned by the gate it describes — that script
 walks `src/` and reads only `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`.
+
+---
+
+## DEF-41-03 — `IconButton` is a published primitive with zero importers, and no plan owns the file that would adopt it
+
+**Found during:** plan 41-07, Task 2 (check C's first measurement).
+**Status:** open — deliberately not fixed inside 41-07, and **not scheduled by
+any remaining plan in this phase.**
+
+### The finding
+
+`src/components/ui/Button.tsx` exports `IconButton`. Measured across all 259
+files under `src/`, in live lines, counting a named import that resolves to that
+exact file: **zero importers.** The name appears nowhere outside its own
+definition.
+
+That is D-41-04's failure mode — *no plan ships a primitive without converting a
+surface onto it in the same plan* — reproduced inside the phase written to
+prevent it.
+
+### How it happened, which is the part worth keeping
+
+Neither plan did anything wrong, and that is why it needs recording rather than
+blaming:
+
+- **41-03** published `IconButton` and named its consumer: the toast's dismiss
+  control, being converted by **41-04, in the same wave**.
+- **41-04** converted `src/components/toast/Toast.tsx` **on a parallel branch
+  where `IconButton` did not yet exist**. Importing it would not have compiled.
+  So it wrote the contract by hand and said so at the call site, in a comment
+  that ends *"this is the call site that adopts it when it lands"*.
+- Both branches merged. The primitive landed. **The adoption did not**, because
+  it belonged to neither plan's post-merge scope.
+- **41-05** met it and recorded it under *Carried forward, not fixed*, correctly
+  observing that `src/components/toast/` was not among its declared files.
+
+**This is a cost of wave parallelism, not of either plan.** Two plans in one
+wave can each satisfy their own contract and still leave a joint obligation that
+neither owns afterwards — and nothing in the workflow looks for one. The gate
+that found it did not exist until wave 4.
+
+### Why 41-07 did not fix it
+
+The fix is small and already specified: import the rung, delete the five-line
+hand-written control. But it is **not a byte-identical swap** — the shared rung
+carries a hover boundary, press feedback, and a different ink token than the
+hand-written string. It is a **visible change to a spine component that every
+surface can raise**, and `src/components/toast/` is not among plan 41-07's
+declared files (which are `scripts/verify-conversion.mjs`, and nothing else).
+Making it from a gate-authoring plan, in a wave running in parallel, would be
+scope creep with a visual effect and no H41-1 observation behind it.
+
+### What the gate does instead, and why that is not a loosened check
+
+Shipping check C red was the other option and is worse: a gate that arrives red
+is switched off before it has guarded anything (§0 rule 3,
+`verify-media-strip.mjs:51-62`), and plan 41-12 aggregates these six gates into
+one command — a red one would make the aggregate red on arrival.
+
+So `verify-conversion.mjs` carries **`ORPHANS_DECLARED`**, in the same shape
+`verify-breakpoints.mjs` gave `REMAINING` one plan earlier: a **debt with a
+number on it that can only go down**, printed loudly on every green, with the
+reason and the owed work on the entry. The three states are the same three:
+
+- an orphan **not** declared → **failure**. That is the check.
+- an orphan **declared** → a loud `! C` notice, exit still 0.
+- a declared orphan that **gains an importer** → a `STALE` line to delete.
+
+All three were proven by asserted mutation before the gate was committed.
+
+### What the phase should decide
+
+1. **Which plan adopts it.** No remaining plan in phase 41 declares
+   `src/components/toast/`. Either one gains the file, or a small plan is added,
+   or it is handed to a later phase — but *"someone will notice"* is exactly
+   what did not happen the first time.
+2. Whether the adoption needs an **H41-1 glance**: the dismiss control changes
+   appearance on a component every surface can raise.
+3. Whether the workflow should look for this class of gap after a parallel wave
+   merges — **a joint obligation between two plans in one wave belongs to
+   neither of them afterwards**, and this is the second time this phase has paid
+   for a merge artefact (the first is 41-05's note about the same file).
