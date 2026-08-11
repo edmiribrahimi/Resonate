@@ -60,6 +60,7 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/api/tickets/checkin/**` | checkin-offline | ticketing-payments |
 | `src/app/api/membership/**` | checkin-offline | access-gating |
 | `src/app/**/scanner/**`, `src/components/scanner/**` | checkin-offline | access-gating, nextjs-architecture |
+| `src/app/(admin)/door/**` | checkin-offline | access-gating, nextjs-architecture |
 | `src/utils/qr.ts` | checkin-offline | access-gating |
 | `supabase/migrations/**` | supabase-data | access-gating (per le policy) |
 | `src/emails/venue-reveal.tsx` | venue-secrecy | comms-analytics |
@@ -76,6 +77,13 @@ che la riga copre. Fino alla v1.4 non lo era, e aveva gia' derivato: la riga
 `src/app/(admin)/**` dichiarava `access-gating` primario mentre il frontmatter
 di quel modulo non lo agganciava. Una tabella che descrive un routing che non
 esiste e' peggio di nessuna tabella: fa credere che qualcuno stia controllando.
+
+**La porta ha due indirizzi**: uno sotto `admin/scanner/`, dove vive la sua
+implementazione, e uno a `/door`, che e' una pagina sottile (fase 39, STAFF-04).
+La riga per il secondo esiste perche' la sola riga `src/app/(admin)/**`
+caricherebbe li' `access-gating` e `nextjs-architecture` e **non** il modulo che
+porta i gate dell'offline — e un gate che non si carica e' indistinguibile da un
+gate assente.
 
 I sei moduli **senza `paths:`** — `production-calendar`,
 `brand-visual-system`, `sound-manifesto`, `venue-acquisition`,

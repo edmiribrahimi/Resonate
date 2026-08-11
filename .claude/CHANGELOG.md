@@ -3,6 +3,109 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.11.0] - 2026-08-11
+
+### Added — la porta ha due indirizzi, e il secondo non caricava i gate della porta (fase 39, piano 02)
+
+Il piano 39-02 ha dato alla porta un **secondo indirizzo**, `/door`, lasciando
+l'implementazione dov'era: `src/app/(admin)/door/page.tsx` e' una pagina
+sottile, mentre lo scanner e la sua guardia restano sotto
+`src/app/(admin)/admin/scanner/`. Scelta deliberata — spostare i file avrebbe
+reso morto `src/app/**/scanner/**` (controllo **A** rosso, e il **G** che
+segnala *«non matcha alcun file»*) — ma apre un buco di copertura.
+
+Il buco: `src/app/(admin)/door/page.tsx` matcha `src/app/(admin)/**`, quindi
+caricava `access-gating` e `nextjs-architecture` e **non** `checkin-offline` —
+il modulo che porta il gate *offline-first*, l'asimmetria del falso rifiuto, il
+gate *coda durevole* e *provato prima della porta*. **Un gate giusto agganciato
+al path sbagliato e' indistinguibile da un gate assente**, con l'aggravante che
+sembra presidiato; e questo repo ha gia' spedito esattamente quel difetto, fino
+alla v1.4, quando i `paths:` erano fermi alla geografia di v1.0 mentre il
+prodotto aveva spostato rimborsi, checkout e scanner nelle server action dentro
+i route group.
+
+Tre modifiche coordinate, nello stesso commit:
+
+- **`checkin-offline.md`** — `paths:` += `src/app/(admin)/door/**`, in coda alla
+  lista: e' un secondo indirizzo, non il cuore;
+- **`CLAUDE.md`** — la stessa glob nella riga d'indice Check-in & Offline,
+  perche' il controllo **B** pretende che frontmatter e indice dichiarino lo
+  **stesso insieme**, e non esiste credito parziale;
+- **`meta-gates.md`** — una riga nella tabella di priorita' per
+  `src/app/(admin)/door/**`, `checkin-offline` primario e `access-gating,
+  nextjs-architecture` supplementari, perche' il controllo **G** pretende che il
+  primario dichiarato si carichi davvero sui file che la riga possiede. La
+  glob e' piu' lunga di `src/app/(admin)/**`, quindi si prende la pagina della
+  porta senza rompere la riga generica. Quella tabella **aveva gia' derivato
+  una volta**, prima che qualcuno la verificasse.
+
+### Added — il gate *l'indirizzo che si scalda e' quello che si usera'*
+
+Nulla in questo prodotto precache un documento: il manifest di precache e'
+fatto di chunk JS, CSS, font, manifest di build e file di `public/` —
+**zero HTML, zero rotte, zero payload RSC**. Ogni documento offline viene da una
+cache runtime `NetworkFirst` a **24 ore** e **32 voci**, calda solo per una
+visita online precedente. E **le chiavi di cache sono URL**: i due indirizzi
+della porta sono due voci indipendenti, quindi **scaldarne uno non scalda
+l'altro**.
+
+**La situazione che lo fa scattare** (`ai-engineering.md`, gate *un gate deve
+poter fallire*): un telefono che fa la porta da mesi al vecchio indirizzo viene
+mandato al nuovo, radio spenta, cache fredda, davanti a una fila. Il gate
+estende *provato prima della porta* invece di ripeterlo: non basta che il
+percorso sia stato provato, va provato **a quell'indirizzo**.
+
+Il gate dice **quale** indirizzo scaldare. Non dice per quanto tempo una voce
+scaldata resti valida: se la porta meriti una regola di cache piu' lunga di 24
+ore e' una decisione di prodotto, ancora aperta.
+
+### Scenario di carico e scatto (`ai-engineering.md`, gate *eval*)
+
+Obbligatorio per ogni modulo modificato, perche' nessun test puo' girare.
+
+**`checkin-offline` — file reale:** `src/app/(admin)/door/page.tsx`.
+**Cosa deve caricarsi:** `CLAUDE.md`, `meta-gates.md`, `access-gating.md`,
+`nextjs-architecture.md` e `checkin-offline.md`. Prima di questo commit i primi
+quattro si caricavano e il quinto no.
+**Modifica-tipo che deve far scattare un gate:** mandare la navigazione della
+porta a un indirizzo diverso senza aggiungere il passo di riscaldamento al
+runbook della serata. Deve scattare il gate nuovo — la voce di cache e' per URL,
+e l'indirizzo nuovo nasce freddo.
+
+**`meta-gates` — file reale:** la stessa pagina.
+**Modifica-tipo:** cambiare l'indirizzo della porta.
+**Cosa deve scattare:** il pattern di analisi d'impatto cross-dominio, perche'
+un cambio di indirizzo tocca in un colpo il middleware, la mappa delle
+capability, la navigazione e le chiavi di cache del service worker.
+
+### Context budget — 144 token spesi degli 805 disponibili
+
+Misurato con `npm run verify:persona`, non stimato — il gate *context budget*
+chiede di rimisurare il caso peggiore a ogni `paths:` allargato, e il numero si
+scrive invece di ricordarlo.
+
+```
+caso peggiore: src/app/(public)/events/EventTabs.tsx
+5 file caricati (CLAUDE.md, meta-gates, nextjs-architecture, ticketing-payments, venue-secrecy)
+40822 byte ~ 11339 token · tetto 12000
+```
+
+| | v1.10.0 | v1.11.0 |
+|---|---|---|
+| File peggiore | `src/app/(public)/events/EventTabs.tsx` | invariato |
+| Byte | 40.302 | **40.822** |
+| Token | 11.195 | **11.339** |
+| Margine sul tetto di 12.000 | 805 | **661** |
+
+**Il caso peggiore non ha cambiato file**, e la ripartizione dice perche': i 520
+byte in piu' sono **tutti** le due frasi aggiunte a `meta-gates.md`, che si
+carica su ogni file. Il gate nuovo di `checkin-offline.md` non compare li',
+perche' quel modulo su `EventTabs.tsx` non si carica: lo si paga sul candidato
+della porta, `src/app/(admin)/door/page.tsx`, che con cinque moduli misura
+**39.942 byte ≈ 11.095 token** — 244 token sotto il caso peggiore. La porta e'
+quindi il **secondo** file piu' caro della persona, e la prossima aggiunta di
+prosa a uno dei suoi cinque moduli va pesata: il margine e' 661 token.
+
 ## [1.10.0] - 2026-08-10
 
 ### Added — `src/lib/venue-reveal/**` entra nei `paths:` di `venue-secrecy` (fase 37, piano 09)
