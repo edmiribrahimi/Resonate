@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 /**
  * The repository's first and only `supabase.auth.updateUser({ password })`.
@@ -45,6 +46,23 @@ import { createClient } from "@/lib/supabase/client";
  * want three different next actions. Collapsing them into "Something went
  * wrong" is the recorded newsletter anti-pattern
  * (`.planning/codebase/CONCERNS.md`); do not re-create it here.
+ *
+ * ── Converted by plan 41-06, and the conversion is colour, size and structure ─
+ *
+ * The five raw Tailwind palette colours became the declared semantics for their
+ * meaning — a refusal is `--sem-crit`, a completion is `--sem-done` — and the
+ * eleven legacy token names became the names they alias, which changes no pixel.
+ * The two fields moved onto the control boundary and gained the focus ring they
+ * did not have. The three pills that navigate became the button ladder's rung.
+ *
+ * **Not one of the four outcomes was merged, renamed or re-worded.** The four
+ * notices above are the reason this file exists: they are the difference between
+ * an expired link, a refused password, a dead network and an unverifiable
+ * session, and each of them wants a different next action from the person
+ * reading it. A visual phase that collapsed two of them because they now render
+ * the same component would have undone the whole file while making it look
+ * tidier — which is precisely the temptation a component extraction creates on a
+ * surface whose branches *are* its property.
  */
 
 /** What the attempt can end as. Values, never parsed prose. */
@@ -102,12 +120,12 @@ function Notice({ kind, detail }: { kind: NoticeKind; detail?: string }) {
   return (
     <div
       role="alert"
-      className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5"
+      className="rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-5"
     >
-      <p className="text-sm font-medium text-red-300">{notice.title}</p>
+      <p className="text-sm font-semibold text-sem-crit">{notice.title}</p>
       <p className="mt-1 text-xs text-muted">{notice.body}</p>
       {detail ? (
-        <p className="mt-2 break-words font-mono text-[11px] text-muted">
+        <p className="mt-2 break-words font-mono text-xs text-muted">
           {detail}
         </p>
       ) : null}
@@ -260,10 +278,17 @@ export default function SetPasswordForm() {
     }
   }
 
+  // The form this replaces is gone from the page, so the outcome has to
+  // announce itself: without a live region a screen-reader user submits and is
+  // told nothing at all. `status` and not `alert` — this is the good ending,
+  // and it does not interrupt.
   if (outcome === "ok") {
     return (
-      <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5">
-        <p className="text-sm font-medium text-green-400">
+      <div
+        role="status"
+        className="rounded-2xl border border-sem-done/30 bg-sem-done/10 p-5"
+      >
+        <p className="text-sm font-semibold text-sem-done">
           Your password is set.
         </p>
         <p className="mt-1 text-xs text-muted">
@@ -271,12 +296,9 @@ export default function SetPasswordForm() {
           sign in — it is not stored anywhere you can read it back, so if you
           forget it you will need a new link.
         </p>
-        <Link
-          href="/dashboard"
-          className="mt-4 inline-block rounded-full bg-accent px-5 py-2 text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95 active:opacity-80"
-        >
+        <Button href="/dashboard" size="lg" variant="primary" className="mt-4">
           Go to your dashboard
-        </Link>
+        </Button>
       </div>
     );
   }
@@ -296,16 +318,12 @@ export default function SetPasswordForm() {
       <div className="space-y-4">
         <Notice kind="no_session" />
         <p className="text-sm text-muted">
-          Sign in and use{" "}
-          <span className="text-foreground">Reset Password</span> on your
-          dashboard to send yourself a fresh link.
+          Sign in and use <span className="text-ink">Reset Password</span> on
+          your dashboard to send yourself a fresh link.
         </p>
-        <Link
-          href="/login"
-          className="inline-block rounded-full border border-card-border px-5 py-2 text-sm font-medium text-muted transition-all hover:text-foreground active:scale-95 active:opacity-80"
-        >
+        <Button href="/login" size="lg" variant="secondary">
           Go to sign in
-        </Link>
+        </Button>
       </div>
     );
   }
@@ -314,12 +332,9 @@ export default function SetPasswordForm() {
     return (
       <div className="space-y-4">
         <Notice kind="session_unverifiable" />
-        <Link
-          href="/login"
-          className="inline-block rounded-full border border-card-border px-5 py-2 text-sm font-medium text-muted transition-all hover:text-foreground active:scale-95 active:opacity-80"
-        >
+        <Button href="/login" size="lg" variant="secondary">
           Go to sign in
-        </Link>
+        </Button>
       </div>
     );
   }
@@ -327,7 +342,8 @@ export default function SetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <input
+        <Input
+          id="set-password-new"
           type="password"
           placeholder="New password"
           value={password}
@@ -336,14 +352,17 @@ export default function SetPasswordForm() {
           required
           minLength={8}
           aria-label="New password"
-          className="h-12 w-full rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
         />
+        {/* A rule that is met is a state signal, and a state signal is text plus
+            a semantic ink — never the accent, which is reserved for the primary
+            fill, the active navigation entry, a link in prose and the lineup
+            pills. The tick and the bullet stay: colour is not the only channel. */}
         {password.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
             {passwordRules.map(({ key, label }) => (
               <p
                 key={key}
-                className={`text-xs ${rules[key] ? "text-green-500" : "text-muted"}`}
+                className={`text-xs ${rules[key] ? "text-sem-done" : "text-muted"}`}
               >
                 {rules[key] ? "\u2713" : "\u2022"} {label}
               </p>
@@ -353,7 +372,8 @@ export default function SetPasswordForm() {
       </div>
 
       <div>
-        <input
+        <Input
+          id="set-password-confirmation"
           type="password"
           placeholder="Repeat the password"
           value={confirmation}
@@ -362,10 +382,9 @@ export default function SetPasswordForm() {
           required
           minLength={8}
           aria-label="Repeat the password"
-          className="h-12 w-full rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
         />
         {confirmation.length > 0 && !matches && (
-          <p className="mt-2 text-xs text-accent">
+          <p className="mt-2 text-xs text-sem-crit">
             The two entries do not match yet.
           </p>
         )}
@@ -384,13 +403,15 @@ export default function SetPasswordForm() {
         />
       )}
 
-      <button
+      <Button
         type="submit"
+        size="lg"
+        variant="primary"
         disabled={!canSubmit}
-        className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full disabled:cursor-not-allowed"
       >
         {submitting ? "Setting your password…" : "Set password"}
-      </button>
+      </Button>
     </form>
   );
 }
