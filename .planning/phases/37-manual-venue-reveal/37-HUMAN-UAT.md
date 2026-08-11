@@ -61,7 +61,10 @@ result: [pending]
 
 ### 8. Il dialogo dell'indizio dice la finestra effettiva
 expected: su una serata con finestra `NULL` il dialogo scrive **25 hours**, non tace, e nomina il caso RSVP.
-result: [pending]
+**ramo anonimo: VERIFICATO il 2026-08-11, con un browser, su una sessione realmente anonima** (Chrome headless, profilo temporaneo, `document.cookie` senza `sb-`). Il dialogo si apre e dice: *«Secret Venue — How to unlock: Sign up or sign in to access secret venues.»* **E' il ramo corretto:** a un esterno il livello 3 non promette una finestra, promette un accesso. La vecchia promessa falsa «buy a ticket to unlock» **non c'e' piu'**.
+**ramo del membro approvato: NON verificabile senza sessione** — la frase «25 hours» vive li'. Resta aperto, e si chiude nella stessa sessione a cinque account delle voci 1, 3, 4, 5, 7.
+nota di metodo: la stessa corsa ha confermato D-37-24 a occhio, sulla **stessa pagina**: la serata aperta rende nome del locale, indirizzo e «Open in Maps»; la serata segreta accanto rende «Secret Venue».
+result: [partial]
 
 ### 9. La decisione su `is_published` — **CHIUSA il 2026-08-11 (piano 37-14)**
 expected: su una **bozza**, `venue_for_parties` risponde a chi ha `staff.manage`.
