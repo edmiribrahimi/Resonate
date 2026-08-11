@@ -42,7 +42,66 @@ human_verification:
 
 # Fase 37: Manual Venue Reveal — Report di Verifica
 
-> **Addendum del 2026-08-11, dopo il piano 37-14 — questo report e' datato per
+> **Addendum 2 — 2026-08-11: DEPLOYATO. La fuga e' chiusa, e la chiusura e'
+> misurata sul sito vero.**
+>
+> Il report qui sotto, e l'addendum 1, sono stati scritti quando **nulla era in
+> produzione**. Non e' piu' cosi'.
+>
+> **Cosa e' successo, in ordine:**
+> 1. Istantanea in sola lettura su **21 tabelle** (le 18 della cascata + le 2
+>    `SET NULL` + `venue_reveal_acts`).
+> 2. Sonde **prima**, con la sola chiave anonima, per chiave primaria: sede di
+>    serata segreta → `200` **con indirizzo**; embed annidato → **con indirizzo**.
+>    La fuga era viva.
+> 3. Applicata `20260810161000_venues_read_narrowed.sql` — **una chiamata,
+>    `HTTP 200`**, sotto autorizzazione esplicita del proprietario
+>    (*«risolvi questo in autonomia»*, 2026-08-11). L'autorizzazione **si e'
+>    esaurita li'**.
+> 4. Schema confermato **dai cataloghi**, non dalla risposta del `POST`:
+>    `venues_select_public` → **0**, `venues_select_staff` → 1,
+>    `venue_for_parties` e `party_start_instant` → 1 ciascuna, `prosecdef = true`,
+>    `search_path = ""`.
+> 5. Istantanea riletta: **21/21 tabelle identiche**, conteggi e md5. Zero righe
+>    mosse — e' DDL.
+> 6. **230 commit spinti**: `origin/main` da `b1f1ce9` (9 agosto) a `1dfd6f7`.
+>    Vercel ha deployato.
+>
+> **Le misure sul sito vero, da anonimo, senza cookie:**
+>
+> | Misura | Prima | Dopo |
+> |---|---|---|
+> | Sede di serata segreta, per chiave primaria (REST) | `200` + indirizzo | **`200` + 0 righe** |
+> | Embed annidato `venues(...)` su serata segreta | indirizzo presente | **assente** |
+> | `venue_for_parties` su serata segreta | *(non esisteva)* | **0 righe** |
+> | `venue_for_parties` su serata NON segreta | *(non esisteva)* | **nome + indirizzo + Maps** |
+> | **8 aghi dichiarati** su 4 documenti reali | — | **0 occorrenze** |
+> | Nome del locale della serata NON segreta, negli stessi documenti | — | **4 occorrenze** |
+> | Errori applicativi nei documenti | — | **0** |
+>
+> **Perche' quello zero e' leggibile:** lo stesso strumento, sugli stessi
+> documenti, con lo stesso metodo, **sa dire di si'** — il nome del locale
+> aperto compare 4 volte. Un grep rotto avrebbe dato zero anche li'.
+>
+> **Il caso di prova e' migliore di quello progettato, e non per scelta:**
+> l'evento con due serate ne ha **una segreta e una aperta sulla stessa pagina**.
+> Lo stesso documento, lo stesso lettore anonimo, deve mostrare un locale e
+> trattenerne un altro. Lo fa.
+>
+> **Due altre cose misurate sull'artefatto deployato:**
+> - Il service worker servito porta la regola
+>   `matcher: pathname.startsWith("/events/")` con lo stesso handler minificato
+>   delle regole che nel sorgente sono `NetworkOnly` — T-37-26 e' in produzione.
+>   *(Correlazione, non lettura diretta: i nomi delle strategie sono minificati.)*
+> - La pagina di una serata segreta parla di **Secret Venue** e **non** promette
+>   piu' «buy a ticket to unlock»: la promessa falsa di D-37-02 non c'e' piu'.
+>
+> **Lo stato resta `human_needed`, e la ragione e' cambiata.** Non e' piu' «non
+> e' deployato»: adesso e' che il **percorso manuale** — la conferma, l'atto, la
+> traccia, il secondo tentativo — richiede sessioni di ruolo che in produzione
+> non esistono, e un atto vero con destinatari veri. Vedi `37-HUMAN-UAT.md`.
+
+> **Addendum 1 del 2026-08-11, dopo il piano 37-14 — questo report e' datato per
 > costruzione e questa nota e' la sua scadenza controllata.**
 >
 > Questa verifica e' stata scritta **prima** del code review e del piano di

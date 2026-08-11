@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 37 (manual-venue-reveal) — EXECUTING
+Phase: 37 (manual-venue-reveal) — DEPLOYATO, verifica human_needed
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.

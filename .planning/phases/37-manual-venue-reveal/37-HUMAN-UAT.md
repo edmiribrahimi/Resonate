@@ -10,21 +10,23 @@ updated: 2026-08-11
 
 [in attesa di prova umana]
 
-> **Precondizione che governa quasi tutta questa lista.** Nessuna riga di questa
-> fase e' in produzione: il ramo e' 221 commit avanti a `origin/main`, e delle
-> due migration solo la prima e' applicata. **Sette delle nove voci non sono
-> eseguibili prima del deploy**, e dirlo e' parte della verifica — non un rinvio.
+> **AGGIORNATO 2026-08-11 — la precondizione e' caduta: e' tutto deployato.**
+> Entrambe le migration sono applicate e i 230 commit sono su `origin/main`.
+> Quello che restava «non eseguibile prima del deploy» ora e' eseguibile.
 >
-> Le due che si possono fare **prima**, e che costano meno adesso che dopo, sono
-> la **9** (una decisione, non una prova) e la **7** se si accetta di eseguirla
-> contro un database di container invece che contro la produzione.
+> **Cio' che resta aperto non e' piu' il deploy: sono le sessioni.** In
+> produzione non esistono account `organizer` ne' `staff`, e nessuno strumento
+> di questo repository puo' autenticarsi come un ruolo. **Cinque voci — 1, 3, 4,
+> 5, 7 — si chiudono in una sola sessione a cinque account.** La 2 chiede in
+> piu' un'autorizzazione nuova a scrivere in produzione.
 
 ## Tests
 
 ### 1. I tre livelli su una pagina che rende davvero
 expected: I tre verdetti corrispondono ai rami misurati in container (P1–P9 di 37-13) — chi ha biglietto o RSVP vede l'indirizzo subito, il membro approvato senza nessuno dei due lo vede all'apertura della finestra o dopo una rivelazione manuale, l'esterno vede solo l'indizio.
-precondition: deploy della seconda migration **insieme** al codice. Oggi la pagina lancia `PGRST202`.
-result: [pending]
+**livello 3 (esterno): CHIUSO il 2026-08-11, misurato sul sito vero.** Otto aghi dichiarati, quattro documenti reali scaricati senza cookie, **zero occorrenze** — mentre il nome del locale della serata non segreta compare 4 volte negli stessi documenti, il che rende quello zero leggibile. Il caso e' migliore del previsto: un evento porta una serata segreta e una aperta **sulla stessa pagina**, quindi lo stesso lettore anonimo vede un locale e non l'altro.
+livelli 1 e 2: restano da provare — servono una sessione con biglietto/RSVP e una di membro approvato.
+result: [partial]
 
 ### 2. Il primo atto vero, con destinatari reali
 expected: la mail parte, la pagina apre, la traccia registra nome e istante, il bottone passa a spento con «Revealed on … by …».
