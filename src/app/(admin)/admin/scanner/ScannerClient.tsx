@@ -46,6 +46,15 @@ import {
   DOOR_SUPERVISION_REQUIRED,
   DOOR_SUPERVISION_REQUIRED_ERROR,
 } from "@/lib/door/outcome";
+// The house browser factory, imported at module top and called INSIDE the effect
+// that needs it — the convention `MediaUpload.tsx:61` and `EventForm.tsx:463`
+// already follow. It wraps `createBrowserClient`, which caches a module-level
+// singleton, so every call returns the same client (D-38-16).
+import { createClient } from "@/lib/supabase/client";
+import {
+  REALTIME_SUBSCRIBE_STATES,
+  type RealtimeChannel,
+} from "@supabase/supabase-js";
 import type {
   DoorFlag,
   DoorNotValidReason,
@@ -458,6 +467,28 @@ export default function ScannerClient() {
   // Online/offline state
   const [isOnline, setIsOnline] = useState(true);
 
+  /**
+   * ── LIVE-01: whether the door is listening to the night now open ────────────
+   *
+   * A **transport** fact and nothing else: this device currently holds a joined
+   * channel for this night. It is written from exactly two places — the
+   * subscribe status callback and the heartbeat — and it is read only to decide
+   * what is displayed (the band belongs to plan 38-06). No verdict, no refusal
+   * and no admission reads it: that is LIVE-02, and it is enforced by the
+   * structural extraction the plan runs over the five resolution paths.
+   *
+   * `false` therefore means "not listening", never "you may not". D-38-04.
+   */
+  const [channelLive, setChannelLive] = useState(false);
+  /**
+   * Whether the channel has been out of `SUBSCRIBED` since it last joined.
+   *
+   * Re-entering `SUBSCRIBED` after having left it **is** a reconnection, and the
+   * channel does not replay what happened while it was down — so the list has to
+   * be reloaded in full, not resumed. LIVE-03.
+   */
+  const hadDroppedRef = useRef(false);
+
   // The queue, in four numbers plus "could not be read at all"
   const [queue, setQueue] = useState<QueueCounts>({
     pending: 0,
@@ -649,6 +680,137 @@ export default function ScannerClient() {
       });
     return () => {
       cancelled = true;
+    };
+  }, [selectedPartyId]);
+
+  /**
+   * ── LIVE-01 / D-38-05: one channel, and it belongs to the night now open ────
+   *
+   * The shape is the per-night effect directly above, on purpose: the state
+   * cleared first, an early return when no night is open, a `cancelled` flag
+   * guarding the one `await`. What it adds has no precedent in this product —
+   * verified while planning, there was **zero** use of `.channel(`,
+   * `removeChannel` or `realtime.` anywhere under `src/` before this line.
+   *
+   * **It is fire-and-forget, and that is what makes LIVE-02 structural rather
+   * than careful.** Nothing waits for `SUBSCRIBED` before a scan is allowed, the
+   * camera effect further down does not depend on this one, and the status
+   * callback writes exactly one piece of state. With the socket refused,
+   * dropped, or never opened at all, every verdict still comes out of the local
+   * cache at the same speed.
+   *
+   * `requestReloadRef` is declared further down, beside `fetchAttendance`, and
+   * the message handler reaches the reload through it rather than calling
+   * `requestReload` directly. That is not indirection for its own sake: a direct
+   * call would carry `searchQuery` into this dependency array, and a keystroke
+   * in the search box would then tear down and rebuild the WebSocket.
+   */
+  useEffect(() => {
+    // Cleared FIRST, on every change of night, for the same reason the effect
+    // above clears `doorAuth` first: "this device is listening" is a claim about
+    // the night now open, and one left over from the night last opened would
+    // describe a channel that no longer exists.
+    setChannelLive(false);
+
+    // A channel with no night listens for nothing. D-38-05.
+    if (!selectedPartyId) return;
+
+    // The `@supabase/ssr` singleton — never a second client, and never per-call
+    // `realtime` options. The browser factory caches one client, so a second
+    // caller's options are silently ignored; and with refresh-token rotation on
+    // and a 10 s reuse window, two clients racing a refresh can end in a failed
+    // refresh and a signed-out phone, at the door. D-38-16.
+    const supabase = createClient();
+    let cancelled = false;
+    let channel: RealtimeChannel | null = null;
+
+    (async () => {
+      // Documented as required before joining a private channel. 2.97.0 also
+      // calls it itself when the socket opens — but not on the resume path,
+      // where the socket is already open and that line does not run again.
+      await supabase.realtime.setAuth();
+      if (cancelled) return;
+
+      channel = supabase
+        // ── Two details on this call, and BOTH fail silently ─────────────────
+        //
+        // `private: true` must match the fourth argument of `realtime.send` in
+        // the migration. A public broadcast reaches only public channels and a
+        // private one only private channels: mismatch them and this channel
+        // joins, reports `SUBSCRIBED`, no band ever appears — because the
+        // channel really *is* live — and the list only ever changes every five
+        // minutes, on the safety reload. It is the most deceptive failure in
+        // this phase, no automated check catches it, and the two-device door
+        // procedure is what does.
+        //
+        // `.toLowerCase()` because topic matching is a byte-exact string
+        // comparison and Postgres renders `uuid::text` lowercase, while an id
+        // arriving from an API response or a URL may not be. The policy's regex
+        // is deliberately case-sensitive `[0-9a-f]`, so a mismatch is refused
+        // loudly at join time instead of silently at delivery time.
+        .channel(`door:${selectedPartyId.toLowerCase()}`, {
+          config: { private: true },
+        })
+        .on("broadcast", { event: "attendance_changed" }, () => {
+          // The handler calls the one entry point and does nothing else — it
+          // never fetches, never merges, never renders. D-38-02 / LIVE-02.
+          // The payload is deliberately not read: the database sends `{}` plus
+          // the id `realtime.send` adds, and there is no field to trust.
+          requestReloadRef.current?.("channel");
+        })
+        // ── D-38-04: what this callback may do, and what it may never do ─────
+        //
+        // It may write `setChannelLive` and log one categorised line. It may
+        // NOT touch `doorAuth`, may not call `cacheDoorAuth`, and may not
+        // produce any sentence about the operator's permission.
+        //
+        // `CHANNEL_ERROR` carries `Unauthorized` for a join the policy refused —
+        // and the same code for an expired JWT, a rate limit and a Realtime
+        // restart. The client cannot tell them apart, so the door does not
+        // guess. One place decides who is holding the phone, it runs when the
+        // night is opened, and it is not this one.
+        .subscribe((status) => {
+          switch (status) {
+            case REALTIME_SUBSCRIBE_STATES.SUBSCRIBED:
+              setChannelLive(true);
+              if (hadDroppedRef.current) {
+                // A gap, not a pause: nothing that happened while this channel
+                // was down is replayed to it. LIVE-03.
+                hadDroppedRef.current = false;
+                requestReloadRef.current?.("resubscribed");
+              }
+              break;
+            case REALTIME_SUBSCRIBE_STATES.CLOSED:
+            case REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR:
+            case REALTIME_SUBSCRIBE_STATES.TIMED_OUT:
+              setChannelLive(false);
+              hadDroppedRef.current = true;
+              // One category, carrying the state that produced it, in this
+              // file's own `scanner:<snake_case>` convention. Never a collapsed
+              // generic line — `meta-gates.md`, zero silent failures.
+              console.warn("scanner:channel_not_listening", { status });
+              break;
+            default: {
+              // Exhaustiveness, and the only thing a green build proves about
+              // this block: the union has four members in realtime-js 2.97.0,
+              // and if a future version adds a fifth this assignment stops
+              // compiling instead of falling through in silence.
+              const unhandled: never = status;
+              console.warn("scanner:channel_not_listening", {
+                status: unhandled,
+              });
+              break;
+            }
+          }
+        });
+    })();
+
+    return () => {
+      cancelled = true;
+      // Every listener and every timer torn down in the cleanup that armed it,
+      // and a channel is both. Leaving one joined for a night no longer open
+      // would keep reloading a list nobody is looking at.
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [selectedPartyId]);
 
