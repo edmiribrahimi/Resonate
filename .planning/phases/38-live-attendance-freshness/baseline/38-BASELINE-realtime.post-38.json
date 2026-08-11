@@ -233,6 +233,128 @@
     "auth.webauthn_credentials": 0
   },
   "rowcounts_observed_comparison": "The 13 observed auth-schema tables also hold identical counts before and after.",
+  "realtime_policies": [
+    {
+      "policyname": "realtime_messages_select_door_assigned",
+      "cmd": "SELECT",
+      "roles": "{authenticated}",
+      "qual": "\nCASE\n    WHEN (extension <> 'broadcast'::text) THEN false\n    WHEN (( SELECT realtime.topic() AS topic) ~ '^door:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text) THEN ( SELECT private.has_capability('door.operate'::text, (SUBSTRING(( SELECT realtime.topic() AS topic) FROM 6))::uuid) AS has_capability)\n    ELSE false\nEND"
+    }
+  ],
+  "realtime_policies__query": "select policyname, cmd, roles::text as roles, qual from pg_policies where schemaname = 'realtime'",
+  "realtime_policies__pre38": "[] — zero policies in schema realtime (38-01, 2026-08-11T10:46Z)",
+  "realtime_policies__reading": "Exactly one policy, cmd SELECT, TO authenticated, named realtime_messages_select_door_assigned. Its qual is read AS POSTGRES RENDERS IT, not as the file reads: the topic regex is evaluated in a CASE arm BEFORE the ::uuid cast, so a malformed topic is a false and not a 22P02 — and an error inside a policy is a refused connection, not a denied row. The predicate names private.has_capability and the literal 'door.operate' and nothing else: no second definition of \"assigned to this night\" was introduced. LIVE-06.",
+  "write_policies": [],
+  "write_policies__query": "select policyname, cmd, roles::text as roles, qual from pg_policies where schemaname = 'realtime' and cmd <> 'SELECT'",
+  "write_policies__pre38": "[] — there were no policies at all",
+  "write_policies__reading": "Zero. With relrowsecurity = true and anon/authenticated each already holding table-level arw on realtime.messages (38-01, messages_acl_expanded), the ABSENCE of any INSERT policy is what makes the database the only sender. The gap is the boundary, not unfinished work.",
+  "messages_relstate": [
+    {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relowner": "supabase_realtime_admin"
+    }
+  ],
+  "messages_relstate__pre38": "relrowsecurity true, relforcerowsecurity false, owner supabase_realtime_admin",
+  "source_table_triggers": [
+    {
+      "tgname": "door_scan_events_notify_attendance",
+      "tbl": "door_scan_events",
+      "def": "CREATE TRIGGER door_scan_events_notify_attendance AFTER INSERT ON public.door_scan_events FOR EACH ROW EXECUTE FUNCTION door_scan_events_notify_attendance()"
+    },
+    {
+      "tgname": "guest_list_entries_notify_attendance",
+      "tbl": "guest_list_entries",
+      "def": "CREATE TRIGGER guest_list_entries_notify_attendance AFTER INSERT OR DELETE OR UPDATE ON public.guest_list_entries FOR EACH ROW EXECUTE FUNCTION guest_list_entries_notify_attendance()"
+    },
+    {
+      "tgname": "ticket_refunds_notify_attendance",
+      "tbl": "ticket_refunds",
+      "def": "CREATE TRIGGER ticket_refunds_notify_attendance AFTER INSERT OR UPDATE ON public.ticket_refunds FOR EACH ROW EXECUTE FUNCTION ticket_refunds_notify_attendance()"
+    },
+    {
+      "tgname": "tickets_notify_attendance",
+      "tbl": "tickets",
+      "def": "CREATE TRIGGER tickets_notify_attendance AFTER INSERT OR DELETE OR UPDATE ON public.tickets FOR EACH ROW EXECUTE FUNCTION tickets_notify_attendance()"
+    }
+  ],
+  "source_table_triggers__query": "select tgname, tgrelid::regclass::text as tbl, pg_get_triggerdef(oid) as def from pg_trigger where not tgisinternal and tgrelid::regclass::text in ('door_scan_events','tickets','guest_list_entries','ticket_refunds') order by tbl, tgname",
+  "source_table_triggers__pre38": "[] — the before-set was empty (38-01)",
+  "source_table_triggers__difference": "Before: 0 triggers across the four tables. After: 4, one per table — door_scan_events (AFTER INSERT), tickets (AFTER INSERT OR DELETE OR UPDATE), guest_list_entries (AFTER INSERT OR DELETE OR UPDATE), ticket_refunds (AFTER INSERT OR UPDATE). The difference is +4, on four tables and not three.",
+  "helper_acl": [
+    {
+      "nspname": "private",
+      "proname": "notify_attendance_changed",
+      "prosecdef": true,
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "proacl": "{postgres=X/postgres}",
+      "proowner": "postgres",
+      "args": "p_party_id uuid, p_event_id uuid"
+    }
+  ],
+  "helper_acl__query": "select n.nspname, p.proname, p.prosecdef, p.proconfig::text as proconfig, p.proacl::text as proacl, p.proowner::regrole::text as proowner, pg_get_function_identity_arguments(p.oid) as args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.proname = 'notify_attendance_changed'",
+  "helper_acl__pre38": "the function did not exist",
+  "helper_acl__reading": "F1 CLOSED IN PRODUCTION. Exactly one notify_attendance_changed, in schema private, prosecdef true, search_path pinned to the empty string, owned by postgres. proacl is NON-NULL — {postgres=X/postgres} — which is the point: a null proacl would have meant the default EXECUTE to PUBLIC still applied and the REVOKE had not taken. It grants EXECUTE to the owner and to nobody else: no bare =X/ entry (PUBLIC), no anon, no authenticated.",
+  "direct_call_probe": {
+    "what": "Leg (a) of the event_media_party_id paragraph, and F1, measured rather than cited. Each call was made through /database/query with read_only: true, so the whole transaction was READ ONLY and no write could have landed whatever the answer was.",
+    "select public.tickets_notify_attendance()": "0A000: trigger functions can only be called as triggers",
+    "select public.door_scan_events_notify_attendance()": "0A000: trigger functions can only be called as triggers",
+    "select private.notify_attendance_changed(null, null)": "42501: permission denied for function notify_attendance_changed",
+    "reading": "The four wrappers carry a permissive proacl — {=X/postgres, anon=X/postgres, authenticated=X/postgres, …}, the Supabase default for a function created in public by postgres — and that grants nobody anything, because a RETURNS trigger function cannot be called directly at all. The helper, which IS an ordinary callable, refuses with 42501 from a role that is not its owner. That refusal is F1 closed behaviourally, which is worth more than reading an ACL and inferring it."
+  },
+  "realtime_send_body": "\nDECLARE\n  generated_id uuid;\n  final_payload jsonb;\nBEGIN\n  BEGIN\n    generated_id := gen_random_uuid();\n\n    -- Check if payload has an 'id' key, if not, add the generated UUID\n    IF payload ? 'id' THEN\n      final_payload := payload;\n    ELSE\n      final_payload := jsonb_set(payload, '{id}', to_jsonb(generated_id));\n    END IF;\n\n    -- Set the topic configuration\n    EXECUTE format('SET LOCAL realtime.topic TO %L', topic);\n\n    INSERT INTO realtime.messages (id, payload, event, topic, private, extension)\n    VALUES (generated_id, final_payload, event, topic, private, 'broadcast');\n  EXCEPTION\n    WHEN OTHERS THEN\n      RAISE WARNING 'WarnSendingBroadcastMessage: %', SQLERRM;\n  END;\nEND;\n",
+  "realtime_send_body__query": "select p.prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'realtime' and p.proname = 'send'",
+  "realtime_send_body__pre38": "measured 2026-08-11 (38-01): prosecdef false, and the insert wrapped in EXCEPTION WHEN OTHERS THEN RAISE WARNING",
+  "realtime_send_body__reading": "Unchanged after the apply: the insert is still wrapped in EXCEPTION WHEN OTHERS THEN RAISE WARNING, so realtime.send cannot raise and the two triggers on the money tables cannot fail a purchase, a check-in or a refund. Re-asserting it after the change costs one query and is the difference between a citation and a check. The same property is the reason a failed emit is invisible outside the Postgres log — which is why the door keeps its 5-minute parachute.",
+  "wrapper_bodies": [
+    {
+      "proname": "guest_list_entries_notify_attendance",
+      "prosecdef": true,
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "def": "CREATE OR REPLACE FUNCTION public.guest_list_entries_notify_attendance()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_party_id uuid;\n  v_event_id uuid;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    v_party_id := OLD.party_id;\n    v_event_id := OLD.event_id;\n  ELSE\n    v_party_id := NEW.party_id;\n    v_event_id := NEW.event_id;\n  END IF;\n\n  PERFORM private.notify_attendance_changed(v_party_id, v_event_id);\n\n  IF TG_OP = 'UPDATE'\n     AND (OLD.party_id, OLD.event_id) IS DISTINCT FROM (NEW.party_id, NEW.event_id)\n  THEN\n    PERFORM private.notify_attendance_changed(OLD.party_id, OLD.event_id);\n  END IF;\n\n  RETURN NULL;\nEND;\n$function$\n"
+    },
+    {
+      "proname": "ticket_refunds_notify_attendance",
+      "prosecdef": true,
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "def": "CREATE OR REPLACE FUNCTION public.ticket_refunds_notify_attendance()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  PERFORM private.notify_attendance_changed(NEW.refunded_party_id, NEW.refunded_event_id);\n\n  IF TG_OP = 'UPDATE'\n     AND (OLD.refunded_party_id, OLD.refunded_event_id)\n         IS DISTINCT FROM (NEW.refunded_party_id, NEW.refunded_event_id)\n  THEN\n    PERFORM private.notify_attendance_changed(OLD.refunded_party_id, OLD.refunded_event_id);\n  END IF;\n\n  RETURN NULL;\nEND;\n$function$\n"
+    },
+    {
+      "proname": "tickets_notify_attendance",
+      "prosecdef": true,
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "def": "CREATE OR REPLACE FUNCTION public.tickets_notify_attendance()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_party_id uuid;\n  v_event_id uuid;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    v_party_id := OLD.party_id;\n    v_event_id := OLD.event_id;\n  ELSE\n    v_party_id := NEW.party_id;\n    v_event_id := NEW.event_id;\n  END IF;\n\n  PERFORM private.notify_attendance_changed(v_party_id, v_event_id);\n\n  IF TG_OP = 'UPDATE'\n     AND (OLD.party_id, OLD.event_id) IS DISTINCT FROM (NEW.party_id, NEW.event_id)\n  THEN\n    PERFORM private.notify_attendance_changed(OLD.party_id, OLD.event_id);\n  END IF;\n\n  RETURN NULL;\nEND;\n$function$\n"
+    }
+  ],
+  "wrapper_bodies__query": "select p.proname, p.prosecdef, p.proconfig::text as proconfig, p.proacl::text as proacl, pg_get_functiondef(p.oid) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('tickets_notify_attendance', 'guest_list_entries_notify_attendance', 'ticket_refunds_notify_attendance') order by p.proname",
+  "wrapper_bodies__pre38": "none of the three existed",
+  "wrapper_bodies__reading": "D-38-24 measured on what LANDED rather than on what was written. All three update-capable wrappers — tickets, guest_list_entries, ticket_refunds — contain IS DISTINCT FROM and two calls to private.notify_attendance_changed in their applied definitions. Without the old-pair emit, a row moved between two nights of an event tells only the destination door; the origin door — the one that just lost an attendee — falls back to the parachute with every screen still looking right.",
+  "door_wrapper": [
+    {
+      "proname": "door_scan_events_notify_attendance",
+      "prosecdef": true,
+      "proconfig": "{\"search_path=\\\"\\\"\"}",
+      "def": "CREATE OR REPLACE FUNCTION public.door_scan_events_notify_attendance()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  PERFORM private.notify_attendance_changed(NEW.party_id, NEW.event_id);\n  RETURN NULL;\nEND;\n$function$\n"
+    }
+  ],
+  "door_wrapper__reading": "The fourth wrapper is read separately and correctly has NO old-pair branch: one helper call, no IS DISTINCT FROM. public.door_scan_events is append-only by construction (it carries no write policy at all), so there is no update whose old night could differ from its new one. Counting it among the three would have hidden a real regression in one of them.",
+  "realtime_config": {
+    "max_concurrent_users": 200,
+    "max_events_per_second": 100,
+    "max_joins_per_second": 100,
+    "max_channels_per_client": 100,
+    "max_bytes_per_second": 100000,
+    "max_presence_events_per_second": 20,
+    "max_payload_size_in_kb": 256,
+    "suspend": false,
+    "presence_enabled": false
+  },
+  "realtime_config_read_at": "2026-08-11T11:16:13.145Z",
+  "realtime_config__pre38": "suspend: false (38-01, 2026-08-11T10:46Z)",
+  "realtime_config__reading": "suspend is still false, read at the timestamp above. This one is recorded for the day of the first night rather than for today: a suspend: true at 22:00 makes the whole phase a no-op with no error anywhere. private_only is still not returned by this endpoint, so its state is still unproved here and still needs a behavioural check.",
   "migration_history_head": [
     {
       "version": "20260811111530",
@@ -255,5 +377,6 @@
       "name": "20260807020000_wrap_auth_uid"
     }
   ],
-  "migration_history_note": "The pre-existing drift in this project migration history predates this phase and is the owner's call to repair: 20260508000000_drink_token_active_state.sql is applied in production but absent from the history (STATE.md:276-281). It was not touched. Separately, and worth flagging rather than acting on: the history now carries version 20260811001927 venues_read_narrowed, while STATE.md:178 records that migration as deliberately left applied to zero. Somebody applied it on 2026-08-11 at 00:19. That is a stale line in STATE.md, not a finding of this plan, and this plan does not own that file."
+  "migration_history_note": "The pre-existing drift in this project migration history predates this phase and is the owner's call to repair: 20260508000000_drink_token_active_state.sql is applied in production but absent from the history (STATE.md:276-281). It was not touched. Separately, and worth flagging rather than acting on: the history now carries version 20260811001927 venues_read_narrowed, while STATE.md:178 records that migration as deliberately left applied to zero. Somebody applied it on 2026-08-11 at 00:19. That is a stale line in STATE.md, not a finding of this plan, and this plan does not own that file.",
+  "what_these_probes_cannot_settle": "THE MANAGEMENT API BYPASSES RLS. Every probe above ran as supabase_read_only_user through /database/query, so not one of them proves that a real member session is refused. LIVE-06 is NOT closed by this file. The policy exists, it is a SELECT policy, its rendered predicate asks the door question — and that is a statement about the catalogue, not about an authenticated browser. What closes LIVE-06 is procedure P7 in plan 38-07, and nothing before it. LIVE-01 likewise: the triggers exist, but no message has been observed arriving at a subscribed client, which is P1 and P2."
 }
