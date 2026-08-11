@@ -516,10 +516,10 @@ Plans:
   4. Staff can see whether the list is live and how fresh it is, and can force a reload by hand at any moment
   5. A person not assigned to a night receives no updates for that night, and the door's offline mechanism and the bar's remain separate implementations
 
-**Plans:** 7 plans in 5 waves
+**Plans:** 1/7 plans executed
 
 Plans:
-- [ ] 38-01-PLAN.md — the realtime baseline captured before any migration file exists, the emit-path privileges measured, and P1–P7 written before they are run
+- [x] 38-01-PLAN.md — the realtime baseline captured before any migration file exists, the emit-path privileges measured, and P1–P7 written before they are run
 - [ ] 38-02-PLAN.md — the migration written: the private fan-out helper with its EXECUTE revoked, four AFTER triggers, one SELECT policy on realtime.messages
 - [ ] 38-03-PLAN.md — one reload entry point that defers behind a scan in progress, the freshness measurement, and the re-armed foreground-only safety reload
 - [ ] 38-04-PLAN.md — `[BLOCKING]` apply the migration through the Management API migrations endpoint, then measure the boundary as Postgres renders it
@@ -606,7 +606,7 @@ Plans:
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
-| 38. Live Attendance Freshness | 0/TBD | Not started | - |
+| 38. Live Attendance Freshness | 1/7 | In Progress|  |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
