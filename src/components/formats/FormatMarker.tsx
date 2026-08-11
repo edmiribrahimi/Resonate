@@ -110,10 +110,26 @@ export default function FormatMarker({
         `normal-case` is the point of this file — see the docblock. `tracking-wide`
         and not the widest step: at 12px the widest step pulls a name apart at a
         colon, and one of the four names has one.
+
+        The undimmed ink moved off its legacy alias onto the current name. That
+        alias was declared in `globals.css` as exactly the token it is replaced
+        by, so **no pixel changes** — it is a rename, and its purpose is to leave
+        the alias one consumer lighter. The old name is not written here: the
+        gate that counts it could not then tell a violation from its own gloss,
+        and a class string in a comment is a live Tailwind candidate (DEF-41-01).
+
+        Nothing above this line touches how the format's colour reaches the
+        element. It arrives as **data on a catalogue row**, through an inline
+        style, and it is not a token and never becomes one — D-36-12 and
+        `40-UI-SPEC.md` §0 rule 4, held mechanically by
+        `verify-semantic-separation.mjs` checks C and E. No `--sem-*` and no
+        `--accent` fallback is added for a format: a state that borrowed a
+        format's channel would make the two unreadable from each other, and
+        `--sem-warn` already holds SunSet's identification value.
       */}
       <span
         className={`text-xs font-semibold tracking-wide normal-case ${
-          dimmed ? "text-muted" : "text-foreground"
+          dimmed ? "text-muted" : "text-ink"
         }`}
       >
         {name}

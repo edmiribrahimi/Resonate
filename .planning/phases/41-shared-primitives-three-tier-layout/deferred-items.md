@@ -93,3 +93,79 @@ This document names the two class strings above, so it is itself a source of
 the candidates it describes. That adds nothing new — both already appear in the
 phase's own documents — but it is worth knowing before anyone measures again
 and wonders where the count came from.
+
+---
+
+## DEF-41-02 — a JSX comment is live to `verify-semantic-separation` check C
+
+**Found during:** plan 41-04, Task 3 (`FormatMarker.tsx`).
+**Status:** open — deliberately not fixed inside 41-04.
+
+### The finding
+
+`verify-semantic-separation.mjs` blanks comment lines before counting, and its
+stripper is a line-shape heuristic: a line counts as a comment when it starts
+with `//`, `*`, `/*` or `*/`. **A JSX comment matches none of them.** The
+opening line starts with `{`, and the lines inside it start with ordinary
+prose. So every line of a `{/* … */}` block is scanned as if it were code.
+
+Consequence for check C, which fails when **one line** carries both a `sem-`
+colour utility and a format identifier (`color_hex`, `SunSet`, `RamaDub`,
+`MotionLab`): a JSX comment that explains *why a semantic must not identify a
+format* — naming both halves in one sentence, which is the natural way to write
+it — **turns the gate red on a correct file**.
+
+### The evidence — by mutation, with the mutation asserted first
+
+Inside `FormatMarker.tsx`'s JSX comment, `--sem-warn` was changed to
+`text-sem-warn` on the line that already named `SunSet`. The substitution was
+confirmed applied (`grep -c 'text-sem-warn'` returned `1`) **before** the result
+was read — ai-engineering.md's *prova per mutazione*, whose whole point is that
+a substitution which did not land produces a green that means nothing.
+
+```
+✗ C  1 line(s) use a semantic to identify a format:
+       src/components/formats/FormatMarker.tsx:125: [text-sem-warn + SunSet] …
+SEMANTIC_SEPARATION_FAIL — 1 check(s) failed: C
+```
+
+Restored, the file is green. So the comment as committed is correct **and is
+one word away from a false red**: it says `--sem-warn`, which carries no
+utility prefix and therefore does not match, purely by luck of phrasing.
+
+### Why this is worth a phase decision
+
+The script's header reasons about its stripper's error direction and concludes
+it is safe: keeping a comment makes the script *report more, never less*, and
+every check fails on presence. **That reasoning covers soundness, not
+usability.** Reporting more is exactly a false red, and the same header names
+the consequence three paragraphs earlier — *a gate that goes red on a correct
+file gets switched off*, written into `verify-media-strip.mjs:51-62` because
+this repository has already paid for it once.
+
+Phases 44 and 45 are named in that header as the ones that will legitimately
+show a format and a stage badge in the same file. They will also *document* why
+they may not do it on one line, and the documentation is what will trip.
+
+### What the phase should decide
+
+1. Whether the stripper learns the JSX comment form. It is not a tokeniser and
+   must not become one — WR-07 records that a real comment parser written in
+   this repository was unsound — but `{/*` as a fourth opener is a line shape,
+   not a parse.
+2. Or whether the convention stands instead: **inside a JSX comment, name a
+   semantic by its custom property (`--sem-warn`), never by its utility.** That
+   costs nothing, is already what the correct file does, and needs writing down
+   somewhere a person will read before the gate teaches them.
+
+Either way it is a change to a gate shared by the whole phase, which is why
+41-04 measured it and left it.
+
+### Note on this entry
+
+Per DEF-41-01, the mutation string quoted above is now a live Tailwind
+candidate out of `.planning/`, so the built stylesheet will carry a
+`.text-sem-warn` rule with **no consumer under `src/`**. Recorded here rather
+than left for whoever next greps the emitted CSS and concludes a surface paints
+a warning. This entry is not scanned by the gate it describes — that script
+walks `src/` and reads only `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`.
