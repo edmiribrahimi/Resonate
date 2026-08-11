@@ -216,6 +216,33 @@ viewport at all** — zero `matchMedia`, zero `useSyncExternalStore`, zero
   nothing to vet: the platform and Tailwind 4.2.1 already carry every mechanism
   recommended.
 
+### Added 2026-08-11, after the pattern map
+
+- **D-41-21: the door keeps today's navigation layout, and Phase 42 decides when
+  that changes.** `src/app/(admin)/admin/scanner/DoorSurface.tsx:4` imports
+  `MobileNav`, and `src/app/(admin)/door/page.tsx` is a 25-line shell over it —
+  both inside Phase 42's declared paths. The pattern map priced two ways to do
+  the §8.2 rename and framed the choice as *which is the smaller lie*. **Neither
+  is taken, because the rename is not the real question.**
+
+  The real question is that **the door page mounts the navigation**, so making
+  `AppNav` a side column above 768px would put a 224px column on a scanner
+  screen — a tablet at an entrance losing that much width to navigation is a
+  change to the door's surface, delivered by a phase whose scope fence says the
+  door is Phase 42's.
+
+  **Therefore:** `AppNav` is the new primitive carrying both tiers, and
+  `src/components/layout/MobileNav.tsx` remains as a thin wrapper that renders
+  `AppNav` **locked to its phone form**. The door's layout is byte-for-byte what
+  it is today; **zero Phase 42 files are edited**; and the wrapper is not a
+  rename dodge but the mechanism that holds the fence. Phase 42 deletes it when
+  it converts the door and decides what the door should look like at tablet
+  width — which is its decision, not this phase's.
+
+  *(Consequence accepted: one file in the tree carries a name describing a tier
+  the primitive no longer has. That is the smaller cost, and it is visible,
+  which is why it is written here rather than discovered.)*
+
 ### Claude's Discretion
 
 - The conversion order among the 34 units, once the spine exists.
