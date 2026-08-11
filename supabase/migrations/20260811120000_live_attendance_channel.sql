@@ -491,4 +491,130 @@ CREATE TRIGGER ticket_refunds_notify_attendance
   FOR EACH ROW
   EXECUTE FUNCTION public.ticket_refunds_notify_attendance();
 
+-- =============================================================================
+-- 6. realtime_messages_select_door_assigned — who may hear a night
+-- =============================================================================
+--
+-- ── THE NAME, AND WHY IT IS NOT THE ONE RESEARCH PROPOSED ──────────────────
+--
+-- The policy name follows this repository's convention —
+-- `<subject>_<verb>_<question>`, where the subject slot names the OBJECT THE
+-- POLICY SITS ON: `door_scan_events_select_admin`,
+-- `event_media_quarantine_insert_approved`. This policy sits on
+-- `realtime.messages`, hence `realtime_messages_select_door_assigned`.
+--
+-- Research proposed `door_attendance_broadcast_read` — verb last, question in
+-- the middle. It is a perfectly readable name and it is not taken, because two
+-- naming forms coexisting is how a greppable convention stops being one. The
+-- form has held for every policy written since
+-- `20260805120000_door_scan_events.sql`; a single exception is enough to make
+-- the next person grep twice, and the time after that, not at all.
+--
+-- Unquoted identifier and explicit `TO authenticated`, following
+-- `20260809004600_event_media_quarantine_bucket.sql:129-143` — the precedent
+-- for writing a policy on a schema this project does not own.
+--
+-- ── ONE ARM, AND WHY IT IS ONE AND NOT THREE ───────────────────────────────
+--
+-- `door_scan_events_select_admin` takes three arms because the night comes from
+-- a COLUMN of the row being filtered. Here the night comes from CLIENT-SUPPLIED
+-- TEXT, which inverts the question: the policy is not asking "may you read this
+-- row about that night", it is asking "may you listen to the night you just
+-- named". No `staff.manage` arm and no `party.manage` arm is added.
+--
+-- The admitted set is therefore every `master`, every `organizer` (both hold
+-- `door.operate` from the role) and any staff account holding a LIVE
+-- `door.operate` assignment for THAT night — the resolver's arm 2 tests
+-- `revoked_at is null` and `now() < ends_at`. That is exactly the set that may
+-- operate that door. LIVE-06.
+--
+-- And nothing about "assigned to this night" is re-derived here. The question
+-- is asked once, where phase 32 put it. A second predicate answering the same
+-- question is the failure that phase was built to prevent.
+--
+-- NO NEW GRANT. `20260809001000_assignment_resolver.sql:368` already grants
+-- EXECUTE on `private.has_capability(text, uuid)` to `authenticated` and
+-- `anon`; for `anon`, `auth.uid()` is null, both arms find nothing, and the
+-- answer is a correct `false`.
+--
+-- ── THREE THINGS IN THE EXPRESSION THAT ARE DEFECTS IF "SIMPLIFIED" ────────
+--
+--   * `CASE`, NOT `AND`. The topic is untrusted text — whatever the client
+--     typed into `supabase.channel(...)`. PostgreSQL does NOT define the
+--     evaluation order of subexpressions and names `CASE` as the construct to
+--     force it. Casting `banana` to uuid raises `22P02`, and an error inside a
+--     policy is a REFUSED CONNECTION, not a `false`. An `AND` form would work
+--     in testing and refuse a door on the night somebody typed a topic wrong.
+--   * THE REGEX IS CASE-SENSITIVE `[0-9a-f]`, DELIBERATELY. Postgres renders
+--     `uuid::text` lowercase, so the trigger always sends lowercase and the
+--     client lowercases too. A case mismatch is then refused LOUDLY at join
+--     time, which sets the door's `channelLive` to false and shows the band —
+--     instead of joining cleanly and delivering nothing, which no check catches.
+--   * THE `(SELECT …)` WRAPPER ON THE CAPABILITY CALL. It is what makes
+--     Postgres evaluate the call once per statement as an `InitPlan`, and it is
+--     NOT `STABLE` that produces that. The reasoning is written at
+--     `20260809004000_door_scan_events_by_assignment.sql:125-131` and proved
+--     there with `EXPLAIN`. Here the call is uncorrelated — the night comes
+--     from the topic, not from the row — so the wrapper buys what it promises.
+--
+-- One layout note, because it is load-bearing for this phase's own checks: the
+-- second `WHEN` is broken before its parenthesis on purpose, so that the
+-- structural check "no trigger carries a `WHEN (` clause" stays readable
+-- against the finished file instead of only against a snapshot of it.
+
+DROP POLICY IF EXISTS realtime_messages_select_door_assigned ON realtime.messages;
+
+CREATE POLICY realtime_messages_select_door_assigned
+  ON realtime.messages FOR SELECT
+  TO authenticated
+  USING (
+    CASE
+      -- Broadcast only. Presence is disabled on this project and nothing here
+      -- starts admitting it by omission.
+      WHEN realtime.messages.extension <> 'broadcast' THEN false
+
+      WHEN
+        (SELECT realtime.topic()) ~
+        '^door:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      THEN
+        (SELECT private.has_capability('door.operate',
+                  substring((SELECT realtime.topic()) FROM 6)::uuid))
+
+      ELSE false
+    END
+  );
+
+-- =============================================================================
+-- 7. The policies this file does NOT create, and the omission IS the design
+-- =============================================================================
+--
+-- There is no INSERT policy, no UPDATE policy and no DELETE policy on
+-- `realtime.messages`, for anybody, and the gap is the boundary rather than a
+-- piece of unfinished work.
+--
+-- THE FIGURE THAT MAKES IT LOAD-BEARING, measured on this project on
+-- 2026-08-11 and recorded by plan 38-01 under `messages_acl_expanded`: `anon`
+-- and `authenticated` each hold `arw` on `realtime.messages` — that is
+-- table-level INSERT, SELECT and UPDATE. The grant is already there. With RLS
+-- enabled and no INSERT policy, every insert from a client session is refused
+-- and THE DATABASE IS THE ONLY SENDER. Add an INSERT policy of any shape and a
+-- signed-in member can broadcast on a door's topic — an arbitrary "the list
+-- changed" at an arbitrary moment, from an ordinary account.
+--
+-- (The reason the grant is visible at all is worth one line: the plan's first
+-- probe read `information_schema.role_table_grants` and came back EMPTY, which
+-- means "you may not see them" and not "there are none". The figure above comes
+-- from `pg_class.relacl` via `aclexplode`, which is unfiltered.)
+--
+-- Two other tables in this repository omit their write policies on purpose, and
+-- naming them is the point of this paragraph — so the next reader recognises a
+-- pattern instead of repairing a gap:
+-- `20260805120000_door_scan_events.sql:158-163` and
+-- `20260808002000_membership_register.sql:345-349`.
+--
+-- The emit path is unaffected by the omission, and section 1 explains why: the
+-- four wrappers are `SECURITY DEFINER` owned by the migration role, which
+-- carries `rolbypassrls`. RLS refuses the client and does not refuse the
+-- trigger. That is the whole design in one sentence.
+
 COMMIT;
