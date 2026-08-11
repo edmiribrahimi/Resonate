@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Fase 38: 6 piani su 7 eseguiti e uniti; migration 20260811111530 applicata in produzione (zero righe mosse, 27 tabelle misurate). 38-07 fermo al checkpoint bloccante: P1-P7 tutte pending, P6 richiede una nuova autorizzazione a scrivere in produzione"
-last_updated: "2026-08-11T11:57:20.345Z"
+stopped_at: Phase 39 context gathered — /door deciso, vecchio indirizzo permanente, un solo passaggio alla porta a fine v1.5
+last_updated: "2026-08-11T13:30:07.045Z"
 last_activity: 2026-08-11 -- Phase 38 execution started
 progress:
   total_phases: 13
@@ -44,15 +44,18 @@ dice 7 su 7 mentre il lavoro e' 6 su 7. La riga vera e' questa, non quella.
   mosse, **dimostrato**: set a cascata camminato su 102 vincoli letti da
   `pg_constraint`, 27 tabelle, 81 righe prima e 81 dopo. Le sette tabelle
   dell'incidente D12 sono dentro il perimetro misurato.
+
 - Autorizzazione del proprietario a scrivere in produzione: concessa il
   2026-08-11 per quella sola applicazione, **spesa alle 11:15:24 UTC ed
   esaurita**. **P6 ne richiede una nuova e separata** — l'esecutore di 38-07 si e'
   fermato prima anche dello snapshot, che sarebbe stato il primo passo di una
   procedura senza permesso di partire.
+
 - **Nessun requisito e' chiuso da cio' che gira qui.** Ogni sonda passa dalla
   Management API come `supabase_read_only_user`, che **scavalca la RLS**: LIVE-06
   resta aperto fino a P7. Quattro trigger in `pg_trigger` non sono un messaggio
   su un filo — LIVE-01 resta aperto fino a P5.
+
 - Due buchi che **solo** una procedura umana puo' vedere: il canale che si unisce,
   dice `SUBSCRIBED` e non consegna nulla (solo P5), e il fan-out sulla notte
   assente che degrada LIVE-01 in LIVE-04 senza un errore da nessuna parte (solo
@@ -258,8 +261,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T11:57:20.341Z
-**Stopped at:** Fase 38: 6 piani su 7 eseguiti e uniti; migration 20260811111530 applicata in produzione (zero righe mosse, 27 tabelle misurate). 38-07 fermo al checkpoint bloccante: P1-P7 tutte pending, P6 richiede una nuova autorizzazione a scrivere in produzione
+**Last session:** 2026-08-11T13:30:07.041Z
+**Stopped at:** Phase 39 context gathered — /door deciso, vecchio indirizzo permanente, un solo passaggio alla porta a fine v1.5
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
