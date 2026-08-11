@@ -371,6 +371,38 @@ export async function countVenueRevealRecipients(
  * It used to be outside it. `render()` throwing on one message would then throw
  * out of the whole run, taking every night after this one with it. Inside, a
  * render failure is this batch's failure and nothing else's.
+ *
+ * ── The fallback to singles — WR-06 of the phase review ──────────────────────
+ *
+ * `resend.batch.send` validates **all or nothing**: one problematic recipient —
+ * an address the provider has suppressed, a refused domain, a validation
+ * refusal — makes it reject the whole call. With the batch as the only unit of
+ * retry, none of up to a hundred people got marked, and every retry (tomorrow's
+ * cron run, or a press of *"send to the N still missing"*) rebuilt the SAME
+ * batch and met the SAME refusal. There was no remedy inside the product:
+ * press, fail, press, fail.
+ *
+ * So a rejected batch of more than one degrades to individual sends, and a
+ * problematic recipient then blocks **itself** instead of the ninety-nine
+ * beside it. Three constraints on the shape, and each of them is a decision
+ * this phase already took:
+ *
+ *   1. **It degrades ONCE.** The singles are not retried. A single that fails
+ *      on its own is a fact to report — it shows up in the missing count, which
+ *      is the number the button reads — and not something to loop over.
+ *   2. **`recipientsSent` stays the sum of what the provider accepted.** The
+ *      fallback adds attempts, never optimism.
+ *   3. **The marking stays outside the send's `try`**, where 37-09 put it, for
+ *      the reason written below it.
+ *
+ * A known interaction, declared rather than discovered later: the fallback
+ * multiplies the number of provider requests for that batch by up to a
+ * hundred, so the provider's own rate limit is a plausible outcome **of the
+ * fallback itself**. No pacing constant is hard-coded here on purpose — this
+ * function runs inside a cron with a wall-clock budget, and sleeping through it
+ * would trade "some people unreached" for "the run dies and every night after
+ * this one is unreached". A rate-limited single is left unmarked and therefore
+ * reachable, and is picked up by the next press or the next scheduled run.
  */
 export async function revealPartyVenue(
   supabase: SupabaseClient,
@@ -416,13 +448,19 @@ export async function revealPartyVenue(
   let recipientsSent = 0;
   let recipientsFailed = 0;
 
-  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-    const batch = entries.slice(i, i + BATCH_SIZE);
-    let delivered = false;
-
+  /**
+   * One attempt at one group of recipients: render, send, and answer whether
+   * the provider accepted it. It renders, it sends, and it does **nothing
+   * else** — in particular it does not mark, does not count, and does not
+   * retry. Those three live in the caller, which is what lets the fallback
+   * below reuse it for a group of one without duplicating the send.
+   */
+  const attemptGroup = async (
+    group: Array<[string, Recipient]>
+  ): Promise<boolean> => {
     try {
       const emails = await Promise.all(
-        batch.map(async ([email, data]) => ({
+        group.map(async ([email, data]) => ({
           from: fromAddress,
           to: [email],
           subject: `Venue Revealed: ${party.event.title}`,
@@ -451,40 +489,75 @@ export async function revealPartyVenue(
 
       if (error) {
         console.error(
-          `[venue_reveal.batch_rejected] night ${party.id}, ${batch.length} ` +
+          `[venue_reveal.batch_rejected] night ${party.id}, ${group.length} ` +
             `recipients: ${error.name} — ${error.message}`
         );
-      } else {
-        delivered = true;
+        return false;
       }
+      return true;
     } catch (err) {
       console.error(
-        `[venue_reveal.batch_threw] night ${party.id}, ${batch.length} ` +
+        `[venue_reveal.batch_threw] night ${party.id}, ${group.length} ` +
           `recipients: ${err instanceof Error ? err.message : String(err)}`
       );
+      return false;
     }
+  };
 
-    if (!delivered) {
-      // Nothing is marked. These people stay reachable, which is what makes
-      // "send to the N still missing" a fact in the data rather than a
-      // sentence on a screen.
-      recipientsFailed += batch.length;
+  /**
+   * Count and mark one group the provider accepted.
+   *
+   * ── Marked HERE, and not one line higher, which the plan asked for ──────────
+   *
+   * 37-09's acceptance criterion said "inside the `try` of the send". It is
+   * outside it, and the difference is not stylistic. Inside the send's `try`, a
+   * database call that THROWS would be caught by the send's `catch`, make the
+   * attempt read as not delivered, and report a group of fifty as failed
+   * **after its fifty mails had gone out** — the address out, the result saying
+   * it is not, and the next run sending again. The substance of the criterion —
+   * per group, from that group's ids, never from `entries` — is what matters,
+   * and it is met. The fallback below does not move it: it makes the group
+   * smaller.
+   */
+  const recordDelivered = async (
+    group: Array<[string, Recipient]>
+  ): Promise<void> => {
+    recipientsSent += group.length;
+    await markBatchReached(supabase, party.id, group);
+  };
+
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const batch = entries.slice(i, i + BATCH_SIZE);
+
+    if (await attemptGroup(batch)) {
+      await recordDelivered(batch);
       continue;
     }
 
-    recipientsSent += batch.length;
+    if (batch.length === 1) {
+      // Already the smallest unit there is. Nothing is marked, so this person
+      // stays reachable — which is what makes "send to the N still missing" a
+      // fact in the data rather than a sentence on a screen.
+      recipientsFailed += 1;
+      continue;
+    }
 
-    // ── Marked HERE, and not one line higher, which the plan asked for ────────
+    // ── The fallback, and it happens exactly once ─────────────────────────────
     //
-    // The acceptance criterion said "inside the `try` of the send". It is
-    // immediately after it, in a `try` of its own, and the difference is not
-    // stylistic. Inside the send's `try`, a database call that THROWS would be
-    // caught by the send's `catch`, leave `delivered` false, and report a batch
-    // of fifty as failed **after its fifty mails had gone out** — the address
-    // out, the result saying it is not, and the next run sending again. The
-    // substance of the criterion — per batch, from this batch's ids, never from
-    // `entries` — is what matters, and it is met.
-    await markBatchReached(supabase, party.id, batch);
+    // The provider validates the whole call, so one problematic address refuses
+    // the other ninety-nine. Sent one at a time, each refusal is confined to
+    // the person who caused it. There is deliberately NO retry around these:
+    // a single that fails here has been tried once as part of a batch and once
+    // on its own, and a third attempt inside the same run would only turn a
+    // reportable fact into a longer wait.
+    for (const one of batch) {
+      const single = [one];
+      if (await attemptGroup(single)) {
+        await recordDelivered(single);
+      } else {
+        recipientsFailed += 1;
+      }
+    }
   }
 
   return {
