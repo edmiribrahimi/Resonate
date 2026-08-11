@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: verifying
-stopped_at: "Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy MISURATO (cataloghi + 21/21 tabelle invariate + 8 aghi a 0 sul sito vero) e fuga anonima chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato"
-last_updated: "2026-08-11T01:09:03.691Z"
+status: "Executed. **Deploy: MISURATO, 2026-08-11.** L'esecutore di 37-15 aveva"
+stopped_at: Phase 38 context gathered
+last_updated: "2026-08-11T09:33:27.081Z"
 last_activity: 2026-08-11 -- Phase 37 executed, 15/15; review findings closed, human verification still open
 progress:
   total_phases: 13
@@ -50,13 +50,16 @@ che gliel'aveva riportato:
   risposta del `POST`: `venues_select_public` → 0, `venues_select_staff` → 1,
   `venue_for_parties` e `party_start_instant` → 1 ciascuna, `prosecdef = true`,
   `search_path = ""`.
+
 - **Istantanea su 21 tabelle prima e dopo: 21/21 identiche.** Zero righe mosse.
 - **`origin/main` a `1dfd6f7` e oltre**, da `b1f1ce9` del 9 agosto. Verificato
   con `git rev-list --left-right --count`: `0 0`.
+
 - **Fuga chiusa, misurata sul sito vero, da anonimo senza cookie:** 8 aghi
   dichiarati su 4 documenti reali → **0 occorrenze**, mentre il nome del locale
   della serata **non** segreta compare 4 volte negli stessi documenti. E' quel
   si' che rende leggibile lo zero.
+
 - **Sonda REST per chiave primaria:** prima `200` con l'indirizzo, dopo `200`
   con zero righe. La strada positiva (`venue_for_parties` su serata non segreta)
   risponde con nome, indirizzo e link Maps.
@@ -219,8 +222,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T01:08:54.249Z
-**Stopped at:** Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy MISURATO (cataloghi + 21/21 tabelle invariate + 8 aghi a 0 sul sito vero) e fuga anonima chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato
+**Last session:** 2026-08-11T09:33:27.078Z
+**Stopped at:** Phase 38 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
