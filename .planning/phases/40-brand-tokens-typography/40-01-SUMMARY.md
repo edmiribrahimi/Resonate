@@ -205,6 +205,15 @@ None — no external service configuration, no dependency added. Threat `T-40-04
 - **The 21 currently-unexposed names are the phase's runway.** As 40-02 onward declare and expose them, check D's subject count falls and its banner line reports the shrinking. A name that is declared in `:root` but not mapped in `@theme inline` stays under check D — which is the DS-02 device working as designed: a token with no utility has no accidental consumers.
 - **No blockers.**
 
+## Self-Check: PASSED
+
+- `scripts/verify-tokens.mjs` — FOUND (28.186 byte)
+- `.planning/phases/40-brand-tokens-typography/40-01-SUMMARY.md` — FOUND
+- `69299ca` (Task 1) — FOUND
+- `d302c1f` (Task 2) — FOUND
+- `633c7c5` (metadata) — FOUND
+- `git status --short` — clean; `src/app/globals.css` unmodified, `STATE.md` and `ROADMAP.md` untouched (the orchestrator owns those writes)
+
 ---
 *Phase: 40-brand-tokens-typography*
 *Completed: 2026-08-11*
