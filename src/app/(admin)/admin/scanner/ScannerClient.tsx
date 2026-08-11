@@ -319,6 +319,37 @@ interface QueueCounts {
  */
 const CLOCK_DRIFT_WORTH_SAYING_MS = 5 * 60 * 1000;
 
+/**
+ * How long a burst of reasons to reload is allowed to collapse into one fetch.
+ *
+ * A rush at the door produces one `door_scan_events` row per scan and the
+ * ticket `UPDATE` fires its own trigger, so several signals arrive for one
+ * list. Collapsing them costs a fraction of a second of freshness and saves a
+ * fetch per person in the queue.
+ *
+ * **This number is assumption `A3`, not a measurement** (`38-RESEARCH.md`
+ * § Assumptions Log). What would settle it is counting `scanner:reload` lines
+ * over a night. Changing it is therefore a decision with a number written down,
+ * never a tweak.
+ */
+const RELOAD_COALESCE_MS = 500;
+
+/**
+ * How long the list may go without a successful fetch before the parachute opens.
+ *
+ * **Re-armed, never periodic.** The timer is cleared and restarted on every
+ * successful fetch, so a door with a queue in front of it never runs it at all —
+ * the list already reloads after every scan. That is the honest meaning of
+ * "parachute" and the whole answer to whether this is polling under another
+ * name: on a busy night it fires zero times.
+ *
+ * **This number is assumption `A2`, not a measurement** (`38-RESEARCH.md`
+ * § Assumptions Log). What would settle it is counting `scanner:reload` lines
+ * carrying `reason: "safety"` over a night. Changing it is a decision with a
+ * number written down.
+ */
+const SAFETY_RELOAD_MS = 5 * 60_000;
+
 /** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
 function readDoorAuthPayload(body: unknown): CachedDoorAuth | null {
   if (typeof body !== "object" || body === null) return null;
@@ -650,6 +681,52 @@ export default function ScannerClient() {
     }
   }, []);
 
+  /**
+   * When the list was last refreshed **successfully**, as a monotonic count of
+   * elapsed time on this device.
+   *
+   * `performance.now()` and not `Date.now()`, for the reason already written at
+   * the clock-drift measurement above: the device clock is **evidence, never
+   * authority**. `Date.now()` can step backwards on an NTP correction — which
+   * happens exactly when the network returns, the worst possible moment — and
+   * would print a negative age. This measures what is actually being claimed:
+   * elapsed time here since the last successful fetch.
+   *
+   * `null` means **never refreshed on this device**, which is not the same fact
+   * as "refreshed a long time ago". The only branch this number may ever drive
+   * is whether a band is shown. No verdict, no refusal and no admission reads it.
+   */
+  const lastFetchAtRef = useRef<number | null>(null);
+  /** The safety reload's timeout. Foreground only — see the effect that owns it. */
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The current `requestReload`, reachable from code declared above it.
+   *
+   * `requestReload` calls `fetchAttendance`, so it has to be declared after it —
+   * and the safety timer has to be armed from **inside** `fetchAttendance`, at
+   * the one point that knows a fetch actually succeeded. This ref is the one-way
+   * link that keeps that order honest.
+   *
+   * It also keeps `armSafetyTimer` and the visibility listener free of
+   * `searchQuery` in their dependency arrays. That is not tidiness: without it
+   * every keystroke in the search box would tear down the listener and clear the
+   * parachute, and a fetch that then failed would leave it unarmed — precisely
+   * the case the parachute exists for.
+   */
+  const requestReloadRef = useRef<((reason: string) => void) | null>(null);
+
+  /**
+   * Clear the safety timeout and start a new one. Called from exactly two
+   * places: after a successful fetch, and when the document becomes visible.
+   */
+  const armSafetyTimer = useCallback(() => {
+    if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+    safetyTimerRef.current = setTimeout(() => {
+      safetyTimerRef.current = null;
+      requestReloadRef.current?.("safety");
+    }, SAFETY_RELOAD_MS);
+  }, []);
+
   // Fetch attendees for selected party + cache in IndexedDB for offline use
   const fetchAttendance = useCallback(
     async (search?: string) => {
@@ -862,6 +939,23 @@ export default function ScannerClient() {
 
       setCacheNotices(notices);
 
+      // ── The age of the list, recorded HERE and nowhere else ────────────────
+      //
+      // The placement is the design, not a detail. Every failure branch of this
+      // function returns early above this line, so a fetch that failed and
+      // surfaced a notice does **not** count as fresh and the age keeps climbing
+      // — which is what makes the band appear when it should.
+      //
+      // Monotonic, on this device. See the ref's own comment for why this is not
+      // `Date.now()`, and for the line it must not cross: this number is shown,
+      // and the only branch it may ever drive is whether a band is shown.
+      lastFetchAtRef.current = performance.now();
+      // One place records freshness and one place re-arms the parachute, and
+      // they are the same place — so the scan-triggered reload, the manual tap
+      // and every future trigger re-arm through the same success, with no
+      // special case for any of them.
+      armSafetyTimer();
+
       // Piggyback sync on a successful fetch
       try {
         await syncPendingCheckins();
@@ -872,8 +966,144 @@ export default function ScannerClient() {
       }
       await refreshQueueCounts();
     },
-    [selectedPartyId, refreshQueueCounts]
+    [selectedPartyId, refreshQueueCounts, armSafetyTimer]
   );
+
+  /**
+   * A reload that arrived while a verdict was being produced, waiting to be
+   * drained. Never a queue: several deferred reasons still mean one stale list.
+   */
+  const pendingReloadRef = useRef(false);
+  /** The coalescing timeout, so a burst of reasons produces one fetch. */
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * ── LIVE-02 / D-38-02: the ONE way to ask for the attendee list to reload ───
+   *
+   * Every reason — a message on the channel, a reconnection, the safety timer, a
+   * tap by the operator — comes through here, and here calls the fetch site the
+   * scanner already has. There is deliberately **no second fetch site**: a second
+   * one would be a second place where a `mergeAttendees` refusal can be dropped
+   * without reaching the person holding the phone, which is exactly the defect
+   * FIX-06 closed (`fetchAttendance`, the merge block above).
+   *
+   * This function never fetches, never merges, never reads or writes `doorAuth`,
+   * and never renders a sentence. It defers, it coalesces, it delegates.
+   */
+  const requestReload = useCallback(
+    (reason: string) => {
+      // ── D-38-08 / LIVE-02. A verdict is being produced right now: it waits ──
+      //
+      // The reason is **not** React rendering. `mergeAttendees` opens a
+      // `readwrite` transaction on the same IndexedDB object store the offline
+      // verdict reads, and IndexedDB serialises `readwrite` transactions on a
+      // store — so an unguarded merge really can put itself between a scan and
+      // its answer, in front of a queue, while looking in review like two
+      // ordinary `await`s. The lock is taken in the camera decode callback and
+      // released in `dismissFlash`, which is where this is drained.
+      if (isProcessingRef.current) {
+        pendingReloadRef.current = true;
+        return;
+      }
+
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = setTimeout(() => {
+        reloadTimerRef.current = null;
+        // Its own category, so a reload is attributable to the reason that asked
+        // for it. `meta-gates.md`: no path collapses into a generic line.
+        console.info("scanner:reload", { reason });
+        // ── D-38-22, accepted rather than fixed ──────────────────────────────
+        //
+        // A reload while a search is active refreshes what is on screen and
+        // **deliberately does not merge into the offline cache**: `fetchAttendance`
+        // skips the merge when `search` is set, and the cache catches up on the
+        // next unfiltered fetch.
+        //
+        // Turning this into a merge of a filtered list would feed `mergeAttendees`
+        // a shrinking payload, which it refuses as a typed value — so the "fix"
+        // produces a refusal notice at a door, not a fresher cache.
+        fetchAttendance(searchQuery || undefined);
+      }, RELOAD_COALESCE_MS);
+    },
+    [fetchAttendance, searchQuery]
+  );
+
+  /** Keep the one-way link current. Written in an effect, never during render. */
+  useEffect(() => {
+    requestReloadRef.current = requestReload;
+  }, [requestReload]);
+
+  /**
+   * ── LIVE-04: the parachute, and it only opens in the foreground ────────────
+   *
+   * Three reasons, in order of weight.
+   *
+   * 1. On the device this is built for the timer **cannot** run at all: an iOS
+   *    home-screen PWA is *suspended*, not throttled, so its timers stop. Code
+   *    written for the hidden case is code written for a case that does not
+   *    occur at this door.
+   * 2. The resume path forces a full reload anyway, and a reload at the moment
+   *    the eye arrives is strictly better than one that happened four minutes
+   *    before it did.
+   * 3. On Android/Chrome a background timer would burn battery and data
+   *    refreshing a screen nobody is reading — on a phone that has to survive
+   *    22:00 → 06:00.
+   *
+   * **`visibilitychange` goes on `document`, never on `window`.** The house
+   * precedent is `setupSyncListeners` in `sync-manager.ts`, and the reason is
+   * that before Safari 14 the event did not bubble — on `window` it would
+   * silently never fire on the device that matters.
+   *
+   * **On the "two schedulers" rule.** `sync-manager.ts` states that it takes two
+   * triggers and deliberately **no timer**, because a parallel trigger set is two
+   * schedulers fighting over one queue. This timer is a third trigger on a
+   * **different subject** — the attendee list, not the sync queue — so it is not
+   * the contradiction it looks like. Said out loud, because the next reader will
+   * arrive at that file's docblock and ask.
+   */
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") {
+        // Hidden: clear and do NOT re-arm.
+        if (safetyTimerRef.current) {
+          clearTimeout(safetyTimerRef.current);
+          safetyTimerRef.current = null;
+        }
+        return;
+      }
+      // Visible: a full reload now, then the parachute back up. The age is then
+      // ~0, so the band correctly does not appear.
+      requestReloadRef.current?.("foreground");
+      armSafetyTimer();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
+    };
+  }, [armSafetyTimer]);
+
+  /**
+   * The coalescing timeout, torn down — on unmount, and on every change of night.
+   *
+   * `S4` of this file's own patterns: every timer is cleared in the same cleanup
+   * that armed it. Keying it on `selectedPartyId` rather than on nothing is the
+   * per-night discipline the `doorAuth` effect above already states — a reload
+   * armed for the night last opened would land on the night now open and repaint
+   * its list with the previous one's.
+   */
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+    };
+  }, [selectedPartyId]);
 
   // Initial party load
   useEffect(() => {
@@ -996,12 +1226,21 @@ export default function ScannerClient() {
   const dismissFlash = useCallback(() => {
     setFlash(null);
     isProcessingRef.current = false;
+    // The verdict is out, so the reload that waited for it may go. Drained
+    // unconditionally and on purpose: this may cost one extra GET when the scan's
+    // own reload was going to fire anyway, and that is the correct side to err
+    // on — a duplicated fetch costs one request, a dropped one leaves a stale
+    // list at a door, which is the whole subject of this phase.
+    if (pendingReloadRef.current) {
+      pendingReloadRef.current = false;
+      requestReload("deferred");
+    }
     // Resume scanner decoding
     const scanner = scannerInstanceRef.current as { resume: () => void } | null;
     if (scanner) {
       try { scanner.resume(); } catch { /* ignore if already running */ }
     }
-  }, []);
+  }, [requestReload]);
 
   const toggleTorch = useCallback(async () => {
     const track = videoTrackRef.current;
@@ -1894,6 +2133,11 @@ export default function ScannerClient() {
     setFailedEntries(null);
     setBlockedResult(null);
     isProcessingRef.current = false;
+    // The second release point of the scan lock, and the one that does **not**
+    // drain. A reset is the operator abandoning the current scan and leaving the
+    // night; the effect keyed on `selectedPartyId` fetches for whatever is
+    // opened next, so draining here would be a second fetch for the same list.
+    pendingReloadRef.current = false;
     // Sync any pending check-ins before switching party
     syncPendingCheckins()
       .catch((error) => {
