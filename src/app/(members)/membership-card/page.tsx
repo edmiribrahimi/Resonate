@@ -19,7 +19,8 @@ export default async function MembershipCardPage() {
   // Only their source changed. The `profile?.status` read below (:45) that
   // gates the referral link comes from this page's own `profiles` select, not
   // from a header, and is deliberately left alone.
-  const { role, status } = await getAccessContext();
+  const { role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   const fullName = user.user_metadata?.full_name || "Member";
 
@@ -69,6 +70,10 @@ export default async function MembershipCardPage() {
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

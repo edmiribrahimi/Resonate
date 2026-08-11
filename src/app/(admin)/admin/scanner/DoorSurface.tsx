@@ -124,6 +124,10 @@ export default async function DoorSurface() {
       <MobileNav
         role={ctx.role as UserRole | null}
         status={ctx.status as UserStatus | null}
+        capabilities={[...ctx.capabilities]}
+        liveAssignmentCapabilities={
+          ctx.liveAssignmentCapabilities ? [...ctx.liveAssignmentCapabilities] : null
+        }
       />
     </>
   );

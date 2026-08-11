@@ -10,7 +10,8 @@ export default async function GalleryPage() {
   // gates anything here — the media query below filters on `status =
   // "approved"` (the moderation state of the row, not the viewer's) and is
   // unchanged. Both values go to MobileNav, a "use client" component.
-  const { role, status } = await getAccessContext();
+  const { role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   const supabase = await createClient();
 
@@ -71,6 +72,10 @@ export default async function GalleryPage() {
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

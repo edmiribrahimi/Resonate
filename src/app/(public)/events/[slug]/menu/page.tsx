@@ -64,7 +64,8 @@ export default async function MenuPage({
   // An anonymous visitor is a NORMAL case, not a failure: `my_access_context()`
   // is granted to `authenticated` only, so `anon` is refused with 42501 and the
   // resolver answers the empty context (no capabilities, null identity).
-  const { capabilities, userId, role, status } = await getAccessContext();
+  const { capabilities, userId, role, status, liveAssignmentCapabilities } =
+    await getAccessContext();
   const isAuthenticated = userId !== null;
 
   // The cookie-bound client stays: the drink-token read below is per-user and
@@ -235,6 +236,10 @@ export default async function MenuPage({
         <MobileNav
           role={role as UserRole | null}
           status={status as UserStatus | null}
+          capabilities={[...capabilities]}
+          liveAssignmentCapabilities={
+            liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+          }
         />
       )}
     </div>

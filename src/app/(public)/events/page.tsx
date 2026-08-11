@@ -117,7 +117,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // try/catch below, on purpose: a resolver failure must reach Next's error
   // boundary rather than be turned into an empty event list by that catch.
   // `role` and `status` are presentation — they choose MobileNav's entries.
-  const { capabilities, role, status } = await getAccessContext();
+  const { capabilities, role, status, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // ===========================================================================
   // The address, read as untrusted input
@@ -567,6 +568,10 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

@@ -7,7 +7,8 @@ import type { UserRole, UserStatus } from "@/types/database";
 
 export default async function Home() {
   // Identity, role and status come from the session, not from a request header.
-  const { userId, role, status } = await getAccessContext();
+  const { userId, role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // Logged-in users go straight to dashboard.
   //
@@ -67,6 +68,10 @@ export default async function Home() {
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

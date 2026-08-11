@@ -68,7 +68,8 @@ export default async function WorkSurfaceLayout({
 }: {
   children: ReactNode;
 }) {
-  const { capabilities, role, status } = await getAccessContext();
+  const { capabilities, role, status, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   return (
     <>
@@ -77,6 +78,10 @@ export default async function WorkSurfaceLayout({
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </>
   );

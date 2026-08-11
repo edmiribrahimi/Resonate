@@ -256,7 +256,8 @@ export default async function DashboardPage({
   // source changed. `capabilities` is read for one thing only — deciding which
   // management links this page may draw — and it crosses to the client as an
   // array, because a `Set` is not serialisable across the boundary.
-  const { capabilities, role, status } = await getAccessContext();
+  const { capabilities, role, status, liveAssignmentCapabilities } =
+    await getAccessContext();
   const managementCapabilities = [...capabilities];
 
   // ── The role predicate this line used to hold is gone (STAFF-03)
@@ -588,6 +589,10 @@ export default async function DashboardPage({
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );
