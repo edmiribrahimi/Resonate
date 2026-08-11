@@ -89,7 +89,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer (executed 2026-08-11 — NOT deployed, NOT verified; the anonymous address read is still open in production by owner decision)
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
-- [ ] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole
+- [x] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (completed 2026-08-11)
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - Recurring patterns become shared components that change form by device, adopted surface by surface
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
 - [ ] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository
@@ -607,7 +607,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 40-05-PLAN.md — The version boundary: a release purges the document caches, the never-refreshing writer goes, and H1–H3 are written before the release they test
+- [x] 40-05-PLAN.md — The version boundary: a release purges the document caches, the never-refreshing writer goes, and H1–H3 are written before the release they test
 
 ### Phase 41: Shared Primitives & Three-Tier Layout
 
@@ -655,7 +655,7 @@ Plans:
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
-| 40. Brand Tokens & Typography | 4/5 | In Progress|  |
+| 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
