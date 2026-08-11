@@ -1492,9 +1492,14 @@ or a read-only probe of this project's database, with the date beside it.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED 2026-08-11)
 
-1. **Should `private_only: true` be applied to the project?**
+> All four were decided at plan time and are traceable to a numbered decision.
+> The heading carries the marker this repository already uses at
+> `31-RESEARCH.md:1071`, so a later reader cannot mistake a closed question for
+> an open one.
+
+1. **Should `private_only: true` be applied to the project?** — **RESOLVED, D-38-15: no, not this phase.**
    - What we know: it is patchable via `PATCH /v1/projects/{ref}/config/realtime`
      with the token already in `.env.local`; it disconnects every connected client
      when changed; and `GET` does not echo it back.
@@ -1506,7 +1511,7 @@ or a read-only probe of this project's database, with the date beside it.
      item with its own precondition ("never during a night") and its own
      behavioural proof (`PrivateOnly` on a public join).
 
-2. **Should `worker: true` be adopted in `src/lib/supabase/client.ts`?**
+2. **Should `worker: true` be adopted in `src/lib/supabase/client.ts`?** — **RESOLVED, D-38-14: no; `onHeartbeat` is taken instead and `client.ts` stays untouched.**
    - What we know: it is the vendor's recommendation for background heartbeat
      survival; it must be set at construction; `createBrowserClient` is a
      singleton, so the change is product-wide and lands in a file governed by
@@ -1517,7 +1522,7 @@ or a read-only probe of this project's database, with the date beside it.
      change) and leave the worker recorded.
 
 3. **Does a search-filtered live reload leaving the offline cache un-merged
-   matter?**
+   matter?** — **RESOLVED, D-38-22: accepted as written, with the sentence placed beside the call.**
    - What we know: `fetchAttendance(search)` deliberately skips `mergeAttendees`.
      The search box is used for seconds; the cache catches up on the next
      unfiltered fetch, and the safety timer re-arms regardless.
@@ -1526,7 +1531,7 @@ or a read-only probe of this project's database, with the date beside it.
      filtered list — which is precisely the shrinking-payload case
      `mergeAttendees` refuses.
 
-4. **Does anything need to emit for `attendances` (the membership register)?**
+4. **Does anything need to emit for `attendances` (the membership register)?** — **RESOLVED, D-38-20: no trigger on `attendances`; `door_scan_events` covers the door action.**
    - What we know: `/api/tickets/attendance` reads `tickets`,
      `guest_list_entries`, `ticket_refunds`, `profiles`, `ticket_tiers` — **not**
      `attendances`. A membership admission does, however, always write a
