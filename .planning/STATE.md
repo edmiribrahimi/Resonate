@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 39 context gathered — /door deciso, vecchio indirizzo permanente, un solo passaggio alla porta a fine v1.5
+stopped_at: Phase 39 code executed — 4 piani, gate automatici verdi; NON chiusa: 39-VERIFICATION.md e' human_needed, criteri 2 e 3 alla serata di fine v1.5 (D-39-07)
 last_updated: "2026-08-11T14:29:40.844Z"
-last_activity: 2026-08-11 -- Phase 39 execution started
+last_activity: 2026-08-11 -- Phase 39 executed, verification human_needed
 progress:
   total_phases: 13
   completed_phases: 9
@@ -72,7 +72,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 39
+Status: Phase 39 executed — awaiting the end-of-v1.5 sitting (human_needed)
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -254,6 +254,16 @@ Fixed by the project owner before planning — not re-opened at plan time:
   **UNA voce non segue il lotto, e la sua scadenza e' un atto invece che una data: il primo esercizio del percorso di trigger va fatto PRIMA della prossima serata pubblicata con i biglietti in vendita.** Da quel momento il primo acquisto vero e' il primo esercizio, e senza error tracking un wrapper che sollevasse fuori dalla chiamata a `realtime.send` farebbe fallire l'acquisto senza che nessuno sappia perche'. Serve una scrittura sola — la forma di P6 — non i due telefoni.
 
   Nota di stato: il client di fase 38 **non e' deployato** (44 commit oltre `origin/main`, nessuno spinto) mentre la migration **e' applicata**. Produzione corre il rischio senza avere il beneficio, ed e' inerte solo finche' regge la misura qui sopra.
+
+- **[Fase 39, 2026-08-11] Il codice e' eseguito, la fase NON e' chiusa — e la roadmap lo diceva sbagliato per qualche minuto.** Quattro piani, tre wave, tutti i gate automatici verdi (`npm run build` exit 0, `verify:routes` PASS, `verify:persona` 7/7). Ma `39-VERIFICATION.md` e' `human_needed`: **i criteri 2 e 3 si chiudono solo con un telefono in una stanza buia**, alla stessa serata di fine v1.5 del lotto qui sopra (D-39-07, che assorbe P1–P5, P7 e il test 8 della fase 38; P6 resta fuori perche' scrive in produzione). `39-DOOR-PASS.md` e' pronto con **ogni `Result` a `pending`**, ed e' lo stato giusto.
+
+  La casella della roadmap era stata marcata `[x] (completed 2026-08-11)` da `roadmap.update-plan-progress` all'atterraggio del quarto SUMMARY, non da `phase.complete`, che non e' mai stato lanciato. **Corretta a `[ ]` con la ragione accanto**: un `[x]` su una fase il cui unico punto e' che non e' ancora provata e' esattamente il fallimento silenzioso che questo repo si e' gia' scritto di non ripetere. La fase 38, nello stesso stato e diretta alla stessa serata, era gia' `[ ]`.
+
+  **Due regole che non sono codice e vanno lette prima di spedire.**
+  1. **Il riscaldamento.** `self.__SW_MANIFEST` precacha **zero documenti**: ogni documento offline viene da una cache `NetworkFirst` a 24 h / 32 voci, calda solo da una visita online precedente, e **le chiavi di cache sono URL** — quindi scaldare `/admin/scanner` **non** scalda `/door`. Senza `39-DOOR-PASS.md` §0.5 la stanza buia misura soltanto che al nuovo indirizzo non e' mai passato nessuno.
+  2. **La regola di deploy.** L'assertion della mappa in `src/lib/supabase/middleware.ts` e' un `throw` a **module load dentro un bundle di middleware**: scatta alla **prima richiesta dopo il deploy**, non a `npm run build`, e una mappa sbagliata e' un **500 su ogni rotta coperta dal middleware** — webhook dei pagamenti e check-in compresi (WR-04). **Si spedisce in un giorno senza serata, e la prima richiesta la si fa di persona.** Vale anche per la fase 38, che condivide lo stesso arretrato non spinto.
+
+  **Una domanda torna al proprietario DOPO la stanza buia, non prima:** la porta merita una regola di cache runtime piu' lunga di 24 ore? E' una decisione di prodotto su quanto vecchia puo' essere una porta, e il gate della porta dice che una superficie stantia e' un rischio. Si osserva §8, poi `/gsd:discuss-phase` con l'osservazione allegata.
 
 - D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.

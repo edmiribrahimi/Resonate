@@ -75,7 +75,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format (completed 2026-08-10)
 - [x] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer (executed 2026-08-11 — NOT deployed, NOT verified; the anonymous address read is still open in production by owner decision)
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
-- [x] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off (completed 2026-08-11)
+- [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
 - [ ] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - Recurring patterns become shared components that change form by device, adopted surface by surface
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
