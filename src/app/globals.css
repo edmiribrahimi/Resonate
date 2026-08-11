@@ -248,6 +248,60 @@
   --foreground: var(--ink);
   --card: var(--surface);
   --card-border: var(--line);
+
+  /*
+   * The navigation clearance — ONE number, four consumers (41-UI-SPEC.md §3.2).
+   *
+   * Today the same clearance is written down three times independently: `pb-24`
+   * appears 54 times in 49 files, ToastContainer.tsx:26 hard-codes
+   * `calc(5rem + env(safe-area-inset-bottom) + 1rem)`, and the four bottom
+   * sheets hard-code `5rem` a third time. The moment the navigation moves off
+   * the bottom edge at the md tier, all three come due AT ONCE. These two names
+   * are what makes that one edit instead of three authors.
+   *
+   * The phone value is reproduced, not reinvented: with no safe-area inset the
+   * page shell's bottom padding computes to 80 + 0 + 16 = 96px — EXACTLY today's
+   * `pb-24`. The migration is value-preserving on the device it was written for.
+   *
+   * 5rem is a DECLARED bar height, not a measured one, and that is deliberate:
+   * D-41-09 requires `pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))]` to
+   * survive the dialog extraction verbatim. Re-deriving the height from
+   * MobileNav's markup would silently invalidate that literal in four files.
+   *
+   * NO --color-* MAPPING, and therefore no Tailwind utility — these are layout
+   * variables, not colours. They are reached only through arbitrary values:
+   * `ps-[var(--nav-inset-inline-start)]`,
+   * `pb-[calc(var(--nav-inset-block-end)+1rem)]`. Same precedent as the sunset
+   * scale above: declared here, exposed nowhere, and verify-tokens.mjs check D
+   * holds it — a declared name with no utility must have ZERO consumers.
+   *
+   * DECLARED AT TOP LEVEL EVEN THOUGH THE MEDIA QUERY BELOW REDECLARES THEM,
+   * and that is not belt-and-braces. `findBlock()` in scripts/verify-tokens.mjs
+   * returns only the FIRST `:root` block, so a media-query-only declaration
+   * referenced anywhere in this file makes check A go red on a CORRECT file.
+   * That is 40-REVIEW.md WR-02's exact shape and Phase 40 paid for it once.
+   */
+  --nav-inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+  --nav-inset-inline-start: 0px;
+}
+
+/*
+ * The one boundary the navigation clearance moves at (41-UI-SPEC.md §3.2).
+ *
+ * 48rem is the `md` tier boundary of §2.1 — Tailwind's own default, read from
+ * node_modules/tailwindcss/theme.css, and the portrait-tablet edge exactly.
+ * 14rem is 224px, the side column's width from §8.2. Both numbers are written
+ * with their reference rather than as bare values, because a bare 14rem here
+ * and a bare `w-56` in the nav component are two authors of one measurement.
+ *
+ * At and above this line the bar is gone from the bottom edge and the column
+ * holds the leading edge — so the two swap, they do not both grow.
+ */
+@media (min-width: 48rem) {
+  :root {
+    --nav-inset-block-end: 0px;
+    --nav-inset-inline-start: 14rem;
+  }
 }
 
 /*

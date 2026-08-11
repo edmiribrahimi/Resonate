@@ -339,6 +339,9 @@ export const KNOWN_TOKEN_NAMES = [
   'violet',
   'violet-deep',
   'grad-sunset',
+  // layout, not colour — no utility exists for either, and check D asserts so
+  'nav-inset-block-end',
+  'nav-inset-inline-start',
 ];
 
 /**
