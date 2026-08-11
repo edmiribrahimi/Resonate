@@ -285,6 +285,46 @@ function mergeRefusalSentence(
   }
 }
 
+/**
+ * How old the list is, in the words a person reads at arm's length in the dark.
+ *
+ * Seconds below a minute, whole minutes above it. D-38-09's threshold is five
+ * minutes, so anything finer than a second is decorative and anything coarser
+ * than a minute stops being an answer.
+ *
+ * **No clamp at zero, and that is the decision.** The caller measures with
+ * `performance.now()`, which is monotonic, so this cannot go negative. If it
+ * ever did, `updated -3s ago` is a fault a human can see and report; clamping
+ * would print `updated 0s ago` instead — a claim that the list is fresh. Of the
+ * two ways to be wrong, only one of them lies in the direction of a door
+ * trusting a list it should not.
+ */
+function formatListAge(ageMs: number): string {
+  const seconds = Math.floor(ageMs / 1000);
+  if (seconds < 60) return `updated ${seconds}s ago`;
+  return `updated ${Math.floor(seconds / 60)}m ago`;
+}
+
+/**
+ * What the staleness band says — an age, and at most one transport fact.
+ *
+ * **It never names a permission** (D-38-04). `channelLive` being false covers an
+ * expired token, a join rate limit and a Realtime restart exactly as readily as
+ * a refused join; the four are indistinguishable from this device, so the door
+ * reports what it can observe — that it is not receiving live updates — and does
+ * not guess at why. One place decides who the operator is, and it is not here.
+ */
+function stalenessBandText(channelIsLive: boolean, ageMs: number): string {
+  const minutes = Math.floor(ageMs / 60_000);
+  const age =
+    minutes < 1
+      ? "less than a minute old"
+      : `${minutes} minute${minutes === 1 ? "" : "s"} old`;
+  return channelIsLive
+    ? `This list is ${age} — tap to reload.`
+    : `This device is not receiving live updates. The list is ${age} — tap to reload.`;
+}
+
 type FilterTab = "all" | "not_arrived" | "checked_in";
 
 /**
@@ -358,6 +398,21 @@ const RELOAD_COALESCE_MS = 500;
  * number written down.
  */
 const SAFETY_RELOAD_MS = 5 * 60_000;
+
+/**
+ * How often the displayed age of the list is recomputed.
+ *
+ * Five seconds and not one. D-38-09's threshold is five **minutes**, so
+ * second-level precision is decorative — `updated 10s ago` and `updated 12s ago`
+ * read the same to somebody holding a phone at a door — while a 5 s tick is six
+ * times cheaper than a 1 s tick over a night that runs 22:00 → 06:00 on a
+ * battery.
+ *
+ * The interval exists only to force a re-render; the age itself is computed in
+ * the render body from `lastFetchAtRef`, so what is shown is always the value at
+ * paint time and never a value cached one tick ago.
+ */
+const FRESHNESS_TICK_MS = 5_000;
 
 /** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
 function readDoorAuthPayload(body: unknown): CachedDoorAuth | null {
@@ -989,6 +1044,54 @@ export default function ScannerClient() {
     }, SAFETY_RELOAD_MS);
   }, []);
 
+  /**
+   * Bumped once per **successful** fetch, right where the age is recorded.
+   *
+   * `lastFetchAtRef` is a ref, so writing it re-renders nothing and no effect can
+   * depend on it. This counter is the render-visible shadow of that write, and it
+   * exists for one reason: it is the only signal that arrives strictly **after**
+   * `lastFetchAtRef.current` has been set. Keying the tick on `attendance`
+   * instead would not work — `setAttendance` runs several `await`s earlier in the
+   * same function, so on the first fetch of a night the effect would re-run while
+   * the ref was still `null`, early-return, and never arm at all.
+   */
+  const [freshnessEpoch, setFreshnessEpoch] = useState(0);
+  /** A pulse with no value of its own: it exists to force a re-render. */
+  const [, setAgeTick] = useState(0);
+  /**
+   * Whether the document is being looked at, written by the one
+   * `visibilitychange` listener this file has (see the effect that owns it).
+   */
+  const [docVisible, setDocVisible] = useState(true);
+
+  /**
+   * The freshness tick — the shape of the 30 s ticker above, with its guards.
+   *
+   * Two early returns, and each is a decision rather than a nicety:
+   *
+   * - **no successful fetch yet** → no interval is created at all. There is no
+   *   age before the first fetch, and an interval that ticks a number nothing
+   *   renders is a battery cost with no reader.
+   * - **document hidden** → cleared, and not re-armed until it comes back. On
+   *   the device this door runs on the point is moot (an iOS home-screen PWA is
+   *   suspended, not throttled), but on Android it is a timer burning battery to
+   *   repaint a screen in somebody's pocket.
+   *
+   * The immediate first computation the 30 s ticker performs happens here by
+   * construction: the age is derived in the render body, so the render that
+   * re-ran this effect already carries the current value and the interval only
+   * supplies the pulses after it.
+   */
+  useEffect(() => {
+    if (lastFetchAtRef.current === null) return;
+    if (!docVisible) return;
+    const tick = setInterval(
+      () => setAgeTick((n) => n + 1),
+      FRESHNESS_TICK_MS
+    );
+    return () => clearInterval(tick);
+  }, [freshnessEpoch, docVisible]);
+
   // Fetch attendees for selected party + cache in IndexedDB for offline use
   const fetchAttendance = useCallback(
     async (search?: string) => {
@@ -1212,6 +1315,12 @@ export default function ScannerClient() {
       // `Date.now()`, and for the line it must not cross: this number is shown,
       // and the only branch it may ever drive is whether a band is shown.
       lastFetchAtRef.current = performance.now();
+      // The render-visible shadow of the line above, bumped immediately after it
+      // and nowhere else. It restarts the freshness tick from this moment — so
+      // the displayed age is in phase with the fetch that produced it — and it is
+      // what arms the tick for the first time on the first successful fetch of a
+      // night.
+      setFreshnessEpoch((n) => n + 1);
       // One place records freshness and one place re-arms the parachute, and
       // they are the same place — so the scan-triggered reload, the manual tap
       // and every future trigger re-arm through the same success, with no
@@ -1326,7 +1435,10 @@ export default function ScannerClient() {
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState !== "visible") {
-        // Hidden: clear and do NOT re-arm.
+        // Hidden: clear and do NOT re-arm. The freshness tick is cleared by its
+        // own effect, through this flag — one listener on this event in the whole
+        // file, not two racing on the same signal.
+        setDocVisible(false);
         if (safetyTimerRef.current) {
           clearTimeout(safetyTimerRef.current);
           safetyTimerRef.current = null;
@@ -1338,6 +1450,12 @@ export default function ScannerClient() {
       // the channel, then a full reload now, then the parachute back up. The
       // reload is unconditional — it does not wait for the channel to come
       // back, and the age is then ~0, so the band correctly does not appear.
+      //
+      // The freshness tick restarts here too, and deliberately not by waiting
+      // for the reload to succeed: if that reload fails, the age must keep
+      // climbing on screen rather than freeze at whatever it read when the
+      // screen went dark.
+      setDocVisible(true);
       resubscribe();
       requestReloadRef.current?.("foreground");
       armSafetyTimer();
@@ -2389,6 +2507,12 @@ export default function ScannerClient() {
   const handleChangeParty = () => {
     setSelectedPartyId(null);
     setAttendance(null);
+    // The age is a claim about **this** list, so it does not survive the list.
+    // Without this, the first paint of the next night would carry the previous
+    // night's timestamp — `setAttendance` runs several `await`s before the age is
+    // recorded, so there is a real window in which the row would say how fresh a
+    // list nobody is looking at any more happens to be.
+    lastFetchAtRef.current = null;
     setSearchQuery("");
     setActiveFilter("not_arrived");
     setShowScanner(false);
@@ -2463,6 +2587,44 @@ export default function ScannerClient() {
   const totalCheckedIn =
     attendance?.attendees.filter((a) => a.checkedIn).length ?? 0;
   const totalNotArrived = totalAttendees - totalCheckedIn;
+
+  // ── How old this list is, computed at paint time ────────────────────────────
+  //
+  // Read from the ref rather than from state so what appears is the age **now**,
+  // not the age at the last tick — and derived rather than stored, so there is
+  // exactly one expression in this file that can answer "how fresh is it".
+  //
+  // `null` means **not refreshed on this device for this night**, which is not
+  // the same fact as "refreshed a long time ago": before the first successful
+  // fetch nothing is rendered, because `updated 0s ago` would be a claim.
+  //
+  // The line this must not cross is already written on `lastFetchAtRef`: this
+  // number is shown, and the only branch it may ever drive is whether the
+  // staleness band appears. No verdict, no refusal and no admission reads it.
+  const listAgeMs =
+    lastFetchAtRef.current === null
+      ? null
+      : performance.now() - lastFetchAtRef.current;
+  const listAgeLabel = listAgeMs === null ? null : formatListAge(listAgeMs);
+
+  // ── D-38-09: when the list cannot be trusted. Derived, never stored ─────────
+  //
+  // Two ways to be stale, and the second is why `channelLive` exists at all:
+  //
+  // - **the channel is not live** — nothing will tell this device that the list
+  //   changed, so it is as old as its last fetch and will stay that way;
+  // - **the age is past `SAFETY_RELOAD_MS`** — five minutes is the threshold
+  //   because it is the point at which the parachute has **itself** already
+  //   failed. Before that, silence is accurate, and a screen that cried wolf
+  //   every time a night was opened would be a screen nobody reads by 01:00.
+  //
+  // `listAgeMs !== null` is the third clause and it is deliberate: before the
+  // first successful fetch of a night there is nothing to say about freshness,
+  // and the failure that matters there already has a voice — the three early
+  // returns of `fetchAttendance` each raise their own notice, and with the radio
+  // off the Offline pill is already saying so.
+  const listIsStale =
+    listAgeMs !== null && (!channelLive || listAgeMs > SAFETY_RELOAD_MS);
 
   const FILTER_TABS: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: "All", count: totalAttendees },
@@ -2818,11 +2980,42 @@ export default function ScannerClient() {
           </div>
         )}
 
-        {/* Progress bar for selected party */}
+        {/*
+          Progress bar for selected party — and, since D-38-10, the freshness
+          display and the manual reload.
+
+          It is a real `<button>`, not a click handler on a `<div>`. A `<div>` is
+          not reachable by keyboard, is not announced as an action, and takes no
+          focus ring — and the focus ring is what tells somebody in a dark room,
+          holding the phone in one hand, that they hit the thing they aimed at.
+          `w-full` and `py-2.5` are this file's own size for a one-handed target
+          (the torch toggle below).
+
+          Nothing was added to the busiest screen in the product: the row already
+          existed and is where staff already look. What it gained is a number and
+          a purpose.
+
+          The `aria-label` ends by naming what tapping **does**, because the
+          visible text says how old the list is and that is a different sentence.
+          It repeats the counts first for one reason: an `aria-label` on a button
+          **replaces** everything inside it for a screen reader, so a label that
+          named only the action would make the one screen carrying the counts the
+          one place a screen reader cannot read them.
+        */}
         {attendance && (
-          <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => requestReload("manual")}
+            aria-label={`Checked in ${totalCheckedIn} of ${totalAttendees}${
+              listAgeLabel ? `, ${listAgeLabel}` : ""
+            }. Reload the attendee list now.`}
+            className="mb-3 w-full text-left rounded-lg px-2 py-2.5 transition-colors hover:bg-card-border/20 active:bg-card-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted">Checked in</span>
+              <span className="text-xs text-muted">
+                Checked in
+                {listAgeLabel && <span className="ml-2">· {listAgeLabel}</span>}
+              </span>
               <span className="text-xs font-semibold text-foreground">
                 {totalCheckedIn} / {totalAttendees}
                 {(attendance.guestListCount ?? 0) > 0 && (
@@ -2847,7 +3040,7 @@ export default function ScannerClient() {
                 }}
               />
             </div>
-          </div>
+          </button>
         )}
 
         {/* Search */}
@@ -2935,6 +3128,55 @@ export default function ScannerClient() {
             aria-live="polite"
           >
             {cameraFault}
+          </div>
+        )}
+
+        {/*
+          ── F2 / D-38-19: the band is DERIVED state, and it is not in the array ──
+
+          It belongs to the family below — same container semantics, same two
+          tone class sets, same "stays until it is no longer true" behaviour, and
+          just as deliberately not a toast. It does **not** belong to that
+          family's storage, and the distinction is the whole point.
+
+          `setCacheNotices` replaces its array **wholesale** on every fetch,
+          including on each of the three early-return failure branches of
+          `fetchAttendance` (unreachable, non-ok, unparseable). A band pushed
+          into that array would therefore be erased by a **failed** refresh —
+          which is precisely the moment it is the only thing telling anyone that
+          the list cannot be trusted. It would vanish exactly when it mattered,
+          and would look correct in review.
+
+          So: computed at render from `channelLive` and the age, rendered here as
+          its own element, and `setCacheNotices` stays the single writer of its
+          own array. If you are here to "simplify" this into the notices array,
+          this paragraph is the reason not to.
+
+          Two absences that are also decisions:
+
+          - **Nothing at all while healthy.** Not an empty container, not a green
+            tick. The door's screen is the busiest in the product and every
+            element proposed for it has to justify itself against that; a badge
+            that says "fine" 99% of the night is how the 1% stops being read.
+          - **The band never names a permission** (D-38-04). It reports a
+            transport fact and an age, and nothing else. See `stalenessBandText`
+            for why the four causes behind that fact are not distinguishable
+            from here — and why guessing between them would put a second verdict
+            about the operator on a screen that already has one.
+        */}
+        {listIsStale && listAgeMs !== null && (
+          <div className="mb-4" role="status" aria-live="polite">
+            <button
+              type="button"
+              onClick={() => requestReload("band")}
+              className={`w-full rounded-xl border px-3 py-2.5 text-left text-xs leading-relaxed transition-colors ${
+                channelLive
+                  ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-500 active:bg-yellow-500/20"
+                  : "border-red-500/40 bg-red-500/10 text-red-400 active:bg-red-500/20"
+              }`}
+            >
+              {stalenessBandText(channelLive, listAgeMs)}
+            </button>
           </div>
         )}
 
