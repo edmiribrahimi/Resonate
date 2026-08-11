@@ -314,10 +314,30 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+ * D-40-09, in una riga sola con raggio d'azione su tutto il prodotto.
+ *
+ * Questa riga legava `body` al volto DISPLAY, quindi il prodotto rendeva la
+ * prosa in un carattere geometrico da titolo. E' la ragione per cui la pagina
+ * del menu aveva dovuto scrivere una deroga locale, con il motivo accanto:
+ * Inter, neutrale e molto leggibile in locali con poca luce. La deroga e'
+ * stata PROMOSSA, non moltiplicata — la sua frase vive ora sopra la chiamata
+ * dei font in src/app/layout.tsx.
+ *
+ * La coda di fallback NON si ripete qui: sta gia' dentro --font-sans, sopra.
+ * Ripeterla farebbe due copie, e due copie divergono.
+ *
+ * CONSEGUENZA, dichiarata invece che scoperta piu' tardi: da qui Orbitron non
+ * rende NULLA finche' una superficie non applica il ruolo display, e la prima
+ * sara' della fase 41. E' la forma voluta — 40-UI-SPEC.md §5.1 assegna al
+ * volto display il solo wordmark e i titoli di pagina. Il carattere resta
+ * caricato e il suo token resta dichiarato: cambia che si applica PER RUOLO
+ * invece che per default.
+ */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-orbitron), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
