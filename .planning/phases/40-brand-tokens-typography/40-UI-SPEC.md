@@ -325,10 +325,25 @@ the 4.5:1 that WCAG 1.4.3 asks. It is **not promoted and its value is not
 changed**; instead its use is constrained, because raising it would collapse the
 four-step ink ramp the artifact deliberately built.
 
-> **`--faint` is admissible only as: large text (≥ 24px, or ≥ 18.66px at weight
-> 600+), where the threshold is 3:1 and it clears on all four grounds; or a
-> non-informational graphic. Where a small label is genuinely tertiary, the
-> pairing to use instead is `--muted` on `--surface` — 6.78:1.**
+> **`--faint` is admissible only as: large text at **≥ 24px**, where the
+> threshold is 3:1 and it clears on all four grounds; or a non-informational
+> graphic. Where a small label is genuinely tertiary, the pairing to use instead
+> is `--muted` on `--surface` — 6.78:1.**
+
+**The 18.66px arm was removed on 2026-08-11, and the removal is the safer
+reading.** This spec first wrote *"≥ 24px, or ≥ 18.66px at weight 600+"*. WCAG
+2.1's *large scale* is 18pt (24px), **or** 14pt (18.66px) **bold** — and the
+conventional mapping of "bold" is CSS weight **700**. §5.4 of this document caps
+the type system at **600**, deliberately. So the second arm claimed a carve-out
+this token system can never satisfy: at 600 the text is semibold, not bold, and
+the 3:1 threshold does not apply to it.
+
+Keeping it would have been a rule that reads as permission and fails as
+protection — and it is **load-bearing for Phase 42**, which reads this ramp at
+arm's length in a dark room. Where an interpretation of a standard is contested
+and the consequence is legibility at the door, the contested arm goes. If the
+type system ever reaches weight 700, this is one line to restore, with the
+measurement redone.
 
 `--violet-deep` `#5B2A9E` measures **2.16 / 2.05 / 1.90 / 2.12** and is
 **declared but never used as a foreground or as a meaningful graphic**. Phase 36
@@ -955,10 +970,24 @@ structure.
    everywhere — not only here.
 3. **Structural `grep` gates are the repository's established form of proof** —
    seven `scripts/verify-*.mjs` today, and `verify-media-strip.mjs:1-35` is the
-   model, including its *what a green does NOT mean* section. The three gates
+   model, including its *what a green does NOT mean* section. The **four** gates
    this phase wants (§7 gradient allow-list, §8.5 single-stylesheet, §8.5
-   no-`var()`-fallback) should follow it, and each should say what its green does
-   not cover.
+   no-`var()`-fallback, and §3.4's separation gate below) should follow it, and
+   each should say what its green does not cover.
+
+   **§3.4's gate was missing from this list until 2026-08-11, and its absence was
+   the loop this document left open on itself.** §3.4 argues that the `--sem-*`
+   prefix *"is what lets a script hold it"* — and then commissioned no script.
+   DS-02 is the half of this phase that is easiest to lose silently, because
+   nothing breaks when a semantic drifts into a brand colour: the screen still
+   renders, and a state just starts looking like a format. The gate must assert
+   **both directions**:
+   - no `--sem-*` token is used where a format is identified, and
+   - no brand or format token is used to express a state.
+
+   And it must say what its green does **not** mean: a `grep` reads declarations,
+   not intent, so it cannot see a semantic expressed as a raw hex, nor a format
+   colour reached through a variable renamed on the way. Those stay human.
 4. **Two things here are provable only by a human, and both belong in the
    end-of-v1.5 batch:** the installed app's name and splash colour on a real home
    screen (§6.2, §6.3), and the version boundary at the door with the radio off

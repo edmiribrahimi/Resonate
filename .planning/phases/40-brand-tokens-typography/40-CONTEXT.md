@@ -214,11 +214,18 @@ da inventare: c'e' da **adottare**."*
 |---|---|
 | values declared in `globals.css` | 7, **none** from the brand palette |
 | files carrying a brand hex | **1** — `ColorSwatchPicker.tsx` |
-| `.tsx` files using default Tailwind colours | **73 of 181** |
+| `.tsx` files using default Tailwind colours | **74 of 181** |
 | `.tsx` files consuming the `accent` token | **101** |
 | typefaces loaded | **1** (Orbitron), plus **Inter** scoped to one page |
 
-The two numbers that shape the phase are **101** and **73**. The first is already
+The two numbers that shape the phase are **101** and **74**.
+
+*(This table first read **73**. Neither figure was wrong: the narrower grep behind
+73 covered `bg|text|border` over eleven palette names; `40-UI-SPEC.md:104`
+publishes the wider one — it adds `ring|from|to|via|fill|stroke|shadow|outline|
+decoration` and the full palette list — and reports **74**. The wider command is
+the one to trust because it is the one written down. Corrected here rather than
+left to disagree with the document that will be read next.)* The first is already
 tokenised — one value change reaches all of it. The second is not, and it is
 Phase 41's work, one whole surface at a time.
 
