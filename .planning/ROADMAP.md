@@ -646,8 +646,8 @@ conversion units are **not** covered by these twelve; see the note below.
 Plans:
 - [x] 41-01-PLAN.md — the control token, the two layout variables, the pointer variant, pinch-zoom
 - [x] 41-02-PLAN.md — G6 breakpoints and G7 no-viewport-read, the two gates with no exception
-- [ ] 41-03-PLAN.md — Button/Chip, and the navigation spine in two tiers with the door's wrapper
-- [ ] 41-04-PLAN.md — the toast off its third hard-coded 5rem, and FormatMarker
+- [x] 41-03-PLAN.md — Button/Chip, and the navigation spine in two tiers with the door's wrapper
+- [x] 41-04-PLAN.md — the toast off its third hard-coded 5rem, and FormatMarker
 - [ ] 41-05-PLAN.md — PageShell/Card/PageTitle, /payment/callback, and the conversion manifest
 - [ ] 41-06-PLAN.md — Input/Textarea/Select on a boundary that measures, and the three (auth) screens
 - [ ] 41-07-PLAN.md — G1 conversion and G4 container, over the manifest
@@ -742,7 +742,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 2/12 | In Progress|  |
+| 41. Shared Primitives & Three-Tier Layout | 4/12 | In Progress|  |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
