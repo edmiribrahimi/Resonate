@@ -54,8 +54,18 @@
  *   - Check D is an ABSENCE check on names that are currently unexposed. It
  *     says nothing about whether an EXPOSED token is used correctly — a
  *     semantic token painted onto a format, or the reverse, is a separate gate.
+ *   - CHECK F PROVES THE FILE, AND PROVES NOTHING ABOUT THE LABEL ON ANY HOME
+ *     SCREEN. On iOS NO manifest field updates after installation; on Android
+ *     `name` and `short_name` are not among the fields that trigger an update,
+ *     though `background_color` and `theme_color` are. So a green here is THE
+ *     FILE BEING RIGHT, NOT A PHONE BEING RIGHT — and the two are different
+ *     claims. The label under the icon on an already-installed app stays what
+ *     it was at install time, and the only way to see the new one is a fresh
+ *     install. That observation is H1, it is a human's, and IT GETS ONE
+ *     ATTEMPT PER DEVICE: once the app is reinstalled, the before-state is
+ *     gone. Nothing in this script can stand in for it.
  *
- * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
+ * ── THE SIX CHECKS ──────────────────────────────────────────────────────────
  *
  *   A. Every `var(--x)` inside the token file resolves — `--x` is declared in
  *      `:root`, or in the `@theme` block, or is one of the `next/font`
@@ -92,6 +102,78 @@
  *   E. No `var(--token, #hex)` fallback anywhere under `src/` or in the token
  *      file. The single sanctioned exception, `var(--new, var(--old))`, has no
  *      `#` in it and therefore cannot match.
+ *   F. `public/manifest.json` reads the brand and the ground, and the reversed
+ *      glyph appears exactly once. Added by plan 40-03 — see the section below,
+ *      because F exists for a different reason from A–E.
+ *
+ * ── WHY CHECK F IS HERE AT ALL, WHICH IS NOT THE REASON A–E ARE ─────────────
+ *
+ * A–E guard a rename that no build can see. F guards something simpler and
+ * more annoying: **JSON admits no comment.**
+ *
+ * `src/app/layout.tsx` can carry its brand rule as a comment directly above the
+ * value it governs, and it does. `public/manifest.json` cannot carry one at
+ * all. So the rule that governs its four brand-bearing values — the installed
+ * app name, the short name, the splash colour and the OS chrome colour — has
+ * nowhere in the file to live, and the only reader still looking in a year is a
+ * script. That is the whole argument, and it is the one `verify-media-strip.mjs`
+ * already makes for itself: where a convention cannot be written next to the
+ * thing, it has to be CHECKED.
+ *
+ * What F asserts:
+ *   - `name` and `short_name` are the brand with a normal `e`
+ *     (`.claude/rules/brand-visual-system.md`, gate *grafia del brand*);
+ *   - `background_color` and `theme_color` are `--ground`, compared
+ *     case-insensitively, so a correct value in the other case never goes red;
+ *   - `src/app/layout.tsx` carries the same ground on `viewport.themeColor` and
+ *     no longer carries the previous generation's black;
+ *   - the reversed glyph U+0258 appears in `src/` and `public/` in EXACTLY ONE
+ *     place, in `src/app/layout.tsx`, ON A COMMENT LINE.
+ *
+ * THE GLYPH CHECK IS WRITTEN TO STAY GREEN ON THE ONE CORRECT HIT, and that is
+ * not a detail — it is the difference between a gate and a nuisance. The single
+ * occurrence is inside the comment that EXPLAINS the rule; it is the rule's own
+ * documentation, not a violation.
+ *
+ * TWO CONSEQUENCES OF THAT, both deliberate:
+ *
+ *   - THE LINE NUMBER IS NOT PINNED. Plan 40-03's own criteria named
+ *     `layout.tsx:16`, and this very plan moved the line to `:56` by inserting
+ *     the font docblock above the metadata. A gate pinned to a line number
+ *     would have been invalidated by the commit that wrote it, would go red on
+ *     a correct file, and would be switched off. F asserts the FILE and the
+ *     COMMENT-LINE nature, and PRINTS the line it found.
+ *   - `public/images/` IS EXCLUDED. Artwork is exactly where the reversed glyph
+ *     is allowed to live — it is a drawn mark, and the logo is where it belongs.
+ *     Binary files are not scanned at all: the UTF-8 encoding of U+0258 is two
+ *     bytes that any image can contain by coincidence, and a gate that goes red
+ *     on a PNG teaches everyone to ignore it.
+ *
+ * And THIS SCRIPT NEVER WRITES THE GLYPH LITERALLY. It is built from its code
+ * point. A check whose only match is its own prohibition gets ignored the third
+ * time it goes red — the precedent is `ColorSwatchPicker.tsx:22-27`, which
+ * states its rule by OMITTING the string it forbids, and plan 40-02 already had
+ * to rephrase a comment for this exact reason.
+ *
+ * ── WHAT CHECK F DOES NOT CLOSE, enumerated so it is not ticked over ────────
+ *
+ * DS-06's own word is *everywhere*, and this phase's criterion 4 covers page
+ * titles, social previews and the installed app name. **A green on F must not
+ * be read as closing DS-06.** `40-UI-SPEC.md` §6.4 enumerates 25 further
+ * `Resonate` literals in 15 files, of which three classes are UNOWNED in v1.5:
+ *
+ *   - the Wallet pass — `lib/apple-wallet.ts:82` `organizationName`, `:88`
+ *     `logoText`. Visible on a member's phone, and a pass already issued is not
+ *     recalled;
+ *   - the payment sheet — `components/SumUpCardWidget.tsx:113` `merchantName`.
+ *     Changing a merchant name is a PAYMENTS decision, not a typography one;
+ *   - every email subject, body and footer — and the `From` name is really
+ *     `RESEND_FROM_EMAIL`, AN ENVIRONMENT VALUE SET ON VERCEL THAT NO COMMIT
+ *     CAN FIX. The brand's spelling in every outgoing mail is currently a
+ *     deployment variable.
+ *
+ * None of those is edited by plan 40-03, and this script does not check them:
+ * a check over files nobody owns produces a red nobody can clear.
  *
  * ── THE BOUNDARY TRAP, WHICH IS THE WHOLE DIFFICULTY OF CHECK D ─────────────
  *
@@ -164,8 +246,9 @@
  *   0  every check passed
  *   1  at least one failed — each is printed with its file and line
  *   2  nothing was measured: `src/` is missing, the token file has moved, the
- *      walk found no scannable file, or `:root` could not be located or is
- *      empty. No verdict is implied by a 2.
+ *      walk found no scannable file, `:root` could not be located or is empty,
+ *      or `public/manifest.json` is missing or is not parseable JSON. No
+ *      verdict is implied by a 2.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -264,6 +347,57 @@ export const KNOWN_TOKEN_NAMES = [
  * must not demand a `:root` declaration for them. Verified in the built output.
  */
 export const FONT_VARIABLES = ['--font-orbitron', '--font-inter'];
+
+// ── check F's subjects ─────────────────────────────────────────────────────
+
+/** The OS-read static asset. An exact path: the platform reads this one. */
+export const MANIFEST_FILE = 'public/manifest.json';
+
+/** The root layout — the only file allowed to carry the reversed glyph. */
+export const LAYOUT_FILE = 'src/app/layout.tsx';
+
+/** The brand, with a NORMAL `e`. `brand-visual-system.md`, gate *grafia del brand*. */
+export const BRAND_NAME = 're:sonate';
+
+/** `--ground`. Compared case-insensitively — the same colour, either case. */
+export const GROUND_HEX = '#0A0712';
+
+/** The previous generation's black, which must no longer appear in the layout. */
+export const RETIRED_BLACK = '#0a0a0a';
+
+/**
+ * The reversed `e`, U+0258 — BUILT FROM ITS CODE POINT, NEVER WRITTEN OUT.
+ *
+ * A check whose only match is its own prohibition gets ignored the third time
+ * it goes red. Writing the glyph here would put a second occurrence into the
+ * repository, and this script would then be reporting on itself the moment the
+ * scan scope widened by one directory.
+ */
+export const REVERSED_E = String.fromCodePoint(0x0258);
+
+/**
+ * Where the glyph is looked for — TEXT extensions only.
+ *
+ * U+0258 encodes to two UTF-8 bytes that any binary can carry by coincidence,
+ * so reading a PNG as text is a red on a correct file waiting to happen.
+ */
+export const GLYPH_EXTENSIONS = [
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.json',
+  '.html',
+  '.svg',
+  '.txt',
+  '.webmanifest',
+];
+
+/** Artwork is where the drawn mark is ALLOWED to live — the logo is its home. */
+export const GLYPH_EXCLUDED_PREFIXES = ['public/images/', 'public/icons/'];
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const STYLESHEET_EXTENSIONS = ['.css'];
@@ -447,6 +581,41 @@ if (!existsSync(`${ROOT}/${TOKEN_FILE}`)) {
 const files = listScannableFiles(SRC_DIR);
 if (files.length === 0) {
   refuse('the walk of `src/` found no scannable file. A vacuous green is not a green.');
+}
+
+/*
+ * Check F's two refusals, taken here with the others rather than mid-run: a
+ * refusal means the measurement DID NOT HAPPEN, and that reads better before
+ * any tick has been printed than after four of them.
+ */
+if (!existsSync(`${ROOT}/${MANIFEST_FILE}`)) {
+  refuse(
+    `${MANIFEST_FILE} does not exist. Check F is the only reader of a rule the file\n` +
+      '       itself cannot carry — JSON admits no comment — so a run without it would drop\n' +
+      '       the brand rule on the installed app name silently, which is the one outcome\n' +
+      '       this check exists to prevent. If the manifest genuinely moved, MANIFEST_FILE in\n' +
+      '       this script moves with it, in the same commit. Nothing was measured.'
+  );
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(readFileSync(`${ROOT}/${MANIFEST_FILE}`, 'utf8'));
+} catch (err) {
+  refuse(
+    `${MANIFEST_FILE} is not parseable JSON: ${err.message}\n` +
+      '       An unparseable manifest is not a failed check, it is an absent measurement —\n' +
+      '       and it is worse than either, because the browser will not install the app from\n' +
+      '       it at all. Fix the JSON, then re-run. Nothing was measured.'
+  );
+}
+
+if (!existsSync(`${ROOT}/${LAYOUT_FILE}`)) {
+  refuse(
+    `${LAYOUT_FILE} does not exist. Check F reads the browser chrome colour and the one\n` +
+      '       sanctioned occurrence of the reversed glyph from that exact path. Nothing was\n' +
+      '       measured.'
+  );
 }
 
 const tokenLive = liveLines(TOKEN_FILE);
@@ -667,16 +836,113 @@ if (fallbacks.length === 0) {
   failures.push('E');
 }
 
+// ── F. the manifest reads the brand and the ground; one glyph, in a comment ─
+const manifestProblems = [];
+
+for (const key of ['name', 'short_name']) {
+  if (manifest[key] !== BRAND_NAME) {
+    manifestProblems.push(
+      `${MANIFEST_FILE}: ${key} is ${JSON.stringify(manifest[key])}, expected "${BRAND_NAME}"`
+    );
+  }
+}
+
+for (const key of ['background_color', 'theme_color']) {
+  const value = manifest[key];
+  if (typeof value !== 'string' || value.toLowerCase() !== GROUND_HEX.toLowerCase()) {
+    manifestProblems.push(
+      `${MANIFEST_FILE}: ${key} is ${JSON.stringify(value)}, expected "${GROUND_HEX}" ` +
+        '(compared case-insensitively)'
+    );
+  }
+}
+
+const layoutRaw = readFileSync(`${ROOT}/${LAYOUT_FILE}`, 'utf8');
+if (!layoutRaw.includes(`themeColor: "${GROUND_HEX}"`)) {
+  manifestProblems.push(
+    `${LAYOUT_FILE}: viewport.themeColor is not \`themeColor: "${GROUND_HEX}"\``
+  );
+}
+if (layoutRaw.includes(RETIRED_BLACK)) {
+  manifestProblems.push(
+    `${LAYOUT_FILE}: still carries ${RETIRED_BLACK}, the previous generation's black`
+  );
+}
+
+/* The glyph, over text files under src/ and public/, artwork excluded. */
+const glyphScope = [
+  ...listScannableFiles(SRC_DIR, GLYPH_EXTENSIONS),
+  ...(existsSync(`${ROOT}/public`) ? listScannableFiles(`${ROOT}/public`, GLYPH_EXTENSIONS) : []),
+].filter((rel) => !GLYPH_EXCLUDED_PREFIXES.some((p) => rel.startsWith(p)));
+
+const glyphHits = [];
+for (const rel of glyphScope) {
+  const lines = readFileSync(`${ROOT}/${rel}`, 'utf8').split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!lines[i].includes(REVERSED_E)) continue;
+    glyphHits.push({ path: rel, line: i + 1, comment: isCommentLine(lines[i]) });
+  }
+}
+
+if (glyphHits.length !== 1) {
+  manifestProblems.push(
+    `the reversed glyph U+0258 appears on ${glyphHits.length} line(s), expected exactly 1: ` +
+      (glyphHits.length === 0
+        ? 'none found — the comment that documents the rule may have been deleted'
+        : glyphHits.map((h) => `${h.path}:${h.line}`).join(', '))
+  );
+} else {
+  const [hit] = glyphHits;
+  if (hit.path !== LAYOUT_FILE) {
+    manifestProblems.push(
+      `the reversed glyph U+0258 is at ${hit.path}:${hit.line}, expected inside ${LAYOUT_FILE}`
+    );
+  } else if (!hit.comment) {
+    manifestProblems.push(
+      `the reversed glyph U+0258 at ${hit.path}:${hit.line} is NOT on a comment line — it is ` +
+        'only sanctioned as the documentation of its own rule, never as a value'
+    );
+  }
+}
+
+if (manifestProblems.length === 0) {
+  const where = glyphHits[0];
+  console.log(
+    `  ✓ F  ${MANIFEST_FILE} reads the brand and the ground; ${LAYOUT_FILE} carries the same\n` +
+      `       chrome colour; the reversed glyph appears exactly once, at ${where.path}:${where.line}, ` +
+      'on a comment line'
+  );
+} else {
+  console.log(`  ✗ F  ${manifestProblems.length} problem(s) with the machine-read brand values:`);
+  for (const p of manifestProblems) console.log(`         ${p}`);
+  console.log(
+    '\n       These four values are read by the OPERATING SYSTEM, not by a page, and JSON\n' +
+      '       admits no comment — which is why this check exists rather than a note beside\n' +
+      '       them. The name is the label under the icon on a home screen; the two colours\n' +
+      '       are the PWA splash and the OS chrome, and left on the previous black they show\n' +
+      '       a seam at every launch that no surface conversion can ever reach.\n' +
+      '       The reversed glyph is a DRAWN mark: it lives inside the logo artwork and, in\n' +
+      '       exactly one place, inside the comment that explains that rule. In a name it\n' +
+      '       produces a word search cannot find and a screen reader says as a phoneme.\n' +
+      '       Fixing this file does NOT change an already-installed app: on iOS no manifest\n' +
+      '       field updates after install. That part is a human observation, not a check.\n'
+  );
+  failures.push('F');
+}
+
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');
 if (failures.length === 0) {
-  console.log('  TOKENS_OK — all five checks passed.');
+  console.log('  TOKENS_OK — all six checks passed.');
   console.log(
     '  Read the header before treating this as safety: a grep reads declarations, not\n' +
       '  intent. It is silent about a colour written as a raw hex, about a utility built by\n' +
       '  string concatenation, about a name renamed and never added to KNOWN_TOKEN_NAMES —\n' +
       '  and it never says a colour is RIGHT. Contrast is arithmetic; legibility at a dark\n' +
-      '  door is an observation.\n'
+      '  door is an observation.\n' +
+      '  And F proves THE FILE, not a phone: on iOS no manifest field updates after install,\n' +
+      '  so the label under the icon on an already-installed app is still the old one. That\n' +
+      '  is a human observation, it gets one attempt per device, and no green replaces it.\n'
   );
   process.exit(0);
 }
