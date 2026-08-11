@@ -281,7 +281,8 @@ export default async function EventDetailPage({
   const isAuthenticated = !!user;
 
   // Role, status and capabilities from the SESSION, not from an inbound header.
-  const { capabilities, role, status } = await getAccessContext();
+  const { capabilities, role, status, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // ⚠️ VENUE SECRECY. These two keep their `role` / `status` form and only
   // their SOURCE changed — and that is deliberate, because they are NOT merely
@@ -1272,6 +1273,10 @@ export default async function EventDetailPage({
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

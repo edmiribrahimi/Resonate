@@ -16,7 +16,8 @@ export default async function AttendancePage() {
   // on this page branches on them, and no capability key belongs in this file.
   // Only their source changed, from an inbound header to the session. The
   // route itself stays gated by the middleware on `membership.card.view`.
-  const { role, status } = await getAccessContext();
+  const { role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // TODO: fetch attendance records from Supabase
   const attendances: { event_title: string; date: string }[] = [];
@@ -63,6 +64,10 @@ export default async function AttendancePage() {
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

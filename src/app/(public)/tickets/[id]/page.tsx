@@ -30,7 +30,8 @@ export default async function TicketPage({
   // below reads either: the ticket is fetched by `.eq("user_id", user.id)` and
   // the venue line renders `event_parties.venue_text` for the holder of that
   // ticket, exactly as before. This conversion touches neither.
-  const { role, status } = await getAccessContext();
+  const { role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // Fetch ticket with joins including party data
   const { data: ticket } = await supabase
@@ -212,6 +213,10 @@ export default async function TicketPage({
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );

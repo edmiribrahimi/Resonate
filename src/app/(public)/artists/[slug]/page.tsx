@@ -19,7 +19,8 @@ export default async function ArtistPage({
   // changes what this page fetches or shows about an artist; `role` decides
   // whether the edit affordance below is drawn, and `status` only reaches the
   // nav. See the comment on that affordance for why the predicate is untouched.
-  const { role, status } = await getAccessContext();
+  const { role, status, capabilities, liveAssignmentCapabilities } =
+    await getAccessContext();
 
   // Fetch artist
   const { data: artist } = await supabase
@@ -172,6 +173,10 @@ export default async function ArtistPage({
       <MobileNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
+        capabilities={[...capabilities]}
+        liveAssignmentCapabilities={
+          liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
+        }
       />
     </div>
   );
