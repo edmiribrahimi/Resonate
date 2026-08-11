@@ -157,10 +157,39 @@ serwist.addEventListeners();
  * page this matters for is `/door`:
  *
  *   Night N−1: `/door` is opened online on the staff phone. Its document
- *   enters `pages`, its `<link>` naming a stylesheet. A release ships. Night
- *   N, within 24 h, radio off: the cached document is served and the
- *   stylesheet it names is not on the device. An unstyled door, in a dark
+ *   enters a document cache, its `<link>` naming a stylesheet. A release
+ *   ships. Night N, within 24 h, radio off: the cached document is served and
+ *   the stylesheet it names is not on the device. An unstyled door, in a dark
  *   room, in front of a queue.
+ *
+ * ── WHICH bucket that document is actually in, which is not the obvious one ─
+ *
+ * `others`, not `pages` — and this cost one shipped defect to learn, so it is
+ * written here rather than left to be re-derived.
+ *
+ * The `pages` rule reads `request.headers.get("Content-Type")`
+ * (`@serwist/next/dist/index.worker.js:218`) — the header of the REQUEST, not
+ * of the response. A navigation is a GET, a GET has no body, and a request
+ * with no body carries no `Content-Type`. The predicate is therefore false for
+ * every document, and the request falls through to the catch-all same-origin
+ * rule at `:230`, `cacheName: "others"`.
+ *
+ * Traced for `/door`: no file extension, not under `/api/`, no `RSC` header,
+ * no `Content-Type` → **`others`**.
+ *
+ * A purge naming only `pages`, `pages-rsc` and `pages-rsc-prefetch` therefore
+ * pays this mechanism's whole cost — offline client-side navigation after a
+ * release does disappear, because `pages-rsc` really is emptied — and delivers
+ * none of its benefit, because the document that outlives the stylesheet was
+ * never in any of the three. `pages` is kept in the list anyway: it costs
+ * nothing, and it stops being a no-op the day Serwist fixes that predicate.
+ *
+ * A `caches.delete` for a bucket that does not exist resolves **`false`**, not
+ * a rejection. So `Promise.all` here can resolve `[false, false, false, false]`
+ * and look exactly like success. That is why H3 step 4 of
+ * `40-RELEASE-PASS.md` reads the **bucket list in Cache Storage**, and never a
+ * log line: in a project with no error tracking, a log is a place nobody
+ * looks, and a boolean nobody reads is not observability.
  *
  * After this purge a page renders WHOLE, or it does not render at all. It
  * never renders half. That is DS-10, and D-40-13 is the decision that chose
@@ -257,8 +286,16 @@ serwist.addEventListeners();
  */
 type ExtendableActivateEvent = Event & { waitUntil(promise: Promise<unknown>): void };
 
+/**
+ * `others` is first because it is the one that actually holds documents — see
+ * the docblock above. The other three are kept for the generations they do
+ * hold (`pages-rsc`, `pages-rsc-prefetch`) and for the day the `pages`
+ * predicate is fixed upstream.
+ */
+const DOCUMENT_CACHES = ["others", "pages", "pages-rsc", "pages-rsc-prefetch"];
+
 self.addEventListener("activate", (event) => {
   (event as ExtendableActivateEvent).waitUntil(
-    Promise.all(["pages", "pages-rsc", "pages-rsc-prefetch"].map((name) => caches.delete(name))),
+    Promise.all(DOCUMENT_CACHES.map((name) => caches.delete(name))),
   );
 });

@@ -170,6 +170,23 @@ Result: pending
 2. **It renders fully styled, or it does not render at all. It never renders unstyled,
    never renders half, and never reloads itself.**
 3. Record **which** of those happened, verbatim, plus the wall-clock time.
+4. **Read the bucket list, not a log.** With the device inspected from a desktop
+   (Safari Web Inspector or Chrome DevTools → Application → Cache Storage), record
+   **which of `others`, `pages`, `pages-rsc`, `pages-rsc-prefetch` are present** after
+   the activation.
+
+   > This step is read from Cache Storage and never from console output, and the
+   > reason is mechanical: `caches.delete` on a bucket that does not exist resolves
+   > **`false`**, not a rejection. The purge can therefore resolve
+   > `[false, false, false, false]` and be indistinguishable from success. A boolean
+   > nobody reads is not observability, and in a project with **no error tracking** a
+   > log is a place nobody looks. The bucket list is a source other than the one that
+   > performed the action — which is the only kind of confirmation that counts.
+   >
+   > `others` is the bucket that matters. `pages` is expected to be **absent even
+   > before the purge**: Serwist's `pages` rule matches on the *request's*
+   > `Content-Type`, which a GET navigation does not have, so documents land in
+   > `others`. Its presence in the purge list is forward-looking, not load-bearing.
 
 > **How to read the outcome, decided in advance so the reading is not negotiated after
 > the fact:**
@@ -230,7 +247,7 @@ One row per observation. Every `Result` cell reads `pending` until the sitting f
 | H3.1 | `/door` warmed online, fully styled, before the release | precondition — criterion 5 | pending | |
 | H3.2 | the release shipped, with at least one style changed | precondition — criterion 5 | pending | |
 | H3.3 | returned within 24 h, radio off — aeroplane mode or otherwise, stated | precondition — criterion 5 | pending | |
-| H3.4 | which of the three outcomes happened, verbatim | **criterion 5 (DS-10)** | pending | |
+| H3.4 | which of the three outcomes happened, verbatim, and which document buckets survived | **criterion 5 (DS-10)** | pending | |
 | H3.5 | a queued scan still present, radio still off | T-40-25 (the IndexedDB boundary) | pending | |
 | H4 | `tnum` on a figure column in the interface face | optional — moot for DS-05 | pending | |
 
