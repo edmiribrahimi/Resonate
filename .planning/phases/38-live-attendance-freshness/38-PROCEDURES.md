@@ -4,6 +4,7 @@ plan: 01
 written: 2026-08-11
 executed_by: plan 38-07
 status: all pending
+mechanical_preconditions_run: 2026-08-11T11:49Z
 ---
 
 # Phase 38 — Door Procedures P1 … P7
@@ -26,6 +27,17 @@ status: all pending
 > with the observation and the wall-clock time. An empty Result is an unrun
 > procedure and must read as one — a table of ticks nobody earned is worse than
 > an empty table, because it closes a phase.
+>
+> **Status after plan 38-07's first sitting, 2026-08-11: all seven are still
+> `pending`, and each now carries the reason it is.** The plan's one mechanical
+> task was run in full — the build, every **G** extraction, every **S** probe —
+> and none of it touches P1 … P7, which is the point of their existing. Six of
+> the seven end at a device, a pocket or a session this repository cannot mint;
+> the seventh, **P6**, writes to production and **has no authorisation**: the
+> owner's permission of 2026-08-11 was scoped to plan 38-04's single DDL
+> transaction and is recorded as spent and exhausted. A `pending` here is a
+> statement that the observation has not been made — it is never a
+> verified-by-inspection in disguise.
 
 ---
 
@@ -41,6 +53,33 @@ Each procedure has five fixed sections.
   the device could confirm or deny. "It felt fast" is not an observation.
 - **Record** — what is written down, including the wall-clock time.
 - **Result** — left empty until performed.
+
+---
+
+## The preconditions, read on the day — and what they do not license
+
+Plan 38-07 ran the phase's whole mechanical set (**B**, **G**, **S**) in one
+sitting on **2026-08-11**, before presenting P1 … P7. The full commands and
+their output are in `38-07-SUMMARY.md`; the two readings that are preconditions
+of these procedures rather than evidence for a requirement are repeated here,
+because a procedure run against a suspended Realtime or an unapplied migration
+would produce a Result that means nothing:
+
+| Precondition | Read at | Value |
+|---|---|---|
+| `GET /v1/projects/{ref}/config/realtime` → `suspend` | **2026-08-11T11:49:45Z** | **`false`** — Realtime is not suspended |
+| One `SELECT` policy on `realtime.messages`, zero write policies, four triggers on the four tables | 2026-08-11T11:49:42Z | present, unchanged from plan 38-04's after-figure |
+
+`suspend: true` at 22:00 would make this whole phase a no-op with no error
+anywhere, which is why the reading carries its time. **It was read hours before
+any of these procedures; it is not a reading taken at the door, and it does not
+transfer to a later night.** Re-read it on the day.
+
+**And what none of it settles.** Every **S** probe runs through the Management
+API as `supabase_read_only_user`, which **bypasses RLS**. Not one of them shows
+that a real member session is refused. **LIVE-06 is closed by P7 and by nothing
+before it** — and LIVE-01 by P5 and P6, because a trigger in `pg_trigger` is not
+a message on a wire.
 
 ---
 
@@ -70,7 +109,16 @@ stays up: this is the *never established* case, not the offline case.
 appeared, and the verdict latency of observation 2 next to a healthy-channel
 scan for comparison.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*, not
+verified-by-inspection.
+
+*Reason (2026-08-11, plan 38-07).* P1 needs a desktop browser with request
+blocking active on the Realtime socket, a door opened behind that block, a valid
+code scanned, and a person watching a screen for the five minutes it takes the
+band to appear. Every one of those is an observation at a device. The executing
+agent has no browser, no camera and no code to scan, and the one thing it could
+have produced — a claim that the band appears at five minutes — is exactly the
+claim `38-VALIDATION.md` exists to stop being written without having been seen.
 
 ---
 
@@ -95,7 +143,14 @@ open. The page is never reloaded by hand during this procedure.
 **Record** — the wall-clock time of observations 2 and 3, and the elapsed time
 between restoring the network and the counter resetting.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07).* P2 requires a network actually being cut and
+restored under a live door, and its load-bearing observation — the reload that
+fires **with nobody touching the screen** — is a claim about the absence of a
+human action. That is precisely the observation a machine cannot make on its own
+behalf: it can produce the reload, and it cannot testify that no thumb caused it.
+LIVE-03 stands on this one.
 
 ---
 
@@ -131,7 +186,18 @@ observation 2, and whether observation 2 arrived by the resume path or by the
 parachute. If it arrived by the parachute, A1 is **false** and that is the
 finding — it is not a failed run to repeat until it passes.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07).* P3 needs the actual staff phone, the door
+installed to the home screen, and **at least 65 minutes of it locked in a
+pocket** — the floor is past the access token's 3600-second life, so nothing
+shorter tests the case. It cannot be simulated from a desk, and that is not a
+convenience argument: Safari and iOS Safari implement neither `freeze` nor
+`resume`, so the wake signal is composed by hand and **only the device says
+whether the composition works**. **Assumption A1 therefore remains open** — and
+it is open in the direction that matters, because if the resume path never fires
+the parachute still refreshes the list at five minutes and the screen looks
+correct the whole time.
 
 ---
 
@@ -158,7 +224,15 @@ channel" from "the channel happens to be fast".
 **Record** — the verdict latency under throttling beside the unthrottled one,
 both measured on the offline path, and the wall-clock time.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07).* P4 is a **latency comparison** between two
+scans of a real code, one throttled and one not. It has no structural
+counterpart: the deferral gate can be shown to exist by grep — and it was, see
+`38-07-SUMMARY.md` § **G2** — but whether it actually keeps `mergeAttendees`'
+`readwrite` transaction out of the verdict's path is a number measured at a
+device with a camera. A structural green here would be the most misleading of
+all the greens in this phase, because Pitfall 6 is invisible to it.
 
 ---
 
@@ -194,7 +268,22 @@ B, measured with a clock and written as a number, plus the wall-clock time.
 Repeat three times and record all three elapsed times; a single sample cannot
 distinguish 2 seconds from luck.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07).* P5 needs **two devices** and **two accounts**,
+each holding `door.operate` for the same night, plus a valid code to check in on
+one of them. The executing agent has none of the three, and it cannot mint a
+member session — that is the same limit that leaves LIVE-06 open.
+
+**This is the pending that costs the most, and it should be read as a hole and
+not as a formality.** P5 is the only check in the phase that can see **Pitfall
+2**: if `private: true` fails to match on both sides, or the topic's case does
+not match, the channel joins, `subscribe` reports `SUBSCRIBED`, the band never
+appears — because the channel genuinely *is* live — no policy error is raised
+anywhere, and the list still only ever changes every five minutes. **The phase
+looks finished and LIVE-01 is not delivered.** Nothing already run in plan 38-07
+would notice: the build is green, the five extractions are clean, the policy is
+in production and the four triggers exist.
 
 ---
 
@@ -288,7 +377,31 @@ was serving; the confirming probe's output; and the moment the authorisation was
 spent. A reload that arrived at five minutes is recorded as five minutes, not as
 a pass.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07), and this one is a refusal rather than an
+inability.* P6 **writes a row to production**, and the only authorisation this
+phase has ever held was the one granted on 2026-08-11 for plan 38-04 — scoped to
+*one DDL transaction, zero row writes*, spent at **11:15:24 UTC** and **recorded
+as exhausted** in `38-04-SUMMARY.md`. It does not stretch to creating a
+guest-list entry, and an authorisation given against a description stops covering
+anything the moment the description stops matching.
+
+So P6 was **not attempted**, and no snapshot was taken either — a snapshot is the
+first of the four rules, and taking it would have been the first step of a
+procedure that has no permission to run. The four rules are already written into
+the procedure above and stay there for whoever does run it: snapshot the cascade
+set enumerated from `pg_constraint`, capture the primary key at creation, delete
+by that key, confirm from a source other than the one acted on. They are the
+2026-08-10 incident written as a procedure — 63 rows across seven tables, no
+PITR, gone.
+
+**What stays unmeasured, and it is two distinct defects.** Act one is **Pitfall
+1**: a row carrying no party emitting to `door:NULL` reaches nobody, and the
+5-minute parachute keeps every screen looking right, so LIVE-01 degrades into
+LIVE-04 in silence. Act two is **D-38-24**: the origin door refreshing at five
+minutes instead of live, which looks like success precisely because both doors
+end up correct.
 
 ---
 
@@ -324,7 +437,21 @@ D-38-04 forbids the door from turning this status into a sentence about the
 operator: the same string has at least four causes, and three of them are not
 about who you are.
 
-**Result** — *pending*
+**Result** — **pending**, and pending means *not verified*.
+
+*Reason (2026-08-11, plan 38-07).* P7 requires **an approved `member` account's
+own session**, driven from a scratch page or the Realtime Inspector. A service
+key will not do and neither will another account's token: with either of those
+the procedure proves nothing about the boundary it exists to test. The executing
+agent cannot mint that session, and every probe available to it goes through the
+Management API as `supabase_read_only_user`, **which bypasses RLS**.
+
+**So LIVE-06 is open.** What plan 38-04 measured and plan 38-07 re-measured is
+that exactly one `SELECT` policy exists on `realtime.messages`, that its rendered
+`qual` names `private.has_capability` and the literal `'door.operate'`, and that
+no write policy exists at all. Every one of those is a statement about the
+catalogue. **None of them is a statement about an authenticated browser being
+refused**, and no probe reachable from here can be.
 
 ---
 
@@ -356,3 +483,39 @@ a gap against the offline queue, which is prior art from earlier phases and not
 this phase's subject. Recorded here so a later reader finds a stated gap instead
 of a missing procedure, and so plan 38-07 or the verifier can decide whether to
 run it.
+
+**Plan 38-07 did not run it, and did not close the divergence either.** It cannot
+choose between the two descriptions on evidence, because neither version of P4
+has been performed; picking one now would be an editorial decision dressed as a
+finding. It stays open for the verifier, alongside the seven pendings below.
+
+---
+
+## Status board — plan 38-07, first sitting, 2026-08-11
+
+The eighth row is not one of P1 … P7. `38-VALIDATION.md` carries the LIVE-05
+"open the night, watch N climb, tap it, N returns to 0" check as a **D** row of
+its own, one-handed at minimum brightness, and it is tracked here so it cannot
+fall between the procedures and the requirement map.
+
+| Check | Requirement | State | Why |
+|---|---|---|---|
+| **P1** | LIVE-02, LIVE-04, LIVE-05 | **pending** | needs a browser with the socket blocked, a scan, and five minutes of watching |
+| **P2** | LIVE-02, LIVE-03, LIVE-05 | **pending** | needs a real network cut and restored; the load-bearing half is "nobody touched the screen" |
+| **P3** | LIVE-03, assumption **A1** | **pending** | needs the staff phone locked in a pocket ≥ 65 min; cannot be simulated from a desk |
+| **P4** | LIVE-02, Pitfall 6 | **pending** | a latency comparison at a device; the structural green is the misleading one |
+| **P5** | LIVE-01, Pitfall 2 | **pending** | needs two devices and two `door.operate` accounts on one night |
+| **P6** | LIVE-01, Pitfall 1, D-38-24 | **pending — and refused** | writes to production; the 2026-08-11 authorisation was scoped to plan 38-04 and is spent |
+| **P7** | LIVE-06, Pitfall 5 | **pending** | needs a real approved `member` session; every probe here bypasses RLS |
+| the LIVE-05 tap check | LIVE-05 | **pending** | a question about a thumb, in the dark, at minimum brightness |
+
+**Still open, and open is the honest word for each:** assumption **A1** (P3),
+assumption **A6** — the band staying hidden while the channel is down (P1 (c) and
+P2 (b)), assumption **A5** — the mid-night revocation exposure, which
+`38-VALIDATION.md` records as accepted rather than closed, and the P4 divergence
+above.
+
+**What plan 38-07 did settle** is in `38-07-SUMMARY.md`: the build, nine **G**
+structural checks and eight **S** probes, each pasted with its output and its
+before-figure. None of that reaches a requirement on its own. It is the floor
+these procedures stand on, not a substitute for them.
