@@ -28,11 +28,39 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 38 (Live Attendance Freshness) — EXECUTING
+Phase: 38 (Live Attendance Freshness) — **SEI PIANI SU SETTE, IL SETTIMO E' FERMO A UN CHECKPOINT UMANO**
+
+**Fase 38, stato reale al 2026-08-11.** 38-01…38-06 eseguiti, uniti e con build
+verde dopo ogni fusione d'onda. **38-07 e' fermo a 1 task su 3**: ha raccolto le
+prove meccaniche (9 controlli G, 8 sonde S, build 0) e si e' fermato ai due
+checkpoint bloccanti. **P1…P7 sono tutte `pending`, nessuna eseguita.**
+
+**Attenzione al contatore del frontmatter.** `completed_plans` conta i SUMMARY.md
+su disco, e 38-07 ne ha scritto uno *fermandosi al checkpoint* — quindi il numero
+dice 7 su 7 mentre il lavoro e' 6 su 7. La riga vera e' questa, non quella.
+
+- **Migration `20260811120000_live_attendance_channel.sql` APPLICATA in
+  produzione**, versione `20260811111530`, dall'endpoint migrations. Zero righe
+  mosse, **dimostrato**: set a cascata camminato su 102 vincoli letti da
+  `pg_constraint`, 27 tabelle, 81 righe prima e 81 dopo. Le sette tabelle
+  dell'incidente D12 sono dentro il perimetro misurato.
+- Autorizzazione del proprietario a scrivere in produzione: concessa il
+  2026-08-11 per quella sola applicazione, **spesa alle 11:15:24 UTC ed
+  esaurita**. **P6 ne richiede una nuova e separata** — l'esecutore di 38-07 si e'
+  fermato prima anche dello snapshot, che sarebbe stato il primo passo di una
+  procedura senza permesso di partire.
+- **Nessun requisito e' chiuso da cio' che gira qui.** Ogni sonda passa dalla
+  Management API come `supabase_read_only_user`, che **scavalca la RLS**: LIVE-06
+  resta aperto fino a P7. Quattro trigger in `pg_trigger` non sono un messaggio
+  su un filo — LIVE-01 resta aperto fino a P5.
+- Due buchi che **solo** una procedura umana puo' vedere: il canale che si unisce,
+  dice `SUBSCRIBED` e non consegna nulla (solo P5), e il fan-out sulla notte
+  assente che degrada LIVE-01 in LIVE-04 senza un errore da nessuna parte (solo
+  P6). In entrambi i casi il paracadute da 5 minuti tiene ogni schermo giusto.
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 1 of 7
+Plan: 6 of 7 eseguiti; 38-07 fermo a 1 task su 3 (checkpoint bloccante)
 (contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
 uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
 lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Quindici
