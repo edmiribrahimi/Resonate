@@ -236,4 +236,259 @@ COMMENT ON FUNCTION private.notify_attendance_changed(uuid, uuid) IS
 
 REVOKE ALL ON FUNCTION private.notify_attendance_changed(uuid, uuid) FROM public, anon, authenticated;
 
+-- =============================================================================
+-- 2. public.door_scan_events — one trigger, and it is the whole door
+-- =============================================================================
+--
+-- ── THE `SECURITY` CLAUSE ON ALL FOUR WRAPPERS, IN ONE SENTENCE ─────────────
+--
+-- All four are `SECURITY DEFINER` because plan 38-01 measured `realtime.send`
+-- to be `prosecdef = false` on this project, so a `SECURITY INVOKER` wrapper
+-- would have its emit refused by RLS-with-no-INSERT-policy for any writing role
+-- without `rolbypassrls`, and `realtime.send`'s own `EXCEPTION WHEN OTHERS THEN
+-- RAISE WARNING` would swallow the refusal — no error, no emit, and a list that
+-- only ever changes every five minutes. The full measurement, including why
+-- today's service-client callers do not settle the question, is in section 1.
+--
+-- ── NO `WHEN` CLAUSE ON ANY OF THE FOUR, AND THE REASON IS THE ASYMMETRY ────
+--
+-- None of these four triggers carries a `WHEN` condition, and that is D-38-21
+-- rather than an oversight. A filter slightly too narrow drops a real change
+-- and leaves a STALE LIST AT A DOOR; a filter slightly too wide costs ONE GET,
+-- which the client's coalescing debounce absorbs. `checkin-offline.md` already
+-- states which direction to err in when the two errors are unequal, and it
+-- points the same way here.
+--
+-- ── WHY THIS TABLE ALONE COVERS THE ENTIRE DOOR ─────────────────────────────
+--
+-- Ticket check-in, membership admission and undo all write a row here, and the
+-- offline queue drain POSTs to the check-in route — so it arrives through the
+-- same path and `src/lib/offline/sync-manager.ts` needs no change at all.
+--
+-- ── AND WHY IT HAS NO UPDATE BRANCH WHILE THE OTHER THREE DO ────────────────
+--
+-- The asymmetry is deliberate, and it is written down so the next reader does
+-- not add the missing branch and then wonder why it never fires:
+-- `public.door_scan_events` is APPEND-ONLY BY CONSTRUCTION — it carries no
+-- write policy at all (`20260805120000_door_scan_events.sql:158-163`,
+-- re-stated at `20260809004000_door_scan_events_by_assignment.sql:198-210`) —
+-- so there is no update whose old night could differ from its new one, and no
+-- delete whose `OLD` record would have to be read. `NEW.party_id` is `NOT NULL`
+-- on this table, so the fan-out branch of the helper is never reached from here.
+
+CREATE OR REPLACE FUNCTION public.door_scan_events_notify_attendance()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  PERFORM private.notify_attendance_changed(NEW.party_id, NEW.event_id);
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.door_scan_events_notify_attendance() IS
+  'Tells the night named by door_scan_events.party_id that its attendee list changed. AFTER INSERT '
+  'only - the table is append-only by construction - so it reads NEW and never OLD. It writes '
+  'nothing and returns NULL: it cannot alter, delay or fail the check-in that fired it.';
+
+DROP TRIGGER IF EXISTS door_scan_events_notify_attendance ON public.door_scan_events;
+
+CREATE TRIGGER door_scan_events_notify_attendance
+  AFTER INSERT ON public.door_scan_events
+  FOR EACH ROW
+  EXECUTE FUNCTION public.door_scan_events_notify_attendance();
+
+-- =============================================================================
+-- 3. public.tickets — bought, checked in, moved between nights, or deleted
+-- =============================================================================
+--
+-- ── THE `TG_OP` BRANCH IS NOT A STYLE CHOICE ───────────────────────────────
+--
+-- On `DELETE` the `NEW` record does not exist and referencing it raises; on
+-- `INSERT` the `OLD` record does not. `COALESCE(NEW.party_id, OLD.party_id)` is
+-- NOT a shorthand for the branch in plpgsql — it is exactly the error the
+-- branch exists to avoid, because the missing record is not a null value.
+--
+-- ── D-38-24: ON UPDATE, THE NIGHT THAT LOST AN ATTENDEE IS TOLD TOO ────────
+--
+-- Without the second call below, a ticket moved from one night of an event to
+-- another notifies only the DESTINATION door. The door that just LOST an
+-- attendee hears nothing and falls back to the five-minute parachute — and for
+-- those five minutes it reads a person who is no longer expected there as
+-- expected. Same hiding shape as the fan-out defect in section 1: every screen
+-- looks right while LIVE-01 has quietly become LIVE-04 for one door.
+--
+-- Three things about the guard, each of which is the reason it is written this
+-- way and not another:
+--
+--   * `IS DISTINCT FROM`, NOT `<>`. `party_id` is nullable on this table, and
+--     `<>` answers NULL — neither true nor false — on precisely the transitions
+--     that matter: a ticket leaving the event level for a single night, or
+--     arriving at it. `IS DISTINCT FROM` treats null as a value and answers.
+--   * THE GUARD IS WHAT KEEPS THE HOT PATH AT ONE EMIT. The door's own check-in
+--     updates this table on every scan without touching the night or the event,
+--     so the comparison is false and exactly one message goes out — the same as
+--     it would without the branch. The second emit happens only on a genuine
+--     reassignment, which is rare and is the case that is invisible today.
+--   * THE OLD BRANCH INHERITS THE FAN-OUT FOR FREE. Passing the OLD pair to the
+--     same helper means an old `party_id` of NULL fans out over every night of
+--     the OLD event, which is correct: an event-level ticket that becomes a
+--     single-night ticket was valid for all of them. It also covers a ticket
+--     moved between two EVENTS, since the old event id travels with it.
+--
+-- The guard lives in the FUNCTION BODY and not on the trigger. Narrowing the
+-- trigger to `AFTER UPDATE OF party_id` would stop an update to any other
+-- column — `checked_in` above all — from emitting at all, which is the single
+-- most frequent real change this whole file exists to carry.
+
+CREATE OR REPLACE FUNCTION public.tickets_notify_attendance()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_party_id uuid;
+  v_event_id uuid;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_party_id := OLD.party_id;
+    v_event_id := OLD.event_id;
+  ELSE
+    v_party_id := NEW.party_id;
+    v_event_id := NEW.event_id;
+  END IF;
+
+  PERFORM private.notify_attendance_changed(v_party_id, v_event_id);
+
+  IF TG_OP = 'UPDATE'
+     AND (OLD.party_id, OLD.event_id) IS DISTINCT FROM (NEW.party_id, NEW.event_id)
+  THEN
+    PERFORM private.notify_attendance_changed(OLD.party_id, OLD.event_id);
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.tickets_notify_attendance() IS
+  'Tells a night that its attendee list changed after a write to public.tickets. Reads party_id and '
+  'event_id from OLD on DELETE and from NEW otherwise; on a reassignment it also tells the night '
+  'that lost the holder. It writes nothing and returns NULL, so it cannot alter, delay or fail a '
+  'purchase, a check-in or a refund.';
+
+DROP TRIGGER IF EXISTS tickets_notify_attendance ON public.tickets;
+
+CREATE TRIGGER tickets_notify_attendance
+  AFTER INSERT OR UPDATE OR DELETE ON public.tickets
+  FOR EACH ROW
+  EXECUTE FUNCTION public.tickets_notify_attendance();
+
+-- =============================================================================
+-- 4. public.guest_list_entries — the unpaid entrance, same four verbs
+-- =============================================================================
+--
+-- `party_id` is nullable here too (`20260310000000_guest_list.sql:46-47`), and
+-- the endpoint that composes the door's list queries this table with the same
+-- NULL-tolerant predicate it uses for tickets — so an entry with no night is
+-- valid for every night of its event and the fan-out applies unchanged.
+--
+-- The `TG_OP` branch and the old-pair guard are the same as section 3, for the
+-- same two reasons: `NEW` does not exist on a delete, and a name moved between
+-- two nights leaves one door reading somebody it should no longer expect.
+
+CREATE OR REPLACE FUNCTION public.guest_list_entries_notify_attendance()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_party_id uuid;
+  v_event_id uuid;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_party_id := OLD.party_id;
+    v_event_id := OLD.event_id;
+  ELSE
+    v_party_id := NEW.party_id;
+    v_event_id := NEW.event_id;
+  END IF;
+
+  PERFORM private.notify_attendance_changed(v_party_id, v_event_id);
+
+  IF TG_OP = 'UPDATE'
+     AND (OLD.party_id, OLD.event_id) IS DISTINCT FROM (NEW.party_id, NEW.event_id)
+  THEN
+    PERFORM private.notify_attendance_changed(OLD.party_id, OLD.event_id);
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.guest_list_entries_notify_attendance() IS
+  'Tells a night that its attendee list changed after a write to public.guest_list_entries. Reads '
+  'party_id and event_id from OLD on DELETE and from NEW otherwise; on a reassignment it also tells '
+  'the night that lost the name. It writes nothing and returns NULL.';
+
+DROP TRIGGER IF EXISTS guest_list_entries_notify_attendance ON public.guest_list_entries;
+
+CREATE TRIGGER guest_list_entries_notify_attendance
+  AFTER INSERT OR UPDATE OR DELETE ON public.guest_list_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION public.guest_list_entries_notify_attendance();
+
+-- =============================================================================
+-- 5. public.ticket_refunds — how a night learns a holder is no longer expected
+-- =============================================================================
+--
+-- THE COLUMN NAMES ARE DIFFERENT ON THIS TABLE and getting them wrong is the
+-- easy mistake here: the night is `refunded_party_id` and the event is
+-- `refunded_event_id` (`20260805120000_door_scan_events.sql:198-201`). There is
+-- no `party_id` and no `event_id` on `public.ticket_refunds`.
+--
+-- BOTH ARE NULLABLE, and when both are null the helper emits nothing at all —
+-- which is correct rather than a gap: there is no night to tell.
+--
+-- The trigger carries INSERT and UPDATE and not DELETE, because a refund row is
+-- the durable record of something that happened and is not removed. The old-pair
+-- guard is still written, for the same reason as sections 3 and 4: if a refund
+-- is ever re-attributed to a different night, the night it left must be told.
+
+CREATE OR REPLACE FUNCTION public.ticket_refunds_notify_attendance()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  PERFORM private.notify_attendance_changed(NEW.refunded_party_id, NEW.refunded_event_id);
+
+  IF TG_OP = 'UPDATE'
+     AND (OLD.refunded_party_id, OLD.refunded_event_id)
+         IS DISTINCT FROM (NEW.refunded_party_id, NEW.refunded_event_id)
+  THEN
+    PERFORM private.notify_attendance_changed(OLD.refunded_party_id, OLD.refunded_event_id);
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.ticket_refunds_notify_attendance() IS
+  'Tells a night that its attendee list changed after a write to public.ticket_refunds, reading '
+  'refunded_party_id and refunded_event_id - this table has no party_id or event_id column. INSERT '
+  'and UPDATE only, so NEW always exists. It writes nothing and returns NULL: a refund path cannot '
+  'fail because of it.';
+
+DROP TRIGGER IF EXISTS ticket_refunds_notify_attendance ON public.ticket_refunds;
+
+CREATE TRIGGER ticket_refunds_notify_attendance
+  AFTER INSERT OR UPDATE ON public.ticket_refunds
+  FOR EACH ROW
+  EXECUTE FUNCTION public.ticket_refunds_notify_attendance();
+
 COMMIT;
