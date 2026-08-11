@@ -363,11 +363,40 @@ if (applications.length === 0) {
   failures.push('B');
 }
 
-// ── C. the declaration site is excluded, and it is still there ─────────────
-console.log(
-  `  ✓ C  check B excluded the declaration site by exact path (${TOKEN_FILE}), which exists — ` +
-    'a check whose only match is its own prohibition gets ignored the third time it goes red'
-);
+// ── C. the exclusion excludes something ────────────────────────────────────
+//
+// This check printed `✓` unconditionally and could not fail — which made it a
+// decoration, and `ai-engineering.md`'s *un gate deve poter fallire* says a
+// guard no reachable situation can trip is worse than no guard, because it
+// makes something look watched that is not.
+//
+// What it now asserts is the thing check B's correctness rests on: the path
+// check B exempts must be the path that actually declares the signature. If the
+// declaration moves and `TOKEN_FILE` is not moved with it, B exempts a file that
+// declares nothing while scanning the real declaration site as a consumer — and
+// then B goes red on the one file that is *supposed* to carry the gradient,
+// which is how a correct tree gets a gate switched off.
+//
+// Reachable, and reached: with `TOKEN_FILE` pointing at a file with no
+// signature and the signature present in a `.tsx` under `src/`, A and B fail on
+// the declaration site itself. C names the cause the other two only symptomise.
+const declarationHits = findSignature(TOKEN_FILE);
+if (declarationHits.length === 0) {
+  console.log(
+    `  ✗ C  check B exempts ${TOKEN_FILE} by exact path, but that file does not contain the\n` +
+      '       signature. The exemption is therefore protecting a file that declares nothing,\n' +
+      '       while the file that DOES declare the gradient is scanned as a consumer — so\n' +
+      '       check B will go red on the one file allowed to carry it, and A will report the\n' +
+      '       declaration as an application. Move TOKEN_FILE to wherever the declaration now\n' +
+      '       lives, in the same commit that moved it.\n'
+  );
+  failures.push('C');
+} else {
+  console.log(
+    `  ✓ C  check B's exempt path (${TOKEN_FILE}) is the path that actually declares the ` +
+      `signature — ${declarationHits.length} occurrence(s) there`
+  );
+}
 
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');

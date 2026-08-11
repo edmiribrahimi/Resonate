@@ -904,9 +904,14 @@ if (!layoutRaw.includes(`themeColor: "${GROUND_HEX}"`)) {
     `${LAYOUT_FILE}: viewport.themeColor is not \`themeColor: "${GROUND_HEX}"\``
   );
 }
-if (layoutRaw.includes(RETIRED_BLACK)) {
+// Case-INsensitive, and the reason is that CSS is: `#0A0A0A` and `#0a0a0a` are
+// the same colour to every browser and different strings to `includes`. The
+// retired black would have walked straight past this check in upper case — two
+// lines below a comparison that already lower-cases what it reads.
+if (layoutRaw.toLowerCase().includes(RETIRED_BLACK.toLowerCase())) {
   manifestProblems.push(
-    `${LAYOUT_FILE}: still carries ${RETIRED_BLACK}, the previous generation's black`
+    `${LAYOUT_FILE}: still carries ${RETIRED_BLACK}, the previous generation's black ` +
+      '(matched case-insensitively — hex is case-insensitive in CSS)'
   );
 }
 
