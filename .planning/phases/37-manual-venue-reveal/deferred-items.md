@@ -250,3 +250,58 @@ e' stata chiusa sul posto.
   `VenueRevealPanel.tsx`), nessuna modifica alla regola.
 - **Chi la dovrebbe prendere:** il prossimo piano che tocca il pannello della
   rivelazione.
+
+---
+
+## 9. `retryOutlook` esiste e nessuna superficie lo legge
+
+- **Trovata durante:** 37-15, Task 2 — non e' un residuo scoperto, e' il
+  confine del task, scritto nel piano: *«rendere l'informazione disponibile a
+  chi la rende»*.
+- **Cosa:** `src/lib/venue-reveal/reveal-party-venue.ts` restituisce ora
+  `retryOutlook` — `nothing_to_retry | may_help | same_answer | unknown` — che
+  dice se ripremere **adesso** puo' cambiare qualcosa. Il cron lo riporta nella
+  propria voce di fallimento. **Il percorso manuale no.**
+  `admin/events/[id]/reveal/actions.ts` costruisce `VenueRevealActionResult`
+  campo per campo e non lo inoltra, quindi ne' `RevealVenueDialog.tsx` ne'
+  `VenueRevealPanel.tsx` possono ramificarci sopra.
+- **Cosa resta quindi aperto:** WR-06b e' chiuso **a meta'**. Il rimedio
+  materiale c'e' (il ripiego a invii singoli, Task 1) e il valore per dirlo c'e';
+  la frase in pagina — *«Pressing sends only to them»* — continua a non dire che
+  premere di nuovo puo' riprodurre identicamente il rifiuto.
+- **Perche' non e' stata chiusa qui:** i tre file della superficie manuale sono
+  **fuori dai `files_modified`** del piano 37-15, e il piano lo dichiara
+  esplicitamente per il pannello. Allargare il diff di un piano che tocca il
+  modulo che spedisce avrebbe reso piu' difficile verificare l'unica domanda che
+  quel diff deve reggere.
+- **Cosa costa chiuderla:** un campo in `VenueRevealActionResult`, il passaggio
+  in due punti di `reveal/actions.ts`, e una frase per membro nei due
+  componenti. Nessuna modifica alla regola.
+- **Chi la dovrebbe prendere:** il prossimo piano che tocca il pannello della
+  rivelazione — lo stesso della voce 8, e conviene farle insieme.
+
+---
+
+## 10. Il ripiego a invii singoli non e' mai stato esercitato, e il suo costo si misura solo con destinatari veri
+
+- **Trovata durante:** 37-15, Task 1.
+- **Cosa:** un lotto respinto degrada a invii singoli. Su un lotto pieno sono
+  fino a **cento chiamate al provider al posto di una**, quindi il limite di
+  frequenza del provider e' un esito plausibile **del ripiego stesso**.
+- **Come e' trattato oggi, e perche':** nessuna costante di pacing e' stata
+  scritta. Questa funzione gira dentro un cron con un budget di orologio, e
+  dormire fra un invio e l'altro scambierebbe *«qualche persona non raggiunta»*
+  con *«la corsa muore e ogni serata successiva resta non raggiunta»* — che e'
+  il verso peggiore. Un singolo respinto per frequenza resta **non marcato**,
+  quindi raggiungibile, e torna nel conteggio dei mancanti.
+- **Cosa non e' provato:** tutto il comportamento a runtime. `tickets` e `rsvps`
+  sono vuoti in produzione, quindi il ciclo dei lotti **non ha mai spedito
+  niente**, ne' prima ne' dopo questa modifica. Il ripiego e' **letto e
+  compilato, mai eseguito** — stessa categoria della voce 5.
+- **Il numero del limite non e' stato scritto da nessuna parte, di proposito:**
+  citarlo a memoria sarebbe un `Gate hallucination`, e verificarlo alla fonte
+  non cambierebbe il codice — che non lo usa.
+- **Chi la dovrebbe prendere:** chi eseguira' la voce 5 con destinatari veri.
+  E' la stessa corsa: se un giorno un lotto viene respinto davvero, la risposta
+  JSON del cron ora dice **quale** dei due casi e' (`retryOutlook`), ed e'
+  l'unica cosa che lo dira'.

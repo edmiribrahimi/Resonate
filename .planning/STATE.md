@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: verifying
-stopped_at: "Phase 37 executed (14/14), NOT deployed, NOT verified. Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed"
-last_updated: "2026-08-10T23:55:12.307Z"
-last_activity: 2026-08-11 -- Phase 37 executed, 14/14; not deployed, not verified
+stopped_at: "Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy riportato come avvenuto e fuga anonima misurata chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato"
+last_updated: "2026-08-11T01:09:03.691Z"
+last_activity: 2026-08-11 -- Phase 37 executed, 15/15; review findings closed, human verification still open
 progress:
   total_phases: 13
   completed_phases: 8
-  total_plans: 120
-  completed_plans: 120
+  total_plans: 121
+  completed_plans: 121
   percent: 62
 ---
 
@@ -32,14 +32,21 @@ Phase: 37 (manual-venue-reveal) — DEPLOYATO, verifica human_needed
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 14 of 14
+Plan: 15 of 15
 (contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
 uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
-lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Quattordici
-SUMMARY su quattordici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
+lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Quindici
+SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 2026-08-11 — con due delle sue misure dichiarate **non eseguibili** invece che
-sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY.
-Status: Executed, NOT deployed, NOT verified
+sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
+9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
+WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
+Status: Executed. **Deploy: riportato come avvenuto** — entrambe le migration
+applicate e il ramo su `origin/main`, con la fuga anonima misurata chiusa sul
+sito vero (8 aghi dichiarati, 0 occorrenze su 4 documenti reali). **Riportato
+all'esecutore di 37-15 come contesto di sessione, non misurato da lui**: chi
+chiude la fase lo riverifichi prima di appoggiarci una decisione. Verifica
+umana: ancora aperta, voce 5 di `deferred-items.md`.
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -85,7 +92,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-11 -- Phase 37 executed, 14/14; not deployed, not verified
+Last activity: 2026-08-11 -- Phase 37 executed, 15/15; review findings closed, human verification still open
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
@@ -148,6 +155,13 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 37]: 37-14: cambiare la sede di una serata gia' rivelata e' rifiutato con una categoria propria (venue_link_locked), non sotto la frase di venue_secret_locked — le due mandano la persona in due posti diversi
 - [Phase 37]: 37-14: sulla lettura dell'evento in pagina pubblica anche il fallimento di trasporto viene lanciato, non degradato — li' l'unica alternativa alla verita' e' dichiarare a un visitatore, e a un crawler, che l'evento non esiste
 
+- [Phase 37]: D-37-30 — il ripiego a invii singoli degrada UNA volta e non ritenta oltre: un singolo che fallisce da solo e' un fatto da riportare, e il conteggio dei mancanti e' gia' il posto dove viene riportato
+- [Phase 37]: D-37-31 — nessuna costante di pacing nel ripiego. La funzione gira dentro un cron con un budget di orologio: dormire scambierebbe «qualche persona non raggiunta» con «la corsa muore e ogni serata successiva resta non raggiunta»
+- [Phase 37]: D-37-32 — l'orizzonte di `retryOutlook` e' «ripremere adesso», ed e' cio' che rende decidibile la classificazione delle quote: il tempo le libera, un secondo clic no
+- [Phase 37]: D-37-33 — l'aggregato di `retryOutlook` pende verso `may_help`: fra dire «smetti di provare» a chi poteva ancora essere raggiunto e invitare un tentativo inutile, venue-secrecy.md ha gia' dichiarato quale delle due costa di piu'
+- [Phase 37]: D-37-34 — i riportabili del cron sono un `Record` TOTALE sull'unione, non una lista di tre nomi: una lista risponde per oggi e non dice niente sul prossimo membro
+- [Phase 37]: D-37-35 — `updateVenue` tipizza anche i due rifiuti del gate, non solo i due del database: il bottone e' disegnato per ogni organizer mentre la scrittura pretende lo stato approvato, quindi quel rifiuto e' raggiungibile con una pressione ordinaria
+
 ## Accumulated Context
 
 ### Key Files
@@ -178,8 +192,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-10T23:53:25.615Z
-**Stopped at:** Phase 37 executed (14/14), NOT deployed, NOT verified. Il codice non e' deployato e la fuga anonima degli indirizzi e' ancora aperta in produzione: vedi 37-13-SUMMARY.md, 11 voci human_needed
+**Last session:** 2026-08-11T01:08:54.249Z
+**Stopped at:** Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy riportato come avvenuto e fuga anonima misurata chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
