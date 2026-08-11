@@ -60,6 +60,48 @@
   --line-strong: rgba(234, 217, 255, 0.26);
 
   /*
+   * The control boundary — the name the line group above is NOT allowed to be.
+   *
+   * 41-UI-SPEC.md §5.2, finding A1: 75 form inputs carry
+   * `border border-card-border`, `--card-border` aliases `--line`, and --line
+   * reaches at most 1.39:1 over any ground — against WCAG 1.4.11's 3:1 for a
+   * NON-TEXT control boundary. That is not a near miss; it is less than half.
+   *
+   * Computed 2026-08-11, same formula and same grounds as the ink ramp above,
+   * and it reproduces 40-UI-SPEC.md §4.1's --muted row exactly:
+   *
+   *   --control over --ground   7.14      over --raised  6.29
+   *              over --surface 6.78      over --sunk    7.03
+   *
+   * All four clear 3:1 with room. Two candidates were rejected and are recorded
+   * so neither is rediscovered as an economy: --faint #6E6188 clears --raised by
+   * 0.12 (3.12) and is already 40-REVIEW.md WR-12's exposed-and-wrong token;
+   * --line-strong tops out at 2.05 and fails everywhere.
+   *
+   * WHY A THIRD NAME AT A VALUE THE SYSTEM ALREADY HOLDS TWICE.
+   * --control IS --muted IS --sem-info. Three names, one value, LITERAL on all
+   * three sides — the discipline of the semantics block below (D-40-05), for the
+   * same reason: writing the value again with the coincidence recorded is what
+   * makes separating them later a VALUE CHANGE and not a refactor. Concretely it
+   * buys the triage of 406 `border-card-border` sites two named destinations —
+   * `border-line` for a card's edge, `border-control` for a control's boundary —
+   * instead of one destination and a memory. And --muted is an INK name: writing
+   * `border-muted` on an input states that the border is the tertiary text
+   * colour, which is a coincidence of value and not a statement of role.
+   *
+   * REQUIRED ON: text input, textarea, select, checkbox, radio, switch track,
+   * secondary button, ghost button, segmented control, the combobox panel's edge.
+   * --line* STAYS CORRECT ON: a row divider, a section rule, a card's edge, the
+   * side column's trailing edge — anywhere the content already says where the
+   * thing is.
+   *
+   * One consequence worth naming: an input's well is --sunk #0D0917 inside a card
+   * of --surface #140D20 — 1.04:1. The FILL cannot show where the control is.
+   * The boundary is not decoration there; it is the only channel.
+   */
+  --control: #A493C0;
+
+  /*
    * The interactive accent — the 10%.
    *
    * The previous red left the repository with this line (D-40-04). It appeared
@@ -235,10 +277,13 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
 
-  /* lines — decorative only; a control's boundary is --muted or lighter */
+  /* lines — decorative only; a control's boundary is --control, below */
   --color-line-soft: var(--line-soft);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+
+  /* the control boundary — border-control, ring-control, outline-control */
+  --color-control: var(--control);
 
   /* the interactive accent — the 10%, with the reserved-for list in :root */
   --color-accent: var(--accent);

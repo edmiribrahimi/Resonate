@@ -324,6 +324,8 @@ export const KNOWN_TOKEN_NAMES = [
   'line-soft',
   'line',
   'line-strong',
+  // the control boundary — a line group name may not carry it (41-UI-SPEC §5.2)
+  'control',
   // semantic states
   'sem-crit',
   'sem-warn',
