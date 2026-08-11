@@ -544,7 +544,21 @@ Plans:
   2. A device that installed the door from the previous address still opens a working door after the move, launched from the home screen with the network off
   3. The full door pass — dark room, network off, launch, scan, reconnect, sync — is executed on a device and written down, not asserted
 
-**Plans**: TBD
+**Plans**: 4 plans, in 3 waves
+
+Plans:
+**Wave 1**
+
+- [ ] 39-01-PLAN.md — The door pass, written before the code: one document for the dark room, absorbing Phase 38's deferred procedures
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 39-02-PLAN.md — The second address and its bindings: two thin pages on one guarded surface, one map entry, the assertion and the bounce
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 39-03-PLAN.md — D-39-06: the Check-in entry follows the capability the server refuses on, threaded through thirteen mount sites
+- [ ] 39-04-PLAN.md — The persona routing repair: the door's gates load on the door's new address, with the budget re-measured
 
 ### Phase 40: Brand Tokens & Typography
 
