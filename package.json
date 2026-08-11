@@ -15,6 +15,8 @@
     "verify:redirects": "bash scripts/verify-organizer-redirects.sh",
     "verify:routes": "node scripts/verify-routes.mjs",
     "verify:tokens": "node scripts/verify-tokens.mjs",
+    "verify:semantic-separation": "node scripts/verify-semantic-separation.mjs",
+    "verify:sunset-gradient": "node scripts/verify-sunset-gradient.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
