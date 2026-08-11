@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: verifying
-stopped_at: "Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy riportato come avvenuto e fuga anonima misurata chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato"
+stopped_at: "Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy MISURATO (cataloghi + 21/21 tabelle invariate + 8 aghi a 0 sul sito vero) e fuga anonima chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato"
 last_updated: "2026-08-11T01:09:03.691Z"
 last_activity: 2026-08-11 -- Phase 37 executed, 15/15; review findings closed, human verification still open
 progress:
@@ -41,12 +41,29 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executed. **Deploy: riportato come avvenuto** — entrambe le migration
-applicate e il ramo su `origin/main`, con la fuga anonima misurata chiusa sul
-sito vero (8 aghi dichiarati, 0 occorrenze su 4 documenti reali). **Riportato
-all'esecutore di 37-15 come contesto di sessione, non misurato da lui**: chi
-chiude la fase lo riverifichi prima di appoggiarci una decisione. Verifica
-umana: ancora aperta, voce 5 di `deferred-items.md`.
+Status: Executed. **Deploy: MISURATO, 2026-08-11.** L'esecutore di 37-15 aveva
+scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
+scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
+che gliel'aveva riportato:
+
+- **Entrambe le migration applicate.** Schema letto dai **cataloghi**, non dalla
+  risposta del `POST`: `venues_select_public` → 0, `venues_select_staff` → 1,
+  `venue_for_parties` e `party_start_instant` → 1 ciascuna, `prosecdef = true`,
+  `search_path = ""`.
+- **Istantanea su 21 tabelle prima e dopo: 21/21 identiche.** Zero righe mosse.
+- **`origin/main` a `1dfd6f7` e oltre**, da `b1f1ce9` del 9 agosto. Verificato
+  con `git rev-list --left-right --count`: `0 0`.
+- **Fuga chiusa, misurata sul sito vero, da anonimo senza cookie:** 8 aghi
+  dichiarati su 4 documenti reali → **0 occorrenze**, mentre il nome del locale
+  della serata **non** segreta compare 4 volte negli stessi documenti. E' quel
+  si' che rende leggibile lo zero.
+- **Sonda REST per chiave primaria:** prima `200` con l'indirizzo, dopo `200`
+  con zero righe. La strada positiva (`venue_for_parties` su serata non segreta)
+  risponde con nome, indirizzo e link Maps.
+
+Verifica umana: ancora aperta, voce 5 di `deferred-items.md`. `VENUE-01` e
+`VENUE-02` **non spuntati** — nessuno dei due e' stato esercitato con una
+sessione di ruolo vera.
 
 Note:
         14 piani in 9 onde. Plan-checker: **VERIFICATION PASSED, 0 blocker**, un
@@ -77,13 +94,23 @@ Note:
         `secret-venue-address-readable-by-anon.md`, **assegnato alla fase 37**
         dal proprietario. Prima di scegliere il rimedio va misurato se lo stesso
         percorso esista anche via `events` o `event_media`.
+        → **CHIUSO il 2026-08-11.** La precondizione e' stata eseguita: `events`
+        non ha piu' colonne di indirizzo ed `event_media` non e' leggibile da
+        `anon`, quindi la porta RLS era una sola. Rimedio applicato e **misurato
+        sul sito vero**: 8 aghi dichiarati, 0 occorrenze su 4 documenti reali. Il
+        todo e' in `.planning/todos/completed/`.
 
         **Fasi 31, 32, 33, 43, 35, 34: 92/92 piani eseguiti.** Il disco e questo
         file concordano dal 2026-08-10; fino a quel giorno questo blocco
         dichiarava ancora la fase 34 in esecuzione al piano 1 di 17.
 
-        **Ramo:** `gsd/phase-32-capability-model-in-the-database` — 82 commit
-        oltre `origin/main`, 553 oltre `main`. Niente e' stato spinto.
+        **Ramo:** `gsd/phase-32-capability-model-in-the-database`. ~~82 commit
+        oltre `origin/main`. Niente e' stato spinto.~~ **Superato il 2026-08-11:
+        tutto e' stato spinto.** `origin/main` e' passato da `b1f1ce9` (9 agosto)
+        alla punta del ramo — 230+ commit, le fasi 34, 36 e 37 insieme — e Vercel
+        ha deployato. Locale e remoto allineati (`0 0`). La riga e' rovesciata
+        qui invece che cancellata: un ramo «mai spinto» che diventa la produzione
+        e' il genere di cambiamento che chi rilegge deve vedere accadere.
 
         **Debito di verifica aperto — 32 voci `human_needed`,** tutte della
         stessa specie: nessuno strumento di questo repository puo' autenticarsi
@@ -193,7 +220,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Session Continuity
 
 **Last session:** 2026-08-11T01:08:54.249Z
-**Stopped at:** Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy riportato come avvenuto e fuga anonima misurata chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato
+**Stopped at:** Phase 37 executed (15/15). Reperti del code review chiusi (37-14, 37-15). Deploy MISURATO (cataloghi + 21/21 tabelle invariate + 8 aghi a 0 sul sito vero) e fuga anonima chiusa; verifica umana ancora aperta: voce 5 di deferred-items.md, VENUE-02 non spuntato
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
