@@ -28,7 +28,10 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 ## Current Position
 
-Phase: 39 (The Door's Own Address) — EXECUTING
+Phase: 39 (The Door's Own Address) — **EXECUTED, NOT CLOSED.** Quattro piani su
+quattro, tre onde, gate automatici verdi. `39-VERIFICATION.md` e' `human_needed`:
+i criteri 2 e 3 li chiude solo `39-DOOR-PASS.md` §8, alla serata di fine v1.5,
+insieme al lotto della fase 38 (D-39-07). Vedi `## Blockers`.
 
 **Fase 38, stato reale al 2026-08-11.** 38-01…38-06 eseguiti, uniti e con build
 verde dopo ogni fusione d'onda. **38-07 e' fermo a 1 task su 3**: ha raccolto le

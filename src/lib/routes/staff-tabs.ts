@@ -56,10 +56,20 @@
  *
  * ── What is deliberately NOT here ────────────────────────────────────────────
  *
- * The door. `/admin/scanner` is bound to `door.operate` in the map and drawn by
- * the bottom nav, not by the tab bar, and it does not move in this phase
- * (STAFF-04 is Phase 39's, alone). Adding it to this list would put a Check-in
- * tab on a menu the door's own page does not mount.
+ * The door. It is bound to `door.operate` in the map and drawn by the bottom
+ * nav, not by the tab bar. Adding it to this list would put a Check-in tab on a
+ * menu the door's own page does not mount.
+ *
+ * **Updated after Phase 39.** This paragraph used to say `/admin/scanner` *"does
+ * not move in this phase (STAFF-04 is Phase 39's, alone)"*. STAFF-04 has since
+ * shipped: the door now answers at **two** addresses — `/door`, the canonical
+ * one, and `/admin/scanner`, kept permanently as a real page and never a
+ * redirect (D-39-02) — both opened by the **single** `door.operate` entry in
+ * `capability-routes.ts`. The conclusion is unchanged and the reason is
+ * stronger: the door is drawn by the bottom nav at either address, so neither
+ * belongs on this tab bar. The sentence is corrected rather than deleted,
+ * because a comment written in the future tense about a phase that has happened
+ * tells the next reader the door has one address.
  */
 
 import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";

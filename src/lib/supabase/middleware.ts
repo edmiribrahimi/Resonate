@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { CAP } from "@/lib/capabilities/keys";
-import { resolveRoute } from "@/lib/routes/capability-routes";
+import { CAPABILITY_ROUTES, resolveRoute } from "@/lib/routes/capability-routes";
 
 /**
  * Set on the RESPONSE when the access context could not be resolved.
@@ -185,7 +185,14 @@ type BounceCause =
  * and it must not be somebody at the door. Recorded as §0.6 of
  * `.planning/phases/39-the-door-s-own-address/39-DOOR-PASS.md`.
  */
-const DOOR_ADDRESSES = ["/admin/scanner", "/door"] as const;
+// Read from the map, never hand-copied. A literal list here would be a second
+// declaration of the door's addresses, and the whole shape of Phase 39 is
+// *one* entry opening both — a copy that drifts is the second predicate
+// `39-CONTEXT.md` forbids, wearing a different hat. Deriving it does not make
+// the assertions below tautological: they check that `resolveRoute` **agrees**
+// with the declaration, which a second entry claiming an overlapping pattern
+// would break while this array stayed right.
+const DOOR_ADDRESSES = CAPABILITY_ROUTES[CAP.DOOR_OPERATE].routes;
 
 for (const doorAddress of DOOR_ADDRESSES) {
   const doorBinding = resolveRoute(doorAddress);
@@ -211,19 +218,39 @@ for (const doorAddress of DOOR_ADDRESSES) {
 }
 
 /**
- * The first segment of the one collapsed work surface.
+ * The first segments of the collapsed work surface. **Plural since Phase 39.**
  *
- * A SEGMENT, not a prefix, and the difference is the only reason this is worth
- * a constant: a prefix test would claim `/administrators` for the work tree,
- * and a first-segment comparison does not. Nothing decides a
- * capability here — the map does that — this only answers *is this address one
- * the map is supposed to have an opinion about*, which is what makes an unmapped
- * path under the tree a refusal instead of a fall-through (T-34-13).
+ * SEGMENTS, not prefixes, and the difference is the only reason this is worth a
+ * constant: a prefix test would claim `/administrators` for the work tree, and a
+ * first-segment comparison does not. Nothing decides a capability here — the map
+ * does that — this only answers *is this address one the map is supposed to have
+ * an opinion about*, which is what makes an unmapped path under the tree a
+ * refusal instead of a fall-through (T-34-13).
+ *
+ * ── Why `door` had to join it, and why naming the gap was not closing it ─────
+ *
+ * Phase 39 gave the door a second address outside `/admin`, and this set stayed
+ * at one root. `/door` itself is bound, so it never reaches this branch and
+ * nothing was wrong on the day. But the tree now has two roots, and the second
+ * one was **uncovered**: add `src/app/(admin)/door/settings/page.tsx` and forget
+ * its map entry, and `resolveRoute` returns `null`, this predicate returns
+ * `false`, the `else if` is not taken, and **no bounce is emitted at all** —
+ * precisely the fall-through T-34-13 exists to prevent, on the tree that hosts
+ * the door.
+ *
+ * The compiler could not have caught it either: `StaffRoute` is
+ * `Extract<Route, "/admin" | "/admin/${string}">`, so `_everyStaffRouteIsBound`
+ * will never report an unbound `/door*` address. That left `npm run verify:routes`
+ * — a manual pre-deploy step with no CI (D-34-12) — as the only cover.
+ *
+ * The door page's docblock named both gaps accurately and then treated naming
+ * them as disposing of them. Found by the Phase 39 code review (WR-03); this is
+ * the one line it cost.
  */
-const WORK_TREE_ROOT = "admin";
+const WORK_TREE_ROOTS = new Set(["admin", "door"]);
 
 const isUnderWorkTree = (pathname: string) =>
-  pathname.split("/")[1] === WORK_TREE_ROOT;
+  WORK_TREE_ROOTS.has(pathname.split("/")[1] ?? "");
 
 export async function updateSession(request: NextRequest) {
   // Track cookies set by Supabase so we can re-apply them after creating

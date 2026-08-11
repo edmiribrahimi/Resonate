@@ -8,9 +8,19 @@
  *
  * The two prefixes were symmetric in cost — 48 hardcoded `/admin…` references
  * against 51 `/organizer…` — so the tie was broken by the door. `/admin/scanner`
- * must not move (STAFF-04 is Phase 39, alone, because a redirect needs a
- * network the door is designed not to have), and it already lives under
- * `/admin`. Any other canonical choice would turn `/admin` into a redirect
+ * must not move (STAFF-04, because a redirect needs a network the door is
+ * designed not to have), and it already lives under `/admin`.
+ *
+ * **Post-Phase-39 note, since this paragraph is now read after the fact.**
+ * STAFF-04 shipped, and it did **not** move `/admin/scanner`: it *added*
+ * `/door` as the canonical address while keeping the old one permanently, as a
+ * real page, never a redirect (D-39-02). So the tie-break above still stands on
+ * its original ground. `/door` is bound by the same single `door.operate` entry
+ * and, like `/admin/scanner`, may never appear as the `to` of a redirect row —
+ * fence 1 below reads that entry from the map rather than matching a spelling,
+ * which is why adding the second address did not need a second fence.
+ *
+ * Any other canonical choice would turn `/admin` into a redirect
  * shell that has to **exclude** one address, recreating in a second place the
  * precedence hazard `src/lib/supabase/middleware.ts:345-352` exists to warn
  * about. *The collapse must not add a second place where the door's precedence
