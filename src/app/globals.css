@@ -208,14 +208,105 @@
   --card-border: var(--line);
 }
 
+/*
+ * Every token a surface may LEGITIMATELY use becomes a utility here, and
+ * nothing else does. Each entry keeps this file's one-to-one shape,
+ * --color-<name>: var(--<name>) — the same name on both sides, never a
+ * literal, never a chain to a differently-named token.
+ *
+ * WHAT IS DELIBERATELY ABSENT: the sunset scale, and the gradient.
+ *
+ * A bg-amber utility would be a second, silent route to painting a surface
+ * with a format's colour, and DS-02 is the half of this phase that is easiest
+ * to lose without anything breaking — the screen still renders, and a state
+ * just starts looking like a format. verify-tokens.mjs check D holds the line:
+ * a declared token with no utility must have ZERO consumers under src/.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* grounds */
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunk: var(--sunk);
+
+  /* inks */
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  /* lines — decorative only; a control's boundary is --muted or lighter */
+  --color-line-soft: var(--line-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* the interactive accent — the 10%, with the reserved-for list in :root */
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+
+  /* semantics — a fill made of one of these carries --ground as its ink */
+  --color-sem-crit: var(--sem-crit);
+  --color-sem-warn: var(--sem-warn);
+  --color-sem-info: var(--sem-info);
+  --color-sem-done: var(--sem-done);
+
+  /* legacy names, kept for their consumers until Phase 41 empties them */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
-  --color-muted: var(--muted);
+
+  /*
+   * The three type roles — 40-UI-SPEC.md §5.2, values read out of the built
+   * stylesheet rather than assumed. Three facts, none of them a preference:
+   *
+   * (a) `inline` on this block is REQUIRED here, not stylistic. next/font
+   *     declares --font-orbitron on the generated class that sits on <html>,
+   *     not on :root. Without `inline` the reference would resolve where the
+   *     theme variable was DEFINED and find nothing — this is Tailwind's own
+   *     documented case for the modifier.
+   *
+   * (b) --font-inter DOES NOT EXIST YET. Plan 40-03 creates it in
+   *     src/app/layout.tsx; until then the interface role falls through to the
+   *     system-ui tail. 40-03 also owns the body font-family line, which is
+   *     why the two land in the same release and neither ships alone.
+   *
+   * (c) The data role is a RETARGET, not an inheritance. Tailwind v4's shipped
+   *     default carries none of the three faces the artifact names, so the
+   *     stack below is chosen rather than inherited — and it costs zero bytes
+   *     and zero fetches, because ui-monospace resolves to SF Mono on Apple
+   *     platforms.
+   *
+   * Each stack carries a tail PAST next/font's generated fallback: that
+   * fallback resolves through local("Arial"), and Arial is not present on
+   * Android, so without the tail such a device falls to the browser's default
+   * serif-ish choice.
+   */
+  --font-display: var(--font-orbitron), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/*
+ * Figures align AT THE ROLE, not per component (40-UI-SPEC.md §5.3).
+ *
+ * Unlayered on purpose: Tailwind's utilities live in a layer, and an unlayered
+ * rule beats a layered one whatever the specificity. Ten sites apply the
+ * numeric utility by hand today and stay correct; the point of moving the
+ * declaration to the role is that the ELEVENTH does not have to remember.
+ *
+ * Two facts about the interaction, both worth having written down before
+ * somebody meets them at a dark door:
+ *   - the equivalent utility on a descendant does not conflict; it merely
+ *     re-states the value.
+ *   - but the --tw-numeric-* custom properties are registered `inherits:
+ *     false`, so a descendant carrying `.ordinal` or `.slashed-zero` rebuilds
+ *     the whole shorthand and DROPS the inherited alignment. src/ uses only
+ *     the tabular utility today, so the trap is latent rather than live — and
+ *     the comment costs nothing.
+ */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 html {
@@ -254,4 +345,21 @@ input[type="time"] {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/*
+ * SunSet's gradient — its ONE application route (40-UI-SPEC.md §7 clause 2).
+ *
+ * No component composes the stops itself: a surface either uses this name or
+ * it does not have the gradient. The allow-list of files applying it is EMPTY
+ * TODAY, and adding the first one is a decision that edits the gradient gate's
+ * list — not a diff nobody reads.
+ *
+ * The check that guards this must match the four-stop 94deg signature and
+ * never the word "gradient": nine two-stop accent fades exist under src/ and
+ * are entirely correct, and a gate that goes red on a correct file gets
+ * switched off, after which it guards nothing.
+ */
+@utility bg-grad-sunset {
+  background-image: var(--grad-sunset);
 }
