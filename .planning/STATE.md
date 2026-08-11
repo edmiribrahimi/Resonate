@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
-stopped_at: Phase 39 code executed — 4 piani, gate automatici verdi; NON chiusa: 39-VERIFICATION.md e' human_needed, criteri 2 e 3 alla serata di fine v1.5 (D-39-07)
-last_updated: "2026-08-11T14:29:40.844Z"
-last_activity: 2026-08-11 -- Phase 39 executed, verification human_needed
+status: Phase 39 executed — awaiting the end-of-v1.5 sitting (human_needed)
+stopped_at: Phase 40 context gathered — token set adottato dall'artifact, layout instradati alla fase 41, nessun reload automatico (D-40-11)
+last_updated: "2026-08-11T16:28:45.643Z"
+last_activity: 2026-08-11 -- Phase 39 execution started
 progress:
   total_phases: 13
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 132
-  completed_plans: 128
-  percent: 69
+  completed_plans: 132
+  percent: 77
 ---
 
 # State: Resonate
@@ -263,6 +263,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
   La casella della roadmap era stata marcata `[x] (completed 2026-08-11)` da `roadmap.update-plan-progress` all'atterraggio del quarto SUMMARY, non da `phase.complete`, che non e' mai stato lanciato. **Corretta a `[ ]` con la ragione accanto**: un `[x]` su una fase il cui unico punto e' che non e' ancora provata e' esattamente il fallimento silenzioso che questo repo si e' gia' scritto di non ripetere. La fase 38, nello stesso stato e diretta alla stessa serata, era gia' `[ ]`.
 
   **Due regole che non sono codice e vanno lette prima di spedire.**
+
   1. **Il riscaldamento.** `self.__SW_MANIFEST` precacha **zero documenti**: ogni documento offline viene da una cache `NetworkFirst` a 24 h / 32 voci, calda solo da una visita online precedente, e **le chiavi di cache sono URL** — quindi scaldare `/admin/scanner` **non** scalda `/door`. Senza `39-DOOR-PASS.md` §0.5 la stanza buia misura soltanto che al nuovo indirizzo non e' mai passato nessuno.
   2. **La regola di deploy.** L'assertion della mappa in `src/lib/supabase/middleware.ts` e' un `throw` a **module load dentro un bundle di middleware**: scatta alla **prima richiesta dopo il deploy**, non a `npm run build`, e una mappa sbagliata e' un **500 su ogni rotta coperta dal middleware** — webhook dei pagamenti e check-in compresi (WR-04). **Si spedisce in un giorno senza serata, e la prima richiesta la si fa di persona.** Vale anche per la fase 38, che condivide lo stesso arretrato non spinto.
 
@@ -274,8 +275,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T13:30:07.041Z
-**Stopped at:** Phase 39 context gathered — /door deciso, vecchio indirizzo permanente, un solo passaggio alla porta a fine v1.5
+**Last session:** 2026-08-11T16:28:45.639Z
+**Stopped at:** Phase 40 context gathered — token set adottato dall'artifact, layout instradati alla fase 41, nessun reload automatico (D-40-11)
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
