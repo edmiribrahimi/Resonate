@@ -1,23 +1,312 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --accent: #e5484d;
-  --accent-hover: #f2555a;
-  --card: #141414;
-  --card-border: #262626;
-  --muted: #a1a1aa;
+  /*
+   * Grounds — the four surfaces. 40-UI-SPEC.md §3.1, read out of
+   * 36-VISUAL-SOURCE.md, which distilled it from the production artifact.
+   * --ground is the 60%, --surface the 30% (§3.5).
+   *
+   * Elevation here carries almost no luminance: ground-to-raised measures
+   * 1.14:1 and ground-to-sunk 1.02:1 (§4.2). A surface is therefore told apart
+   * by its CONTENT and its line, never by how bright it is — and no pair of
+   * these may be relied on to show where a control ends.
+   */
+  --ground: #0A0712;
+  --surface: #140D20;
+  --raised: #1D1430;
+  --sunk: #0D0917;
+
+  /*
+   * Inks — the four-step text ramp. Contrast computed 2026-08-11 with the
+   * WCAG 2.x relative-luminance formula, against all four grounds (§4.1):
+   *
+   *   --ink    15.22 – 17.29
+   *   --ink-2  11.35 – 12.90
+   *   --muted   6.29 –  7.14
+   *   --faint   3.12 –  3.54  → FAILS AA for body text on EVERY ground.
+   *
+   * --faint is admissible only as large text (>= 24px, where the threshold is
+   * 3:1 and it clears everywhere) or as a non-informational graphic. Where a
+   * small label is genuinely tertiary the pairing to use instead is --muted on
+   * --surface, 6.78:1. Its value is CONSTRAINED, not raised: raising it would
+   * collapse the four-step ramp the artifact deliberately built.
+   *
+   * --muted carries a second duty from §4.2: it is the LIGHTEST thing that may
+   * carry the boundary of an interactive control, because it is the darkest
+   * ink that still clears 3:1 on all four grounds.
+   */
+  --ink: #F3ECFA;
+  --ink-2: #D6CBE8;
+  --muted: #A493C0;
+  --faint: #6E6188;
+
+  /*
+   * Lines — DECORATIVE divisions only.
+   *
+   * Measured over the four grounds (§4.2) the strongest of the three tops out
+   * at 2.05:1, and WCAG 1.4.11 asks 3:1 of a control boundary. So NONE of
+   * these may carry the boundary of a text input, a select, a secondary or
+   * ghost button, a checkbox or the scanner target: that boundary is --muted
+   * or lighter. They stay correct for what they are — dividing rows,
+   * separating sections, drawing a card's edge where the card's content
+   * already says where the card is.
+   *
+   * This is one rule the production artifact does not need and the product
+   * does: the artifact is an internal tool on a lit desk, this is a phone at a
+   * dark door.
+   */
+  --line-soft: rgba(234, 217, 255, 0.07);
+  --line: rgba(234, 217, 255, 0.13);
+  --line-strong: rgba(234, 217, 255, 0.26);
+
+  /*
+   * The interactive accent — the 10%.
+   *
+   * The previous red left the repository with this line (D-40-04). It appeared
+   * in neither the brand palette nor the semantic set, and it was the accent
+   * of 86 files — which is exactly why retargeting the NAME reaches all of
+   * them without one component being edited. Its value is not repeated here;
+   * it is written down, with its reason, in the commit body and in
+   * 40-02-SUMMARY.md, because a reversal is recorded and not deleted.
+   *
+   * #FF5C93 is ADOPTION, not a choice: brand-visual-system.md names it
+   * "rosa caldo, accento primario". 36-VISUAL-SOURCE.md:71 names the SAME
+   * value MotionLab's identification colour — that is UI-SPEC Open Question 1,
+   * it belongs to the OWNER and not to this file, and D-40-05 holds the two as
+   * two tokens carrying one value. The day the answer arrives it is one line
+   * here and no consumer changes.
+   *
+   * --accent-hover is the palette's own lighter pink ("rosa Resonate"), which
+   * keeps the lighter-on-hover direction this file already had. It could not
+   * stay a tint of the retired red: that would be a DS-01 violation left
+   * inside the DS-01 file. Its value coincides with --pink-soft below, and the
+   * coincidence is RECORDED here rather than expressed as a var() — the same
+   * discipline as the semantics. It moves with --accent if Open Question 1 is
+   * answered: one line, 26 files.
+   *
+   * RESERVED FOR, and only for (§3.5): the primary button fill · the active
+   * tab label and its underline · a link inside prose · the lineup pills on an
+   * event card. NEVER a format marker, a chip swatch, a chip border, or any
+   * state signal. That is the whole of DS-02 in one sentence.
+   *
+   * ONE CONFLICT INSIDE UI-SPEC, RESOLVED HERE RATHER THAN SMOOTHED OVER:
+   * §3.5 lists the focus ring among the accent's reserved uses; §4.2 says the
+   * focus ring is --ink and "never the accent", because a ring in the accent
+   * colour is invisible against an accent-filled button and it is the one
+   * indicator a keyboard user has. The more restrictive rule wins
+   * (meta-gates.md): THE FOCUS RING IS --ink. Phase 41 inherits that, not the
+   * §3.5 wording.
+   */
+  --accent: #FF5C93;
+  --accent-hover: #F6B6D2;
+
+  /*
+   * The semantics — declared apart, with LITERAL values on both sides.
+   *
+   * A semantic is NEVER declared as a reference into the brand set. §3.4: two
+   * of the four coincide in value with something else in the system, so the
+   * separation is STRUCTURAL — there is no chromatic separation to lean on.
+   * Writing the value twice with the coincidence recorded is what makes
+   * separating them later a value change and not a refactor.
+   *
+   * The prohibited shape is not written out even as an example: a check whose
+   * only match is its own prohibition is a check that gets ignored the third
+   * time it goes red (the precedent is ColorSwatchPicker.tsx:22-27, which
+   * states its rule by OMITTING the string it forbids).
+   *
+   * The two coincidences, written down so they are not rediscovered:
+   *
+   *   --sem-warn IS --amber IS SunSet's identification colour. An amber mark
+   *     cannot tell a reader "caution" from "this is a SunSet night" by hue,
+   *     so ANYTHING AMBER CARRIES TEXT. UI-SPEC Open Question 3.
+   *   --sem-info IS --muted, the tertiary ink. Less dangerous — an info notice
+   *     reading as tertiary text is a degradation, not a wrong statement.
+   *     Recorded so neither is "fixed" by moving one without knowing the other
+   *     moved.
+   *
+   * THE SET CONTAINS NO GREEN, AND PHASE 40 DOES NOT INVENT ONE: adding a
+   * colour to the semantic vocabulary is adding a colour to the brand, and
+   * that is the owner's. The consequence travels: Phase 42 inherits a semantic
+   * set with no accept colour, and the scanner keeps its current green
+   * unchanged rather than being handed a violet accept or an invented one.
+   *
+   * All four clear AA as INK on every ground (5.27 – 11.20, §4.3). As a FILL
+   * they do not — light ink on the best of them is 3.33:1 and on the worst
+   * 1.54:1. A SEMANTIC USED AS A FILL CARRIES --ground AS ITS INK. Never
+   * --ink, never white.
+   */
+  --sem-crit: #FF6B8E;
+  --sem-warn: #FFB25E;
+  --sem-info: #A493C0;
+  --sem-done: #9B7BE0;
+
+  /*
+   * The sunset scale — DECLARED HERE AND EXPOSED NOWHERE.
+   *
+   * The @theme inline block gives these no --color-* mapping, deliberately:
+   * there is no bg-amber utility, so no surface can paint with a format's
+   * colour by accident. The four format identification colours are DATA ON A
+   * `formats` ROW, applied through an inline style (D-36-12, UI-SPEC §0 rule
+   * 4). Declaring a per-format utility would reintroduce the compile-time
+   * format constant Phase 36 spent a migration removing, and would make
+   * changing a format's colour a deploy. verify-tokens.mjs check D holds this
+   * mechanically: a declared name with no utility must have ZERO consumers
+   * under src/.
+   *
+   * --violet-deep is declared and is NEVER A FOREGROUND — 1.90 – 2.16:1 on the
+   * four grounds (§4.1). Phase 36 had already excluded it from the catalogue
+   * picker at 1.99:1; the figure is written here so nobody rediscovers the gap
+   * and fills it back in.
+   *
+   * --grad-sunset is SunSet's EXCLUSIVE signature — "il colore non si eredita"
+   * (brand-visual-system.md). Using it on any other surface takes its meaning
+   * away, which is the whole of DS-03. Its four stops hold the same values as
+   * --amber, --orange, --pink and --violet: the coincidence is RECORDED, not
+   * expressed as var(), because the four-stop 94deg string is what the
+   * gradient gate matches and composing it from var() would leave that gate
+   * nothing to hold. It has exactly one application route — the single utility
+   * declared for it at the foot of this file — and today exactly zero
+   * applications.
+   */
+  --amber: #FFB25E;
+  --orange: #FF7A2F;
+  --pink: #FF5C93;
+  --pink-soft: #F6B6D2;
+  --violet: #A874E8;
+  --violet-deep: #5B2A9E;
+  --grad-sunset: linear-gradient(94deg, #FFB25E 0%, #FF7A2F 30%, #FF5C93 62%, #A874E8 100%);
+
+  /*
+   * The legacy names — ALIASES, NOT SURVIVORS.
+   *
+   * UI-SPEC §8.3 clause 3 made mechanical: a name any shipped document still
+   * reads is not deleted; it is emptied of consumers first and removed second.
+   * A rename is a removal wearing a friendly word — and here the removal is
+   * SILENT. Tailwind emits no rule, no warning and no error for a utility
+   * whose token is gone, so the element renders with whatever it inherits and
+   * `npm run build` stays green. There is no error tracking in this project:
+   * nobody would be told.
+   *
+   * Measured on this tree on 2026-08-11, boundary-matched, files under src/:
+   *
+   *   --background    43 files      --foreground    93 files
+   *   --card         111 files      --card-border  115 files
+   *
+   * Each keeps its name and points at its new role, so those files render in
+   * the NEW colours with NO COMPONENT EDITED. Exit route: PHASE 41 empties
+   * them of consumers, one whole surface at a time; only then may a name be
+   * removed, and only in the same commit as its entry in KNOWN_TOKEN_NAMES in
+   * scripts/verify-tokens.mjs — that list is the only memory the gate has of
+   * names that used to exist.
+   *
+   * --muted, --accent and --accent-hover need no alias: they keep their names
+   * and take their new values above.
+   */
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-border: var(--line);
 }
 
+/*
+ * Every token a surface may LEGITIMATELY use becomes a utility here, and
+ * nothing else does. Each entry keeps this file's one-to-one shape,
+ * --color-<name>: var(--<name>) — the same name on both sides, never a
+ * literal, never a chain to a differently-named token.
+ *
+ * WHAT IS DELIBERATELY ABSENT: the sunset scale, and the gradient.
+ *
+ * A bg-amber utility would be a second, silent route to painting a surface
+ * with a format's colour, and DS-02 is the half of this phase that is easiest
+ * to lose without anything breaking — the screen still renders, and a state
+ * just starts looking like a format. verify-tokens.mjs check D holds the line:
+ * a declared token with no utility must have ZERO consumers under src/.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* grounds */
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunk: var(--sunk);
+
+  /* inks */
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  /* lines — decorative only; a control's boundary is --muted or lighter */
+  --color-line-soft: var(--line-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* the interactive accent — the 10%, with the reserved-for list in :root */
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+
+  /* semantics — a fill made of one of these carries --ground as its ink */
+  --color-sem-crit: var(--sem-crit);
+  --color-sem-warn: var(--sem-warn);
+  --color-sem-info: var(--sem-info);
+  --color-sem-done: var(--sem-done);
+
+  /* legacy names, kept for their consumers until Phase 41 empties them */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
-  --color-muted: var(--muted);
+
+  /*
+   * The three type roles — 40-UI-SPEC.md §5.2, values read out of the built
+   * stylesheet rather than assumed. Three facts, none of them a preference:
+   *
+   * (a) `inline` on this block is REQUIRED here, not stylistic. next/font
+   *     declares --font-orbitron on the generated class that sits on <html>,
+   *     not on :root. Without `inline` the reference would resolve where the
+   *     theme variable was DEFINED and find nothing — this is Tailwind's own
+   *     documented case for the modifier.
+   *
+   * (b) --font-inter DOES NOT EXIST YET. Plan 40-03 creates it in
+   *     src/app/layout.tsx; until then the interface role falls through to the
+   *     system-ui tail. 40-03 also owns the body font-family line, which is
+   *     why the two land in the same release and neither ships alone.
+   *
+   * (c) The data role is a RETARGET, not an inheritance. Tailwind v4's shipped
+   *     default carries none of the three faces the artifact names, so the
+   *     stack below is chosen rather than inherited — and it costs zero bytes
+   *     and zero fetches, because ui-monospace resolves to SF Mono on Apple
+   *     platforms.
+   *
+   * Each stack carries a tail PAST next/font's generated fallback: that
+   * fallback resolves through local("Arial"), and Arial is not present on
+   * Android, so without the tail such a device falls to the browser's default
+   * serif-ish choice.
+   */
+  --font-display: var(--font-orbitron), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/*
+ * Figures align AT THE ROLE, not per component (40-UI-SPEC.md §5.3).
+ *
+ * Unlayered on purpose: Tailwind's utilities live in a layer, and an unlayered
+ * rule beats a layered one whatever the specificity. Ten sites apply the
+ * numeric utility by hand today and stay correct; the point of moving the
+ * declaration to the role is that the ELEVENTH does not have to remember.
+ *
+ * Two facts about the interaction, both worth having written down before
+ * somebody meets them at a dark door:
+ *   - the equivalent utility on a descendant does not conflict; it merely
+ *     re-states the value.
+ *   - but the --tw-numeric-* custom properties are registered `inherits:
+ *     false`, so a descendant carrying `.ordinal` or `.slashed-zero` rebuilds
+ *     the whole shorthand and DROPS the inherited alignment. src/ uses only
+ *     the tabular utility today, so the trap is latent rather than live — and
+ *     the comment costs nothing.
+ */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 html {
@@ -47,13 +336,6 @@ input[type="time"] {
   }
 }
 
-/* Ambient glow utilities for dark mode accent elements */
-@utility glow-accent {
-  box-shadow:
-    0 0 15px rgba(229, 72, 77, 0.15),
-    0 0 30px rgba(229, 72, 77, 0.05);
-}
-
 @keyframes flash-in {
   from {
     opacity: 0;
@@ -65,8 +347,19 @@ input[type="time"] {
   }
 }
 
-@utility glow-accent-strong {
-  box-shadow:
-    0 0 20px rgba(229, 72, 77, 0.25),
-    0 0 40px rgba(229, 72, 77, 0.1);
+/*
+ * SunSet's gradient — its ONE application route (40-UI-SPEC.md §7 clause 2).
+ *
+ * No component composes the stops itself: a surface either uses this name or
+ * it does not have the gradient. The allow-list of files applying it is EMPTY
+ * TODAY, and adding the first one is a decision that edits the gradient gate's
+ * list — not a diff nobody reads.
+ *
+ * The check that guards this must match the four-stop 94deg signature and
+ * never the word "gradient": nine two-stop accent fades exist under src/ and
+ * are entirely correct, and a gate that goes red on a correct file gets
+ * switched off, after which it guards nothing.
+ */
+@utility bg-grad-sunset {
+  background-image: var(--grad-sunset);
 }
