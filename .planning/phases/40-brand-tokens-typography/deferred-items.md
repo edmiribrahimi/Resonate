@@ -105,3 +105,22 @@ falls to its own fallback tail on `html`. **Nothing visible regresses**,
 because `body` still carries an explicit `font-family` (that line is 40-03's
 and was deliberately not moved). Recorded so the state is a known interval and
 not a discovery: **40-02 and 40-03 must ship in the same release.**
+
+---
+
+## DI-40-03 — two stray tool markers at the foot of `40-03-SUMMARY.md`
+
+**Found during:** plan 40-05, while reading Wave 3's output as required context.
+**Date:** 2026-08-11.
+**Status:** open, cosmetic, and deliberately not fixed here.
+
+`.planning/phases/40-brand-tokens-typography/40-03-SUMMARY.md` ends with two
+closing tags that belong to a tool call and not to the document — they follow
+the file's own final line. They render as literal text and change no meaning.
+
+**Why it was not fixed here.** It is another plan's committed artifact, and this
+plan declares `files_modified` as three files, none of them a summary written by
+somebody else. Rewriting a completed plan's record to tidy two lines is the kind
+of edit that makes a later reader doubt what else was changed. **Closing it is
+one deletion of the last two lines**, by whoever next revises that document — or
+by the verifier, who is already reading it.
