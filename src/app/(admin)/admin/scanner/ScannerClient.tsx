@@ -488,6 +488,32 @@ export default function ScannerClient() {
    * be reloaded in full, not resumed. LIVE-03.
    */
   const hadDroppedRef = useRef(false);
+  /**
+   * ── D-38-06: a rebuild counter, and why the rebuild is not hand-rolled ──────
+   *
+   * `resubscribe` bumps this, the channel effect below lists it in its
+   * dependency array, and React's own cleanup then does exactly the three steps
+   * in exactly the right order: `removeChannel`, `setAuth()`, `channel(...)
+   * .subscribe(...)`. One construction site for the channel, therefore, instead
+   * of two that can drift — and a drift *there* is the silent failure this whole
+   * phase exists to refuse.
+   *
+   * Why tear down at all instead of trusting the library: it does auto-rejoin,
+   * with a 1 s / 2 s / 5 s / 10 s backoff. But on resume the access token may
+   * still be the expired one — auth-js stops its refresh ticker while the
+   * document is hidden and the JWT lives 3600 s — and a rejoin with an expired
+   * token fails, backs off and retries. It converges, through a sequence of
+   * failures, during the thirty seconds when a queue is forming. Rebuilding
+   * after an explicit `setAuth()` converges in one step.
+   *
+   * And **no second backoff of our own**: two competing retry loops are a join
+   * storm, and this project's `max_joins_per_second` is 100. The only retry in
+   * the system is the library's.
+   */
+  const [channelEpoch, setChannelEpoch] = useState(0);
+  const resubscribe = useCallback(() => {
+    setChannelEpoch((epoch) => epoch + 1);
+  }, []);
 
   // The queue, in four numbers plus "could not be read at all"
   const [queue, setQueue] = useState<QueueCounts>({
@@ -592,10 +618,73 @@ export default function ScannerClient() {
   useEffect(() => {
     setIsOnline(navigator.onLine);
 
-    const goOnline = () => setIsOnline(true);
+    /**
+     * ── D-38-06 / LIVE-03: the app came back, however it came back ────────────
+     *
+     * The door's phone goes into a pocket and the screen sleeps. The channel
+     * dies there — auto-refresh is stopped while the document is hidden, the
+     * token expires, and Realtime disconnects a client that presents no fresh
+     * JWT — and **`online` never fires, because the network never went away**.
+     * Listening only to `online` would leave the commonest death undetected.
+     *
+     * So the wake signal is assembled by hand from three events, and they are
+     * treated as **one** deliberately: the correct behaviour is identical for
+     * all three, and a device-specific branch is a branch nobody can test.
+     * Safari and iOS Safari implement neither `freeze` nor `resume`, so the
+     * Page Lifecycle API is not an option here. `window.focus` is left out on
+     * purpose: in a standalone PWA it fires alongside `visibilitychange` and
+     * buys nothing but a listener the next reader has to reason about.
+     *
+     * `visibilitychange` is the third of the three and it lives in the effect
+     * that already owns it (the parachute, further down), so there is exactly
+     * one listener for that event and exactly one foreground reload.
+     *
+     * **Step three is the one that matters.** The reload is unconditional and
+     * is never chained to the subscription's outcome: the list is correct after
+     * `requestReload` whether or not the resubscribe succeeded. That is the
+     * property the door needs, and it is why these handlers do not wait for
+     * `SUBSCRIBED` before asking for the list.
+     */
+    const goOnline = () => {
+      setIsOnline(true);
+      resubscribe();
+      requestReloadRef.current?.("online");
+    };
     const goOffline = () => setIsOnline(false);
+    // The bfcache restore, where `visibilitychange` may not fire at all.
+    const onPageShow = () => {
+      resubscribe();
+      requestReloadRef.current?.("pageshow");
+    };
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
+    window.addEventListener("pageshow", onPageShow);
+
+    /**
+     * ── The socket that died without saying so ────────────────────────────────
+     *
+     * The heartbeat runs every 25 s and a missed reply already forces a close
+     * and a reconnect, so a silently dead socket is noticed in about 50 s
+     * without any code of ours. That is what makes the 5-minute reload a
+     * parachute rather than the primary mechanism.
+     *
+     * This callback drives the **display** and one explicit reconnect, and
+     * nothing else. It only ever lowers `channelLive`: a live socket is not the
+     * same claim as "this device is joined to this night's channel", and after a
+     * refused join the socket keeps answering `ok` every 25 s. Raising the flag
+     * on a heartbeat would paint the door green while it hears nothing — the
+     * exact deception this phase is built to refuse. `SUBSCRIBED` is the only
+     * signal that proves the claim, so `SUBSCRIBED` is the only writer that
+     * raises it.
+     */
+    const supabase = createClient();
+    supabase.realtime.onHeartbeat((status) => {
+      if (status === "disconnected" || status === "timeout") {
+        setChannelLive(false);
+        // The documented remedy for a silent drop.
+        supabase.realtime.connect();
+      }
+    });
 
     // Setup sync listeners (online event, visibility change)
     const cleanupSync = setupSyncListeners();
@@ -633,10 +722,18 @@ export default function ScannerClient() {
     return () => {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
+      window.removeEventListener("pageshow", onPageShow);
+      // `onHeartbeat` returns `void` — it assigns a single callback slot on the
+      // client (`RealtimeClient.js:401-403`), so there is no disposer to call.
+      // Overwriting it with a no-op is the teardown, said out loud rather than
+      // left for the next reader to wonder about: without it the callback above
+      // would outlive this surface and go on writing state for a door that is
+      // no longer on screen.
+      supabase.realtime.onHeartbeat(() => {});
       cleanupSync();
       clearInterval(interval);
     };
-  }, [refreshQueueCounts]);
+  }, [refreshQueueCounts, resubscribe]);
 
   /**
    * The verdict for the night just opened, from the cache, before the network is
@@ -812,7 +909,10 @@ export default function ScannerClient() {
       // would keep reloading a list nobody is looking at.
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [selectedPartyId]);
+    // `channelEpoch` is the resume signal's rebuild, and it is the only thing in
+    // here besides the night. `searchQuery` is deliberately absent: a keystroke
+    // in the search box must never tear down and rebuild a WebSocket.
+  }, [selectedPartyId, channelEpoch]);
 
   /**
    * A 30-second tick, and ONLY while the server declared an end for this night.
@@ -1233,8 +1333,12 @@ export default function ScannerClient() {
         }
         return;
       }
-      // Visible: a full reload now, then the parachute back up. The age is then
-      // ~0, so the band correctly does not appear.
+      // Visible: the third of the three resume signals (see the listener block
+      // above for why they are three and why they are treated as one). Rebuild
+      // the channel, then a full reload now, then the parachute back up. The
+      // reload is unconditional — it does not wait for the channel to come
+      // back, and the age is then ~0, so the band correctly does not appear.
+      resubscribe();
       requestReloadRef.current?.("foreground");
       armSafetyTimer();
     };
@@ -1247,7 +1351,7 @@ export default function ScannerClient() {
         safetyTimerRef.current = null;
       }
     };
-  }, [armSafetyTimer]);
+  }, [armSafetyTimer, resubscribe]);
 
   /**
    * The coalescing timeout, torn down — on unmount, and on every change of night.
