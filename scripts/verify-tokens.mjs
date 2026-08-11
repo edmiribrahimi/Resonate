@@ -655,9 +655,50 @@ const declaredNames = new Set(rootDeclarations.map((d) => d.name));
 const themeDeclaredNames = new Set(themeDeclarations.map((d) => d.name));
 const colourMappings = themeDeclarations.filter((d) => d.name.startsWith('--color-'));
 const fontMappings = themeDeclarations.filter((d) => d.name.startsWith('--font-'));
-const exposedNames = new Set(
-  colourMappings.map((d) => d.name.slice('--color-'.length)).filter((n) => declaredNames.has(`--${n}`))
-);
+/**
+ * The SECOND way a token reaches a utility, and forgetting it made this gate go
+ * red on a correct file.
+ *
+ * A `--color-<name>` mapping in `@theme` is the common route, and it generates a
+ * whole family (`bg-`, `text-`, `border-`, …). But Tailwind v4 also takes a
+ * standalone `@utility <class> { … }`, which generates exactly one class and no
+ * `--color-*` entry — and that is how `bg-grad-sunset` is declared, because the
+ * sunset gradient must reach `background-image` and nothing else.
+ *
+ * Read only from the `--color-*` mappings, `grad-sunset` counts as UNEXPOSED,
+ * so check D treats `bg-grad-sunset` in a page as a consumer of a token with no
+ * utility — and fails. On a file that is correct: `verify-sunset-gradient.mjs`
+ * carries an `ALLOW_LIST` written expressly so the first SunSet surface can
+ * apply that class. Two gates in the same phase, contradicting each other, and
+ * the one that would have been switched off is this one.
+ *
+ * So a name exposed by EITHER route is exposed. The prefix is stripped rather
+ * than matched loosely: `@utility bg-grad-sunset` exposes `grad-sunset`, and a
+ * class whose name is not a known token prefixed by a utility prefix exposes
+ * nothing and is ignored.
+ */
+// Deliberately the SAME list check D's consumer pattern uses (:271), not a copy:
+// a gate that recognised a prefix it does not search for — or searched for one it
+// does not recognise — would be wrong in one of the two directions, silently.
+const standaloneUtilityNames = new Set();
+for (const line of tokenLive) {
+  const m = line.match(/^\s*@utility\s+([a-z0-9-]+)\s*\{/);
+  if (!m) continue;
+  const cls = m[1];
+  for (const prefix of UTILITY_PREFIXES) {
+    if (cls.startsWith(`${prefix}-`)) {
+      standaloneUtilityNames.add(cls.slice(prefix.length + 1));
+      break;
+    }
+  }
+}
+
+const exposedNames = new Set([
+  ...colourMappings
+    .map((d) => d.name.slice('--color-'.length))
+    .filter((n) => declaredNames.has(`--${n}`)),
+  ...[...standaloneUtilityNames].filter((n) => declaredNames.has(`--${n}`)),
+]);
 
 const unexposed = KNOWN_TOKEN_NAMES.filter((n) => !exposedNames.has(n));
 
@@ -930,10 +971,72 @@ if (manifestProblems.length === 0) {
   failures.push('F');
 }
 
+// ── check G — the one link between a font token and the DOM that carries it ─
+//
+// Check A EXEMPTS the `--font-*` names from needing a `:root` declaration, and
+// it is right to: `next/font` emits them on a generated class that sits on
+// `<html>`. But that exemption leaves a hole exactly the shape of this phase's
+// central failure. Delete `${inter.variable}` from the `<html>` className and:
+//
+//   - `next/font` still runs, so the class is still generated
+//   - `--font-sans` in `:root` still references `var(--font-inter)`
+//   - checks A–F all stay GREEN, because none of them reads the DOM
+//   - `npm run build` stays green, because nothing is a type error
+//   - and every surface in the product silently falls back to system-ui
+//
+// That is a silent colour-class failure in the typography half, and it is the
+// same species the whole phase exists to make impossible. The menu page now
+// depends on this line alone, having had its local escape removed.
+//
+// This reads the SOURCE, so it proves the className is written — not that a
+// browser applied it. That remains an observation.
+const layoutSrc = readFileSync(`${ROOT}/${LAYOUT_FILE}`, 'utf8');
+const htmlTag = layoutSrc.match(/<html\b[^>]*>/);
+const fontVarProblems = [];
+
+if (!htmlTag) {
+  fontVarProblems.push(
+    `no <html …> element found in ${LAYOUT_FILE}. This check reads the root element's ` +
+      'className; without it, nothing was measured.'
+  );
+} else {
+  for (const name of FONT_VARIABLES) {
+    // `--font-orbitron` is emitted by the `orbitron` call's `variable` option,
+    // and reaches the DOM as `orbitron.variable` in the className. Match the
+    // identifier, not the token name: the token name never appears here.
+    const ident = name.replace(/^--font-/, '');
+    if (!new RegExp(`\\b${ident}\\.variable\\b`).test(htmlTag[0])) {
+      fontVarProblems.push(
+        `the <html> element in ${LAYOUT_FILE} does not carry \`${ident}.variable\`, so ` +
+          `\`${name}\` reaches no element and every var() reading it resolves to nothing.`
+      );
+    }
+  }
+}
+
+if (fontVarProblems.length === 0) {
+  console.log(
+    `  ✓ G  the <html> element in ${LAYOUT_FILE} carries all ${FONT_VARIABLES.length} ` +
+      `next/font variable(s): ${FONT_VARIABLES.join(', ')}`
+  );
+} else {
+  console.log(`  ✗ G  ${fontVarProblems.length} problem(s) wiring the type roles to the DOM:`);
+  for (const p of fontVarProblems) console.log(`         ${p}`);
+  console.log(
+    '\n       Check A deliberately exempts the --font-* names from needing a :root\n' +
+      '       declaration, because next/font emits them on a generated class rather than in\n' +
+      '       :root. This check is the other half of that exemption. Without it, removing\n' +
+      '       one identifier from the root className leaves every other check green, leaves\n' +
+      '       the build green, and drops the whole product to system-ui — with nothing\n' +
+      '       anywhere reporting it.\n'
+  );
+  failures.push('G');
+}
+
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');
 if (failures.length === 0) {
-  console.log('  TOKENS_OK — all six checks passed.');
+  console.log('  TOKENS_OK — all seven checks passed.');
   console.log(
     '  Read the header before treating this as safety: a grep reads declarations, not\n' +
       '  intent. It is silent about a colour written as a raw hex, about a utility built by\n' +
