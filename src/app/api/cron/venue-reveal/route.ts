@@ -5,6 +5,7 @@ import {
   revealPartyVenue,
   type VenueRevealFailureKind,
   type VenueRevealParty,
+  type VenueRevealRetryOutlook,
 } from "@/lib/venue-reveal/reveal-party-venue";
 
 /**
@@ -25,6 +26,56 @@ import {
 
 /** How many failing nights the JSON response names before it stops. */
 const MAX_REPORTED_FAILURES = 20;
+
+/**
+ * Which outcomes are a VERDICT, and therefore belong in `failures` — WR-03.
+ *
+ * ── The defect this closes, which is a silent failure made of noise ──────────
+ *
+ * With the night-level filter removed (D-37-21, and it was right to remove it)
+ * the cron re-sweeps every secret night inside the window, typically for two or
+ * three consecutive runs. On a night that has already been mailed in full
+ * `collectRecipients` returns an empty map, so `failureKind` is
+ * `no_recipients` — and the shared module DECLARES that value to be
+ * *"INFORMATION, not a verdict"* (`reveal-party-venue.ts:395-404`). Reporting
+ * it as a failure was the caller contradicting the module it calls.
+ *
+ * That contradiction costs something real, and not only tidiness. This JSON
+ * response is **the only observable channel this cron has** — there is no error
+ * tracking anywhere in this product (`meta-gates.md`) — and with
+ * {@link MAX_REPORTED_FAILURES} at twenty, benign entries can push a real
+ * `send_failed` or `recipients_unavailable` out of the list. A silent failure
+ * produced by noise rather than by the absence of a log.
+ *
+ * ── Why a total `Record` and not a list ──────────────────────────────────────
+ *
+ * A list of three names would answer the question for today and answer nothing
+ * for the next member of {@link VenueRevealFailureKind}, which would simply be
+ * absent and therefore silently unreported. This map is total over the union,
+ * so adding a member is a **compile error** until somebody decides which side
+ * it is on. Same shape, and the same reason, as `REFUSAL_SENTENCE` in
+ * `admin/events/[id]/reveal/RevealVenueDialog.tsx:123`.
+ *
+ * Observable effect, and it is the acceptance criterion: a response with an
+ * empty `failures` means *"everything left"* again, instead of *"everything
+ * left, plus three nights that had nobody"*.
+ */
+const REPORTABLE_FAILURE: Record<VenueRevealFailureKind, boolean> = {
+  /** Nothing went wrong. */
+  none: false,
+  /**
+   * Nobody was entitled — the steady state of a re-swept night, and the reason
+   * this map exists. NOT the same fact as `recipients_unavailable` below, which
+   * is why the two get opposite answers here.
+   */
+  no_recipients: false,
+  /** Not one mail left for a night that had recipients. A verdict. */
+  send_failed: true,
+  /** Who was entitled could not be READ. Not "nobody": a verdict. */
+  recipients_unavailable: true,
+  /** The night was gone by the time the send looked. A verdict. */
+  party_not_found: true,
+};
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -105,6 +156,12 @@ export async function GET(request: Request) {
     partyId: string;
     failureKind: VenueRevealFailureKind;
     recipientsFailed: number;
+    /**
+     * Whether tomorrow's run can plausibly do better. On the only channel this
+     * cron has, a failure that will reproduce identically and one that is a bad
+     * minute are two different things to read.
+     */
+    retryOutlook: VenueRevealRetryOutlook;
   }> = [];
 
   for (const party of revealParties) {
@@ -148,13 +205,14 @@ export async function GET(request: Request) {
     totalFailed += result.recipientsFailed;
 
     if (
-      result.failureKind !== "none" &&
+      REPORTABLE_FAILURE[result.failureKind] &&
       failures.length < MAX_REPORTED_FAILURES
     ) {
       failures.push({
         partyId: party.id,
         failureKind: result.failureKind,
         recipientsFailed: result.recipientsFailed,
+        retryOutlook: result.retryOutlook,
       });
     }
 
