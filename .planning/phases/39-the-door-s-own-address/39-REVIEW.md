@@ -30,7 +30,23 @@ findings:
   warning: 7
   info: 4
   total: 11
+findings_resolved:
+  warning: 6
+  info: 0
+findings_open:
+  warning: 1
+  info: 4
+resolution:
+  WR-01: fixed — 9f64e81 (compile-time type guard restored, proven by mutation)
+  WR-02: fixed — 949ff15 (segment-boundary match; unreachable comparisons declared as type-guarded)
+  WR-03: fixed — 00fcdd4 (WORK_TREE_ROOTS is a set; the second root is covered)
+  WR-04: partially fixed — 00fcdd4 (DOOR_ADDRESSES derived from the map, no longer hand-copied). The blast radius of the module-load throw is UNCHANGED and is not a code problem — it is mitigated by the deploy rule in 39-DOOR-PASS.md §0.6.
+  WR-05: fixed — 9f64e81 (the `rejected` row added to the outcomes table; the behaviour was already correct and agrees with the server)
+  WR-06: OPEN, and deliberately — it is research Open Question 3, routed to the owner AFTER the dark-room sitting. Whether the door deserves a runtime cache longer than 24 h is a product decision about how stale a door may be, not a planner's.
+  WR-07: fixed — 00fcdd4 (staff-tabs.ts and organizer-redirects.ts no longer say the door has one address)
+  IN-01 … IN-04: OPEN — informational, no behaviour at stake.
 status: issues_found
+resolved: 2026-08-11
 ---
 
 # Phase 39: Code Review Report
@@ -38,7 +54,14 @@ status: issues_found
 **Reviewed:** 2026-08-11T15:26:28Z
 **Depth:** standard
 **Files Reviewed:** 21
-**Status:** issues_found
+**Status:** issues_found — **six of seven warnings resolved 2026-08-11; see `resolution:` in the frontmatter.**
+
+> **Read the findings below as written at review time.** They are kept verbatim
+> rather than edited in place, because a review rewritten after its fixes stops
+> being evidence of what was found. WR-01, WR-02, WR-03, WR-05 and WR-07 are
+> repaired and each repair is proven in its commit message; WR-04 is repaired in
+> the part that was a code problem. **WR-06 is open on purpose** and belongs to
+> the owner, not to a plan.
 
 ## Summary
 
