@@ -588,8 +588,26 @@ Plans:
   4. The brand is written with a normal "e" in page titles, social previews and the installed app name; the reversed glyph appears only inside the logo artwork
   5. After a release, a device that already carried the previous version loads the new styles whole — no device is left serving a mixture of old and new
 
-**Plans**: TBD
+**Plans**: 5 plans, in 4 waves
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 40-01-PLAN.md — The token gate, written before the first token moves: G1, because the build is proven blind to a rename
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 40-02-PLAN.md — The token layer: the artifact's colours adopted, the semantics held apart, the gradient declared once, and the legacy names aliased so nothing goes dark
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 40-03-PLAN.md — Three faces and one document shell: Inter at the root, the local escape deleted, one CSS chunk, and the brand where the OS reads it
+- [ ] 40-04-PLAN.md — The two gates that hold DS-02 and DS-03, each proven able to go red and blind to an accent fade
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 40-05-PLAN.md — The version boundary: a release purges the document caches, the never-refreshing writer goes, and H1–H3 are written before the release they test
 
 ### Phase 41: Shared Primitives & Three-Tier Layout
 
