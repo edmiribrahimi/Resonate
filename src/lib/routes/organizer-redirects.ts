@@ -54,7 +54,11 @@
  * people rostered to work it.
  */
 
-import { resolveRoute } from "@/lib/routes/capability-routes";
+import { CAP } from "@/lib/capabilities/keys";
+import {
+  CAPABILITY_ROUTES,
+  resolveRoute,
+} from "@/lib/routes/capability-routes";
 
 /** A row: where a request arrives, and the address that actually renders it. */
 type RedirectRow = readonly [from: `/organizer${string}`, to: `/admin${string}`];
@@ -130,13 +134,27 @@ const COMPILED_ROWS: readonly CompiledRow[] = (() => {
     toSegments: splitSegments(to),
   }));
 
-  // ── Fence 1: the door's address, and the table's one direction. ────────────
+  // ── Fence 1: the door's addresses, and the table's one direction. ──────────
   //
   // Expressed as a throw and not as a comment, because the paragraph above is
-  // read once and this runs on every import. `/admin/scanner` must never appear
-  // on either side of a row: not as a source, which would redirect the door,
-  // and not as a destination, which would point somebody at it through a rule
-  // nobody re-reads.
+  // read once and this runs on every import. **No address of the door** may
+  // appear on either side of a row: not as a source, which would redirect the
+  // door, and not as a destination, which would point somebody at it through a
+  // rule nobody re-reads.
+  //
+  // ── Phase 39: the fence follows the MAP, not a spelling ────────────────────
+  //
+  // Until Phase 39 this test matched the substring `/scanner`, which protected
+  // exactly one address — so after the move a sixteenth row pointing at the
+  // door's new address would have **passed**. Reading
+  // `CAPABILITY_ROUTES[CAP.DOOR_OPERATE].routes` instead removes one more place
+  // where the door's address has to be remembered, which is the same argument
+  // `src/lib/rbac/roles.ts` already makes about itself. The comparison is by
+  // **equality**, not by substring: a fence that matched loosely would also
+  // claim an unrelated future address that happened to contain the word.
+  const doorAddresses: readonly string[] =
+    CAPABILITY_ROUTES[CAP.DOOR_OPERATE].routes;
+
   for (const row of rows) {
     if (row.from.startsWith("/admin")) {
       throw new Error(
@@ -144,10 +162,14 @@ const COMPILED_ROWS: readonly CompiledRow[] = (() => {
           `The table is one-directional: /organizer to /admin, never the reverse.`
       );
     }
-    if (row.to.includes("/scanner") || row.from.includes("/scanner")) {
+    const matchedDoorAddress = doorAddresses.find(
+      (address) => row.to === address || row.from === address
+    );
+    if (matchedDoorAddress !== undefined) {
       throw new Error(
-        `organizer-redirects: row "${row.from}" -> "${row.to}" names the scanner. ` +
-          `The door keeps its address and no redirect may match it or point at it.`
+        `organizer-redirects: row "${row.from}" -> "${row.to}" names the door's address ` +
+          `"${matchedDoorAddress}". The door keeps its addresses and no redirect may ` +
+          `match one or point at one.`
       );
     }
   }

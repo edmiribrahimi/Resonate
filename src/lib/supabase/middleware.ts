@@ -111,7 +111,7 @@ type BounceCause =
  */
 
 /**
- * The door's binding, asserted once, at module load.
+ * The door's bindings — **both addresses** — asserted at module load.
  *
  * ── Why a throw stands where a comment used to ───────────────────────────────
  *
@@ -158,28 +158,56 @@ type BounceCause =
  * immediate 500 on every covered route on the first request — which is worse
  * than a red build and enormously better than a door that quietly refuses the
  * people rostered to work it, in a product with no error tracking.
+ *
+ * ── Phase 39: the second address gets the assertion the first one has ────────
+ *
+ * The door has two addresses now (D-39-01, D-39-02), and the newer one gets the
+ * same check the older one has had since plan 34-03. The reason is unchanged
+ * and travels verbatim: **the binding itself is data now, and data can be
+ * edited** — which is exactly as true of the new address as of the old one, and
+ * a phase that adds an address without adding its assertion leaves half the
+ * door guarded by a mechanism the other half does not have.
+ *
+ * This block is added in the **same commit as the map edit**, deliberately, so
+ * that the two cannot be deployed apart: an assertion shipped ahead of the map
+ * it asserts is a 500 by construction.
+ *
+ * **Each message names the address it is about.** Two doors exist; a failure at
+ * 02:00 saying only that "the door" is wrong would send somebody reading the
+ * wrong file.
+ *
+ * ── The deploy rule, which is the only mitigation there is ───────────────────
+ *
+ * There is no code fix for a first-request throw, so the mitigation is a
+ * scheduling one and it is stated as one: **deploy on a day with no night
+ * scheduled, and make the first request yourself.** A wrong map is a 500 on
+ * every route the middleware covers, discovered by whoever makes that request —
+ * and it must not be somebody at the door. Recorded as §0.6 of
+ * `.planning/phases/39-the-door-s-own-address/39-DOOR-PASS.md`.
  */
-const DOOR_ADDRESS = "/admin/scanner";
+const DOOR_ADDRESSES = ["/admin/scanner", "/door"] as const;
 
-const doorBinding = resolveRoute(DOOR_ADDRESS);
+for (const doorAddress of DOOR_ADDRESSES) {
+  const doorBinding = resolveRoute(doorAddress);
 
-if (doorBinding === null || doorBinding.key !== CAP.DOOR_OPERATE) {
-  throw new Error(
-    `middleware: "${DOOR_ADDRESS}" resolves to ${
-      doorBinding === null ? "no capability at all" : `"${doorBinding.key}"`
-    }, not "${CAP.DOOR_OPERATE}". The door's address is judged by the door's ` +
-      `capability, and by no other. Fix the binding in ` +
-      `src/lib/routes/capability-routes.ts.`
-  );
-}
+  if (doorBinding === null || doorBinding.key !== CAP.DOOR_OPERATE) {
+    throw new Error(
+      `middleware: "${doorAddress}" resolves to ${
+        doorBinding === null ? "no capability at all" : `"${doorBinding.key}"`
+      }, not "${CAP.DOOR_OPERATE}". The door's address is judged by the door's ` +
+        `capability, and by no other. Fix the binding in ` +
+        `src/lib/routes/capability-routes.ts.`
+    );
+  }
 
-if (!doorBinding.assignmentOpenable) {
-  throw new Error(
-    `middleware: "${DOOR_ADDRESS}" is bound to "${CAP.DOOR_OPERATE}" but is not ` +
-      `assignment-openable. A member of staff assigned to tonight's door holds ` +
-      `that capability by assignment and by no other route, so without this ` +
-      `flag the middleware refuses the person rostered to work the door.`
-  );
+  if (!doorBinding.assignmentOpenable) {
+    throw new Error(
+      `middleware: "${doorAddress}" is bound to "${CAP.DOOR_OPERATE}" but is not ` +
+        `assignment-openable. A member of staff assigned to tonight's door holds ` +
+        `that capability by assignment and by no other route, so without this ` +
+        `flag the middleware refuses the person rostered to work the door.`
+    );
+  }
 }
 
 /**
@@ -451,11 +479,27 @@ export async function updateSession(request: NextRequest) {
   // caller is sent to sign in with their destination in `?redirect=`, which is
   // refusal state 1 of D-34-08 and is not a capability question at all. No
   // capability is read on this branch, and none should be.
+  //
+  // ── `/door` is the fifth, added by Phase 39, and it is not optional ─────────
+  //
+  // This list decides only whether an **unauthenticated** caller is bounced to
+  // `/login` with `?redirect=`, and it reads no capability. Without `/door` on
+  // it, a door phone whose session expired in a pocket is not bounced at all: it
+  // meets the page guard, which sends it to `/dashboard`, and `/dashboard` then
+  // bounces it to login — so the person working the door signs in and arrives at
+  // the **dashboard**, in the dark, with a queue.
+  //
+  // Blocker **D7** — this file writes `?redirect=` while
+  // `src/app/(auth)/login/page.tsx` reads `?next=`, so the destination is lost
+  // on every protected address — is **pre-existing and is not repaired here**.
+  // Adding this prefix stops Phase 39 from putting a second wrong turn on top of
+  // it, and nothing more.
   const protectedPrefixes = [
     "/dashboard",
     "/membership-card",
     "/attendance",
     "/admin",
+    "/door",
   ];
 
   if (!user) {

@@ -1,26 +1,84 @@
 import type { Route } from "next";
 import { CAP } from "@/lib/capabilities/keys";
-import { CAPABILITY_ROUTES } from "@/lib/routes/capability-routes";
+import { resolveRoute } from "@/lib/routes/capability-routes";
 import type { UserRole, UserStatus } from "@/types/database";
 
 /**
- * The door's address, read from the map instead of typed again here.
+ * The address the Check-in entry draws, declared here and **verified against the
+ * map**.
  *
- * It was the only route literal in this file, and it was the one that could not
- * afford to be one: Phase 39 moves the door to its own address (STAFF-04), and
- * this file must not be a second place where that address has to be remembered.
- * `CAPABILITY_ROUTES` is where the middleware reads it; this reads the same
- * entry.
+ * ── What stood here, and why it is gone rather than widened ──────────────────
  *
- * **The type annotation is the guard, and it is not decoration.** A one-element
- * tuple is asserted, so binding `door.operate` to a second address becomes a
- * build error here — naming this file — instead of a silent `[0]` that keeps
- * drawing the first one. There is exactly one door.
+ * Phase 34 read this address out of `CAPABILITY_ROUTES` through a constant
+ * annotated with a **one-element tuple**, and said so in as many words: *"the
+ * type annotation is the guard, and it is not decoration … binding
+ * `door.operate` to a second address becomes a build error here — naming this
+ * file — instead of a silent `[0]` that keeps drawing the first one. There is
+ * exactly one door."*
+ *
+ * **Phase 39 is the phase that error was waiting for.** STAFF-04 gives the door
+ * a second address, so the stop has done its job and is **spent**, not
+ * defeated. What replaces it is a guard of the same strength asking a better
+ * question: the tuple was an **arity** guard standing in for a **meaning** one,
+ * and the meaning is now checked directly — *does the map bind the address this
+ * file draws to the door's capability?*
+ *
+ * Two lazier repairs were available and are refused, with their reasons, so
+ * that neither is proposed again:
+ *
+ *   · `readonly [Route, Route]` — a guard that no longer says anything true. It
+ *     would fire on a *third* address, which nothing is planning, and stay
+ *     silent on the failure that matters: the two addresses being bound to the
+ *     wrong key.
+ *   · `readonly Route[]` with an index read at position zero — this
+ *     reintroduces precisely the *silent `[0]`* the original docblock was
+ *     written to prevent, drawing whichever address happens to be declared
+ *     first.
+ *
+ * ── `/door` is drawn deliberately, and the choice is not cosmetic ────────────
+ *
+ * It is the canonical address (D-39-01), and every device that follows this nav
+ * thereafter warms the `/door` runtime-cache entry rather than the old one —
+ * which is what success criterion 2 of this phase needs. `/admin/scanner` keeps
+ * serving the same surface permanently and as a real page (D-39-02); it is
+ * simply not what the nav points at.
+ *
+ * ── The throw below is a BUILD failure, not a first-request one ──────────────
+ *
+ * This module is imported by `MobileNav` and is therefore evaluated while pages
+ * are prerendered — unlike the middleware's own door assertion, which is
+ * module-load code in a middleware bundle and fires on the first request after
+ * deploy. And its transitive closure reaches **no server module** (`keys.ts`
+ * imports nothing; `capability-routes.ts` imports `keys.ts` and `next`), which
+ * is D-34-10 and must not be broken: this file is read from a `"use client"`
+ * navigation.
  */
-const DOOR_BINDING: { readonly routes: readonly [Route] } =
-  CAPABILITY_ROUTES[CAP.DOOR_OPERATE];
+const DOOR_HREF: Route = "/door";
 
-const DOOR_HREF: Route = DOOR_BINDING.routes[0];
+// Two failures, two sentences — the `staff-tabs.ts` shape. An address nobody
+// bound and an address bound to the wrong key are different mistakes with
+// different repairs, and one message covering both would be the collapsed-catch
+// pattern this project has already paid for once.
+{
+  const doorBinding = resolveRoute(DOOR_HREF);
+
+  if (doorBinding === null) {
+    throw new Error(
+      `roles: the Check-in entry points at "${DOOR_HREF}", which no entry of ` +
+        `CAPABILITY_ROUTES binds. Bind the address in the map, or change the ` +
+        `entry — a drawn entry with no server-side rule is a promise nothing keeps.`
+    );
+  }
+
+  if (doorBinding.key !== CAP.DOOR_OPERATE) {
+    throw new Error(
+      `roles: the Check-in entry points at "${DOOR_HREF}" expecting ` +
+        `"${CAP.DOOR_OPERATE}", but CAPABILITY_ROUTES binds that address to ` +
+        `"${doorBinding.key}" (pattern "${doorBinding.pattern}"). The map is the ` +
+        `source; correct the map or the entry, never this comparison.`
+    );
+  }
+}
 
 // Re-export types for convenience
 export type { UserRole, UserStatus };

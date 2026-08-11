@@ -209,9 +209,39 @@ export const CAPABILITY_ROUTES = {
    * replaced already had; the reach of every role is identical before and
    * after. And it satisfies the rule below on its own terms — this route has
    * had its own server-side gate since plan 35-16, with the same predicate.
+   *
+   * ── Phase 39: two addresses, ONE entry ──────────────────────────────────────
+   *
+   * The sentence three paragraphs up — *"the address does not move either
+   * (STAFF-04 is Phase 39, alone …)"* — is **spent**. It is reversed here rather
+   * than deleted, because a decision reversed without its reason reads as an
+   * oversight: STAFF-04 has now happened, and Phase 39 is the phase that
+   * sentence was pointing at.
+   *
+   * `/door` is the **canonical** address as of Phase 39 (D-39-01) and is what
+   * the bottom nav draws. `/admin/scanner` is **permanent**: it is not
+   * deprecated on a timer and not removed in a later phase — it serves the same
+   * surface, as a real page and never as a redirect (D-39-02), because a
+   * redirect needs a network the door is designed not to have.
+   *
+   * **Two addresses, one entry.** A second entry, or a second key, would be the
+   * *second predicate* `39-CONTEXT.md` forbids; and `assignmentOpenable` is a
+   * property of the ENTRY, which is exactly what keeps the person rostered to
+   * the door admitted at *either* address without the flag being written twice.
+   *
+   * **D-39-03, recorded verbatim as a reading and not as a choice.** STAFF-04
+   * (*the door keeps an address of its own and is not moved together with the
+   * rest*) and the ROADMAP goal (*it moves to its permanent address in a step
+   * all its own*) **do not contradict each other**: both hold at once. Written
+   * down so the next reader does not re-litigate it.
+   *
+   * **No ambiguity is introduced**, and it is checked rather than hoped: `/door`
+   * is one literal segment, and the other one-segment patterns in this map —
+   * `/admin`, `/membership-card`, `/attendance` — all carry different literals,
+   * so the load-time ambiguity throw at the foot of this file does not fire.
    */
   [CAP.DOOR_OPERATE]: {
-    routes: ["/admin/scanner"],
+    routes: ["/admin/scanner", "/door"],
     assignmentOpenable: true,
     alsoGatesTables: true,
   },
