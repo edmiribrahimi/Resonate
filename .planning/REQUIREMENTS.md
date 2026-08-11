@@ -135,14 +135,24 @@ Decided by the project owner on 2026-08-06 and recorded in
 - [ ] **RESP-04**: Work surfaces show filters and navigation without hiding them behind a menu from tablet size up
 - [ ] **RESP-05**: The scanner centres rather than stretches, and its behaviour is unchanged by the visual work
 
+### Production
+
+*Promoted out of Future Requirements on 2026-08-11 (owner decision). Both were
+deferred for one stated reason each, and both reasons have since been satisfied:
+PROD-01 waited on the capability model **and** the format model — Phase 32
+shipped 2026-08-06, Phase 36 on 2026-08-10; PROD-02 waited on the capability
+model alone. A deferral whose reason has expired is a decision nobody is taking
+any more.*
+
+- [ ] **PROD-01**: The production calendar lives in the product rather than outside it — an import, not a migration, and the material reaches the database without passing through the public repository
+- [ ] **PROD-02**: Production sections are visible **per section** to the staff entitled to them, because the sections do not carry the same risk
+
 ## Future Requirements
 
 Deferred, tracked, not in this roadmap.
 
 | ID | Requirement | Why deferred |
 |---|---|---|
-| **PROD-01** | The production calendar lives in the product rather than outside it | Needs the capability model and the format model first; it is an import, not a migration |
-| **PROD-02** | Production sections are visible per section to the staff entitled to them | Depends on the capability model shipping first |
 | **MEDIA-01** | Uploaded media is private by default and reachable only through an authorised, expiring link | Own milestone: touches every existing public URL |
 | **MEDIA-02** | Image metadata is stripped on upload, so a photo taken at a secret venue cannot carry its coordinates | Own milestone, but the highest-value item in it |
 | **MEDIA-03** | Rejecting media makes it unreachable while keeping it in the internal archive | Own milestone |
@@ -164,12 +174,11 @@ Deferred, tracked, not in this roadmap.
 | Realtime presence indicators | Freshness is the requirement, not knowing who else is watching |
 | Auto-creating accounts for credited artists | An account is membership in a gated community — that gate is not opened to print a name |
 | Redesigning scanner interaction | Colour, contrast and type only; behaviour is a safety surface |
-| Importing the production calendar | Deferred with PROD-01 |
 
 ## Traceability
 
 Every v1.5 requirement maps to exactly one phase. Phase numbering continues from
-v1.4 (last phase: 30) — this milestone runs 31 → 43.
+v1.4 (last phase: 30) — this milestone runs 31 → 45.
 
 **Phase 43 was added on 2026-08-06 and executes between 33 and 35.** Its number
 is higher because numbers are identity, not position: no phase was renumbered.
@@ -248,8 +257,10 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | RESP-04 | Phase 41 | Pending |
 | DS-04 | Phase 42 | Pending |
 | RESP-05 | Phase 42 | Pending |
+| PROD-01 | Phase 44 | Pending |
+| PROD-02 | Phase 45 | Pending |
 
-**Coverage:** 71 / 71 mapped. No orphans, no requirement assigned twice.
+**Coverage:** 73 / 73 mapped. No orphans, no requirement assigned twice.
 
 > The previous figure read *57 / 57*. It was already wrong when written — 62
 > requirements were defined at the time, and the table listed 62 rows. Corrected

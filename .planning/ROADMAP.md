@@ -34,9 +34,22 @@ of its own, verified on a device with the network off. The design track runs
 last, and the scanner is the last surface it touches — a visual regression there
 is a safety issue, not a cosmetic one.
 
-**Milestone numbering continues from v1.4:** phases run 31 → 43. Phase 43 was
+**A fifth thing was added on 2026-08-11:** the production material stops living
+outside the product. The calendar, and then each production section under its own
+entitlement, come inside (44, 45). They run **after** the visual track and not
+before it, for the reason phase 41 states about itself — a surface converts whole
+or not at all, and the production section is the largest set of new surfaces in
+the project. Building it before the token layer and the shared primitives exist
+would create the biggest half-converted surface in the product and force 41 and
+42 to reopen every screen just written.
+
+**Milestone numbering continues from v1.4:** phases run 31 → 45. Phase 43 was
 added on 2026-08-06, after 34 and 35 had already been numbered and cited; it
-executes between 33 and 35, not at the end. See the note below.
+executes between 33 and 35, not at the end. Phases **44 and 45 were added on
+2026-08-11** (owner decision) and execute **after 42** — they carry PROD-01 and
+PROD-02, promoted out of Future Requirements once the capability model (32) and
+the format model (36) had both shipped, which were the only stated reasons they
+were deferred. See the note below.
 
 ## Phases
 
@@ -79,6 +92,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - Recurring patterns become shared components that change form by device, adopted surface by surface
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
+- [ ] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository
+- [ ] **Phase 45: Production Sections, Section by Section** - Each production section is entitled separately, because they do not carry the same risk
 
 ## Phase Details
 
@@ -652,6 +667,37 @@ Not preferences — each one has a failure mode behind it.
 - **Route collapse before formats and design.** Otherwise each is built twice, once per duplicated tree — the exact cost the collapse exists to remove.
 - **The door is not part of routing.** Its address moves in Phase 39, alone, because a redirect needs a network the door is designed not to need.
 - **The scanner is converted last** (42), and only after the door's behavioural corrections (31, 39) have shipped and been used at a real night.
+
+### Phase 44: The Production Calendar Comes Inside
+
+**Goal**: The production calendar stops living outside the product. A night's format, series number, venue state and editorial anchors are readable in the app by the people entitled to them — imported from the local material into the database, and never through the repository.
+**Depends on**: Phase 32 (capability model), Phase 36 (format model and series numbering), Phase 41 (shared primitives, so the surface lands in the finished visual system rather than being converted afterwards)
+**Requirements**: PROD-01
+**Success Criteria** (what must be TRUE):
+
+  1. A night is readable in the product carrying its format, its series number, its venue state and its editorial anchors — nobody opens a document outside the app to know what is on
+  2. The material reaches the database **without passing through the repository**: no venue under negotiation, no unannounced date and no line-up appears in a migration, a seed, a fixture, a test or a planning document
+  3. A night's editorial pieces are **derived** from its date and format rather than typed in — listing at −2, tonight on the day, recap and podcast cover at +4, timetable at −1 for the night — and the after movie is anchored to the **next edition's listing**, never to a day count
+  4. The calendar is reachable only by someone the capability model admits, and the middleware, the page guard and the row-level policy ask the same question of the same definition
+  5. Moving a night recomputes everything downstream of it, and a series progressivo is appended, never renumbered
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 45: Production Sections, Section by Section
+
+**Goal**: Each production section is entitled separately, because they do not carry the same risk — scouting holds open negotiations, the visual system holds nothing secret. Holding one section grants no other.
+**Depends on**: Phase 44
+**Requirements**: PROD-02
+**Success Criteria** (what must be TRUE):
+
+  1. Entitlement is **per section**, not per role: a viewer holding one section is refused the others, and the refusal comes from the row-level policy — not from the navigation hiding a link
+  2. A space in the scouting section carries its stage — mapped, verified, contacted, acquired — and a stage that is not `acquired` is visible as such wherever the space is named
+  3. A section whose content is not yet written **declares the emptiness** instead of filling it, and no surface implies a decision the owner has not taken
+  4. Every section's read path is proven refused by a session that lacks its capability, exercised with a real role rather than a service key
+
+**Plans**: TBD
+**UI hint**: yes
 
 ---
 *Last updated: 2026-08-06 — Phase 43 added (role model and account creation); execution order set to 33 → 43 → 35 → 34 → 36 → …, with no phase renumbered*

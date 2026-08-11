@@ -20,6 +20,16 @@ contrast and type only and does not touch behaviour. This phase does not convert
 73 files of default Tailwind colour; it establishes the layer those conversions
 will draw from.
 
+**Added 2026-08-11, after this context was first written:** the artifact's
+*content* also comes into the product — the calendar in **Phase 44**, each
+production section under its own entitlement in **Phase 45** (PROD-01, PROD-02,
+promoted out of Future Requirements once Phases 32 and 36 shipped). Those are the
+largest set of new surfaces in the project, and they will be built **on top of
+this phase's token layer**. So the tokens are not chosen for today's screens
+alone: a set that only serves the surfaces that exist now would be re-opened
+twice. Nothing in Phase 44 or 45 is work for this phase — but the token set is
+what they inherit.
+
 **This phase invents no design system.** `36-VISUAL-SOURCE.md` distilled one from
 the production tracker on 2026-08-10 and its conclusion stands: *"non c'e' niente
 da inventare: c'e' da **adottare**."*

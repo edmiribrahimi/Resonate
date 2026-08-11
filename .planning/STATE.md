@@ -339,3 +339,28 @@ does not exist on this machine, though GSD's own generated text uses it.
 
 ---
 *State initialized: 2026-03-10 — v1.5 roadmap 2026-08-05*
+
+### Roadmap Evolution
+
+- **2026-08-11 — Fasi 44 e 45 aggiunte alla v1.5** (decisione del proprietario), in
+  esecuzione **dopo la 42**. Portano PROD-01 e PROD-02, promossi fuori da
+  *Future Requirements*: erano differiti per una ragione dichiarata ciascuno —
+  PROD-01 aspettava il modello delle capability **e** quello dei format, PROD-02 le
+  sole capability — e **entrambe le ragioni sono scadute** con le fasi 32
+  (2026-08-06) e 36 (2026-08-10). Un differimento la cui ragione e' scaduta non e'
+  piu' una decisione che qualcuno sta prendendo.
+  - **Fase 44** — il calendario di produzione entra nel prodotto: import nel
+    database, **mai attraverso il repository**, che e' pubblico.
+  - **Fase 45** — ogni sezione di produzione ha il proprio diritto d'accesso,
+    perche' non portano lo stesso rischio: lo scouting tiene trattative aperte, il
+    sistema visivo non tiene niente di segreto.
+  - **Perche' dopo il visivo e non prima:** e' la regola che la fase 41 scrive su
+    se' stessa — una superficie si converte intera o non si converte. La sezione
+    Produzione e' il piu' grande insieme di superfici nuove del progetto;
+    costruirla prima dei token e dei componenti condivisi creerebbe il piu' grande
+    mezzo-convertito del prodotto e costringerebbe 41 e 42 a riaprire ogni schermo
+    appena scritto.
+  - **Vincolo che viaggia con la decisione:** «gli stessi layout dell'artifact»
+    significa la stessa **costruzione**, mai lo stesso **contenuto**. I mockup
+    contengono nomi di sede, line-up e date; `docs/` e `.firecrawl/` sono in
+    `.gitignore` apposta e il controllo F di `verify:persona` lo verifica.
