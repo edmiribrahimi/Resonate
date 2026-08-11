@@ -95,6 +95,49 @@ export type VenueRevealFailureKind =
   | "recipients_unavailable"
   | "party_not_found";
 
+/**
+ * Whether pressing again, **right now**, could plausibly change anything.
+ *
+ * ── Why this exists, which is not "for completeness" ─────────────────────────
+ *
+ * The panel of the reveal says *"Pressing sends only to them — nobody already
+ * reached is mailed again"* (`VenueRevealPanel.tsx:304-307`). That sentence is
+ * true about **who** gets mailed and says nothing about **whether it can work**,
+ * and after WR-06's fallback a refusal that reproduces identically is still
+ * possible: an address the provider has suppressed, a refused sender domain, a
+ * validation refusal. Without this value the only remedy a person has is to
+ * press a button that publishes addresses over and over, learning nothing —
+ * which is the *"press, fail, press, fail"* the review named.
+ *
+ * So it is here **so that a surface can stop inviting the second press**, and
+ * whoever finds it in six months should read it that way rather than as a
+ * diagnostic nicety. It is a VALUE and not a sentence on purpose: the two
+ * surfaces that would render it live in another module, Next redacts thrown
+ * messages in production, and a view must be able to branch.
+ *
+ * ── The horizon is "now", and stating it is what makes it decidable ──────────
+ *
+ * `daily_quota_exceeded` gets the same answer as `validation_error` here, and
+ * that is correct rather than sloppy: pressing again in ten seconds reproduces
+ * both. What clears a quota is time, and the thing that comes back later is the
+ * scheduled run, not the finger on the button.
+ *
+ * - `nothing_to_retry` — nobody is left unreached by this call.
+ * - `may_help` — the refusal described the **moment**: a rate limit, a provider
+ *   fault, a transport failure. The same press later can succeed.
+ * - `same_answer` — the refusal described the **request** or the account: the
+ *   same call now gets the same word. Something outside this product has to
+ *   change first.
+ * - `unknown` — the provider refused with a name outside the set measured
+ *   below. Deliberately not folded into either of the two above: guessing here
+ *   would be the newsletter's one-bucket defect wearing a type.
+ */
+export type VenueRevealRetryOutlook =
+  | "nothing_to_retry"
+  | "may_help"
+  | "same_answer"
+  | "unknown";
+
 export interface VenueRevealResult {
   /** People, not rows: `emailMap.size` after deduplication by email address. */
   recipientsTotal: number;
@@ -103,6 +146,12 @@ export interface VenueRevealResult {
   /** The sum of the batches that did not leave. */
   recipientsFailed: number;
   failureKind: VenueRevealFailureKind;
+  /**
+   * Whether pressing again right now could change the outcome. See
+   * {@link VenueRevealRetryOutlook} — it exists so a surface can stop inviting
+   * a second press of a button that publishes addresses.
+   */
+  retryOutlook: VenueRevealRetryOutlook;
 }
 
 /** The one result a caller may build by hand, so the vocabulary stays single. */
@@ -111,7 +160,79 @@ export const VENUE_REVEAL_PARTY_NOT_FOUND: VenueRevealResult = {
   recipientsSent: 0,
   recipientsFailed: 0,
   failureKind: "party_not_found",
+  // The night is gone. Pressing again asks the same question of the same
+  // absence.
+  retryOutlook: "same_answer",
 };
+
+/**
+ * The provider's refusal names, sorted by whether they describe the MOMENT or
+ * the REQUEST.
+ *
+ * Read at the source, not from memory: `resend@6.9.2`,
+ * `node_modules/resend/dist/index.d.mts:72`, where `RESEND_ERROR_CODE_KEY` is a
+ * closed union of twenty-one names. All twenty-one are placed below — the two
+ * sets partition it — so that a version of the SDK that adds a name falls
+ * through to `unknown` instead of being silently assigned a side.
+ *
+ * The sets are typed `ReadonlySet<string>` rather than of the SDK's union: the
+ * value being classified arrives from the network at runtime, and a lookup that
+ * pretended otherwise would be a type assertion about somebody else's server.
+ */
+const RETRY_MAY_HELP: ReadonlySet<string> = new Set([
+  "rate_limit_exceeded",
+  "concurrent_idempotent_requests",
+  "application_error",
+  "internal_server_error",
+]);
+
+const SAME_ANSWER_ON_RETRY: ReadonlySet<string> = new Set([
+  "validation_error",
+  "missing_api_key",
+  "restricted_api_key",
+  "invalid_api_key",
+  "invalid_access",
+  "invalid_attachment",
+  "invalid_from_address",
+  "invalid_parameter",
+  "invalid_region",
+  "invalid_idempotency_key",
+  "invalid_idempotent_request",
+  "missing_required_field",
+  "method_not_allowed",
+  "not_found",
+  "security_error",
+  // Time clears a quota; a second press does not. The scheduled run is what
+  // comes back later, and it is the net under this path by design (D-37-01).
+  "daily_quota_exceeded",
+  "monthly_quota_exceeded",
+]);
+
+/** A refusal from the provider, read as one of the three failing outlooks. */
+type FailingOutlook = Exclude<VenueRevealRetryOutlook, "nothing_to_retry">;
+
+function classifyProviderRefusal(name: string): FailingOutlook {
+  if (RETRY_MAY_HELP.has(name)) return "may_help";
+  if (SAME_ANSWER_ON_RETRY.has(name)) return "same_answer";
+  return "unknown";
+}
+
+/**
+ * One outlook for a whole send, and the tie-break has a direction.
+ *
+ * `may_help` beats `unknown` beats `same_answer`. The asymmetry is the domain's,
+ * not a preference: the two ways of being wrong here are *telling somebody to
+ * stop trying when a person could still be reached* and *inviting a press that
+ * will not work*. `venue-secrecy.md`, gate *idempotenza del cron*, already
+ * states the priority between those two — a recipient without the address is a
+ * visible problem, a wasted attempt is noise — so the aggregate leans toward
+ * "try again".
+ */
+function worseOutlook(a: FailingOutlook, b: FailingOutlook): FailingOutlook {
+  if (a === "may_help" || b === "may_help") return "may_help";
+  if (a === "unknown" || b === "unknown") return "unknown";
+  return "same_answer";
+}
 
 export interface VenueRevealOptions {
   /**
@@ -402,7 +523,16 @@ export async function countVenueRevealRecipients(
  * function runs inside a cron with a wall-clock budget, and sleeping through it
  * would trade "some people unreached" for "the run dies and every night after
  * this one is unreached". A rate-limited single is left unmarked and therefore
- * reachable, and is picked up by the next press or the next scheduled run.
+ * reachable, is reported as retryable through
+ * {@link VenueRevealRetryOutlook}, and is picked up by the next press or the
+ * next scheduled run.
+ *
+ * ── And when the fallback is not enough ──────────────────────────────────────
+ *
+ * A single can still be refused on its own, for ever. The result carries
+ * {@link VenueRevealResult.retryOutlook} so the surface that draws the button
+ * can say so instead of inviting the press again — see the type, which carries
+ * the reason it exists rather than only its shape.
  */
 export async function revealPartyVenue(
   supabase: SupabaseClient,
@@ -421,6 +551,9 @@ export async function revealPartyVenue(
       recipientsSent: 0,
       recipientsFailed: 0,
       failureKind: "recipients_unavailable",
+      // The read failed, which is a fault of the moment: the tables are there
+      // and the entitlement did not change. Asking again is the remedy.
+      retryOutlook: "may_help",
     };
   }
 
@@ -432,6 +565,8 @@ export async function revealPartyVenue(
       recipientsSent: 0,
       recipientsFailed: 0,
       failureKind: "no_recipients",
+      // Nobody was left behind, so there is nothing a second press could do.
+      retryOutlook: "nothing_to_retry",
     };
   }
 
@@ -450,14 +585,24 @@ export async function revealPartyVenue(
 
   /**
    * One attempt at one group of recipients: render, send, and answer whether
-   * the provider accepted it. It renders, it sends, and it does **nothing
-   * else** — in particular it does not mark, does not count, and does not
-   * retry. Those three live in the caller, which is what lets the fallback
-   * below reuse it for a group of one without duplicating the send.
+   * the provider accepted it — and, when it did not, whether asking again could
+   * change that. It renders, it sends, and it does **nothing else** — in
+   * particular it does not mark, does not count, and does not retry. Those
+   * three live in the caller, which is what lets the fallback below reuse it
+   * for a group of one without duplicating the send.
+   *
+   * `rendered` is the one piece of state the `catch` cannot otherwise recover.
+   * A throw out of this block is either the template failing — same night, same
+   * data, same failure on the next press — or the transport failing, which is a
+   * fault of the moment. 37-09 put the `render()` inside the `try` on purpose
+   * and it stays there; this flag reads which half threw without moving it out.
    */
   const attemptGroup = async (
     group: Array<[string, Recipient]>
-  ): Promise<boolean> => {
+  ): Promise<
+    { delivered: true } | { delivered: false; outlook: FailingOutlook }
+  > => {
+    let rendered = false;
     try {
       const emails = await Promise.all(
         group.map(async ([email, data]) => ({
@@ -478,6 +623,7 @@ export async function revealPartyVenue(
           ),
         }))
       );
+      rendered = true;
 
       // MEASURED, and it changes what "sent" means: `resend.batch.send` does
       // NOT throw on an API rejection — it resolves to `{ data, error }`
@@ -488,19 +634,22 @@ export async function revealPartyVenue(
       const { error } = await resend.batch.send(emails);
 
       if (error) {
+        const outlook = classifyProviderRefusal(error.name);
         console.error(
           `[venue_reveal.batch_rejected] night ${party.id}, ${group.length} ` +
-            `recipients: ${error.name} — ${error.message}`
+            `recipients: ${error.name} — ${error.message} (retry: ${outlook})`
         );
-        return false;
+        return { delivered: false, outlook };
       }
-      return true;
+      return { delivered: true };
     } catch (err) {
+      const outlook: FailingOutlook = rendered ? "may_help" : "same_answer";
       console.error(
         `[venue_reveal.batch_threw] night ${party.id}, ${group.length} ` +
-          `recipients: ${err instanceof Error ? err.message : String(err)}`
+          `recipients: ${err instanceof Error ? err.message : String(err)} ` +
+          `(${rendered ? "transport" : "render"}, retry: ${outlook})`
       );
-      return false;
+      return { delivered: false, outlook };
     }
   };
 
@@ -526,10 +675,18 @@ export async function revealPartyVenue(
     await markBatchReached(supabase, party.id, group);
   };
 
+  /** `null` while nothing has failed. See {@link worseOutlook}. */
+  let failedOutlook: FailingOutlook | null = null;
+  const noteFailure = (outlook: FailingOutlook) => {
+    failedOutlook =
+      failedOutlook === null ? outlook : worseOutlook(failedOutlook, outlook);
+  };
+
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
 
-    if (await attemptGroup(batch)) {
+    const attempt = await attemptGroup(batch);
+    if (attempt.delivered) {
       await recordDelivered(batch);
       continue;
     }
@@ -539,6 +696,7 @@ export async function revealPartyVenue(
       // stays reachable — which is what makes "send to the N still missing" a
       // fact in the data rather than a sentence on a screen.
       recipientsFailed += 1;
+      noteFailure(attempt.outlook);
       continue;
     }
 
@@ -552,10 +710,17 @@ export async function revealPartyVenue(
     // reportable fact into a longer wait.
     for (const one of batch) {
       const single = [one];
-      if (await attemptGroup(single)) {
+      const singleAttempt = await attemptGroup(single);
+      if (singleAttempt.delivered) {
         await recordDelivered(single);
       } else {
         recipientsFailed += 1;
+        // The single's own verdict, not the batch's. The batch was refused
+        // BECAUSE of one of these people; inheriting its reason would say
+        // "same answer" about the ninety-nine the fallback just rescued —
+        // or, worse, would attribute a rate limit to somebody whose address
+        // the provider has suppressed.
+        noteFailure(singleAttempt.outlook);
       }
     }
   }
@@ -565,5 +730,6 @@ export async function revealPartyVenue(
     recipientsSent,
     recipientsFailed,
     failureKind: recipientsSent === 0 ? "send_failed" : "none",
+    retryOutlook: failedOutlook ?? "nothing_to_retry",
   };
 }
