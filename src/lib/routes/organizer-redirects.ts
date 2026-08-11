@@ -154,16 +154,50 @@ const COMPILED_ROWS: readonly CompiledRow[] = (() => {
   //
   // ── Phase 39: the fence follows the MAP, not a spelling ────────────────────
   //
-  // Until Phase 39 this test matched the substring `/scanner`, which protected
-  // exactly one address — so after the move a sixteenth row pointing at the
-  // door's new address would have **passed**. Reading
+  // Until Phase 39 this test matched the substring `/scanner`. Reading
   // `CAPABILITY_ROUTES[CAP.DOOR_OPERATE].routes` instead removes one more place
-  // where the door's address has to be remembered, which is the same argument
-  // `src/lib/rbac/roles.ts` already makes about itself. The comparison is by
-  // **equality**, not by substring: a fence that matched loosely would also
-  // claim an unrelated future address that happened to contain the word.
+  // where the door's addresses have to be remembered — the same argument
+  // `src/lib/rbac/roles.ts` makes about itself, and the real reason to do it.
+  //
+  // ── What this fence can and cannot catch, stated because it was overstated ─
+  //
+  // The first version of this paragraph justified the change by saying that
+  // *"after the move a sixteenth row pointing at the door's new address would
+  // have passed"*. **That row cannot exist.** `RedirectRow` types `to` as
+  // `` `/admin${string}` `` and `from` as `` `/organizer${string}` ``, so of the
+  // four comparisons the loop could make, exactly **one** is reachable:
+  //
+  //   · `to` names or nests under `/admin/scanner`  → reachable, and this fence
+  //   · `to` names `/door`                          → forbidden by the `to` type
+  //   · `from` names either door address            → forbidden by the `from` type
+  //
+  // The type is the guard for the last two, and it is a better one — it fails at
+  // compile time. This loop is kept for the first, and the door addresses are
+  // still read from the map so that a future widening of `RedirectRow` finds a
+  // fence already pointing at the right place rather than at the word
+  // `/scanner`. Found by the Phase 39 code review (WR-02); `ai-engineering.md`
+  // asks of every guard *which concrete situation makes it fire*, and three
+  // quarters of this one had no answer.
+  //
+  // ── And the match is by segment, which is not the same as by equality ──────
+  //
+  // Equality gave up `/admin/scanner/x`, which the old substring form caught.
+  // Fence 2 below happens to catch it today **only because nothing under
+  // `/admin/scanner` is bound**; bind one sub-address and an `/organizer` row
+  // would point silently at the door. Matching on a segment boundary restores
+  // that coverage without reintroducing the loose match the paragraph above
+  // rightly refuses — `/administrators` is not claimed by `/admin`, because the
+  // boundary is `/` or `?`, never a bare prefix.
   const doorAddresses: readonly string[] =
     CAPABILITY_ROUTES[CAP.DOOR_OPERATE].routes;
+
+  const namesDoorAddress = (candidate: string) =>
+    doorAddresses.find(
+      (address) =>
+        candidate === address ||
+        candidate.startsWith(`${address}/`) ||
+        candidate.startsWith(`${address}?`)
+    );
 
   for (const row of rows) {
     if (row.from.startsWith("/admin")) {
@@ -172,14 +206,13 @@ const COMPILED_ROWS: readonly CompiledRow[] = (() => {
           `The table is one-directional: /organizer to /admin, never the reverse.`
       );
     }
-    const matchedDoorAddress = doorAddresses.find(
-      (address) => row.to === address || row.from === address
-    );
+    const matchedDoorAddress =
+      namesDoorAddress(row.to) ?? namesDoorAddress(row.from);
     if (matchedDoorAddress !== undefined) {
       throw new Error(
         `organizer-redirects: row "${row.from}" -> "${row.to}" names the door's address ` +
-          `"${matchedDoorAddress}". The door keeps its addresses and no redirect may ` +
-          `match one or point at one.`
+          `"${matchedDoorAddress}", or an address nested under it. The door keeps its ` +
+          `addresses and no redirect may match one or point at one.`
       );
     }
   }
