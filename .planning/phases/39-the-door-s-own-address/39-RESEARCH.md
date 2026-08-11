@@ -1587,11 +1587,24 @@ included.
      it is a procedure step and not a task.
 
 3. **Should the door get an explicit runtime cache rule with a longer life than 24 hours?**
-   **RESOLVED as a deferral — and the deferral is the decision.** Not settled in a plan.
-   The phase ships with the existing runtime rules plus the warm-up step; the question
-   returns to `/gsd:discuss-phase` **after** §8, with the dark-room observation attached.
-   Recorded in plans `39-01` and `39-02`. How stale a door may be is a product decision,
-   not a planner's.
+   **RESOLVED — the owner answered `no` on 2026-08-11**, ahead of the dark-room sitting
+   rather than after it. The 24-hour window stands as a **chosen ceiling**, not an
+   inherited default, and no code changes: the phase ships with the existing runtime rules
+   plus the warm-up step, which is what was planned.
+
+   **The consequence, accepted rather than discovered:** the warm-up (§0.5 of the door
+   pass) is **not** a migration step that expires with this phase — it is a cost of every
+   night. A phone that has not opened the door online at *its* address within the window
+   has no document to serve when the radio goes off. Written into
+   `.claude/rules/checkin-offline.md`, gate *l'indirizzo che si scalda e' quello che si
+   usera'*, so it loads on the door rather than living only here.
+
+   **One half of the question is still a reading, not a decision.** The 32-entry LRU cap
+   shares its bucket with other navigations, so a door document can be evicted *inside* the
+   window as well as expire at the end of it. Which bucket, and therefore what it competes
+   with, is Open Question 2 / Assumption A1 — still a DevTools reading in §0.5. The owner's
+   `no` settles the **duration**; it does not settle the **eviction**, and nobody should
+   read it as having done so.
    - **Known:** `pages`/`others` expire at 24 h with a 32-entry LRU (§C.5); the runbook
      gate already demands a same-day test (C12).
    - **Unclear:** whether the owner wants a door document served from a cache older than a

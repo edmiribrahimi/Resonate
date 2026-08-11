@@ -110,6 +110,13 @@ On the staff phone, **online**:
 > from a previous online visit. On the night of the move, the honest statement about
 > `/door` is *nobody has ever been there*. This step closes Open Question 2 as a reading
 > rather than as an assumption, and it is a precondition of interpreting §8.
+>
+> **The 24 hours are chosen, not inherited (owner, 2026-08-11).** Asked whether the door
+> deserved a longer runtime cache: **no** — a door served from yesterday's cache is a stale
+> door, and this domain treats a stale surface as a hazard. **So this step does not expire
+> with the move: it is a cost of every night.** Read step 3 knowing that the duration is
+> settled and the *eviction* is not — the 32-entry cap can drop a door document inside the
+> window, and which bucket it competes in is exactly what you are recording here.
 
 Result: pending
 

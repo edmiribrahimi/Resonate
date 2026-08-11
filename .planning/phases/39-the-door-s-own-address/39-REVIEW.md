@@ -31,10 +31,10 @@ findings:
   info: 4
   total: 11
 findings_resolved:
-  warning: 6
+  warning: 7
   info: 0
 findings_open:
-  warning: 1
+  warning: 0
   info: 4
 resolution:
   WR-01: fixed — 9f64e81 (compile-time type guard restored, proven by mutation)
@@ -42,7 +42,7 @@ resolution:
   WR-03: fixed — 00fcdd4 (WORK_TREE_ROOTS is a set; the second root is covered)
   WR-04: partially fixed — 00fcdd4 (DOOR_ADDRESSES derived from the map, no longer hand-copied). The blast radius of the module-load throw is UNCHANGED and is not a code problem — it is mitigated by the deploy rule in 39-DOOR-PASS.md §0.6.
   WR-05: fixed — 9f64e81 (the `rejected` row added to the outcomes table; the behaviour was already correct and agrees with the server)
-  WR-06: OPEN, and deliberately — it is research Open Question 3, routed to the owner AFTER the dark-room sitting. Whether the door deserves a runtime cache longer than 24 h is a product decision about how stale a door may be, not a planner's.
+  WR-06: closed by owner decision 2026-08-11 — asked whether the door deserves a runtime cache longer than 24 h, the answer is NO. The 24-hour window is now a chosen ceiling rather than an inherited default, no code changes, and the warm-up becomes a cost of every night instead of a migration step. Recorded in checkin-offline.md, 39-RESEARCH.md OQ3 and 39-DOOR-PASS.md §0.5. The EVICTION half (32-entry LRU, which bucket) is untouched by this and is still a dark-room reading — OQ2.
   WR-07: fixed — 00fcdd4 (staff-tabs.ts and organizer-redirects.ts no longer say the door has one address)
   IN-01 … IN-04: OPEN — informational, no behaviour at stake.
 status: issues_found
@@ -54,14 +54,20 @@ resolved: 2026-08-11
 **Reviewed:** 2026-08-11T15:26:28Z
 **Depth:** standard
 **Files Reviewed:** 21
-**Status:** issues_found — **six of seven warnings resolved 2026-08-11; see `resolution:` in the frontmatter.**
+**Status:** issues_found — **all seven warnings resolved 2026-08-11; see `resolution:` in the frontmatter.**
 
 > **Read the findings below as written at review time.** They are kept verbatim
 > rather than edited in place, because a review rewritten after its fixes stops
 > being evidence of what was found. WR-01, WR-02, WR-03, WR-05 and WR-07 are
-> repaired and each repair is proven in its commit message; WR-04 is repaired in
-> the part that was a code problem. **WR-06 is open on purpose** and belongs to
-> the owner, not to a plan.
+> repaired in code and each repair is proven in its commit message; WR-04 is
+> repaired in the part that was a code problem, the rest being a deploy rule.
+>
+> **WR-06 was not a code finding and was not fixed in code.** It asked whether
+> the door should be served from a cache older than 24 hours. The owner answered
+> **no** on 2026-08-11 — so the window stands, nothing changes in `sw.ts`, and
+> the warm-up becomes a cost of every night rather than a step that expires with
+> this phase. What the answer does **not** settle is the 32-entry eviction cap,
+> which is a different question and is still a dark-room reading (OQ2).
 
 ## Summary
 

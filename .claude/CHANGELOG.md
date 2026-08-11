@@ -3,6 +3,63 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.11.1] - 2026-08-11
+
+### Changed — le 24 ore della cache della porta diventano una decisione, e il riscaldamento un costo permanente
+
+Il code review di fase 39 aveva sollevato (WR-06) che l'unica mitigazione
+spedita per il pericolo della cache fredda era **un documento**: il passo di
+riscaldamento nel door pass. Era la Open Question 3 della ricerca, e la ricerca
+stessa diceva di non deciderla in un piano — *«quanto vecchia puo' essere una
+porta»* e' una decisione di prodotto.
+
+**Chiesta al proprietario l'11 agosto 2026: la porta merita una cache runtime
+piu' lunga di 24 ore? Risposta: no.**
+
+Nessun codice cambia — `sw.ts` non viene aperto, le regole runtime restano
+quelle. Cambia lo **stato** del numero: 24 ore non e' piu' il default ereditato
+da `defaultCache` che nessuno aveva guardato, e' il tetto scelto. Una porta
+servita dalla cache di ieri e' una porta stantia, e questo dominio tratta una
+superficie stantia come un rischio.
+
+**La conseguenza, accettata invece che scoperta:** il gate
+*`l'indirizzo che si scalda e' quello che si usera'`* **non scade con la fase
+39**. Il riscaldamento non e' un passo di migrazione: e' un costo di ogni
+serata, perche' un telefono che non ha aperto la porta online al *suo*
+indirizzo dentro la finestra non ha un documento da servire quando la radio si
+spegne. Aggiunto al gate, non a un documento di fase, cosi' si carica sulla
+porta.
+
+**Cosa la risposta NON chiude, detto per non farlo credere:** il tetto di 32
+voci LRU e' una domanda diversa dalla durata. Un documento della porta puo'
+essere sfrattato *dentro* la finestra, e in quale bucket competa e' ancora
+`OQ2` — una lettura da DevTools nella stanza buia, non una decisione.
+
+### Scenario di carico e scatto
+
+File reale: `src/app/(admin)/door/page.tsx`. Moduli che devono caricarsi:
+`CLAUDE.md`, `meta-gates`, `access-gating`, `nextjs-architecture`,
+`checkin-offline`. Gate che deve scattare su una modifica-tipo: qualcuno
+propone di allungare l'`ExpirationPlugin` della porta a sette giorni per
+evitarsi il riscaldamento serale — il gate ora nomina quella proposta e la
+dichiara gia' decisa nella direzione opposta, invece di lasciarla sembrare un
+miglioramento.
+
+### Budget rimisurato
+
+| | dopo 1.11.0 | dopo 1.11.1 |
+|---|---|---|
+| caso peggiore | `src/app/(public)/events/EventTabs.tsx` — 40.822 byte ~ **11.339 token** | **invariato**: la prosa aggiunta sta in `checkin-offline.md`, che su quel file non si carica |
+| candidato della porta | `src/app/(admin)/door/page.tsx` — 39.942 byte ~ 11.095 token | 40.587 byte ~ **11.274 token** |
+| margine sul tetto (12.000) | 661 | **661** sul caso peggiore, **726** sulla porta |
+
+La porta si e' avvicinata di 179 token e resta il **secondo** file piu' caro
+della persona, ora 65 token sotto il primo. **Il prossimo intervento su
+`checkin-offline.md` o su uno degli altri quattro va pesato, non improvvisato**:
+a questo ritmo la porta diventa il caso peggiore, ed e' il file su cui la
+persona ha meno voglia di tagliare. `ai-engineering.md` dice l'ordine se il
+budget stringe — si taglia la descrizione, mai la regola.
+
 ## [1.11.0] - 2026-08-11
 
 ### Added — la porta ha due indirizzi, e il secondo non caricava i gate della porta (fase 39, piano 02)
