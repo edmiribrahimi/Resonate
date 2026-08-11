@@ -516,7 +516,7 @@ Plans:
   4. Staff can see whether the list is live and how fresh it is, and can force a reload by hand at any moment
   5. A person not assigned to a night receives no updates for that night, and the door's offline mechanism and the bar's remain separate implementations
 
-**Plans:** 5/7 plans executed
+**Plans:** 6/7 plans executed
 
 Plans:
 - [x] 38-01-PLAN.md — the realtime baseline captured before any migration file exists, the emit-path privileges measured, and P1–P7 written before they are run
@@ -524,7 +524,7 @@ Plans:
 - [x] 38-03-PLAN.md — one reload entry point that defers behind a scan in progress, the freshness measurement, and the re-armed foreground-only safety reload
 - [x] 38-04-PLAN.md — `[BLOCKING]` apply the migration through the Management API migrations endpoint, then measure the boundary as Postgres renders it
 - [x] 38-05-PLAN.md — one private channel per night, the resume signal assembled by hand, and the heartbeat — with the door's offline mechanism left ungeneralised
-- [ ] 38-06-PLAN.md — the counter row becomes the freshness display and the reload control, and the staleness band is derived state rather than a stored notice
+- [x] 38-06-PLAN.md — the counter row becomes the freshness display and the reload control, and the staleness band is derived state rather than a stored notice
 - [ ] 38-07-PLAN.md — the evidence: every B/G/S check pasted, and P1–P7 executed with their observations and times
 
 **Wave 1** — 38-01
@@ -606,7 +606,7 @@ Plans:
 | 34. One Work Surface | 17/17 | Complete   | 2026-08-10 |
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
-| 38. Live Attendance Freshness | 5/7 | In Progress|  |
+| 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 0/TBD | Not started | - |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
