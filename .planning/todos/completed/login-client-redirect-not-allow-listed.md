@@ -3,7 +3,8 @@ created: 2026-08-10
 source: 34-17 (finding F5) — misurato sull'albero corrente, non citato
 severity: moderate
 area: access-gating, nextjs-architecture
-resolves_phase:
+resolves_phase: 37
+resolved: 2026-08-11
 ---
 
 # `?next=` sulla pagina di login finisce in `window.location.href` senza allow-list
@@ -116,3 +117,23 @@ difetto e' peggiore di adesso.
 **Non verificato:** se altri percorsi oltre al middleware costruiscano un URL di
 login con l'uno o l'altro nome. Va guardato prima di scegliere quale dei due
 nomi tenere.
+
+
+---
+
+## Risolto — 2026-08-11 (piano 37-12)
+
+Allow-list estratta in `src/lib/routes/next-redirect.ts`, letta dal callback e
+dalla pagina di login prima di toccare `window.location.href`.
+
+**L'apertura era reale, non teorica, ed e' stata misurata prima del rimedio:**
+`/login?next=https://example.org` portava davvero fuori dominio dopo un login
+riuscito, e cosi' `//example.org`. Dopo, entrambi finiscono su
+`/dashboard?link=refused`. Misurato su un banco locale con backend fittizio su
+`127.0.0.1`, smontato a fine lavoro.
+
+**Resta aperto D7, per scelta:** il middleware scrive `?redirect=` e la pagina
+legge `?next=`. Allineare i nomi **senza** la guardia avrebbe attivato
+l'apertura invece di chiuderla, rendendo frequentato un percorso oggi deserto.
+La guardia viene prima; il censimento dei percorsi che costruiscono un URL di
+login resta da fare.

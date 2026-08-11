@@ -4,6 +4,7 @@ source: 36-RESEARCH (reperto fuori scope) — ri-misurato dall'orchestratore pri
 severity: critical
 area: venue-secrecy, supabase-data, access-gating
 resolves_phase: 37
+resolved: 2026-08-11
 ---
 
 > **Assegnato alla fase 37 dal proprietario il 2026-08-10.** La fase 36 prosegue
@@ -109,3 +110,23 @@ gia' aperta non e' un argomento per aprirne una seconda: e' un argomento per
 chiudere la prima. La decisione D-36-13 e la regola di degrado dell'UI-SPEC
 restano in piedi indipendentemente da questo difetto, e non vanno rilassate
 citandolo.
+
+
+---
+
+## Risolto — 2026-08-11
+
+`venues_select_public` (`using (true)`) e' stata rimossa e sostituita da
+`venues_select_staff`; la strada pubblica verso un indirizzo e' ora
+`public.venue_for_parties(uuid[])`, che concede **per serata**.
+Applicata in produzione (`20260810161000_venues_read_narrowed.sql`) e deployata
+insieme al codice che la legge.
+
+**Misurato sul sito vero, da anonimo, senza cookie:** otto aghi dichiarati
+(nome, indirizzo, link Maps e id delle due sedi segrete) su quattro documenti
+reali → **zero occorrenze**. Lo stesso strumento, sugli stessi documenti,
+trova quattro volte il nome del locale della serata **non** segreta: e' quel
+si' che rende leggibile lo zero.
+
+Sonda REST per chiave primaria: prima `200` con l'indirizzo, dopo `200` con
+zero righe.
