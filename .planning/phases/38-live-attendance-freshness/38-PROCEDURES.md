@@ -9,6 +9,32 @@ mechanical_preconditions_run: 2026-08-11T11:49Z
 
 # Phase 38 — Door Procedures P1 … P7
 
+> **Where these are executed, and who reads what.**
+>
+> The seven procedures below are executed as part of **one** sitting, at the end of
+> milestone v1.5, together with Phase 39's criteria 2 and 3 (D-39-07).
+>
+> **The document a person reads in the dark room is
+> `.planning/phases/39-the-door-s-own-address/39-DOOR-PASS.md`, not this one** — this file
+> is over five hundred lines of procedures plus their reasons-for-pending, which makes it a
+> document for an auditor and not for a person at a door.
+>
+> **This file stays the record of record for LIVE-01 … LIVE-06.** `39-DOOR-PASS.md`
+> produces the observations; **both files receive the outcome**, and **neither may declare
+> an outcome the other does not** — a `pending` in one and a tick in the other is a drift in
+> either direction, and a split record that drifts is worse than one document that is
+> slightly too long.
+>
+> **P6 is not in that sitting.** It writes to production, its authorisation is recorded
+> spent, and its deadline is an act rather than a date: before the next night is published
+> with tickets on sale.
+>
+> **This file is not rewritten to absorb Phase 39's steps.** Its value is that it predates
+> its own results — *a procedure written after the observation is a description, not a
+> check* — and retro-editing it would spend exactly that.
+
+---
+
 > **A procedure written after the observation is a description, not a check.**
 > That is the whole reason this file exists in wave 1, before a single line of
 > SQL or TSX of this phase has been written. Seven of the phase's requirements
@@ -85,6 +111,8 @@ a message on a wire.
 
 ## P1 — the channel never established
 
+*Executed as **§3** of `39-DOOR-PASS.md`, in the end-of-v1.5 sitting.*
+
 Carries **LIVE-02**, **LIVE-04**, **LIVE-05**.
 
 **Role** — an account holding `door.operate` for the night being opened.
@@ -124,6 +152,8 @@ claim `38-VALIDATION.md` exists to stop being written without having been seen.
 
 ## P2 — the channel dropped mid-night
 
+*Executed as **§4** of `39-DOOR-PASS.md`, in the end-of-v1.5 sitting.*
+
 Carries **LIVE-02**, **LIVE-03**, **LIVE-05**.
 
 **Role** — an account holding `door.operate` for the night.
@@ -155,6 +185,8 @@ LIVE-03 stands on this one.
 ---
 
 ## P3 — the pocket
+
+*Executed as **§2** of `39-DOOR-PASS.md` — started **first** in that sitting, because it is the only step with a 65-minute floor.*
 
 Carries **LIVE-03**. This is the only procedure that settles **assumption A1**
 (an iOS home-screen PWA fires `visibilitychange` → `visible` on resume from
@@ -203,6 +235,8 @@ correct the whole time.
 
 ## P4 — degraded, not dropped
 
+*Executed as **§5** of `39-DOOR-PASS.md`. That sitting runs the divergence recorded below on **both** sides — §5 is Slow 3G with the channel up, §8 is radio off — because they are different measurements and one does not substitute for the other.*
+
 Carries **LIVE-02**.
 
 **Role** — an account holding `door.operate` for the night.
@@ -237,6 +271,8 @@ all the greens in this phase, because Pitfall 6 is invisible to it.
 ---
 
 ## P5 — two devices, the headline behaviour
+
+*Executed as **§6** of `39-DOOR-PASS.md`, in the end-of-v1.5 sitting.*
 
 Carries **LIVE-01**. This is the only proof the phase delivered what it is named
 after, and it is also the only proof that `private: true` matches on both
@@ -288,6 +324,8 @@ in production and the four triggers exist.
 ---
 
 ## P6 — the event-level fan-out, and the reassignment
+
+*This one is **not** part of the Phase 39 sitting and is not a section of `39-DOOR-PASS.md`: it writes to production, its authorisation is recorded spent, and its deadline is an act rather than a date — before the next night is published with tickets on sale.*
 
 Carries **LIVE-01**. Two acts, on **one row**, under **one** authorisation.
 
@@ -406,6 +444,8 @@ end up correct.
 ---
 
 ## P7 — a person not assigned to the night hears nothing
+
+*Executed as **§7** of `39-DOOR-PASS.md`, in the end-of-v1.5 sitting.*
 
 Carries **LIVE-06**.
 
