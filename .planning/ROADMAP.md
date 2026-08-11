@@ -622,7 +622,30 @@ Plans:
   4. Every converted surface is workable on phone, tablet and desktop; content stops widening on large screens instead of stretching; and work-surface filters and navigation are visible without opening a menu from tablet width up
   5. Touch targets stay finger-sized wherever the input is a finger, large touch screens included
 
-**Plans**: TBD
+**Plans**: 12 plans, 9 waves — the layer and its first eight surfaces. The remaining
+conversion units are **not** covered by these twelve; see the note below.
+
+Plans:
+- [ ] 41-01-PLAN.md — the control token, the two layout variables, the pointer variant, pinch-zoom
+- [ ] 41-02-PLAN.md — G6 breakpoints and G7 no-viewport-read, the two gates with no exception
+- [ ] 41-03-PLAN.md — Button/Chip, and the navigation spine in two tiers with the door's wrapper
+- [ ] 41-04-PLAN.md — the toast off its third hard-coded 5rem, and FormatMarker
+- [ ] 41-05-PLAN.md — PageShell/Card/PageTitle, /payment/callback, and the conversion manifest
+- [ ] 41-06-PLAN.md — Input/Textarea/Select on a boundary that measures, and the three (auth) screens
+- [ ] 41-07-PLAN.md — G1 conversion and G4 container, over the manifest
+- [ ] 41-08-PLAN.md — Skeleton's first importer ever: /gallery and /admin/members/register
+- [ ] 41-09-PLAN.md — the Dialog primitive, /admin/formats, and G2
+- [ ] 41-10-PLAN.md — DataTable, Checkbox, /admin/members, and G3
+- [ ] 41-11-PLAN.md — G5 touch targets, proven red and proven green on MemberTable — or not written
+- [ ] 41-12-PLAN.md — `npm run verify`, and 41-RELEASE-PASS.md with H41-1 … H41-6
+
+> **Scope note, 2026-08-12.** The seven requirements are delivered as a system plus a
+> declared manifest of converted surfaces. **141 of 181 `.tsx` files still read a legacy
+> token and 74 carry a raw palette colour**; these twelve plans convert the spine plus
+> eight whole surfaces. The remaining ~26 conversion units — the work group, the
+> public/member surfaces, and the three knots (drinks/token, event-form, ticketing) —
+> need their own phase. A split is recommended and awaits the owner's decision.
+
 **UI hint**: yes
 
 ### Phase 42: Scanner Conversion
