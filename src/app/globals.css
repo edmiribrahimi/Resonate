@@ -60,6 +60,48 @@
   --line-strong: rgba(234, 217, 255, 0.26);
 
   /*
+   * The control boundary — the name the line group above is NOT allowed to be.
+   *
+   * 41-UI-SPEC.md §5.2, finding A1: 75 form inputs carry
+   * `border border-card-border`, `--card-border` aliases `--line`, and --line
+   * reaches at most 1.39:1 over any ground — against WCAG 1.4.11's 3:1 for a
+   * NON-TEXT control boundary. That is not a near miss; it is less than half.
+   *
+   * Computed 2026-08-11, same formula and same grounds as the ink ramp above,
+   * and it reproduces 40-UI-SPEC.md §4.1's --muted row exactly:
+   *
+   *   --control over --ground   7.14      over --raised  6.29
+   *              over --surface 6.78      over --sunk    7.03
+   *
+   * All four clear 3:1 with room. Two candidates were rejected and are recorded
+   * so neither is rediscovered as an economy: --faint #6E6188 clears --raised by
+   * 0.12 (3.12) and is already 40-REVIEW.md WR-12's exposed-and-wrong token;
+   * --line-strong tops out at 2.05 and fails everywhere.
+   *
+   * WHY A THIRD NAME AT A VALUE THE SYSTEM ALREADY HOLDS TWICE.
+   * --control IS --muted IS --sem-info. Three names, one value, LITERAL on all
+   * three sides — the discipline of the semantics block below (D-40-05), for the
+   * same reason: writing the value again with the coincidence recorded is what
+   * makes separating them later a VALUE CHANGE and not a refactor. Concretely it
+   * buys the triage of 406 `border-card-border` sites two named destinations —
+   * `border-line` for a card's edge, `border-control` for a control's boundary —
+   * instead of one destination and a memory. And --muted is an INK name: writing
+   * `border-muted` on an input states that the border is the tertiary text
+   * colour, which is a coincidence of value and not a statement of role.
+   *
+   * REQUIRED ON: text input, textarea, select, checkbox, radio, switch track,
+   * secondary button, ghost button, segmented control, the combobox panel's edge.
+   * --line* STAYS CORRECT ON: a row divider, a section rule, a card's edge, the
+   * side column's trailing edge — anywhere the content already says where the
+   * thing is.
+   *
+   * One consequence worth naming: an input's well is --sunk #0D0917 inside a card
+   * of --surface #140D20 — 1.04:1. The FILL cannot show where the control is.
+   * The boundary is not decoration there; it is the only channel.
+   */
+  --control: #A493C0;
+
+  /*
    * The interactive accent — the 10%.
    *
    * The previous red left the repository with this line (D-40-04). It appeared
@@ -206,6 +248,60 @@
   --foreground: var(--ink);
   --card: var(--surface);
   --card-border: var(--line);
+
+  /*
+   * The navigation clearance — ONE number, four consumers (41-UI-SPEC.md §3.2).
+   *
+   * Today the same clearance is written down three times independently: `pb-24`
+   * appears 54 times in 49 files, ToastContainer.tsx:26 hard-codes
+   * `calc(5rem + env(safe-area-inset-bottom) + 1rem)`, and the four bottom
+   * sheets hard-code `5rem` a third time. The moment the navigation moves off
+   * the bottom edge at the md tier, all three come due AT ONCE. These two names
+   * are what makes that one edit instead of three authors.
+   *
+   * The phone value is reproduced, not reinvented: with no safe-area inset the
+   * page shell's bottom padding computes to 80 + 0 + 16 = 96px — EXACTLY today's
+   * `pb-24`. The migration is value-preserving on the device it was written for.
+   *
+   * 5rem is a DECLARED bar height, not a measured one, and that is deliberate:
+   * D-41-09 requires `pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))]` to
+   * survive the dialog extraction verbatim. Re-deriving the height from
+   * MobileNav's markup would silently invalidate that literal in four files.
+   *
+   * NO --color-* MAPPING, and therefore no Tailwind utility — these are layout
+   * variables, not colours. They are reached only through arbitrary values:
+   * `ps-[var(--nav-inset-inline-start)]`,
+   * `pb-[calc(var(--nav-inset-block-end)+1rem)]`. Same precedent as the sunset
+   * scale above: declared here, exposed nowhere, and verify-tokens.mjs check D
+   * holds it — a declared name with no utility must have ZERO consumers.
+   *
+   * DECLARED AT TOP LEVEL EVEN THOUGH THE MEDIA QUERY BELOW REDECLARES THEM,
+   * and that is not belt-and-braces. `findBlock()` in scripts/verify-tokens.mjs
+   * returns only the FIRST `:root` block, so a media-query-only declaration
+   * referenced anywhere in this file makes check A go red on a CORRECT file.
+   * That is 40-REVIEW.md WR-02's exact shape and Phase 40 paid for it once.
+   */
+  --nav-inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+  --nav-inset-inline-start: 0px;
+}
+
+/*
+ * The one boundary the navigation clearance moves at (41-UI-SPEC.md §3.2).
+ *
+ * 48rem is the `md` tier boundary of §2.1 — Tailwind's own default, read from
+ * node_modules/tailwindcss/theme.css, and the portrait-tablet edge exactly.
+ * 14rem is 224px, the side column's width from §8.2. Both numbers are written
+ * with their reference rather than as bare values, because a bare 14rem here
+ * and a bare `w-56` in the nav component are two authors of one measurement.
+ *
+ * At and above this line the bar is gone from the bottom edge and the column
+ * holds the leading edge — so the two swap, they do not both grow.
+ */
+@media (min-width: 48rem) {
+  :root {
+    --nav-inset-block-end: 0px;
+    --nav-inset-inline-start: 14rem;
+  }
 }
 
 /*
@@ -235,10 +331,13 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
 
-  /* lines — decorative only; a control's boundary is --muted or lighter */
+  /* lines — decorative only; a control's boundary is --control, below */
   --color-line-soft: var(--line-soft);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+
+  /* the control boundary — border-control, ring-control, outline-control */
+  --color-control: var(--control);
 
   /* the interactive accent — the 10%, with the reserved-for list in :root */
   --color-accent: var(--accent);
@@ -383,3 +482,57 @@ input[type="time"] {
 @utility bg-grad-sunset {
   background-image: var(--grad-sunset);
 }
+
+/*
+ * The pointer query — written ONCE, and only ever used to SHRINK.
+ *
+ * 41-UI-SPEC.md §6.2. Sizing keys off the POINTER, never viewport width,
+ * because a 1024px iPad is touched. But the rule is deliberately not written on
+ * `any-pointer: coarse`: MDN records that `fine` and `coarse` can BOTH match on
+ * one device, and hot-plugging does not always re-evaluate promptly. So the
+ * construction is inverted.
+ *
+ * 44px IS THE UNPREFIXED DEFAULT. This variant only ever makes a target
+ * smaller, and only where no coarse pointer exists AT ALL. A wrong answer then
+ * costs a slightly-too-large button and never a too-small one — which is
+ * checkin-offline.md's asymmetry applied to a control: rifiutare un ospite
+ * valido e' peggio che ammetterne uno doppio. The error that happens in front of
+ * a queue is the one the default must protect against.
+ *
+ * Composing `any-pointer-fine:` with `not-any-pointer-coarse:` would emit the
+ * same CSS and would depend on Tailwind's variant ORDERING — not something a
+ * touch-target criterion should rest on. A @custom-variant is a first-class
+ * Tailwind v4 feature and adds no package (D-41-20).
+ *
+ * THE ALLOW-LIST IS CLOSED AT ONE ITEM, before any consumer exists (§6.3): a
+ * 36px minimum-height floor, permitted only on the row-action buttons inside the
+ * DataTable primitive's desktop branch — a branch that is `hidden md:block` and
+ * therefore never renders on a phone. Floor 36px, never lower. Everything else
+ * is 44px unconditionally, at every tier, on every device.
+ *
+ * The exact class string of that one item is NOT written out here, and the
+ * omission is deliberate. Tailwind extracts candidates from the files it scans,
+ * so a class name spelled inside a comment is indistinguishable from a class
+ * name in use: it would emit a rule with no consumer, and it would make the
+ * probe-removal check below unable to tell a leftover probe from its own
+ * documentation. Same discipline as REVERSED_E in scripts/verify-tokens.mjs.
+ *
+ * PROVEN TO EMIT, NOT ASSUMED: zero pointer variants existed in this tree, so
+ * nothing showed this compiles. A temporary `@source inline(...)` probe was
+ * added, `npm run build` run, and the emitted stylesheet read with grep for
+ * `any-pointer` — the rule was there, with the negated clause intact. The
+ * output is recorded verbatim in 41-01-SUMMARY.md.
+ *
+ * THE PROBE'S REMOVAL IS ASSERTED BY THE DIFF, NOT BY THE BUILT CSS, and the
+ * reason is a finding this plan did not expect. Tailwind's automatic source
+ * detection scans `.planning/`, so the class strings written in this phase's
+ * planning documents are live candidates: after the probe was removed the rule
+ * was STILL emitted, from the documents. Attribution was measured rather than
+ * argued — `max-w-7xl` appears in zero files under `src/`, only in
+ * `.planning/*.md`, and is present in the built stylesheet. So "the rule is
+ * gone" was never available as a proof here, and claiming it would have been a
+ * measurement taken with the instrument that caused the effect. Deferred, with
+ * the evidence, in this phase's deferred-items.md: it is a build-configuration
+ * decision for the whole phase, not for the plan that happened to trip over it.
+ */
+@custom-variant pointer-fine-only (@media (any-pointer: fine) and (not (any-pointer: coarse)));

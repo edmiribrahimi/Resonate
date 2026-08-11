@@ -81,8 +81,22 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // QUI NON SI BLOCCA LA SCALA. D-41-08, 40-REVIEW.md WR-16: due chiavi che
+  // impedivano di ingrandire la pagina a due dita stavano in questo blocco e
+  // sono state tolte. **I loro nomi non sono scritti qui, e l'omissione e'
+  // deliberata**: il criterio che tiene la regola e' un grep su questo file, e
+  // un divieto che scrive per esteso cio' che vieta rende il proprio gate
+  // incapace di distinguere una violazione da una spiegazione. E' la stessa
+  // disciplina di REVERSED_E in scripts/verify-tokens.mjs e del blocco delle
+  // semantiche in globals.css, che dichiarano la loro regola OMETTENDO la
+  // stringa proibita. La ragione per esteso sta nel corpo del commit — dove
+  // globals.css gia' manda a cercare le decisioni rovesciate.
+  //
+  // In una riga: bloccare lo zoom non e' una rifinitura, e' l'ultima risorsa di
+  // chi non legge un testo piccolo. Questo prodotto si usa in un locale buio,
+  // di fretta, con una mano, e chi deve ingrandire il proprio biglietto alla
+  // porta non ha un'alternativa in-app da usare al suo posto.
+  //
   // Il colore della cornice del browser, dipinto PRIMA che qualunque foglio di
   // stile sia caricato — ed e' la ragione per cui nessuna conversione di
   // superficie potra' mai raggiungerlo (40-UI-SPEC.md §6.3, difetto F3). Il
