@@ -4,10 +4,42 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserRole, UserStatus } from "@/types/database";
 import { getVisibleNavItems } from "@/lib/rbac/roles";
+import type { CapabilityKey } from "@/lib/capabilities/keys";
 
+/**
+ * The bottom navigation, and what it may and may not import.
+ *
+ * This is a `"use client"` component, so **it cannot import the DAL**:
+ * `@/lib/supabase/server` calls `cookies()`, which throws outside a Server
+ * Component. The capability set therefore arrives as a **prop**, in the
+ * serialisable `CapabilityKey[]` shape `StaffNav` has taken since plan 34-04
+ * (`(work)/layout.tsx`, `<StaffNav capabilities={[...capabilities]} />`). One
+ * shape for both navs, not two.
+ *
+ * `@/lib/capabilities/keys` is safe to import here and that is not an accident:
+ * it imports nothing at all (D-34-10), which is what lets a single filter serve
+ * both sides of the client boundary.
+ *
+ * ── A known consequence of D-39-01, recorded so it is not read as a defect ────
+ *
+ * `isActive` below is `pathname.startsWith(item.href)`, and the Check-in entry's
+ * `href` is now `/door` (D-39-01). So the door's tab highlights at `/door` and
+ * **not** at `/admin/scanner` — the old address keeps serving the same surface
+ * permanently and as a real page (D-39-02), and somebody who reaches it directly
+ * sees no tab highlighted. It is one line to revisit if the door pass reports it
+ * as a nuisance; it is not a broken link and it refuses nobody.
+ */
 interface MobileNavProps {
   role: UserRole | null;
   status: UserStatus | null;
+  /** Held by role. Empty for an anonymous visitor — `ANONYMOUS_CONTEXT`. */
+  capabilities?: readonly CapabilityKey[];
+  /**
+   * Held by a live per-night assignment, or `null` when the payload did not
+   * carry the key. `null` is **not** flattened to `[]` on the way in: absent and
+   * empty are different facts (`capabilities/server.ts`).
+   */
+  liveAssignmentCapabilities?: readonly string[] | null;
 }
 
 const icons: Record<string, React.ReactNode> = {
@@ -39,9 +71,19 @@ const icons: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function MobileNav({ role, status }: MobileNavProps) {
+export default function MobileNav({
+  role,
+  status,
+  capabilities,
+  liveAssignmentCapabilities,
+}: MobileNavProps) {
   const pathname = usePathname();
-  const visibleItems = getVisibleNavItems(role, status);
+  const visibleItems = getVisibleNavItems(
+    role,
+    status,
+    capabilities,
+    liveAssignmentCapabilities
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-card-border bg-background/80 backdrop-blur-xl">

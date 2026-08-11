@@ -1,5 +1,5 @@
 import type { Route } from "next";
-import { CAP } from "@/lib/capabilities/keys";
+import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
 import { resolveRoute } from "@/lib/routes/capability-routes";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -122,6 +122,16 @@ export interface NavItem {
   requireAuth: boolean;
   /** Hide this item when user is authenticated (e.g. Home tab for guests only) */
   hideWhenAuth: boolean;
+  /**
+   * The capability that governs this entry, or `null` when no capability does.
+   *
+   * **Required rather than optional, and that is the whole point of the field.**
+   * An optional field lets a sixth entry added two years from now forget the
+   * question; a required one makes forgetting it a build error naming this file.
+   * The four entries that answer `null` are answering, not abstaining — there is
+   * no capability governing `/`, `/events`, `/gallery` or `/dashboard`.
+   */
+  capability: CapabilityKey | null;
 }
 
 // Full navigation items list with role/status requirements
@@ -134,6 +144,7 @@ const NAV_ITEMS: NavItem[] = [
     requireApproved: false,
     requireAuth: false,
     hideWhenAuth: true,
+    capability: null,
   },
   {
     href: "/events",
@@ -143,6 +154,7 @@ const NAV_ITEMS: NavItem[] = [
     requireApproved: false,
     requireAuth: false,
     hideWhenAuth: false,
+    capability: null,
   },
   {
     href: "/gallery",
@@ -152,6 +164,7 @@ const NAV_ITEMS: NavItem[] = [
     requireApproved: true,
     requireAuth: false,
     hideWhenAuth: false,
+    capability: null,
   },
   {
     // `roles` stays `["master", "organizer"]` after the fourth role landed, and
@@ -190,6 +203,11 @@ const NAV_ITEMS: NavItem[] = [
     requireApproved: true,
     requireAuth: true,
     hideWhenAuth: false,
+    // Declared here in task 1 of plan 39-03 and **not yet read by the filter**:
+    // this task widens the shape and moves no verdict. Task 3 of the same plan
+    // is where the entry starts being filtered on it and the two lines above
+    // come off.
+    capability: CAP.DOOR_OPERATE,
   },
   {
     href: "/dashboard",
@@ -199,6 +217,7 @@ const NAV_ITEMS: NavItem[] = [
     requireApproved: false,
     requireAuth: true,
     hideWhenAuth: false,
+    capability: null,
   },
 ];
 
@@ -220,8 +239,30 @@ const NAV_ITEMS: NavItem[] = [
  */
 export function getVisibleNavItems(
   role: UserRole | null,
-  status: UserStatus | null
+  status: UserStatus | null,
+  /**
+   * The capability keys the subject holds by role, and the coarser set it holds
+   * by a live per-night assignment. Serialisable arrays rather than `Set`s,
+   * because the only caller is a `"use client"` component and the values cross
+   * the server/client boundary as props — the shape `StaffNav` has taken since
+   * plan 34-04.
+   *
+   * **Both defaults are temporary and belong to task 1 of plan 39-03 alone.**
+   * They exist so that the thirteen `<MobileNav>` mount sites still compile
+   * while task 2 threads them, and **task 3 of the same plan removes them**, so
+   * a fourteenth mount site that forgets is a build error naming the file. A
+   * defaulted parameter left in place is how a staging step quietly becomes the
+   * permanent shape; if you are reading this after task 3 has run, the defaults
+   * survived a step they should not have.
+   */
+  capabilities: readonly CapabilityKey[] = [],
+  liveAssignmentCapabilities: readonly string[] | null = null
 ): NavItem[] {
+  // Deliberately unread in task 1 of plan 39-03: this task widens the shape and
+  // moves no verdict. Task 3 spends them.
+  void capabilities;
+  void liveAssignmentCapabilities;
+
   const isAuthenticated = role !== null;
   const isApproved = status === "approved";
 
