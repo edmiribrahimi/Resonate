@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 38 context gathered
-last_updated: "2026-08-11T10:43:20.916Z"
+stopped_at: "Fase 38: 6 piani su 7 eseguiti e uniti; migration 20260811111530 applicata in produzione (zero righe mosse, 27 tabelle misurate). 38-07 fermo al checkpoint bloccante: P1-P7 tutte pending, P6 richiede una nuova autorizzazione a scrivere in produzione"
+last_updated: "2026-08-11T11:57:20.345Z"
 last_activity: 2026-08-11 -- Phase 38 execution started
 progress:
   total_phases: 13
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 128
-  completed_plans: 121
-  percent: 62
+  completed_plans: 128
+  percent: 69
 ---
 
 # State: Resonate
@@ -222,8 +222,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T09:33:27.078Z
-**Stopped at:** Phase 38 context gathered
+**Last session:** 2026-08-11T11:57:20.341Z
+**Stopped at:** Fase 38: 6 piani su 7 eseguiti e uniti; migration 20260811111530 applicata in produzione (zero righe mosse, 27 tabelle misurate). 38-07 fermo al checkpoint bloccante: P1-P7 tutte pending, P6 richiede una nuova autorizzazione a scrivere in produzione
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
