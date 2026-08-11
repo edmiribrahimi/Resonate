@@ -244,6 +244,14 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ()
 
+- **[Fase 38, decisione del proprietario 2026-08-11] Le sette procedure umane di fase 38 sono DIFFERITE al lotto di fine v1.5**, insieme alle 32 voci `human_needed` di 43, 35 e 34: chiedono tutte la stessa cosa — una sessione con cinque account veri, piu' due telefoni. **Differito non e' verificato:** LIVE-01 e LIVE-06 restano aperti, e i due difetti che solo P5 e P6 possono vedere restano non visti (il canale che si unisce, dice `SUBSCRIBED` e non consegna nulla; il fan-out sulla notte assente che degrada LIVE-01 in LIVE-04 senza un errore da nessuna parte).
+
+  **Il differimento e' sicuro oggi, e la misura e' questa** (sonde read-only, 2026-08-11): `tickets`, `guest_list_entries`, `ticket_refunds` e `door_scan_events` hanno **0 righe in totale**; gli eventi pubblicati sono 2 ma le **serate future pubblicate sono 0** e i **tier in vendita 0**. I quattro trigger sono vivi e nessuna scrittura puo' raggiungerli.
+
+  **UNA voce non segue il lotto, e la sua scadenza e' un atto invece che una data: il primo esercizio del percorso di trigger va fatto PRIMA della prossima serata pubblicata con i biglietti in vendita.** Da quel momento il primo acquisto vero e' il primo esercizio, e senza error tracking un wrapper che sollevasse fuori dalla chiamata a `realtime.send` farebbe fallire l'acquisto senza che nessuno sappia perche'. Serve una scrittura sola — la forma di P6 — non i due telefoni.
+
+  Nota di stato: il client di fase 38 **non e' deployato** (44 commit oltre `origin/main`, nessuno spinto) mentre la migration **e' applicata**. Produzione corre il rischio senza avere il beneficio, ed e' inerte solo finche' regge la misura qui sopra.
+
 - D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
 - ~~Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione~~ → **RISOLTO il 2026-08-11.** Seconda migration applicata e arretrato deployato come un atto solo, nell'ordine migration→deploy (l'inverso avrebbe fatto lanciare /events con PGRST202: pagine giu' invece che degradate). `venues_select_public` non esiste piu'; la strada pubblica e' `venue_for_parties`, che concede per serata. Misurato sul sito vero da anonimo senza cookie: 8 aghi dichiarati su 4 documenti reali → 0 occorrenze, mentre il nome del locale della serata NON segreta compare 4 volte negli stessi documenti
