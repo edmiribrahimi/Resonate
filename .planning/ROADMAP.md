@@ -75,7 +75,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format (completed 2026-08-10)
 - [x] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer (executed 2026-08-11 — NOT deployed, NOT verified; the anonymous address read is still open in production by owner decision)
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
-- [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off
+- [x] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off (completed 2026-08-11)
 - [ ] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - Recurring patterns become shared components that change form by device, adopted surface by surface
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
@@ -557,8 +557,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 39-03-PLAN.md — D-39-06: the Check-in entry follows the capability the server refuses on, threaded through thirteen mount sites
-- [ ] 39-04-PLAN.md — The persona routing repair: the door's gates load on the door's new address, with the budget re-measured
+- [x] 39-03-PLAN.md — D-39-06: the Check-in entry follows the capability the server refuses on, threaded through thirteen mount sites
+- [x] 39-04-PLAN.md — The persona routing repair: the door's gates load on the door's new address, with the budget re-measured
 
 ### Phase 40: Brand Tokens & Typography
 
@@ -621,7 +621,7 @@ Plans:
 | 36. Formats & Series Numbering | 14/14 | Complete   | 2026-08-10 |
 | 37. Manual Venue Reveal | 15/15 | Complete   | 2026-08-11 |
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
-| 39. The Door's Own Address | 2/4 | In Progress|  |
+| 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 0/TBD | Not started | - |
 | 41. Shared Primitives & Three-Tier Layout | 0/TBD | Not started | - |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
