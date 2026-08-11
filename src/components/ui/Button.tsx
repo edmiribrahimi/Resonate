@@ -1,4 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from "react";
 
 /**
  * The pill ladder — three labelled rungs, one icon rung, four variants, and the
@@ -36,21 +40,18 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
  *
  * ── What is NOT here, and when it arrives ────────────────────────────────────
  *
- * The plain labelled rung is **deferred to plan 41-05**, which converts
- * `/payment/callback` in the same task — that surface's three accent links are
- * its first render. D-41-04 forbids publishing a primitive in a wave that does
- * not convert a surface onto it, and this wave converts the navigation spine,
- * which renders navigation entries, a toast and a format marker: not one plain
- * labelled button.
+ * The badge rung is **deferred to plan 41-08**, and lives in `Chip.tsx` beside
+ * the chip it must stay distinguishable from. D-41-04 forbids publishing a
+ * primitive in a wave that does not convert a surface onto it.
  *
  * This is not a hypothetical discipline. `src/components/ui/Skeleton.tsx`
  * already exists, is correct, and has **zero importers**, while 102 hand-rolled
  * placeholder blocks live in 20 other files. Shipping a rung with no consumer is
  * repeating a mistake this tree already records.
  *
- * The size and variant maps below are therefore written **whole, now, and kept
- * module-private**. Plan 41-05 adds an export that reads them; it does not write
- * a second ladder.
+ * The size and variant maps below are written **whole** and kept
+ * **module-private**: `Button` and `IconButton` read them, and a plan adding a
+ * rung adds an export, never a second ladder.
  */
 
 /**
@@ -158,6 +159,81 @@ export function IconButton({
       {...rest}
       className={`${BASE} ${SIZE.icon} ${VARIANT[variant]} ${FOCUS_RING} ${className}`}
     >
+      {children}
+    </button>
+  );
+}
+
+interface ButtonCommonProps {
+  size?: ButtonSize;
+  variant?: ButtonVariant;
+  children: ReactNode;
+  className?: string;
+}
+
+type ButtonProps =
+  | (ButtonCommonProps &
+      Omit<
+        ButtonHTMLAttributes<HTMLButtonElement>,
+        "className" | "children"
+      > & { href?: never })
+  | (ButtonCommonProps &
+      Omit<
+        AnchorHTMLAttributes<HTMLAnchorElement>,
+        "className" | "children"
+      > & { href: string });
+
+/**
+ * The labelled rung — the plain button, and the plan that renders it.
+ *
+ * Added by plan 41-05, which converts `/payment/callback` in the same wave:
+ * that surface's three actions are its first render, and D-41-04 is why the
+ * export and the first consumer are one plan and not two. Nothing about the
+ * ladder moved to make room for it — the size and variant maps above are 41-03's
+ * and are read, not re-written.
+ *
+ * ── Why it also renders an anchor ────────────────────────────────────────────
+ *
+ * Two of the three sites it first replaces are `<a href>` elements dressed as
+ * buttons, which is the incumbent pattern across this tree: a navigation that
+ * looks like an action. Giving the component an `href` keeps the **element
+ * correct** — a link that navigates stays a link, so middle-click, copy-address
+ * and the browser's own affordances survive the conversion — while the pill's
+ * geometry, ink and focus expression come from one place either way. The
+ * alternative, an `onClick` pushing to the router, would have converted the
+ * appearance and quietly broken the behaviour, which is the opposite of what a
+ * visual phase is allowed to do.
+ *
+ * `type="button"` is written before the spread on the button branch, for the
+ * same reason it is on `IconButton`: without it, a control inside a form
+ * submits it by accident — a failure this repository has no error tracking to
+ * notice.
+ *
+ * Width is the caller's: the pill is inline by construction, and a full-width
+ * action says so at its call site rather than acquiring a second size rung.
+ */
+export function Button({
+  size = "md",
+  variant = "primary",
+  className = "",
+  children,
+  ...rest
+}: ButtonProps) {
+  const classes =
+    `${BASE} ${SIZE[size]} ${VARIANT[variant]} ${FOCUS_RING} ${className}`.trimEnd();
+
+  if (typeof rest.href === "string") {
+    const anchorProps = rest as AnchorHTMLAttributes<HTMLAnchorElement>;
+    return (
+      <a {...anchorProps} className={classes}>
+        {children}
+      </a>
+    );
+  }
+
+  const buttonProps = rest as ButtonHTMLAttributes<HTMLButtonElement>;
+  return (
+    <button type="button" {...buttonProps} className={classes}>
       {children}
     </button>
   );
