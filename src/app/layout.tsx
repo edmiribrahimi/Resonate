@@ -12,24 +12,29 @@ const orbitron = Orbitron({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://resonatemotion.com"),
-  title: "re:sonatɘ",
+  // `re:sonate` con la e normale, ovunque un motore di ricerca, un lettore di
+  // schermo o un'anteprima di link possa leggerlo. La `ɘ` (U+0258) e' un segno
+  // disegnato che vive solo dentro il logo — `brand-visual-system.md`, gate
+  // *grafia del brand*. In un `title` produce un nome che la ricerca non trova
+  // e uno screen reader pronuncia come un fonema.
+  title: "re:sonate",
   description: "motion music hub",
   manifest: "/manifest.json",
   openGraph: {
-    title: "re:sonatɘ",
+    title: "re:sonate",
     description: "motion music hub",
     images: [{ url: "/images/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "re:sonatɘ",
+    title: "re:sonate",
     description: "motion music hub",
     images: ["/images/og-image.png"],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "re:sonatɘ",
+    title: "re:sonate",
   },
 };
 

@@ -2,7 +2,8 @@
 severity: moderate
 found: 2026-08-11
 found_during: fase 37, verifica con browser del dialogo dell'indizio
-resolves_phase:
+resolves_phase: 37
+resolved: 2026-08-11
 ---
 
 # Il `<title>` del prodotto porta la e rovesciata
@@ -38,9 +39,16 @@ con Anton o Space Mono ripiega su un'altra famiglia. Qui il problema e' a monte:
 Quattro stringhe: `re:sonatɘ` → `re:sonate`. Nessun cambio di logo — il logo e'
 un'immagine e resta com'e'.
 
-## Perche' non e' stato corretto subito
+## Risolto — 2026-08-11, su parola del proprietario
 
-E' il brand, non un bug: la grafia pubblica del nome e' una decisione del
-proprietario, e la modifica cambia cio' che appare in ogni link condiviso.
-Trovato durante la fase 37, fuori dal suo perimetro. **In attesa della sua
-parola.**
+Le quattro stringhe di `src/app/layout.tsx` sono `re:sonate`. Il logo non e'
+stato toccato: e' un'immagine, e la `ɘ` li' ci sta di diritto.
+
+Nel file resta **una** occorrenza del glifo, dentro il commento che lo vieta —
+lo stesso uso legittimo che ne fanno i gate: nominarlo per escluderlo.
+
+**Osservato e non toccato:** `public/manifest.json` scrive `Resonate`, che e'
+una **terza grafia** accanto a `re:sonate`. Non porta la e rovesciata, quindi
+non e' questo difetto — ma e' il nome che compare sotto l'icona di chi ha
+installato l'app, e cambiarlo tocca le installazioni esistenti. Decisione del
+proprietario, non un bug.
