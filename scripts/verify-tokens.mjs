@@ -58,8 +58,27 @@
  * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
  *
  *   A. Every `var(--x)` inside the token file resolves — `--x` is declared in
- *      `:root`, or is one of the `next/font` variables, which are declared on
- *      the generated class that sits on `<html>` and not in `:root`.
+ *      `:root`, or in the `@theme` block, or is one of the `next/font`
+ *      variables, which are declared on the generated class that sits on
+ *      `<html>` and not in `:root`.
+ *
+ *      THE THIRD ORIGIN WAS ADDED IN PLAN 40-03, and it is a correction to
+ *      this script rather than a loosening of it. Tailwind EMITS every
+ *      `@theme` name into `:root` of the built stylesheet — measured, not
+ *      assumed:
+ *
+ *          :root{--font-sans:var(--font-inter),system-ui,…;--font-mono:…}
+ *
+ *      So `font-family: var(--font-sans)` on `body` resolves at runtime. Until
+ *      40-03 no plain CSS rule in this file referenced a `@theme` name, so the
+ *      hole could not show; the moment `body` was retargeted onto the
+ *      interface role it went red on a CORRECT file, which is the one failure
+ *      mode that gets a gate switched off (`verify-media-strip.mjs:51-62`).
+ *
+ *      It does not weaken what A guards. A typo — `var(--font-intr)` — is
+ *      declared in neither block and still fails, and the half-rename between
+ *      `@theme` and `:root` is check B's job, which is untouched: every
+ *      `--color-<name>` must still be exactly `var(--<name>)`.
  *   B. Every `--color-<name>` entry in `@theme inline` is exactly
  *      `var(--<name>)` — the same name on both sides, never a literal, never a
  *      chain to a differently-named token. `--font-*` entries are exempt from
@@ -455,6 +474,16 @@ const themeBlock = findBlock(tokenLive, /^\s*@theme\b[^{]*\{/);
 const themeDeclarations = themeBlock === null ? [] : declarationsIn(tokenLive, themeBlock);
 
 const declaredNames = new Set(rootDeclarations.map((d) => d.name));
+
+/**
+ * Names declared in the `@theme` block — the THIRD origin check A accepts.
+ *
+ * Tailwind emits each of these into `:root` of the built stylesheet, so a
+ * plain CSS rule in this file may legitimately reference one. Kept as its own
+ * set rather than merged into `declaredNames`, so checks B, C and D keep
+ * reading `:root` and only `:root` and nothing else changes meaning.
+ */
+const themeDeclaredNames = new Set(themeDeclarations.map((d) => d.name));
 const colourMappings = themeDeclarations.filter((d) => d.name.startsWith('--color-'));
 const fontMappings = themeDeclarations.filter((d) => d.name.startsWith('--font-'));
 const exposedNames = new Set(
@@ -481,13 +510,14 @@ console.log(
 const unresolved = [];
 for (const ref of varReferencesIn(tokenLive)) {
   if (declaredNames.has(ref.name)) continue;
+  if (themeDeclaredNames.has(ref.name)) continue;
   if (FONT_VARIABLES.includes(ref.name)) continue;
   unresolved.push(ref);
 }
 if (unresolved.length === 0) {
   console.log(
     `  ✓ A  every var(--x) in ${TOKEN_FILE} resolves to a :root declaration ` +
-      `(or to a next/font variable)`
+      `(or to an @theme declaration, or to a next/font variable)`
   );
 } else {
   console.log(`  ✗ A  ${unresolved.length} reference(s) in ${TOKEN_FILE} resolve to nothing:`);
@@ -496,8 +526,9 @@ if (unresolved.length === 0) {
     '\n       This is the half-rename caught at the source: the `@theme` mapping renamed and\n' +
       '       the `:root` declaration not, or the reverse. A `var()` that resolves to nothing\n' +
       '       produces no declaration at all — the property is simply dropped, in silence.\n' +
-      '       Declare the name in `:root`, or point the reference at the name that exists.\n' +
-      '       If it is a new `next/font` variable, add it to FONT_VARIABLES in this script.\n'
+      '       Declare the name in `:root` or in `@theme`, or point the reference at the name\n' +
+      '       that exists. If it is a new `next/font` variable, add it to FONT_VARIABLES in\n' +
+      '       this script.\n'
   );
   failures.push('A');
 }

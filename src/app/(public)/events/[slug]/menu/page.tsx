@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { Inter } from "next/font/google";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
@@ -15,10 +14,6 @@ import GuestTokenDisplay from "./GuestTokenDisplay";
 import UserTokenDisplay from "./UserTokenDisplay";
 import EventQRCode from "./EventQRCode";
 import PartyDrinkMenu from "./PartyDrinkMenu";
-
-// Inter — neutral, highly readable in low-light venues. Scoped to the menu
-// page only so the rest of the app keeps Orbitron as its display font.
-const menuFont = Inter({ subsets: ["latin"], display: "swap" });
 
 export async function generateMetadata({
   params,
@@ -149,7 +144,7 @@ export default async function MenuPage({
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${slug}/menu`;
 
   return (
-    <div className={`min-h-dvh bg-background ${menuFont.className}`}>
+    <div className="min-h-dvh bg-background">
       {/* Header section */}
       <div className="relative">
         {event.cover_image && (
