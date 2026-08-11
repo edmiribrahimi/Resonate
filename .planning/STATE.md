@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: Phase 39 executed — awaiting the end-of-v1.5 sitting (human_needed)
-stopped_at: Phase 40 context gathered — token set adottato dall'artifact, layout instradati alla fase 41, nessun reload automatico (D-40-11)
-last_updated: "2026-08-11T16:28:45.643Z"
+stopped_at: Phase 40 UI-SPEC approved — 6/6 dimensioni, tre raccomandazioni chiuse
+last_updated: "2026-08-11T17:08:52.374Z"
 last_activity: 2026-08-11 -- Phase 39 execution started
 progress:
-  total_phases: 13
+  total_phases: 15
   completed_phases: 10
   total_plans: 132
   completed_plans: 132
-  percent: 77
+  percent: 67
 ---
 
 # State: Resonate
@@ -275,8 +275,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T16:28:45.639Z
-**Stopped at:** Phase 40 context gathered — token set adottato dall'artifact, layout instradati alla fase 41, nessun reload automatico (D-40-11)
+**Last session:** 2026-08-11T17:08:52.370Z
+**Stopped at:** Phase 40 UI-SPEC approved — 6/6 dimensioni, tre raccomandazioni chiuse
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
@@ -349,17 +349,21 @@ does not exist on this machine, though GSD's own generated text uses it.
   sole capability — e **entrambe le ragioni sono scadute** con le fasi 32
   (2026-08-06) e 36 (2026-08-10). Un differimento la cui ragione e' scaduta non e'
   piu' una decisione che qualcuno sta prendendo.
+
   - **Fase 44** — il calendario di produzione entra nel prodotto: import nel
     database, **mai attraverso il repository**, che e' pubblico.
+
   - **Fase 45** — ogni sezione di produzione ha il proprio diritto d'accesso,
     perche' non portano lo stesso rischio: lo scouting tiene trattative aperte, il
     sistema visivo non tiene niente di segreto.
+
   - **Perche' dopo il visivo e non prima:** e' la regola che la fase 41 scrive su
     se' stessa — una superficie si converte intera o non si converte. La sezione
     Produzione e' il piu' grande insieme di superfici nuove del progetto;
     costruirla prima dei token e dei componenti condivisi creerebbe il piu' grande
     mezzo-convertito del prodotto e costringerebbe 41 e 42 a riaprire ogni schermo
     appena scritto.
+
   - **Vincolo che viaggia con la decisione:** «gli stessi layout dell'artifact»
     significa la stessa **costruzione**, mai lo stesso **contenuto**. I mockup
     contengono nomi di sede, line-up e date; `docs/` e `.firecrawl/` sono in
