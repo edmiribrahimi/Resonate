@@ -2,8 +2,54 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { updateVenue } from "@/app/(admin)/admin/venues/actions";
+import {
+  updateVenue,
+  type UpdateVenueRefusal,
+  type UpdateVenueResult,
+} from "@/app/(admin)/admin/venues/actions";
 import { createClient } from "@/lib/supabase/client";
+
+/**
+ * One sentence per cause — WR-08.
+ *
+ * The `Record` is **total** over {@link UpdateVenueRefusal} on purpose: a new
+ * refusal in the action becomes a compile error here rather than a blank panel.
+ * Same shape, and the same reason, as `REFUSAL_SENTENCE` in
+ * `admin/events/[id]/reveal/RevealVenueDialog.tsx:123`.
+ *
+ * What this replaces was one bucket — `err.message` or *"Something went
+ * wrong"* — into which a policy refusal, a deleted venue and a network fault
+ * all fell, and in a production build the first of those arrived redacted by
+ * Next anyway. That is the newsletter defect recorded in
+ * `.planning/codebase/CONCERNS.md`, and this product has no error tracking, so
+ * what is written here is the whole of what anybody will ever learn.
+ */
+const REFUSAL_SENTENCE: Record<UpdateVenueRefusal, string> = {
+  not_permitted:
+    "Nothing was saved. This account may not edit the catalogue. The Edit button is drawn for every organizer, but writing a venue also requires an approved status — if this account is still waiting for approval, that is the reason, and nothing about the venue has changed.",
+  identity_missing:
+    "Nothing was saved. The server could not tell who is asking. This is NOT a refusal on the merits: a database migration is missing on this deployment. Report it — trying again will do the same thing.",
+  not_found_or_refused:
+    "Nothing was saved. The database matched no venue to update, and there are exactly two ways that happens: the venue was deleted while this form was open, or a row-level policy refused the write. Reload the page — if the venue is still there, it was the policy.",
+  write_failed:
+    "Nothing was saved. The database refused the write. Nothing about this venue has changed.",
+};
+
+/**
+ * The lookup is widened to `string` deliberately: the value crosses the network
+ * from a Server Action, so a value outside the union is possible at runtime
+ * even though it is impossible at build time. It names itself on screen rather
+ * than borrowing a sentence written for something else.
+ */
+function describeRefusal(reason: UpdateVenueRefusal): string {
+  const known = (REFUSAL_SENTENCE as Record<string, string | undefined>)[
+    reason
+  ];
+  return (
+    known ??
+    `Nothing was saved. The server refused this with "${reason}", which this form does not expect. Nothing about this venue has changed.`
+  );
+}
 
 interface Venue {
   id: string;
@@ -44,30 +90,53 @@ export default function EditVenueButton({ venue }: { venue: Venue }) {
     const formData = new FormData(form);
 
     startTransition(async () => {
-      try {
-        if (photoFile) {
-          const supabase = createClient();
-          const ext = photoFile.name.split(".").pop();
-          const path = `${venue.id}/${Date.now()}.${ext}`;
-          const { error: uploadErr } = await supabase.storage
-            .from("venue-photos")
-            .upload(path, photoFile, { upsert: true });
-          if (uploadErr) throw new Error(`Photo upload failed: ${uploadErr.message}`);
-          const { data: urlData } = supabase.storage
-            .from("venue-photos")
-            .getPublicUrl(path);
-          formData.set("photo_url", urlData.publicUrl);
+      if (photoFile) {
+        const supabase = createClient();
+        const ext = photoFile.name.split(".").pop();
+        const path = `${venue.id}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("venue-photos")
+          .upload(path, photoFile, { upsert: true });
+        if (uploadErr) {
+          // Its own sentence, and its own moment: this failed in the browser,
+          // before the server was asked anything, so the venue is untouched and
+          // the other fields were never submitted. The message is readable here
+          // because it never crossed a Server Action boundary.
+          setError(
+            `Nothing was saved. The photo could not be uploaded, so the form was not submitted: ${uploadErr.message}`
+          );
+          return;
         }
-
-        await updateVenue(venue.id, formData);
-        setSuccess(true);
-        setTimeout(() => {
-          setOpen(false);
-          window.location.reload();
-        }, 800);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        const { data: urlData } = supabase.storage
+          .from("venue-photos")
+          .getPublicUrl(path);
+        formData.set("photo_url", urlData.publicUrl);
       }
+
+      let result: UpdateVenueResult;
+      try {
+        result = await updateVenue(venue.id, formData);
+      } catch {
+        // The action did not come back at all: the request never arrived, or it
+        // threw for a reason it does not name. The thrown message is
+        // deliberately NOT read — Next redacts it in a production build, so
+        // printing it would show a paragraph about a digest and say nothing.
+        setError(
+          "Nothing was saved. The request never came back from the server. Check the connection and try again; if it keeps happening, the deployment is refusing this call before it reaches the venue, and the reason is only in the server logs."
+        );
+        return;
+      }
+
+      if (!result.ok) {
+        setError(describeRefusal(result.reason));
+        return;
+      }
+
+      setSuccess(true);
+      setTimeout(() => {
+        setOpen(false);
+        window.location.reload();
+      }, 800);
     });
   }
 

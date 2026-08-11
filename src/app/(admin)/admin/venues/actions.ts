@@ -184,18 +184,100 @@ export async function createVenue(formData: FormData) {
 }
 
 /**
+ * Every way `updateVenue` can refuse, one value each — WR-08 of the phase 37
+ * review.
+ *
+ * ── Why a value and not a thrown sentence ────────────────────────────────────
+ *
+ * Next **redacts** the message of an error thrown out of a Server Action in a
+ * production build. Plan 37-08 did the right thing by turning a silent
+ * `.update().eq()` into a refusal that exists — before it, an update blocked by
+ * RLS answered `{ success: true }` and changed nothing — but it delivered that
+ * refusal as a `throw`, so the operator read Next's generic paragraph and the
+ * caller degraded it to one sentence for every cause. That is the newsletter
+ * precedent recorded in `.planning/codebase/CONCERNS.md`, reached through a
+ * door built by the fix for another silent failure.
+ *
+ * The reveal module of this same phase already carries the argument in full
+ * (`admin/events/[id]/reveal/actions.ts:57-63`) and returns typed values
+ * everywhere. This is the same shape, in the same phase, for the same reason —
+ * and there is **no error tracking** in this product (`meta-gates.md`), so the
+ * returned value is the only place a refusal exists for a human.
+ */
+export type UpdateVenueRefusal =
+  /**
+   * The gate said no. `catalogue.manage` carries `requires_approved = true`,
+   * while the button that leads here is drawn for any organizer — so a
+   * **pending** organizer reaches this refusal on an ordinary press. The
+   * divergence is deliberate and written down at
+   * `(work)/venues/[slug]/page.tsx:210-234`; what was missing was a way to say
+   * so to the person pressing.
+   */
+  | "not_permitted"
+  /**
+   * Nobody could be identified. **Not a refusal on the merits** — it means the
+   * migration that puts `user_id` in the capability payload is not applied on
+   * this deployment. Kept apart from the value above for exactly that reason.
+   */
+  | "identity_missing"
+  /**
+   * The update matched no row: the venue was deleted while the form was open,
+   * **or** a row-level policy refused the write and made the row invisible.
+   *
+   * These two are genuinely indistinguishable from here — PostgREST answers
+   * `PGRST116` for both — and the honest move is to name the pair rather than
+   * pick one. It is NOT the same as collapsing distinct causes into one
+   * sentence: the sentence tells the reader how to tell them apart.
+   */
+  | "not_found_or_refused"
+  /** Any other database failure. Nothing about the venue changed. */
+  | "write_failed";
+
+export type UpdateVenueResult =
+  | { ok: true }
+  | { ok: false; reason: UpdateVenueRefusal };
+
+/**
  * Update a venue profile. Approved organizers and master only.
  *
  * This writes `venues.address` and `venues.google_maps_url` — a venue-secret
  * write surface (`venue-secrecy.md`).
+ *
+ * It **returns** its refusals ({@link UpdateVenueRefusal}) instead of throwing
+ * them. The set of callers whose write succeeds is unchanged: the gate is the
+ * same gate, the client is the same cookie client, and RLS still has the last
+ * word. Only what a refused caller gets to READ has changed.
  */
-export async function updateVenue(venueId: string, formData: FormData) {
+export async function updateVenue(
+  venueId: string,
+  formData: FormData
+): Promise<UpdateVenueResult> {
   // ⚠️ `createClient()` — the COOKIE client, on purpose. See `createVenue`:
   // under the service client the P3 RLS policy stops applying and the gate
   // below becomes the only refusal on a path that writes a venue address.
   // Do not swap it.
   const supabase = await createClient();
-  await assertCatalogueManage();
+
+  // The gate still throws — it is shared with `createVenue`, whose signature is
+  // not this plan's to change — so its two categories are turned into values
+  // here, at the boundary that redacts.
+  //
+  // Reading `err.message` is safe in THIS position and nowhere downstream: the
+  // throw never crosses the Server Action boundary, so nothing has redacted it
+  // yet. That is precisely the property the client cannot rely on, and the
+  // reason it receives a value instead.
+  try {
+    await assertCatalogueManage();
+  } catch (err) {
+    const category = err instanceof Error ? err.message : "";
+    if (category === "forbidden.catalogue_manage_required") {
+      return { ok: false, reason: "not_permitted" };
+    }
+    if (category === "capabilities.identity_missing") {
+      return { ok: false, reason: "identity_missing" };
+    }
+    throw err;
+  }
 
   const bio = (formData.get("bio") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim() || null;
@@ -229,8 +311,8 @@ export async function updateVenue(venueId: string, formData: FormData) {
   // And a refusal that used to be silent: `.update().eq()` with no matching row
   // returns no error, so an update blocked by RLS or aimed at a deleted venue
   // reported `{ success: true }` and changed nothing. `.single()` turns that
-  // into `PGRST116` and a throw. This repository has no error tracking
-  // (`meta-gates.md`): a write that quietly does nothing reaches nobody.
+  // into `PGRST116`. This repository has no error tracking (`meta-gates.md`):
+  // a write that quietly does nothing reaches nobody.
   const { data: updated, error } = await supabase
     .from("venues")
     .update(updates)
@@ -239,10 +321,24 @@ export async function updateVenue(venueId: string, formData: FormData) {
     .single();
 
   if (error) {
-    throw new Error(`Failed to update venue: ${error.message}`);
+    // `code` and `message`, and nothing else. Never the PostgREST error's third
+    // field, which carries the rejected row — and the rows of `public.venues`
+    // are addresses.
+    console.error(
+      `[venues.update_refused] venue ${venueId}: ` +
+        `${error.code ?? "unknown"} — ${error.message}`
+    );
+    // Branching on the CODE, never on the message: the message is the
+    // provider's prose and changes without notice, and the code is the
+    // contract.
+    return {
+      ok: false,
+      reason:
+        error.code === "PGRST116" ? "not_found_or_refused" : "write_failed",
+    };
   }
 
   revalidatePath("/admin/venues");
   revalidatePath(`/admin/venues/${updated.slug}`);
-  return { success: true };
+  return { ok: true };
 }
