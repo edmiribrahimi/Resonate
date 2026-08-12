@@ -393,6 +393,31 @@ export const DECLARED_EXCEPTIONS = [
  * By path and not by judgement, because the failure mode of a judgement is a
  * gate that widens its own scope one convenient file at a time.
  *
+ * **AN OVERLAP WITH `REMAINING` IS A REFUSAL, NOT A WARNING (WR-02).** The two
+ * lists say incompatible things about the same file: `REMAINING` says *a shell
+ * is still standing here and it is a debt*, the fence says *this phase never
+ * opens this file*. Before this refusal existed, the fence won by construction —
+ * check B `continue`s on a fenced file before `shellShapes` is ever called, so
+ * the path landed in `stale` (on disk, not in `measuredShells`) and the run
+ * printed `→ converted; remove this entry` about a file it had not read, while
+ * `REMAINING = measuredShells.size` fell by one. **A debt counter going down
+ * because the gate stopped looking** is the proxy-goes-quiet defect this phase
+ * has already paid for once (DEF-41-03), reappearing inside the fence this phase
+ * had just added.
+ *
+ * A warning would not have been enough, because the number is what a reader
+ * believes and the number was already wrong by the time the warning printed. So
+ * the overlap is raised **before check B measures anything** — before the loop
+ * that populates `measuredShells` — and nothing is printed on a run whose two
+ * lists contradict each other.
+ *
+ * **The arrival condition, named rather than left to be discovered:** zero
+ * overlap on this tree today, and it goes live the moment Phase 42 moves or adds
+ * a dialog under `src/components/scanner/**`, `src/app/(admin)/**\/scanner/**`
+ * or `src/app/(admin)/door/**` — a file that would then be both a declared debt
+ * and a path nobody measured. Which of the two lists gives way is a decision for
+ * a person, and the refusal says so instead of choosing.
+ *
  * Shape: `[glob, reason]`. The globs are compared with the manifest's
  * `PHASE_42_PATHS` before anything is measured, and a drift refuses.
  */
@@ -765,6 +790,33 @@ const fencePatterns = PHASE_42_EXEMPT_PATHS.map(([glob, reason]) => ({
 
 function fenceMatch(relPath) {
   return fencePatterns.find(({ re }) => re.test(relPath)) ?? null;
+}
+
+/*
+ * REMAINING ∩ the fence — raised HERE, and the position is the fix (WR-02).
+ *
+ * This sits above check B's loop on purpose: that loop is where a fenced file is
+ * skipped before `shellShapes` reads it, and every number this gate prints is
+ * derived from what the loop collected. A run whose two lists contradict each
+ * other must not reach a tick, a STALE notice, or a count — see the paragraph in
+ * `PHASE_42_EXEMPT_PATHS` above for why this is a refusal rather than a warning.
+ */
+const fencedRemaining = [...declaredPaths.keys()].filter((path) => fenceMatch(path) !== null);
+
+if (fencedRemaining.length > 0) {
+  refuse(
+    `${fencedRemaining.length} REMAINING entr(y/ies) fall behind the Phase 42 fence:\n\n       ` +
+      fencedRemaining
+        .map((path) => `${path}\n         behind: ${fenceMatch(path).glob}`)
+        .join('\n       ') +
+      '\n\n       A fenced path is UNMEASURED. This gate cannot tell a debt somebody PAID from one\n' +
+      '       it simply never opened — and left alone it reports the second as the first, marking\n' +
+      '       the entry STALE ("converted; remove this entry") and dropping REMAINING by one. A\n' +
+      '       debt counter that falls because the gate stopped looking is worse than no counter.\n\n' +
+      '       Either the entry leaves REMAINING as a declared decision, or the fence does. Both\n' +
+      '       are decisions, and which one is a question for a person, not for this script.\n' +
+      '       Nothing was measured.'
+  );
 }
 
 /*
