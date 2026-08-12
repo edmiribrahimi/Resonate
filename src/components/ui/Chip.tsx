@@ -18,12 +18,12 @@ import { FOCUS_RING } from "@/components/ui/Button";
  * records the live case — a 20 px lineup pill on the public event page that is
  * a `<Link>` — and it is a chip, at 44 px, not a badge shrunk to fit.
  *
- * The badge rung itself — pill radius, the `sm` and `xs` padding steps, 12 px
- * semibold, and **deliberately no minimum height**, so the two stay visually
- * distinct without one — is **added by plan 41-08**, with
- * `/admin/members/register` as its first render (D-41-04). Its exact class
- * string lives in §8.5 and is not repeated in this comment, for the reason
- * `Button.tsx` states: to Tailwind a class string in a comment is a use.
+ * The badge rung lives at the foot of this file — pill radius, the `sm` and
+ * `xs` padding steps, 12 px semibold, and **deliberately no minimum height**,
+ * so the two stay visually distinct without one. It was added by plan 41-08,
+ * with `/admin/members/register` as its first render (D-41-04). Neither class
+ * string is repeated in prose, for the reason `Button.tsx` states: to Tailwind
+ * a class string in a comment is a use.
  *
  * ── Where the shape came from ────────────────────────────────────────────────
  *
@@ -158,5 +158,84 @@ export function Chip(props: ChipProps) {
     >
       {children}
     </button>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Badge — the other rung, and the one that is NOT a target
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A badge: a small pill that **states** something and cannot be operated.
+ *
+ * It lives beside the chip rather than in its own file because the sentence at
+ * the top of this file governs both, and a reader deciding between them must
+ * meet it. Restated, because it is the difference between a correct file and a
+ * 20 px target:
+ *
+ * > **A badge that is a `<Link>` or a `<button>` is a Chip, not a Badge.**
+ *
+ * It renders a `<span>`, and that is the enforcement rather than a default:
+ * there is no prop that makes it interactive, so a caller who needs a target
+ * has to reach for the chip and meets its 44 px on the way.
+ *
+ * ── No minimum height, deliberately ──────────────────────────────────────────
+ *
+ * The padding steps are the 8 px and 4 px rungs of §3.1, chosen over the tree's
+ * incumbent pair because those two values are not multiples of 4 and not steps
+ * this ladder names — the argument §3.1 makes against a 12 px margin, and it
+ * applies with more force here, since that margin was at least a multiple of 4.
+ * The result is roughly 24 px tall against the chip's 44, so the two stay
+ * visually distinct **without a height doing it**, which is why G5 scans
+ * interactive elements only and a badge is exempt by not being one.
+ *
+ * ── The two tones, and what the second one does NOT claim ────────────────────
+ *
+ * `neutral` borrows its grammar from the unselected chip above — a boundary
+ * declared in the base, `--control` at 7.14 : 1, and a recessed ink. It is the
+ * answer for every mark that merely names a thing.
+ *
+ * `emphasis` is a fill, and **a semantic used as a fill carries `--ground` as
+ * its ink** (`globals.css:175-178`): computed on this tree, `--ground` on
+ * `--sem-done` is **5.99 : 1**, clearing 1.4.3's 4.5 : 1 for small text. Light
+ * ink over the same fill would not.
+ *
+ * **What the fill means, and the line it must not cross.** It means *look here
+ * first*. It does **not** grade an outcome, and there is deliberately no tone
+ * per outcome. The first surface to render this is the membership register,
+ * where the acts that admit somebody are the ones the eye should land on —
+ * that file's own words, and its reason is `community-membership.md`'s gate
+ * *nessuna corsia grigia*: every way into this community that skips the
+ * ordinary approval path is an exception to be counted and attributed.
+ * Assigning a colour to each of the seven acts would settle in CSS what that
+ * module says is **not yet written** — the criterion by which somebody is let
+ * in or refused. A refusal is a communication, not a hue.
+ *
+ * Neither tone uses `--accent`: §5.1 reserves it for four things and names *a
+ * state signal* among the ones it is never for.
+ */
+const BADGE_BASE =
+  "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold normal-case";
+
+const BADGE_TONE = {
+  neutral: "border border-control text-ink-2",
+  emphasis: "bg-sem-done text-ground",
+} as const;
+
+export type BadgeTone = keyof typeof BADGE_TONE;
+
+export function Badge({
+  tone = "neutral",
+  children,
+  className = "",
+}: {
+  tone?: BadgeTone;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span className={`${BADGE_BASE} ${BADGE_TONE[tone]} ${className}`.trimEnd()}>
+      {children}
+    </span>
   );
 }

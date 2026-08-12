@@ -249,6 +249,10 @@ export const PRIMITIVES = [
     "plan 41-06 — the text-entry control on the boundary that measures; its consumers in that wave are the seven fields of /login, /register and /set-password",
   ],
   [
+    "src/components/ui/Chip.tsx", "Badge",
+    "plan 41-08 — the non-interactive rung, published in the wave that renders it (D-41-04) and deliberately in the same file as the chip, because the sentence deciding between them governs both. Its consumer is the act mark on /admin/members/register",
+  ],
+  [
     "src/components/ui/Skeleton.tsx", "SkeletonLine",
     "plan 41-08 — the line placeholder, listed in the plan that finally rendered it; its consumer is /gallery's loading state, which is the first import this file has ever had",
   ],
@@ -334,6 +338,10 @@ export const CONVERTED = [
   [
     "/gallery", "src/app/(public)/gallery/page.tsx", "wide",
     "plan 41-08 — whole, and 'whole' cost more than the plan expected: the closure reaches the shared thumbnail grid and the media viewer, neither of which any plan in this phase declares, and both of which carried raw palette. They were converted with it, because a surface is declared converted when what it REACHES is converted — that is what this manifest's own gate walks. The read is untouched: same table, same filter on the row's moderation state, same ordering, same cap. Named on §4's closed wide list",
+  ],
+  [
+    "/admin/members/register", "src/app/(admin)/admin/(work)/members/register/page.tsx", "default",
+    "plan 41-08 — whole. NOT on §4's wide list and therefore default, which is not a fallback: it is the answer for every surface nobody had to argue about. Four raw palette colours went, and two of them were decisions rather than substitutions — the accent stopped being a state signal (§5.1 names that among the things it is never for) and the automatic author stopped being amber, since the only amber here is the warning semantic and it is also SunSet's identification colour. Personal data: no column added, no field surfaced, and who performed an act and when both still render",
   ],
 ];
 

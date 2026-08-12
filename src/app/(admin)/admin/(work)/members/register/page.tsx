@@ -3,6 +3,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Chip";
 import type { MembershipActRow } from "@/types/database";
 
 /**
@@ -36,6 +40,35 @@ import type { MembershipActRow } from "@/types/database";
  * for line rather than re-derived. (It stood in the organizer tree until plan
  * 34-06 moved it; the path is corrected here rather than carried, because a
  * citation that no longer resolves is the thing this phase exists to remove.)
+ *
+ * ── Converted by plan 41-08, and the conversion touched presentation ONLY ────
+ *
+ * The shell, the title's face, the card, the act mark and the colours are new.
+ * **The read is not.** Same columns, same table, same ordering, same cap, same
+ * non-fatal name lookup, same two functions deciding who an act was aimed at
+ * and who performed it. No column was added because a card had room, no field
+ * was surfaced, and no email address arrived — the register does not store one
+ * and this page still does not fetch one.
+ *
+ * `community-membership.md`, gate *chi decide è tracciato*, is the one a visual
+ * change could quietly break: **who** performed an act and **when** must both
+ * survive on the rendered row. Both do, and the system author still renders as
+ * the reconciliation that produced it rather than as a blank cell — D-22's
+ * whole reason for a kind beside the actor.
+ *
+ * Two colour decisions are recorded because neither is obvious:
+ *
+ *  - **The row that admits somebody no longer tints with `--accent`.** §5.1
+ *    reserves the accent for four things and names *a state signal* among the
+ *    ones it is never for. The emphasis moved from the row to the mark, which
+ *    is where §8.5 puts it, and the set that decides it is still the one below
+ *    — used for emphasis, never to filter.
+ *  - **The automatic author is not amber.** The only amber in this system is
+ *    the warning semantic, which `globals.css:161-163` records as being
+ *    SunSet's identification colour as well — so an amber mark cannot say
+ *    *caution* rather than *this is a SunSet night* by hue, and a
+ *    reconciliation is neither. It takes a recessed ink instead, and the
+ *    distinction it carries is the one it always carried: the words.
  */
 
 /**
@@ -123,7 +156,7 @@ function Transition({
       <span className="text-muted">{label}</span>
       {before ? <span className="text-muted line-through">{before}</span> : null}
       {before && after ? <span className="text-muted">&rarr;</span> : null}
-      {after ? <span className="font-medium text-foreground">{after}</span> : null}
+      {after ? <span className="font-semibold text-ink">{after}</span> : null}
     </span>
   );
 }
@@ -285,11 +318,11 @@ export default async function MembershipRegisterPage() {
   }
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="default">
+      <header className="pb-6">
         <Link
           href="/admin/members"
-          className="text-sm text-muted transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink"
         >
           &larr; Back to members
         </Link>
@@ -298,9 +331,7 @@ export default async function MembershipRegisterPage() {
           calling it a membership book would decide by wording a question the
           owner has left open.
         */}
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">
-          Membership acts
-        </h1>
+        <PageTitle className="mt-2">Membership acts</PageTitle>
         <p className="mt-1 text-sm text-muted">
           Every change to an account&apos;s role or status, most recent first,
           with who made it and when. Accounts are named by membership code —
@@ -308,13 +339,21 @@ export default async function MembershipRegisterPage() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-4 px-6">
+      <div className="flex flex-col gap-4">
+        {/*
+          NOT a Card, and that is a decision rather than an omission. §8.4 fixes
+          the card's edge as a line token on purpose — a card's content already
+          says where the card is, so its edge is a hint. A failed read is not a
+          hint, and its boundary carries the critical semantic. Writing the
+          geometry out here keeps §8.4's contract intact instead of overriding
+          the one property it decided.
+        */}
         {readError ? (
           <div
             role="alert"
-            className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6"
+            className="rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-6"
           >
-            <p className="text-sm font-medium text-red-300">
+            <p className="text-sm font-semibold text-sem-crit">
               The register could not be read
             </p>
             <p className="mt-1 text-xs text-muted">{readError}</p>
@@ -342,14 +381,26 @@ export default async function MembershipRegisterPage() {
           deliberately, not a convenience.
         */}
 
+        {/*
+          §8.11's empty state is a CLASS CONTRACT, not a component (D-41-11),
+          and §11's copy rule is one sentence naming what is absent in this
+          surface's own noun and one saying why the emptiness is normal. Both
+          sentences below already did that before the conversion; only their
+          roles changed. The second one is load-bearing and is not decoration:
+          an empty register and an unreadable one mean opposite things, and the
+          region above is what says which this is.
+        */}
         {!readError && rows.length === 0 ? (
-          <div className="rounded-xl border border-card-border bg-card p-8 text-center text-muted">
-            <p className="text-sm">No acts recorded yet.</p>
-            <p className="mt-1 text-xs">
-              This is an empty register, not a failed read — a failed read says
-              so, in red, above.
+          <Card className="px-6 py-12 text-center">
+            <h2 className="text-base font-semibold text-ink">
+              No acts recorded yet
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Nobody&apos;s role or status has changed. A read that failed says
+              so in its own region above, so an empty list here means the
+              register is empty and not that it could not be loaded.
             </p>
-          </div>
+          </Card>
         ) : null}
 
         {rows.map((row) => {
@@ -358,18 +409,18 @@ export default async function MembershipRegisterPage() {
           const admitting = ADMITTING_ACTS.has(row.act);
 
           return (
-            <div
-              key={row.id}
-              className={`rounded-xl border p-4 ${
-                admitting
-                  ? "border-accent/30 bg-accent/5"
-                  : "border-card-border bg-card"
-              }`}
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-medium">
+            <Card key={row.id}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {/*
+                  The act is a MARK, not a control: it is a Badge and never a
+                  Chip, because nothing here can be operated. The emphasised
+                  tone is the one the set above already decided — the acts that
+                  admit somebody are the ones the eye should land on — and it
+                  grades nothing about the person or the decision.
+                */}
+                <Badge tone={admitting ? "emphasis" : "neutral"}>
                   {ACT_LABELS[row.act] ?? row.act}
-                </p>
+                </Badge>
                 <p className="text-xs text-muted">{formatWhen(row.at)}</p>
               </div>
 
@@ -405,21 +456,21 @@ export default async function MembershipRegisterPage() {
                 <span
                   className={
                     actor.isSystem
-                      ? "font-medium text-amber-200"
-                      : "font-medium text-foreground"
+                      ? "font-semibold text-ink-2"
+                      : "font-semibold text-ink"
                   }
                 >
                   {actor.label}
                 </span>
               </p>
               {actor.note ? (
-                <p className="mt-0.5 text-xs text-muted">{actor.note}</p>
+                <p className="mt-1 text-xs text-muted">{actor.note}</p>
               ) : null}
 
               {row.note ? (
                 <p className="mt-2 text-xs text-muted">{row.note}</p>
               ) : null}
-            </div>
+            </Card>
           );
         })}
 
@@ -430,6 +481,6 @@ export default async function MembershipRegisterPage() {
           </p>
         ) : null}
       </div>
-    </div>
+    </PageShell>
   );
 }
