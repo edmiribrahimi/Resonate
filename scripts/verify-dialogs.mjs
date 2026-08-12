@@ -84,7 +84,7 @@
  *
  *      The hand-rolled shape is `OVERLAY_PARTS`, three boundary-guarded regexes
  *      that match the rung as a FAMILY rather than as one literal, and that
- *      prove themselves against three fixed probes on every run (WR-09).
+ *      prove themselves against five fixed probes on every run (WR-09, WR-03).
  *
  *      **The subject is the SHELL, not one class string.** §13's G2 row names
  *      the hand-rolled overlay's utility, and taken literally that matches ten
@@ -393,6 +393,31 @@ export const DECLARED_EXCEPTIONS = [
  * By path and not by judgement, because the failure mode of a judgement is a
  * gate that widens its own scope one convenient file at a time.
  *
+ * **AN OVERLAP WITH `REMAINING` IS A REFUSAL, NOT A WARNING (WR-02).** The two
+ * lists say incompatible things about the same file: `REMAINING` says *a shell
+ * is still standing here and it is a debt*, the fence says *this phase never
+ * opens this file*. Before this refusal existed, the fence won by construction —
+ * check B `continue`s on a fenced file before `shellShapes` is ever called, so
+ * the path landed in `stale` (on disk, not in `measuredShells`) and the run
+ * printed `→ converted; remove this entry` about a file it had not read, while
+ * `REMAINING = measuredShells.size` fell by one. **A debt counter going down
+ * because the gate stopped looking** is the proxy-goes-quiet defect this phase
+ * has already paid for once (DEF-41-03), reappearing inside the fence this phase
+ * had just added.
+ *
+ * A warning would not have been enough, because the number is what a reader
+ * believes and the number was already wrong by the time the warning printed. So
+ * the overlap is raised **before check B measures anything** — before the loop
+ * that populates `measuredShells` — and nothing is printed on a run whose two
+ * lists contradict each other.
+ *
+ * **The arrival condition, named rather than left to be discovered:** zero
+ * overlap on this tree today, and it goes live the moment Phase 42 moves or adds
+ * a dialog under `src/components/scanner/**`, `src/app/(admin)/**\/scanner/**`
+ * or `src/app/(admin)/door/**` — a file that would then be both a declared debt
+ * and a path nobody measured. Which of the two lists gives way is a decision for
+ * a person, and the refusal says so instead of choosing.
+ *
  * Shape: `[glob, reason]`. The globs are compared with the manifest's
  * `PHASE_42_PATHS` before anything is measured, and a drift refuses.
  */
@@ -455,8 +480,28 @@ function globToRegExp(glob) {
  * a property an overlay usually has and never the property that makes it one.
  * A nineteenth copy written one rung up, one rung down, or at any arbitrary
  * rung was invisible to check B — a gate gone quiet while the thing it tracks is
- * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family: two or
- * more digits, or an arbitrary bracketed integer.
+ * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family.
+ *
+ * **THE FAMILY IS THE WHOLE FAMILY, BECAUSE THE PRINTED SENTENCE PROMISED IT
+ * (WR-02's sibling, WR-03).** The first widening stopped at two-or-more digits
+ * and a bracketed integer, while the report told every reader *"a copy at any
+ * rung is seen"*. Single-digit rungs and the `auto` keyword are real utilities,
+ * and a nineteenth overlay written at either was invisible exactly as a
+ * two-digit one had been — with the report asserting otherwise. Two ways out
+ * existed: narrow the sentence, or widen the matcher.
+ *
+ * **The matcher widened, and the direction was chosen on a measurement rather
+ * than on taste.** Every overlay line under `src/` carrying all three parts uses
+ * a bracketed rung — twelve at one rung, four at another, one at a third — and
+ * the tree holds **no single-digit and no keyword rung at all**. The delta of
+ * widening is therefore measured **zero**: it cannot redden a correct file here,
+ * and it leaves a reader believing something true. Narrowing the sentence would
+ * have cost the same zero and bought a weaker gate.
+ *
+ * What the family covers now: one or more digits, the `auto` keyword, or an
+ * arbitrary bracketed value with no whitespace inside. What it still cannot see
+ * is unchanged and stated in the header and in the printed sentence: a rung
+ * reached through a **variable**, and a class string built by **concatenation**.
  *
  * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
  * `line.includes` on the positioning utility also fired on the same letters at
@@ -482,8 +527,8 @@ const RIGHT_BOUNDARY = '(?![' + '\\w-])';
 const POSITION_UTILITY = 'fix' + 'ed';
 const INSET_UTILITY = 'inset-' + '0';
 const RUNG_PREFIX = 'z' + '-';
-/** Two-or-more digits, or an arbitrary bracketed integer. */
-const RUNG_FAMILY = '(?:' + '\\d{2,}' + '|' + '\\[\\d+\\]' + ')';
+/** One-or-more digits, the auto keyword, or an arbitrary bracketed value. */
+const RUNG_FAMILY = '(?:' + '\\d+' + '|' + 'auto' + '|' + '\\[[^\\]\\s]+\\]' + ')';
 
 export const OVERLAY_PARTS = [
   new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
@@ -499,18 +544,24 @@ function isOverlayLine(line) {
 /**
  * `OVERLAY_PARTS` checked against its own description, on EVERY run.
  *
- * Three fixed strings, assembled the same way the regexes are. If any of them
+ * Five fixed strings, assembled the same way the regexes are. If any of them
  * disagrees with its expectation the run **refuses** — a matcher that does not
  * behave as its own docblock describes has not measured this tree, it has
  * measured something else, and a verdict from it would be a number nobody can
  * read.
  *
- * **THESE PROBES ARE NOT THE EVIDENCE.** They are three strings written by the
+ * The last two arrived with WR-03's widening, and they are the two shapes the
+ * report already claimed to see while the regex did not: a single-digit rung and
+ * the keyword one.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are five strings written by the
  * same hand as the regexes above, so they share its blind spots and cannot
  * discover a file nobody thought of. The evidence is the live run on the real
  * tree — and this exact defect is why the distinction is written here rather
  * than assumed: three probes of this shape passed while the widened matcher
- * reddened a correct file at the door.
+ * reddened a correct file at the door — and, on the other side of the same coin,
+ * three probes of this shape passed for a whole round while the printed sentence
+ * promised a family the regex did not match.
  */
 const MATCHER_PROBES = [
   {
@@ -530,6 +581,18 @@ const MATCHER_PROBES = [
     verdict: 'match',
     label: 'the three parts at a two-digit numeric rung',
     line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a SINGLE-DIGIT rung (WR-03)',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at the auto KEYWORD rung (WR-03)',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
     expected: true,
   },
 ];
@@ -768,6 +831,33 @@ function fenceMatch(relPath) {
 }
 
 /*
+ * REMAINING ∩ the fence — raised HERE, and the position is the fix (WR-02).
+ *
+ * This sits above check B's loop on purpose: that loop is where a fenced file is
+ * skipped before `shellShapes` reads it, and every number this gate prints is
+ * derived from what the loop collected. A run whose two lists contradict each
+ * other must not reach a tick, a STALE notice, or a count — see the paragraph in
+ * `PHASE_42_EXEMPT_PATHS` above for why this is a refusal rather than a warning.
+ */
+const fencedRemaining = [...declaredPaths.keys()].filter((path) => fenceMatch(path) !== null);
+
+if (fencedRemaining.length > 0) {
+  refuse(
+    `${fencedRemaining.length} REMAINING entr(y/ies) fall behind the Phase 42 fence:\n\n       ` +
+      fencedRemaining
+        .map((path) => `${path}\n         behind: ${fenceMatch(path).glob}`)
+        .join('\n       ') +
+      '\n\n       A fenced path is UNMEASURED. This gate cannot tell a debt somebody PAID from one\n' +
+      '       it simply never opened — and left alone it reports the second as the first, marking\n' +
+      '       the entry STALE ("converted; remove this entry") and dropping REMAINING by one. A\n' +
+      '       debt counter that falls because the gate stopped looking is worse than no counter.\n\n' +
+      '       Either the entry leaves REMAINING as a declared decision, or the fence does. Both\n' +
+      '       are decisions, and which one is a question for a person, not for this script.\n' +
+      '       Nothing was measured.'
+  );
+}
+
+/*
  * The matcher against its own description, before it is pointed at the tree.
  * Run here so a disagreement refuses with nothing measured; PRINTED further
  * down, immediately before check B's numbers, where a reader meets it.
@@ -904,15 +994,18 @@ for (const [file, found] of measuredShells) {
   if (!declaredPaths.has(file)) undeclared.push({ file, found });
 }
 
-console.log('  the matcher self-check — three fixed probes, on every run:\n');
+console.log(`  the matcher self-check — ${MATCHER_PROBES.length} fixed probes, on every run:\n`);
 for (const row of probeRows) {
   console.log(`      ${row.measured.padEnd(9)} ${row.label}`);
 }
 console.log(
-  '\n      The rung is matched as a FAMILY, so a copy at any rung is seen; both tokens are\n' +
-    '      boundary-guarded, so a longer word cannot redden a correct file. These three\n' +
-    '      strings are the matcher describing itself — they are NOT the evidence. The live\n' +
-    '      run below is.\n'
+  '\n      The rung is matched as a FAMILY: one or more digits, the auto keyword, or an\n' +
+    '      arbitrary bracketed value. So a copy is seen at any rung WRITTEN OUT in the class\n' +
+    '      string — and only there. TWO SHAPES IT STILL DOES NOT SEE: a rung reached through\n' +
+    '      a VARIABLE, and a class string assembled by CONCATENATION; this script reads\n' +
+    '      lines, it does not build them. Both tokens are boundary-guarded, so a longer word\n' +
+    '      cannot redden a correct file. These strings are the matcher describing itself —\n' +
+    '      they are NOT the evidence. The live run below is.\n'
 );
 
 console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
