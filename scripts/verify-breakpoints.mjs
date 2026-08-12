@@ -251,9 +251,12 @@ export const REMAINING = [
     1,
     'the per-event analytics KPI grid — the grid axis, §2.2',
   ],
-  ['src/app/(public)/gallery/loading.tsx', 2, 'the gallery skeleton grids — the grid axis, §2.2'],
+  // PAID by plan 41-08 — `src/app/(public)/gallery/loading.tsx` (2) and
+  // `src/components/media/MediaGrid.tsx` (1) held three of this list's uses and
+  // hold none now. The grids they carry gained §2.2's desktop step and kept
+  // their phone layout, which is what §2.3's map actually says for a grid whose
+  // base column count was never itself a prefixed rule.
   ['src/components/analytics/KPIDashboard.tsx', 1, 'the KPI card grid — the grid axis, §2.2'],
-  ['src/components/media/MediaGrid.tsx', 1, 'the public media grid — the grid axis, §2.2'],
   [
     'src/components/media/MediaReviewGrid.tsx',
     1,

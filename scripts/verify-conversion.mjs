@@ -717,21 +717,24 @@ function expectedWidth(route) {
  *
  * Shape: `[path, exportName, reason]`.
  */
-export const ORPHANS_DECLARED = [
-  [
-    'src/components/ui/Button.tsx',
-    'IconButton',
-    'measured 2026-08-12, zero importers. Its consumer was to be the toast dismiss ' +
-      'control (plan 41-03), but plan 41-04 converted that file on a parallel branch ' +
-      'where the primitive did not yet exist, so it wrote the contract by hand and said ' +
-      'so at the call site. Both landed; the adoption did not. NO REMAINING PLAN IN THIS ' +
-      'PHASE DECLARES src/components/toast/, so this is owed and unscheduled — see ' +
-      'deferred-items.md DEF-41-03. The fix is one import and a five-line deletion, and ' +
-      'it is a visible change to the control (the shared rung carries a hover boundary, ' +
-      'press feedback and a different ink token), which is why it belongs to a plan that ' +
-      'declares that file rather than to the gate that found it',
-  ],
-];
+/*
+ * EMPTY, AND THAT IS THE MEASURED STATE — not a list nobody got round to filling.
+ *
+ * It held exactly one entry when this gate shipped: the icon rung, published by
+ * plan 41-03 with zero importers because the file meant to adopt it had been
+ * converted on a parallel branch where it did not yet exist. Plan 41-08 closed
+ * it from the other direction — the media viewer's close control is a 44 x 44
+ * icon rung now — and the gate's own STALE notice said what to do next, which
+ * was to delete the line rather than leave a paid debt on the books.
+ *
+ * **What is NOT closed, and must not be read as closed:** the toast's dismiss
+ * control still carries a hand-written copy of that contract, and no plan in
+ * this phase declares that file. DEF-41-03's structural half is still owed. The
+ * gate cannot see it, because the gate counts importers and the count is now
+ * one — which is the honest limit of what a mechanical check can say, and the
+ * reason it is written here instead of being left to the count.
+ */
+export const ORPHANS_DECLARED = [];
 
 /* ────────────────────────────────────────────────────────────────────────────
  * The refusals, taken together, BEFORE any tick is printed

@@ -1,15 +1,36 @@
 import { createClient } from "@/lib/supabase/server";
-import MobileNav from "@/components/layout/MobileNav";
+import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 import { getAccessContext } from "@/lib/capabilities/server";
 import GalleryClient from "./GalleryClient";
 import type { UserRole, UserStatus } from "@/types/database";
 
+/**
+ * The public gallery — converted whole by plan 41-08.
+ *
+ * ── What changed, and the one thing that deliberately did not ────────────────
+ *
+ * The layout: the shell owns the maximum, the gutter and the navigation
+ * clearance; the title carries the display role; and this is the first
+ * **page-level** navigation mount to move off the phone-locked wrapper, which
+ * is what gives a public surface the side column from tablet width up.
+ *
+ * **The read is untouched, byte for byte.** Not as a courtesy — as the
+ * requirement. This surface renders event media, so what it fetches, how it
+ * filters, how it orders and how much it takes are the difference between a
+ * gallery and a disclosure. `venue_reveal_sent` is monotone: a layout change
+ * that surfaced one more field, un-truncated one more string or rendered one
+ * more group could show a place before its night reveals it, and there is no
+ * un-revealing. The filter below is on the **moderation state of the row**, not
+ * on the viewer, and it is the same filter it was.
+ */
 export default async function GalleryPage() {
   // Role and status come from the session, not from a request header. Neither
   // gates anything here — the media query below filters on `status =
   // "approved"` (the moderation state of the row, not the viewer's) and is
-  // unchanged. Both values go to MobileNav, a "use client" component.
+  // unchanged. Both values go to the navigation, a "use client" component.
   const { role, status, capabilities, liveAssignmentCapabilities } =
     await getAccessContext();
 
@@ -57,19 +78,21 @@ export default async function GalleryPage() {
   const groups = [...groupMap.values()];
 
   return (
-    <div className="min-h-dvh pb-24">
-      <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Gallery</h1>
-          <p className="mt-1 text-muted">Moments from our events</p>
-        </header>
-      </AnimatedSection>
+    <>
+      <PageShell width="wide">
+        <AnimatedSection>
+          <header className="pb-6">
+            <PageTitle>Gallery</PageTitle>
+            <p className="mt-1 text-sm text-muted">Moments from our events</p>
+          </header>
+        </AnimatedSection>
 
-      <AnimatedSection delay={0.1} className="px-6">
-        <GalleryClient groups={groups} />
-      </AnimatedSection>
+        <AnimatedSection delay={0.1}>
+          <GalleryClient groups={groups} />
+        </AnimatedSection>
+      </PageShell>
 
-      <MobileNav
+      <AppNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
         capabilities={[...capabilities]}
@@ -77,6 +100,6 @@ export default async function GalleryPage() {
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
         }
       />
-    </div>
+    </>
   );
 }

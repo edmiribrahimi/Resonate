@@ -109,8 +109,8 @@ export const SPINE = [
     "the icon set — imported by nearly every surface, renders none",
   ],
   [
-    "src/components/ui/Skeleton.tsx", "pending",
-    "PENDING until plan 41-08 — it exists, is correct and has ZERO importers, while 102 hand-rolled placeholder blocks live in 20 other files. It is D-41-04's own precedent and may not be marked converted before the plan that gives it a consumer",
+    "src/components/ui/Skeleton.tsx", "converted",
+    "converted by plan 41-08, which is also the plan that gave it its first importer — /gallery's loading state. It was PENDING for exactly the reason this entry now records as closed: it existed, was correct and had ZERO importers while 102 hand-rolled placeholder blocks lived in 20 other files, and D-41-04 forbids calling that converted. The edit was not cosmetic either: three of its four visual strings were retired by this phase, and rendering it for the first time surfaced a width default that had been overriding every caller since the file was written",
   ],
   [
     "src/components/toast/Toast.tsx", "converted",
@@ -248,6 +248,18 @@ export const PRIMITIVES = [
     "src/components/ui/Input.tsx", "Input",
     "plan 41-06 — the text-entry control on the boundary that measures; its consumers in that wave are the seven fields of /login, /register and /set-password",
   ],
+  [
+    "src/components/ui/Chip.tsx", "Badge",
+    "plan 41-08 — the non-interactive rung, published in the wave that renders it (D-41-04) and deliberately in the same file as the chip, because the sentence deciding between them governs both. Its consumer is the act mark on /admin/members/register",
+  ],
+  [
+    "src/components/ui/Skeleton.tsx", "SkeletonLine",
+    "plan 41-08 — the line placeholder, listed in the plan that finally rendered it; its consumer is /gallery's loading state, which is the first import this file has ever had",
+  ],
+  [
+    "src/components/ui/Skeleton.tsx", "SkeletonTile",
+    "plan 41-08 — the square placeholder for a media thumbnail, published in the plan that renders it. A square is a different shape from a line, not a taller one: reaching it by passing a height through the caller's classes would have depended on which of two same-property utilities Tailwind emits last, which is measured below as unreliable in exactly this component",
+  ],
 ];
 
 /**
@@ -267,6 +279,22 @@ export const PRIMITIVES = [
  * this paragraph is the record that nobody forgot rather than that nobody
  * looked. It is the same treatment `SPINE` gives `Skeleton.tsx` and the same
  * treatment the focus-expression constant gets above.
+ *
+ * ── And `SkeletonCard` / `SkeletonAvatar`, for the same reason ───────────────
+ *
+ * Plan 41-08 converted `Skeleton.tsx` and gave it its first consumer, but the
+ * surface it converted is a **gallery**: its loading state is a heading, a
+ * subtitle and two grids of square thumbnails. It renders no card-shaped
+ * placeholder and no avatar, so two of the file's four exports have no importer
+ * in their own wave.
+ *
+ * They are therefore **not** entered above. Entering them would make check C go
+ * red on a file that is correct, and the honest form is this paragraph: the
+ * plan that first renders a card placeholder or an avatar placeholder adds its
+ * entry. This is the third time this record has been written — the spine's own
+ * note on this file, then the form controls, now these two — and the repetition
+ * is the point: the alternative is a list of claims, and a list of claims is how
+ * a gate becomes a rubber stamp.
  */
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -306,6 +334,14 @@ export const CONVERTED = [
   [
     "/set-password", "src/app/(auth)/set-password/page.tsx", "focus",
     "plan 41-06 — the surface is TWO files, and this entry names the ROUTE file rather than the form, because the route file imports the form and an import-closure walk from it therefore covers both; naming the form instead would have fenced off the half that owns the shell and the page title. All four outcomes stayed four. Named on §4's closed focus list",
+  ],
+  [
+    "/gallery", "src/app/(public)/gallery/page.tsx", "wide",
+    "plan 41-08 — whole, and 'whole' cost more than the plan expected: the closure reaches the shared thumbnail grid and the media viewer, neither of which any plan in this phase declares, and both of which carried raw palette. They were converted with it, because a surface is declared converted when what it REACHES is converted — that is what this manifest's own gate walks. The read is untouched: same table, same filter on the row's moderation state, same ordering, same cap. Named on §4's closed wide list",
+  ],
+  [
+    "/admin/members/register", "src/app/(admin)/admin/(work)/members/register/page.tsx", "default",
+    "plan 41-08 — whole. NOT on §4's wide list and therefore default, which is not a fallback: it is the answer for every surface nobody had to argue about. Four raw palette colours went, and two of them were decisions rather than substitutions — the accent stopped being a state signal (§5.1 names that among the things it is never for) and the automatic author stopped being amber, since the only amber here is the warning semantic and it is also SunSet's identification colour. Personal data: no column added, no field surfaced, and who performed an act and when both still render",
   ],
 ];
 
