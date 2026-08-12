@@ -246,6 +246,16 @@
  *      disk; a `layout.*` file carries an extension the walk does not test; or
  *      the shell's focus root cannot be read as a single closed literal.
  *      **No verdict is implied by a 2.**
+ *
+ * A run that BOTH failed a check and then hit a refusal exits **1**, not 2, and
+ * prints the FATAL and the failure. A refusal means a measurement did not
+ * happen; it does not unsay one that did, and reporting such a run as REFUSED
+ * made the aggregate print "Nothing failed" over a run in which something had
+ * (41-GAP-REVIEW.md WR-01). Every check-E refusal now precedes every tick, so
+ * `failures` is empty at all of them; the one refusal that structurally cannot
+ * be hoisted — the ORPHANS_DECLARED duplicate, which needs check C's data — is
+ * exactly the case this rule covers, and is what keeps the rule reachable
+ * rather than decorative.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -258,9 +268,49 @@ const SRC_DIR = `${ROOT}/src`;
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git']);
 
-/** A refusal is not a failure: it means the measurement did not happen. */
+/**
+ * The letters of the checks that have already failed.
+ *
+ * Declared **here**, above `refuse()`, rather than beside check A where it is
+ * filled: `refuse()` reads it, and a `const` referenced before its declaration
+ * throws a `ReferenceError` — which this file's own header says a gate must
+ * never emit, because a broken gate is indistinguishable from a finding.
+ */
+const failures = [];
+
+/**
+ * A refusal is not a failure: it means the measurement did not happen.
+ *
+ * **But a refusal must not absorb a failure that already did.** Every refusal
+ * in this file is now raised before any verdict prints, so `failures` is empty
+ * at almost every call site. Almost: the `ORPHANS_DECLARED` duplicate refusal
+ * is raised between check B's verdict and check C's, and that is the reachable
+ * case. Measured before this change (41-GAP-REVIEW.md WR-01, reproduced with
+ * two script-only levers): `✗ A` printed, then the FATAL, then **exit 2** — so
+ * `verify-all.mjs` reported the run REFUSED and printed "Nothing failed" over a
+ * run in which check A had failed on three files.
+ *
+ * So when something was measured and was wrong, this exits **1** and says both
+ * things. The FATAL line is still printed first and unchanged, so a refusal is
+ * still legible as a refusal; what changes is which verdict the run carries to
+ * the aggregate. A measurement that happened outranks one that did not.
+ */
 function refuse(message) {
   console.log(`\nFATAL: ${message}\n`);
+
+  if (failures.length > 0) {
+    console.log(
+      `  CONVERSION_FAIL — ${failures.length} check(s) had ALREADY failed when the refusal above\n` +
+        `  was raised: ${failures.join(', ')}. This run exits 1, not 2.\n\n` +
+        '  A refusal means a measurement did not happen; it does not unsay one that did. Exiting\n' +
+        '  2 here would report the whole run as REFUSED, and the aggregate would then print\n' +
+        '  "Nothing failed" over a run in which something did — a failure with a neutral face,\n' +
+        '  which is the shape meta-gates.md names. Both are above: read the FATAL for what could\n' +
+        '  not be measured, and the ✗ line(s) for what was measured and is wrong.\n'
+    );
+    process.exit(1);
+  }
+
   process.exit(2);
 }
 
@@ -1043,7 +1093,128 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
   surfaces.push({ route, pageFile, width, reason, reached, scanned });
 }
 
-/* ── check E's measurement, taken here so its refusals precede every tick ──── */
+/* ── check E's measurement, taken here so its refusals precede every tick ────
+ *
+ * **E1's read honours that sentence from this change, and did not before it.**
+ * Until now only E2's refusals sat here; E1's three — no declaration, two
+ * declarations, not a single closed literal — sat with E1's *comparisons*,
+ * below check D's verdict. Measured consequence (41-GAP-REVIEW.md WR-01,
+ * reproduced on the shipped gate before this edit): renaming the constant
+ * printed `✓ A`, `✓ B`, `✓ C`, `✓ D` and only then the FATAL, exit 2. Had any
+ * of those four been a `✗`, the aggregate would have called the whole run
+ * REFUSED and printed "Nothing failed" over a run in which something did.
+ *
+ * So E1's read is part of the same measurement as E2's, taken at the same
+ * point, and only the comparisons are left below. What is hoisted is the read
+ * and nothing else: the assertions still live beside their report, where a
+ * reader expects them.
+ */
+
+/* ── E1's read: the shell's focus root, and the branch that renders it ────── */
+
+const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
+
+/**
+ * The literal, required to close on the same line.
+ *
+ * A focus root spread over several lines, or built by concatenation, is not a
+ * thing this gate can read — and reading half of it would assert the absence of
+ * a property from a fragment, which is exactly how a check goes green on a
+ * defect it never saw. So that is a refusal and not a pass.
+ */
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$/;
+
+const shellLines = liveLines(SHELL_FILE);
+const focusRootDeclarations = [];
+shellLines.forEach((line, i) => {
+  if (FOCUS_ROOT_DECL_RE.test(line)) focusRootDeclarations.push({ lineNo: i + 1, text: line });
+});
+
+if (focusRootDeclarations.length === 0) {
+  refuse(
+    `${SHELL_FILE} declares no ${FOCUS_ROOT_IDENTIFIER}, so check E has nothing to read.\n` +
+      '       The focus form is the one CR-01 broke, and this gate reads it by the name it is\n' +
+      '       declared under rather than by recognising a branch — a marker beats a heuristic,\n' +
+      '       and a heuristic that finds nothing is indistinguishable from a form that reserves\n' +
+      '       nothing. If the constant was renamed, FOCUS_ROOT_IDENTIFIER is renamed with it in\n' +
+      '       the same commit. Nothing was measured.'
+  );
+}
+
+if (focusRootDeclarations.length > 1) {
+  refuse(
+    `${SHELL_FILE} declares ${FOCUS_ROOT_IDENTIFIER} ${focusRootDeclarations.length} times, at line(s) ` +
+      `${focusRootDeclarations.map((d) => d.lineNo).join(', ')}.\n` +
+      '       Check E would then assert against whichever one it read first, while the shell\n' +
+      '       rendered the other. Nothing was measured.'
+  );
+}
+
+const focusRootLineNo = focusRootDeclarations[0].lineNo;
+const focusRootLiteralMatch = focusRootDeclarations[0].text.match(FOCUS_ROOT_LITERAL_RE);
+
+if (!focusRootLiteralMatch) {
+  refuse(
+    `${SHELL_FILE}:${focusRootLineNo} declares ${FOCUS_ROOT_IDENTIFIER}, but not as a double-quoted\n` +
+      '       literal closing on that line, so check E cannot read the whole of it. Asserting\n' +
+      '       that a navigation property is absent from a FRAGMENT of the focus root is how a\n' +
+      '       check goes green on a defect it never saw, and CR-01 is precisely a defect that\n' +
+      '       four green checks never saw. Line, verbatim:\n\n       ' +
+      focusRootDeclarations[0].text.trim() +
+      '\n\n       Nothing was measured.'
+  );
+}
+
+const focusRoot = focusRootLiteralMatch[1];
+
+/**
+ * The branch that RENDERS, asserted against the constant that was READ.
+ *
+ * **Why this is not redundant with the three assertions below, in one sentence:
+ * this round's verifier appended CR-01 to the render site, left `FOCUS_ROOT`
+ * byte-identical, and the reintroduced line was counted TOWARD assertion 3
+ * ("the shell still reads both properties elsewhere") — so the defect fed the
+ * check meant to catch it, and check E printed its tick over 248px of leading
+ * padding against 24px trailing (GAP-CR-02).** A reader who trims this as
+ * duplicated work reopens exactly that.
+ *
+ * The pattern is built from `FOCUS_ROOT_IDENTIFIER` — the same marker the
+ * declaration scan above uses — so the two cannot drift apart: rename the
+ * constant and both stop finding it, rather than one of them silently
+ * continuing to pass.
+ *
+ * `shellLines` is comment-stripped, so a documented example of the correct form
+ * cannot satisfy this.
+ */
+const FOCUS_BRANCH_RE = new RegExp(`className=\\{${FOCUS_ROOT_IDENTIFIER}\\}`);
+const focusBranchLines = [];
+shellLines.forEach((line, i) => {
+  if (FOCUS_BRANCH_RE.test(line)) focusBranchLines.push(i + 1);
+});
+
+if (focusBranchLines.length !== 1) {
+  const where =
+    focusBranchLines.length > 0 ? `at line(s) ${focusBranchLines.join(', ')}` : 'nowhere in the file';
+  refuse(
+    `${SHELL_FILE} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of exactly one className\n` +
+      `       ${focusBranchLines.length} time(s) — found ${where}. Exactly one is required.\n\n` +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Check E1 asserts against the CONSTANT:\n' +
+      '       that its literal reserves neither navigation property, that it still declares a\n' +
+      '       height and a centring. A focus root assembled from that constant PLUS anything\n' +
+      '       else is a form this gate did not read, and asserting a property is absent from a\n' +
+      '       fragment is how a check goes green on a defect it never saw. It is not a\n' +
+      '       hypothetical: the constant was left untouched and the clearance was appended\n' +
+      '       here, and every assertion below passed — one of them BECAUSE of the addition.\n\n' +
+      '       WHAT A LEGITIMATE CHANGE DOES. If the focus branch one day needs a second class,\n' +
+      '       the named candidate is the `nav` prop D-41-04 deliberately did not write, arriving\n' +
+      '       with its first consumer. Then this assertion WIDENS — in the same commit, carrying\n' +
+      '       the measurement that justified it, and reading whatever new form the branch takes.\n' +
+      '       It does not get deleted, and the constant does not get inlined to make it quiet.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
+/* ── E2's read: the layouts each surface climbs through ───────────────────── */
 
 const layoutClosureCache = new Map();
 
@@ -1157,7 +1328,8 @@ for (const s of surfaces) {
 }
 console.log('');
 
-const failures = [];
+/* `failures` is declared at the top of this file, above refuse(), which reads
+ * it. See its docblock there: a refusal must not absorb a failure. */
 
 /* ────────────────────────────────────────────────────────────────────────────
  * check A — no raw palette utility
@@ -1512,67 +1684,17 @@ if (!failures.includes('D')) {
  * Also G4, and the check CR-01 did not have.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/* ── E1: the shell's focus root ───────────────────────────────────────────── */
-
-const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
-
-/**
- * The literal, required to close on the same line.
+/* ── E1: the shell's focus root — the comparisons only ────────────────────────
  *
- * A focus root spread over several lines, or built by concatenation, is not a
- * thing this gate can read — and reading half of it would assert the absence of
- * a property from a fragment, which is exactly how a check goes green on a
- * defect it never saw. So that is a refusal and not a pass.
- */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$/;
+ * The read that produces `focusRoot`, `focusRootLineNo` and `shellLines` is
+ * taken far above, with E2's, so all three of its refusals precede every tick
+ * (WR-01). What is left here is what compares.
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 /* Patterns, not literals: a whole utility written here would be a live Tailwind
  * candidate (DEF-41-01). Same construction as MAX_WIDTH_RE above. */
 const MIN_HEIGHT_RE = /(?<![a-zA-Z0-9-])min-h-[a-z0-9[\]./-]+/;
 const CENTRING_RE = /(?<![a-zA-Z0-9-])(?:justify|items|place|self)-center(?![a-z0-9-])/;
-
-const shellLines = liveLines(SHELL_FILE);
-const focusRootDeclarations = [];
-shellLines.forEach((line, i) => {
-  if (FOCUS_ROOT_DECL_RE.test(line)) focusRootDeclarations.push({ lineNo: i + 1, text: line });
-});
-
-if (focusRootDeclarations.length === 0) {
-  refuse(
-    `${SHELL_FILE} declares no ${FOCUS_ROOT_IDENTIFIER}, so check E has nothing to read.\n` +
-      '       The focus form is the one CR-01 broke, and this gate reads it by the name it is\n' +
-      '       declared under rather than by recognising a branch — a marker beats a heuristic,\n' +
-      '       and a heuristic that finds nothing is indistinguishable from a form that reserves\n' +
-      '       nothing. If the constant was renamed, FOCUS_ROOT_IDENTIFIER is renamed with it in\n' +
-      '       the same commit. Nothing was measured.'
-  );
-}
-
-if (focusRootDeclarations.length > 1) {
-  refuse(
-    `${SHELL_FILE} declares ${FOCUS_ROOT_IDENTIFIER} ${focusRootDeclarations.length} times, at line(s) ` +
-      `${focusRootDeclarations.map((d) => d.lineNo).join(', ')}.\n` +
-      '       Check E would then assert against whichever one it read first, while the shell\n' +
-      '       rendered the other. Nothing was measured.'
-  );
-}
-
-const focusRootLineNo = focusRootDeclarations[0].lineNo;
-const focusRootLiteralMatch = focusRootDeclarations[0].text.match(FOCUS_ROOT_LITERAL_RE);
-
-if (!focusRootLiteralMatch) {
-  refuse(
-    `${SHELL_FILE}:${focusRootLineNo} declares ${FOCUS_ROOT_IDENTIFIER}, but not as a double-quoted\n` +
-      '       literal closing on that line, so check E cannot read the whole of it. Asserting\n' +
-      '       that a navigation property is absent from a FRAGMENT of the focus root is how a\n' +
-      '       check goes green on a defect it never saw, and CR-01 is precisely a defect that\n' +
-      '       four green checks never saw. Line, verbatim:\n\n       ' +
-      focusRootDeclarations[0].text.trim() +
-      '\n\n       Nothing was measured.'
-  );
-}
-
-const focusRoot = focusRootLiteralMatch[1];
 
 const propertiesInFocusRoot = NAV_PROPERTIES.filter((prop) => focusRoot.includes(prop));
 const focusRootHasHeight = MIN_HEIGHT_RE.test(focusRoot);
