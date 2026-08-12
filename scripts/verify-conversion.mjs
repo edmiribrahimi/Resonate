@@ -9,7 +9,7 @@
  * publishes has at least one importer; and the page's width comes from the
  * shell rather than from a maximum written on the page.**
  *
- * This is **G1 (checks A, B, C) and G4 (check D) in one script**, over one
+ * This is **G1 (checks A, B, C) and G4 (checks D and E) in one script**, over one
  * manifest, with one walk. They are not split, and the reason is not economy:
  * two scripts reading the same manifest would resolve the same paths two ways,
  * and the day the two resolvers disagree is the day one of them is measuring a
@@ -38,6 +38,13 @@
  *   - CHECK D SAYS A MAXIMUM IS DECLARED AND THAT THE PAGE DID NOT OVERRIDE IT.
  *     **It does not say the chosen width is right.** That is UI-SPEC Open
  *     Question 2, it is one line in the shell, and it touches no page.
+ *   - CHECK E COMPARES A **DECLARED WIDTH** AGAINST A **MOUNTED NAVIGATION**,
+ *     and says nothing whatever about whether a card is centred. It reads a
+ *     class string and an import graph; it renders nothing, measures no pixel
+ *     and opens no viewport. **H41-1 and `41-CR01-PASS.md` are the only things
+ *     that say any of the four focus surfaces looks right**, and both are owed
+ *     and unmade. A green on E means the two declarations agree with each
+ *     other — not that either of them is what a person would want to see.
  *   - THE SCOPE IS THE MANIFEST, AND NOTHING ELSE. A surface nobody declared is
  *     not scanned and not counted as a failure. The printed surface count is
  *     the honest reading of this gate — the tick only says the declared ones
@@ -53,7 +60,7 @@
  *     runtime lookup, a re-export chain built at runtime, or a package is
  *     outside the walk by construction.
  *
- * ── THE FOUR CHECKS ─────────────────────────────────────────────────────────
+ * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
  *
  *   A. **No raw palette utility** in any file of any converted surface's
  *      closure. Tailwind's default colour families reached through a colour
@@ -77,6 +84,39 @@
  *      maxima and only those; every converted page imports the shell and writes
  *      no maximum of its own; and the width recorded in the manifest agrees
  *      with §4's two closed lists.
+ *
+ *   E. **The clearance against the mount** — also G4, and the check CR-01 did
+ *      not have. Check D was green on all four broken surfaces throughout,
+ *      because a maximum-width matcher cannot see a form reserving room for a
+ *      navigation its surfaces do not mount. Two parts:
+ *
+ *        E1. The shell's focus root — read by the name it is declared under,
+ *            not by guessing at a branch — reserves NEITHER navigation
+ *            property, still declares a height and a centring, and the shell
+ *            **still reads both properties elsewhere**. The clearance left one
+ *            form; it did not leave the primitive, and a check that could not
+ *            tell those apart would go green on a shell that had dropped it for
+ *            the twelve wide routes as well.
+ *
+ *        E2. For every converted surface, `width === "focus"` **if and only
+ *            if** no navigation module is reachable — from the page's own
+ *            closure OR from any ancestor layout's. It is a two-way assertion
+ *            and not a prohibition: a navigation-free surface at another width
+ *            reserves a column that is not there, and a focus surface that
+ *            mounts navigation sits under its own bar. When 41.1 or 41.2 first
+ *            declares the former, this check goes red, and THAT RED IS CORRECT
+ *            — it is when `PageShell` gets the `nav` prop plan 41-13
+ *            deliberately did not write, with its first consumer in the same
+ *            commit (D-41-04).
+ *
+ *      **Why E2 climbs, and the three files it would otherwise redden.** A
+ *      layout is not imported by the pages it wraps, so a closure-only check
+ *      calls `/admin/formats`, `/admin/members` and `/admin/members/register`
+ *      navigation-free — all three correct, all three getting their `AppNav`
+ *      from `src/app/(admin)/admin/(work)/layout.tsx`. A gate that reddens a
+ *      correct file is switched off (§0 rule 3), so the walk climbs the route
+ *      segments to `src/app` and enumerates the layouts it finds, refusing on
+ *      any `layout.*` basename carrying an extension it does not test.
  *
  * ── THE TWO EXEMPTIONS, DECLARED BEFORE THE CHECKS EXIST ────────────────────
  *
@@ -196,13 +236,16 @@
  * for it.)
  *
  * Exit codes:
- *   0  all four checks passed
+ *   0  all five checks passed
  *   1  at least one failed — each is printed with its file, its line and the
  *      exact thing found
  *   2  nothing was measured: the manifest is missing, unimportable, empty or
- *      inconsistent; a declared page file is not on disk; a surface's closure
- *      is empty; a local specifier could not be resolved; or the shell is
- *      missing. **No verdict is implied by a 2.**
+ *      inconsistent; a declared page file is not on disk or is not under
+ *      `src/app`; a surface's closure is empty; a local specifier could not be
+ *      resolved; the shell is missing; a declared navigation module is not on
+ *      disk; a `layout.*` file carries an extension the walk does not test; or
+ *      the shell's focus root cannot be read as a single closed literal.
+ *      **No verdict is implied by a 2.**
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -243,6 +286,19 @@ function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
   };
   walk(dir);
   return out.sort();
+}
+
+/**
+ * Every file under `dir`, whatever its extension.
+ *
+ * The empty string is an extension every basename ends with, so this is the
+ * same walk — same skipped directories, same symlink refusal — with the filter
+ * opened. It exists for the layout enumeration, whose whole purpose is to find
+ * a `layout.*` the extension list would have skipped: filtering that walk by
+ * the list it is checking against would make it agree with itself.
+ */
+function listEveryFile(dir) {
+  return listScannableFiles(dir, ['']);
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -646,6 +702,64 @@ export const SHELL_FILE = 'src/components/ui/PageShell.tsx';
 export const DECLARED_MAXIMA = ['max-w-5xl', 'max-w-7xl', 'max-w-sm'];
 
 /**
+ * The two modules through which a navigation reaches a surface — check E2.
+ *
+ * They are two rather than one, and the reason is measured rather than
+ * stylistic: `AppNav` carries **both tiers** — the bar below 768px and the
+ * leading column at and above it — while `MobileNav` is the thin wrapper that
+ * renders `AppNav` locked to its phone form, so the door keeps today's layout
+ * (D-41-21). **Either one reachable is navigation mounted**, and a check that
+ * knew only the first would call the door navigation-free.
+ *
+ * **A path here that is not on disk REFUSES.** A stale entry does not report
+ * "no navigation found on any surface" as a red — it reports it as agreement,
+ * because the four focus surfaces would then match a check that had stopped
+ * looking, and the other four would fail for a reason that is not theirs. That
+ * is the direction that prints a tick, and this file does not take it.
+ */
+export const NAV_MODULES = [
+  ['src/components/layout/AppNav.tsx', 'both tiers — the bar below 768px, the leading column at and above it'],
+  ['src/components/layout/MobileNav.tsx', 'the wrapper that renders AppNav locked to its phone form (D-41-21)'],
+];
+
+const NAV_MODULE_PATHS = NAV_MODULES.map(([path]) => path);
+
+/**
+ * The identifier the shell declares its focus root under — check E1 reads the
+ * literal BY THIS NAME.
+ *
+ * A marker beats a heuristic: it forces the author to say so, and it is
+ * greppable. That is the same choice §13's exemption 4 already makes, and it is
+ * why plan 41-13 hoisted the string out of the JSX instead of leaving check E
+ * to recognise a branch by its shape.
+ */
+export const FOCUS_ROOT_IDENTIFIER = 'FOCUS_ROOT';
+
+/**
+ * §3.2's two navigation custom properties, **by name**.
+ *
+ * Named, never spelled as the arbitrary-value utilities that read them: per
+ * DEF-41-01 a whole utility written in this file is a live Tailwind candidate
+ * and would ship a dead rule. A bare custom-property name is not a candidate;
+ * the utility that wraps it is. `PageShell.tsx`'s own docblock states the same
+ * rule, for the same reason, about the same two names.
+ */
+const NAV_PROPERTIES = ['--nav-inset-inline-start', '--nav-inset-block-end'];
+
+/**
+ * The route root, and the four extensions Next resolves a layout at.
+ *
+ * The enumeration refuses on any `layout.*` basename carrying a fifth. A walk
+ * that silently skips a layout is a narrowing in the direction that prints a
+ * tick — the same rule this file already applies to an unresolved specifier,
+ * and the reason the enumeration reads EVERY file under the route root rather
+ * than only the ones the scanner's extension list admits.
+ */
+const APP_DIR_REL = 'src/app';
+const LAYOUT_BASENAME_PREFIX = 'layout.';
+const LAYOUT_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
+
+/**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
  * A surface whose primary object is a dense table or a multi-column grid.
  */
@@ -811,6 +925,62 @@ if (!existsSync(`${ROOT}/${SHELL_FILE}`)) {
   );
 }
 
+for (const [path, why] of NAV_MODULES) {
+  if (!existsSync(`${ROOT}/${path}`)) {
+    refuse(
+      `NAV_MODULES names ${path}\n` +
+        `       — ${why} —\n` +
+        '       which is not on disk. Check E asks of every surface whether it mounts a\n' +
+        '       navigation, and a module path this gate cannot find makes EVERY surface look\n' +
+        '       navigation-free: the four focus surfaces would then AGREE with a check that\n' +
+        '       had stopped looking, and a green there would be the worst of the three\n' +
+        '       outcomes. If a navigation module genuinely moved, NAV_MODULES moves with it in\n' +
+        '       the same commit. Nothing was measured.'
+    );
+  }
+}
+
+if (!existsSync(`${ROOT}/${APP_DIR_REL}`)) {
+  refuse(`${APP_DIR_REL} does not exist, so check E has no route tree to climb. Nothing was measured.`);
+}
+
+/*
+ * Every file under the route root whose basename begins `layout.`, whatever its
+ * extension — deliberately not filtered by the scanner's extension list, since
+ * the whole point is to find the one the walk would not have tested.
+ */
+const layoutFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel) =>
+  rel.split('/').pop().startsWith(LAYOUT_BASENAME_PREFIX)
+);
+
+const layoutsWithUntestedExtension = layoutFilesUnderApp.filter(
+  (rel) => !LAYOUT_EXTENSIONS.some((ext) => rel.endsWith(ext))
+);
+
+if (layoutsWithUntestedExtension.length > 0) {
+  refuse(
+    `${layoutsWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a layout but\n` +
+      `       carry an extension check E's ancestor walk does not test (${LAYOUT_EXTENSIONS.join(', ')}):\n\n       ` +
+      layoutsWithUntestedExtension.join('\n       ') +
+      '\n\n       A layout is where three of the eight declared surfaces get their navigation, and\n' +
+      '       a walk that skips one reports those surfaces as navigation-free — which is a\n' +
+      '       narrowing in the direction that prints a tick. Either the extension joins\n' +
+      '       LAYOUT_EXTENSIONS in the same commit, or the file is not a layout and should not\n' +
+      '       be named like one. Nothing was measured.'
+  );
+}
+
+for (const [route, pageFile] of CONVERTED) {
+  if (!pageFile.startsWith(`${APP_DIR_REL}/`)) {
+    refuse(
+      `CONVERTED names ${route} at ${pageFile}, which is not under ${APP_DIR_REL}. Check E climbs\n` +
+        '       from a page file to the route root to find the layouts that wrap it; a page file\n' +
+        '       outside that tree makes the climb find NOTHING and report the surface as\n' +
+        '       navigation-free, whatever it actually mounts. Nothing was measured.'
+    );
+  }
+}
+
 /* ── the walk ─────────────────────────────────────────────────────────────── */
 
 const spinePaths = new Set(convertedSpinePaths());
@@ -872,6 +1042,84 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
 
   surfaces.push({ route, pageFile, width, reason, reached, scanned });
 }
+
+/* ── check E's measurement, taken here so its refusals precede every tick ──── */
+
+const layoutClosureCache = new Map();
+
+/**
+ * One ancestor layout's closure, refusing on an unresolved specifier exactly as
+ * a page's does — a layout whose closure was silently narrowed is a layout
+ * whose navigation this gate might not find, and not finding it reports the
+ * surfaces below as navigation-free.
+ */
+function layoutClosure(rel) {
+  const cached = layoutClosureCache.get(rel);
+  if (cached) return cached;
+
+  const { reached, unresolved } = importClosure(rel);
+  if (unresolved.length > 0) {
+    refuse(
+      `the closure of the layout ${rel} has ${unresolved.length} local specifier(s) this walk\n` +
+        '       could not resolve, so part of it was never opened — and a layout is where three\n' +
+        '       of the eight declared surfaces get their navigation. A narrowed walk here\n' +
+        '       reports those surfaces as navigation-free, which is the failure direction that\n' +
+        '       prints a tick. Nothing was measured.\n\n       ' +
+        unresolved.map(({ from, spec }) => `${from}  ->  ${spec}`).join('\n       ')
+    );
+  }
+
+  layoutClosureCache.set(rel, reached);
+  return reached;
+}
+
+/**
+ * Every layout that wraps `pageFile`, nearest first, from the page's own
+ * directory up to the route root inclusive.
+ *
+ * It climbs **directories**, which is what Next nests layouts by — a route
+ * group like `(work)` or `(admin)` is a directory and is therefore climbed
+ * through, not around. Both extensions are collected if two ever sat in one
+ * directory: Next would pick one, and searching both can only make this gate
+ * MORE likely to find a navigation, never less.
+ */
+function ancestorLayoutFiles(pageFile) {
+  const found = [];
+  let dir = pageFile.split('/').slice(0, -1).join('/');
+
+  for (;;) {
+    for (const ext of LAYOUT_EXTENSIONS) {
+      const candidate = `${dir}/layout${ext}`;
+      if (existsSync(`${ROOT}/${candidate}`)) found.push(candidate);
+    }
+    if (dir === APP_DIR_REL) break;
+    const parent = dir.split('/').slice(0, -1).join('/');
+    if (parent === '' || parent === dir) break;
+    dir = parent;
+  }
+
+  return found;
+}
+
+const navigationBySurface = surfaces.map((s) => {
+  const layouts = ancestorLayoutFiles(s.pageFile);
+
+  const ownModules = NAV_MODULE_PATHS.filter((path) => s.reached.includes(path));
+  const layoutMounts = [];
+  for (const layoutFile of layouts) {
+    const reached = layoutClosure(layoutFile);
+    const modules = NAV_MODULE_PATHS.filter((path) => reached.includes(path));
+    if (modules.length > 0) layoutMounts.push({ layoutFile, modules });
+  }
+
+  const modules = [...new Set([...ownModules, ...layoutMounts.flatMap((m) => m.modules)])].sort();
+
+  let through = null;
+  if (ownModules.length > 0) through = "the page's own closure";
+  else if (layoutMounts.length > 0) through = layoutMounts[0].layoutFile;
+
+  return { ...s, layouts, modules, through, mounted: modules.length > 0 };
+});
 
 /* ── print what was counted, before any verdict ───────────────────────────── */
 
@@ -1259,12 +1507,225 @@ if (!failures.includes('D')) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * check E — the clearance a surface reserves against the navigation it mounts.
+ * Also G4, and the check CR-01 did not have.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── E1: the shell's focus root ───────────────────────────────────────────── */
+
+const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
+
+/**
+ * The literal, required to close on the same line.
+ *
+ * A focus root spread over several lines, or built by concatenation, is not a
+ * thing this gate can read — and reading half of it would assert the absence of
+ * a property from a fragment, which is exactly how a check goes green on a
+ * defect it never saw. So that is a refusal and not a pass.
+ */
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$/;
+
+/* Patterns, not literals: a whole utility written here would be a live Tailwind
+ * candidate (DEF-41-01). Same construction as MAX_WIDTH_RE above. */
+const MIN_HEIGHT_RE = /(?<![a-zA-Z0-9-])min-h-[a-z0-9[\]./-]+/;
+const CENTRING_RE = /(?<![a-zA-Z0-9-])(?:justify|items|place|self)-center(?![a-z0-9-])/;
+
+const shellLines = liveLines(SHELL_FILE);
+const focusRootDeclarations = [];
+shellLines.forEach((line, i) => {
+  if (FOCUS_ROOT_DECL_RE.test(line)) focusRootDeclarations.push({ lineNo: i + 1, text: line });
+});
+
+if (focusRootDeclarations.length === 0) {
+  refuse(
+    `${SHELL_FILE} declares no ${FOCUS_ROOT_IDENTIFIER}, so check E has nothing to read.\n` +
+      '       The focus form is the one CR-01 broke, and this gate reads it by the name it is\n' +
+      '       declared under rather than by recognising a branch — a marker beats a heuristic,\n' +
+      '       and a heuristic that finds nothing is indistinguishable from a form that reserves\n' +
+      '       nothing. If the constant was renamed, FOCUS_ROOT_IDENTIFIER is renamed with it in\n' +
+      '       the same commit. Nothing was measured.'
+  );
+}
+
+if (focusRootDeclarations.length > 1) {
+  refuse(
+    `${SHELL_FILE} declares ${FOCUS_ROOT_IDENTIFIER} ${focusRootDeclarations.length} times, at line(s) ` +
+      `${focusRootDeclarations.map((d) => d.lineNo).join(', ')}.\n` +
+      '       Check E would then assert against whichever one it read first, while the shell\n' +
+      '       rendered the other. Nothing was measured.'
+  );
+}
+
+const focusRootLineNo = focusRootDeclarations[0].lineNo;
+const focusRootLiteralMatch = focusRootDeclarations[0].text.match(FOCUS_ROOT_LITERAL_RE);
+
+if (!focusRootLiteralMatch) {
+  refuse(
+    `${SHELL_FILE}:${focusRootLineNo} declares ${FOCUS_ROOT_IDENTIFIER}, but not as a double-quoted\n` +
+      '       literal closing on that line, so check E cannot read the whole of it. Asserting\n' +
+      '       that a navigation property is absent from a FRAGMENT of the focus root is how a\n' +
+      '       check goes green on a defect it never saw, and CR-01 is precisely a defect that\n' +
+      '       four green checks never saw. Line, verbatim:\n\n       ' +
+      focusRootDeclarations[0].text.trim() +
+      '\n\n       Nothing was measured.'
+  );
+}
+
+const focusRoot = focusRootLiteralMatch[1];
+
+const propertiesInFocusRoot = NAV_PROPERTIES.filter((prop) => focusRoot.includes(prop));
+const focusRootHasHeight = MIN_HEIGHT_RE.test(focusRoot);
+const focusRootHasCentring = CENTRING_RE.test(focusRoot);
+
+const propertyReadsElsewhere = new Map(NAV_PROPERTIES.map((prop) => [prop, []]));
+shellLines.forEach((line, i) => {
+  if (i + 1 === focusRootLineNo) return;
+  for (const prop of NAV_PROPERTIES) {
+    if (line.includes(prop)) propertyReadsElsewhere.get(prop).push(i + 1);
+  }
+});
+const propertiesDroppedEntirely = NAV_PROPERTIES.filter((prop) => propertyReadsElsewhere.get(prop).length === 0);
+
+/* ── E2: the width against the mount ──────────────────────────────────────── */
+
+const reservesWithoutMounting = navigationBySurface.filter((s) => !s.mounted && s.width !== 'focus');
+const mountsUnderTheFocusForm = navigationBySurface.filter((s) => s.mounted && s.width === 'focus');
+
+/* ── the report, before any verdict ───────────────────────────────────────── */
+
+console.log('  check E — the declared width against the navigation actually mounted (G4):\n');
+
+console.log(`      navigation modules declared : ${NAV_MODULES.length}`);
+for (const [path, why] of NAV_MODULES) {
+  console.log(`          ${path}`);
+  console.log(`             ${why}`);
+}
+
+console.log(`      layout files under ${APP_DIR_REL} : ${layoutFilesUnderApp.length}`);
+for (const rel of layoutFilesUnderApp) console.log(`          ${rel}`);
+
+console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
+console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
+for (const prop of NAV_PROPERTIES) {
+  const at = propertyReadsElsewhere.get(prop);
+  const where = at.length > 0 ? `read at line(s) ${at.join(', ')}` : 'NOT READ ANYWHERE';
+  console.log(`          ${prop.padEnd(26)} — outside the focus root: ${where}`);
+}
+
+console.log('\n      route                         width    navigation   reached through');
+for (const s of navigationBySurface) {
+  const mark = s.mounted ? 'mounted' : 'none';
+  const via = s.mounted ? `${s.modules.map((m) => m.split('/').pop()).join(' + ')}  via  ${s.through}` : '—';
+  console.log(`      ${s.route.padEnd(29)} ${s.width.padEnd(8)} ${mark.padEnd(12)} ${via}`);
+}
+
+const mountedCount = navigationBySurface.filter((s) => s.mounted).length;
+console.log(
+  `\n      ${mountedCount} of ${navigationBySurface.length} surface(s) mount a navigation; ` +
+    `${navigationBySurface.length - mountedCount} do not.\n` +
+    "      That partition is the check: the ones that do not are exactly §4's focus list, or\n" +
+    '      one of the two halves below fails.\n'
+);
+
+if (propertiesInFocusRoot.length > 0) {
+  failures.push('E');
+  console.log(
+    `  ✗ E  the focus root declares ${propertiesInFocusRoot.length} navigation propert(y/ies) — this is CR-01:\n`
+  );
+  for (const prop of propertiesInFocusRoot) console.log(`       ${prop}`);
+  console.log(
+    `\n       ${SHELL_FILE}:${focusRootLineNo}\n         ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"\n\n` +
+      "       §4's focus list is closed at four routes and NOT ONE OF THEM mounts a navigation,\n" +
+      '       so a clearance reserved here is a column and a bar left empty. Measured when this\n' +
+      '       last happened: 248px leading against 24px trailing at and above 768px, putting a\n' +
+      '       centred card 112px right of the viewport centre; ~96px of bottom padding below\n' +
+      '       768px under a card with no bar beneath it. Four checks were green throughout.\n'
+  );
+}
+
+if (!focusRootHasHeight || !focusRootHasCentring) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log('  ✗ E  the focus root no longer declares the form it is supposed to be:\n');
+  if (!focusRootHasHeight) console.log('       no minimum-height utility');
+  if (!focusRootHasCentring) console.log('       no centring utility');
+  console.log(
+    `\n       ${SHELL_FILE}:${focusRootLineNo}\n         ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"\n\n` +
+      '       This assertion exists so that EMPTYING the string cannot satisfy the one above.\n' +
+      '       A focus root that declares nothing reserves no navigation clearance either, and a\n' +
+      '       check that accepted it would be forgiving the removal of the whole form in order\n' +
+      '       to praise the removal of two properties from it.\n'
+  );
+}
+
+if (propertiesDroppedEntirely.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${SHELL_FILE} no longer reads ${propertiesDroppedEntirely.length} navigation propert(y/ies) ANYWHERE:\n`
+  );
+  for (const prop of propertiesDroppedEntirely) console.log(`       ${prop}`);
+  console.log(
+    '\n       The clearance left the focus form; it did not leave the primitive. The default\n' +
+      '       and wide forms still own it, for the twelve routes on §4\'s wide list and for\n' +
+      '       every work surface that mounts the navigation — twenty-four of them wrapped by\n' +
+      "       one layout. Dropping it here does not centre four cards: it puts every OTHER\n" +
+      '       converted surface under its own bar, which is the same defect facing the other\n' +
+      '       way and on six times as many screens.\n'
+  );
+}
+
+if (reservesWithoutMounting.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${reservesWithoutMounting.length} surface(s) reserve navigation clearance they do not mount:\n`
+  );
+  for (const s of reservesWithoutMounting) {
+    console.log(`       ${s.route} — declared "${s.width}", whose shell form reserves the clearance`);
+    console.log(`         no navigation module in its own closure (${s.reached.length} file(s))`);
+    console.log(`         nor in any of its ${s.layouts.length} ancestor layout(s): ${s.layouts.join(', ') || '(none)'}`);
+  }
+  console.log(
+    '\n       **This red is the one plan 41-13 asked for, and it is correct rather than false.**\n' +
+      '       Such a surface really does reserve a column and a bar that are not there. It is\n' +
+      "       the moment PageShell gets the `nav` prop 41-13 deliberately did not write — a\n" +
+      '       primitive capability with zero consumers is the defect this phase exists to\n' +
+      '       prevent (Skeleton.tsx, correct and unimported, beside 102 hand-rolled copies), so\n' +
+      '       the prop is written HERE, with its first consumer, in the same commit (D-41-04).\n' +
+      '       Widening this check to make the red go away would be the other way round.\n'
+  );
+}
+
+if (mountsUnderTheFocusForm.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${mountsUnderTheFocusForm.length} focus surface(s) mount a navigation the focus form reserves nothing for:\n`
+  );
+  for (const s of mountsUnderTheFocusForm) {
+    console.log(`       ${s.route} — ${s.modules.join(' + ')}  via  ${s.through}`);
+  }
+  console.log(
+    '\n       The focus form reserves nothing, by census: §4\'s focus list is closed at four\n' +
+      '       routes and none of them mounts a navigation. One that does would sit UNDER ITS\n' +
+      '       OWN BAR on a phone and behind its own column above 768px. Either the surface is\n' +
+      "       not focus, or the navigation does not belong on it — and which of the two is a\n" +
+      '       question for a person, because both lists are edited by decision.\n'
+  );
+}
+
+if (!failures.includes('E')) {
+  console.log(
+    `  ✓ E  the focus root reserves neither navigation property while ${SHELL_FILE}\n` +
+      `       still reads both elsewhere, and all ${navigationBySurface.length} converted surface(s) declare the width\n` +
+      '       their mounted navigation calls for — focus if and only if none is mounted\n'
+  );
+}
+
 /* ── verdict ──────────────────────────────────────────────────────────────── */
 
 console.log('');
 if (failures.length === 0) {
   console.log(
-    `  CONVERSION_OK — all four checks passed over ${surfaces.length} declared surface(s), ` +
+    `  CONVERSION_OK — all five checks passed over ${surfaces.length} declared surface(s), ` +
       `${allScanned.size} file(s) scanned.`
   );
   console.log(
@@ -1272,9 +1733,12 @@ if (failures.length === 0) {
       '  IS REACHABLE from a declared surface. It does NOT prove the conversion is right: it\n' +
       '  is blind to an inline hex, to a class built by concatenation, and to an ugly layout.\n' +
       '  Check D says a maximum is declared and that the page did not override it — NOT that\n' +
-      '  the chosen width is right, which is UI-SPEC Open Question 2. H41-1, every converted\n' +
-      '  surface observed at three widths by a person, is the only thing that says a surface\n' +
-      '  is workable, and it is a human’s.\n'
+      '  the chosen width is right, which is UI-SPEC Open Question 2. Check E says a declared\n' +
+      '  width agrees with a mounted navigation — NOT that a card is centred: it reads a class\n' +
+      '  string and an import graph, renders nothing and measures no pixel. H41-1, every\n' +
+      '  converted surface observed at three widths by a person, and 41-CR01-PASS.md for the\n' +
+      '  four focus routes, are the only things that say a surface is workable. Both are a\n' +
+      '  human’s, and both are still owed.\n'
   );
   process.exit(0);
 }
