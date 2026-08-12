@@ -83,6 +83,28 @@
  * closed. The known future red is written at `KNOWN_FUTURE_REDS` below rather
  * than pre-empted by a quiet widening.
  *
+ * ── EXEMPTION 2a IS A DECLARED LIST OF ELEMENTS, NOT A FILE-WIDE BLANKET ─────
+ *
+ * It used to read *any raw element in a primitive's file*, and its premise was
+ * checked per file too: one unprefixed minimum anywhere in the file satisfied it
+ * for the whole file. The two compounded, and the measured consequence was that
+ * **2a forgave 10 elements while the gate measured 9 in total** — a blanket
+ * covering more than the gate measures is most of what the gate could be saying.
+ *
+ * It now reads: **a raw element on a declared list, each entry carrying the
+ * reason its size is not readable at its own tag.** The list is
+ * `PRIMITIVE_RAW_ELEMENTS` below; anything in those files that is not on it is
+ * measured, and an entry that stops matching — or matches twice — REFUSES rather
+ * than forgiving. The file-wide premise check survives as a second, independent
+ * guard rather than as the exemption's justification.
+ *
+ * **The residual, stated because a narrower exemption is easy to over-claim:** a
+ * navigation entry whose minimum lives in a module constant is *still* forgiven —
+ * the first entry on the list is exactly that. This gate did not learn to read an
+ * interpolation and still reads no rendered box. **H41-4, on a large touch
+ * screen, remains the only thing in this repository that proves anything is
+ * 44px**, it is still owed, and no green here ticks it.
+ *
  * ── PROVEN ABLE TO FAIL, WITH EVERY MUTATION ASSERTED BEFORE ITS RESULT ─────
  *
  * D-41-19, and `41-VALIDATION.md`'s sign-off: *"proven red … with the mutation
@@ -114,6 +136,42 @@
  *
  * **E3b and E4 are the two that matter**, because they are the two ways a
  * looser parser would have gone green on a target a finger cannot hit.
+ *
+ * **Four more cycles when 2a stopped being a blanket**, same discipline: the
+ * mutation asserted PRESENT before the gate was run, the revert asserted by an
+ * empty `git status`, and the file checked to be still TEXT to `grep` — this
+ * phase has already had one false negative caused by a NUL byte that made a
+ * script binary, whose result read exactly like a substitution that never landed.
+ *
+ *   A   an undeclared raw element added to the navigation primitive, with a
+ *       literal class attribute carrying no height utility
+ *                                       → exit 1, naming that file and line,
+ *                                         verdict *absent*, measured 9 → 10,
+ *                                         2a still 10. **Under the file-wide
+ *                                         blanket the same element would have
+ *                                         been forgiven in silence and 2a would
+ *                                         have read 11** — that is precisely
+ *                                         what the change bought. Note the
+ *                                         file-wide premise check still said
+ *                                         *declares the minimum* on that run:
+ *                                         the second guard passes while the
+ *                                         element fails, which is why it can no
+ *                                         longer be the premise
+ *   B   one entry's fragment pointed at a string nothing matches
+ *                                       → exit 2, a REFUSAL naming the stale
+ *                                         entry, and NO tick printed. Stale
+ *                                         forgives nothing while looking guarded
+ *   C   one entry's fragment widened until two elements of its tag matched
+ *                                       → exit 2, naming both lines. An
+ *                                         ambiguous entry forgives an element
+ *                                         nobody named
+ *   D   one entry's path moved to a file that is not a primitive
+ *                                       → exit 2. Forgiving an element in a file
+ *                                         this exemption was never about
+ *
+ * B, C and D are the three refusals this list added, and **each was proven
+ * reachable** rather than left as decoration — the same standard this file
+ * already applies to exemption 3.
  *
  * ── PROVEN GREEN ON `MemberTable.tsx` — AND WHAT THAT FILE ACTUALLY HOLDS ────
  *
@@ -554,6 +612,131 @@ export const PRIMITIVE_COMPONENTS = [
   ['Switch', null, 'NOT PUBLISHED — no converted surface renders one (D-41-04). A null path removes nothing from scope'],
   ['AppNav', 'src/components/layout/AppNav.tsx', 'the product navigation in both tiers'],
   ['StaffNav', 'src/components/staff/StaffNav.tsx', 'the eight work tabs in two forms'],
+];
+
+/**
+ * EXEMPTION 2a's TEN ELEMENTS — declared one by one, each with its own reason.
+ *
+ * ── What this replaced, and why ──────────────────────────────────────────────
+ *
+ * 2a used to be keyed per FILE: every raw tag in any file listed above was
+ * forgiven unconditionally, and the premise that justified it — *the size lives
+ * in the primitive* — was checked per file too, satisfied by ONE unprefixed
+ * minimum anywhere in it. The two mechanisms compounded. A later edit that shrank
+ * one control was still forgiven as long as another line kept its minimum, and
+ * **any raw element added to such a file arrived pre-forgiven**. Measured on the
+ * tree this list was derived from, the blanket covered 10 elements while the gate
+ * measured 9 in total: it forgave more than it measured.
+ *
+ * So the boundary is no longer the file. It is the element, and each one is named
+ * here with the reason its size cannot be read at its own tag. **Anything in a
+ * primitive file that is not on this list is measured like any other element.**
+ *
+ * ── The cure that was NOT taken, recorded so it is not tried again ───────────
+ *
+ * `41-REVIEW.md` WR-04 diagnosed this correctly and proposed narrowing 2a to
+ * elements whose class attribute is a template literal. **Measured on this tree
+ * that does the opposite of what it claims.** The two navigation entries it names
+ * both write a template literal, so both would have stayed exempt — the defect
+ * would not have closed — while four correct elements in the button and chip
+ * files interpolate a plain identifier and would all have gone RED. A gate that
+ * reddens on correct code gets switched off, after which it guards nothing while
+ * looking like it does (D-41-19). The diagnosis was taken; the patch was not.
+ *
+ * ── Shape, and the three refusals ───────────────────────────────────────────
+ *
+ * `[path, tagName, fragment, reason]`. `fragment` is a substring of the opening
+ * tag that picks out exactly one element of that tag in that file. It is an
+ * attribute, never a line number, because a line number drifts on the first edit
+ * above it and a stale one reads exactly like a current one.
+ *
+ * The list is resolved BEFORE the scan and refuses (exit 2) in three cases, each
+ * because it is the direction that produces a green:
+ *
+ *   · a path that is not one of the primitive files — it would be forgiving an
+ *     element in a file this exemption was never about;
+ *   · an entry matching ZERO elements — stale: it forgives nothing while looking
+ *     like a guarded case, which is the same failure the stale-path refusal above
+ *     exists for, one level down;
+ *   · an entry matching TWO OR MORE — ambiguous: it forgives an element nobody
+ *     named.
+ *
+ * ── The residual this leaves, stated rather than hidden ─────────────────────
+ *
+ * A navigation entry whose minimum lives in a module constant is **still
+ * forgiven** — the first entry below is exactly that. Narrowing 2a to the element
+ * did not make this gate able to read an interpolation, and nothing here measures
+ * a rendered box. **H41-4, on a large touch screen, remains the only thing in
+ * this repository that proves anything renders at 44px.**
+ *
+ * One file listed as a primitive has NO entry here: the eight work tabs are
+ * reached by no converted surface's closure (the three work pages get that nav
+ * from a layout, and a page's import closure does not include one), so it
+ * contributes nothing to forgive. If a later plan converts a surface that reaches
+ * it, its entry will be MEASURED and will go red — and the resolution then is a
+ * declared line here carrying its reason, written by a person, never a widening.
+ */
+export const PRIMITIVE_RAW_ELEMENTS = [
+  [
+    'src/components/layout/AppNav.tsx',
+    'Link',
+    'isPhone ? ENTRY_PHONE : ENTRY_RESPONSIVE',
+    'the navigation entry, one per item in both tiers. Its class attribute is a ternary over two module constants; the unprefixed minimum is declared in the phone constant, and the responsive one interpolates it and adds only a breakpoint-prefixed restatement — which this parser reads as no declaration at all, by design',
+  ],
+  [
+    'src/components/ui/Button.tsx',
+    'button',
+    'SIZE.icon',
+    'the icon rung. Its class attribute interpolates the base string and the icon entry of the size map, where the minimum is declared on both axes — neither is in the attribute',
+  ],
+  [
+    'src/components/ui/Button.tsx',
+    'a',
+    '{...anchorProps}',
+    'the labelled rung when the caller passed an href, so it stays a real link. Its class attribute is the identifier the component computed above it, from the size map, where every one of the four rungs declares the minimum',
+  ],
+  [
+    'src/components/ui/Button.tsx',
+    'button',
+    '{...buttonProps}',
+    'the same rung on its button branch, carrying the same computed identifier — same size map, same four rungs',
+  ],
+  [
+    'src/components/ui/Chip.tsx',
+    'Link',
+    'href={props.href}',
+    "the chip on its link branch. Its class attribute is the identifier computed from the chip's own base string, where the minimum is declared",
+  ],
+  [
+    'src/components/ui/Chip.tsx',
+    'button',
+    'onClick={props.onClick}',
+    'the chip on its button branch, carrying the same computed identifier',
+  ],
+  [
+    'src/components/ui/Input.tsx',
+    'input',
+    '${CONTROL}',
+    'the text-entry control. Its class attribute interpolates the shared control string, which is where the minimum is declared for all three of the controls in this file',
+  ],
+  [
+    'src/components/ui/Input.tsx',
+    'textarea',
+    '${CONTROL}',
+    'the multi-line control, on the same shared string plus vertical padding of its own',
+  ],
+  [
+    'src/components/ui/Input.tsx',
+    'select',
+    '${CONTROL}',
+    'the native select, on the same shared string',
+  ],
+  [
+    'src/components/ui/Checkbox.tsx',
+    'input',
+    'type="checkbox"',
+    'THE ONE ENTRY WHOSE SIZE IS NOT ON THIS ELEMENT AT ALL, AND THAT IS THE CONTRACT: the drawn box is 16px on purpose and its class attribute interpolates the box string, which declares 16px deliberately. The 44×44 target is the enclosing label, which carries the hit-area string. §8.6 chose this over enlarging the glyph — a 44px checkbox in a table column would be a different control, and the thing that has to be 44px is what a finger can land on, not what an eye reads',
+  ],
 ];
 
 /**
@@ -1053,6 +1236,76 @@ for (const [path, symbols] of PRIMITIVE_FILES) {
 for (const [symbol, path, reason] of PRIMITIVE_COMPONENTS) {
   if (path === null) console.log(`    ${symbol} — ${reason}`);
 }
+console.log(
+  '\n    This file-wide check is now a SECOND, INDEPENDENT guard, not the premise of\n' +
+    '    the exemption: 2a forgives the ten declared elements below and nothing else,\n' +
+    '    so a minimum surviving somewhere in a file no longer forgives the file.\n'
+);
+
+/* ── Exemption 2a's declared elements, resolved before anything is forgiven ─── */
+
+/**
+ * Each entry must pick out exactly one element of its tag in its file. Resolved
+ * against the file on disk rather than against the scan's scope, because
+ * staleness is a property of the file and not of which surfaces are converted.
+ */
+const RAW_ELEMENT_ENTRIES = [];
+
+for (const [path, tag, fragment, reason] of PRIMITIVE_RAW_ELEMENTS) {
+  if (!PRIMITIVE_FILES.has(path)) {
+    refuse(
+      `exemption 2a declares an element in ${path}, which is not one of the primitive\n` +
+        '       files exemption 2 is about. It would be forgiving an element in a file this\n' +
+        '       exemption was never about. Nothing was measured.'
+    );
+  }
+
+  const { found, unterminated } = scanElements(path);
+  if (unterminated.length > 0) {
+    refuse(
+      `${path} has ${unterminated.length} unterminated opening tag(s), so exemption 2a's\n` +
+        '       declared elements could not be resolved against it. Nothing was measured.'
+    );
+  }
+
+  const matches = found.filter((el) => el.name === tag && el.text.includes(fragment));
+
+  if (matches.length === 0) {
+    refuse(
+      `exemption 2a declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        '       and NOTHING in that file matches it. The entry is stale: it forgives nothing\n' +
+        '       while looking like a guarded case, and the element it used to name is now\n' +
+        '       either gone or unforgiven without anybody saying so. Nothing was measured.'
+    );
+  }
+  if (matches.length > 1) {
+    refuse(
+      `exemption 2a declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        `       and ${matches.length} elements match it (lines ${matches.map((m) => m.line).join(', ')}).\n` +
+        '       An ambiguous entry forgives an element nobody named. Narrow the fragment.\n' +
+        '       Nothing was measured.'
+    );
+  }
+
+  RAW_ELEMENT_ENTRIES.push({ path, tag, fragment, reason, line: matches[0].line, applied: 0 });
+}
+
+function rawElementEntry(relPath, el) {
+  return (
+    RAW_ELEMENT_ENTRIES.find(
+      (e) => e.path === relPath && e.tag === el.name && el.text.includes(e.fragment)
+    ) ?? null
+  );
+}
+
+console.log(
+  `  exemption 2a — ${RAW_ELEMENT_ENTRIES.length} declared element(s), each resolved to exactly one tag:\n`
+);
+for (const e of RAW_ELEMENT_ENTRIES) {
+  console.log(`    ${e.path}:${e.line}  <${e.tag}>   ${e.fragment}`);
+}
 console.log('');
 
 /* ── The scan ───────────────────────────────────────────────────────────────── */
@@ -1089,11 +1342,18 @@ for (const rel of [...inScope].sort()) {
       continue;
     }
 
-    // A raw tag inside a primitive's own file: exemption 2a.
+    // A raw tag inside a primitive's own file: exemption 2a, and ONLY when a
+    // declared entry names this file, this tag and this element. Anything else
+    // here falls through and is measured like any other element — which is the
+    // whole of the change: the boundary is the element, no longer the file.
     if (isPrimitiveFile) {
-      row.e2a += 1;
-      applied.e2a += 1;
-      continue;
+      const entry = rawElementEntry(rel, el);
+      if (entry !== null) {
+        entry.applied += 1;
+        row.e2a += 1;
+        applied.e2a += 1;
+        continue;
+      }
     }
 
     // Exemption 4 — the declared marker, read and never inferred.
@@ -1225,6 +1485,30 @@ console.log(`    4  a wrapper marked as deferring to child ${applied.e4}`);
 console.log(`    5  a hidden input named by its label      ${applied.e5}`);
 console.log(`    6  a non-interactive badge                ${applied.e6}`);
 console.log('');
+
+/*
+ * A green must state what it forgave, and 2a is the category where "how many"
+ * says least: ten is a number, and the question a reader has is WHICH ten and on
+ * whose word. So each declared element is printed with the reason its size is not
+ * readable at its own tag, and with how many times it was actually reached.
+ */
+console.log('  exemption 2a in full — what was forgiven, and on what stated reason:\n');
+for (const e of RAW_ELEMENT_ENTRIES) {
+  console.log(
+    `    ${e.path}:${e.line}  <${e.tag}>  applied ${e.applied}×` +
+      (e.applied === 0 ? '  — declared, reached by no converted closure today' : '')
+  );
+  console.log(`      ${e.reason}`);
+}
+console.log(
+  '\n    Anything in those files that is NOT on this list is measured. A raw element\n' +
+    '    added to a primitive no longer arrives pre-forgiven, and an entry that stops\n' +
+    '    matching refuses (exit 2) instead of quietly forgiving nothing.\n' +
+    '\n    What this still does not close: the first entry is a navigation entry whose\n' +
+    '    minimum lives in a module constant, and it is still forgiven. Narrowing 2a to\n' +
+    '    the element did not teach this gate to read an interpolation, and none of it\n' +
+    '    measures a rendered box. H41-4 remains the only proof that anything is 44px.\n'
+);
 
 for (const [n, key, note] of [
   [3, 'e3', `its only possible site is a file importing ${SHRINK_REQUIRES_IMPORT}; the one shrink in this tree is written on a call site, which exemption 2b forgives first`],
