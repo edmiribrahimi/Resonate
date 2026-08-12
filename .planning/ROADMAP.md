@@ -640,8 +640,9 @@ gates. What is partial is the *manifest of surfaces that have adopted it*: eight
 of roughly thirty-four. Criterion 1 is what makes that honest rather than
 half-finished — an unconverted surface is untouched, not half-converted.
 
-**Plans**: 17 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
-gap-closure plans in 2 waves added 2026-08-12 after verification. The remaining
+**Plans**: 22 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
+gap-closure plans in 2 waves added 2026-08-12 after verification, plus 5 second-round
+gap-closure plans in 4 waves added 2026-08-12 after re-verification. The remaining
 conversion units are **not** covered by any of them; see the note below.
 
 Plans:
@@ -662,6 +663,11 @@ Plans:
 - [x] 41-15-PLAN.md — G5's exemption 2a, from a file-wide blanket to ten declared elements with ten reasons
 - [x] 41-16-PLAN.md — G2's overlay matcher, keyed on the shape of an overlay rather than on one z rung
 - [x] 41-17-PLAN.md — G4 check E: the clearance a surface reserves must match the navigation it mounts
+- [ ] 41-18-PLAN.md — G2's fence and its debt list stop contradicting each other, and the rung family covers what the report claims
+- [ ] 41-19-PLAN.md — PageShell's census says what the root layout actually is: it wraps every route and mounts no navigation
+- [ ] 41-20-PLAN.md — check E asserts the branch that renders, and no refusal in the conversion gate absorbs a failure
+- [ ] 41-21-PLAN.md — the wrapper enumeration covers `template.tsx`, and two refusals stop firing on correct files
+- [ ] 41-22-PLAN.md — verify-all's reconciliation becomes reachable on the trigger its own docblock names
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -673,6 +679,20 @@ Plans:
 > tells someone about their account or their money. **None of the seven requirements
 > closes here:** all remain PARTIAL, and RESP-01 closes only after 41.2. Six human
 > observations (H41-1…H41-6) stay owed, and 41-13 adds a seventh.
+
+> **Gap closure, second round, 2026-08-12.** Re-verification found that two of the five
+> first-round plans failed at the one thing each was written to do: `verify-all`'s
+> reconciliation (41-14) still cannot fail on the scenario its own docblock names, and
+> check E (41-17) does not see CR-01 reintroduced at the render site — both reproduced by
+> running mutated code, not by reading source. Both executors had mutated something and
+> seen red; neither had mutated the trigger its gate existed to catch. Plans 41-18…41-22
+> close those two gaps and six gate-integrity warnings, and every check they touch carries
+> an explicit mutation contract: the documented trigger is named, mutated at the site where
+> a real regression appears, recorded in the SUMMARY, and restored under an asserted
+> negative control. **CR-01 itself is closed in code and stays closed** — what was missing
+> was anything that would notice it coming back. **No requirement closes here either**, and
+> the human observations remain exactly as owed as before: H41-1…H41-6 unmade, H41-4 still
+> `human_needed`, and `41-CR01-PASS.md`'s thirteen rows still `pending`.
 
 > **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
 > system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
