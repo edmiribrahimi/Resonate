@@ -24,8 +24,9 @@ requires:
 provides:
   - "scripts/verify-all.mjs — one command for the fifteen gates that run without a server, closing 40-REVIEW.md WR-09 (D-41-18)"
   - "package.json with sixteen verify:* entries and one verify; dependencies and devDependencies byte-identical"
-  - "41-RELEASE-PASS.md — H41-1 … H41-6, written before the sitting, with the tablet risk stated in the body"
+  - "41-RELEASE-PASS.md — H41-1 … H41-6, written before the sitting, with the tablet risk stated in the body, and now closed on the owner's blanket approval with every Result stating what it does NOT contain"
   - "The measured fact that npm run verify exits 2 on any machine without Supabase credentials, because verify:capabilities refuses — and that this is the command working, not failing"
+  - "The phase gate closed 2026-08-12 on a one-word owner approval — an authorisation, recorded as one, with H41-4 left human_needed and criterion 5 (RESP-03) NOT ticked"
 affects: [42-scanner, 44-calendar, 45-production-sections]
 
 # Tech tracking
@@ -52,14 +53,16 @@ key-decisions:
   - "The command each gate runs is read from package.json at run time, never copied into the runner. Only the NAMES are declared here, and every name must appear in exactly one of the two lists, checked in both directions."
   - "Failure dominates refusal in the exit code, but never in the report: the failure run printed VERIFY_FAIL and then, on its own line, that one gate refused and is part of neither the failure nor any pass."
   - "verify:persona is included as a gate and its note says what it covers — the persona, not the product, and coherence, not correctness. An aggregate that let a persona green stand next to product greens without saying so would be publishing a category error fifteen lines wide."
+  - "THE APPROVAL WAS RECORDED AS AN AUTHORISATION, NEVER AS SIX OBSERVATIONS. The owner replied with one word — 'approved' — and no itemised findings. That closes the phase gate, because the plan's resume signal asked for exactly that word. It does not observe a surface, a dialog, a card, a box, a pill, a tab or a door, and no Result in the release pass says observed, passed or confirmed. Turning a blanket approval into six per-item ticks would have manufactured the precise defect the phase's ten gates exist to prevent — a green that measured nothing — inside the release pass itself."
+  - "H41-4 STAYS human_needed AND CRITERION 5 (RESP-03) IS NOT TICKED. The owner never said a large touch screen was available. A silence about the instrument is not a statement that the instrument was there, and H41-4 said in advance, in its body, what happens when it is absent. verify:touch-targets asserts a class string; nothing in this repository has yet asserted a box."
 
 requirements-completed: []
 
 # Metrics
-duration: ~75min
+duration: ~95min
 completed: 2026-08-12
-tasks: 2 of 3 — the third is the phase's human checkpoint
-commits: 2
+tasks: 3 of 3 — the third is the phase's human checkpoint, closed on the owner's approval
+commits: 3
 files_changed: 3
 ---
 
@@ -76,11 +79,17 @@ the eight converted surfaces by route from the manifest rather than from memory,
 states in its body that criterion 5 is `human_needed` and not ticked if no large
 touch screen exists.**
 
+**The phase gate is closed. The owner replied `approved` — one word, no itemised
+findings — and that is recorded as what it is: an authorisation to close the phase,
+not a report of six observations. Every `Result` in the release pass now says which
+of the two it holds, and `H41-4` stays `human_needed` because nobody said a large
+touch screen existed.**
+
 ## Performance
 
-- **Duration:** ~75 min
-- **Tasks:** 2 executed, one commit each. **Task 3 is the phase's human checkpoint
-  and is not an agent's to tick.**
+- **Duration:** ~95 min
+- **Tasks:** 3 — two executed with one commit each, and **Task 3, the phase's human
+  checkpoint, closed by the owner and recorded, never ticked by an agent.**
 - **Files changed:** 3 — 2 created, 1 modified, **0 deleted**
 - **Files under `scanner/` or `(admin)/door/` touched:** **0**, asserted by
   `git diff --name-only 26462dc~1 HEAD` → three paths, listed below
@@ -92,7 +101,71 @@ touch screen exists.**
 |---|---|---|---|
 | 1 | The aggregate runner, and seven `package.json` entries | `26462dc` | `scripts/verify-all.mjs`, `package.json` |
 | 2 | `41-RELEASE-PASS.md` — six observations, before the sitting | `b04343d` | `41-RELEASE-PASS.md` |
-| 3 | **The phase gate** | — | **checkpoint, not executed** |
+| 3 | **The phase gate** — the owner's answer, recorded | `22444fa` | `41-RELEASE-PASS.md` |
+
+---
+
+## Task 3 — the checkpoint's answer, verbatim
+
+The five steps were put to the owner. **The reply, in full:**
+
+```
+approved
+```
+
+**That is the entire response.** Nothing else arrived: no per-item observation, no
+defect, no number, and **no statement about which devices were available.**
+
+### What that is, and what it is not
+
+The plan's resume signal read *"Type 'approved', or list what you saw that should not
+be there."* The owner typed the first. **It is a real and sufficient authorisation to
+close the phase gate, and it is recorded as one.**
+
+**It is not a report of six observations, and it has not been turned into one.** For
+H41-1 … H41-6 the release pass now reads *covered by the owner's blanket approval,
+without itemised evidence recorded*. **Not one `Result` says `observed`, `passed` or
+`confirmed`** — there is no evidence behind those words, and a tick nobody earned
+closes a phase on nothing. That is the exact defect the phase's gates were built to
+prevent; manufacturing it inside the release pass would have been the phase failing at
+its own thesis on the last line.
+
+### H41-4, which is the one that had to be got right
+
+**The owner never said a large touch screen was available.** So:
+
+- **Criterion 5 (RESP-03) is `human_needed` and is NOT ticked.**
+- A silence about the instrument is **not** a statement that the instrument was there.
+- `verify:touch-targets` is green and does not substitute: it asserts a **class
+  string**. **Nothing in this repository has yet asserted a box**, and the release pass
+  said so in a table before the sitting and still says so after it.
+
+### The other four that decide something, as they stand today
+
+| Item | State after the close |
+|---|---|
+| **A2** — background scroll under `showModal()` | **still open.** Nobody reported whether the background moved |
+| **criterion 4a (RESP-01)** — eight surfaces × three widths | approved, **no itemised evidence, not ticked** |
+| **criterion 2's runtime half (DS-08)** | approved, **no itemised evidence, not ticked** |
+| **criterion 3's judgement half (DS-09)** | approved, **no itemised evidence, not ticked** |
+| **H41-6b** — the door at `/door` and `/admin/scanner` | **no complaint reported, and neither address reported opened.** An absence of a complaint is not an observation of a bottom bar |
+
+### The two measurements that ARE mine
+
+These are the only things in Task 3 that were measured rather than authorised, and
+they were run **in this worktree**, which holds **no `.env.local`**:
+
+| Command | Result here |
+|---|---|
+| `npm run verify` | **exit 2** — 15 gates ran, **14 passed, 0 FAILED, 1 REFUSED** (`verify:capabilities`, missing `SUPABASE_ACCESS_TOKEN` and `NEXT_PUBLIC_SUPABASE_URL`), **1 NOT RUN** (`verify:redirects`, needs a dev server). Verdict line: `VERIFY_REFUSED — 1 gate(s) could not measure: verify:capabilities`. Count block reconciled 16 = 15 + 1, **0 MISSING** |
+| `npm run build` | **exit 0** — compiled in 6.9s, TypeScript ran, 40 static pages, 58 routes |
+| `node scripts/verify-persona.mjs` | **exit 0 — 7/7** |
+
+**The credential difference is written beside the number, not applied to it.** A
+checkout holding the Supabase credentials is expected to run the same fifteen gates
+with `verify:capabilities` measuring instead of refusing, and to exit 0. **That run was
+not taken here**, so this SUMMARY does not report it as a measurement — an exit code
+retold without its machine is how a refusal becomes a pass.
 
 ---
 
@@ -372,16 +445,22 @@ product**, and nothing below is claimed on the basis of tests passing.
 
 ---
 
-## Manual verification still owed — all six, and that is the point of this plan
+## Manual verification still owed — all six, and the approval did not change that
 
-**Not one of H41-1 … H41-6 was performed, and no green above stands in for any of
-them.** The reason is the one 41-05, 41-06, 41-07, 41-08, 41-09, 41-10 and 41-11 each
-recorded: **no worktree in this phase held `.env.local`**, the middleware reads
-Supabase credentials on every request, and pointing a running application at
-production is an act requiring an authorisation no agent here held.
+**Not one of H41-1 … H41-6 has a recorded observation, and no green above stands in
+for any of them.** Two reasons, and they are different reasons:
+
+1. **During execution:** the one 41-05, 41-06, 41-07, 41-08, 41-09, 41-10 and 41-11
+   each recorded — **no worktree in this phase held `.env.local`**, the middleware
+   reads Supabase credentials on every request, and pointing a running application at
+   production is an act requiring an authorisation no agent here held.
+2. **At the gate:** the owner authorised the close **without reporting any per-item
+   finding**. An authorisation to close is not an observation, and this SUMMARY does
+   not promote one into the other.
 
 They are written down, with steps, in
-`.planning/phases/41-shared-primitives-three-tier-layout/41-RELEASE-PASS.md`, and
+`.planning/phases/41-shared-primitives-three-tier-layout/41-RELEASE-PASS.md`, whose
+`Result` lines now each state, in full, what they do **not** contain. They remain
 scheduled with the end-of-v1.5 sitting that already owns Phase 40's H1–H3 and Phase
 39's door pass.
 
@@ -415,9 +494,12 @@ Two things that could be mistaken for stubs and are not:
   implemented and declared, and the SUMMARY says above that it was not proven by
   mutation — a claim recorded as untested rather than presented as covered.
 
-**Every `Result` in `41-RELEASE-PASS.md` reads `pending`, and that is the document
-working.** An empty Result is an unrun procedure, which is the honest state of a
-phase whose last plan could not open a browser.
+**Every `Result` in `41-RELEASE-PASS.md` now names its own emptiness rather than
+reading `pending`, and that is the document still working.** Six of them say *covered
+by the owner's blanket approval, without itemised evidence recorded*; `H41-4` and
+`§0.2` say `human_needed`; `§0.1` alone carries a measurement. **A phase whose last
+plan could not open a browser, closed by an owner who did not report opening one
+either, is exactly what those lines say.**
 
 ---
 
@@ -489,9 +571,12 @@ is already the file that decides what `npm run` executes.
   Anybody wiring this into a hook or a script must handle that, and must not "fix" it
   by treating 2 as success. If it is ever wanted as a hard gate, the answer is
   credentials, not a threshold.
-- **Six observations are owed and none was taken.** `41-RELEASE-PASS.md` is the list.
-  A phase-closing document that ticks any of them without a filled `Result` is
-  claiming a measurement that does not exist.
+- **Six observations are owed and none was taken — the approval closed the gate, not
+  the observations.** `41-RELEASE-PASS.md` is the list, and each `Result` now states
+  what it does not contain. **A phase-closing document, a VERIFICATION or a milestone
+  audit that reads `approved` as six ticks is claiming measurements that do not
+  exist** — in particular criterion 5 (RESP-03), which is `human_needed` for want of a
+  large touch screen nobody said was there.
 - **DEF-41-03 is still open and is now the phase's quietest debt.**
   `src/components/toast/Toast.tsx` carries a hand-written copy of the `IconButton`
   contract, and **the orphan counter that revealed it is green and silent**, because
@@ -508,7 +593,17 @@ is already the file that decides what `npm run` executes.
   dependencies byte-identical
 - `.planning/…/41-RELEASE-PASS.md` — **FOUND**, 28 `H41-` occurrences, all six
   identifiers present with steps and a `Result: pending` line
+- `.planning/…/41-RELEASE-PASS.md` after the close — **FOUND**, **zero** `Result:
+  pending` lines remain; six read *covered by the owner's blanket approval, without
+  itemised evidence recorded*; `H41-4` and `§0.2` read `human_needed`
 - commit `26462dc` — **FOUND**
 - commit `b04343d` — **FOUND**
+- commit `22444fa` — **FOUND** (Task 3)
+- `npm run verify` re-run at the gate — **exit 2**, as recorded above
+- `npm run build` re-run at the gate — **exit 0**
+- `node scripts/verify-persona.mjs` re-run at the gate — **exit 0, 7/7**
+- `git diff --diff-filter=D --name-only` across all three commits — **empty**
+- **No `.planning/STATE.md` or `.planning/ROADMAP.md` change in any commit of this
+  plan** — those writes belong to the orchestrator
 
 ## Self-Check: PASSED
