@@ -90,7 +90,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
 - [~] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (5/5 plans executed 2026-08-11 — **verification `human_needed`**, not complete: DS-10 and DS-06's home-screen half are proven only by `40-RELEASE-PASS.md` H1/H3, every `Result: pending`, in the end-of-v1.5 sitting. Scheduled is not verified.)
-- [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces
+- [x] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces (completed 2026-08-12)
 - [ ] **Phase 41.1: Work-Surface Conversion** - The 22 remaining work pages convert onto the layer, and the work-surface gates stop being ratchets
 - [ ] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, and the three knots — the bar, the event form, the refunds — are taken on their own
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
@@ -661,7 +661,7 @@ Plans:
 - [x] 41-14-PLAN.md — verify-all's reconciliation, from an identity that cannot fail to a refusal that can
 - [x] 41-15-PLAN.md — G5's exemption 2a, from a file-wide blanket to ten declared elements with ten reasons
 - [x] 41-16-PLAN.md — G2's overlay matcher, keyed on the shape of an overlay rather than on one z rung
-- [ ] 41-17-PLAN.md — G4 check E: the clearance a surface reserves must match the navigation it mounts
+- [x] 41-17-PLAN.md — G4 check E: the clearance a surface reserves must match the navigation it mounts
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -759,7 +759,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 16/17 | In Progress|  |
+| 41. Shared Primitives & Three-Tier Layout | 17/17 | Complete   | 2026-08-12 |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
