@@ -842,6 +842,43 @@ const WRAPPER_BASENAMES = ['layout.', 'template.'];
 const WRAPPER_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
 
 /**
+ * Extensions at which Next could never resolve a route file, with the reason
+ * each is not one. A wrapper-named file carrying one of these is **skipped**,
+ * not refused on.
+ *
+ * `src/app/layout.module.css` is the standard Next name for a layout's CSS
+ * module; `layout.tsx.orig` is what a merge conflict leaves behind. Both are
+ * CORRECT files, and until this list existed either took the whole conversion
+ * gate to exit 2 — which through `verify-all.mjs` is `VERIFY_REFUSED` for the
+ * entire suite (41-GAP-REVIEW.md WR-06). Measured before this edit, with one
+ * `src/app/layout.module.css` holding a single CSS comment: **exit 2**, FATAL
+ * naming it, nothing measured. §0 rule 3, quoted three times in this file
+ * family: a gate that goes red on correct code gets switched off.
+ *
+ * **Narrowing the refusal to "not a stylesheet" must not become narrowing it to
+ * "nothing."** This is a closed allow-list of extensions that CANNOT be a route
+ * module, never a heuristic about what looks like one: an extension in neither
+ * list still refuses, because an unknown extension is exactly the case the
+ * refusal was written for. Proven in that direction too — `src/app/layout.mts`
+ * refuses, and a fix that stopped it from refusing would be a hole dressed as a
+ * fix.
+ *
+ * **`.mdx` is deliberately absent.** Next resolves route files at it whenever
+ * `pageExtensions` says so, which makes it plausibly a module. It refuses, and
+ * that is the safe direction.
+ */
+const NON_ROUTE_WRAPPER_EXTENSIONS = [
+  ['.css', 'a stylesheet — layout.module.css is the standard Next name for a layout CSS module'],
+  ['.scss', 'a stylesheet'],
+  ['.sass', 'a stylesheet'],
+  ['.less', 'a stylesheet'],
+  ['.md', 'documentation — Next resolves no route file at .md'],
+  ['.orig', 'what a merge conflict leaves behind'],
+  ['.rej', 'what a rejected patch hunk leaves behind'],
+  ['.bak', 'a backup copy'],
+];
+
+/**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
  * A surface whose primary object is a dense table or a multi-column grid.
  */
@@ -1036,21 +1073,39 @@ const wrapperFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel
   WRAPPER_BASENAMES.some((base) => rel.split('/').pop().startsWith(base))
 );
 
-const wrappersWithUntestedExtension = wrapperFilesUnderApp.filter(
+const wrappersWithUnknownExtension = wrapperFilesUnderApp.filter(
   (rel) => !WRAPPER_EXTENSIONS.some((ext) => rel.endsWith(ext))
 );
+
+/*
+ * The refusal is reserved for an extension that could plausibly be a route
+ * module. Everything on NON_ROUTE_WRAPPER_EXTENSIONS is skipped instead — and
+ * printed under the wrapper list with the reason, so a green states what it
+ * passed over rather than going quiet about it.
+ */
+const skippedWrappers = [];
+const wrappersWithUntestedExtension = [];
+for (const rel of wrappersWithUnknownExtension) {
+  const known = NON_ROUTE_WRAPPER_EXTENSIONS.find(([ext]) => rel.endsWith(ext));
+  if (known) skippedWrappers.push({ rel, why: known[1] });
+  else wrappersWithUntestedExtension.push(rel);
+}
 
 if (wrappersWithUntestedExtension.length > 0) {
   refuse(
     `${wrappersWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a wrapper\n` +
       `       (${WRAPPER_BASENAMES.join(', ')}) but carry an extension check E's ancestor walk does\n` +
-      `       not test (${WRAPPER_EXTENSIONS.join(', ')}):\n\n       ` +
+      `       not test (${WRAPPER_EXTENSIONS.join(', ')}), and which is not on the list of\n` +
+      `       extensions Next could never resolve a route file at\n` +
+      `       (${NON_ROUTE_WRAPPER_EXTENSIONS.map(([ext]) => ext).join(', ')}):\n\n       ` +
       wrappersWithUntestedExtension.join('\n       ') +
       '\n\n       A wrapper is where three of the eight declared surfaces get their navigation, and\n' +
       '       a walk that skips one reports those surfaces as navigation-free — which is a\n' +
       '       narrowing in the direction that prints a tick. Either the extension joins\n' +
-      '       WRAPPER_EXTENSIONS in the same commit, or the file is not a wrapper and should not\n' +
-      '       be named like one. Nothing was measured.'
+      '       WRAPPER_EXTENSIONS in the same commit and is climbed, or — if Next could never\n' +
+      '       resolve a route file at it — it joins NON_ROUTE_WRAPPER_EXTENSIONS carrying the\n' +
+      '       reason it is not one. Otherwise the file is not a wrapper and should not be named\n' +
+      '       like one. Nothing was measured.'
   );
 }
 
@@ -1149,14 +1204,37 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
 const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
 
 /**
- * The literal, required to close on the same line.
+ * The literal, required to close on the same line — and tolerant of a trailing
+ * line comment after it.
  *
  * A focus root spread over several lines, or built by concatenation, is not a
  * thing this gate can read — and reading half of it would assert the absence of
  * a property from a fragment, which is exactly how a check goes green on a
- * defect it never saw. So that is a refusal and not a pass.
+ * defect it never saw. So that is a refusal and not a pass. **That requirement
+ * is unchanged**: the closing quote still has to be on the same line as the
+ * opening one, and a declaration whose literal continues onto the next line
+ * still refuses.
+ *
+ * What changed is the tail. `liveLines` blanks a line that STARTS with `//`,
+ * never one that ends with it, so `const FOCUS_ROOT = "…"; // …` — an ordinary
+ * and entirely correct line — hit the end-of-line anchor and took the whole
+ * conversion gate to exit 2, and through `verify-all.mjs` the whole suite to
+ * `VERIFY_REFUSED` (41-GAP-REVIEW.md WR-06 half 2; measured before this edit:
+ * exit 2, FATAL quoting the line verbatim). §0 rule 3: a gate that goes red on
+ * correct code gets switched off.
+ *
+ * **Why the anchor was relaxed rather than the comment stripped — one or the
+ * other, not both.** A stripper would be a second transformation of the line,
+ * running before the regex and needing its own notion of where a comment
+ * begins; a `//` INSIDE the double-quoted literal would be indistinguishable
+ * from one after it, and truncating there would hand the regex a fragment and
+ * change the value read. That is the exact failure the refusal below exists to
+ * prevent. The tail here cannot do that: the capture group is still bounded by
+ * the same two quotes, so **the literal read is byte-for-byte the literal,
+ * comment or no comment** — asserted by comparing the value the report prints
+ * with and without one.
  */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$/;
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*)?$/;
 
 const shellLines = liveLines(SHELL_FILE);
 const focusRootDeclarations = [];
@@ -1771,6 +1849,13 @@ console.log(
     `   (basenames climbed: ${WRAPPER_BASENAMES.join(', ')})`
 );
 for (const rel of wrapperFilesUnderApp) console.log(`          ${rel}`);
+
+/* A green states what it passed over: the skips, with the reason each was one. */
+console.log(`      of those, skipped as not a route module : ${skippedWrappers.length}`);
+for (const { rel, why } of skippedWrappers) {
+  console.log(`          ${rel}`);
+  console.log(`             ${why}`);
+}
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
