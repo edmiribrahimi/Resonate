@@ -243,8 +243,11 @@
  *      inconsistent; a declared page file is not on disk or is not under
  *      `src/app`; a surface's closure is empty; a local specifier could not be
  *      resolved; the shell is missing; a declared navigation module is not on
- *      disk; a `layout.*` file carries an extension the walk does not test; or
- *      the shell's focus root cannot be read as a single closed literal.
+ *      disk; a `layout.*` file carries an extension the walk does not test; the
+ *      shell's focus root cannot be read as a single closed literal; or the
+ *      focus BRANCH cannot be bounded as a region — no opener, two openers, an
+ *      opener that opens no block, a balance that never closes, or the single
+ *      `className={FOCUS_ROOT}` sitting outside the region.
  *      **No verdict is implied by a 2.**
  *
  * A run that BOTH failed a check and then hit a refusal exits **1**, not 2, and
@@ -1326,6 +1329,150 @@ if (focusBranchLines.length !== 1) {
   );
 }
 
+/* ── E1's read, part two: the focus branch as a REGION ────────────────────────
+ *
+ * **Why a region and not a line, written down because two rounds fixed this at
+ * a point and the defect moved one element each time.**
+ *
+ * Round 1 (plan 41-17) asserted on the `FOCUS_ROOT` constant; the reintroduction
+ * moved to the render site. Round 2 (plan 41-20) asserted on the outer element
+ * of the focus branch; the reintroduction moved to the inner element, and the
+ * gate printed `✓ E` over it (GAP-CR-02). Each fix aimed at the place the defect
+ * was last seen, and each time the defect was one element deeper. The defect
+ * does not live on a line — it lives anywhere inside the branch — so what is
+ * asserted is the whole branch, from its opener to its balanced close.
+ *
+ * **Anchored on the opener, not on the render site**, and that is the second
+ * thing this buys. `FOCUS_BRANCH_RE` above requires exactly one
+ * `className={FOCUS_ROOT}` ANYWHERE in the file and never that the occurrence
+ * sits inside the focus branch — so `FOCUS_ROOT` rendered on the default branch,
+ * with the focus branch carrying an arbitrary class string, satisfied it. The
+ * third refusal below closes that.
+ *
+ * **The end is computed by brace balance, and the bare-closing-brace regex is
+ * the trim a later reader will be tempted to make.** `/^\s*\}\s*$/` — the shape
+ * 41-GAP-REVIEW-2.md sketched — terminates the region at the first bare brace,
+ * and a bare brace can appear inside the branch. A region shorter than the
+ * branch is this round's defect for the third time, so the balance is counted
+ * rather than a closing line recognised.
+ *
+ * The opener that never opens a block is a refusal rather than a one-line
+ * region, for the same reason: a ternary would otherwise derive a region of one
+ * line and assert almost nothing, silently.
+ */
+const FOCUS_BRANCH_OPEN_RE = /\bwidth\s*===\s*(?:"focus"|'focus')/;
+
+const focusBranchOpeners = [];
+shellLines.forEach((line, i) => {
+  if (FOCUS_BRANCH_OPEN_RE.test(line)) focusBranchOpeners.push({ lineNo: i + 1, text: line });
+});
+
+/**
+ * The instruction every refusal below ends with. A refusal that fires on correct
+ * code without saying what to do is how a gate gets switched off (§0 rule 3,
+ * D-41-19's second failure mode), so the legitimate forms are named.
+ */
+const FOCUS_BRANCH_WIDENING_NOTE =
+  '       WHAT A LEGITIMATE CHANGE DOES. Three future forms would trip this and all three are\n' +
+  '       legitimate: the branch rewritten as a ternary, the branch extracted into its own\n' +
+  '       component, or the opener written as part of a compound condition. In every case the\n' +
+  '       instruction is the same: this assertion WIDENS — in the same commit, carrying the\n' +
+  '       measurement that justified it, and reading whatever new form the branch takes. It\n' +
+  '       does not get deleted, and the branch does not get inlined to make it quiet.\n\n';
+
+if (focusBranchOpeners.length !== 1) {
+  const where =
+    focusBranchOpeners.length > 0
+      ? `at line(s) ${focusBranchOpeners.map((o) => o.lineNo).join(', ')}`
+      : 'nowhere in the file';
+  refuse(
+    `${SHELL_FILE} opens the focus branch ${focusBranchOpeners.length} time(s) — found ${where}.\n` +
+      '       Exactly one is required.\n\n' +
+      '       WHAT WAS MEASURED AND FOUND. The comparison that selects the focus form was looked\n' +
+      '       for over the whole comment-stripped file, tolerant of whitespace and of either\n' +
+      '       quote style. Check E1 bounds that branch as a REGION and asserts that no line of\n' +
+      '       it reads a navigation property; with no opener, or with two, there is no region to\n' +
+      '       bound and the assertion covers nothing.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the clearance was measured.\n' +
+      '       Reporting a pass here would be reporting agreement with a branch never read — the\n' +
+      '       failure direction that prints a tick, and the one CR-01 already took twice.\n\n' +
+      FOCUS_BRANCH_WIDENING_NOTE +
+      '       Nothing was measured.'
+  );
+}
+
+const focusBranchStart = focusBranchOpeners[0].lineNo;
+
+let focusBranchBalance = 0;
+let focusBranchOpened = false;
+let focusBranchEnd = 0;
+for (let n = focusBranchStart; n <= shellLines.length; n += 1) {
+  for (const ch of shellLines[n - 1]) {
+    if (ch === '{') focusBranchBalance += 1;
+    else if (ch === '}') focusBranchBalance -= 1;
+    if (focusBranchBalance > 0) focusBranchOpened = true;
+  }
+  if (focusBranchOpened && focusBranchBalance <= 0) {
+    focusBranchEnd = n;
+    break;
+  }
+}
+
+if (!focusBranchOpened) {
+  refuse(
+    `${SHELL_FILE}:${focusBranchStart} compares the width against the focus form, but that line\n` +
+      '       opens no block, so no region could be derived. Line, verbatim:\n\n       ' +
+      focusBranchOpeners[0].text.trim() +
+      '\n\n       WHY THIS IS A REFUSAL AND NOT A FAILURE. Deriving a one-line region here and\n' +
+      '       asserting over it would assert almost nothing while printing a tick — the shape a\n' +
+      '       ternary would take, and the shape a truncated region has taken twice in this phase.\n\n' +
+      FOCUS_BRANCH_WIDENING_NOTE +
+      '       Nothing was measured.'
+  );
+}
+
+if (focusBranchEnd === 0) {
+  refuse(
+    `${SHELL_FILE}:${focusBranchStart} opens the focus branch, but its brace balance never returns\n` +
+      '       to zero before the end of the file, so the focus branch has no readable end and\n' +
+      '       nothing was measured.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. The region is bounded by counting braces\n' +
+      '       from the opener rather than by recognising a closing line, because a bare closing\n' +
+      '       brace can appear INSIDE the branch and a region shorter than the branch is exactly\n' +
+      '       the defect this check exists to stop. An unbalanced file is one this gate cannot\n' +
+      '       read; it is not one it may assume is clean.\n\n' +
+      FOCUS_BRANCH_WIDENING_NOTE +
+      '       Nothing was measured.'
+  );
+}
+
+/** The bounded branch: every line from the opener through its balanced close. */
+const focusBranchRegion = {
+  start: focusBranchStart,
+  end: focusBranchEnd,
+  lineCount: focusBranchEnd - focusBranchStart + 1,
+  openerText: shellLines[focusBranchStart - 1],
+  closeText: shellLines[focusBranchEnd - 1],
+};
+
+const focusRootRenderLineNo = focusBranchLines[0];
+
+if (focusRootRenderLineNo < focusBranchRegion.start || focusRootRenderLineNo > focusBranchRegion.end) {
+  refuse(
+    `${SHELL_FILE}:${focusRootRenderLineNo} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of a className,\n` +
+      `       but that line falls OUTSIDE the focus branch, derived as lines ${focusBranchRegion.start}-${focusBranchRegion.end}.\n\n` +
+      '       WHAT WAS MEASURED AND FOUND. The exactly-one assertion above is satisfied by an\n' +
+      '       occurrence anywhere in the file. It was, and the occurrence is not in the branch —\n' +
+      '       so the focus form on screen is built from something this gate never read, while the\n' +
+      '       constant it did read renders somewhere else.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the focus form was measured.\n' +
+      '       Asserting the absence of a property from a constant the focus branch does not\n' +
+      '       render is agreement with a form that was never opened.\n\n' +
+      FOCUS_BRANCH_WIDENING_NOTE +
+      '       Nothing was measured.'
+  );
+}
+
 /* ── E2's read: the layouts each surface climbs through ───────────────────── */
 
 const layoutClosureCache = new Map();
@@ -1820,11 +1967,50 @@ const propertiesInFocusRoot = NAV_PROPERTIES.filter((prop) => focusRoot.includes
 const focusRootHasHeight = MIN_HEIGHT_RE.test(focusRoot);
 const focusRootHasCentring = CENTRING_RE.test(focusRoot);
 
+/**
+ * `MIN_HEIGHT_RE` and `CENTRING_RE` are **not** subsumed by the region check
+ * below, and this sentence is here so the next reader does not close them by
+ * assumption. The region bounds WHERE the two properties may not appear; it
+ * says nothing about what the constant's height and centring utilities actually
+ * produce, which is 41-GAP-REVIEW.md CR-02 and is still open.
+ */
+
+/**
+ * The assertion the two previous rounds did not make: every line of the branch.
+ *
+ * `propertiesInFocusRoot` above stays, and is not redundant with this — the
+ * constant is declared OUTSIDE the branch, so the region does not cover it.
+ */
+const propertiesInFocusBranch = [];
+for (let n = focusBranchRegion.start; n <= focusBranchRegion.end; n += 1) {
+  const text = shellLines[n - 1];
+  for (const prop of NAV_PROPERTIES) {
+    if (text.includes(prop)) propertiesInFocusBranch.push({ prop, lineNo: n, text });
+  }
+}
+
+/**
+ * Evidence that a property survives ELSEWHERE — with the region excluded.
+ *
+ * This exclusion is the half that stops the defect certifying itself. Before it,
+ * a clearance appended inside the branch was counted here as proof that "the
+ * shell still reads both properties elsewhere": measured on the shipped gate,
+ * `read at line(s) 154, 160` listed the defect's own line as evidence for the
+ * assertion meant to catch it (GAP-CR-02). A line inside the branch can never
+ * be that evidence.
+ *
+ * `propertiesDroppedEntirely` still evaluates over the narrowed set, and still
+ * holds on a correct tree: the default and wide branch reads both properties,
+ * outside the region, so the assertion that the clearance did not leave the
+ * primitive is unweakened.
+ */
 const propertyReadsElsewhere = new Map(NAV_PROPERTIES.map((prop) => [prop, []]));
 shellLines.forEach((line, i) => {
-  if (i + 1 === focusRootLineNo) return;
+  const lineNo = i + 1;
+  if (lineNo === focusRootLineNo) return;
+  if (lineNo >= focusBranchRegion.start && lineNo <= focusBranchRegion.end) return;
   for (const prop of NAV_PROPERTIES) {
-    if (line.includes(prop)) propertyReadsElsewhere.get(prop).push(i + 1);
+    if (line.includes(prop)) propertyReadsElsewhere.get(prop).push(lineNo);
   }
 });
 const propertiesDroppedEntirely = NAV_PROPERTIES.filter((prop) => propertyReadsElsewhere.get(prop).length === 0);
@@ -1857,12 +2043,26 @@ for (const { rel, why } of skippedWrappers) {
   console.log(`             ${why}`);
 }
 
+/* The region, printed before anything derived from it: a silently truncated
+ * region has to be visible in the gate's own output, which is the property no
+ * previous round's report had. */
+console.log(
+  `      the focus branch, ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end}` +
+    `   (${focusBranchRegion.lineCount} line(s), bounded by brace balance)`
+);
+console.log(`          opener  ${String(focusBranchRegion.start).padEnd(4)}: ${focusBranchRegion.openerText.trim()}`);
+console.log(`          close   ${String(focusBranchRegion.end).padEnd(4)}: ${focusBranchRegion.closeText.trim()}`);
+console.log(`          ${FOCUS_ROOT_IDENTIFIER} rendered at line ${focusRootRenderLineNo}`);
+console.log(
+  `          navigation propert(y/ies) found inside the region: ${propertiesInFocusBranch.length}`
+);
+
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
 for (const prop of NAV_PROPERTIES) {
   const at = propertyReadsElsewhere.get(prop);
   const where = at.length > 0 ? `read at line(s) ${at.join(', ')}` : 'NOT READ ANYWHERE';
-  console.log(`          ${prop.padEnd(26)} — outside the focus root: ${where}`);
+  console.log(`          ${prop.padEnd(26)} — outside the focus branch: ${where}`);
 }
 
 console.log('\n      route                         width    navigation   reached through');
@@ -1893,6 +2093,28 @@ if (propertiesInFocusRoot.length > 0) {
       '       last happened: 248px leading against 24px trailing at and above 768px, putting a\n' +
       '       centred card 112px right of the viewport centre; ~96px of bottom padding below\n' +
       '       768px under a card with no bar beneath it. Four checks were green throughout.\n'
+  );
+}
+
+if (propertiesInFocusBranch.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  the focus branch reads ${propertiesInFocusBranch.length} navigation propert(y/ies) — this is CR-01,\n` +
+      `       reintroduced inside ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end}:\n`
+  );
+  for (const { prop, lineNo, text } of propertiesInFocusBranch) {
+    console.log(`       ${prop}  at line ${lineNo}`);
+    console.log(`         ${text.trim()}`);
+  }
+  console.log(
+    "\n       §4's focus list is closed at four routes and NOT ONE OF THEM mounts a navigation,\n" +
+      '       so a clearance reserved here is a column and a bar left empty. Measured when this\n' +
+      '       last happened: 248px leading against 24px trailing at and above 768px, putting a\n' +
+      '       centred card 112px right of the viewport centre; ~96px of bottom padding below\n' +
+      '       768px under a card with no bar beneath it. Four checks were green throughout.\n\n' +
+      '       The assertion above it reads the CONSTANT and would not have seen this: the two\n' +
+      '       previous rounds each fixed this at the point the defect was last seen, and each\n' +
+      '       time it reappeared one element deeper. This one reads every line of the branch.\n'
   );
 }
 
@@ -1966,8 +2188,9 @@ if (mountsUnderTheFocusForm.length > 0) {
 
 if (!failures.includes('E')) {
   console.log(
-    `  ✓ E  the focus root reserves neither navigation property while ${SHELL_FILE}\n` +
-      `       still reads both elsewhere, and all ${navigationBySurface.length} converted surface(s) declare the width\n` +
+    `  ✓ E  no line of the focus branch (${focusBranchRegion.lineCount}, at ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end})\n` +
+      `       reads either navigation property, nor does the focus root, while the shell still\n` +
+      `       reads both OUTSIDE that region, and all ${navigationBySurface.length} converted surface(s) declare the width\n` +
       '       their mounted navigation calls for — focus if and only if none is mounted\n'
   );
 }
