@@ -42,9 +42,23 @@
  *     re-export, a helper that raises one on its behalf — is invisible here.
  *   - **IT CANNOT SEE A CLASS BUILT BY CONCATENATION.** `` `fixed inset-0 ${z}` ``
  *     is text this script does not assemble. It reads lines.
+ *   - **IT CANNOT SEE A CLASS SPLIT ACROSS TWO LINES.** The overlay is three
+ *     parts on ONE line. A formatter that wraps a long class attribute puts the
+ *     rung on the next line and the shell becomes invisible — before this
+ *     change and after it. Matching across lines is a different change with a
+ *     different risk (a class attribute has no line-oriented end), so the limit
+ *     is **declared here rather than closed**: a green does not mean no copy
+ *     was wrapped.
  *   - **IT DOES NOT JUDGE THE COPIES IT TOLERATES.** A file on `REMAINING` is
  *     not blessed; it is *counted*. Every one of them is a dialog without a
  *     focus trap.
+ *   - **CHECK B DOES NOT READ THE DOOR.** Five files — the scanner route, the
+ *     scanner's components and the door's second address — are fenced out of
+ *     check B by path, because they are **Phase 42's** (`PHASE_42_EXEMPT_PATHS`
+ *     below). If a nineteenth hand-rolled dialog is written behind that fence,
+ *     this gate is silent about it, for as long as the fence stands. Those five
+ *     files are **UNMEASURED, not approved**, and the report says so on every
+ *     run in those words.
  *
  * ── THE THREE CHECKS ────────────────────────────────────────────────────────
  *
@@ -67,6 +81,10 @@
  *      FAILS. An entry whose path is gone FAILS; a list that cannot be measured
  *      is a decoration. An entry whose file no longer carries a shell is a
  *      **STALE** notice to delete, not a failure.
+ *
+ *      The hand-rolled shape is `OVERLAY_PARTS`, three boundary-guarded regexes
+ *      that match the rung as a FAMILY rather than as one literal, and that
+ *      prove themselves against three fixed probes on every run (WR-09).
  *
  *      **The subject is the SHELL, not one class string.** §13's G2 row names
  *      the hand-rolled overlay's utility, and taken literally that matches ten
@@ -329,19 +347,192 @@ export const DECLARED_EXCEPTIONS = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * THE PHASE 42 FENCE — a scope boundary, and deliberately NOT a third exception
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The paths check B does not read, because they belong to another phase.
+ *
+ * **A FENCE IS NOT AN EXEMPTION, and the difference is the whole reason this
+ * constant is separate from `DECLARED_EXCEPTIONS` above.**
+ *
+ *   - `FULL_BLEED_VIEWER` is a file somebody **measured and declared correct**
+ *     as what it is: a full-bleed media viewer, right to be a `<dialog>` and
+ *     wrong to be a sheet.
+ *   - These three globs are files **nobody measured at all**. Nothing here says
+ *     the markup behind them is right. It says this phase does not open them.
+ *
+ * Collapsing the two into one word — in the code or, worse, in the report a
+ * reader actually sees — is how a scope boundary quietly turns into an approval.
+ * The constant keeps the sibling gate's name (`verify-touch-targets.mjs:499`) so
+ * the two fences are recognisably the same mechanism; the **report** does not
+ * spell it as an exemption, and that is on purpose.
+ *
+ * WHY THE FENCE EXISTS, AND WHY IT LANDED BEFORE THE MATCHER WIDENED. The
+ * overlay matcher below is keyed on the SHAPE of an overlay rather than on one
+ * z rung. Widening it that way, on this tree, reddens exactly one correct file:
+ * **`src/components/scanner/ScanFlash.tsx:135`** — the door's accept/refuse
+ * flash. It is `role="status"`, `aria-live="assertive"`, and it dismisses itself
+ * on a timer: there is nothing to trap focus for and nothing for Escape to
+ * close. **It is not a dialog**, converting it to the primitive would be wrong,
+ * and it is not a `REMAINING` candidate either — that list's own header says
+ * every entry is a dialog without a focus trap, so an entry for it would be a
+ * false statement about a Phase 42 surface. A red on a correct file is the
+ * failure §0 rule 3 says gets a gate switched off, so the fence is declared
+ * FIRST and the matcher widens BEHIND it.
+ *
+ * **CHECKS A AND C ARE NOT FENCED, and that is a decision.** Check A reads the
+ * primitive itself, which is nobody's door. Check C asks whether a dialog
+ * reports its outcome invisibly — that is a **silent-failure report**, and a
+ * phase boundary is a reason not to MODIFY a file, never a reason to go quiet
+ * about a failure (`meta-gates.md`, zero fallimenti silenziosi). Measured on
+ * this tree, not assumed: **no file behind the fence imports the primitive**, so
+ * check C's numbers are identical either way today — the exclusion would cost
+ * nothing now and would cost the wrong thing later.
+ *
+ * By path and not by judgement, because the failure mode of a judgement is a
+ * gate that widens its own scope one convenient file at a time.
+ *
+ * Shape: `[glob, reason]`. The globs are compared with the manifest's
+ * `PHASE_42_PATHS` before anything is measured, and a drift refuses.
+ */
+export const PHASE_42_EXEMPT_PATHS = [
+  [
+    'src/app/(admin)/**/scanner/**',
+    'the scanner surface and its route — Phase 42 decides what the door looks like, and check B never reads a line of it',
+  ],
+  [
+    'src/components/scanner/**',
+    "the scanner's components — including the accept/refuse flash at ScanFlash.tsx:135, which is a status layer and not a dialog, and which the widened matcher would otherwise redden",
+  ],
+  [
+    'src/app/(admin)/door/**',
+    "the door's second address (STAFF-04) — fencing one address and not the other would fence half a thing",
+  ],
+];
+
+/**
+ * `**` crosses separators, `*` does not, everything else is literal.
+ *
+ * Copied from `verify-touch-targets.mjs:863-880` rather than imported: a gate is
+ * self-contained in this repository (see the header), and the module that would
+ * be the natural home for shared helpers is the one that exits at module scope.
+ */
+function globToRegExp(glob) {
+  let out = '^';
+  for (let i = 0; i < glob.length; i += 1) {
+    const ch = glob[i];
+    if (ch === '*') {
+      if (glob[i + 1] === '*') {
+        out += '.*';
+        i += 1;
+        if (glob[i + 1] === '/') i += 1;
+      } else {
+        out += '[^/]*';
+      }
+      continue;
+    }
+    out += ch.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`${out}$`);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * What a dialog shell looks like, in the two shapes it takes today
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
  * Shape 1 — the hand-rolled overlay. Three parts on ONE line.
  *
- * All three are required together because each alone is ordinary: the
- * positioning utility is everywhere, the inset is common, and the rung is
- * shared with anything that must clear the navigation without being modal
- * (§10 keeps that rung declared on purpose). Together on one line they are the
- * overlay, and eleven files carry exactly that.
+ * **All three are required together, because each alone is ordinary**: the
+ * positioning utility is everywhere and the inset is common. That sentence has
+ * always been true and it stays.
+ *
+ * **THE RUNG IS A FAMILY, NOT A LITERAL — and this is what changed.** The
+ * matcher used to require ONE specific z rung, the one the eleven incumbents
+ * happen to carry. But `41-UI-SPEC.md` §10 keeps that rung declared **for
+ * anything that must clear the navigation WITHOUT being modal**, which makes it
+ * a property an overlay usually has and never the property that makes it one.
+ * A nineteenth copy written one rung up, one rung down, or at any arbitrary
+ * rung was invisible to check B — a gate gone quiet while the thing it tracks is
+ * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family: two or
+ * more digits, or an arbitrary bracketed integer.
+ *
+ * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
+ * `line.includes` on the positioning utility also fired on the same letters at
+ * the end of an ordinary English word — a **red on a correct file**, which §0
+ * rule 3 records as the failure that gets a gate switched off, and which is a
+ * worse outcome than the miss it was meant to fix. The guards are this
+ * repository's own technique, `verify-tokens.mjs:553-559`.
+ *
+ * **WIDENING THE RUNG IS WHAT MADE THE PHASE 42 FENCE NECESSARY.** On this tree
+ * the family matcher reddens exactly one correct file —
+ * `src/components/scanner/ScanFlash.tsx:135`, the door's accept/refuse status
+ * flash, which is not a dialog — so `PHASE_42_EXEMPT_PATHS` above was declared
+ * FIRST and this widening landed behind it. The two changes are connected, not
+ * coincidental, and mutation A in `41-16-SUMMARY.md` is where the connection was
+ * observed rather than argued.
+ *
+ * Every fragment is concatenated and no complete utility appears as a literal —
+ * the DEF-41-01 reason in the header, which now covers the positioning utility
+ * too, since it used to be spelled whole.
  */
-const OVERLAY_PARTS = ['fixed', 'inset-' + '0', 'z-' + '[60]'];
+const LEFT_BOUNDARY = '(?<![' + '\\w-])';
+const RIGHT_BOUNDARY = '(?![' + '\\w-])';
+const POSITION_UTILITY = 'fix' + 'ed';
+const INSET_UTILITY = 'inset-' + '0';
+const RUNG_PREFIX = 'z' + '-';
+/** Two-or-more digits, or an arbitrary bracketed integer. */
+const RUNG_FAMILY = '(?:' + '\\d{2,}' + '|' + '\\[\\d+\\]' + ')';
+
+export const OVERLAY_PARTS = [
+  new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + INSET_UTILITY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
+];
+
+/** The one place the three parts are asked about a line. */
+function isOverlayLine(line) {
+  return OVERLAY_PARTS.every((re) => re.test(line));
+}
+
+/**
+ * `OVERLAY_PARTS` checked against its own description, on EVERY run.
+ *
+ * Three fixed strings, assembled the same way the regexes are. If any of them
+ * disagrees with its expectation the run **refuses** — a matcher that does not
+ * behave as its own docblock describes has not measured this tree, it has
+ * measured something else, and a verdict from it would be a number nobody can
+ * read.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are three strings written by the
+ * same hand as the regexes above, so they share its blind spots and cannot
+ * discover a file nobody thought of. The evidence is the live run on the real
+ * tree — and this exact defect is why the distinction is written here rather
+ * than assumed: three probes of this shape passed while the widened matcher
+ * reddened a correct file at the door.
+ */
+const MATCHER_PROBES = [
+  {
+    verdict: 'no match',
+    label: 'the positioning utility at the end of a longer word',
+    line:
+      '<div className="pre' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]">',
+    expected: false,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a bracketed rung other than the incumbents\'',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a two-digit numeric rung',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    expected: true,
+  },
+];
 
 /** Shape 2 — a native `<dialog>` element written outside the primitive. */
 const NATIVE_SHELL_RE = /<dialog\b/;
@@ -349,7 +540,7 @@ const NATIVE_SHELL_RE = /<dialog\b/;
 function shellShapes(relPath) {
   const found = [];
   liveLines(relPath).forEach((line, i) => {
-    if (OVERLAY_PARTS.every((part) => line.includes(part))) {
+    if (isOverlayLine(line)) {
       found.push({ line: i + 1, shape: 'hand-rolled overlay', source: line.trim() });
     }
     if (NATIVE_SHELL_RE.test(line)) {
@@ -531,6 +722,75 @@ if (declaredPaths.size !== REMAINING.length) {
   );
 }
 
+/*
+ * The fence in this gate and the fence in the manifest must be the SAME fence.
+ * Two lists that drift is how one gate ends up guarding a path another one
+ * scans, with neither report saying so — and a fence nobody cross-checked is a
+ * fence nobody verified, which is why a failed import refuses too rather than
+ * falling back to the local list.
+ *
+ * `scripts/conversion-manifest.mjs` is safe to import: read before relying on
+ * it, it declares constants and two functions and does no work at module scope,
+ * so it cannot do to this process what `verify-tokens.mjs` would (see the header
+ * on why the helpers here are local).
+ */
+let manifest;
+try {
+  manifest = await import(`${ROOT}/scripts/conversion-manifest.mjs`);
+} catch (error) {
+  refuse(
+    'scripts/conversion-manifest.mjs could not be imported, so this gate could not\n' +
+      '       cross-check its Phase 42 fence against the manifest\'s. A fence nobody verified\n' +
+      `       is a fence nobody should trust. Nothing was measured.\n\n       ${error.message}`
+  );
+}
+
+const manifestFence = (manifest.PHASE_42_PATHS ?? []).map(([glob]) => glob).sort();
+const localFence = PHASE_42_EXEMPT_PATHS.map(([glob]) => glob).sort();
+
+if (JSON.stringify(manifestFence) !== JSON.stringify(localFence)) {
+  refuse(
+    "this gate's Phase 42 fence and the manifest's do not match, so one of the two is\n" +
+      '       guarding a path the other scans. Nothing was measured.\n\n' +
+      `       manifest: ${manifestFence.join(', ')}\n` +
+      `       gate:     ${localFence.join(', ')}`
+  );
+}
+
+const fencePatterns = PHASE_42_EXEMPT_PATHS.map(([glob, reason]) => ({
+  glob,
+  reason,
+  re: globToRegExp(glob),
+}));
+
+function fenceMatch(relPath) {
+  return fencePatterns.find(({ re }) => re.test(relPath)) ?? null;
+}
+
+/*
+ * The matcher against its own description, before it is pointed at the tree.
+ * Run here so a disagreement refuses with nothing measured; PRINTED further
+ * down, immediately before check B's numbers, where a reader meets it.
+ */
+const probeRows = MATCHER_PROBES.map((probe) => ({
+  ...probe,
+  measured: isOverlayLine(probe.line) ? 'match' : 'no match',
+}));
+
+const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
+
+if (probeDisagreements.length > 0) {
+  refuse(
+    `the overlay matcher disagrees with its own description on ${probeDisagreements.length} of\n` +
+      `       ${MATCHER_PROBES.length} fixed probe(s):\n\n       ` +
+      probeDisagreements
+        .map((row) => `${row.label}\n         expected ${row.verdict}, got ${row.measured}`)
+        .join('\n\n       ') +
+      '\n\n       A matcher that does not behave as its docblock says has not measured this tree,\n' +
+      '       it has measured something else. NOTHING WAS MEASURED — no check-B verdict follows.'
+  );
+}
+
 const failures = [];
 
 console.log(`  files walked under src/       : ${files.length}`);
@@ -614,9 +874,16 @@ if (grownSignature.length > 0) {
 /* ── check B — no second shell, except on the list ────────────────────────── */
 
 const measuredShells = new Map();
+const fenced = new Map();
+
 for (const file of files) {
   if (file === PRIMITIVE_FILE) continue;
   if (file === FULL_BLEED_VIEWER) continue;
+  const behind = fenceMatch(file);
+  if (behind) {
+    fenced.set(file, behind.glob);
+    continue;
+  }
   const found = shellShapes(file);
   if (found.length > 0) measuredShells.set(file, found);
 }
@@ -637,10 +904,33 @@ for (const [file, found] of measuredShells) {
   if (!declaredPaths.has(file)) undeclared.push({ file, found });
 }
 
+console.log('  the matcher self-check — three fixed probes, on every run:\n');
+for (const row of probeRows) {
+  console.log(`      ${row.measured.padEnd(9)} ${row.label}`);
+}
+console.log(
+  '\n      The rung is matched as a FAMILY, so a copy at any rung is seen; both tokens are\n' +
+    '      boundary-guarded, so a longer word cannot redden a correct file. These three\n' +
+    '      strings are the matcher describing itself — they are NOT the evidence. The live\n' +
+    '      run below is.\n'
+);
+
+console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
+for (const [glob, reason] of PHASE_42_EXEMPT_PATHS) {
+  console.log(`      ${glob}`);
+  console.log(`         ${reason}`);
+}
+console.log(
+  `\n      ${fenced.size} walked file(s) fall behind it. This is a SCOPE BOUNDARY, not an approval:\n` +
+    '      nothing here says their markup is right, only that this phase did not open them.\n' +
+    '      If a hand-rolled dialog is written behind that fence, check B is silent about it.\n'
+);
+
 console.log('  check B — dialog shells declared OUTSIDE the primitive:\n');
 console.log(`      REMAINING entries declared     : ${REMAINING.length}`);
 console.log(`      files measured carrying a shell : ${measuredShells.size}`);
-console.log(`      exempt from this check          : 1  (${FULL_BLEED_VIEWER})`);
+console.log(`      exempt from this check          : 1  (${FULL_BLEED_VIEWER}) — measured, declared correct`);
+console.log(`      fenced by path, never measured  : ${fenced.size}  (Phase 42 — see the fence above)`);
 console.log(`\n      REMAINING = ${measuredShells.size}\n`);
 
 if (missing.length > 0) {
