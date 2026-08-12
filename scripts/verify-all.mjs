@@ -82,13 +82,35 @@
  * happen, and it drifts silently: the copy keeps passing while the real entry
  * moves.
  *
- * The reconciliation that follows is the whole point of the file. Every
- * `verify:*` entry in `package.json` must appear in exactly one of the two lists
- * below, and every list entry must appear in `package.json`. **A gate somebody
- * registers and forgets to declare here would otherwise be a gate this run never
- * measured while printing a tick** — T-41-44, and the reason a mismatch is a
- * REFUSAL: this run did not measure everything the repository declares, which is
- * not the same statement as "something is wrong with the tree".
+ * ── THE RECONCILIATION, AND THE SITUATION THAT WOULD TRIP IT ────────────────
+ *
+ * The reconciliation at the end of the run is the whole point of the file, and
+ * **what it compares is verdicts, not lengths.** It takes every `verify:*` name
+ * `package.json` registers and checks it against the set of names this run said
+ * something about: a name that got a verdict (it ran), a name in `NEEDS_SERVER`
+ * (declared, not run here, and printed with its reason), a name reported absent
+ * but optional, or a name reported MISSING. A registered name in none of those
+ * got **no verdict** from this run, and that is a REFUSAL — exit 2 — not a line
+ * printed under a tick.
+ *
+ * **The two refusals before the run do not already guarantee this.** They compare
+ * LISTS, and they compare them before anything executes: `declared` against
+ * `knownNames`, in both directions. This one compares VERDICTS, afterwards. A
+ * name can be declared in `package.json`, known to this runner, present on disk —
+ * and still come out of the run with nothing said about it. Nothing earlier
+ * would notice.
+ *
+ * **The concrete situation that produces one**, because a gate whose triggering
+ * situation nobody wrote down is a gate nobody can trust: somebody adds a fourth
+ * `state` to the `plan` partition below — a `skipped`, a `deferred`, a `stale` —
+ * and the three filters that follow it (`runnable`, `absentOptional`,
+ * `absentRequired`) do not catch it, because each of them tests for something
+ * specific. That entry is then dropped between planning and reporting: it never
+ * runs, never appears in the NOT RUN block, and the table prints a full set of
+ * ticks for a gate nobody measured. **That is T-41-44 arriving from inside this
+ * file instead of from `package.json`** — and the reason a mismatch is a REFUSAL
+ * rather than a failure: this run did not measure everything the repository
+ * declares, which is not the same statement as "something is wrong with the tree".
  */
 
 import { spawnSync } from "node:child_process";
@@ -364,10 +386,26 @@ console.log(`    MISSING                        ${String(absentRequired.length).
 console.log(`                                   ───`);
 console.log(`    accounted for                  ${String(accounted).padStart(3)}`);
 
-if (accounted !== declared.length + absentOptional.filter((p) => p.state === "unregistered").length) {
-  console.log(
-    "\n    The count does not reconcile against package.json. Every gate above ran, but\n" +
-      "    this run cannot claim to account for every registered entry."
+/* ── the reconciliation, keyed on verdicts obtained and not on a count ─────── */
+
+// Every name this run said something about: it ran and got a verdict, or it was
+// named as not run, or as absent, or as MISSING. The comparison that follows is
+// against THIS set rather than against a total, because a total is arithmetic
+// over the same partition that produced it and cannot disagree with itself.
+const measuredOrExplained = new Set([
+  ...results.map((r) => r.name),
+  ...NEEDS_SERVER.map(([name]) => name),
+  ...absentOptional.map((p) => p.name),
+  ...absentRequired.map((p) => p.name),
+]);
+
+const unaccounted = declared.filter((name) => !measuredOrExplained.has(name));
+if (unaccounted.length > 0) {
+  refuse(
+    `${unaccounted.length} registered verify:* entr(y/ies) got no verdict from this run:\n` +
+      `       ${unaccounted.join(", ")}\n` +
+      "       They did not run, and they were not named as not run either. This run CANNOT\n" +
+      "       claim to account for every registered gate — nothing about those was measured."
   );
 }
 
