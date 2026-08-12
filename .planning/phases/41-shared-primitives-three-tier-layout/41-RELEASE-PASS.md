@@ -1,22 +1,26 @@
 ---
 phase: 41-shared-primitives-three-tier-layout
 written: 2026-08-12
-status: all pending
-closes: ROADMAP criterion 4a (RESP-01 — H41-1), criterion 2's runtime half (DS-08 — H41-2), criterion 3's judgement half (DS-09 — H41-3), criterion 5 (RESP-03 — H41-4)
+closed: 2026-08-12 — the owner replied `approved`, one word, with no itemised findings
+status: closed on the owner's blanket approval. NO per-item observation was reported back, and none is recorded below. Read `The close` before any Result
+closes: the phase gate, and only that. The ROADMAP criteria this pass was written to evidence — criterion 4a (RESP-01 — H41-1), criterion 2's runtime half (DS-08 — H41-2), criterion 3's judgement half (DS-09 — H41-3), criterion 5 (RESP-03 — H41-4) — carry NO itemised evidence and none of them is ticked
 batch: the end-of-v1.5 human sitting, alongside `40-RELEASE-PASS.md`, `39-DOOR-PASS.md` and `38-PROCEDURES.md` — not a second sitting
 devices: three if possible — a phone, a LARGE TOUCH SCREEN (a tablet, not a narrow phone), and a laptop with a mouse. The tablet may not exist; H41-4 says in advance what happens then
 accounts: one signed-in account holding `organizer.access`, `catalogue.manage` AND `admin.access` — all three, because H41-6 counts eight tabs and the eight are gated by three different capabilities. Roles, never names
 requires: a checkout that holds `.env.local`, and `npm run dev`. No worktree in this phase had one, which is why not one of these six was taken during execution
-phase_closes: not before this document is filled in
+phase_closes: closed 2026-08-12 by the owner's approval. An authorisation is not a measurement, and this document does not convert one into the other
 ---
 
 # Phase 41 — The Release Pass
 
-> **(a) Every `Result` below is empty and reads `pending`, and an empty Result is an
-> UNRUN procedure** — never a verified-by-inspection in disguise. Sixteen gates are
-> registered and `npm run verify` runs fifteen of them in one command; **not one of
-> them has seen a pixel.** A tick nobody earned is worse than an empty line, because
-> it closes a phase.
+> **(a) This document was written with every `Result` empty and reading `pending`, and
+> an empty Result is an UNRUN procedure** — never a verified-by-inspection in disguise.
+> Sixteen gates are registered and `npm run verify` runs fifteen of them in one command;
+> **not one of them has seen a pixel.** A tick nobody earned is worse than an empty
+> line, because it closes a phase.
+> **On 2026-08-12 the owner closed the gate with a single word — `approved` — and no
+> itemised findings.** Every `Result` below now records exactly that and nothing more.
+> **Read `The close` immediately below before reading any `Result`.**
 > **(b) Roles, never names:** this repository is public and `.planning/` is tracked, so
 > a person here is *an account holding `organizer.access`* — never a name, never who
 > was actually there. This document names routes, files, widths and roles. **No venue
@@ -27,6 +31,44 @@ phase_closes: not before this document is filled in
 > across here rather than re-derived on the day by somebody with a viewport open.
 > **(d) It joins the end-of-v1.5 sitting.** It does not invent a second sitting. Three
 > phases, one device set: Phase 39's door pass, Phase 40's H1–H3, and these six.
+
+---
+
+## The close — read this before any `Result` below
+
+On **2026-08-12** the phase gate was put to the owner as the five steps the plan wrote.
+**The reply, in full, was one word:**
+
+> approved
+
+That is the whole of it. It is a real and sufficient authorisation to close the gate —
+the plan's own resume signal asked for exactly that word — and this document treats it
+as one.
+
+**It is not a report of six observations, and it is not recorded as one.**
+
+| What arrived | What did not |
+|---|---|
+| an authorisation to close the phase gate | any per-item observation, for any of the six |
+| a statement that nothing seen should not be there | any defect, any measurement, any number |
+| — | any statement about which devices were available |
+
+So, for **H41-1 … H41-6**, every `Result` below reads *covered by the owner's blanket
+approval, without itemised evidence recorded*. **Not one says `observed`, `passed` or
+`confirmed`**, because nothing was reported back that could carry those words, and this
+document's own opening rule — *a tick nobody earned is worse than an empty line* — does
+not make an exception for the close.
+
+**H41-4 is the one to read twice.** The owner never said a large touch screen was
+available, and this document does not claim one was. **Criterion 5 (RESP-03) stays
+`human_needed` and is NOT ticked.** It was written in advance that this is what happens
+when the instrument is absent; the absence of a statement about the instrument is not a
+statement that it was there.
+
+**Two things below are measurements, and they are the only two.** The `npm run verify`
+and `npm run build` results in §0.1 were run by the executing agent on this tree on
+2026-08-12 and are recorded as what that agent measured. Everything else in this
+document is an authorisation.
 
 ---
 
@@ -53,7 +95,8 @@ says, in a box, that **H41-4 is the only proof that anything is 44px.**
 ## How to read a step
 
 - Steps are numbered and are executed **in the order written**.
-- Each step ends with a `Result: pending` line. Fill it with what was **observed**.
+- Each step ends with a `Result` line. It began as `pending`; fill it with what was
+  **observed**. Today none of the six carries an observation — see `The close`.
 - An observation is a fact a second person standing beside the device could confirm
   or deny. *"It looked right"* is not an observation; *"at 390px the member list was
   cards, one per member, and a horizontal drag did not move the page"* is.
@@ -82,7 +125,28 @@ says, in a box, that **H41-4 is the only proof that anything is 44px.**
 > machine that holds the credentials it is expected to exit 0. Record which machine
 > this was.
 
-Result: pending
+Result: **measured 2026-08-12 by the executing agent, on the worktree that carried plan
+41-12. This machine holds NO `.env.local`.**
+
+- `npm run verify` → **exit 2**. Verdict line, verbatim:
+  `VERIFY_REFUSED — 1 gate(s) could not measure: verify:capabilities`
+- **15 gates ran. 14 passed, 0 FAILED, 1 REFUSED.**
+- **REFUSED:** `verify:capabilities`, with its own stderr:
+  `FATAL: missing environment variable(s): SUPABASE_ACCESS_TOKEN,
+  NEXT_PUBLIC_SUPABASE_URL. … Nothing was measured.`
+- **NOT RUN:** `verify:redirects` — *needs a running dev server; its own header says it
+  cannot be part of the build.*
+- Count block reconciled: 16 declared, 15 run, 1 needs a server, 0 declared absent,
+  **0 MISSING**, 16 accounted for.
+- `npm run build` → **exit 0.** Compiled in 6.9s, TypeScript ran, 40 static pages
+  generated, 58 routes emitted.
+
+> **The credential difference, stated rather than borrowed.** The exit 2 above is what
+> **this** tree produced, and the reason is the missing credential file, not the tree.
+> A checkout that holds the Supabase credentials is expected to run the same fifteen
+> gates with `verify:capabilities` measuring instead of refusing, and to exit 0. **That
+> run was not taken here and is not recorded here as a measurement** — one exit code
+> read without its machine is how a refusal becomes a pass by retelling.
 
 ### §0.2 The account
 
@@ -92,7 +156,10 @@ Result: pending
 2. If the account holds fewer than three, **H41-6 cannot count eight tabs** and its
    Result is `human_needed` with the capability set that was actually available.
 
-Result: pending
+Result: `human_needed` — **the owner's approval did not state which capabilities the
+account held, or whether one was used at all.** Nothing is recorded here, because
+nothing was reported. The consequence is written where it lands: **H41-6a's count of
+eight tabs has no recorded capability set behind it.**
 
 ---
 
@@ -146,7 +213,10 @@ At **390px**, **768px** and **1280px**, for each of the eight:
   rather than dropped below it. **This is the only visual change plan 41-11 made, it
   was made without being able to look at it, and it is the first thing to look at.**
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** No surface, no width and no defect was reported back. Nothing here
+is marked observed, and **criterion 4a (RESP-01) is not ticked** — neither the eight
+surfaces nor the three widths has a recorded observation behind it.
 
 ---
 
@@ -183,7 +253,11 @@ Signed in with `catalogue.manage`, open `/admin/formats`.
    The sentence appears **inside the panel**, above the buttons, in the critical ink,
    and is on screen without scrolling.
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** **Step 4 is assumption A2, and A2 REMAINS OPEN**: nobody reported
+whether the background scrolled behind the open panel, so nothing about it is known and
+nothing about it is written. Step 6 — Cancel holding focus on `Retire` — likewise has
+no recorded observation. **Criterion 2's runtime half (DS-08) is not ticked.**
 
 ---
 
@@ -221,7 +295,10 @@ person observing checks against a decision rather than re-making one at a viewpo
 > gating mechanism operating on a real person's account; this pass reads it and does
 > not perform it.
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** No card, no column and no drag was reported back. The five-column
+judgement plan 41-10 made in advance stands as a judgement and **has not been checked
+against a rendered card. Criterion 3's judgement half (DS-09) is not ticked.**
 
 ---
 
@@ -255,7 +332,18 @@ with a thumb if it does not.
 
 Record the **smallest thing found**, where it was, and how it was measured.
 
-Result: pending
+Result: **`human_needed`. NOT ticked.**
+
+**The owner's approval never stated that a large touch screen was available**, and this
+document will not read a silence as a device. No box was reported measured, no smallest
+control was named, and no method was described — so **criterion 5 (RESP-03) has no
+evidence at all behind it**, and it is recorded exactly as this section said in advance
+it would be if the instrument were absent.
+
+The blanket approval covers this item as an authorisation to close the phase gate. **It
+does not measure 44 pixels, and no green from `verify:touch-targets` does either** — the
+table at the head of this document says that gate asserts a class string and that H41-4
+is the only thing in this repository that asserts a box. That remains true today.
 
 ---
 
@@ -271,7 +359,9 @@ On a laptop, mouse only, `/admin/members` at 1280px:
 3. **If anything else on any converted surface is under 44px**, that is a defect the
    gate could not see — which is the entire reason a person is doing this.
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** The row-action pills were not reported measured at any height, so
+**D-41-07's accepted trade is still an intention rather than an observation.**
 
 ---
 
@@ -301,7 +391,10 @@ Open any work surface and read the navigation:
 4. At all three widths: tab through the navigation with the keyboard and confirm the
    ring appears **on the page around** each entry, not inside it.
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** No tab count was reported, and §0.2 records that the capability set
+in use was never stated — so **the count of eight has neither an observation nor an
+account behind it. RESP-04 is not ticked, and the ~808px estimate is still an estimate.**
 
 ### H41-6b — the door, which this phase claims not to have touched
 
@@ -319,30 +412,43 @@ Result: pending
 4. The one permitted difference from before: the bar's entries are now at least 44px
    tall.
 
-Result: pending
+Result: **covered by the owner's blanket approval of 2026-08-12, without itemised
+evidence recorded.** The owner reported nothing that should not be there, and that is
+the closest this pass comes to a negative result on the door — **but nobody reported
+opening `/door` or `/admin/scanner`, so it is an absence of a complaint and not an
+observation of a bottom bar.**
+
+The mechanical half of T-41-47 does stand on its own and is recorded where it was
+measured: no plan in this phase touched a file under `scanner/` or under the door's
+route group, asserted per plan by its own diff. **What has not been observed is the
+rendered navigation at either address.**
 
 ---
 
 ## §9 — Results
 
-One row per observation. Every `Result` cell reads `pending` until the sitting fills
-it. **`human_needed` is a legitimate value in this column and a tick is not, unless
-somebody saw it.**
+One row per observation. **`human_needed` is a legitimate value in this column and a
+tick is not, unless somebody saw it.**
+
+**Two rows are measurements. Every other row is an authorisation.** `approved (blanket)`
+means the owner's single word covers the item and **no itemised evidence was reported
+back for it** — it is not an observation, and no row below is ticked on the strength of
+it.
 
 | § | Observation | What it closes | Result |
 |---|---|---|---|
-| §0.1 | `npm run verify` verdict + exit code; which gates REFUSED; which were NOT RUN; `npm run build` exit code | precondition — all | pending |
-| §0.2 | the three capabilities the account holds | precondition — H41-6a | pending |
-| H41-1 | eight surfaces × three widths: clipped / stretched / horizontal scroll | **criterion 4a (RESP-01)** | pending |
-| H41-1b | the two auth links still read as a sentence at 390px | plan 41-11's only visual change | pending |
-| H41-2 | sheet at 390px, window at 1280px, Escape closes | **criterion 2's runtime half (DS-08)** | pending |
-| H41-2d | **whether the background scrolled behind the open panel** | **assumption A2 — open since research** | pending |
-| H41-2f | Cancel holds focus on `Retire`; Enter retires nothing | the numbering is a monotone guard | pending |
-| H41-3 | cards at 390px, no sideways scroll, all five columns present | **criterion 3's judgement half (DS-09)** | pending |
-| H41-4 | the smallest control on a **large touch screen**, measured | **criterion 5 (RESP-03)** | pending |
-| H41-5 | the row-action pills ~36px with a mouse, and only those | D-41-07's accepted trade | pending |
-| H41-6a | eight tabs at 768px without scrolling the strip | RESP-04 | pending |
-| H41-6b | the door is the bottom bar at every width, both addresses | **D-41-21 · T-41-47** | pending |
+| §0.1 | `npm run verify` verdict + exit code; which gates REFUSED; which were NOT RUN; `npm run build` exit code | precondition — all | **MEASURED 2026-08-12, no `.env.local`:** verify **exit 2** — 14 passed, 0 FAILED, 1 REFUSED (`verify:capabilities`), 1 not run (`verify:redirects`); build **exit 0** |
+| §0.2 | the three capabilities the account holds | precondition — H41-6a | **`human_needed`** — never stated |
+| H41-1 | eight surfaces × three widths: clipped / stretched / horizontal scroll | **criterion 4a (RESP-01)** | approved (blanket) — **no itemised evidence; not ticked** |
+| H41-1b | the two auth links still read as a sentence at 390px | plan 41-11's only visual change | approved (blanket) — **no itemised evidence; still unseen** |
+| H41-2 | sheet at 390px, window at 1280px, Escape closes | **criterion 2's runtime half (DS-08)** | approved (blanket) — **no itemised evidence; not ticked** |
+| H41-2d | **whether the background scrolled behind the open panel** | **assumption A2 — open since research** | **A2 STILL OPEN** — nothing reported |
+| H41-2f | Cancel holds focus on `Retire`; Enter retires nothing | the numbering is a monotone guard | approved (blanket) — **no itemised evidence** |
+| H41-3 | cards at 390px, no sideways scroll, all five columns present | **criterion 3's judgement half (DS-09)** | approved (blanket) — **no itemised evidence; not ticked** |
+| H41-4 | the smallest control on a **large touch screen**, measured | **criterion 5 (RESP-03)** | **`human_needed` — no large touch screen was stated available. NOT TICKED** |
+| H41-5 | the row-action pills ~36px with a mouse, and only those | D-41-07's accepted trade | approved (blanket) — **no height was reported** |
+| H41-6a | eight tabs at 768px without scrolling the strip | RESP-04 | approved (blanket) — **no count reported; not ticked** |
+| H41-6b | the door is the bottom bar at every width, both addresses | **D-41-21 · T-41-47** | approved (blanket) — **no complaint reported; neither address reported opened** |
 
 ---
 
@@ -378,15 +484,21 @@ production is an act requiring an authorisation no agent in this phase held. On
 `/admin/members` it would additionally have meant rendering real people's personal
 data to look at a card.
 
-### Scheduled is not verified
+### Approved is not verified
 
-Until every `Result` above is filled in, **criterion 4a (RESP-01), criterion 5
-(RESP-03), the runtime half of criterion 2 (DS-08), the judgement half of criterion 3
-(DS-09) and assumption A2 are `human_needed`** — and no VERIFICATION document, no
+This section was written before the close and said that until every `Result` was filled
+in, **criterion 4a (RESP-01), criterion 5 (RESP-03), the runtime half of criterion 2
+(DS-08), the judgement half of criterion 3 (DS-09) and assumption A2** were
+`human_needed`. **The owner's approval closed the phase gate. It did not fill any of
+them in**, so all five stand exactly where they stood, and no VERIFICATION document, no
 green gate, no `npm run verify` table and no build may say otherwise.
 
 Sixteen gates prove the **files**. They prove nothing about a thumb on a link, a
-panel on a phone, or a door in a dark room.
+panel on a phone, or a door in a dark room. **A one-word approval proves that the owner
+authorised the phase to close** — which is a decision the owner is entitled to make, and
+the honest name for it is a decision, not a measurement.
 
-The phase is *executed* when the code ships. It is *complete* when this document is
-filled in.
+**The phase is *executed* and the gate is *closed*. The six observations remain owed**,
+and they are owed to the end-of-v1.5 sitting that already holds Phase 40's H1–H3 and
+Phase 39's door pass. If that sitting ever happens, the `Result` lines above are where
+the evidence goes, and each of them currently says, in full, what it does not contain.
