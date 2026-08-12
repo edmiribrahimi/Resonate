@@ -207,7 +207,17 @@ function LoginForm() {
             accepted is forwarded — an absent one is not turned into an
             explicit `?next=/dashboard`, which would invent a destination
             nobody asked for. */}
-        <Link href={rawNext !== null && !nextRefused ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className={`text-accent hover:text-accent-hover ${FOCUS_RING}`}>
+        {/* A finger target, not a line of text. §6.1's floor applies to every
+            interactive element with a label, and this one is the only route
+            from the front door to registration — the target a first-time
+            visitor reaches for, on a phone, before the product has any other
+            way of keeping them. It was a bare inline link with no height of
+            its own; it gains the minimum and the alignment that keeps it
+            inside the sentence instead of dropping the sentence around it.
+
+            The destination is untouched: the ternary above is plan 37-12's
+            refusal, and a class string does not get to reason about it. */}
+        <Link href={rawNext !== null && !nextRefused ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className={`inline-flex min-h-11 items-center align-middle text-accent hover:text-accent-hover ${FOCUS_RING}`}>
           Sign Up
         </Link>
       </p>

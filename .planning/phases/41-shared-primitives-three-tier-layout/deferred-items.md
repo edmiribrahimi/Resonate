@@ -401,3 +401,75 @@ the scope creep 41-07 refused for the same reason on `Toast.tsx`.
    instances are now recorded — a width, a padding and a radius — and the only
    reason the first was ever found is that somebody finally rendered the
    component.
+
+---
+
+## DEF-41-06 — the shared comment stripper has a fifth shape, and it is a block comment inside a JSX tag
+
+**Found:** plan 41-11, Task 1 — the first run of G5's element scanner.
+**Owner:** whichever plan next edits a gate's stripper. `41-12` aggregates the
+gates and is the natural place to decide it once.
+**Status:** open for the siblings. **G5 already carries the fix**, in its own
+copy, because it could not run without it.
+
+### The finding
+
+Every gate in this phase blanks comments with the same line-shape heuristic: a
+line counts as a comment when it starts with two slashes, a star, or a block
+opener. DEF-41-02 added a fourth shape for the JSX form. **There is a fifth**,
+and it is not the JSX form:
+
+A **block comment written inside a JSX opening tag**, indented, whose body lines
+start with ordinary prose rather than with a star. The heuristic blanks its
+first line and its last line — both start with a recognised opener — and leaves
+every sentence between them **live**.
+
+### The evidence — measured on a file in a converted closure
+
+`src/components/media/MediaGrid.tsx:67-72` is exactly that shape: six lines of
+prose explaining why a thumbnail's accessible name must not describe the item.
+One of those sentences contains an apostrophe.
+
+For a per-line matcher that is harmless — a sentence is not a colour utility.
+For **any gate that reads across lines** it is not: G5's scanner walks from an
+opening tag to its closing bracket, honouring quotes, and the apostrophe opened
+a string that never closed. Measured before the fix:
+
+```
+src/components/media/MediaGrid.tsx:65 UNTERMINATED <button
+```
+
+The scanner ran to end of file. Every element after that point in that file was
+**unscanned, silently** — a narrowing in the one direction that produces a
+green. `/gallery` reaches that file, so this was inside a declared surface.
+
+### What G5 does about it, and what it does not
+
+Its stripper carries a **block-comment state**: an opener without its closer on
+the same line blanks lines until the closer arrives. That is still a line shape
+and not a parse — WR-07 records that a real comment parser written in this
+repository was unsound. Its error direction is stated in the file: it can blank
+*more* than it should if a line's first characters are a block opener inside a
+string, which is why the opener must be at the start of the trimmed line.
+
+**And an unterminated opening tag is now a refusal**, exit 2, not a shrug: a
+scanner that has lost sync has not measured what comes after it.
+
+Verified across the whole tree, not only the file that motivated it: with the
+fifth shape in place, **180 files under `src/` parse with zero unterminated
+tags.**
+
+### What the phase should decide
+
+1. Whether the four sibling gates take the same fifth shape. **None of them is
+   known to be wrong today** — they all match per line, so a live prose line is
+   simply not a hit — so this is prevention, not a bug report, and it should be
+   priced as such.
+2. Whether the strippers stop being four copies of one heuristic. Five shapes is
+   the point at which *"each gate declares its own"* starts costing more than it
+   buys — and this phase has now discovered two of the five shapes the hard way,
+   in two different plans.
+3. Whether a gate that reads **across lines** is a different class from one that
+   reads **within a line**, and should say so at the top of its file. G5 is the
+   phase's first cross-line reader, and it is the only one for which this
+   finding was fatal rather than cosmetic.
