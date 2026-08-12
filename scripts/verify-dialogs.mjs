@@ -347,6 +347,70 @@ export const DECLARED_EXCEPTIONS = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * WHAT CHECK B NEVER OPENS — derived ONCE, and the refusal is keyed on all of it
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The files check B skips before `shellShapes()` reads a line of them.
+ *
+ * **WHY THIS CONSTANT EXISTS AT ALL (WR-01).** Check B's loop skipped three
+ * categories — the primitive, the declared exemption, and the fenced paths — and
+ * the refusal below covered only the third. `stale` is computed as *on disk and
+ * not in `measuredShells`*, so putting either of the other two on `REMAINING`
+ * produced the identical wrong report the fence refusal was written to prevent:
+ * the run printed `→ converted; remove this entry` about a file it had never
+ * opened, and `REMAINING = measuredShells.size` fell by one. Measured on this
+ * tree before the fix, with `FULL_BLEED_VIEWER` added to `REMAINING`: exit **0**,
+ * `! B 1 REMAINING entr(y/ies) are STALE`, `REMAINING = 14` against fifteen
+ * declared entries — while `Lightbox.tsx:82` still carries a native shell.
+ *
+ * **A debt counter that falls because the gate stopped looking** is the
+ * proxy-goes-quiet defect this phase has already paid for twice (DEF-41-03, then
+ * WR-02 inside the fence this phase had just added). It reappeared here because
+ * two lists said what is skipped and only one of them was refused on.
+ *
+ * So there is now ONE list. Check B's loop reads it, and the refusal is keyed on
+ * it: the set that decides what is skipped IS the set the refusal is keyed on,
+ * and the two cannot drift apart by an edit to either.
+ *
+ * **THE THREE REASONS STAY APART, and that is the substance rather than the
+ * wording.** This gate keeps `fenced by path, never measured` and `exempt from
+ * this check … measured, declared correct` on separate printed lines because
+ * they are different facts about a file:
+ *
+ *   - **the primitive itself** — check B measures copies OF it; the one
+ *     implementation cannot be one of its own copies.
+ *   - **exempt** — a file somebody **measured and declared correct** as what it
+ *     is. A statement about its markup, made by a person.
+ *   - **fenced** — a file **nobody measured at all**. A scope boundary, saying
+ *     nothing whatever about the markup behind it.
+ *
+ * Collapsing them into one sentence in the refusal would re-lose the distinction
+ * the docblock below keeps deliberately, so the refusal prints the reason **per
+ * entry**.
+ *
+ * Shape: `path -> { kind, reason }`.
+ */
+export const NEVER_MEASURED_BY_B = new Map([
+  [
+    PRIMITIVE_FILE,
+    {
+      kind: 'the primitive itself',
+      reason:
+        'check B measures copies OF it — the one implementation cannot be one of its own copies',
+    },
+  ],
+  [
+    FULL_BLEED_VIEWER,
+    {
+      kind: 'exempt — measured and declared correct',
+      reason:
+        'a full-bleed media viewer, right to be a native shell and wrong to be a sheet; declared by §8.3 before this gate existed. A file that will never convert is not a debt',
+    },
+  ],
+]);
+
+/* ────────────────────────────────────────────────────────────────────────────
  * THE PHASE 42 FENCE — a scope boundary, and deliberately NOT a third exception
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -498,10 +562,35 @@ function globToRegExp(glob) {
  * and it leaves a reader believing something true. Narrowing the sentence would
  * have cost the same zero and bought a weaker gate.
  *
+ * **AND THE NEGATIVE FORM IS PART OF THE FAMILY (WR-05), FOR THE THIRD TIME AND
+ * THE SAME REASON.** The printed sentence promised *"a copy is seen at any rung
+ * WRITTEN OUT in the class string"* and named exactly two exclusions — a rung
+ * reached through a variable, and a class string built by concatenation. A
+ * negative rung is written out and is neither, and the left boundary blocked it:
+ * `LEFT_BOUNDARY` refuses a preceding hyphen, so the minus sign of the negative
+ * form stopped the match. An overlay written at a negative rung was invisible to
+ * check B while the report asserted the opposite.
+ *
+ * The direction was again chosen on a measurement: the tree holds **zero**
+ * negative rungs, in the strict form and in the loose one, so the delta of the
+ * widening is a measured zero — the same argument, remeasured on this tree on
+ * this day rather than inherited from the round that made it.
+ *
+ * **THE OPTIONAL MINUS DOES NOT REOPEN WHAT THE LEFT BOUNDARY DEFENDS**, which is
+ * the failure mode that matters more (§0 rule 3: a gate that reddens correct code
+ * gets switched off). The boundary is evaluated BEFORE the optional sign, so a
+ * rung token preceded by a word character or by a hyphen still cannot match at
+ * either entry point: on an ordinary hyphenated utility the engine's attempt at
+ * the hyphen fails the look-behind on the word character before it, and its
+ * attempt at the rung prefix fails the look-behind on the hyphen. A custom
+ * property fails too, since a doubled hyphen leaves no way to reach the prefix.
+ * Measured on this tree: no correct file is reddened, and the delta is 0 lines.
+ *
  * What the family covers now: one or more digits, the `auto` keyword, or an
- * arbitrary bracketed value with no whitespace inside. What it still cannot see
- * is unchanged and stated in the header and in the printed sentence: a rung
- * reached through a **variable**, and a class string built by **concatenation**.
+ * arbitrary bracketed value with no whitespace inside — each optionally negated.
+ * What it still cannot see is unchanged and stated in the header and in the
+ * printed sentence: a rung reached through a **variable**, and a class string
+ * built by **concatenation**.
  *
  * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
  * `line.includes` on the positioning utility also fired on the same letters at
@@ -527,13 +616,15 @@ const RIGHT_BOUNDARY = '(?![' + '\\w-])';
 const POSITION_UTILITY = 'fix' + 'ed';
 const INSET_UTILITY = 'inset-' + '0';
 const RUNG_PREFIX = 'z' + '-';
+/** The optional leading minus — the negative form of the rung (WR-05). */
+const RUNG_SIGN = '-' + '?';
 /** One-or-more digits, the auto keyword, or an arbitrary bracketed value. */
 const RUNG_FAMILY = '(?:' + '\\d+' + '|' + 'auto' + '|' + '\\[[^\\]\\s]+\\]' + ')';
 
 export const OVERLAY_PARTS = [
   new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
   new RegExp(LEFT_BOUNDARY + INSET_UTILITY + RIGHT_BOUNDARY),
-  new RegExp(LEFT_BOUNDARY + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + RUNG_SIGN + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
 ];
 
 /** The one place the three parts are asked about a line. */
@@ -544,17 +635,23 @@ function isOverlayLine(line) {
 /**
  * `OVERLAY_PARTS` checked against its own description, on EVERY run.
  *
- * Five fixed strings, assembled the same way the regexes are. If any of them
+ * Six fixed strings, assembled the same way the regexes are. If any of them
  * disagrees with its expectation the run **refuses** — a matcher that does not
  * behave as its own docblock describes has not measured this tree, it has
  * measured something else, and a verdict from it would be a number nobody can
  * read.
  *
- * The last two arrived with WR-03's widening, and they are the two shapes the
- * report already claimed to see while the regex did not: a single-digit rung and
- * the keyword one.
+ * Three of them arrived with a widening, and each is a shape the report already
+ * claimed to see while the regex did not: a single-digit rung and the keyword one
+ * (WR-03), then the negative form (WR-05).
  *
- * **THESE PROBES ARE NOT THE EVIDENCE.** They are five strings written by the
+ * **The first probe carries the OPPOSITE direction**, and it stays: the
+ * positioning utility at the end of a longer word must NOT match. That is the
+ * boundary guard, and the guard is what the optional minus sign was checked
+ * against — a widening whose cost is a red on a correct file is not a widening
+ * worth having.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are six strings written by the
  * same hand as the regexes above, so they share its blind spots and cannot
  * discover a file nobody thought of. The evidence is the live run on the real
  * tree — and this exact defect is why the distinction is written here rather
@@ -593,6 +690,20 @@ const MATCHER_PROBES = [
     verdict: 'match',
     label: 'the three parts at the auto KEYWORD rung (WR-03)',
     line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a NEGATIVE rung (WR-05)',
+    line:
+      '<div className="' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      '-' +
+      RUNG_PREFIX +
+      '10">',
     expected: true,
   },
 ];
@@ -831,29 +942,49 @@ function fenceMatch(relPath) {
 }
 
 /*
- * REMAINING ∩ the fence — raised HERE, and the position is the fix (WR-02).
+ * REMAINING ∩ everything check B never opens — raised HERE, and the position is
+ * half the fix (WR-02); the OTHER half is the width of the set (WR-01).
  *
- * This sits above check B's loop on purpose: that loop is where a fenced file is
- * skipped before `shellShapes` reads it, and every number this gate prints is
+ * This sits above check B's loop on purpose: that loop is where a skipped file is
+ * passed over before `shellShapes` reads it, and every number this gate prints is
  * derived from what the loop collected. A run whose two lists contradict each
  * other must not reach a tick, a STALE notice, or a count — see the paragraph in
- * `PHASE_42_EXEMPT_PATHS` above for why this is a refusal rather than a warning.
+ * `PHASE_42_EXEMPT_PATHS` below for why this is a refusal rather than a warning.
+ *
+ * The categories are tested in the SAME ORDER the loop skips them, so the reason
+ * a reader is given is the reason the loop would actually have acted on.
  */
-const fencedRemaining = [...declaredPaths.keys()].filter((path) => fenceMatch(path) !== null);
+function neverOpenedReason(path) {
+  const skip = NEVER_MEASURED_BY_B.get(path);
+  if (skip) return `${skip.kind}\n         ${skip.reason}`;
+  const behind = fenceMatch(path);
+  if (behind) {
+    return (
+      'fenced — behind that glob, never opened; a SCOPE BOUNDARY that says nothing\n' +
+      '         whatever about this file\'s markup\n' +
+      `         behind: ${behind.glob}`
+    );
+  }
+  return null;
+}
 
-if (fencedRemaining.length > 0) {
+const unmeasurableRemaining = [...declaredPaths.keys()]
+  .map((path) => ({ path, why: neverOpenedReason(path) }))
+  .filter(({ why }) => why !== null);
+
+if (unmeasurableRemaining.length > 0) {
   refuse(
-    `${fencedRemaining.length} REMAINING entr(y/ies) fall behind the Phase 42 fence:\n\n       ` +
-      fencedRemaining
-        .map((path) => `${path}\n         behind: ${fenceMatch(path).glob}`)
-        .join('\n       ') +
-      '\n\n       A fenced path is UNMEASURED. This gate cannot tell a debt somebody PAID from one\n' +
-      '       it simply never opened — and left alone it reports the second as the first, marking\n' +
-      '       the entry STALE ("converted; remove this entry") and dropping REMAINING by one. A\n' +
-      '       debt counter that falls because the gate stopped looking is worse than no counter.\n\n' +
-      '       Either the entry leaves REMAINING as a declared decision, or the fence does. Both\n' +
-      '       are decisions, and which one is a question for a person, not for this script.\n' +
-      '       Nothing was measured.'
+    `${unmeasurableRemaining.length} REMAINING entr(y/ies) name a file check B NEVER OPENS:\n\n       ` +
+      unmeasurableRemaining.map(({ path, why }) => `${path}\n         ${why}`).join('\n\n       ') +
+      '\n\n       Check B opens none of these, so any verdict it printed about one would be a\n' +
+      '       verdict on a file it never read. This gate cannot tell a debt somebody PAID from\n' +
+      '       one it simply never opened — and left alone it reports the second as the first,\n' +
+      '       marking the entry STALE ("converted; remove this entry") and dropping REMAINING\n' +
+      '       by one. A debt counter that falls because the gate stopped looking is worse than\n' +
+      '       no counter.\n\n' +
+      '       Either the entry leaves REMAINING as a declared decision, or the fence or the\n' +
+      '       exemption does. Both are decisions, and which one is a question for a person, not\n' +
+      '       for this script. Nothing was measured.'
   );
 }
 
@@ -965,15 +1096,28 @@ if (grownSignature.length > 0) {
 
 const measuredShells = new Map();
 const fenced = new Map();
+/** Of the walked files, the ones `NEVER_MEASURED_BY_B` skipped — counted, not assumed. */
+const neverOpened = new Map();
+let opened = 0;
 
+/*
+ * The two `continue`s below are driven by `NEVER_MEASURED_BY_B` and by the
+ * fence, in that order — the same two lists, in the same order, that the
+ * refusal above is keyed on. Hard-coded comparisons here were how the loop and
+ * the refusal drifted apart in the first place (WR-01).
+ */
 for (const file of files) {
-  if (file === PRIMITIVE_FILE) continue;
-  if (file === FULL_BLEED_VIEWER) continue;
+  const skip = NEVER_MEASURED_BY_B.get(file);
+  if (skip) {
+    neverOpened.set(file, skip);
+    continue;
+  }
   const behind = fenceMatch(file);
   if (behind) {
     fenced.set(file, behind.glob);
     continue;
   }
+  opened += 1;
   const found = shellShapes(file);
   if (found.length > 0) measuredShells.set(file, found);
 }
@@ -1000,12 +1144,14 @@ for (const row of probeRows) {
 }
 console.log(
   '\n      The rung is matched as a FAMILY: one or more digits, the auto keyword, or an\n' +
-    '      arbitrary bracketed value. So a copy is seen at any rung WRITTEN OUT in the class\n' +
-    '      string — and only there. TWO SHAPES IT STILL DOES NOT SEE: a rung reached through\n' +
-    '      a VARIABLE, and a class string assembled by CONCATENATION; this script reads\n' +
-    '      lines, it does not build them. Both tokens are boundary-guarded, so a longer word\n' +
-    '      cannot redden a correct file. These strings are the matcher describing itself —\n' +
-    '      they are NOT the evidence. The live run below is.\n'
+    '      arbitrary bracketed value — each of them optionally NEGATIVE. So a copy is seen at\n' +
+    '      any rung WRITTEN OUT in the class string — and only there. TWO SHAPES IT STILL DOES\n' +
+    '      NOT SEE: a rung reached through a VARIABLE, and a class string assembled by\n' +
+    '      CONCATENATION; this script reads lines, it does not build them. Both tokens are\n' +
+    '      boundary-guarded, and the guard is evaluated BEFORE the optional minus sign, so\n' +
+    '      neither a longer word nor an ordinary hyphenated utility can redden a correct file.\n' +
+    '      These strings are the matcher describing itself — they are NOT the evidence. The\n' +
+    '      live run below is.\n'
 );
 
 console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
@@ -1020,11 +1166,23 @@ console.log(
 );
 
 console.log('  check B — dialog shells declared OUTSIDE the primitive:\n');
-console.log(`      REMAINING entries declared     : ${REMAINING.length}`);
-console.log(`      files measured carrying a shell : ${measuredShells.size}`);
-console.log(`      exempt from this check          : 1  (${FULL_BLEED_VIEWER}) — measured, declared correct`);
-console.log(`      fenced by path, never measured  : ${fenced.size}  (Phase 42 — see the fence above)`);
-console.log(`\n      REMAINING = ${measuredShells.size}\n`);
+console.log(`      files walked under src/         : ${files.length}`);
+console.log(`      never opened by check B         : ${neverOpened.size + fenced.size}`);
+for (const [path, skip] of NEVER_MEASURED_BY_B) {
+  console.log(`         ${neverOpened.has(path) ? 1 : 0}  ${skip.kind}`);
+  console.log(`            ${path}`);
+}
+console.log(`         ${fenced.size}  fenced by path, NEVER MEASURED — a scope boundary, not an approval`);
+console.log('            (Phase 42 — see the fence above)');
+console.log(`      files check B opened            : ${opened}`);
+console.log(`      of those, carrying a shell      : ${measuredShells.size}`);
+console.log(`      REMAINING entries declared      : ${REMAINING.length}`);
+console.log(
+  '\n      walked = never opened + opened, and opened = carrying a shell + clean. The two\n' +
+    '      never-opened rows are DIFFERENT FACTS: exempt means a person measured the file and\n' +
+    '      declared it correct; fenced means nobody measured it at all.\n'
+);
+console.log(`      REMAINING = ${measuredShells.size}\n`);
 
 if (missing.length > 0) {
   failures.push('B');
