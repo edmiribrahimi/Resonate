@@ -1167,6 +1167,53 @@ if (!focusRootLiteralMatch) {
 
 const focusRoot = focusRootLiteralMatch[1];
 
+/**
+ * The branch that RENDERS, asserted against the constant that was READ.
+ *
+ * **Why this is not redundant with the three assertions below, in one sentence:
+ * this round's verifier appended CR-01 to the render site, left `FOCUS_ROOT`
+ * byte-identical, and the reintroduced line was counted TOWARD assertion 3
+ * ("the shell still reads both properties elsewhere") — so the defect fed the
+ * check meant to catch it, and check E printed its tick over 248px of leading
+ * padding against 24px trailing (GAP-CR-02).** A reader who trims this as
+ * duplicated work reopens exactly that.
+ *
+ * The pattern is built from `FOCUS_ROOT_IDENTIFIER` — the same marker the
+ * declaration scan above uses — so the two cannot drift apart: rename the
+ * constant and both stop finding it, rather than one of them silently
+ * continuing to pass.
+ *
+ * `shellLines` is comment-stripped, so a documented example of the correct form
+ * cannot satisfy this.
+ */
+const FOCUS_BRANCH_RE = new RegExp(`className=\\{${FOCUS_ROOT_IDENTIFIER}\\}`);
+const focusBranchLines = [];
+shellLines.forEach((line, i) => {
+  if (FOCUS_BRANCH_RE.test(line)) focusBranchLines.push(i + 1);
+});
+
+if (focusBranchLines.length !== 1) {
+  const where =
+    focusBranchLines.length > 0 ? `at line(s) ${focusBranchLines.join(', ')}` : 'nowhere in the file';
+  refuse(
+    `${SHELL_FILE} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of exactly one className\n` +
+      `       ${focusBranchLines.length} time(s) — found ${where}. Exactly one is required.\n\n` +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Check E1 asserts against the CONSTANT:\n' +
+      '       that its literal reserves neither navigation property, that it still declares a\n' +
+      '       height and a centring. A focus root assembled from that constant PLUS anything\n' +
+      '       else is a form this gate did not read, and asserting a property is absent from a\n' +
+      '       fragment is how a check goes green on a defect it never saw. It is not a\n' +
+      '       hypothetical: the constant was left untouched and the clearance was appended\n' +
+      '       here, and every assertion below passed — one of them BECAUSE of the addition.\n\n' +
+      '       WHAT A LEGITIMATE CHANGE DOES. If the focus branch one day needs a second class,\n' +
+      '       the named candidate is the `nav` prop D-41-04 deliberately did not write, arriving\n' +
+      '       with its first consumer. Then this assertion WIDENS — in the same commit, carrying\n' +
+      '       the measurement that justified it, and reading whatever new form the branch takes.\n' +
+      '       It does not get deleted, and the constant does not get inlined to make it quiet.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
 /* ── E2's read: the layouts each surface climbs through ───────────────────── */
 
 const layoutClosureCache = new Map();
