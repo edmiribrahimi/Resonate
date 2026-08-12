@@ -562,10 +562,35 @@ function globToRegExp(glob) {
  * and it leaves a reader believing something true. Narrowing the sentence would
  * have cost the same zero and bought a weaker gate.
  *
+ * **AND THE NEGATIVE FORM IS PART OF THE FAMILY (WR-05), FOR THE THIRD TIME AND
+ * THE SAME REASON.** The printed sentence promised *"a copy is seen at any rung
+ * WRITTEN OUT in the class string"* and named exactly two exclusions — a rung
+ * reached through a variable, and a class string built by concatenation. A
+ * negative rung is written out and is neither, and the left boundary blocked it:
+ * `LEFT_BOUNDARY` refuses a preceding hyphen, so the minus sign of the negative
+ * form stopped the match. An overlay written at a negative rung was invisible to
+ * check B while the report asserted the opposite.
+ *
+ * The direction was again chosen on a measurement: the tree holds **zero**
+ * negative rungs, in the strict form and in the loose one, so the delta of the
+ * widening is a measured zero — the same argument, remeasured on this tree on
+ * this day rather than inherited from the round that made it.
+ *
+ * **THE OPTIONAL MINUS DOES NOT REOPEN WHAT THE LEFT BOUNDARY DEFENDS**, which is
+ * the failure mode that matters more (§0 rule 3: a gate that reddens correct code
+ * gets switched off). The boundary is evaluated BEFORE the optional sign, so a
+ * rung token preceded by a word character or by a hyphen still cannot match at
+ * either entry point: on an ordinary hyphenated utility the engine's attempt at
+ * the hyphen fails the look-behind on the word character before it, and its
+ * attempt at the rung prefix fails the look-behind on the hyphen. A custom
+ * property fails too, since a doubled hyphen leaves no way to reach the prefix.
+ * Measured on this tree: no correct file is reddened, and the delta is 0 lines.
+ *
  * What the family covers now: one or more digits, the `auto` keyword, or an
- * arbitrary bracketed value with no whitespace inside. What it still cannot see
- * is unchanged and stated in the header and in the printed sentence: a rung
- * reached through a **variable**, and a class string built by **concatenation**.
+ * arbitrary bracketed value with no whitespace inside — each optionally negated.
+ * What it still cannot see is unchanged and stated in the header and in the
+ * printed sentence: a rung reached through a **variable**, and a class string
+ * built by **concatenation**.
  *
  * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
  * `line.includes` on the positioning utility also fired on the same letters at
@@ -591,13 +616,15 @@ const RIGHT_BOUNDARY = '(?![' + '\\w-])';
 const POSITION_UTILITY = 'fix' + 'ed';
 const INSET_UTILITY = 'inset-' + '0';
 const RUNG_PREFIX = 'z' + '-';
+/** The optional leading minus — the negative form of the rung (WR-05). */
+const RUNG_SIGN = '-' + '?';
 /** One-or-more digits, the auto keyword, or an arbitrary bracketed value. */
 const RUNG_FAMILY = '(?:' + '\\d+' + '|' + 'auto' + '|' + '\\[[^\\]\\s]+\\]' + ')';
 
 export const OVERLAY_PARTS = [
   new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
   new RegExp(LEFT_BOUNDARY + INSET_UTILITY + RIGHT_BOUNDARY),
-  new RegExp(LEFT_BOUNDARY + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + RUNG_SIGN + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
 ];
 
 /** The one place the three parts are asked about a line. */
@@ -608,17 +635,23 @@ function isOverlayLine(line) {
 /**
  * `OVERLAY_PARTS` checked against its own description, on EVERY run.
  *
- * Five fixed strings, assembled the same way the regexes are. If any of them
+ * Six fixed strings, assembled the same way the regexes are. If any of them
  * disagrees with its expectation the run **refuses** — a matcher that does not
  * behave as its own docblock describes has not measured this tree, it has
  * measured something else, and a verdict from it would be a number nobody can
  * read.
  *
- * The last two arrived with WR-03's widening, and they are the two shapes the
- * report already claimed to see while the regex did not: a single-digit rung and
- * the keyword one.
+ * Three of them arrived with a widening, and each is a shape the report already
+ * claimed to see while the regex did not: a single-digit rung and the keyword one
+ * (WR-03), then the negative form (WR-05).
  *
- * **THESE PROBES ARE NOT THE EVIDENCE.** They are five strings written by the
+ * **The first probe carries the OPPOSITE direction**, and it stays: the
+ * positioning utility at the end of a longer word must NOT match. That is the
+ * boundary guard, and the guard is what the optional minus sign was checked
+ * against — a widening whose cost is a red on a correct file is not a widening
+ * worth having.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are six strings written by the
  * same hand as the regexes above, so they share its blind spots and cannot
  * discover a file nobody thought of. The evidence is the live run on the real
  * tree — and this exact defect is why the distinction is written here rather
@@ -657,6 +690,20 @@ const MATCHER_PROBES = [
     verdict: 'match',
     label: 'the three parts at the auto KEYWORD rung (WR-03)',
     line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a NEGATIVE rung (WR-05)',
+    line:
+      '<div className="' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      '-' +
+      RUNG_PREFIX +
+      '10">',
     expected: true,
   },
 ];
@@ -1097,12 +1144,14 @@ for (const row of probeRows) {
 }
 console.log(
   '\n      The rung is matched as a FAMILY: one or more digits, the auto keyword, or an\n' +
-    '      arbitrary bracketed value. So a copy is seen at any rung WRITTEN OUT in the class\n' +
-    '      string — and only there. TWO SHAPES IT STILL DOES NOT SEE: a rung reached through\n' +
-    '      a VARIABLE, and a class string assembled by CONCATENATION; this script reads\n' +
-    '      lines, it does not build them. Both tokens are boundary-guarded, so a longer word\n' +
-    '      cannot redden a correct file. These strings are the matcher describing itself —\n' +
-    '      they are NOT the evidence. The live run below is.\n'
+    '      arbitrary bracketed value — each of them optionally NEGATIVE. So a copy is seen at\n' +
+    '      any rung WRITTEN OUT in the class string — and only there. TWO SHAPES IT STILL DOES\n' +
+    '      NOT SEE: a rung reached through a VARIABLE, and a class string assembled by\n' +
+    '      CONCATENATION; this script reads lines, it does not build them. Both tokens are\n' +
+    '      boundary-guarded, and the guard is evaluated BEFORE the optional minus sign, so\n' +
+    '      neither a longer word nor an ordinary hyphenated utility can redden a correct file.\n' +
+    '      These strings are the matcher describing itself — they are NOT the evidence. The\n' +
+    '      live run below is.\n'
 );
 
 console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
