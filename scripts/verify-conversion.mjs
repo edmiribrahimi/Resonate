@@ -254,11 +254,50 @@
  * prints the FATAL and the failure. A refusal means a measurement did not
  * happen; it does not unsay one that did, and reporting such a run as REFUSED
  * made the aggregate print "Nothing failed" over a run in which something had
- * (41-GAP-REVIEW.md WR-01). Every check-E refusal now precedes every tick, so
- * `failures` is empty at all of them; the one refusal that structurally cannot
- * be hoisted — the ORPHANS_DECLARED duplicate, which needs check C's data — is
- * exactly the case this rule covers, and is what keeps the rule reachable
- * rather than decorative.
+ * (41-GAP-REVIEW.md WR-01).
+ *
+ * **Whether that rule can fire on THIS tree is a measurement, not an assertion,
+ * and the measurement says no.** Taken 2026-08-13, with the command that takes
+ * each number, because these move whenever a line is added above them:
+ *
+ *   - `grep -nE '^[[:space:]]*failures\.push\(' | head -1` → the first is at
+ *     line **1674**. Nothing below it has run when an earlier refusal is
+ *     raised, so `failures` is empty at every call site above it. (Both greps
+ *     are anchored to the line start on purpose: the unanchored forms match
+ *     this paragraph, and a number measured by a command that reads the
+ *     sentence claiming it is not a measurement.)
+ *   - `grep -nE '^[[:space:]]*refuse\(' ` → **24** call sites. **23** are above
+ *     1674. Exactly **one** is below it, at line **1789**: the
+ *     `ORPHANS_DECLARED` duplicate check, the only refusal that structurally
+ *     cannot be hoisted, because it needs check C's data.
+ *   - that one compares `orphanDeclared.size` with `ORPHANS_DECLARED.length`,
+ *     and `ORPHANS_DECLARED` (line **1015**) is `[]` — so the comparison is 0
+ *     against 0, **false on every run, for any tree**, until the list is
+ *     populated.
+ *
+ * Therefore **no refusal in this file can fire after a failure on this tree
+ * today**. The rule above is written for the shape that becomes reachable when
+ * 41.1 or 41.2 first puts an entry on that list; it is not a description of
+ * what this tree does, and it was carrying the opposite claim until
+ * 41-GAP-REVIEW-2.md WR-02 did the arithmetic.
+ *
+ * The mechanism is not taken on trust either — it is re-proven by a run, not by
+ * a citation. Exercised by mutation in plan 41-20 (trigger B) and again in plan
+ * 41-25, both times with a duplicated pair on `ORPHANS_DECLARED` plus a
+ * script-only lever reddening check A: FATAL first, then
+ * `CONVERSION_FAIL — 1 check(s) had ALREADY failed`, exit **1**.
+ * `41-25-SUMMARY.md` carries the run verbatim.
+ *
+ * **What the next reader should do, and what they must not.** Re-measure the
+ * three numbers before believing this paragraph; if the list is still `[]`,
+ * this paragraph is still the truth and the sentence above it is still not.
+ * Do **not** manufacture a reachable refusal so the rule reads as live:
+ * building a gate to support a claim is the same defect family as the claim
+ * itself. And do **not** hoist the `ORPHANS_DECLARED` refusal to tidy the count
+ * — 41-20 deliberately left it where it is (41-20-SUMMARY.md, decision 1), and
+ * hoisting *every* refusal above *every* failure would leave `refuse()`'s
+ * exit-1 branch with no site at all: a rule nothing can trip, which is the
+ * defect on the other side of this same coin.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -287,8 +326,11 @@ const failures = [];
  * **But a refusal must not absorb a failure that already did.** Every refusal
  * in this file is now raised before any verdict prints, so `failures` is empty
  * at almost every call site. Almost: the `ORPHANS_DECLARED` duplicate refusal
- * is raised between check B's verdict and check C's, and that is the reachable
- * case. Measured before this change (41-GAP-REVIEW.md WR-01, reproduced with
+ * is the one call site that sits BELOW the first `failures.push` — but its
+ * condition is `0 !== 0` while that list is empty, so it is a site the rule
+ * has, not a case the rule reaches. **The exit-code header carries the
+ * measurement; read it before repeating that this branch is live.**
+ * Measured before this change (41-GAP-REVIEW.md WR-01, reproduced with
  * two script-only levers): `✗ A` printed, then the FATAL, then **exit 2** — so
  * `verify-all.mjs` reported the run REFUSED and printed "Nothing failed" over a
  * run in which check A had failed on three files.
