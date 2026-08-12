@@ -1,0 +1,448 @@
+#!/usr/bin/env node
+/**
+ * verify-all.mjs — one command that runs every gate which can run without a
+ * server, and says which failed, which refused, and which it did not run.
+ *
+ * WHAT IT ASSERTS, in one sentence: **every `verify:*` entry this repository
+ * declares is accounted for by this run — executed and given a verdict, or named
+ * as not run with the reason it was not run.**
+ *
+ * ── WHY THIS FILE EXISTS ────────────────────────────────────────────────────
+ *
+ * `40-REVIEW.md` WR-09: there is no CI in this repository. No
+ * `.github/workflows/`, no pre-commit hook that runs a gate, no `test` script.
+ * Every gate runs only when a person types its name, and Phase 41 took the count
+ * from ten to sixteen. **Six more gates nobody runs is not verification, it is
+ * six more files.** D-41-18 calls the aggregate the cheapest high-value item in
+ * the phase; this is it.
+ *
+ * ── THE TWO DESIGN DECISIONS, STATED RATHER THAN ABSORBED ───────────────────
+ *
+ * Nothing in this repository ran another script before this file. The FORM of a
+ * gate is copied from the sixteen that exist; the COMPOSITION has no precedent,
+ * so its two choices are written down here instead of being discovered later by
+ * somebody reading the code.
+ *
+ *   1. **A REFUSAL IS NOT A FAILURE.** `verify-tokens.mjs` sets the convention
+ *      every gate in this phase follows — `0 = passed · 1 = failed · 2 =
+ *      refused`, and *"a refusal is not a failure: it means the measurement did
+ *      not happen."* An aggregate that collapsed the two would turn "nothing was
+ *      measured" into either "something is broken" or, far worse, into a tick.
+ *      **A green that measured nothing is the exact defect this phase's gates
+ *      were written to prevent**, and an aggregate is the last place it could be
+ *      reintroduced — one exit code is about to stand for fifteen measurements.
+ *      So exit 2 travels up unchanged, and the word printed is REFUSED.
+ *
+ *   2. **A GATE THAT NEEDS A RUNNING SERVER IS NOT IN THE DEFAULT RUN, AND IS
+ *      PRINTED ANYWAY.** `verify-organizer-redirects.sh` says in its own header
+ *      that it needs `npm run dev` and therefore cannot be part of `npm run
+ *      build`. Running it here would make this command fail on a laptop with no
+ *      server for a reason that has nothing to do with the tree. Omitting it
+ *      SILENTLY would be worse: a green that quietly covers fifteen of sixteen
+ *      gates is a green that lied by omission. It is in `NEEDS_SERVER`, and
+ *      `NEEDS_SERVER` is printed on every single run, pass or fail.
+ *
+ * ── WHAT A GREEN HERE DOES NOT MEAN ─────────────────────────────────────────
+ *
+ *   - **IT IS NOT A TEST RUN.** There is no test runner for the product
+ *     (`CLAUDE.md` Guardrail 1): no `test` script, no `*.test.*`, no `*.spec.*`.
+ *     Nothing below executes a line of product code. Every gate here reads files
+ *     and asserts structure. A green says the tree agrees with contracts written
+ *     in documents — never that a screen works.
+ *   - **`verify:persona` COVERS THE PERSONA, NOT THE PRODUCT**, and coherence,
+ *     not correctness. Its green says the instruction files agree with each
+ *     other. It says nothing about `src/`.
+ *   - **IT SAYS NOTHING A PERSON HAS NOT LOOKED AT.** Phase 41 ends with six
+ *     observations no script can make — H41-1 … H41-6, written down in
+ *     `.planning/phases/41-shared-primitives-three-tier-layout/41-RELEASE-PASS.md`
+ *     before the sitting that makes them. H41-4 in particular is the ONLY thing
+ *     in this repository that proves anything is 44px: every touch-target gate
+ *     reads a class string, and a class string is not a box.
+ *   - **IT DOES NOT RUN THE BUILD.** `npm run build` is this repository's
+ *     typecheck (`CLAUDE.md` Guardrail 2) and it is a separate command on
+ *     purpose: it is slow, and a gate table that took four minutes to print
+ *     would be a gate table nobody runs. Run both.
+ *
+ * ── ONE LIMIT, MEASURED AND NOT PAPERED OVER ────────────────────────────────
+ *
+ * **This runner cannot always tell a gate that FAILED from a gate that CRASHED**,
+ * because Node exits 1 for an uncaught exception exactly as a red check does.
+ * The mitigation is cheap and printed: **stderr is shown for every gate that did
+ * not pass**. A red check in this repository writes its verdict to stdout and
+ * leaves stderr empty; a crash writes a stack trace to stderr. If you see a
+ * stack trace, you are looking at a broken gate and not at a broken tree — and
+ * a broken gate is the one failure that must never be read as a finding.
+ *
+ * ── HOW THE LIST IS BUILT, AND WHY IT IS NOT A SECOND COPY ──────────────────
+ *
+ * The names below are declared. **The command each one runs is NOT** — it is
+ * read out of `package.json` at run time, the same way
+ * `verify-organizer-redirects.sh` parses the redirect table out of its source
+ * module instead of re-typing it. A second copy of a command is drift waiting to
+ * happen, and it drifts silently: the copy keeps passing while the real entry
+ * moves.
+ *
+ * The reconciliation that follows is the whole point of the file. Every
+ * `verify:*` entry in `package.json` must appear in exactly one of the two lists
+ * below, and every list entry must appear in `package.json`. **A gate somebody
+ * registers and forgets to declare here would otherwise be a gate this run never
+ * measured while printing a tick** — T-41-44, and the reason a mismatch is a
+ * REFUSAL: this run did not measure everything the repository declares, which is
+ * not the same statement as "something is wrong with the tree".
+ */
+
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * OFFLINE — the gates that run with no server and no credentials
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Shape: `[npmScriptName, optional, note]`.
+ *
+ * `optional` is `true` for exactly one entry and the reason is written in it.
+ * An optional gate that is not on disk is reported ABSENT with its note and does
+ * NOT fail the run; **any other missing gate is a failure**, because a gate that
+ * vanished from the tree while its name stayed in `package.json` is the shape of
+ * a check that went quiet while the thing it tracked is still there.
+ *
+ * `note` is printed for a gate that refuses, is absent, or is unknown — the
+ * three states where a reader needs to know something the exit code does not
+ * say.
+ */
+const OFFLINE = [
+  [
+    "verify:persona", false,
+    "covers the PERSONA, not the product, and coherence, not correctness",
+  ],
+  [
+    "verify:capabilities", false,
+    "needs Supabase credentials in .env.local; without them it REFUSES (exit 2) " +
+      "and nothing about the capability model was measured. That is its honest " +
+      "state on any machine that does not hold them, and it is not a pass",
+  ],
+  ["verify:no-header-identity", false, ""],
+  ["verify:no-credit-account", false, ""],
+  ["verify:media-strip", false, ""],
+  ["verify:routes", false, ""],
+  ["verify:tokens", false, ""],
+  ["verify:semantic-separation", false, ""],
+  ["verify:sunset-gradient", false, ""],
+  ["verify:conversion", false, "Phase 41 — G1 and G4"],
+  ["verify:dialogs", false, "Phase 41 — G2"],
+  ["verify:tables", false, "Phase 41 — G3"],
+  ["verify:breakpoints", false, "Phase 41 — G6"],
+  ["verify:no-viewport-read", false, "Phase 41 — G7"],
+  [
+    "verify:touch-targets", true,
+    "Phase 41 — G5. Plan 41-11 was permitted to end by deleting this gate " +
+      "rather than shipping one that reddened on correct code. It did not: the " +
+      "gate exists and went red on two real elements on its first run. If it is " +
+      "ever absent, that decision is recorded in 41-11-SUMMARY.md and this line " +
+      "is how the aggregate says fifteen gates ran and not sixteen",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * NEEDS_SERVER — declared, never run here, printed on every run
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Shape: `[npmScriptName, reason]`. */
+const NEEDS_SERVER = [
+  [
+    "verify:redirects",
+    "needs a running dev server; its own header says it cannot be part of the build",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Reading package.json, which is the single source of every command
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** A refusal is not a failure: it means the measurement did not happen. */
+function refuse(message) {
+  console.log(`\n  FATAL: ${message}\n`);
+  process.exit(2);
+}
+
+const pkgPath = join(ROOT, "package.json");
+if (!existsSync(pkgPath)) {
+  refuse("package.json is not on disk. Nothing was measured.");
+}
+
+let pkg;
+try {
+  pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+} catch (error) {
+  refuse(
+    `package.json could not be parsed: ${error.message}\n` +
+      "       The list of gates is read from it, so nothing was measured."
+  );
+}
+
+const scripts = pkg.scripts ?? {};
+const declared = Object.keys(scripts).filter((name) => name.startsWith("verify:"));
+
+console.log("");
+console.log("verify-all — every gate that runs without a server, and what was not run");
+console.log("");
+console.log(
+  "  A refusal is not a failure: it means the measurement did not happen.\n" +
+    "  0 = passed  ·  1 = FAILED  ·  anything else = REFUSED, and nothing was measured.\n"
+);
+
+/* ── the reconciliation, before anything runs ─────────────────────────────── */
+
+const offlineNames = OFFLINE.map(([name]) => name);
+const serverNames = NEEDS_SERVER.map(([name]) => name);
+const knownNames = new Set([...offlineNames, ...serverNames]);
+
+const undeclaredHere = declared.filter((name) => !knownNames.has(name));
+const missingFromPkg = [...knownNames].filter((name) => !declared.includes(name));
+
+if (undeclaredHere.length > 0) {
+  refuse(
+    `package.json declares ${undeclaredHere.length} verify:* entr(y/ies) this runner does not\n` +
+      `       know about: ${undeclaredHere.join(", ")}\n` +
+      "       They were NOT run. A table that omits a registered gate while printing a tick is\n" +
+      "       a green that lied by omission — add each name to OFFLINE or to NEEDS_SERVER."
+  );
+}
+
+const missingRequired = missingFromPkg.filter((name) => {
+  const entry = OFFLINE.find(([n]) => n === name);
+  return !entry || entry[1] !== true;
+});
+if (missingRequired.length > 0) {
+  refuse(
+    `this runner declares ${missingRequired.length} gate(s) that package.json does not:\n` +
+      `       ${missingRequired.join(", ")}\n` +
+      "       Either the entry was removed and this list moves with it in the same commit, or\n" +
+      "       a gate lost its registration and now runs nowhere. Nothing was measured."
+  );
+}
+
+/* ── resolve each offline gate to a file on disk ──────────────────────────── */
+
+/** `node scripts/x.mjs` → `scripts/x.mjs`. Any other shape is a refusal. */
+function scriptPathOf(name, command) {
+  const parts = command.trim().split(/\s+/);
+  if (parts.length !== 2 || parts[0] !== "node") {
+    refuse(
+      `${name} runs "${command}", which is not the "node <path>" shape this runner can\n` +
+        "       resolve to a file. A gate whose command it cannot read is a gate it cannot\n" +
+        "       check the existence of, and guessing is how a runner reports on the wrong file."
+    );
+  }
+  return parts[1];
+}
+
+const plan = [];
+for (const [name, optional, note] of OFFLINE) {
+  if (!declared.includes(name)) {
+    // Only reachable for an optional gate — the required case refused above.
+    plan.push({ name, state: "unregistered", optional, note });
+    continue;
+  }
+  const rel = scriptPathOf(name, scripts[name]);
+  if (!existsSync(join(ROOT, rel))) {
+    plan.push({ name, state: "absent", optional, note, rel });
+    continue;
+  }
+  plan.push({ name, state: "runnable", optional, note, rel });
+}
+
+const absentRequired = plan.filter((p) => p.state !== "runnable" && !p.optional);
+const absentOptional = plan.filter((p) => p.state !== "runnable" && p.optional);
+const runnable = plan.filter((p) => p.state === "runnable");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Run every gate to completion — a run that stops early tells you about one
+ * gate and hides fourteen
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+console.log(`  Running ${runnable.length} gate(s). Every one runs to completion.\n`);
+
+const results = [];
+for (const item of runnable) {
+  const started = Date.now();
+  const run = spawnSync(process.execPath, [item.rel], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+
+  let code;
+  let verdict;
+  if (run.error) {
+    code = "spawn";
+    verdict = "REFUSED";
+  } else if (run.status === null) {
+    code = `signal ${run.signal}`;
+    verdict = "REFUSED";
+  } else if (run.status === 0) {
+    code = 0;
+    verdict = "passed";
+  } else if (run.status === 1) {
+    code = 1;
+    verdict = "FAILED";
+  } else {
+    code = run.status;
+    verdict = "REFUSED";
+  }
+
+  results.push({
+    ...item,
+    code,
+    verdict,
+    seconds,
+    stdout: run.stdout ?? "",
+    stderr: run.stderr ?? "",
+    spawnError: run.error ? run.error.message : "",
+  });
+
+  const mark = verdict === "passed" ? "·" : verdict === "FAILED" ? "✗" : "?";
+  console.log(`    ${mark} ${item.name.padEnd(28)} ${String(code).padStart(8)}  ${verdict}  ${seconds}s`);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * The report
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const failed = results.filter((r) => r.verdict === "FAILED");
+const refused = results.filter((r) => r.verdict === "REFUSED");
+const passed = results.filter((r) => r.verdict === "passed");
+
+console.log("");
+console.log("  ── the table ──────────────────────────────────────────────────────────");
+console.log("");
+console.log(`    ${"gate".padEnd(28)} ${"exit".padStart(8)}  verdict`);
+for (const r of results) {
+  console.log(`    ${r.name.padEnd(28)} ${String(r.code).padStart(8)}  ${r.verdict}`);
+}
+
+/* ── what did not run, printed on every run, pass or fail ─────────────────── */
+
+console.log("");
+console.log("  ── NOT RUN, and why ───────────────────────────────────────────────────");
+console.log("");
+for (const [name, reason] of NEEDS_SERVER) {
+  console.log(`    ${name} — not run: ${reason}`);
+}
+for (const p of absentOptional) {
+  const how =
+    p.state === "unregistered"
+      ? "not present; package.json carries no entry for it"
+      : `not present on disk at ${p.rel}`;
+  console.log(`    ${p.name} — ${how}`);
+  if (p.note) console.log(`        ${p.note}`);
+}
+for (const p of absentRequired) {
+  console.log(`    ${p.name} — MISSING, and this is a failure, not an omission.`);
+  if (p.rel) console.log(`        package.json points at ${p.rel}, which is not on disk.`);
+}
+
+/* ── the count, reconciled out loud ───────────────────────────────────────── */
+
+const accounted = results.length + NEEDS_SERVER.length + absentOptional.length + absentRequired.length;
+console.log("");
+console.log("  ── the count ──────────────────────────────────────────────────────────");
+console.log("");
+console.log(`    package.json declares          ${String(declared.length).padStart(3)}  verify:* entr(y/ies)`);
+console.log(`    run here                       ${String(results.length).padStart(3)}`);
+console.log(`      of which passed              ${String(passed.length).padStart(3)}`);
+console.log(`      of which FAILED              ${String(failed.length).padStart(3)}`);
+console.log(`      of which REFUSED             ${String(refused.length).padStart(3)}  — nothing was measured by these`);
+console.log(`    needs a server, not run        ${String(NEEDS_SERVER.length).padStart(3)}`);
+console.log(`    declared absent                ${String(absentOptional.length).padStart(3)}`);
+console.log(`    MISSING                        ${String(absentRequired.length).padStart(3)}`);
+console.log(`                                   ───`);
+console.log(`    accounted for                  ${String(accounted).padStart(3)}`);
+
+if (accounted !== declared.length + absentOptional.filter((p) => p.state === "unregistered").length) {
+  console.log(
+    "\n    The count does not reconcile against package.json. Every gate above ran, but\n" +
+      "    this run cannot claim to account for every registered entry."
+  );
+}
+
+/* ── the output of anything that did not pass ─────────────────────────────── */
+
+const notPassed = [...failed, ...refused];
+if (notPassed.length > 0) {
+  console.log("");
+  console.log("  ── what they said ─────────────────────────────────────────────────────");
+  for (const r of notPassed) {
+    console.log("");
+    console.log(`  ═══ ${r.name} — ${r.verdict} (exit ${r.code}) ═══`);
+    if (r.note) console.log(`      note: ${r.note}`);
+    if (r.spawnError) console.log(`      could not start: ${r.spawnError}`);
+    const out = r.stdout.trimEnd();
+    if (out) console.log(out);
+    const err = r.stderr.trimEnd();
+    if (err) {
+      console.log("");
+      console.log("      ── stderr ──");
+      console.log(err);
+      // Only fires on what a Node stack trace actually looks like. A note that
+      // printed on every refusal — most of which write a plain FATAL line to
+      // stderr and are working exactly as designed — would train a reader to
+      // skip the one case where it matters.
+      if (/^\s+at .+:\d+:\d+\)?$/m.test(err)) {
+        console.log(
+          "\n      THAT IS A STACK TRACE: the GATE is broken, not the tree. Node exits 1 for an\n" +
+            "      uncaught exception exactly as a red check does, and this runner cannot tell\n" +
+            "      them apart from the exit code alone. Fix the gate before reading its verdict\n" +
+            "      as a finding."
+        );
+      }
+    }
+  }
+}
+
+/* ── verdict ──────────────────────────────────────────────────────────────── */
+
+console.log("");
+if (failed.length > 0 || absentRequired.length > 0) {
+  const names = [...failed.map((r) => r.name), ...absentRequired.map((p) => `${p.name} (missing)`)];
+  console.log(`  VERIFY_FAIL — ${names.length}: ${names.join(", ")}`);
+  if (refused.length > 0) {
+    console.log(
+      `  AND ${refused.length} refused — ${refused.map((r) => r.name).join(", ")}. ` +
+        "Those measured NOTHING;\n  they are not part of the failure and they are not part of any pass either."
+    );
+  }
+  console.log("");
+  process.exit(1);
+}
+
+if (refused.length > 0) {
+  console.log(
+    `  VERIFY_REFUSED — ${refused.length} gate(s) could not measure: ${refused
+      .map((r) => r.name)
+      .join(", ")}`
+  );
+  console.log(
+    "\n  Nothing failed. But a refusal is not a pass: those gates measured NOTHING, and this\n" +
+      "  command exits 2 rather than 0 so that no script and no reader can mistake the two.\n" +
+      "  Read each one's note above — a refusal usually names something the environment is\n" +
+      "  missing, not something the tree got wrong.\n"
+  );
+  process.exit(2);
+}
+
+console.log(`  VERIFY_OK — ${passed.length} gate(s) passed.`);
+console.log(
+  "\n  Read the NOT RUN block before treating this as verification: this command runs no\n" +
+    "  product code, executes no test — there is no test runner in this repository — and\n" +
+    "  proves nothing anybody looked at. `npm run build` is the typecheck and is separate.\n" +
+    "  The six observations no script can make are in\n" +
+    "  .planning/phases/41-shared-primitives-three-tier-layout/41-RELEASE-PASS.md, and H41-4\n" +
+    "  is the only thing in this repository that proves anything is 44px.\n"
+);
+process.exit(0);

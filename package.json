@@ -17,6 +17,13 @@
     "verify:tokens": "node scripts/verify-tokens.mjs",
     "verify:semantic-separation": "node scripts/verify-semantic-separation.mjs",
     "verify:sunset-gradient": "node scripts/verify-sunset-gradient.mjs",
+    "verify:conversion": "node scripts/verify-conversion.mjs",
+    "verify:dialogs": "node scripts/verify-dialogs.mjs",
+    "verify:tables": "node scripts/verify-tables.mjs",
+    "verify:breakpoints": "node scripts/verify-breakpoints.mjs",
+    "verify:no-viewport-read": "node scripts/verify-no-viewport-read.mjs",
+    "verify:touch-targets": "node scripts/verify-touch-targets.mjs",
+    "verify": "node scripts/verify-all.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
