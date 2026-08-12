@@ -86,12 +86,13 @@
  *
  * The reconciliation at the end of the run is the whole point of the file, and
  * **what it compares is verdicts, not lengths.** It takes every `verify:*` name
- * `package.json` registers and checks it against the set of names this run said
- * something about: a name that got a verdict (it ran), a name in `NEEDS_SERVER`
- * (declared, not run here, and printed with its reason), a name reported absent
- * but optional, or a name reported MISSING. A registered name in none of those
- * got **no verdict** from this run, and that is a REFUSAL — exit 2 — not a line
- * printed under a tick.
+ * this repository can be said to have — every one `package.json` registers, and
+ * every one this runner declares — and checks it against the set of names this
+ * run said something about: a name that got a verdict (it ran), a name in
+ * `NEEDS_SERVER` (declared, not run here, and printed with its reason), a name
+ * reported absent but optional, or a name reported MISSING. A name in none of
+ * those got **no verdict** from this run, and that is a REFUSAL — exit 2 — not a
+ * line printed under a tick.
  *
  * **The two refusals before the run do not already guarantee this.** They compare
  * LISTS, and they compare them before anything executes: `declared` against
@@ -100,17 +101,57 @@
  * and still come out of the run with nothing said about it. Nothing earlier
  * would notice.
  *
- * **The concrete situation that produces one**, because a gate whose triggering
- * situation nobody wrote down is a gate nobody can trust: somebody adds a fourth
- * `state` to the `plan` partition below — a `skipped`, a `deferred`, a `stale` —
- * and the three filters that follow it (`runnable`, `absentOptional`,
- * `absentRequired`) do not catch it, because each of them tests for something
- * specific. That entry is then dropped between planning and reporting: it never
- * runs, never appears in the NOT RUN block, and the table prints a full set of
- * ticks for a gate nobody measured. **That is T-41-44 arriving from inside this
- * file instead of from `package.json`** — and the reason a mismatch is a REFUSAL
- * rather than a failure: this run did not measure everything the repository
- * declares, which is not the same statement as "something is wrong with the tree".
+ * ── THE PARTITION IS DELIBERATELY NON-EXHAUSTIVE. THAT IS THE MECHANISM. ────
+ *
+ * **`ABSENT_STATES` is load-bearing and is not a tidy-up.** The plan loop below
+ * labels each entry `runnable`, `absent` or `unregistered`. `runnable` is matched
+ * by equality; the other two are matched by **membership of `ABSENT_STATES`**.
+ * Three named states, three buckets, and **a fourth state matches none of them**.
+ *
+ * That is the point. The concrete situation this file guards — because a gate
+ * whose triggering situation nobody wrote down is a gate nobody can trust — is
+ * that somebody adds a fourth `state` to the plan loop below: a `skipped`, a
+ * `deferred`, a `stale`. That entry now falls through all three filters, is
+ * dropped between planning and reporting, and the reconciliation catches it and
+ * refuses. **That is T-41-44 arriving from inside this file instead of from
+ * `package.json`** — and the reason a mismatch is a REFUSAL rather than a
+ * failure: this run did not measure everything the repository declares, which is
+ * not the same statement as "something is wrong with the tree".
+ *
+ * **The edit that would silently undo all of it** is keying either `absent*`
+ * filter back on the complement of `runnable` — testing that `state` is not
+ * `"runnable"` instead of testing membership. It reads like a simplification and
+ * it is the regression: with a complement, the three filters become exhaustive
+ * over every possible value of `state`, every fourth state lands deterministically
+ * in one of the `absent*` buckets, `unaccounted` can never be non-empty again, and
+ * the paragraph above becomes false while still sitting here claiming to be true.
+ * That is not a hypothesis: it is what shipped between 41-14 and 41-22, and
+ * 41-GAP-REVIEW.md CR-01 is the review that measured it.
+ *
+ * **So when a genuine fourth state is introduced**, do one of exactly two things,
+ * and never the third:
+ *   - add it to `ABSENT_STATES` **in the same commit**, with the reason it is a
+ *     non-runnable state written beside it; or
+ *   - accept the refusal — the run really did not account for that entry, and
+ *     exit 2 is the honest report of that;
+ *   - **never** widen a filter to a complement to make the refusal go away.
+ *
+ * ── WHY THE DOMAIN IS THE UNION AND NOT `declared` ALONE ────────────────────
+ *
+ * The comparison runs over `declared ∪ knownNames`, not over `declared`. Keying
+ * it on `declared` alone leaves the same hole one step to the side: a novel state
+ * introduced on an entry `package.json` does NOT register is invisible to a check
+ * that only looks at registered names.
+ *
+ * Widening a refusal's domain risks refusing on a correct tree, which D-41-19
+ * calls the worse failure mode, so the reasoning is written out rather than
+ * assumed: `undeclaredHere` guarantees `declared ⊆ knownNames`, so the union IS
+ * `knownNames`; and `missingRequired` guarantees every name in
+ * `knownNames \ declared` is an OPTIONAL `OFFLINE` entry, which the plan loop
+ * labels `unregistered` — a member of `ABSENT_STATES` — so it reaches
+ * `absentOptional` and is accounted for. Every `NEEDS_SERVER` name is accounted
+ * for by construction. Nothing on a correct tree becomes unaccounted, and the run
+ * that returns the recorded baseline is the proof of it, not this paragraph.
  */
 
 import { spawnSync } from "node:child_process";
@@ -279,8 +320,29 @@ for (const [name, optional, note] of OFFLINE) {
   plan.push({ name, state: "runnable", optional, note, rel });
 }
 
-const absentRequired = plan.filter((p) => p.state !== "runnable" && !p.optional);
-const absentOptional = plan.filter((p) => p.state !== "runnable" && p.optional);
+/**
+ * The non-runnable states the plan loop above actually produces, listed by name.
+ *
+ * **Read the file header before changing this.** Matching membership of this set
+ * rather than the complement of `"runnable"` is what makes the three filters
+ * below NON-EXHAUSTIVE, and non-exhaustive is what gives the reconciliation at
+ * the end of this run something it can catch. A fourth `state` matches none of
+ * the three, is dropped between planning and reporting, and refuses there.
+ *
+ *   - `absent`       — registered in `package.json`, but the file it points at is
+ *                      not on disk.
+ *   - `unregistered` — this runner declares it, `package.json` does not. Only
+ *                      reachable for an optional gate; the required case refused
+ *                      before the loop ran.
+ *
+ * A new non-runnable state belongs here, with its reason, in the commit that
+ * introduces it. Widening either filter back to a complement restores the
+ * identity CR-01 found and is the one edit this file asks you not to make.
+ */
+const ABSENT_STATES = new Set(["absent", "unregistered"]);
+
+const absentRequired = plan.filter((p) => ABSENT_STATES.has(p.state) && !p.optional);
+const absentOptional = plan.filter((p) => ABSENT_STATES.has(p.state) && p.optional);
 const runnable = plan.filter((p) => p.state === "runnable");
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -399,13 +461,22 @@ const measuredOrExplained = new Set([
   ...absentRequired.map((p) => p.name),
 ]);
 
-const unaccounted = declared.filter((name) => !measuredOrExplained.has(name));
+// The domain is every name this repository can be said to have — registered in
+// `package.json`, or declared by this runner — and not `declared` alone. A novel
+// `state` introduced on an entry `package.json` does not register would be
+// invisible to a check keyed on `declared`, which is the same hole one step to
+// the side. The file header carries the reasoning for why this cannot refuse on
+// a correct tree, and the baseline run is what proves it.
+const reconciliationDomain = new Set([...declared, ...knownNames]);
+
+const unaccounted = [...reconciliationDomain].filter((name) => !measuredOrExplained.has(name));
 if (unaccounted.length > 0) {
   refuse(
-    `${unaccounted.length} registered verify:* entr(y/ies) got no verdict from this run:\n` +
+    `${unaccounted.length} declared verify:* entr(y/ies) got no verdict from this run:\n` +
       `       ${unaccounted.join(", ")}\n` +
       "       They did not run, and they were not named as not run either. This run CANNOT\n" +
-      "       claim to account for every registered gate — nothing about those was measured."
+      "       claim to account for every gate this repository declares — in package.json or\n" +
+      "       in this runner's own lists. Nothing about those was measured."
   );
 }
 
