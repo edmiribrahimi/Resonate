@@ -261,17 +261,17 @@
  * each number, because these move whenever a line is added above them:
  *
  *   - `grep -nE '^[[:space:]]*failures\.push\(' | head -1` → the first is at
- *     line **1697**. Nothing below it has run when an earlier refusal is
+ *     line **1724**. Nothing below it has run when an earlier refusal is
  *     raised, so `failures` is empty at every call site above it. (Both greps
  *     are anchored to the line start on purpose: the unanchored forms match
  *     this paragraph, and a number measured by a command that reads the
  *     sentence claiming it is not a measurement.)
  *   - `grep -nE '^[[:space:]]*refuse\(' ` → **24** call sites. **23** are above
- *     1697. Exactly **one** is below it, at line **1812**: the
+ *     1724. Exactly **one** is below it, at line **1839**: the
  *     `ORPHANS_DECLARED` duplicate check, the only refusal that structurally
  *     cannot be hoisted, because it needs check C's data.
  *   - that one compares `orphanDeclared.size` with `ORPHANS_DECLARED.length`,
- *     and `ORPHANS_DECLARED` (line **1015**) is `[]` — so the comparison is 0
+ *     and `ORPHANS_DECLARED` (line **1042**) is `[]` — so the comparison is 0
  *     against 0, **false on every run, for any tree**, until the list is
  *     populated.
  *
@@ -911,6 +911,32 @@ const WRAPPER_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
  * **`.mdx` is deliberately absent.** Next resolves route files at it whenever
  * `pageExtensions` says so, which makes it plausibly a module. It refuses, and
  * that is the safe direction.
+ *
+ * **The trailing tilde, added in round 3, and the analysis that justifies it.**
+ * `.orig`, `.rej` and `.bak` covered the merge-conflict and manual-copy
+ * artefacts; the tilde form — what emacs, gedit and some JetBrains
+ * configurations write beside the file being edited — was not on the list, so
+ * one stray `layout.tsx~` took the conversion gate to exit 2 and, through
+ * `verify-all.mjs`, reported all sixteen gates as `VERIFY_REFUSED`
+ * (41-GAP-REVIEW-2.md WR-04; reproduced on the shipped gate before this edit —
+ * exit 2, FATAL naming the file). It is WR-06's exact shape, reintroduced by an
+ * incomplete allow-list.
+ *
+ * Every entry here makes the gate SKIP something, and every skip is somewhere a
+ * real wrapper could hide, so the false-positive analysis belongs beside the
+ * entry rather than in a document: **what this entry matches is any path under
+ * the route root whose basename starts with a climbed wrapper prefix AND ends
+ * with a tilde. Next resolves no route file at a name ending in `~` under any
+ * `pageExtensions`, so no legitimate wrapper can be skipped by it.** The entry
+ * is not a dotted extension, and needs no new mechanism: the enumeration below
+ * matches with `rel.endsWith(ext)`, which already handles a bare suffix.
+ *
+ * **`layout.json` is NOT added, and that is a decision rather than an
+ * oversight.** The review names it as refusing for the same reason, and it
+ * does; it sits outside the six items this round was scoped to, so it is
+ * recorded in `41-25-SUMMARY.md` as named and deliberately not taken — the same
+ * treatment 41-20 gave the `MIN_HEIGHT_RE` weakness it left open. Until it is
+ * taken, `src/app/layout.json` refuses, which is the safe direction.
  */
 const NON_ROUTE_WRAPPER_EXTENSIONS = [
   ['.css', 'a stylesheet — layout.module.css is the standard Next name for a layout CSS module'],
@@ -921,6 +947,7 @@ const NON_ROUTE_WRAPPER_EXTENSIONS = [
   ['.orig', 'what a merge conflict leaves behind'],
   ['.rej', 'what a rejected patch hunk leaves behind'],
   ['.bak', 'a backup copy'],
+  ['~', 'an editor backup — the trailing-tilde form of .bak; Next resolves no route file at it'],
 ];
 
 /**
