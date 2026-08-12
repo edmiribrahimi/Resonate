@@ -307,10 +307,38 @@ const OTHER_BREAKPOINTS = ['sm', 'lg', 'xl', '2xl'];
 
 /**
  * The utilities that hide or show a branch. A breakpoint prefix on one of these
- * IS the switch; a breakpoint prefix on a grid, a flex direction or a type size
- * is a different question and belongs to `verify-breakpoints.mjs`.
+ * IS the switch; a breakpoint prefix on a grid's column count, a flex direction
+ * or a type size is a different question and belongs to
+ * `verify-breakpoints.mjs`.
+ *
+ * ── The boundary guard, and the defect it closes ─────────────────────────────
+ *
+ * **Measured while converting the first surface onto the primitive:** a plain
+ * substring test reads a column-count utility as a branch switch, because the
+ * switch's own name is a prefix of it — the utility that sets a grid's columns
+ * at 1024px BEGINS with the utility that shows a grid at 1024px. The member
+ * table's detail region carries exactly that shape, and the gate would have
+ * reddened on a correct file the first time anything imported the primitive.
+ *
+ * `verify-media-strip.mjs:51-62` records what happens next: a gate that goes
+ * red on a correct file gets switched off, and a gate that is switched off
+ * guards nothing. So the utility must be the WHOLE utility — a trailing
+ * character that could continue it disqualifies the match — and the leading
+ * guard keeps the breakpoint from being read out of the middle of a longer
+ * word.
+ *
+ * This is `verify-conversion.mjs`'s own recorded lesson arriving a second time:
+ * a matcher borrowed in shape from a sibling carries the sibling's PURPOSE, and
+ * the boundary a token hunt needs is not the boundary a switch hunt needs.
  */
 const BRANCH_UTILITIES = ['hidden', 'block', 'flex', 'grid', 'table'];
+
+function branchUtilityPattern(breakpoint, utility) {
+  const escaped = breakpoint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(
+    `(?<![a-zA-Z0-9-])${escaped}:${utility}(?![a-zA-Z0-9-])`
+  );
+}
 
 /**
  * The rejected mechanism, in the two spellings it could arrive in: a `display`
@@ -364,9 +392,8 @@ export const REVIEW_GRID_REASON =
  * switch at 640px and two at 1024px, which is the disagreement §8.8 exists to
  * end.
  *
- * **The member table is on this list at the moment the gate is written, and
- * leaves it one commit later.** That is not a formality: the plan that wrote
- * this gate converts it in its next task, and the alternative — writing the gate
+ * **The member table opened this list and left it one commit later**, taking it
+ * from six to five. That is not a formality: the alternative — writing the gate
  * after the conversion so it could open at five — would have been a gate that
  * never went red on the file it was written for. A debt entered and then paid in
  * the same plan is the only kind whose payment anybody can check.
@@ -394,11 +421,12 @@ export const REVIEW_GRID_REASON =
  * Shape: `[path, reason, target]`.
  */
 export const REMAINING = [
-  [
-    'src/components/admin/MemberTable.tsx',
-    'a dual-render switching at 1024px, and the densest table in the product — seven columns, selection boxes, expandable rows and row actions. PAID BY THE NEXT COMMIT of the plan that wrote this gate: this line exists so that the gate went red on it once, with the file in the state the gate was written to describe',
-    'the /admin/members surface — plan 41-10 task 2',
-  ],
+  // PAID by plan 41-10 task 2 — `src/components/admin/MemberTable.tsx` opened
+  // this list and holds no table now. Its line left in the same commit that
+  // converted it, which is what a paid debt looks like: the number went 6 → 5
+  // and nothing else moved. The gate printed it as STALE first — *"converted;
+  // remove this entry"* — which is the notice that made this deletion a
+  // response rather than a tidy.
   [
     'src/components/analytics/MemberSpendTable.tsx',
     'a dual-render switching at 640px — seven columns, both branches, and the file §8.8 names as the best specimen of the technique this primitive consolidates',
@@ -617,9 +645,13 @@ for (const file of [PRIMITIVE_FILE, ...importers]) {
   liveLines(file).forEach((line, i) => {
     for (const bp of OTHER_BREAKPOINTS) {
       for (const utility of BRANCH_UTILITIES) {
-        const needle = `${bp}:${utility}`;
-        if (!line.includes(needle)) continue;
-        wrongBreakpoint.push({ file, line: i + 1, needle, source: line.trim() });
+        if (!branchUtilityPattern(bp, utility).test(line)) continue;
+        wrongBreakpoint.push({
+          file,
+          line: i + 1,
+          needle: `${bp}:${utility}`,
+          source: line.trim(),
+        });
       }
     }
   });

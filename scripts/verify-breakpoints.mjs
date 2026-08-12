@@ -312,11 +312,12 @@ export const REMAINING = [
     2,
     'a table dual-render — consolidated onto md by DataTable, §8.8',
   ],
-  [
-    'src/components/admin/MemberTable.tsx',
-    4,
-    'the filter grid (§2.2) and the toolbar row (§2.1) — the dual-render itself is already lg: and moves to md: with DataTable, §8.8',
-  ],
+  // PAID by plan 41-10 — `src/components/admin/MemberTable.tsx` held four of
+  // this list's uses and holds none now. Its dual-render moved onto the
+  // DataTable primitive at md (§8.8), its filter row took the same boundary
+  // (§2.1), and the detail region's three-column grid did too. The gate printed
+  // it as STALE first, which is what made this deletion a response rather than
+  // a tidy.
   [
     'src/components/admin/TransactionList.tsx',
     3,

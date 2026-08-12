@@ -18,6 +18,15 @@ import type {
 import MemberActionNotice, {
   type MemberNoticeKind,
 } from "@/app/(admin)/admin/members/MemberActionNotice";
+import {
+  Button,
+  FOCUS_RING,
+  type ButtonVariant,
+} from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge, Chip } from "@/components/ui/Chip";
+import { DataTable, type DataColumn } from "@/components/ui/DataTable";
+import { Input, Select } from "@/components/ui/Input";
 
 /**
  * The notice copy plan 43-09 left here, marked provisional and assigned to this
@@ -143,53 +152,80 @@ function RoleBadge({ role }: { role: UserRole }) {
   // expire with the night (`ACCESS-MODEL-DECISIONS.md` §§2-3). The legend
   // beside the counts says this in words, because a border style is not an
   // explanation.
-  const colors: Record<UserRole, string> = {
-    master: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    organizer: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    staff: "bg-zinc-500/10 text-zinc-300 border-zinc-400/60 border-dashed",
-    member: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-  };
-
+  //
+  // ── PHASE 41: the four hues left, the dash stayed, and that is a decision ──
+  //
+  // The badge was four palette colours — two of them a vocabulary of power for
+  // `master` and `organizer`, one neutral for `member`, one neutral-and-dashed
+  // for `staff`. There is **no role hue in the token layer** and there is no
+  // place for one: the four semantics name STATES (critical, caution,
+  // information, completion), `--accent` is reserved by §5.1 for four things a
+  // role badge is not among, and inventing a fifth family would be deciding in
+  // CSS what a role means.
+  //
+  // So all four take the shared badge on the same neutral tone, and **the word
+  // is the channel** — which is what it always was, since the badge's content
+  // is the role's own name. `staff` keeps the dashed border, because that is
+  // the one differentiator the argument above reached for and it carries no
+  // hue at all.
+  //
+  // **The cost, stated rather than glossed:** `master` and `organizer` no
+  // longer differ from `member` by anything but their word. Scanning a list for
+  // an organizer is now reading rather than glancing. The alternative was to
+  // keep two hues that no token declares, on the surface that decides who is in
+  // this community — and a colour nobody decided is a colour that means
+  // whatever the next reader assumes.
   return (
-    <span
-      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors[role]}`}
-    >
-      {role}
-    </span>
+    <Badge className={role === "staff" ? "border-dashed" : ""}>{role}</Badge>
   );
 }
 
+/**
+ * The subject's status. **A different axis from the role, and it stays one.**
+ *
+ * ── Why `pending` is the only one that is emphasised ─────────────────────────
+ *
+ * The three statuses used to be green, yellow and red — a grading of a person,
+ * drawn in the colours of success, caution and failure, on the surface where
+ * somebody is admitted to or refused from this community.
+ * `community-membership.md` is explicit that **a refusal is a communication,
+ * not a hue**, and 41-08 already resolved the same question the same way on the
+ * format catalogue: which of two states is the better one is not a thing a
+ * colour may decide.
+ *
+ * So `approved` and `rejected` take the **same** tone. Deliberately: with one
+ * tone between them, no hue ranks one person above another, and the words —
+ * which are the badge's whole content — say which is which.
+ *
+ * `pending` takes the emphasis tone, and that is **not a third grade**. The
+ * emphasis tone means *look here first* and nothing else (`Chip.tsx` fixes that
+ * meaning and refuses to give it an outcome). A pending request is the one row
+ * on this surface that is **work outstanding for the operator**; marking it is
+ * marking a task, not judging a person. The Pending tab already counts them for
+ * the same reason.
+ */
 function StatusBadge({ status }: { status: UserStatus }) {
-  const colors: Record<UserStatus, string> = {
-    approved: "bg-green-500/20 text-green-400 border-green-500/30",
-    pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    rejected: "bg-red-500/20 text-red-400 border-red-500/30",
-  };
-
   return (
-    <span
-      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors[status]}`}
-    >
-      {status}
-    </span>
+    <Badge tone={status === "pending" ? "emphasis" : "neutral"}>{status}</Badge>
   );
 }
 
-// Chevron icon for expandable rows
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      className={`h-4 w-4 text-muted transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  );
+/**
+ * The joined date, in one place instead of two.
+ *
+ * It used to be an inline expression written out twice — once in the table
+ * branch and once in the card branch — which is the drift D-41-17 names: two
+ * copies of one rendering, in two trees that must agree. The primitive drives
+ * both branches from one column declaration now, so this has one home.
+ */
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatJoined(iso: string) {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /**
@@ -211,25 +247,82 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
  * owns the notice, because a refusal needs more room than a cell and because
  * that message is redacted in a production build.
  */
+type ActionVariant =
+  | "promote"
+  | "demote"
+  | "deactivate"
+  | "reactivate"
+  | "approve"
+  | "reject";
+
+/**
+ * The six act names, onto the button ladder's four rungs.
+ *
+ * ── Why five of the six are the same rung, and one is not ────────────────────
+ *
+ * The six used to be six palette colours: blue to promote, zinc to demote,
+ * green to approve and to readmit, red to reject and to withdraw. Five of those
+ * six hues were **grading an act on a person** — approving somebody drawn in
+ * the colour of success and refusing them in the colour of failure — which is
+ * the same thing `StatusBadge` above stopped doing, applied to the verb instead
+ * of the noun.
+ *
+ * The file's own reasoning is what decides this. It says, at length, that
+ * approving and rejecting a pending request are **the two ORDINARY daily acts**
+ * and that friction on them is pure cost — which is why neither gets a
+ * confirmation. Two acts that are deliberately symmetric in ceremony must not
+ * be asymmetric in colour: a red Reject beside a green Approve tells the
+ * operator that one of the two is the dangerous one, and the file spent thirty
+ * lines establishing that neither is.
+ *
+ * **`deactivate` is the exception, and it is the one the file itself singles
+ * out.** Withdrawing an approved member's access removes a person from the
+ * community, and — in this product's own words, on the confirmation — *nobody
+ * is told*, so a withdrawn member finds out at the door. That is what the
+ * destructive rung is for, and it is `--ground` on `--sem-crit` at **7.36 : 1**
+ * rather than a tint somebody chose.
+ *
+ * `reactivate` is NOT its mirror in colour. Readmitting somebody is an ordinary
+ * affirmative act; it asks first because it reverses a decision, not because it
+ * is dangerous.
+ */
+const ACTION_VARIANT: Record<ActionVariant, ButtonVariant> = {
+  promote: "secondary",
+  demote: "secondary",
+  approve: "secondary",
+  reject: "secondary",
+  reactivate: "secondary",
+  deactivate: "destructive",
+};
+
+/**
+ * §6.3's shrink allow-list, closed at one item, and this is the item.
+ *
+ * It is applied **only** when the `DataTable` primitive says the button is in
+ * its table branch — a branch that is hidden below 768px and therefore never
+ * renders on a phone — and the variant shrinks it further only on a machine
+ * with **no coarse pointer at all**. 36px is the floor and nothing goes lower.
+ *
+ * The flag comes from the primitive rather than from a viewport read, which is
+ * D-41-07's construction: the default is the large target, and the query is
+ * only ever used to shrink, so a wrong answer costs a slightly-too-large button
+ * and never a too-small one.
+ */
+const DENSE_ROW_ACTION = "pointer-fine-only:min-h-9";
+
 function ActionButton({
   onClick,
   label,
   variant,
+  dense = false,
 }: {
   onClick: () => Promise<void>;
   label: string;
-  variant: "promote" | "demote" | "deactivate" | "reactivate" | "approve" | "reject";
+  variant: ActionVariant;
+  /** True only inside the table branch. See `DENSE_ROW_ACTION`. */
+  dense?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
-
-  const variantStyles: Record<string, string> = {
-    promote: "border-blue-500/40 text-blue-400 hover:bg-blue-500/10",
-    demote: "border-zinc-500/40 text-zinc-400 hover:bg-zinc-500/10",
-    deactivate: "border-red-500/40 text-red-400 hover:bg-red-500/10",
-    reactivate: "border-green-500/40 text-green-400 hover:bg-green-500/10",
-    approve: "border-green-500/40 text-green-400 hover:bg-green-500/10",
-    reject: "border-red-500/40 text-red-400 hover:bg-red-500/10",
-  };
 
   const handleClick = () => {
     // Awaited: see the note above. `handleAction` already reports every outcome
@@ -241,40 +334,41 @@ function ActionButton({
   };
 
   return (
-    <div className="inline-flex flex-col">
-      <button
-        onClick={handleClick}
-        disabled={isPending}
-        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${variantStyles[variant]}`}
-      >
-        {isPending ? (
-          <span className="inline-flex items-center gap-1">
-            <svg
-              className="h-3 w-3 animate-spin"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            ...
-          </span>
-        ) : (
-          label
-        )}
-      </button>
-    </div>
+    <Button
+      size="sm"
+      variant={ACTION_VARIANT[variant]}
+      onClick={handleClick}
+      disabled={isPending}
+      className={dense ? DENSE_ROW_ACTION : ""}
+    >
+      {isPending ? (
+        <span className="inline-flex items-center gap-1">
+          <svg
+            className="h-3 w-3 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          ...
+        </span>
+      ) : (
+        label
+      )}
+    </Button>
   );
 }
 
@@ -342,8 +436,12 @@ function reversalCopy(kind: ReversalKind, count: number, subject?: string) {
       confirmLabel:
         count === 1 ? "Withdraw access" : `Withdraw access from ${accounts}`,
       variant: "deactivate" as const,
-      box: "border-red-500/40 bg-red-500/10",
-      title_: "text-red-300",
+      // The critical semantic as INK, never as a tinted box. `Dialog.tsx` fixed
+      // the rule for this product: `--sem-crit` on `--surface` is **6.99 : 1**,
+      // and a box around a question is a container that states nothing its
+      // content does not. The words below are what carry this, and there are
+      // four of them for that reason.
+      ink: "text-sem-crit",
     };
   }
 
@@ -362,8 +460,12 @@ function reversalCopy(kind: ReversalKind, count: number, subject?: string) {
     ],
     confirmLabel: count === 1 ? "Readmit" : `Readmit ${accounts}`,
     variant: "reactivate" as const,
-    box: "border-green-500/40 bg-green-500/10",
-    title_: "text-green-300",
+    // The plain heading ink, and NOT a mirror of the withdrawal's semantic.
+    // Readmitting somebody is not a critical act and it is not a completed one;
+    // it is an ordinary affirmative that asks first because it reverses a
+    // decision. Giving it a semantic of its own would put the two reversals on
+    // a scale, and the scale would be a judgement about the person.
+    ink: "text-ink",
   };
 }
 
@@ -385,20 +487,22 @@ function ReversalConfirm({
   const copy = reversalCopy(kind, count, subject);
 
   return (
-    <div
-      role="alertdialog"
-      aria-label={copy.title}
-      className={`w-full rounded-2xl border p-3 ${copy.box}`}
-    >
-      <p className={`text-sm font-semibold ${copy.title_}`}>{copy.title}</p>
-      <ul className="mt-1 flex flex-col gap-1">
+    <Card role="alertdialog" aria-label={copy.title} className="w-full">
+      <p className={`text-sm font-semibold ${copy.ink}`}>{copy.title}</p>
+      <ul className="mt-2 flex flex-col gap-1">
         {copy.lines.map((line) => (
           <li key={line} className="text-xs leading-relaxed text-muted">
             {line}
           </li>
         ))}
       </ul>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      {/* Cancel is FIRST in the DOM — §11's order for a destructive question,
+          and the property this confirmation has always had. Nothing about the
+          order moved when the two controls became rungs of the shared ladder. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
         {/* The spinner lives on the confirm button, and it is real:
             `ActionButton` awaits the promise inside its transition. */}
         <ActionButton
@@ -406,15 +510,8 @@ function ReversalConfirm({
           label={copy.confirmLabel}
           variant={copy.variant}
         />
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-card-border px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:text-foreground"
-        >
-          Cancel
-        </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -422,9 +519,16 @@ function ReversalConfirm({
 function MemberActions({
   member,
   currentUserId,
+  dense = false,
 }: {
   member: MemberRow;
   currentUserId: string;
+  /**
+   * True only inside the table branch, and passed down to every button here.
+   * It is a fact about which of the primitive's two trees this is, never a
+   * viewport read — see `DENSE_ROW_ACTION`.
+   */
+  dense?: boolean;
 }) {
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [confirming, setConfirming] = useState<ReversalKind | null>(null);
@@ -549,11 +653,13 @@ function MemberActions({
             onClick={changeRole("staff")}
             label="Make staff"
             variant="promote"
+            dense={dense}
           />
           <ActionButton
             onClick={changeRole("organizer")}
             label="Make organizer"
             variant="promote"
+            dense={dense}
           />
         </>
       )}
@@ -566,11 +672,13 @@ function MemberActions({
             onClick={changeRole("organizer")}
             label="Make organizer"
             variant="promote"
+            dense={dense}
           />
           <ActionButton
             onClick={changeRole("member")}
             label="Remove staff"
             variant="demote"
+            dense={dense}
           />
         </>
       )}
@@ -584,11 +692,13 @@ function MemberActions({
             onClick={changeRole("staff")}
             label="Make staff"
             variant="demote"
+            dense={dense}
           />
           <ActionButton
             onClick={changeRole("member")}
             label="Make member"
             variant="demote"
+            dense={dense}
           />
         </>
       )}
@@ -603,6 +713,7 @@ function MemberActions({
           onClick={async () => setConfirming("withdraw")}
           label="Withdraw access"
           variant="deactivate"
+          dense={dense}
         />
       )}
 
@@ -614,6 +725,7 @@ function MemberActions({
           onClick={async () => setConfirming("readmit")}
           label="Readmit"
           variant="reactivate"
+          dense={dense}
         />
       )}
 
@@ -625,11 +737,13 @@ function MemberActions({
             onClick={() => handleAction(() => approveMember(member.id))}
             label="Approve"
             variant="approve"
+            dense={dense}
           />
           <ActionButton
             onClick={() => handleAction(() => rejectMember(member.id))}
             label="Reject"
             variant="reject"
+            dense={dense}
           />
         </>
       )}
@@ -655,21 +769,26 @@ function MemberDetail({
   member: MemberRow;
   referralCount: number;
 }) {
+  // One column, then three at 768px — and no middle step, because there is no
+  // width at which this region is between the two. It renders inside the card
+  // branch, which exists only BELOW 768px, and inside the table branch, which
+  // exists only above it. Weight 500 does not exist in this type system; the
+  // labels take the label role at 600.
   return (
-    <div className="grid grid-cols-1 gap-4 px-2 py-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <div>
-        <p className="text-xs font-medium text-muted">Referred by</p>
-        <p className="mt-0.5 text-sm">
+        <p className="text-xs font-semibold text-muted">Referred by</p>
+        <p className="mt-0.5 text-sm text-ink-2">
           {member.referrer_name || (member.referred_by ? "Unknown" : "Direct signup")}
         </p>
       </div>
       <div>
-        <p className="text-xs font-medium text-muted">Referred members</p>
-        <p className="mt-0.5 text-sm">{referralCount}</p>
+        <p className="text-xs font-semibold text-muted">Referred members</p>
+        <p className="mt-0.5 font-mono text-sm text-ink-2">{referralCount}</p>
       </div>
       <div>
-        <p className="text-xs font-medium text-muted">Events attended</p>
-        <p className="mt-0.5 text-sm">0</p>
+        <p className="text-xs font-semibold text-muted">Events attended</p>
+        <p className="mt-0.5 font-mono text-sm text-ink-2">0</p>
       </div>
     </div>
   );
@@ -907,8 +1026,62 @@ export default function MemberTable({
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  // Number of main table columns (for colSpan calculations)
-  const colCount = (isBulkTab ? 1 : 0) + 5 + (showActions ? 1 : 0) + 1; // +1 for chevron col
+  // The column count is the primitive's now: it knows how many of its three
+  // optional apparatus it was handed, and a caller counting them a second time
+  // is a second author for one number.
+
+  /**
+   * The five columns, declared once and rendered twice.
+   *
+   * This is the whole of D-41-17's argument in one constant. The two branches
+   * used to be two hundred lines of markup written twice, and the date was an
+   * inline expression duplicated byte for byte between them — which is what
+   * "the two lists drift" looks like before it has drifted. Adding a column
+   * here adds it to the table and to the card, and there is nowhere for the two
+   * to disagree.
+   *
+   * **`role` and `status` are two columns and stay two.** They are orthogonal
+   * axes — `member` is not `approved` — and the surest way to make an interface
+   * lie about access is to render one of them as though it were the other. On
+   * the card they sit as two marks in one stack, adjacent and separately
+   * legible, which is what they were in the table.
+   *
+   * `Joined` takes the data face so a column of dates aligns. Nothing here
+   * re-declares the numeric-variant shorthand; the face already carries it.
+   */
+  const columns: DataColumn<MemberRow>[] = [
+    {
+      key: "name",
+      header: "Name",
+      card: "title",
+      cell: (member) => member.full_name || "--",
+    },
+    {
+      key: "email",
+      header: "Email",
+      card: "subtitle",
+      cell: (member) => member.email,
+    },
+    {
+      key: "role",
+      header: "Role",
+      card: "mark",
+      cell: (member) => <RoleBadge role={member.role} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      card: "mark",
+      cell: (member) => <StatusBadge status={member.status} />,
+    },
+    {
+      key: "joined",
+      header: "Joined",
+      card: "meta",
+      figure: true,
+      cell: (member) => formatJoined(member.created_at),
+    },
+  ];
 
   // Status tab active check
   const isActiveTab = (tab: StatusTab) => statusTab === tab;
@@ -917,14 +1090,20 @@ export default function MemberTable({
 
   return (
     <div>
-      {/* Count summary */}
-      <div className="mb-2 flex flex-wrap gap-4 text-sm text-muted">
+      {/* Count summary.
+
+          The four figures used to be four palette colours matching four badge
+          hues that no longer exist. They take the data face and one ink now:
+          the word beside each figure is what tells them apart, and it always
+          was — a number reading "3" in blue does not say "organizers" to
+          anybody who has not already learnt the key. */}
+      <div className="mb-2 flex flex-wrap items-center gap-4 text-sm text-muted">
         <span>
-          <span className="font-semibold text-foreground">{totalMembers}</span>{" "}
+          <span className="font-mono font-semibold text-ink">{totalMembers}</span>{" "}
           members total
         </span>
         <span>
-          <span className="font-semibold text-blue-400">{organizerCount}</span>{" "}
+          <span className="font-mono font-semibold text-ink">{organizerCount}</span>{" "}
           organizers
         </span>
         <button
@@ -933,12 +1112,12 @@ export default function MemberTable({
             setRoleFilter("staff");
             setStatusTab("all");
           }}
-          className="underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+          className={`inline-flex min-h-11 items-center gap-1 underline decoration-dotted underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`}
         >
-          <span className="font-semibold text-zinc-300">{staffCount}</span> staff
+          <span className="font-mono font-semibold text-ink">{staffCount}</span> staff
         </button>
         <span>
-          <span className="font-semibold text-yellow-400">{pendingCount}</span>{" "}
+          <span className="font-mono font-semibold text-ink">{pendingCount}</span>{" "}
           pending
         </span>
       </div>
@@ -958,8 +1137,8 @@ export default function MemberTable({
         holds that from the night's own assignment, which expires with the
         night — never from this column.
       */}
-      <p className="mb-6 text-xs text-muted/80">
-        A <span className="font-medium text-zinc-300">staff</span> account can do
+      <p className="mb-6 text-xs text-muted">
+        A <span className="font-semibold text-ink">staff</span> account can do
         nothing a member cannot. What it holds is free entry to every night
         through the membership card, permanently and without expiry — so each one
         is a standing seat at a venue that holds 150–300 people. Working the door
@@ -967,11 +1146,18 @@ export default function MemberTable({
         night.
       </p>
 
-      {/* Status tabs */}
+      {/* Status tabs.
+
+          These are RESP-04's filters and they are the interactive kind of pill,
+          so they are chips and not badges — 44px targets, with the current one
+          named by an aria attribute as well as by its fill, because colour is
+          never the only channel. They were 30px and told a screen reader
+          nothing about which of the four was current. */}
       <div className="mb-4 flex flex-wrap gap-2">
         {(["all", "pending", "approved", "rejected"] as StatusTab[]).map((tab) => (
-          <button
+          <Chip
             key={tab}
+            selected={isActiveTab(tab)}
             onClick={() => {
               setStatusTab(tab);
               setSelectedIds(new Set());
@@ -980,34 +1166,43 @@ export default function MemberTable({
               // about a selection that no longer exists.
               setBulkConfirm(null);
             }}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              isActiveTab(tab)
-                ? "bg-accent text-white"
-                : "bg-card text-muted hover:text-foreground"
-            }`}
           >
             {tab === "all" && "All"}
             {tab === "pending" && `Pending (${pendingCount})`}
             {tab === "approved" && "Approved"}
             {tab === "rejected" && "Rejected"}
-          </button>
+          </Chip>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/50 focus:outline-none sm:flex-1"
-        />
+      {/* Filters.
+
+          RESP-04 asks that filters be visible from 768px up without opening
+          anything, and they are — nothing here is behind a disclosure at any
+          width. The three controls stack on a phone and sit on one row above
+          768px, which is the same arrangement they had at 640px before, on the
+          one boundary §2.1 keeps.
+
+          Each carries a name it did not have: all three were unlabelled
+          controls whose only description was a placeholder, and a placeholder
+          disappears the moment somebody types into it. */}
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="md:flex-1">
+          <Input
+            id="member-search"
+            aria-label="Search members by name or email"
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <div className="flex gap-3">
-          <select
+          <Select
+            id="member-role-filter"
+            aria-label="Filter by role"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
           >
             {/*
               Four options, in rank order.
@@ -1030,19 +1225,20 @@ export default function MemberTable({
             <option value="organizer">Organizer</option>
             <option value="staff">Staff</option>
             <option value="member">Member</option>
-          </select>
+          </Select>
           {/* Hide status dropdown when a specific status tab is active */}
           {statusTab === "all" && (
-            <select
+            <Select
+              id="member-status-filter"
+              aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-foreground focus:border-accent/50 focus:outline-none"
             >
               <option value="all">All statuses</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-            </select>
+            </Select>
           )}
         </div>
       </div>
@@ -1056,9 +1252,15 @@ export default function MemberTable({
 
       {/* Bulk action toolbar — one set of controls per tab, because the act a
           batch performs is decided by the status the selected rows hold. */}
+      {/* The toolbar's ground is the RAISED one §5.1 assigns to a selected row,
+          not an accent tint. §5.1's accent list is closed at four things and a
+          container's background is not among them — and an accent used as a
+          state signal is named there as something it is never for. */}
       {isBulkTab && selectedIds.size > 0 && !bulkConfirm && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-raised px-4 py-3">
+          <span className="text-sm font-semibold text-ink">
+            <span className="font-mono">{selectedIds.size}</span> selected
+          </span>
 
           {/* Pending: the two ordinary acts, no confirmation. */}
           {statusTab === "pending" && (
@@ -1078,24 +1280,24 @@ export default function MemberTable({
 
           {/* Approved: the withdrawal. It asks first. */}
           {statusTab === "approved" && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="destructive"
               onClick={() => setBulkConfirm("withdraw")}
-              className="rounded-md border border-red-500/40 px-3 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
             >
               Withdraw access from selected
-            </button>
+            </Button>
           )}
 
           {/* Rejected: the readmission. It asks first. */}
           {statusTab === "rejected" && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => setBulkConfirm("readmit")}
-              className="rounded-md border border-green-500/40 px-3 py-1 text-xs font-medium text-green-400 transition-colors hover:bg-green-500/10"
             >
               Readmit selected
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -1136,18 +1338,27 @@ export default function MemberTable({
             <>
               {/* Both numbers, always — and the first one is MEASURED from the
                   outcomes, never taken from how many rows were selected. */}
+              {/* The caution semantic when some subjects were refused, the
+                  plain heading ink otherwise. Not a grade of the act: the
+                  sentence names both numbers whatever the colour, and says in
+                  words that the refused rows are still selected. */}
               <p
                 className={`text-sm ${
-                  bulkResult.failed > 0 ? "text-amber-200" : "text-foreground"
+                  bulkResult.failed > 0 ? "text-sem-warn" : "text-ink"
                 }`}
               >
                 {bulkResult.label}:{" "}
-                <span className="font-semibold">{bulkResult.succeeded}</span> of{" "}
-                {bulkResult.requested} recorded
+                <span className="font-mono font-semibold">
+                  {bulkResult.succeeded}
+                </span>{" "}
+                of <span className="font-mono">{bulkResult.requested}</span>{" "}
+                recorded
                 {bulkResult.failed > 0 ? (
                   <>
                     ,{" "}
-                    <span className="font-semibold">{bulkResult.failed}</span>{" "}
+                    <span className="font-mono font-semibold">
+                      {bulkResult.failed}
+                    </span>{" "}
                     refused. The refused rows are still selected.
                   </>
                 ) : (
@@ -1171,225 +1382,64 @@ export default function MemberTable({
         </div>
       )}
 
-      {/* Desktop table - hidden on small screens */}
-      <div className="hidden lg:block">
-        <div className="overflow-x-auto rounded-xl border border-card-border">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-card-border bg-card/50">
-                {/* Checkbox column: on the three single-status tabs */}
-                {isBulkTab && (
-                  <th className="w-10 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={allSelectableSelected}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-card-border accent-accent"
-                    />
-                  </th>
-                )}
-                <th className="w-8 px-2 py-3" />
-                <th className="px-4 py-3 font-medium text-muted">Name</th>
-                <th className="px-4 py-3 font-medium text-muted">Email</th>
-                <th className="px-4 py-3 font-medium text-muted">Role</th>
-                <th className="px-4 py-3 font-medium text-muted">Status</th>
-                <th className="px-4 py-3 font-medium text-muted">Joined</th>
-                {showActions && (
-                  <th className="px-4 py-3 font-medium text-muted">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((member) => {
-                const isExpanded = expandedId === member.id;
-                return (
-                  <MemberRowDesktop
-                    key={member.id}
-                    member={member}
-                    isExpanded={isExpanded}
-                    isBulkTab={isBulkTab}
-                    isSelectable={isSelectable(member)}
-                    isSelected={selectedIds.has(member.id)}
-                    showActions={showActions}
-                    currentUserId={currentUserId}
-                    referralCount={referralCounts.get(member.id) || 0}
-                    colCount={colCount}
-                    onToggleSelect={() => toggleSelect(member.id)}
-                    onToggleExpand={() => toggleExpanded(member.id)}
-                  />
-                );
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={colCount}
-                    className="px-4 py-8 text-center text-muted"
-                  >
-                    No members found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* One array, one column declaration, two trees. The switch was at
+          1024px here and at 640px on four other tables; it is 768px in one
+          place now, and this file no longer names a breakpoint for it at all.
 
-      {/* Mobile card layout - visible on small screens */}
-      <div className="flex flex-col gap-3 lg:hidden">
-        {filtered.map((member) => {
-          const isExpanded = expandedId === member.id;
-          return (
-            <div
-              key={member.id}
-              className="rounded-xl border border-card-border bg-card"
-            >
-              {/* Card header */}
-              <div className="p-4">
-                <div className="flex items-start gap-3">
-                  {/* Checkbox on the three single-status tabs */}
-                  {isBulkTab && isSelectable(member) && (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(member.id)}
-                      onChange={() => toggleSelect(member.id)}
-                      className="mt-1 h-4 w-4 rounded border-card-border accent-accent"
-                    />
-                  )}
-                  <button
-                    onClick={() => toggleExpanded(member.id)}
-                    className="flex flex-1 items-start justify-between text-left"
-                  >
-                    <div>
-                      <p className="font-medium">{member.full_name || "--"}</p>
-                      <p className="text-sm text-muted">{member.email}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col items-end gap-1">
-                        <RoleBadge role={member.role} />
-                        <StatusBadge status={member.status} />
-                      </div>
-                      <ChevronIcon expanded={isExpanded} />
-                    </div>
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  Joined{" "}
-                  {(() => { const d = new Date(member.created_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
-                </p>
-              </div>
-
-              {/* Expandable detail */}
-              {isExpanded && (
-                <div className="border-t border-card-border/30 bg-card/20 px-4 py-3">
-                  <MemberDetail
-                    member={member}
-                    referralCount={referralCounts.get(member.id) || 0}
-                  />
-                </div>
-              )}
-
-              {/* Actions */}
-              {showActions && (
-                <div className="border-t border-card-border/50 px-4 py-3">
+          Which columns survive on a phone is the judgement H41-3 asks about,
+          and it is made here rather than by the layout: the NAME is the card's
+          title, the ADDRESS its subtitle, ROLE and STATUS the two marks
+          opposite them — the two axes stay two, side by side and never merged
+          — and JOINED a labelled detail underneath. Nothing is dropped. */}
+      <DataTable
+        rows={filtered}
+        columns={columns}
+        rowKey={(member) => member.id}
+        caption="Members, with the role and the status each account holds"
+        empty="No members found"
+        selection={
+          isBulkTab
+            ? {
+                isSelectable,
+                isSelected: (member) => selectedIds.has(member.id),
+                onToggleRow: (member) => toggleSelect(member.id),
+                allSelected: allSelectableSelected,
+                onToggleAll: toggleSelectAll,
+                // Each box names its own row. A column of boxes all called
+                // "select" names nothing, and the row here is a person.
+                rowLabel: (member) =>
+                  `Select ${member.full_name || member.email}`,
+                allLabel: "Select every selectable row",
+                idPrefix: "member",
+              }
+            : undefined
+        }
+        expansion={{
+          isExpanded: (member) => expandedId === member.id,
+          onToggle: (member) => toggleExpanded(member.id),
+          render: (member) => (
+            <MemberDetail
+              member={member}
+              referralCount={referralCounts.get(member.id) || 0}
+            />
+          ),
+          label: (member) => `Details for ${member.full_name || member.email}`,
+        }}
+        actions={
+          showActions
+            ? {
+                header: "Actions",
+                render: (member, dense) => (
                   <MemberActions
                     member={member}
                     currentUserId={currentUserId}
+                    dense={dense}
                   />
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="rounded-xl border border-card-border bg-card p-8 text-center text-muted">
-            No members found
-          </div>
-        )}
-      </div>
+                ),
+              }
+            : undefined
+        }
+      />
     </div>
-  );
-}
-
-// Desktop table row (extracted for readability with expand/collapse)
-function MemberRowDesktop({
-  member,
-  isExpanded,
-  isBulkTab,
-  isSelectable,
-  isSelected,
-  showActions,
-  currentUserId,
-  referralCount,
-  colCount,
-  onToggleSelect,
-  onToggleExpand,
-}: {
-  member: MemberRow;
-  isExpanded: boolean;
-  isBulkTab: boolean;
-  isSelectable: boolean;
-  isSelected: boolean;
-  showActions: boolean;
-  currentUserId: string;
-  referralCount: number;
-  colCount: number;
-  onToggleSelect: () => void;
-  onToggleExpand: () => void;
-}) {
-  return (
-    <>
-      <tr
-        className={`border-b border-card-border/50 transition-colors hover:bg-card/30 ${isExpanded ? "bg-card/20" : ""}`}
-      >
-        {/* Checkbox */}
-        {isBulkTab && (
-          <td className="w-10 px-4 py-3">
-            {isSelectable ? (
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={onToggleSelect}
-                className="h-4 w-4 rounded border-card-border accent-accent"
-              />
-            ) : null}
-          </td>
-        )}
-        {/* Chevron */}
-        <td className="w-8 px-2 py-3">
-          <button onClick={onToggleExpand} className="p-0.5">
-            <ChevronIcon expanded={isExpanded} />
-          </button>
-        </td>
-        <td
-          className="cursor-pointer px-4 py-3 font-medium"
-          onClick={onToggleExpand}
-        >
-          {member.full_name || "--"}
-        </td>
-        <td className="px-4 py-3 text-muted">{member.email}</td>
-        <td className="px-4 py-3">
-          <RoleBadge role={member.role} />
-        </td>
-        <td className="px-4 py-3">
-          <StatusBadge status={member.status} />
-        </td>
-        <td className="px-4 py-3 text-muted">
-          {(() => { const d = new Date(member.created_at); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`; })()}
-        </td>
-        {showActions && (
-          <td className="px-4 py-3">
-            <MemberActions member={member} currentUserId={currentUserId} />
-          </td>
-        )}
-      </tr>
-      {/* Expanded detail row */}
-      {isExpanded && (
-        <tr className="border-b border-card-border/50">
-          <td colSpan={colCount} className="bg-card/20 px-8 py-2">
-            <MemberDetail member={member} referralCount={referralCount} />
-          </td>
-        </tr>
-      )}
-    </>
   );
 }
