@@ -45,6 +45,13 @@
  *   - **IT DOES NOT JUDGE THE COPIES IT TOLERATES.** A file on `REMAINING` is
  *     not blessed; it is *counted*. Every one of them is a dialog without a
  *     focus trap.
+ *   - **CHECK B DOES NOT READ THE DOOR.** Five files — the scanner route, the
+ *     scanner's components and the door's second address — are fenced out of
+ *     check B by path, because they are **Phase 42's** (`PHASE_42_EXEMPT_PATHS`
+ *     below). If a nineteenth hand-rolled dialog is written behind that fence,
+ *     this gate is silent about it, for as long as the fence stands. Those five
+ *     files are **UNMEASURED, not approved**, and the report says so on every
+ *     run in those words.
  *
  * ── THE THREE CHECKS ────────────────────────────────────────────────────────
  *
@@ -329,6 +336,97 @@ export const DECLARED_EXCEPTIONS = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * THE PHASE 42 FENCE — a scope boundary, and deliberately NOT a third exception
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The paths check B does not read, because they belong to another phase.
+ *
+ * **A FENCE IS NOT AN EXEMPTION, and the difference is the whole reason this
+ * constant is separate from `DECLARED_EXCEPTIONS` above.**
+ *
+ *   - `FULL_BLEED_VIEWER` is a file somebody **measured and declared correct**
+ *     as what it is: a full-bleed media viewer, right to be a `<dialog>` and
+ *     wrong to be a sheet.
+ *   - These three globs are files **nobody measured at all**. Nothing here says
+ *     the markup behind them is right. It says this phase does not open them.
+ *
+ * Collapsing the two into one word — in the code or, worse, in the report a
+ * reader actually sees — is how a scope boundary quietly turns into an approval.
+ * The constant keeps the sibling gate's name (`verify-touch-targets.mjs:499`) so
+ * the two fences are recognisably the same mechanism; the **report** does not
+ * spell it as an exemption, and that is on purpose.
+ *
+ * WHY THE FENCE EXISTS, AND WHY IT LANDED BEFORE THE MATCHER WIDENED. The
+ * overlay matcher below is keyed on the SHAPE of an overlay rather than on one
+ * z rung. Widening it that way, on this tree, reddens exactly one correct file:
+ * **`src/components/scanner/ScanFlash.tsx:135`** — the door's accept/refuse
+ * flash. It is `role="status"`, `aria-live="assertive"`, and it dismisses itself
+ * on a timer: there is nothing to trap focus for and nothing for Escape to
+ * close. **It is not a dialog**, converting it to the primitive would be wrong,
+ * and it is not a `REMAINING` candidate either — that list's own header says
+ * every entry is a dialog without a focus trap, so an entry for it would be a
+ * false statement about a Phase 42 surface. A red on a correct file is the
+ * failure §0 rule 3 says gets a gate switched off, so the fence is declared
+ * FIRST and the matcher widens BEHIND it.
+ *
+ * **CHECKS A AND C ARE NOT FENCED, and that is a decision.** Check A reads the
+ * primitive itself, which is nobody's door. Check C asks whether a dialog
+ * reports its outcome invisibly — that is a **silent-failure report**, and a
+ * phase boundary is a reason not to MODIFY a file, never a reason to go quiet
+ * about a failure (`meta-gates.md`, zero fallimenti silenziosi). Measured on
+ * this tree, not assumed: **no file behind the fence imports the primitive**, so
+ * check C's numbers are identical either way today — the exclusion would cost
+ * nothing now and would cost the wrong thing later.
+ *
+ * By path and not by judgement, because the failure mode of a judgement is a
+ * gate that widens its own scope one convenient file at a time.
+ *
+ * Shape: `[glob, reason]`. The globs are compared with the manifest's
+ * `PHASE_42_PATHS` before anything is measured, and a drift refuses.
+ */
+export const PHASE_42_EXEMPT_PATHS = [
+  [
+    'src/app/(admin)/**/scanner/**',
+    'the scanner surface and its route — Phase 42 decides what the door looks like, and check B never reads a line of it',
+  ],
+  [
+    'src/components/scanner/**',
+    "the scanner's components — including the accept/refuse flash at ScanFlash.tsx:135, which is a status layer and not a dialog, and which the widened matcher would otherwise redden",
+  ],
+  [
+    'src/app/(admin)/door/**',
+    "the door's second address (STAFF-04) — fencing one address and not the other would fence half a thing",
+  ],
+];
+
+/**
+ * `**` crosses separators, `*` does not, everything else is literal.
+ *
+ * Copied from `verify-touch-targets.mjs:863-880` rather than imported: a gate is
+ * self-contained in this repository (see the header), and the module that would
+ * be the natural home for shared helpers is the one that exits at module scope.
+ */
+function globToRegExp(glob) {
+  let out = '^';
+  for (let i = 0; i < glob.length; i += 1) {
+    const ch = glob[i];
+    if (ch === '*') {
+      if (glob[i + 1] === '*') {
+        out += '.*';
+        i += 1;
+        if (glob[i + 1] === '/') i += 1;
+      } else {
+        out += '[^/]*';
+      }
+      continue;
+    }
+    out += ch.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`${out}$`);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * What a dialog shell looks like, in the two shapes it takes today
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -531,6 +629,51 @@ if (declaredPaths.size !== REMAINING.length) {
   );
 }
 
+/*
+ * The fence in this gate and the fence in the manifest must be the SAME fence.
+ * Two lists that drift is how one gate ends up guarding a path another one
+ * scans, with neither report saying so — and a fence nobody cross-checked is a
+ * fence nobody verified, which is why a failed import refuses too rather than
+ * falling back to the local list.
+ *
+ * `scripts/conversion-manifest.mjs` is safe to import: read before relying on
+ * it, it declares constants and two functions and does no work at module scope,
+ * so it cannot do to this process what `verify-tokens.mjs` would (see the header
+ * on why the helpers here are local).
+ */
+let manifest;
+try {
+  manifest = await import(`${ROOT}/scripts/conversion-manifest.mjs`);
+} catch (error) {
+  refuse(
+    'scripts/conversion-manifest.mjs could not be imported, so this gate could not\n' +
+      '       cross-check its Phase 42 fence against the manifest\'s. A fence nobody verified\n' +
+      `       is a fence nobody should trust. Nothing was measured.\n\n       ${error.message}`
+  );
+}
+
+const manifestFence = (manifest.PHASE_42_PATHS ?? []).map(([glob]) => glob).sort();
+const localFence = PHASE_42_EXEMPT_PATHS.map(([glob]) => glob).sort();
+
+if (JSON.stringify(manifestFence) !== JSON.stringify(localFence)) {
+  refuse(
+    "this gate's Phase 42 fence and the manifest's do not match, so one of the two is\n" +
+      '       guarding a path the other scans. Nothing was measured.\n\n' +
+      `       manifest: ${manifestFence.join(', ')}\n` +
+      `       gate:     ${localFence.join(', ')}`
+  );
+}
+
+const fencePatterns = PHASE_42_EXEMPT_PATHS.map(([glob, reason]) => ({
+  glob,
+  reason,
+  re: globToRegExp(glob),
+}));
+
+function fenceMatch(relPath) {
+  return fencePatterns.find(({ re }) => re.test(relPath)) ?? null;
+}
+
 const failures = [];
 
 console.log(`  files walked under src/       : ${files.length}`);
@@ -614,9 +757,16 @@ if (grownSignature.length > 0) {
 /* ── check B — no second shell, except on the list ────────────────────────── */
 
 const measuredShells = new Map();
+const fenced = new Map();
+
 for (const file of files) {
   if (file === PRIMITIVE_FILE) continue;
   if (file === FULL_BLEED_VIEWER) continue;
+  const behind = fenceMatch(file);
+  if (behind) {
+    fenced.set(file, behind.glob);
+    continue;
+  }
   const found = shellShapes(file);
   if (found.length > 0) measuredShells.set(file, found);
 }
@@ -637,10 +787,22 @@ for (const [file, found] of measuredShells) {
   if (!declaredPaths.has(file)) undeclared.push({ file, found });
 }
 
+console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
+for (const [glob, reason] of PHASE_42_EXEMPT_PATHS) {
+  console.log(`      ${glob}`);
+  console.log(`         ${reason}`);
+}
+console.log(
+  `\n      ${fenced.size} walked file(s) fall behind it. This is a SCOPE BOUNDARY, not an approval:\n` +
+    '      nothing here says their markup is right, only that this phase did not open them.\n' +
+    '      If a hand-rolled dialog is written behind that fence, check B is silent about it.\n'
+);
+
 console.log('  check B — dialog shells declared OUTSIDE the primitive:\n');
 console.log(`      REMAINING entries declared     : ${REMAINING.length}`);
 console.log(`      files measured carrying a shell : ${measuredShells.size}`);
-console.log(`      exempt from this check          : 1  (${FULL_BLEED_VIEWER})`);
+console.log(`      exempt from this check          : 1  (${FULL_BLEED_VIEWER}) — measured, declared correct`);
+console.log(`      fenced by path, never measured  : ${fenced.size}  (Phase 42 — see the fence above)`);
 console.log(`\n      REMAINING = ${measuredShells.size}\n`);
 
 if (missing.length > 0) {
