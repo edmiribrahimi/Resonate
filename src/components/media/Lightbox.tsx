@@ -1,6 +1,40 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
+import { IconButton } from "@/components/ui/Button";
+
+/**
+ * The full-bleed media viewer.
+ *
+ * ── Its dialog shell is a declared exception, and stays one ──────────────────
+ *
+ * `41-UI-SPEC.md` §8.3 and §13's G2 row name this file before the gate that
+ * would judge it: a media viewer is full-bleed at every tier and carries a
+ * heavier scrim than a sheet, so a G2 demanding the sheet form would go red on
+ * a correct file. Plan 41-08 changed **nothing** about the shell, the platform
+ * behaviours it leans on, or the light-dismiss handler.
+ *
+ * ── What plan 41-08 did change, and why it had to ────────────────────────────
+ *
+ * The close control. It was a 40 px circle — below the 44 px floor §6.1 fixes —
+ * drawn with a translucent achromatic fill and an achromatic ink, which is the
+ * raw-palette shape §5's token layer exists to remove. It is now the shared
+ * icon rung at 44 × 44, which is where §6.4 already sent the other three close
+ * controls in this tree.
+ *
+ * **It keeps a scrim of its own, and that is the decision this file owed.**
+ * `verify-conversion.mjs` records, beside its palette list, that the one
+ * legitimate future case is *the ink over a full-bleed media scrim, where the
+ * ground is the scrim rather than a token* — and that the plan converting a
+ * media surface either adds a token or adds a line to that list, with its
+ * reason. Neither was needed: the control sits above the image, so its ground
+ * cannot be a token, and a **translucent black** behind it is the tolerated
+ * scrim shape §13 already names for the modal grounds. A dark scrim under a
+ * light ink is the readable direction; the incumbent was the other one.
+ *
+ * The accessible name stays `Close`, which is the string §11 fixes for this
+ * control, and the icon rung types it as required rather than trusting it.
+ */
 
 interface LightboxItem {
   url: string;
@@ -54,16 +88,16 @@ export default function Lightbox({ item, onClose }: LightboxProps) {
       {item && (
         <div className="flex h-full w-full items-center justify-center p-4">
           {/* Close button */}
-          <button
-            type="button"
-            className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-all active:scale-95 active:opacity-80"
-            onClick={onClose}
+          <IconButton
             aria-label="Close"
+            variant="secondary"
+            className="absolute top-4 right-4 z-20 bg-black/60"
+            onClick={onClose}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
-          </button>
+          </IconButton>
 
           {item.type === "photo" ? (
             <img

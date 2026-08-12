@@ -56,14 +56,52 @@
  * the red would have been.
  */
 
+/**
+ * Whether the caller already fixed a dimension, so the default must stand down.
+ *
+ * ── The measured defect this closes, and it was here from the beginning ──────
+ *
+ * Appending the caller's classes after the component's own is this tree's house
+ * pattern, and it works whenever the two collide on a utility Tailwind emits in
+ * ascending numeric order — a caller's taller height wins over a shorter
+ * default because the shorter rule is written first.
+ *
+ * **It does not work for a named value, and the default width here is one.**
+ * Measured in the emitted stylesheet on 2026-08-12: the full-width rule is
+ * written *after* every numeric and fractional width in the sheet. So the
+ * default width overrode every width a caller asked for — including the two
+ * fractional ones this file passes to its own card shell three functions below.
+ *
+ * **Nobody had ever seen it**, because until plan 41-08 this file had zero
+ * importers: an unrendered component cannot be wrong on screen. That is the
+ * phase's own thesis arriving as a bug rather than as an argument, and it is
+ * the reason D-41-04 asks for the consumer in the same plan.
+ *
+ * The fix does not depend on stylesheet order at all, in either direction.
+ */
+const CALLER_SETS_WIDTH = /(?:^|\s)(?:max-|min-)?w-/;
+const CALLER_SETS_HEIGHT = /(?:^|\s)(?:max-|min-)?h-/;
+
+function withDefaults(base: string, className: string, defaults: string[]) {
+  return [base, ...defaults, className].filter(Boolean).join(" ");
+}
+
 interface SkeletonLineProps {
   className?: string;
 }
 
 export function SkeletonLine({ className = "" }: SkeletonLineProps) {
+  const defaults = [];
+  if (!CALLER_SETS_HEIGHT.test(className)) defaults.push("h-4");
+  if (!CALLER_SETS_WIDTH.test(className)) defaults.push("w-full");
+
   return (
     <div
-      className={`animate-pulse rounded-xl bg-raised h-4 w-full ${className}`.trimEnd()}
+      className={withDefaults(
+        "animate-pulse rounded-xl bg-raised",
+        className,
+        defaults
+      )}
     />
   );
 }
@@ -91,6 +129,46 @@ export function SkeletonCard({ className = "" }: SkeletonCardProps) {
       <SkeletonLine className="h-4 w-full mb-2" />
       <SkeletonLine className="h-4 w-2/3" />
     </div>
+  );
+}
+
+interface SkeletonTileProps {
+  className?: string;
+}
+
+/**
+ * A square placeholder for a media thumbnail — added by plan 41-08, with its
+ * consumer in the same commit.
+ *
+ * ── Why a fourth export rather than a prop ───────────────────────────────────
+ *
+ * The line placeholder fixes its own height, which is what makes it a *line*.
+ * A square is a different shape, not a taller line: reaching one by passing a
+ * height through `className` would depend on which of two same-property
+ * utilities Tailwind happens to emit last, and a layout that depends on
+ * stylesheet ordering is a defect waiting for a version bump. The other route —
+ * a hand-rolled pulsing block in the loading file — is the exact thing this
+ * component exists to stop, 102 times over.
+ *
+ * ── It is published in the plan that renders it (D-41-04) ────────────────────
+ *
+ * `src/app/(public)/gallery/loading.tsx` is its consumer and lands in the same
+ * commit. The radius is §9's thumbnail rung, the same one the real thumbnail
+ * carries, so the placeholder occupies the box the image will and the page does
+ * not jump.
+ */
+export function SkeletonTile({ className = "" }: SkeletonTileProps) {
+  const defaults = [];
+  if (!CALLER_SETS_WIDTH.test(className)) defaults.push("w-full");
+
+  return (
+    <div
+      className={withDefaults(
+        "animate-pulse rounded-xl bg-raised aspect-square",
+        className,
+        defaults
+      )}
+    />
   );
 }
 
