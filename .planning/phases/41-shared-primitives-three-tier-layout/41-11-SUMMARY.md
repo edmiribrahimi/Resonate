@@ -509,7 +509,7 @@ the product**, and nothing below is claimed on the basis of tests passing.
 | `npm run build` exits 0 after the reverts | **exit 0** |
 | the gate exits 0 and names `MemberTable.tsx` with a measured count greater than 20 | **exit 0**; the count is **1 of 11 found**, and deviation 2 records which side of the disagreement was wrong |
 | the 44px threshold unchanged | **unchanged.** `REQUIRED_PX = 44` |
-| `MemberTable.tsx` on no exemption list | **on none.** `grep -c 'MemberTable' scripts/verify-touch-targets.mjs` → **0** |
+| `MemberTable.tsx` on no exemption list | **on none.** `grep -n 'MemberTable' scripts/verify-touch-targets.mjs` → **4 lines, all prose**: three in the green-proof section of the header, one recording that exemption 3's only possible site is `MemberTable.tsx:311`. Not one is in `PHASE_42_EXEMPT_PATHS`, `PRIMITIVE_COMPONENTS`, `NON_INTERACTIVE_COMPONENTS` or any other list the code reads |
 | `git diff --name-only` contains no `scanner/` and no `(admin)/door/` | **confirmed** |
 
 ---
@@ -675,8 +675,17 @@ height and nothing else about them.
 
 ## Self-Check
 
-- `scripts/verify-touch-targets.mjs` — **FOUND** (46 273 byte), exits 0,
-  `REQUIRED_PX` present, `MemberTable` absent from every list
+- `scripts/verify-touch-targets.mjs` — **FOUND** (`wc -c` → **56 644** byte),
+  exits 0, `REQUIRED_PX = 44` present, `MemberTable` on no list the code reads
+
+> **Two numbers in this section were wrong when first written, and were caught
+> by running the self-check rather than by reading it back.** The file size was
+> stated as 46 273 before `wc -c` was run, and the `MemberTable` evidence was
+> stated as a grep count of 0 before the grep was run — it returns 4, all of
+> them prose in the header. **The claim survived; the evidence for it did not.**
+> Recorded rather than quietly corrected, because a SUMMARY that invents a
+> measurement is the same defect as a gate that reports one, and this phase has
+> spent eleven plans insisting on the difference.
 - `src/app/(auth)/login/page.tsx` — **FOUND**, carries the minimum, `href`
   expression unchanged
 - `src/app/(auth)/register/page.tsx` — **FOUND**, carries the minimum, `href`
