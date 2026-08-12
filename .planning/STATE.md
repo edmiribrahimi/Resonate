@@ -4,13 +4,13 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 41 UI-SPEC approved 6/6 — context, research and validation reconciled; planner next
-last_updated: "2026-08-12T17:28:14.418Z"
+last_updated: "2026-08-12T19:06:39.002Z"
 last_activity: 2026-08-12 -- Phase 41 planning complete
 progress:
   total_phases: 17
   completed_phases: 11
-  total_plans: 154
-  completed_plans: 149
+  total_plans: 159
+  completed_plans: 154
   percent: 65
 ---
 
