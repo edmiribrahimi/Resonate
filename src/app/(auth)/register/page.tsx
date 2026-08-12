@@ -201,7 +201,12 @@ function RegisterForm() {
         {/* Form 2 of plan 34-01 — see the twin in `login/page.tsx`. Same two
             strings as before; the ternary is what keeps each branch a
             literal instead of widening to `/login${string}`. */}
-        <Link href={nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : "/login"} className={`text-accent hover:text-accent-hover ${FOCUS_RING}`}>
+        {/* The twin of the link on `login/page.tsx`, and it takes the same
+            floor for the same reason — §6.1 applies to every interactive
+            element with a label, and this is the way back for somebody who
+            already has an account and landed here by mistake. The destination
+            is untouched. */}
+        <Link href={nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : "/login"} className={`inline-flex min-h-11 items-center align-middle text-accent hover:text-accent-hover ${FOCUS_RING}`}>
           Sign In
         </Link>
       </p>
