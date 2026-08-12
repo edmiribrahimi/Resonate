@@ -254,11 +254,50 @@
  * prints the FATAL and the failure. A refusal means a measurement did not
  * happen; it does not unsay one that did, and reporting such a run as REFUSED
  * made the aggregate print "Nothing failed" over a run in which something had
- * (41-GAP-REVIEW.md WR-01). Every check-E refusal now precedes every tick, so
- * `failures` is empty at all of them; the one refusal that structurally cannot
- * be hoisted — the ORPHANS_DECLARED duplicate, which needs check C's data — is
- * exactly the case this rule covers, and is what keeps the rule reachable
- * rather than decorative.
+ * (41-GAP-REVIEW.md WR-01).
+ *
+ * **Whether that rule can fire on THIS tree is a measurement, not an assertion,
+ * and the measurement says no.** Taken 2026-08-13, with the command that takes
+ * each number, because these move whenever a line is added above them:
+ *
+ *   - `grep -nE '^[[:space:]]*failures\.push\(' | head -1` → the first is at
+ *     line **1724**. Nothing below it has run when an earlier refusal is
+ *     raised, so `failures` is empty at every call site above it. (Both greps
+ *     are anchored to the line start on purpose: the unanchored forms match
+ *     this paragraph, and a number measured by a command that reads the
+ *     sentence claiming it is not a measurement.)
+ *   - `grep -nE '^[[:space:]]*refuse\(' ` → **24** call sites. **23** are above
+ *     1724. Exactly **one** is below it, at line **1839**: the
+ *     `ORPHANS_DECLARED` duplicate check, the only refusal that structurally
+ *     cannot be hoisted, because it needs check C's data.
+ *   - that one compares `orphanDeclared.size` with `ORPHANS_DECLARED.length`,
+ *     and `ORPHANS_DECLARED` (line **1042**) is `[]` — so the comparison is 0
+ *     against 0, **false on every run, for any tree**, until the list is
+ *     populated.
+ *
+ * Therefore **no refusal in this file can fire after a failure on this tree
+ * today**. The rule above is written for the shape that becomes reachable when
+ * 41.1 or 41.2 first puts an entry on that list; it is not a description of
+ * what this tree does, and it was carrying the opposite claim until
+ * 41-GAP-REVIEW-2.md WR-02 did the arithmetic.
+ *
+ * The mechanism is not taken on trust either — it is re-proven by a run, not by
+ * a citation. Exercised by mutation in plan 41-20 (trigger B) and again in plan
+ * 41-25, both times with a duplicated pair on `ORPHANS_DECLARED` plus a
+ * script-only lever reddening check A: FATAL first, then
+ * `CONVERSION_FAIL — 1 check(s) had ALREADY failed`, exit **1**.
+ * `41-25-SUMMARY.md` carries the run verbatim.
+ *
+ * **What the next reader should do, and what they must not.** Re-measure the
+ * three numbers before believing this paragraph; if the list is still `[]`,
+ * this paragraph is still the truth and the sentence above it is still not.
+ * Do **not** manufacture a reachable refusal so the rule reads as live:
+ * building a gate to support a claim is the same defect family as the claim
+ * itself. And do **not** hoist the `ORPHANS_DECLARED` refusal to tidy the count
+ * — 41-20 deliberately left it where it is (41-20-SUMMARY.md, decision 1), and
+ * hoisting *every* refusal above *every* failure would leave `refuse()`'s
+ * exit-1 branch with no site at all: a rule nothing can trip, which is the
+ * defect on the other side of this same coin.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -287,8 +326,11 @@ const failures = [];
  * **But a refusal must not absorb a failure that already did.** Every refusal
  * in this file is now raised before any verdict prints, so `failures` is empty
  * at almost every call site. Almost: the `ORPHANS_DECLARED` duplicate refusal
- * is raised between check B's verdict and check C's, and that is the reachable
- * case. Measured before this change (41-GAP-REVIEW.md WR-01, reproduced with
+ * is the one call site that sits BELOW the first `failures.push` — but its
+ * condition is `0 !== 0` while that list is empty, so it is a site the rule
+ * has, not a case the rule reaches. **The exit-code header carries the
+ * measurement; read it before repeating that this branch is live.**
+ * Measured before this change (41-GAP-REVIEW.md WR-01, reproduced with
  * two script-only levers): `✗ A` printed, then the FATAL, then **exit 2** — so
  * `verify-all.mjs` reported the run REFUSED and printed "Nothing failed" over a
  * run in which check A had failed on three files.
@@ -869,6 +911,32 @@ const WRAPPER_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
  * **`.mdx` is deliberately absent.** Next resolves route files at it whenever
  * `pageExtensions` says so, which makes it plausibly a module. It refuses, and
  * that is the safe direction.
+ *
+ * **The trailing tilde, added in round 3, and the analysis that justifies it.**
+ * `.orig`, `.rej` and `.bak` covered the merge-conflict and manual-copy
+ * artefacts; the tilde form — what emacs, gedit and some JetBrains
+ * configurations write beside the file being edited — was not on the list, so
+ * one stray `layout.tsx~` took the conversion gate to exit 2 and, through
+ * `verify-all.mjs`, reported all sixteen gates as `VERIFY_REFUSED`
+ * (41-GAP-REVIEW-2.md WR-04; reproduced on the shipped gate before this edit —
+ * exit 2, FATAL naming the file). It is WR-06's exact shape, reintroduced by an
+ * incomplete allow-list.
+ *
+ * Every entry here makes the gate SKIP something, and every skip is somewhere a
+ * real wrapper could hide, so the false-positive analysis belongs beside the
+ * entry rather than in a document: **what this entry matches is any path under
+ * the route root whose basename starts with a climbed wrapper prefix AND ends
+ * with a tilde. Next resolves no route file at a name ending in `~` under any
+ * `pageExtensions`, so no legitimate wrapper can be skipped by it.** The entry
+ * is not a dotted extension, and needs no new mechanism: the enumeration below
+ * matches with `rel.endsWith(ext)`, which already handles a bare suffix.
+ *
+ * **`layout.json` is NOT added, and that is a decision rather than an
+ * oversight.** The review names it as refusing for the same reason, and it
+ * does; it sits outside the six items this round was scoped to, so it is
+ * recorded in `41-25-SUMMARY.md` as named and deliberately not taken — the same
+ * treatment 41-20 gave the `MIN_HEIGHT_RE` weakness it left open. Until it is
+ * taken, `src/app/layout.json` refuses, which is the safe direction.
  */
 const NON_ROUTE_WRAPPER_EXTENSIONS = [
   ['.css', 'a stylesheet — layout.module.css is the standard Next name for a layout CSS module'],
@@ -879,6 +947,7 @@ const NON_ROUTE_WRAPPER_EXTENSIONS = [
   ['.orig', 'what a merge conflict leaves behind'],
   ['.rej', 'what a rejected patch hunk leaves behind'],
   ['.bak', 'a backup copy'],
+  ['~', 'an editor backup — the trailing-tilde form of .bak; Next resolves no route file at it'],
 ];
 
 /**
@@ -1208,7 +1277,7 @@ const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDEN
 
 /**
  * The literal, required to close on the same line — and tolerant of a trailing
- * line comment after it.
+ * comment after it, in either syntax.
  *
  * A focus root spread over several lines, or built by concatenation, is not a
  * thing this gate can read — and reading half of it would assert the absence of
@@ -1226,18 +1295,41 @@ const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDEN
  * exit 2, FATAL quoting the line verbatim). §0 rule 3: a gate that goes red on
  * correct code gets switched off.
  *
+ * **Round 3 added the block form, and it is the SAME argument, not a second
+ * one.** Fixing the `//` form and leaving the block form left the rule
+ * half-applied, one comment syntax away from where it had just been fixed: the
+ * identical declaration carrying a trailing block comment still took the gate
+ * to exit 2 and, through `verify-all.mjs`, the whole suite to `VERIFY_REFUSED`
+ * (41-GAP-REVIEW-2.md WR-03; reproduced on the shipped gate before this edit —
+ * exit 2, FATAL quoting the line verbatim). The tail now accepts either opener,
+ * and accepts a block comment that does NOT close on the line, because once the
+ * value has been captured between its two quotes nothing that follows on that
+ * line can change it.
+ *
  * **Why the anchor was relaxed rather than the comment stripped — one or the
- * other, not both.** A stripper would be a second transformation of the line,
- * running before the regex and needing its own notion of where a comment
- * begins; a `//` INSIDE the double-quoted literal would be indistinguishable
- * from one after it, and truncating there would hand the regex a fragment and
- * change the value read. That is the exact failure the refusal below exists to
- * prevent. The tail here cannot do that: the capture group is still bounded by
- * the same two quotes, so **the literal read is byte-for-byte the literal,
- * comment or no comment** — asserted by comparing the value the report prints
- * with and without one.
+ * other, not both, and this is the third syntax that one argument covers.** A
+ * stripper would be a second transformation of the line, running before the
+ * regex and needing its own notion of where a comment begins; a `//` or a `/*`
+ * INSIDE the double-quoted literal would be indistinguishable from one after
+ * it, and truncating there would hand the regex a fragment and change the value
+ * read. That is the exact failure the refusal below exists to prevent, and this
+ * file family already records two incomplete strippers — DEF-41-02 and
+ * DEF-41-06 — so a fourth would be the pattern rather than the exception. The
+ * tail here cannot do that: the capture group is still bounded by the same two
+ * quotes, so **the literal read is byte-for-byte the literal, comment or no
+ * comment** — asserted by comparing the value the report prints with and
+ * without one, and again for a literal whose own contents open a block comment.
+ *
+ * **What the widened tail hits, so it can be checked rather than trusted.** It
+ * hits only what follows the literal's CLOSING quote, past an optional
+ * semicolon and whitespace: a `//` to end of line, or a `/*` to end of line.
+ * Nothing before that quote. So a concatenation, a literal continuing onto the
+ * next line, a single-quoted literal and a backtick literal all still refuse,
+ * and each was exercised in that direction — narrowing a refusal to "not this"
+ * must not become narrowing it to "nothing". No correct declaration is caught
+ * by the widening: it only stops catching correct ones.
  */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*)?$/;
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*|\/\*[\s\S]*)?$/;
 
 const shellLines = liveLines(SHELL_FILE);
 const focusRootDeclarations = [];
