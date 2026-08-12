@@ -175,8 +175,38 @@ walks `src/` and reads only `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`.
 ## DEF-41-03 — `IconButton` is a published primitive with zero importers, and no plan owns the file that would adopt it
 
 **Found during:** plan 41-07, Task 2 (check C's first measurement).
-**Status:** open — deliberately not fixed inside 41-07, and **not scheduled by
-any remaining plan in this phase.**
+**Status:** **half closed by plan 41-08, and the open half is now invisible to
+the gate.** Read the next section before reading the rest of this entry, which
+is preserved as it was written.
+
+### Update — plan 41-08, 2026-08-12
+
+**The orphan is closed, and not from the direction anybody expected.** Plan
+41-08 declared `/gallery` converted; its import closure reaches
+`src/components/media/Lightbox.tsx`, whose close control was a 40 px circle
+below §6.1's floor and drawn with a raw achromatic fill. Converting it meant
+reaching for the icon rung. `IconButton` therefore has **one importer**, check C
+counts it, and the `ORPHANS_DECLARED` entry — which the gate itself flagged
+`STALE` on the next run — was deleted as instructed.
+
+**What is NOT closed:** `src/components/toast/Toast.tsx` still carries a
+hand-written copy of that contract, eight lines that the shared rung would
+replace. Nothing above changed about why: it is not a byte-identical swap, it is
+a visible change to a component every surface can raise, and **no plan in this
+phase declares that file** — 41-08 did not either.
+
+**And the mechanism that was watching it is gone.** Check C counts importers;
+the count is now one, so it is green and silent. The duplication is a *second
+author for one contract*, which is a different defect from an orphan and one no
+gate in this phase measures. That is the honest limit of a mechanical check, and
+it is why this entry stays open rather than being ticked: the number that made
+the debt visible has been paid by somebody else's work, and the work it stood
+for has not.
+
+Item 1 below still needs an answer, and item 3 — *should the workflow look for a
+joint obligation after a parallel wave merges* — is now supported by a second
+observation: **a debt tracked by a proxy metric is closed by anything that moves
+the metric.**
 
 ### The finding
 
