@@ -640,8 +640,9 @@ gates. What is partial is the *manifest of surfaces that have adopted it*: eight
 of roughly thirty-four. Criterion 1 is what makes that honest rather than
 half-finished — an unconverted surface is untouched, not half-converted.
 
-**Plans**: 12 plans, 9 waves — the layer and its first eight surfaces. The remaining
-conversion units are **not** covered by these twelve; see the note below.
+**Plans**: 17 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
+gap-closure plans in 2 waves added 2026-08-12 after verification. The remaining
+conversion units are **not** covered by any of them; see the note below.
 
 Plans:
 - [x] 41-01-PLAN.md — the control token, the two layout variables, the pointer variant, pinch-zoom
@@ -656,6 +657,22 @@ Plans:
 - [x] 41-10-PLAN.md — DataTable, Checkbox, /admin/members, and G3
 - [x] 41-11-PLAN.md — G5 touch targets, proven red and proven green on MemberTable — or not written
 - [x] 41-12-PLAN.md — `npm run verify`, and 41-RELEASE-PASS.md with H41-1 … H41-6
+- [ ] 41-13-PLAN.md — CR-01: the focus form stops reserving a navigation its four surfaces never mount
+- [ ] 41-14-PLAN.md — verify-all's reconciliation, from an identity that cannot fail to a refusal that can
+- [ ] 41-15-PLAN.md — G5's exemption 2a, from a file-wide blanket to ten declared elements with ten reasons
+- [ ] 41-16-PLAN.md — G2's overlay matcher, keyed on the shape of an overlay rather than on one z rung
+- [ ] 41-17-PLAN.md — G4 check E: the clearance a surface reserves must match the navigation it mounts
+
+> **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
+> blocking gap — CR-01, a live layout regression on `/login`, `/register`,
+> `/set-password` and `/payment/callback` that no gate could see — and `41-REVIEW.md`
+> returned three gate-integrity defects alongside it. Plans 41-13…41-17 close exactly
+> those four items and nothing else; the owner fixed the scope on 2026-08-12 and routed
+> the login error message, the payment-callback error string and `CreateSeriesModal`'s
+> reachability test to a phase of their own, since all three decide what the product
+> tells someone about their account or their money. **None of the seven requirements
+> closes here:** all remain PARTIAL, and RESP-01 closes only after 41.2. Six human
+> observations (H41-1…H41-6) stay owed, and 41-13 adds a seventh.
 
 > **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
 > system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
