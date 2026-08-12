@@ -86,12 +86,13 @@
  *
  * The reconciliation at the end of the run is the whole point of the file, and
  * **what it compares is verdicts, not lengths.** It takes every `verify:*` name
- * `package.json` registers and checks it against the set of names this run said
- * something about: a name that got a verdict (it ran), a name in `NEEDS_SERVER`
- * (declared, not run here, and printed with its reason), a name reported absent
- * but optional, or a name reported MISSING. A registered name in none of those
- * got **no verdict** from this run, and that is a REFUSAL — exit 2 — not a line
- * printed under a tick.
+ * this repository can be said to have — every one `package.json` registers, and
+ * every one this runner declares — and checks it against the set of names this
+ * run said something about: a name that got a verdict (it ran), a name in
+ * `NEEDS_SERVER` (declared, not run here, and printed with its reason), a name
+ * reported absent but optional, or a name reported MISSING. A name in none of
+ * those got **no verdict** from this run, and that is a REFUSAL — exit 2 — not a
+ * line printed under a tick.
  *
  * **The two refusals before the run do not already guarantee this.** They compare
  * LISTS, and they compare them before anything executes: `declared` against
@@ -100,17 +101,81 @@
  * and still come out of the run with nothing said about it. Nothing earlier
  * would notice.
  *
- * **The concrete situation that produces one**, because a gate whose triggering
- * situation nobody wrote down is a gate nobody can trust: somebody adds a fourth
- * `state` to the `plan` partition below — a `skipped`, a `deferred`, a `stale` —
- * and the three filters that follow it (`runnable`, `absentOptional`,
- * `absentRequired`) do not catch it, because each of them tests for something
- * specific. That entry is then dropped between planning and reporting: it never
- * runs, never appears in the NOT RUN block, and the table prints a full set of
- * ticks for a gate nobody measured. **That is T-41-44 arriving from inside this
- * file instead of from `package.json`** — and the reason a mismatch is a REFUSAL
- * rather than a failure: this run did not measure everything the repository
- * declares, which is not the same statement as "something is wrong with the tree".
+ * ── THE PARTITION IS DELIBERATELY NON-EXHAUSTIVE. THAT IS THE MECHANISM. ────
+ *
+ * **`ABSENT_STATES` is load-bearing and is not a tidy-up.** The plan loop below
+ * labels each entry `runnable`, `absent` or `unregistered`. `runnable` is matched
+ * by equality; the other two are matched by **membership of `ABSENT_STATES`**.
+ * Three named states, three buckets, and **a fourth state matches none of them**.
+ *
+ * That is the point. The concrete situation this file guards — because a gate
+ * whose triggering situation nobody wrote down is a gate nobody can trust — is
+ * that somebody adds a fourth `state` to the plan loop below: a `skipped`, a
+ * `deferred`, a `stale`. That entry now falls through all three filters, is
+ * dropped between planning and reporting, and the reconciliation catches it and
+ * refuses. **That is T-41-44 arriving from inside this file instead of from
+ * `package.json`** — and the reason a mismatch is a REFUSAL rather than a
+ * failure: this run did not measure everything the repository declares, which is
+ * not the same statement as "something is wrong with the tree".
+ *
+ * **The edit that would silently undo all of it** is keying either `absent*`
+ * filter back on the complement of `runnable` — testing that `state` is not
+ * `"runnable"` instead of testing membership. It reads like a simplification and
+ * it is the regression: with a complement, the three filters become exhaustive
+ * over every possible value of `state`, every fourth state lands deterministically
+ * in one of the `absent*` buckets, `unaccounted` can never be non-empty again, and
+ * the paragraph above becomes false while still sitting here claiming to be true.
+ * That is not a hypothesis: it is what shipped between 41-14 and 41-22, and
+ * 41-GAP-REVIEW.md CR-01 is the review that measured it.
+ *
+ * **So when a genuine fourth state is introduced**, do one of exactly two things,
+ * and never the third:
+ *   - add it to `ABSENT_STATES` **in the same commit**, with the reason it is a
+ *     non-runnable state written beside it; or
+ *   - accept the refusal — the run really did not account for that entry, and
+ *     exit 2 is the honest report of that;
+ *   - **never** widen a filter to a complement to make the refusal go away.
+ *
+ * ── WHY THE DOMAIN IS THE UNION AND NOT `declared` ALONE ────────────────────
+ *
+ * The comparison runs over `declared ∪ knownNames`, not over `declared`. Keying
+ * it on `declared` alone leaves the same hole one step to the side: a novel state
+ * introduced on an entry `package.json` does NOT register is invisible to a check
+ * that only looks at registered names.
+ *
+ * Widening a refusal's domain risks refusing on a correct tree, which D-41-19
+ * calls the worse failure mode, so the reasoning is written out rather than
+ * assumed: `undeclaredHere` guarantees `declared ⊆ knownNames`, so the union IS
+ * `knownNames`; and `missingRequired` guarantees every name in
+ * `knownNames \ declared` is an OPTIONAL `OFFLINE` entry, which the plan loop
+ * labels `unregistered` — a member of `ABSENT_STATES` — so it reaches
+ * `absentOptional` and is accounted for. Every `NEEDS_SERVER` name is accounted
+ * for by construction. Nothing on a correct tree becomes unaccounted, and the run
+ * that returns the recorded baseline is the proof of it, not this paragraph.
+ *
+ * ── AND A REFUSAL DOES NOT OUTRANK A FAILURE, IN EITHER DIRECTION ──────────
+ *
+ * Design decision 1 above says a refusal is not a failure, and that stands. Its
+ * converse is what `41-GAP-REVIEW.md` WR-01 found here: **a failure must not be
+ * reportable as a refusal either.** This reconciliation fires after every gate
+ * has run, so `failed` and `absentRequired` are already known when it does. When
+ * either is non-empty the FATAL still prints — a refusal stays legible as a
+ * refusal — and then the run carries the FAILURE verdict and exits 1. A
+ * measurement that happened outranks one that did not.
+ *
+ * The exit codes of the unmixed branches are unchanged. A run with only refusals
+ * is still 2 and a run with only failures is still 1, because that distinction is
+ * this file's reason to exist and it is not traded away for the fix.
+ *
+ * **What changed with it is a sentence, and a sentence is what a reader
+ * believes.** The refusal branch used to close by asserting flatly that nothing
+ * had failed — which this runner cannot establish, and which is why that exact
+ * wording is gone from this file rather than merely softened, so it cannot be
+ * copied back from a comment. A gate that prints a red and then exits 2 is
+ * indistinguishable from here from one that refused before measuring anything, so
+ * the line now says the narrower thing that is true: no gate that REACHED a
+ * verdict reported a failure, a refused gate may itself have been failing when it
+ * refused, and its output is above under "what they said".
  */
 
 import { spawnSync } from "node:child_process";
@@ -279,8 +344,29 @@ for (const [name, optional, note] of OFFLINE) {
   plan.push({ name, state: "runnable", optional, note, rel });
 }
 
-const absentRequired = plan.filter((p) => p.state !== "runnable" && !p.optional);
-const absentOptional = plan.filter((p) => p.state !== "runnable" && p.optional);
+/**
+ * The non-runnable states the plan loop above actually produces, listed by name.
+ *
+ * **Read the file header before changing this.** Matching membership of this set
+ * rather than the complement of `"runnable"` is what makes the three filters
+ * below NON-EXHAUSTIVE, and non-exhaustive is what gives the reconciliation at
+ * the end of this run something it can catch. A fourth `state` matches none of
+ * the three, is dropped between planning and reporting, and refuses there.
+ *
+ *   - `absent`       — registered in `package.json`, but the file it points at is
+ *                      not on disk.
+ *   - `unregistered` — this runner declares it, `package.json` does not. Only
+ *                      reachable for an optional gate; the required case refused
+ *                      before the loop ran.
+ *
+ * A new non-runnable state belongs here, with its reason, in the commit that
+ * introduces it. Widening either filter back to a complement restores the
+ * identity CR-01 found and is the one edit this file asks you not to make.
+ */
+const ABSENT_STATES = new Set(["absent", "unregistered"]);
+
+const absentRequired = plan.filter((p) => ABSENT_STATES.has(p.state) && !p.optional);
+const absentOptional = plan.filter((p) => ABSENT_STATES.has(p.state) && p.optional);
 const runnable = plan.filter((p) => p.state === "runnable");
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -399,14 +485,51 @@ const measuredOrExplained = new Set([
   ...absentRequired.map((p) => p.name),
 ]);
 
-const unaccounted = declared.filter((name) => !measuredOrExplained.has(name));
+// The domain is every name this repository can be said to have — registered in
+// `package.json`, or declared by this runner — and not `declared` alone. A novel
+// `state` introduced on an entry `package.json` does not register would be
+// invisible to a check keyed on `declared`, which is the same hole one step to
+// the side. The file header carries the reasoning for why this cannot refuse on
+// a correct tree, and the baseline run is what proves it.
+const reconciliationDomain = new Set([...declared, ...knownNames]);
+
+const unaccounted = [...reconciliationDomain].filter((name) => !measuredOrExplained.has(name));
+
+/**
+ * The reconciliation's refusal, carried to the verdict block when a failure was
+ * already recorded. Empty on every other run.
+ *
+ * **Why this refusal is handled here and not inside `refuse()`.** Every other
+ * `refuse()` call site in this file fires before a single gate has been spawned —
+ * `package.json` unreadable, a name declared here and not there, a command whose
+ * shape cannot be resolved. At those points `failed` and `absentRequired` do not
+ * exist yet, and nothing has been measured, so a refusal is the only honest
+ * report. This one fires **after** every gate has run. Those two situations are
+ * genuinely different, and burying a condition inside `refuse()` would make the
+ * code pretend they are the same.
+ */
+let reconciliationGap = [];
+
 if (unaccounted.length > 0) {
-  refuse(
-    `${unaccounted.length} registered verify:* entr(y/ies) got no verdict from this run:\n` +
-      `       ${unaccounted.join(", ")}\n` +
-      "       They did not run, and they were not named as not run either. This run CANNOT\n" +
-      "       claim to account for every registered gate — nothing about those was measured."
-  );
+  const gap =
+    `${unaccounted.length} declared verify:* entr(y/ies) got no verdict from this run:\n` +
+    `       ${unaccounted.join(", ")}\n` +
+    "       They did not run, and they were not named as not run either. This run CANNOT\n" +
+    "       claim to account for every gate this repository declares — in package.json or\n" +
+    "       in this runner's own lists. Nothing about those was measured.";
+
+  if (failed.length > 0 || absentRequired.length > 0) {
+    // A measurement that happened outranks one that did not. The FATAL prints
+    // exactly as it would otherwise — a refusal stays legible as a refusal — and
+    // then the run carries the FAILURE verdict to the block below and exits 1.
+    // 41-GAP-REVIEW.md WR-01 is the record of what the other order costs: a run
+    // that failed a check and then refused was reported REFUSED, under a closing
+    // line that said nothing had failed.
+    console.log(`\n  FATAL: ${gap}\n`);
+    reconciliationGap = unaccounted;
+  } else {
+    refuse(gap);
+  }
 }
 
 /* ── the output of anything that did not pass ─────────────────────────────── */
@@ -449,6 +572,15 @@ console.log("");
 if (failed.length > 0 || absentRequired.length > 0) {
   const names = [...failed.map((r) => r.name), ...absentRequired.map((p) => `${p.name} (missing)`)];
   console.log(`  VERIFY_FAIL — ${names.length}: ${names.join(", ")}`);
+  if (reconciliationGap.length > 0) {
+    console.log(
+      `  AND the reconciliation above refused on ${reconciliationGap.length} entr(y/ies) — ` +
+        `${reconciliationGap.join(", ")}.\n` +
+        "  This run exits 1, not 2: a refusal means a measurement did not happen, and it does\n" +
+        "  not unsay one that did. Both are printed — read the FATAL for what could not be\n" +
+        "  measured, and the names above for what was measured and is wrong."
+    );
+  }
   if (refused.length > 0) {
     console.log(
       `  AND ${refused.length} refused — ${refused.map((r) => r.name).join(", ")}. ` +
@@ -466,10 +598,15 @@ if (refused.length > 0) {
       .join(", ")}`
   );
   console.log(
-    "\n  Nothing failed. But a refusal is not a pass: those gates measured NOTHING, and this\n" +
-      "  command exits 2 rather than 0 so that no script and no reader can mistake the two.\n" +
-      "  Read each one's note above — a refusal usually names something the environment is\n" +
-      "  missing, not something the tree got wrong.\n"
+    "\n  No gate that reached a verdict reported a failure. That is a narrower statement than\n" +
+      "  \"nothing failed\", and the difference is not pedantry: a gate that printed a red and\n" +
+      "  THEN refused exits 2, and from here it is indistinguishable from one that refused\n" +
+      "  before measuring anything. Its own output is reproduced above under \"what they\n" +
+      "  said\", and that is where the answer is — this line cannot tell you.\n" +
+      "\n  A refusal is not a pass either: those gates measured NOTHING, and this command exits\n" +
+      "  2 rather than 0 so that no script and no reader can mistake the two. Read each one's\n" +
+      "  note above — a refusal usually names something the environment is missing, not\n" +
+      "  something the tree got wrong.\n"
   );
   process.exit(2);
 }
