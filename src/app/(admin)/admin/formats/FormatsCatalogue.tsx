@@ -13,6 +13,9 @@ import {
   setFormatListed,
   type CatalogueRefusal,
 } from "@/app/(admin)/admin/formats/actions";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Chip";
 
 /**
  * Every interactive act on the catalogue surface, in one place.
@@ -161,11 +164,20 @@ function without(takenBy: TakenBy, color: string | undefined): TakenBy {
   return out;
 }
 
-const ROW =
-  "rounded-xl border border-card-border bg-card p-3 transition-colors";
-
-const SECONDARY_BUTTON =
-  "rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50";
+/**
+ * The row actions, all four of them, at the `sm` rung.
+ *
+ * They were a hand-written pill at 12 px vertical padding, which computes to
+ * **28 px** — one of the six spellings §8.5 collapsed, and below §6.1's 44 px
+ * floor on a surface whose primary device is a phone. `sm` is the dense-row
+ * rung: the same 44 px height as every other button, at the narrower padding
+ * and smaller type a row full of actions wants.
+ *
+ * `secondary` and not `ghost`: these sit inside a card, several to a row, and a
+ * ghost at rest is a label rather than a control. The boundary is `--control`
+ * at **7.14 : 1**, where the incumbent's was the decorative line alias at 1.39.
+ */
+const ROW_ACTION = { size: "sm", variant: "secondary" } as const;
 
 interface FormatsCatalogueProps {
   readonly formats: readonly CatalogueFormat[];
@@ -236,130 +248,135 @@ export default function FormatsCatalogue({
         </h2>
 
         {/* The one page-level create affordance in this repository. */}
-        <button
-          type="button"
-          onClick={() => setAddingFormat(true)}
-          className="ml-auto rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        >
+        <Button className="ml-auto" onClick={() => setAddingFormat(true)}>
           Add format
-        </button>
+        </Button>
       </div>
 
       {formats.length > 0 && (
         <ul className="space-y-2">
           {formats.map((format) => (
-            <li key={format.id} className={ROW}>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <FormatMarker name={format.name} color={format.color} />
+            <li key={format.id}>
+              <Card>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <FormatMarker name={format.name} color={format.color} />
 
-                <span className="text-xs text-muted tabular-nums">
-                  {format.code}
-                </span>
+                  {/*
+                    `normal-case` on the element, not assumed: this is a sigla
+                    and the row above it is a format name, and `text-transform`
+                    INHERITS — upper-casing appears in 43 files in this tree, so
+                    "we did not ask for it" is not a guarantee.
+                  */}
+                  <span className="text-xs normal-case text-muted tabular-nums">
+                    {format.code}
+                  </span>
 
-                {/*
-                  A COUNT, and it is fine HERE AND ONLY HERE.
+                  {/*
+                    A COUNT, and it is fine HERE AND ONLY HERE.
 
-                  Rule 1 of the UI spec bars a count from a surface a visitor
-                  reads: a count with one bit of resolution announces an
-                  unannounced night by lighting up. This surface is internal,
-                  behind `catalogue.manage`, and the count is the only field on
-                  the row that says anything about the format's state. The rule
-                  is easy to over-apply — which is why the exception is written
-                  here rather than left to be re-argued.
-                */}
-                <span className="text-xs text-muted tabular-nums">
-                  {format.series.length === 1
-                    ? "1 series"
-                    : `${format.series.length} series`}
-                </span>
+                    Rule 1 of the UI spec bars a count from a surface a visitor
+                    reads: a count with one bit of resolution announces an
+                    unannounced night by lighting up. This surface is internal,
+                    behind `catalogue.manage`, and the count is the only field on
+                    the row that says anything about the format's state. The rule
+                    is easy to over-apply — which is why the exception is written
+                    here rather than left to be re-argued.
+                  */}
+                  <span className="text-xs text-muted tabular-nums">
+                    {format.series.length === 1
+                      ? "1 series"
+                      : `${format.series.length} series`}
+                  </span>
 
-                <span
-                  className={`text-xs ${format.listed ? "text-foreground" : "text-muted"}`}
-                >
-                  {format.listed ? "On /events" : "Not on /events"}
-                </span>
-              </div>
+                  {/*
+                    A mark that STATES and cannot be operated, so it is a badge
+                    and not a chip — the sentence at the top of `Chip.tsx` is
+                    what decides that, and getting it the other way round is how
+                    a 24 px pill becomes a 24 px target.
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className={SECONDARY_BUTTON}
-                  onClick={() => setEditingFormat(format)}
-                >
-                  Edit format
-                </button>
+                    Both states take the SAME tone. The tone carries emphasis,
+                    never an outcome, and which of the two is "good" is not a
+                    thing a hue may decide here: a format that is deliberately
+                    unannounced is not a format in a worse state. The words are
+                    the channel, and they say the effect a visitor sees.
+                  */}
+                  <Badge>{format.listed ? "On /events" : "Not on /events"}</Badge>
+                </div>
 
-                {/*
-                  The listing control names the EFFECT, not the column. Turning
-                  it on is what puts a chip on `/events` for every visitor;
-                  turning it off takes the chip away and leaves everything else
-                  exactly as it is — the nights, the series, the numbering.
-                */}
-                <button
-                  type="button"
-                  className={SECONDARY_BUTTON}
-                  disabled={listingBusy === format.id}
-                  onClick={() => void toggleListing(format)}
-                >
-                  {listingBusy === format.id
-                    ? "Working…"
-                    : format.listed
-                      ? "Take off /events"
-                      : "Show on /events"}
-                </button>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button {...ROW_ACTION} onClick={() => setEditingFormat(format)}>
+                    Edit format
+                  </Button>
 
-                <button
-                  type="button"
-                  className={SECONDARY_BUTTON}
-                  onClick={() => setSeriesTarget({ format })}
-                >
-                  Add series
-                </button>
+                  {/*
+                    The listing control names the EFFECT, not the column. Turning
+                    it on is what puts a chip on `/events` for every visitor;
+                    turning it off takes the chip away and leaves everything else
+                    exactly as it is — the nights, the series, the numbering.
+                  */}
+                  <Button
+                    {...ROW_ACTION}
+                    disabled={listingBusy === format.id}
+                    onClick={() => void toggleListing(format)}
+                  >
+                    {listingBusy === format.id
+                      ? "Working…"
+                      : format.listed
+                        ? "Take off /events"
+                        : "Show on /events"}
+                  </Button>
 
-                <button
-                  type="button"
-                  className={SECONDARY_BUTTON}
-                  onClick={() =>
+                  <Button {...ROW_ACTION} onClick={() => setSeriesTarget({ format })}>
+                    Add series
+                  </Button>
+
+                  <Button
+                    {...ROW_ACTION}
+                    onClick={() =>
+                      setRetireTarget({
+                        subject: "format",
+                        mode: "retire",
+                        id: format.id,
+                        name: format.name,
+                        color: format.color,
+                      })
+                    }
+                  >
+                    Retire
+                  </Button>
+                </div>
+
+                <p className="mt-2 text-xs text-muted">
+                  {format.listed
+                    ? "A chip for this format is on /events for every visitor."
+                    : "No chip for this format is on /events. Nights under it are unaffected either way."}
+                </p>
+
+                {notice?.id === format.id && (
+                  /*
+                    The refusal is ink, not a tinted box: `--sem-crit` on
+                    `--surface` is 6.99 : 1, and a box drawn around one sentence
+                    is a container that states nothing its content does not. The
+                    sentence and its `role` are unchanged.
+                  */
+                  <p role="alert" className="mt-2 text-sm text-sem-crit">
+                    {notice.sentence}
+                  </p>
+                )}
+
+                <SeriesList
+                  format={format}
+                  onEdit={(series) => setSeriesTarget({ format, series })}
+                  onRetire={(series, mode) =>
                     setRetireTarget({
-                      subject: "format",
-                      mode: "retire",
-                      id: format.id,
-                      name: format.name,
-                      color: format.color,
+                      subject: "series",
+                      mode,
+                      id: series.id,
+                      name: series.name,
                     })
                   }
-                >
-                  Retire
-                </button>
-              </div>
-
-              <p className="mt-2 text-xs text-muted">
-                {format.listed
-                  ? "A chip for this format is on /events for every visitor."
-                  : "No chip for this format is on /events. Nights under it are unaffected either way."}
-              </p>
-
-              {notice?.id === format.id && (
-                <div
-                  role="alert"
-                  className="mt-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-                >
-                  <p className="text-sm text-red-400">{notice.sentence}</p>
-                </div>
-              )}
-
-              <SeriesList
-                format={format}
-                onEdit={(series) => setSeriesTarget({ format, series })}
-                onRetire={(series, mode) =>
-                  setRetireTarget({
-                    subject: "series",
-                    mode,
-                    id: series.id,
-                    name: series.name,
-                  })
-                }
-              />
+                />
+              </Card>
             </li>
           ))}
         </ul>
@@ -440,14 +457,14 @@ interface SeriesListProps {
 function SeriesList({ format, onEdit, onRetire }: SeriesListProps) {
   if (format.series.length === 0) {
     return (
-      <p className="mt-3 border-t border-card-border pt-3 text-xs text-muted">
+      <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
         No series yet. A night is assigned to a series, not to a format.
       </p>
     );
   }
 
   return (
-    <ul className="mt-3 space-y-2 border-t border-card-border pt-3">
+    <ul className="mt-3 space-y-2 border-t border-line pt-3">
       {format.series.map((series) => {
         const isRetired = series.retiredAt !== null;
 
@@ -465,40 +482,40 @@ function SeriesList({ format, onEdit, onRetire }: SeriesListProps) {
               it applies to any element in an admin surface that renders a name
               somebody chose.
             */}
+            {/*
+              `font-semibold` and not the incumbent 500: Phase 40 fixed the type
+              system at two weights, 400 and 600, and 500 does not exist in it.
+              That is an inheritance, not a preference.
+            */}
             <span
-              className={`text-xs font-medium normal-case ${
-                isRetired ? "text-muted opacity-50" : "text-foreground"
+              className={`text-xs font-semibold normal-case ${
+                isRetired ? "text-muted opacity-50" : "text-ink"
               }`}
             >
               {series.name}
             </span>
 
-            <span className="text-xs text-muted tabular-nums">
+            <span className="text-xs normal-case text-muted tabular-nums">
               {format.code}-{series.code}
             </span>
 
             {isRetired && (
               // The word, not the opacity. Rule 4: a state signalled by a
               // visual channel alone is a state half the readers cannot see.
-              <span className="text-xs font-medium text-muted">Retired</span>
+              <Badge>Retired</Badge>
             )}
 
             <span className="ml-auto flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={SECONDARY_BUTTON}
-                onClick={() => onEdit(series)}
-              >
+              <Button {...ROW_ACTION} onClick={() => onEdit(series)}>
                 Edit
-              </button>
+              </Button>
 
-              <button
-                type="button"
-                className={SECONDARY_BUTTON}
+              <Button
+                {...ROW_ACTION}
                 onClick={() => onRetire(series, isRetired ? "restore" : "retire")}
               >
                 {isRetired ? "Restore" : "Retire"}
-              </button>
+              </Button>
             </span>
           </li>
         );
@@ -536,56 +553,57 @@ export function RetiredFormatsList({
           const holder = takenBy[format.color.toUpperCase()];
 
           return (
-            <li key={format.id} className={ROW}>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {/*
-                  The swatch drops to half opacity AND the word `Retired` is on
-                  the row. Never opacity alone — rule 4 of the UI spec, and the
-                  one rule on this page whose violation is invisible to the
-                  person who commits it.
-                */}
-                <span className="opacity-50">
-                  <FormatMarker name={format.name} color={format.color} />
-                </span>
+            <li key={format.id}>
+              <Card>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {/*
+                    The swatch drops to half opacity AND the word `Retired` is on
+                    the row. Never opacity alone — rule 4 of the UI spec, and the
+                    one rule on this page whose violation is invisible to the
+                    person who commits it.
+                  */}
+                  <span className="opacity-50">
+                    <FormatMarker name={format.name} color={format.color} />
+                  </span>
 
-                <span className="text-xs text-muted tabular-nums">
-                  {format.code}
-                </span>
+                  <span className="text-xs normal-case text-muted tabular-nums">
+                    {format.code}
+                  </span>
 
-                <span className="text-xs font-medium text-muted">Retired</span>
+                  <Badge>Retired</Badge>
 
-                <span className="text-xs text-muted tabular-nums">
-                  {format.series.length === 1
-                    ? "1 series"
-                    : `${format.series.length} series`}
-                </span>
-              </div>
+                  <span className="text-xs text-muted tabular-nums">
+                    {format.series.length === 1
+                      ? "1 series"
+                      : `${format.series.length} series`}
+                  </span>
+                </div>
 
-              {holder && (
-                <p className="mt-2 text-xs text-muted">
-                  Its colour is now held by {holder}. Restoring this format is
-                  refused until one of the two takes a different colour.
-                </p>
-              )}
+                {holder && (
+                  <p className="mt-2 text-xs text-muted">
+                    Its colour is now held by {holder}. Restoring this format is
+                    refused until one of the two takes a different colour.
+                  </p>
+                )}
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className={SECONDARY_BUTTON}
-                  onClick={() =>
-                    setTarget({
-                      subject: "format",
-                      mode: "restore",
-                      id: format.id,
-                      name: format.name,
-                      color: format.color,
-                      colorHolder: holder,
-                    })
-                  }
-                >
-                  Restore
-                </button>
-              </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    {...ROW_ACTION}
+                    onClick={() =>
+                      setTarget({
+                        subject: "format",
+                        mode: "restore",
+                        id: format.id,
+                        name: format.name,
+                        color: format.color,
+                        colorHolder: holder,
+                      })
+                    }
+                  >
+                    Restore
+                  </Button>
+                </div>
+              </Card>
             </li>
           );
         })}

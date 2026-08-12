@@ -2,6 +2,8 @@
 
 import { useRef, type KeyboardEvent } from "react";
 
+import { FOCUS_RING } from "@/components/ui/Button";
+
 /**
  * The catalogue's colour control — six flat choices, one of them deliberately
  * neutral, and no way at all to express a gradient.
@@ -37,12 +39,24 @@ import { useRef, type KeyboardEvent } from "react";
  * ── The figures below were measured, and their ground is named ───────────────
  *
  * Every ratio quoted here is from `36-UI-SPEC.md` § *The palette offered by the
- * catalogue colour picker*, measured 2026-08-10 against **`#141414`** (`--card`)
- * with the WCAG 2.x relative-luminance formula. This control is mounted on a
- * modal panel whose ground is `--background` `#0a0a0a`, which is darker — and a
- * darker ground can only raise the ratio of a light foreground, never lower it.
- * The ground is stated because a figure whose ground is unnamed cannot be
- * reproduced.
+ * catalogue colour picker*, measured 2026-08-10 against **`#141414`**, the card
+ * ground of the time, with the WCAG 2.x relative-luminance formula. This control
+ * is mounted on a dialog panel whose ground is **`--surface` `#140D20`**, which
+ * is darker — and a darker ground can only raise the ratio of a light
+ * foreground, never lower it. The ground is stated because a figure whose
+ * ground is unnamed cannot be reproduced.
+ *
+ * ── This file is a NAMED EXEMPTION in two gates, and stays one ───────────────
+ *
+ * `verify-conversion.mjs` and `verify-semantic-separation.mjs` both exempt this
+ * exact path by name, for one reason: **a format's identification colour is
+ * data on a catalogue row, not a CSS token.** It is chosen by a person, stored
+ * per row, and applied through an inline style, so that changing a format's
+ * colour is not a deploy (D-36-12). Plan 41-09 converted this file's layout,
+ * its focus expression and its token names and **left every hex exactly where
+ * it was**. Introducing a `--sem-*` or `--accent` fallback for a format colour
+ * would make a state start looking like a format, which is the boundary the
+ * exemption exists to hold.
  *
  * ── Colour is never the only channel ─────────────────────────────────────────
  *
@@ -276,14 +290,30 @@ export default function ColorSwatchPicker({
             }}
             // 44 × 44px, the minimum touch target the accessibility contract
             // asks of every swatch: this is used one-thumbed on a phone.
-            className={`relative flex h-11 w-11 items-center justify-center rounded-lg outline-none transition-opacity focus-visible:ring-1 focus-visible:ring-accent/50 ${
+            //
+            // The focus expression is IMPORTED, not spelled: the incumbent
+            // killed the outline and replaced it with a 1px accent ring, which
+            // is finding A3 — the one indicator a keyboard user has, in the one
+            // colour that disappears against an accent fill (2.52 : 1). The
+            // shared expression is `--ink` at a 2px offset, 15.22–17.29 : 1 on
+            // the surrounding ground. The radius moves to the control rung of
+            // §9's three-radius ladder; the 8px one does not survive it.
+            className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-opacity ${FOCUS_RING} ${
               taken ? "cursor-not-allowed opacity-40" : "cursor-pointer"
             } ${disabled ? "opacity-50" : ""}`}
           >
+            {/*
+              The drawn swatch. Its 2px radius is NOT a rung of §9's ladder and
+              is deliberately left alone: §9 governs the radius of a container
+              and of a control, and this is neither — it is the mark the control
+              draws, 24px square, on which a 12px radius would read as a circle.
+              The hex arrives as data on a row and is applied inline, which is
+              the whole reason this file is a named exemption.
+            */}
             <span
               aria-hidden="true"
               className={`h-6 w-6 rounded-[2px] ${
-                selected ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""
+                selected ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : ""
               }`}
               style={{ background: hex }}
             />
@@ -303,7 +333,7 @@ export default function ColorSwatchPicker({
                 strokeWidth={3}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="pointer-events-none absolute h-4 w-4 text-background"
+                className="pointer-events-none absolute h-4 w-4 text-ground"
               >
                 <path d="M5 13l4 4L19 7" />
               </svg>
@@ -318,7 +348,7 @@ export default function ColorSwatchPicker({
                 stroke="currentColor"
                 strokeWidth={3}
                 strokeLinecap="round"
-                className="pointer-events-none absolute h-6 w-6 text-background"
+                className="pointer-events-none absolute h-6 w-6 text-ground"
               >
                 <path d="M5 19L19 5" />
               </svg>

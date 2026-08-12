@@ -6,6 +6,8 @@ import FormatsCatalogue, {
   RetiredFormatsList,
   type CatalogueFormat,
 } from "@/app/(admin)/admin/formats/FormatsCatalogue";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * The catalogue surface — the one place a person can see what formats and series
@@ -131,17 +133,27 @@ export default async function AdminFormatsPage() {
   );
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Formats</h1>
+    /*
+      `default` and not `wide`: §4's wide list is closed and does not name this
+      route. That is not a fallback — it is the answer for every surface nobody
+      had to argue about, and the catalogue is a list of short rows rather than
+      a dense table.
+
+      The shell owns the maximum, the gutter, the vertical rhythm and the
+      navigation clearance in BOTH tiers, so the page writes none of them: the
+      hand-written bottom clearance this file used to carry was the phone number
+      only, and from 768px up the navigation leaves the bottom edge entirely.
+    */
+    <PageShell width="default">
+      <header className="pb-6">
+        <PageTitle>Formats</PageTitle>
       </header>
 
-      <div className="px-6 space-y-10">
+      <div className="space-y-10">
         {formats.length === 0 && (
-          <div className="pt-6 text-center">
-            <p className="text-base font-semibold text-foreground">
-              No formats yet
-            </p>
+          /* §8.11's empty-state contract — a class string, not a component. */
+          <div className="px-6 py-12 text-center">
+            <p className="text-base font-semibold text-ink">No formats yet</p>
             <p className="mt-1 text-sm text-muted">
               A night cannot be saved without a format. Add the first one.
             </p>
@@ -156,9 +168,17 @@ export default async function AdminFormatsPage() {
 
         {retired.length > 0 && (
           <section aria-labelledby="retired-formats-heading" className="space-y-3">
+            {/*
+              §7.3's one string, written out rather than imported: the section
+              is named by this heading through `aria-labelledby`, so the heading
+              needs an id, and D-41-11 is explicit that the component is a
+              convenience — "a surface that writes the string is equally
+              converted". Widening a primitive to carry one attribute would have
+              been the more expensive of the two.
+            */}
             <h2
               id="retired-formats-heading"
-              className="text-sm font-semibold uppercase tracking-wide text-muted"
+              className="mb-4 font-mono text-xs font-semibold uppercase tracking-widest text-muted"
             >
               Retired
             </h2>
@@ -174,7 +194,18 @@ export default async function AdminFormatsPage() {
               retirement and a restore that sometimes fails, with nothing written
               beside it, takes the asymmetry for a defect and "fixes" it.
             */}
-            <p className="max-w-prose text-xs text-muted">
+            {/*
+              The reading measure this paragraph used to carry is GONE, and it
+              is a loss rather than a tidy. §4 gives the content maximum to the
+              shell and D-41-06 says a converted page writes none of its own;
+              G4 reads that literally, so a typographic measure on a `<p>` and a
+              container maximum on a page root are the same string to it. The
+              contract has no room for the first, this plan does not own the
+              gate, and dodging the check with an inline style would be evasion
+              with a different spelling. Recorded as DEF-41-04 so §4's next
+              revision can decide whether a MEASURE is a MAXIMUM.
+            */}
+            <p className="text-xs text-muted">
               Restoring is not an undo. Retiring released the format&rsquo;s
               colour, so another format may hold it now — when it does, the
               restore is refused until one of the two takes a different colour.
@@ -186,7 +217,7 @@ export default async function AdminFormatsPage() {
           </section>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   retireFormat,
   restoreFormat,
@@ -10,19 +10,33 @@ import {
   type CatalogueResult,
 } from "@/app/(admin)/admin/formats/actions";
 import { catalogueColorLabel } from "@/app/(admin)/admin/formats/ColorSwatchPicker";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 
 /**
  * The confirmation the catalogue asks before taking something out of
  * circulation — and the one it asks before putting it back.
  *
- * ── It has no analog, so its shape is designed rather than copied ────────────
+ * ── Where the shell came from, and where it lives now ────────────────────────
  *
- * Measured before writing: there is **no confirmation dialog for a destructive
- * action anywhere in `src/`** (`36-PATTERNS.md`, *No Analog Found*, first row).
- * The `<dialog>` shell, the backdrop click and the open/close effect are copied
- * from `CreateVenueModal.tsx:37-50` and `:140-152`, which is the shape this
- * repository already uses. The two-button confirm, the default focus and the
- * refusal box are new here, and are stated as new.
+ * Measured before this file was first written: there was **no confirmation
+ * dialog for a destructive action anywhere in `src/`** (`36-PATTERNS.md`, *No
+ * Analog Found*, first row). The native modal shell, the backdrop click and the
+ * open/close effect were therefore **copied from `CreateVenueModal.tsx`**,
+ * which is the shape this repository already used. The two-button confirm, the
+ * default focus and the refusal box were new here, and were stated as new.
+ *
+ * **That shell is no longer in this file.** Plan 41-09 extracted it into
+ * `src/components/ui/Dialog.tsx` — from the same ancestor, which is exactly why
+ * the extraction was provable: this docblock and `RevealVenueDialog.tsx:18-19`
+ * had already written the lineage down before anybody went looking for it. The
+ * lineage is kept rather than deleted, because it is the evidence.
+ *
+ * What the primitive brought with it, and what this file therefore stopped
+ * carrying: the panel geometry, the scrim, the light-dismiss handler, the
+ * open/close effect, the 32 px close control (now 44 × 44, §6.1), and the
+ * initial focus. What stays here is what this dialog **is** — the question, the
+ * two answers, the ten refusals and the asymmetry between retire and restore.
  *
  * ── What this dialog is NOT, recorded so nobody has to guess ─────────────────
  *
@@ -141,36 +155,8 @@ export default function RetireFormatDialog({
   onClose,
   onDone,
 }: RetireFormatDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-      setRefusal(null);
-      // `Cancel` takes the default focus, and this is the deliberate part:
-      // `CreateVenueModal` focuses nothing on purpose-or-otherwise, so nothing
-      // in the tree does this and it had to be written. A confirmation whose
-      // Enter key performs the act is a confirmation that did not ask.
-      //
-      // `showModal()` also traps focus for as long as the dialog is open — the
-      // rest of the document is inert — so no key handler is needed to keep it
-      // inside. That is the browser's, not this file's, and it is why the
-      // `<dialog>` element is the right shell for a confirmation.
-      cancelRef.current?.focus();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function close() {
     setRefusal(null);
@@ -277,74 +263,60 @@ export default function RetireFormatDialog({
         : "Restore series";
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div
-          role="document"
-          className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6"
-        >
-          {/* `normal-case`: the heading carries a format name, and
-              `text-transform` inherits — the reason `FormatMarker` exists. */}
-          <h2 className="text-lg font-bold text-foreground normal-case">
-            {heading}
-          </h2>
+    <Dialog
+      open={open}
+      onClose={close}
+      title={heading}
+      status={refusal ? { tone: "crit", message: refusal } : null}
+      actions={
+        <div className="flex gap-3">
+          {/*
+            Cancel first in the DOM, first in the tab order, and it carries the
+            marker the primitive focuses on open.
 
-          <p className="mt-3 text-sm text-muted">{body}</p>
+            The argument is carried across from where this file first wrote it,
+            because it is an argument and not a note: a confirmation whose Enter
+            key performs the act is a confirmation that did not ask. The
+            mechanism changed and the rule did not — the primitive focuses
+            `[data-initial-focus]` imperatively, immediately after
+            `showModal()`, which is the only moment the user agent does not
+            overwrite. The `autoFocus` prop that used to sit here was measured
+            NOT to survive that step and is gone rather than kept beside it.
 
-          {refusal && (
-            <div
-              role="alert"
-              className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-            >
-              <p className="text-sm text-red-400">{refusal}</p>
-            </div>
-          )}
+            `showModal()` also traps focus for as long as the dialog is open —
+            the rest of the document is inert — so no key handler keeps it
+            inside. That is the browser's, and it is why the native modal
+            element is the right shell for a confirmation.
 
-          <div className="mt-6 flex gap-3">
-            {/*
-              Cancel first in the DOM and first in the tab order, and it holds
-              the focus the effect above puts on it. The order is the copy
-              contract's: `[ Cancel ] [ Retire format ]`.
-            */}
-            <button
-              ref={cancelRef}
-              type="button"
-              autoFocus
-              onClick={close}
-              disabled={isSubmitting}
-              className="flex-1 rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-            >
-              Cancel
-            </button>
+            The order is the copy contract's: `[ Cancel ] [ Retire format ]`.
+          */}
+          <Button
+            variant="secondary"
+            className="flex-1"
+            data-initial-focus
+            onClick={close}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
 
-            <button
-              type="button"
-              onClick={confirm}
-              disabled={isSubmitting}
-              className={
-                mode === "retire"
-                  ? // The destructive treatment: the `red-500/10` fill and the
-                    // `red-400` ink, reserved for this button and this dialog's
-                    // refusal box, and used nowhere else on this surface.
-                    "flex-1 rounded-full border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-semibold text-red-400 transition-opacity hover:opacity-90 disabled:opacity-50"
-                  : // Restoring is not destructive, so it does not borrow the
-                    // destructive treatment — but it is still a decision of its
-                    // own, which is why it is behind this dialog at all.
-                    "flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              }
-            >
-              {isSubmitting ? "Working…" : confirmLabel}
-            </button>
-          </div>
+          <Button
+            // The destructive rung, and it is a rung rather than a bespoke
+            // treatment now: a semantic fill carries `--ground` as its ink, at
+            // 7.36 : 1 (§8.5). Restoring is NOT destructive, so it does not
+            // borrow that treatment — but it is still a decision of its own,
+            // which is why it is behind this dialog at all.
+            variant={mode === "retire" ? "destructive" : "primary"}
+            className="flex-1"
+            onClick={confirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Working…" : confirmLabel}
+          </Button>
         </div>
-      </div>
-    </dialog>
+      }
+    >
+      <p className="text-sm text-muted">{body}</p>
+    </Dialog>
   );
 }
