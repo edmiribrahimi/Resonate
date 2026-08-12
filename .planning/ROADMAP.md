@@ -657,10 +657,10 @@ Plans:
 - [x] 41-10-PLAN.md — DataTable, Checkbox, /admin/members, and G3
 - [x] 41-11-PLAN.md — G5 touch targets, proven red and proven green on MemberTable — or not written
 - [x] 41-12-PLAN.md — `npm run verify`, and 41-RELEASE-PASS.md with H41-1 … H41-6
-- [ ] 41-13-PLAN.md — CR-01: the focus form stops reserving a navigation its four surfaces never mount
-- [ ] 41-14-PLAN.md — verify-all's reconciliation, from an identity that cannot fail to a refusal that can
-- [ ] 41-15-PLAN.md — G5's exemption 2a, from a file-wide blanket to ten declared elements with ten reasons
-- [ ] 41-16-PLAN.md — G2's overlay matcher, keyed on the shape of an overlay rather than on one z rung
+- [x] 41-13-PLAN.md — CR-01: the focus form stops reserving a navigation its four surfaces never mount
+- [x] 41-14-PLAN.md — verify-all's reconciliation, from an identity that cannot fail to a refusal that can
+- [x] 41-15-PLAN.md — G5's exemption 2a, from a file-wide blanket to ten declared elements with ten reasons
+- [x] 41-16-PLAN.md — G2's overlay matcher, keyed on the shape of an overlay rather than on one z rung
 - [ ] 41-17-PLAN.md — G4 check E: the clearance a surface reserves must match the navigation it mounts
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
@@ -759,7 +759,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 12/12 | Complete   | 2026-08-12 |
+| 41. Shared Primitives & Three-Tier Layout | 16/17 | In Progress|  |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
