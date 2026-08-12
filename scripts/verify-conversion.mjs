@@ -797,17 +797,49 @@ export const FOCUS_ROOT_IDENTIFIER = 'FOCUS_ROOT';
 const NAV_PROPERTIES = ['--nav-inset-inline-start', '--nav-inset-block-end'];
 
 /**
- * The route root, and the four extensions Next resolves a layout at.
+ * The route root, every basename Next WRAPS a page with, and the four
+ * extensions it resolves one at.
  *
- * The enumeration refuses on any `layout.*` basename carrying a fifth. A walk
- * that silently skips a layout is a narrowing in the direction that prints a
- * tick — the same rule this file already applies to an unresolved specifier,
- * and the reason the enumeration reads EVERY file under the route root rather
- * than only the ones the scanner's extension list admits.
+ * **Why a list and not `layout.` alone.** Next renders `template.tsx` around a
+ * page in the same position a layout occupies. Until this list existed, that
+ * basename was neither climbed nor refused on, so a `src/app/(auth)/template.tsx`
+ * mounting a navigation left all four focus surfaces reported navigation-free,
+ * E2 found agreement, and the tick printed (41-GAP-REVIEW.md WR-05 — reproduced
+ * on the shipped gate before this edit: exit 0, `✓ E`, and `/login`,
+ * `/register`, `/set-password` all in the `none` column). A hole in the very
+ * enumeration check E depends on.
+ *
+ * Searching MORE wrappers can only make this gate more likely to FIND a
+ * navigation, never less — the same argument `ancestorLayoutFiles` already made
+ * for collecting both extensions when one directory carries two.
+ *
+ * ── `default.` is excluded, and this is the decision, not an omission ────────
+ *
+ * A `default.tsx` is a **parallel-route slot fallback**, not a wrapper around
+ * the page: it is what Next renders INTO a named slot when that slot has no
+ * match for the current URL. Climbing it would let a sibling slot's imports be
+ * counted as a navigation mounted over a surface that never renders it — a red
+ * on a correct file, which is the worse of the two failure directions (D-41-19,
+ * and §0 rule 3: a gate that goes red on correct code gets switched off).
+ *
+ * **Revisit condition, named so it is checkable rather than remembered: the
+ * first parallel route in this tree** — the first `@slot/` directory under
+ * `src/app`, at which point a `default.*` becomes reachable and this exclusion
+ * is re-argued in the same commit that introduces it. Measured 2026-08-12:
+ * `find src/app -name "default.*"` returns nothing, and no `@`-prefixed
+ * directory exists, so the exclusion costs nothing today.
+ *
+ * The extension list carries the same rule it always did: the enumeration
+ * refuses on any wrapper basename carrying a fifth extension that could
+ * plausibly be a route module. A walk that silently skips a wrapper is a
+ * narrowing in the direction that prints a tick — the same rule this file
+ * already applies to an unresolved specifier, and the reason the enumeration
+ * reads EVERY file under the route root rather than only the ones the scanner's
+ * extension list admits.
  */
 const APP_DIR_REL = 'src/app';
-const LAYOUT_BASENAME_PREFIX = 'layout.';
-const LAYOUT_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
+const WRAPPER_BASENAMES = ['layout.', 'template.'];
+const WRAPPER_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
 
 /**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
@@ -995,27 +1027,29 @@ if (!existsSync(`${ROOT}/${APP_DIR_REL}`)) {
 }
 
 /*
- * Every file under the route root whose basename begins `layout.`, whatever its
- * extension — deliberately not filtered by the scanner's extension list, since
- * the whole point is to find the one the walk would not have tested.
+ * Every file under the route root whose basename begins with one of the wrapper
+ * prefixes, whatever its extension — deliberately not filtered by the scanner's
+ * extension list, since the whole point is to find the one the walk would not
+ * have tested.
  */
-const layoutFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel) =>
-  rel.split('/').pop().startsWith(LAYOUT_BASENAME_PREFIX)
+const wrapperFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel) =>
+  WRAPPER_BASENAMES.some((base) => rel.split('/').pop().startsWith(base))
 );
 
-const layoutsWithUntestedExtension = layoutFilesUnderApp.filter(
-  (rel) => !LAYOUT_EXTENSIONS.some((ext) => rel.endsWith(ext))
+const wrappersWithUntestedExtension = wrapperFilesUnderApp.filter(
+  (rel) => !WRAPPER_EXTENSIONS.some((ext) => rel.endsWith(ext))
 );
 
-if (layoutsWithUntestedExtension.length > 0) {
+if (wrappersWithUntestedExtension.length > 0) {
   refuse(
-    `${layoutsWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a layout but\n` +
-      `       carry an extension check E's ancestor walk does not test (${LAYOUT_EXTENSIONS.join(', ')}):\n\n       ` +
-      layoutsWithUntestedExtension.join('\n       ') +
-      '\n\n       A layout is where three of the eight declared surfaces get their navigation, and\n' +
+    `${wrappersWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a wrapper\n` +
+      `       (${WRAPPER_BASENAMES.join(', ')}) but carry an extension check E's ancestor walk does\n` +
+      `       not test (${WRAPPER_EXTENSIONS.join(', ')}):\n\n       ` +
+      wrappersWithUntestedExtension.join('\n       ') +
+      '\n\n       A wrapper is where three of the eight declared surfaces get their navigation, and\n' +
       '       a walk that skips one reports those surfaces as navigation-free — which is a\n' +
       '       narrowing in the direction that prints a tick. Either the extension joins\n' +
-      '       LAYOUT_EXTENSIONS in the same commit, or the file is not a layout and should not\n' +
+      '       WRAPPER_EXTENSIONS in the same commit, or the file is not a wrapper and should not\n' +
       '       be named like one. Nothing was measured.'
   );
 }
@@ -1245,23 +1279,31 @@ function layoutClosure(rel) {
 }
 
 /**
- * Every layout that wraps `pageFile`, nearest first, from the page's own
+ * Every wrapper that wraps `pageFile`, nearest first, from the page's own
  * directory up to the route root inclusive.
  *
- * It climbs **directories**, which is what Next nests layouts by — a route
+ * It climbs **directories**, which is what Next nests wrappers by — a route
  * group like `(work)` or `(admin)` is a directory and is therefore climbed
- * through, not around. Both extensions are collected if two ever sat in one
- * directory: Next would pick one, and searching both can only make this gate
+ * through, not around. Every basename in `WRAPPER_BASENAMES` and every
+ * extension is collected if several ever sat in one directory: Next would
+ * render its own combination, and searching all of them can only make this gate
  * MORE likely to find a navigation, never less.
+ *
+ * It reads `WRAPPER_BASENAMES` — the same list the enumeration under the route
+ * root reads — so the two cannot drift apart: a basename added there is climbed
+ * here, instead of being enumerated by one and skipped by the other.
  */
 function ancestorLayoutFiles(pageFile) {
   const found = [];
   let dir = pageFile.split('/').slice(0, -1).join('/');
 
   for (;;) {
-    for (const ext of LAYOUT_EXTENSIONS) {
-      const candidate = `${dir}/layout${ext}`;
-      if (existsSync(`${ROOT}/${candidate}`)) found.push(candidate);
+    for (const base of WRAPPER_BASENAMES) {
+      for (const ext of WRAPPER_EXTENSIONS) {
+        /* `base` carries its own trailing dot, `ext` leads with one. */
+        const candidate = `${dir}/${base}${ext.slice(1)}`;
+        if (existsSync(`${ROOT}/${candidate}`)) found.push(candidate);
+      }
     }
     if (dir === APP_DIR_REL) break;
     const parent = dir.split('/').slice(0, -1).join('/');
@@ -1724,8 +1766,11 @@ for (const [path, why] of NAV_MODULES) {
   console.log(`             ${why}`);
 }
 
-console.log(`      layout files under ${APP_DIR_REL} : ${layoutFilesUnderApp.length}`);
-for (const rel of layoutFilesUnderApp) console.log(`          ${rel}`);
+console.log(
+  `      wrapper files under ${APP_DIR_REL} : ${wrapperFilesUnderApp.length}` +
+    `   (basenames climbed: ${WRAPPER_BASENAMES.join(', ')})`
+);
+for (const rel of wrapperFilesUnderApp) console.log(`          ${rel}`);
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
