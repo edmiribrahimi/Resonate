@@ -67,6 +67,48 @@
  * closed. The known future red is written at `KNOWN_FUTURE_REDS` below rather
  * than pre-empted by a quiet widening.
  *
+ * ── PROVEN ABLE TO FAIL, WITH EVERY MUTATION ASSERTED BEFORE ITS RESULT ─────
+ *
+ * D-41-19, and `41-VALIDATION.md`'s sign-off: *"proven red … with the mutation
+ * asserted to have landed before its result is read"*. The reason that clause
+ * exists is a measured false negative in this repository — a substitution that
+ * silently did not apply, whose green read exactly like a working check
+ * (`ai-engineering.md`, gate prova per mutazione).
+ *
+ * Five cycles were run on 2026-08-12. In each, the mutation was asserted
+ * PRESENT by `grep -c` before the gate was run, and asserted ABSENT after the
+ * revert; the tree ends byte-identical, asserted by an empty `git status`.
+ *
+ *   R0  the manifest emptied            → exit 2, a REFUSAL, not a pass
+ *   R1  a minimum shrunk to 32px        → exit 1, naming the file, the line,
+ *                                         the element and the resolved pixels
+ *   R2  the height class removed        → exit 1, verdict *absent* — the half
+ *                                         that catches an over-lenient parser
+ *   E3a the shrink WITH its import      → exit 0, exemption 3 applied once,
+ *                                         measured count 9 → 8
+ *   E3b the shrink WITHOUT its import   → exit 1. **Both conditions are
+ *                                         load-bearing**, and the same run
+ *                                         proves the leading boundary guard:
+ *                                         the prefixed value was read as NO
+ *                                         declaration rather than as 36px
+ *   E4  the minimum behind a breakpoint → exit 1. A height that only applies
+ *                                         above a width is not the
+ *                                         unconditional minimum §6.3 requires,
+ *                                         and a phone never reaches that width
+ *
+ * **E3b and E4 are the two that matter**, because they are the two ways a
+ * looser parser would have gone green on a target a finger cannot hit.
+ *
+ * ── THE FIRST RUN WENT RED ON REAL CODE, AND THAT IS THE POINT ──────────────
+ *
+ * Before any mutation, the gate's first execution failed on two elements: the
+ * only link from `/login` to registration, and its twin on `/register`. Both
+ * were bare inline links with no height of their own, on surfaces already
+ * declared converted. §6.3 answers them without ambiguity — *everything else is
+ * 44px unconditionally* — and the tree had already answered the same shape
+ * twice in this phase. **They were fixed at the element. The gate's threshold
+ * did not move and no exemption was widened.**
+ *
  * ── THE COMMENT STRIPPER HAS A FOURTH AND A FIFTH SHAPE ─────────────────────
  *
  * DEF-41-02 records that a JSX comment `{​/* … *​/}` is LIVE to a gate whose
