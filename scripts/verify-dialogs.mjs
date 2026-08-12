@@ -31,7 +31,7 @@
  *     behind it scrolls are **H41-2**, which is a person at two widths. No tick
  *     here stands in for that, and the scroll-lock half of it is recorded as
  *     unverified in research.
- *   - **A GREEN ON `REMAINING` IS NOT PROGRESS.** Fifteen files still carrying
+ *   - **A GREEN ON `REMAINING` IS NOT PROGRESS.** Fourteen files still carrying
  *     their own shell is a green, and it is supposed to be: the list exists so
  *     this gate can be switched on TODAY rather than after the migration
  *     (`verify-media-strip.mjs:51-62`; §0 rule 3). **Read the printed count,
@@ -324,7 +324,7 @@ export const DECLARED_EXCEPTIONS = [
   ],
   [
     ROLE_DIALOG_OVERLAY,
-    'NOT exempt, and on REMAINING — it is the tree\'s ONLY role="dialog" (one hit, measured) and is a hand-rolled overlay rather than a <dialog>. A signature keyed on that attribute would find this one file and miss the other seventeen, which is why the check is keyed on the shell instead',
+    'NOT exempt, and on REMAINING — it is the tree\'s ONLY role="dialog" (one hit, measured) and is a hand-rolled overlay rather than a <dialog>. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead',
   ],
 ];
 
@@ -368,8 +368,9 @@ function shellShapes(relPath) {
  *
  * **Measured on this tree, not copied from a document**: eleven hand-rolled
  * overlays and seven native shells, of which one — the media viewer — is a
- * declared exception rather than a debt. Plan 41-09 converts three, so this
- * list stands at fifteen once that plan lands.
+ * declared exception rather than a debt, so the list opened at **seventeen**.
+ * Plan 41-09 converted three of them in the same commit that removed their
+ * lines, and it stands at **fourteen**.
  *
  * THE DISCIPLINE, which is the whole point of the constant existing:
  *
@@ -470,23 +471,11 @@ export const REMAINING = [
     'the artists work surface and the event form',
   ],
 
-  // ── the three on /admin/formats. Plan 41-09 task 2 removes these three lines
-  // in the same commit that converts them, which is what a paid debt looks like.
-  [
-    'src/app/(admin)/admin/formats/CreateFormatModal.tsx',
-    'a native shell on the catalogue surface',
-    'plan 41-09 task 2 — /admin/formats',
-  ],
-  [
-    'src/app/(admin)/admin/formats/CreateSeriesModal.tsx',
-    'a native shell on the catalogue surface',
-    'plan 41-09 task 2 — /admin/formats',
-  ],
-  [
-    'src/app/(admin)/admin/formats/RetireFormatDialog.tsx',
-    'a native shell on the catalogue surface — a destructive confirmation, and the file whose docblock names the ancestor this primitive came from',
-    'plan 41-09 task 2 — /admin/formats',
-  ],
+  // PAID by plan 41-09 task 2 — the three native shells on `/admin/formats`
+  // (`CreateFormatModal`, `CreateSeriesModal`, `RetireFormatDialog`) were on
+  // this list when the gate was written and hold no shell now. Their lines left
+  // in the same commit that converted them, which is what a paid debt looks
+  // like: the number went 17 → 14 and nothing else moved.
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────

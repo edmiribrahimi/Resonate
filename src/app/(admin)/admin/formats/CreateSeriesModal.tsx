@@ -1,15 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   createSeries,
   updateSeries,
   type CatalogueRefusal,
 } from "@/app/(admin)/admin/formats/actions";
 import FormatMarker from "@/components/formats/FormatMarker";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
 
 /**
- * Create or rename a series — the second `<dialog>` the catalogue surface mounts.
+ * Create or rename a series — the second dialog the catalogue surface mounts.
+ *
+ * ── The shell is no longer here ──────────────────────────────────────────────
+ *
+ * It was copied from `CreateVenueModal.tsx`, and plan 41-09 extracted that same
+ * shell into `src/components/ui/Dialog.tsx` from the same ancestor. The panel,
+ * the scrim, the sheet form below 768 px, the light-dismiss handler, the
+ * open/close effect and a 44 × 44 close control arrive with the primitive; what
+ * stays here is the form, its ten refusals, and the two constraints below that
+ * are the reason this file reads the way it does. Its width is `lg` because
+ * §8.3's closed list names it there.
  *
  * ── The format is shown, never chosen ────────────────────────────────────────
  *
@@ -91,6 +104,16 @@ const _refusalsAreReal: readonly CatalogueRefusal[] =
   [] as readonly SeriesFormRefusal[];
 void _refusalsAreReal;
 
+/**
+ * The form's name, so the submit button can address it from outside.
+ *
+ * The primitive keeps the actions in their own region, above the navigation
+ * clearance and outside the scrolling body, so the buttons are not descendants
+ * of the `<form>`. `form="…"` is HTML's form-owner attribute and is the
+ * mechanism for exactly that.
+ */
+const FORM_ID = "series-form";
+
 type SeriesField = "name" | "code" | "form";
 
 interface Refusal {
@@ -129,24 +152,12 @@ export default function CreateSeriesModal({
   format,
   series,
 }: CreateSeriesModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const editing = series !== undefined;
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
 
   // Seeded when the dialog OPENS and only then, through a ref: a parent that
   // rebuilt the row object on every render would otherwise re-seed the fields
@@ -161,10 +172,6 @@ export default function CreateSeriesModal({
     setCode(row?.code ?? "");
     setRefusal(null);
   }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function close() {
     setRefusal(null);
@@ -284,161 +291,87 @@ export default function CreateSeriesModal({
   const formError = refusal?.field === "form" ? refusal.sentence : null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-foreground normal-case">
-              {editing ? "Edit series" : "Add series"}
-            </h2>
-            <button
-              type="button"
-              onClick={close}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {formError && (
-            <div
-              role="alert"
-              className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-            >
-              <p className="text-sm text-red-400">{formError}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/*
-              The format, as a label. Not a select, not a combobox, not a
-              disabled control that could be re-enabled by deleting one
-              attribute — there is nothing here to re-enable.
-            */}
-            {!editing && (
-              <div className="space-y-2">
-                <span className="block text-sm font-medium text-foreground">
-                  Format
-                </span>
-                <div className="flex items-center rounded-xl border border-card-border bg-card px-4 py-3">
-                  <FormatMarker name={format.name} color={format.color} />
-                </div>
-                <p className="text-xs text-muted">
-                  A series belongs to one format for its whole life, so this does
-                  not change later.
-                </p>
-              </div>
-            )}
-
-            {/* Public name — the one field in this phase that publishes. */}
-            <div className="space-y-2">
-              <label
-                htmlFor="series-name"
-                className="block text-sm font-medium text-foreground"
-              >
-                Public name
-              </label>
-              <input
-                id="series-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="RamaDub x <venue>"
-                maxLength={120}
-                aria-invalid={nameError ? true : undefined}
-                aria-describedby={
-                  nameError ? "series-name-error series-name-help" : "series-name-help"
-                }
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm normal-case"
-              />
-              <p id="series-name-help" className="text-xs text-muted">
-                This name is shown publicly on every night in this series. Do not put a venue in it unless that venue is already public for every night in the series.
-              </p>
-              {nameError && (
-                <p id="series-name-error" className="text-sm text-red-400">
-                  {nameError}
-                </p>
-              )}
-            </div>
-
-            {/* Code — internal, unique within the format. */}
-            <div className="space-y-2">
-              <label
-                htmlFor="series-code"
-                className="block text-sm font-medium text-foreground"
-              >
-                Code (internal — never shown to visitors)
-              </label>
-              <input
-                id="series-code"
-                type="text"
-                value={code}
-                // The one field with a casing filter, because it is the one
-                // field a visitor never sees.
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="ABC"
-                maxLength={12}
-                aria-invalid={codeError ? true : undefined}
-                aria-describedby={
-                  codeError ? "series-code-error series-code-help" : "series-code-help"
-                }
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm uppercase tracking-wide"
-              />
-              <p id="series-code-help" className="text-xs text-muted">
-                Two to twelve characters, letters and digits. Unique inside this
-                format.
-              </p>
-              {codeError && (
-                <p id="series-code-error" className="text-sm text-red-400">
-                  {codeError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting
-                  ? "Saving..."
-                  : editing
-                    ? "Save series"
-                    : "Add series"}
-              </button>
-              <button
-                type="button"
-                onClick={close}
-                disabled={isSubmitting}
-                className="rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+    <Dialog
+      open={open}
+      onClose={close}
+      title={editing ? "Edit series" : "Add series"}
+      size="lg"
+      status={formError ? { tone: "crit", message: formError } : null}
+      actions={
+        /*
+          Outside the `<form>` element, in the primitive's actions region — so
+          the submit addresses the form by name through HTML's form-owner
+          attribute. Enter inside a field and the button reach the same handler.
+        */
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            form={FORM_ID}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : editing ? "Save series" : "Add series"}
+          </Button>
+          <Button
+            variant="secondary"
+            data-initial-focus
+            onClick={close}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
         </div>
-      </div>
-    </dialog>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+        {/*
+          The format, as a label. Not a select, not a combobox, not a disabled
+          control that could be re-enabled by deleting one attribute — there is
+          nothing here to re-enable.
+        */}
+        {!editing && (
+          <div className="space-y-2">
+            <span className="block text-xs font-semibold text-ink-2">Format</span>
+            <div className="flex min-h-11 items-center rounded-xl border border-line bg-raised px-4 py-3">
+              <FormatMarker name={format.name} color={format.color} />
+            </div>
+            <p className="text-xs text-muted">
+              A series belongs to one format for its whole life, so this does not
+              change later.
+            </p>
+          </div>
+        )}
+
+        {/* Public name — the one field in this phase that publishes. */}
+        <Input
+          id="series-name"
+          label="Public name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="RamaDub x <venue>"
+          maxLength={120}
+          hint="This name is shown publicly on every night in this series. Do not put a venue in it unless that venue is already public for every night in the series."
+          error={nameError ?? undefined}
+          className="normal-case"
+        />
+
+        {/* Code — internal, unique within the format. */}
+        <Input
+          id="series-code"
+          label="Code (internal — never shown to visitors)"
+          type="text"
+          value={code}
+          // The one field with a casing filter, because it is the one field a
+          // visitor never sees.
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="ABC"
+          maxLength={12}
+          hint="Two to twelve characters, letters and digits. Unique inside this format."
+          error={codeError ?? undefined}
+          className="uppercase tracking-wide"
+        />
+      </form>
+    </Dialog>
   );
 }

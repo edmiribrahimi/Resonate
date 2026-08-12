@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   createFormat,
   updateFormat,
@@ -9,9 +9,24 @@ import {
 import ColorSwatchPicker, {
   catalogueColorLabel,
 } from "@/app/(admin)/admin/formats/ColorSwatchPicker";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
 
 /**
- * Create or rename a format — the `<dialog>` the catalogue surface mounts.
+ * Create or rename a format — the dialog the catalogue surface mounts.
+ *
+ * ── The shell is no longer here ──────────────────────────────────────────────
+ *
+ * It was copied from `CreateVenueModal.tsx` along with the open/close effect,
+ * and plan 41-09 extracted that same shell into `src/components/ui/Dialog.tsx`
+ * — from the same ancestor. What arrived with the primitive: the panel, the
+ * scrim, the sheet form below 768 px, the light-dismiss handler, a 44 × 44
+ * close control in place of the 32 px one, and an accessible name this dialog
+ * did not have. What stays here is what this form **is**: three fields, twelve
+ * refusals, and the two things it deliberately cannot do.
+ *
+ * Its width is `lg` because §8.3's closed list names it there.
  *
  * ── The one branch of `CreateVenueModal` this file deliberately does not copy ──
  *
@@ -103,6 +118,17 @@ const _refusalsAreReal: readonly CatalogueRefusal[] =
   [] as readonly FormatFormRefusal[];
 void _refusalsAreReal;
 
+/**
+ * The form's name, so the submit button can address it from outside.
+ *
+ * The primitive puts the actions in their own region, above the navigation
+ * clearance and outside the scrolling body — so the buttons are not descendants
+ * of the `<form>`. `form="…"` on a submit button is HTML's form-owner
+ * attribute, which is the mechanism for exactly this, and it keeps both routes
+ * to submission identical: Enter inside a field, and the button.
+ */
+const FORM_ID = "format-form";
+
 /** Which field a refusal belongs to. `form` means none of the three. */
 type FormatField = "name" | "code" | "color" | "form";
 
@@ -150,7 +176,6 @@ export default function CreateFormatModal({
   format,
   takenBy,
 }: CreateFormatModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const editing = format !== undefined;
 
   const [name, setName] = useState("");
@@ -158,17 +183,6 @@ export default function CreateFormatModal({
   const [color, setColor] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
 
   // Seed from the row being edited each time the dialog OPENS, and only then.
   //
@@ -187,10 +201,6 @@ export default function CreateFormatModal({
     setColor(row?.color ?? null);
     setRefusal(null);
   }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function close() {
     setRefusal(null);
@@ -352,176 +362,103 @@ export default function CreateFormatModal({
   const formError = refusal?.field === "form" ? refusal.sentence : null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-foreground normal-case">
-              {editing ? "Edit format" : "Add format"}
-            </h2>
-            <button
-              type="button"
-              onClick={close}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {formError && (
-            <div
-              id="format-form-error"
-              role="alert"
-              className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-            >
-              <p className="text-sm text-red-400">{formError}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name — published verbatim. No transform, here or anywhere. */}
-            <div className="space-y-2">
-              <label
-                htmlFor="format-name"
-                className="block text-sm font-medium text-foreground"
-              >
-                Name
-              </label>
-              <input
-                id="format-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="MotionLab"
-                maxLength={120}
-                aria-invalid={nameError ? true : undefined}
-                aria-describedby={nameError ? "format-name-error" : undefined}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm normal-case"
-              />
-              <p className="text-xs text-muted">
-                Shown to visitors exactly as written. Capitals are kept.
-              </p>
-              {nameError && (
-                <p id="format-name-error" className="text-sm text-red-400">
-                  {nameError}
-                </p>
-              )}
-            </div>
-
-            {/* Code — internal, and the label says so. */}
-            <div className="space-y-2">
-              <label
-                htmlFor="format-code"
-                className="block text-sm font-medium text-foreground"
-              >
-                Code (internal — never shown to visitors)
-              </label>
-              <input
-                id="format-code"
-                type="text"
-                value={code}
-                // The one field with a casing filter, because it is the one
-                // field a visitor never sees.
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="MTNLB"
-                maxLength={12}
-                readOnly={editing}
-                aria-invalid={codeError ? true : undefined}
-                aria-describedby={
-                  codeError
-                    ? "format-code-error"
-                    : editing
-                      ? "format-code-help"
-                      : undefined
-                }
-                className={`w-full rounded-xl border border-card-border px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm uppercase tracking-wide ${
-                  editing ? "bg-card opacity-70" : "bg-background"
-                }`}
-              />
-              {editing && (
-                <p id="format-code-help" className="text-xs text-muted">
-                  A code is half of a sigla that is already on material, so it
-                  does not change once the format exists.
-                </p>
-              )}
-              {codeError && (
-                <p id="format-code-error" className="text-sm text-red-400">
-                  {codeError}
-                </p>
-              )}
-            </div>
-
-            {/* Colour — required, six flat choices, no gradient reachable. */}
-            <div className="space-y-2">
-              <span
-                id="format-color-label"
-                className="block text-sm font-medium text-foreground"
-              >
-                Colour
-              </span>
-              <ColorSwatchPicker
-                value={color}
-                onChange={(hex) => {
-                  setColor(hex);
-                  if (refusal?.field === "color") setRefusal(null);
-                }}
-                takenBy={takenBy}
-                labelledBy="format-color-label"
-                describedBy={colorError ? "format-color-error" : undefined}
-                invalid={colorError !== null}
-                disabled={isSubmitting}
-              />
-              {colorError && (
-                <p id="format-color-error" className="text-sm text-red-400">
-                  {colorError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting
-                  ? "Saving..."
-                  : editing
-                    ? "Save format"
-                    : "Add format"}
-              </button>
-              <button
-                type="button"
-                onClick={close}
-                disabled={isSubmitting}
-                className="rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+    <Dialog
+      open={open}
+      onClose={close}
+      title={editing ? "Edit format" : "Add format"}
+      size="lg"
+      status={formError ? { tone: "crit", message: formError } : null}
+      actions={
+        /*
+          The two buttons live OUTSIDE the `<form>` element, in the region the
+          primitive reserves above the navigation clearance — so the submit
+          carries `form={FORM_ID}`, which is the HTML form-owner attribute and
+          not a workaround. Enter inside a field still submits, and the button
+          still submits, because both address the same form by name.
+        */
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            form={FORM_ID}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : editing ? "Save format" : "Add format"}
+          </Button>
+          <Button
+            variant="secondary"
+            data-initial-focus
+            onClick={close}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
         </div>
-      </div>
-    </dialog>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+        {/* Name — published verbatim. No transform, here or anywhere. */}
+        <Input
+          id="format-name"
+          label="Name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="MotionLab"
+          maxLength={120}
+          hint="Shown to visitors exactly as written. Capitals are kept."
+          error={nameError ?? undefined}
+          className="normal-case"
+        />
+
+        {/* Code — internal, and the label says so. */}
+        <Input
+          id="format-code"
+          label="Code (internal — never shown to visitors)"
+          type="text"
+          value={code}
+          // The one field with a casing filter, because it is the one field a
+          // visitor never sees.
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="MTNLB"
+          maxLength={12}
+          readOnly={editing}
+          hint={
+            editing
+              ? "A code is half of a sigla that is already on material, so it does not change once the format exists."
+              : undefined
+          }
+          error={codeError ?? undefined}
+          className={`uppercase tracking-wide ${editing ? "opacity-70" : ""}`.trimEnd()}
+        />
+
+        {/* Colour — required, six flat choices, no gradient reachable. */}
+        <div className="space-y-2">
+          <span
+            id="format-color-label"
+            className="block text-xs font-semibold text-ink-2"
+          >
+            Colour
+          </span>
+          <ColorSwatchPicker
+            value={color}
+            onChange={(hex) => {
+              setColor(hex);
+              if (refusal?.field === "color") setRefusal(null);
+            }}
+            takenBy={takenBy}
+            labelledBy="format-color-label"
+            describedBy={colorError ? "format-color-error" : undefined}
+            invalid={colorError !== null}
+            disabled={isSubmitting}
+          />
+          {colorError && (
+            <p id="format-color-error" role="alert" className="text-xs text-sem-crit">
+              {colorError}
+            </p>
+          )}
+        </div>
+      </form>
+    </Dialog>
   );
 }

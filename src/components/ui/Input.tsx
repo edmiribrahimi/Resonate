@@ -135,19 +135,36 @@ interface FieldBase {
    * distinguishable on screen is not distinguishable anywhere.
    */
   error?: string;
+  /**
+   * The field's standing description — a sentence about what this value does,
+   * shown whether or not the field is in failure.
+   *
+   * **Added by plan 41-09, and not for symmetry.** The catalogue's two form
+   * dialogs carry hint sentences that are **programmatically associated** with
+   * their controls today, and one of them is the venue-secrecy warning under a
+   * series name — *the one field in that phase that publishes*. Converting
+   * those fields onto this control without a hint slot would have kept the
+   * sentence visible and dropped the association, which is a regression a
+   * sighted reviewer cannot see. It is rendered with an id and named in
+   * `aria-describedby`, before the error when both are present, which is the
+   * order the incumbent fields already used.
+   */
+  hint?: string;
   className?: string;
 }
 
-/** The label, the control and the error region, in the one order they take. */
+/** The label, the control, the hint and the error, in the one order they take. */
 function Field({
   id,
   label,
   error,
+  hint,
   children,
 }: {
   id: string;
   label?: string;
   error?: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
@@ -158,6 +175,11 @@ function Field({
         </label>
       ) : null}
       {children}
+      {hint ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
       {error ? (
         <p id={`${id}-error`} role="alert" className="text-xs text-sem-crit">
           {error}
@@ -167,11 +189,21 @@ function Field({
   );
 }
 
-/** `aria-describedby` and `aria-invalid` only exist while there is a failure. */
-function describedBy(id: string, error?: string) {
-  return error
-    ? ({ "aria-invalid": true, "aria-describedby": `${id}-error` } as const)
-    : null;
+/**
+ * `aria-invalid` exists only while there is a failure; `aria-describedby` names
+ * whichever of the two regions are on screen, failure first.
+ */
+function describedBy(id: string, error?: string, hint?: string) {
+  const described = [error ? `${id}-error` : null, hint ? `${id}-hint` : null]
+    .filter(Boolean)
+    .join(" ");
+
+  if (!described) return null;
+
+  return {
+    ...(error ? { "aria-invalid": true as const } : null),
+    "aria-describedby": described,
+  };
 }
 
 type InputProps = FieldBase &
@@ -182,14 +214,14 @@ type InputProps = FieldBase &
   >;
 
 export function Input(props: InputProps) {
-  const { id, label, error, className = "", ...rest } = props;
+  const { id, label, error, hint, className = "", ...rest } = props;
 
   return (
-    <Field id={id} label={label} error={error}>
+    <Field id={id} label={label} error={error} hint={hint}>
       <input
         {...rest}
         id={id}
-        {...describedBy(id, error)}
+        {...describedBy(id, error, hint)}
         className={`${CONTROL} ${FOCUS_RING} ${className}`.trimEnd()}
       />
     </Field>
@@ -213,14 +245,14 @@ type TextareaProps = FieldBase &
  * of the other two, because neither of them has the problem.
  */
 export function Textarea(props: TextareaProps) {
-  const { id, label, error, className = "", ...rest } = props;
+  const { id, label, error, hint, className = "", ...rest } = props;
 
   return (
-    <Field id={id} label={label} error={error}>
+    <Field id={id} label={label} error={error} hint={hint}>
       <textarea
         {...rest}
         id={id}
-        {...describedBy(id, error)}
+        {...describedBy(id, error, hint)}
         className={`${CONTROL} py-3 ${FOCUS_RING} ${className}`.trimEnd()}
       />
     </Field>
@@ -245,14 +277,14 @@ type SelectProps = FieldBase &
  * file about boundaries.
  */
 export function Select(props: SelectProps) {
-  const { id, label, error, className = "", ...rest } = props;
+  const { id, label, error, hint, className = "", ...rest } = props;
 
   return (
-    <Field id={id} label={label} error={error}>
+    <Field id={id} label={label} error={error} hint={hint}>
       <select
         {...rest}
         id={id}
-        {...describedBy(id, error)}
+        {...describedBy(id, error, hint)}
         className={`${CONTROL} ${FOCUS_RING} ${className}`.trimEnd()}
       />
     </Field>
