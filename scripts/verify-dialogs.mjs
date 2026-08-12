@@ -84,7 +84,7 @@
  *
  *      The hand-rolled shape is `OVERLAY_PARTS`, three boundary-guarded regexes
  *      that match the rung as a FAMILY rather than as one literal, and that
- *      prove themselves against three fixed probes on every run (WR-09).
+ *      prove themselves against five fixed probes on every run (WR-09, WR-03).
  *
  *      **The subject is the SHELL, not one class string.** §13's G2 row names
  *      the hand-rolled overlay's utility, and taken literally that matches ten
@@ -480,8 +480,28 @@ function globToRegExp(glob) {
  * a property an overlay usually has and never the property that makes it one.
  * A nineteenth copy written one rung up, one rung down, or at any arbitrary
  * rung was invisible to check B — a gate gone quiet while the thing it tracks is
- * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family: two or
- * more digits, or an arbitrary bracketed integer.
+ * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family.
+ *
+ * **THE FAMILY IS THE WHOLE FAMILY, BECAUSE THE PRINTED SENTENCE PROMISED IT
+ * (WR-02's sibling, WR-03).** The first widening stopped at two-or-more digits
+ * and a bracketed integer, while the report told every reader *"a copy at any
+ * rung is seen"*. Single-digit rungs and the `auto` keyword are real utilities,
+ * and a nineteenth overlay written at either was invisible exactly as a
+ * two-digit one had been — with the report asserting otherwise. Two ways out
+ * existed: narrow the sentence, or widen the matcher.
+ *
+ * **The matcher widened, and the direction was chosen on a measurement rather
+ * than on taste.** Every overlay line under `src/` carrying all three parts uses
+ * a bracketed rung — twelve at one rung, four at another, one at a third — and
+ * the tree holds **no single-digit and no keyword rung at all**. The delta of
+ * widening is therefore measured **zero**: it cannot redden a correct file here,
+ * and it leaves a reader believing something true. Narrowing the sentence would
+ * have cost the same zero and bought a weaker gate.
+ *
+ * What the family covers now: one or more digits, the `auto` keyword, or an
+ * arbitrary bracketed value with no whitespace inside. What it still cannot see
+ * is unchanged and stated in the header and in the printed sentence: a rung
+ * reached through a **variable**, and a class string built by **concatenation**.
  *
  * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
  * `line.includes` on the positioning utility also fired on the same letters at
@@ -507,8 +527,8 @@ const RIGHT_BOUNDARY = '(?![' + '\\w-])';
 const POSITION_UTILITY = 'fix' + 'ed';
 const INSET_UTILITY = 'inset-' + '0';
 const RUNG_PREFIX = 'z' + '-';
-/** Two-or-more digits, or an arbitrary bracketed integer. */
-const RUNG_FAMILY = '(?:' + '\\d{2,}' + '|' + '\\[\\d+\\]' + ')';
+/** One-or-more digits, the auto keyword, or an arbitrary bracketed value. */
+const RUNG_FAMILY = '(?:' + '\\d+' + '|' + 'auto' + '|' + '\\[[^\\]\\s]+\\]' + ')';
 
 export const OVERLAY_PARTS = [
   new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
@@ -524,18 +544,24 @@ function isOverlayLine(line) {
 /**
  * `OVERLAY_PARTS` checked against its own description, on EVERY run.
  *
- * Three fixed strings, assembled the same way the regexes are. If any of them
+ * Five fixed strings, assembled the same way the regexes are. If any of them
  * disagrees with its expectation the run **refuses** — a matcher that does not
  * behave as its own docblock describes has not measured this tree, it has
  * measured something else, and a verdict from it would be a number nobody can
  * read.
  *
- * **THESE PROBES ARE NOT THE EVIDENCE.** They are three strings written by the
+ * The last two arrived with WR-03's widening, and they are the two shapes the
+ * report already claimed to see while the regex did not: a single-digit rung and
+ * the keyword one.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are five strings written by the
  * same hand as the regexes above, so they share its blind spots and cannot
  * discover a file nobody thought of. The evidence is the live run on the real
  * tree — and this exact defect is why the distinction is written here rather
  * than assumed: three probes of this shape passed while the widened matcher
- * reddened a correct file at the door.
+ * reddened a correct file at the door — and, on the other side of the same coin,
+ * three probes of this shape passed for a whole round while the printed sentence
+ * promised a family the regex did not match.
  */
 const MATCHER_PROBES = [
   {
@@ -555,6 +581,18 @@ const MATCHER_PROBES = [
     verdict: 'match',
     label: 'the three parts at a two-digit numeric rung',
     line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a SINGLE-DIGIT rung (WR-03)',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at the auto KEYWORD rung (WR-03)',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
     expected: true,
   },
 ];
@@ -956,15 +994,18 @@ for (const [file, found] of measuredShells) {
   if (!declaredPaths.has(file)) undeclared.push({ file, found });
 }
 
-console.log('  the matcher self-check — three fixed probes, on every run:\n');
+console.log(`  the matcher self-check — ${MATCHER_PROBES.length} fixed probes, on every run:\n`);
 for (const row of probeRows) {
   console.log(`      ${row.measured.padEnd(9)} ${row.label}`);
 }
 console.log(
-  '\n      The rung is matched as a FAMILY, so a copy at any rung is seen; both tokens are\n' +
-    '      boundary-guarded, so a longer word cannot redden a correct file. These three\n' +
-    '      strings are the matcher describing itself — they are NOT the evidence. The live\n' +
-    '      run below is.\n'
+  '\n      The rung is matched as a FAMILY: one or more digits, the auto keyword, or an\n' +
+    '      arbitrary bracketed value. So a copy is seen at any rung WRITTEN OUT in the class\n' +
+    '      string — and only there. TWO SHAPES IT STILL DOES NOT SEE: a rung reached through\n' +
+    '      a VARIABLE, and a class string assembled by CONCATENATION; this script reads\n' +
+    '      lines, it does not build them. Both tokens are boundary-guarded, so a longer word\n' +
+    '      cannot redden a correct file. These strings are the matcher describing itself —\n' +
+    '      they are NOT the evidence. The live run below is.\n'
 );
 
 console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
