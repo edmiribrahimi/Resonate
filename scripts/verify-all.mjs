@@ -152,6 +152,30 @@
  * `absentOptional` and is accounted for. Every `NEEDS_SERVER` name is accounted
  * for by construction. Nothing on a correct tree becomes unaccounted, and the run
  * that returns the recorded baseline is the proof of it, not this paragraph.
+ *
+ * ── AND A REFUSAL DOES NOT OUTRANK A FAILURE, IN EITHER DIRECTION ──────────
+ *
+ * Design decision 1 above says a refusal is not a failure, and that stands. Its
+ * converse is what `41-GAP-REVIEW.md` WR-01 found here: **a failure must not be
+ * reportable as a refusal either.** This reconciliation fires after every gate
+ * has run, so `failed` and `absentRequired` are already known when it does. When
+ * either is non-empty the FATAL still prints — a refusal stays legible as a
+ * refusal — and then the run carries the FAILURE verdict and exits 1. A
+ * measurement that happened outranks one that did not.
+ *
+ * The exit codes of the unmixed branches are unchanged. A run with only refusals
+ * is still 2 and a run with only failures is still 1, because that distinction is
+ * this file's reason to exist and it is not traded away for the fix.
+ *
+ * **What changed with it is a sentence, and a sentence is what a reader
+ * believes.** The refusal branch used to close by asserting flatly that nothing
+ * had failed — which this runner cannot establish, and which is why that exact
+ * wording is gone from this file rather than merely softened, so it cannot be
+ * copied back from a comment. A gate that prints a red and then exits 2 is
+ * indistinguishable from here from one that refused before measuring anything, so
+ * the line now says the narrower thing that is true: no gate that REACHED a
+ * verdict reported a failure, a refused gate may itself have been failing when it
+ * refused, and its output is above under "what they said".
  */
 
 import { spawnSync } from "node:child_process";
@@ -470,14 +494,42 @@ const measuredOrExplained = new Set([
 const reconciliationDomain = new Set([...declared, ...knownNames]);
 
 const unaccounted = [...reconciliationDomain].filter((name) => !measuredOrExplained.has(name));
+
+/**
+ * The reconciliation's refusal, carried to the verdict block when a failure was
+ * already recorded. Empty on every other run.
+ *
+ * **Why this refusal is handled here and not inside `refuse()`.** Every other
+ * `refuse()` call site in this file fires before a single gate has been spawned —
+ * `package.json` unreadable, a name declared here and not there, a command whose
+ * shape cannot be resolved. At those points `failed` and `absentRequired` do not
+ * exist yet, and nothing has been measured, so a refusal is the only honest
+ * report. This one fires **after** every gate has run. Those two situations are
+ * genuinely different, and burying a condition inside `refuse()` would make the
+ * code pretend they are the same.
+ */
+let reconciliationGap = [];
+
 if (unaccounted.length > 0) {
-  refuse(
+  const gap =
     `${unaccounted.length} declared verify:* entr(y/ies) got no verdict from this run:\n` +
-      `       ${unaccounted.join(", ")}\n` +
-      "       They did not run, and they were not named as not run either. This run CANNOT\n" +
-      "       claim to account for every gate this repository declares — in package.json or\n" +
-      "       in this runner's own lists. Nothing about those was measured."
-  );
+    `       ${unaccounted.join(", ")}\n` +
+    "       They did not run, and they were not named as not run either. This run CANNOT\n" +
+    "       claim to account for every gate this repository declares — in package.json or\n" +
+    "       in this runner's own lists. Nothing about those was measured.";
+
+  if (failed.length > 0 || absentRequired.length > 0) {
+    // A measurement that happened outranks one that did not. The FATAL prints
+    // exactly as it would otherwise — a refusal stays legible as a refusal — and
+    // then the run carries the FAILURE verdict to the block below and exits 1.
+    // 41-GAP-REVIEW.md WR-01 is the record of what the other order costs: a run
+    // that failed a check and then refused was reported REFUSED, under a closing
+    // line that said nothing had failed.
+    console.log(`\n  FATAL: ${gap}\n`);
+    reconciliationGap = unaccounted;
+  } else {
+    refuse(gap);
+  }
 }
 
 /* ── the output of anything that did not pass ─────────────────────────────── */
@@ -520,6 +572,15 @@ console.log("");
 if (failed.length > 0 || absentRequired.length > 0) {
   const names = [...failed.map((r) => r.name), ...absentRequired.map((p) => `${p.name} (missing)`)];
   console.log(`  VERIFY_FAIL — ${names.length}: ${names.join(", ")}`);
+  if (reconciliationGap.length > 0) {
+    console.log(
+      `  AND the reconciliation above refused on ${reconciliationGap.length} entr(y/ies) — ` +
+        `${reconciliationGap.join(", ")}.\n` +
+        "  This run exits 1, not 2: a refusal means a measurement did not happen, and it does\n" +
+        "  not unsay one that did. Both are printed — read the FATAL for what could not be\n" +
+        "  measured, and the names above for what was measured and is wrong."
+    );
+  }
   if (refused.length > 0) {
     console.log(
       `  AND ${refused.length} refused — ${refused.map((r) => r.name).join(", ")}. ` +
@@ -537,10 +598,15 @@ if (refused.length > 0) {
       .join(", ")}`
   );
   console.log(
-    "\n  Nothing failed. But a refusal is not a pass: those gates measured NOTHING, and this\n" +
-      "  command exits 2 rather than 0 so that no script and no reader can mistake the two.\n" +
-      "  Read each one's note above — a refusal usually names something the environment is\n" +
-      "  missing, not something the tree got wrong.\n"
+    "\n  No gate that reached a verdict reported a failure. That is a narrower statement than\n" +
+      "  \"nothing failed\", and the difference is not pedantry: a gate that printed a red and\n" +
+      "  THEN refused exits 2, and from here it is indistinguishable from one that refused\n" +
+      "  before measuring anything. Its own output is reproduced above under \"what they\n" +
+      "  said\", and that is where the answer is — this line cannot tell you.\n" +
+      "\n  A refusal is not a pass either: those gates measured NOTHING, and this command exits\n" +
+      "  2 rather than 0 so that no script and no reader can mistake the two. Read each one's\n" +
+      "  note above — a refusal usually names something the environment is missing, not\n" +
+      "  something the tree got wrong.\n"
   );
   process.exit(2);
 }
