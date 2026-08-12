@@ -640,9 +640,10 @@ gates. What is partial is the *manifest of surfaces that have adopted it*: eight
 of roughly thirty-four. Criterion 1 is what makes that honest rather than
 half-finished — an unconverted surface is untouched, not half-converted.
 
-**Plans**: 22 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
+**Plans**: 25 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
 gap-closure plans in 2 waves added 2026-08-12 after verification, plus 5 second-round
-gap-closure plans in 4 waves added 2026-08-12 after re-verification. The remaining
+gap-closure plans in 4 waves added 2026-08-12 after re-verification, plus 3 third-round
+gap-closure plans in 2 waves added 2026-08-13 after the third verification. The remaining
 conversion units are **not** covered by any of them; see the note below.
 
 Plans:
@@ -668,6 +669,9 @@ Plans:
 - [x] 41-20-PLAN.md — check E asserts the branch that renders, and no refusal in the conversion gate absorbs a failure
 - [x] 41-21-PLAN.md — the wrapper enumeration covers `template.tsx`, and two refusals stop firing on correct files
 - [x] 41-22-PLAN.md — verify-all's reconciliation becomes reachable on the trigger its own docblock names
+- [ ] 41-23-PLAN.md — check E asserts the focus branch as a REGION, and every line of it is proven red by mutation
+- [ ] 41-24-PLAN.md — the dialog debt stops shrinking because the gate stopped looking, and the rung matcher matches what its sentence promises
+- [ ] 41-25-PLAN.md — the conversion gate stops claiming an unreachable rule, and stops reddening on a block comment and an editor backup
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -693,6 +697,24 @@ Plans:
 > was anything that would notice it coming back. **No requirement closes here either**, and
 > the human observations remain exactly as owed as before: H41-1…H41-6 unmade, H41-4 still
 > `human_needed`, and `41-CR01-PASS.md`'s thirteen rows still `pending`.
+
+> **Gap closure, third round, 2026-08-13.** The third verification closed GAP-CR-01 —
+> `verify-all`'s reconciliation now fires on its documented trigger — and found the guard
+> against CR-01 still open, **one DOM element deeper**. Round 1 (41-17) asserted on the
+> `FOCUS_ROOT` constant and the defect moved to the render site; round 2 (41-20) asserted
+> on the focus branch's outer element and the defect moved to the inner one. Both times
+> the reintroduced line was counted as *evidence for* the assertion meant to catch it.
+> **The guard has now been declared closed twice and found open twice**, and the diagnosis
+> is structural rather than careless: asserting on a POINT while the defect lives in a
+> REGION fails the same way every round, and each fix aims at the point where the defect
+> was last seen. Plans 41-23…41-25 close that with a region-bounded assertion whose
+> acceptance criterion is **one mutation per line of the region, enumerated and counted**,
+> plus the five gate-integrity warnings of `41-GAP-REVIEW-2.md` — a debt counter that falls
+> because the gate stopped looking, a refusal branch nothing can reach under a header that
+> says otherwise, and two oracles that redden correct code. **No requirement closes here
+> either**, and the human observations remain exactly as owed: H41-1…H41-6 unmade, H41-4
+> still `human_needed`, `41-CR01-PASS.md`'s thirteen rows still `pending`. A gate that can
+> finally fail is not a surface anyone has seen.
 
 > **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
 > system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
