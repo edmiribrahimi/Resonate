@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { createAccount, type CreateAccountFailure } from "./actions";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Input";
 
 /**
  * The creation surface — ACCT-01 through ACCT-04, seen from the operator's side.
@@ -246,29 +249,48 @@ export default function CreateAccountForm() {
   };
 
   if (!open) {
+    // The SECONDARY rung, and that is a decision rather than a downgrade.
+    //
+    // Creating an account here **is an approval**: the sentence below says so,
+    // and the person skips the pending queue entirely.
+    // `community-membership.md`'s gate *nessuna corsia grigia* is that every
+    // way into this community which bypasses the ordinary approval path is an
+    // exception to be counted and attributed — never the most attractive
+    // button on the page. The accent fill belongs to the primary action of a
+    // surface, and the primary object of this surface is the member list.
     return (
-      <button
+      <Button
+        variant="secondary"
         onClick={() => setOpen(true)}
-        className="mb-6 w-full rounded-2xl border border-card-border bg-card p-5 text-left text-sm font-medium text-muted transition-all hover:border-accent/50 hover:text-foreground active:scale-[0.98] active:opacity-80"
+        className="mb-6 w-full"
       >
         Create an account
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-card-border bg-card p-6">
-      <h2 className="mb-1 text-lg font-bold">Create an account</h2>
+    <Card className="mb-6">
+      {/* The heading role, not the display face: §7.1 forbids the display face
+          on a card heading, and 700 is not a weight this type system has. */}
+      <h2 className="mb-1 text-base font-semibold text-ink">
+        Create an account
+      </h2>
       <p className="mb-4 text-xs text-muted">
         Creating an account approves it. The person is admitted to the community
         without going through the pending queue, and the act is recorded with
         your name against it.
       </p>
 
+      {/* An input complaint is `role="alert"` and takes the critical ink —
+          NOT the accent, which §5.1 names a state signal among the things it is
+          never for. It stays visibly different from a tagged failure below,
+          because dressing "you left the name blank" as a system fault teaches
+          an operator to ignore system faults. */}
       {inputError && (
-        <div className="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+        <p role="alert" className="mb-4 text-sm text-sem-crit">
           {inputError}
-        </div>
+        </p>
       )}
 
       {failure && (
@@ -280,11 +302,8 @@ export default function CreateAccountForm() {
       )}
 
       {success && (
-        <div
-          role="status"
-          className="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5"
-        >
-          <p className="text-sm font-medium text-emerald-300">
+        <div role="status" className="mb-4">
+          <p className="text-sm font-semibold text-sem-done">
             {success.name} was created as {success.role}, approved, and invited.
           </p>
           <p className="mt-1 text-xs text-muted">
@@ -292,7 +311,7 @@ export default function CreateAccountForm() {
             They are already admissible at the door, before they open it.
           </p>
           {success.membershipCode ? (
-            <p className="mt-2 font-mono text-xs text-foreground">
+            <p className="mt-2 font-mono text-xs text-ink">
               Membership code: {success.membershipCode}
             </p>
           ) : (
@@ -305,53 +324,34 @@ export default function CreateAccountForm() {
       )}
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-muted">
-          Email address
-        </label>
-        <input
+        <Input
+          id="create-account-email"
+          label="Email address"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="name@example.com"
-          className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
         />
       </div>
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-muted">
-          Full name
-        </label>
-        <input
+        <Input
+          id="create-account-name"
+          label="Full name"
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="As it should read at the door"
-          className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
         />
       </div>
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-muted">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as RoleValue)}
-          className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
-        >
-          {/*
-            Three options, and `master` is deliberately not among them. See
-            ROLE_OPTIONS above: the ceiling is enforced in the action's closed
-            union and re-tested on the server, not by this list.
-          */}
-          {ROLE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-
         {/*
           A standing note, not an error — it is true every time, so it is drawn
-          every time.
+          every time. It is passed as the field's HINT rather than as a
+          paragraph beside it, which is the slot plan 41-09 added for exactly
+          this: the sentence stays visible AND becomes programmatically
+          associated with the control, which it never was.
 
           The reason is measured rather than cautious. A door phone with no
           signal refuses a membership code its downloaded roster does not know
@@ -363,35 +363,49 @@ export default function CreateAccountForm() {
           check the person in from the list rather than to re-scan, and the
           honest way to avoid the situation is to create the account earlier.
         */}
-        <p className="mt-2 text-xs text-muted">
-          Create staff accounts <strong>before the night</strong>, not during it.
-          A door phone that has already gone offline does not know an account
-          created after it downloaded its list, and will refuse the code. If it
-          happens, check the person in from the list instead of scanning again.
-        </p>
+        <Select
+          id="create-account-role"
+          label="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value as RoleValue)}
+          hint={
+            "Create staff accounts before the night, not during it. A door " +
+            "phone that has already gone offline does not know an account " +
+            "created after it downloaded its list, and will refuse the code. " +
+            "If it happens, check the person in from the list instead of " +
+            "scanning again."
+          }
+        >
+          {/*
+            Three options, and `master` is deliberately not among them. See
+            ROLE_OPTIONS above: the ceiling is enforced in the action's closed
+            union and re-tested on the server, not by this list.
+          */}
+          {ROLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={handleCreate}
-          disabled={isPending}
-          className="rounded-full bg-accent px-6 py-2 text-sm font-medium text-white transition-all hover:bg-accent-hover disabled:opacity-50"
-        >
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={handleCreate} disabled={isPending}>
           {isPending ? "Creating..." : "Create and invite"}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => {
             setOpen(false);
             reset();
             setFailure(null);
             setSuccess(null);
           }}
-          className="rounded-full border border-card-border px-6 py-2 text-sm font-medium text-muted transition-all hover:text-foreground"
         >
           Close
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -406,16 +420,20 @@ function Notice({
 }) {
   const notice = NOTICES[kind];
 
+  // The critical semantic as INK, never as a tinted box — the rule `Dialog.tsx`
+  // fixed for this product, at **6.99 : 1** on the card ground. A box around a
+  // paragraph is a container that states nothing its content does not, and
+  // every sentence below already names what state the world is in.
+  //
+  // 11px is not a declared size (§6.4): the diagnostic line takes the label
+  // size, at 6.78 : 1.
   return (
-    <div
-      role="alert"
-      className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-5"
-    >
-      <p className="text-sm font-medium text-red-300">{notice.title}</p>
+    <div role="alert" className="mb-4">
+      <p className="text-sm font-semibold text-sem-crit">{notice.title}</p>
       <p className="mt-1 text-xs text-muted">{notice.body}</p>
       {notice.showsCode ? (
         membershipCode ? (
-          <p className="mt-2 font-mono text-xs text-foreground">
+          <p className="mt-2 font-mono text-xs text-ink">
             Membership code: {membershipCode}
           </p>
         ) : (
@@ -426,9 +444,7 @@ function Notice({
         )
       ) : null}
       {detail ? (
-        <p className="mt-2 break-words font-mono text-[11px] text-muted">
-          {detail}
-        </p>
+        <p className="mt-2 break-words font-mono text-xs text-muted">{detail}</p>
       ) : null}
     </div>
   );

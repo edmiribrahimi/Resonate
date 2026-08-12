@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import MemberTable from "@/components/admin/MemberTable";
 import CreateAccountForm from "@/app/(admin)/admin/members/CreateAccountForm";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import type { UserRole, UserStatus } from "@/types/database";
@@ -105,19 +109,31 @@ export default async function MembersPage() {
     .order("created_at", { ascending: false });
 
   if (error) {
+    // The two branches of this page are mutually exclusive, so both may write
+    // an `<h1>` and exactly one renders — §7.1's rule is about what the browser
+    // gets, not about the count in the file.
+    //
+    // §11's error contract: the problem AND what to do. The second sentence is
+    // added rather than inherited, because this repository has **no error
+    // tracking** — nothing about this failure reaches a human anywhere else, so
+    // a reader who is told only that something failed has been told nothing
+    // they can act on.
     return (
-      <div className="min-h-dvh pb-24">
-        <header className="px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Members</h1>
+      <PageShell width="wide">
+        <header className="mb-6">
+          <PageTitle>Members</PageTitle>
         </header>
-        <div className="px-6">
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-            <p className="text-red-400">
-              Failed to load members: {error.message}
-            </p>
-          </div>
-        </div>
-      </div>
+        <Card role="alert" className="text-center">
+          <p className="text-sm text-sem-crit">
+            The member list could not be read: {error.message}
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            Nothing was changed. Reload the page; if it fails again, the
+            database refused the read rather than the page failing to ask, and
+            the code above is the diagnosis.
+          </p>
+        </Card>
+      </PageShell>
     );
   }
 
@@ -134,18 +150,24 @@ export default async function MembersPage() {
     referrer_name: extractReferrerName(m.referrer),
   }));
 
+  // `wide` — `/admin/members` is on §4's CLOSED wide list, and it is the reason
+  // that list exists: a surface whose primary object is a dense table. The
+  // content stops widening at 1280px instead of running edge to edge at 1920,
+  // and the shell owns that maximum, the gutter, the vertical rhythm and the
+  // navigation clearance in both tiers. This page writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
+    <PageShell width="wide">
       <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
+        <header className="mb-6">
           {/*
             The surface's own name, not the tree's. `<h1>Admin</h1>` was the
             prefix speaking; after D-34-02 the word `admin` in a URL no longer
             describes who is on it, and it certainly should not name a page an
             organizer opens. The vocabulary question beyond this belongs to
-            phases 40/41.
+            phases 40/41 — and this is that phase: the title is the display
+            role now, which is the only place in `src/` that names it.
           */}
-          <h1 className="text-3xl font-bold tracking-tight">Members</h1>
+          <PageTitle>Members</PageTitle>
           {/*
             The way into the register.
 
@@ -172,16 +194,21 @@ export default async function MembersPage() {
             vanishes tells the holder of a granted capability that they do not
             hold it.
           */}
+          {/* A finger target, not a line of text. It was a bare inline link
+              with no height of its own; §6.1's floor applies to every
+              interactive element with a label, and this one leads off the
+              surface. It stays a link — middle-click and copy-address survive —
+              and gains the minimum and the shared focus expression. */}
           <Link
             href="/admin/members/register"
-            className="mt-2 inline-block text-sm text-muted underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+            className={`mt-2 inline-flex min-h-11 items-center text-sm text-muted underline decoration-dotted underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`}
           >
             Membership acts &rarr;
           </Link>
         </header>
       </AnimatedSection>
 
-      <AnimatedSection delay={0.1} className="px-6">
+      <AnimatedSection delay={0.1}>
         {/*
           The creation surface, above the table.
 
@@ -241,6 +268,6 @@ export default async function MembersPage() {
           showActions={true}
         />
       </AnimatedSection>
-    </div>
+    </PageShell>
   );
 }

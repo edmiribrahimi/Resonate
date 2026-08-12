@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/Card";
 import type { MemberActFailure } from "./actions";
 
 /**
@@ -68,19 +69,33 @@ type Tone = "fault" | "refusal" | "noop";
 
 type Notice = { tone: Tone; title: string; body: string };
 
-const TONE_STYLES: Record<Tone, { box: string; title: string }> = {
-  fault: {
-    box: "border-red-500/40 bg-red-500/10",
-    title: "text-red-300",
-  },
-  refusal: {
-    box: "border-amber-500/40 bg-amber-500/10",
-    title: "text-amber-200",
-  },
-  noop: {
-    box: "border-card-border bg-card",
-    title: "text-foreground",
-  },
+/**
+ * The three tones, as INK — not as three tinted boxes.
+ *
+ * ── What changed in Phase 41, and what deliberately did not ─────────────────
+ *
+ * The three were raw palette tints with a coloured border each. They are the
+ * declared semantics now, carried by the title's ink alone: `Dialog.tsx` fixed
+ * that rule for this product, and the arithmetic is the same here — on the card
+ * ground, `--sem-crit` is **6.99 : 1** and `--sem-warn` is above it, both
+ * against WCAG 1.4.3's 4.5 : 1 for small text. A box around a paragraph is a
+ * container that states nothing its content does not.
+ *
+ * **`noop` takes the plain heading ink and no semantic at all**, because
+ * nothing is wrong when it is drawn: the fourth semantic would have been a
+ * colour saying "completed" over a sentence explaining that nothing happened.
+ *
+ * **Not one word of any notice below is rewritten by this phase.** The tone
+ * drives the colour and the colour is never the only channel — every notice
+ * states in words which of the three it is — and `community-membership.md` is
+ * explicit that the text of a refusal is written once, with care, and used the
+ * same way every time. This edit is the ink; the sentences are somebody else's
+ * decision, already taken.
+ */
+const TONE_STYLES: Record<Tone, { title: string }> = {
+  fault: { title: "text-sem-crit" },
+  refusal: { title: "text-sem-warn" },
+  noop: { title: "text-ink" },
 };
 
 /** The seven server causes, one sentence each. No two collapse. */
@@ -455,33 +470,35 @@ export default function MemberActionNotice({
   const notice = resolveMemberNotice(kind, detail);
   const styles = TONE_STYLES[notice.tone];
 
+  // 11px is not a declared size (§6.4). The diagnostic line takes the label
+  // size, 12px, at `--muted` on `--surface` — **6.78 : 1**. It is the one line
+  // on this surface a person reads out to somebody else, so it is the last one
+  // that should be the smallest thing on screen.
   if (compact) {
     return (
       <span role="alert" className={`text-xs ${styles.title}`}>
-        {subject ? <span className="font-medium">{subject}: </span> : null}
+        {subject ? <span className="font-semibold">{subject}: </span> : null}
         {notice.title}.{" "}
         <span className="text-muted">{notice.body}</span>
         {detail ? (
-          <span className="ml-1 font-mono text-[11px] text-muted">
-            ({detail})
-          </span>
+          <span className="ml-1 font-mono text-xs text-muted">({detail})</span>
         ) : null}
       </span>
     );
   }
 
   return (
-    <div role="alert" className={`rounded-2xl border p-4 ${styles.box}`}>
-      <p className={`text-sm font-medium ${styles.title}`}>
+    <Card role="alert">
+      <p className={`text-sm font-semibold ${styles.title}`}>
         {subject ? <span className="font-semibold">{subject} — </span> : null}
         {notice.title}
       </p>
       <p className="mt-1 text-xs text-muted">{notice.body}</p>
       {detail ? (
-        <p className="mt-2 break-words font-mono text-[11px] text-muted">
+        <p className="mt-2 break-words font-mono text-xs text-muted">
           {detail}
         </p>
       ) : null}
-    </div>
+    </Card>
   );
 }
