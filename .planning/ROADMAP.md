@@ -671,7 +671,7 @@ Plans:
 - [x] 41-22-PLAN.md — verify-all's reconciliation becomes reachable on the trigger its own docblock names
 - [x] 41-23-PLAN.md — check E asserts the focus branch as a REGION, and every line of it is proven red by mutation
 - [x] 41-24-PLAN.md — the dialog debt stops shrinking because the gate stopped looking, and the rung matcher matches what its sentence promises
-- [ ] 41-25-PLAN.md — the conversion gate stops claiming an unreachable rule, and stops reddening on a block comment and an editor backup
+- [x] 41-25-PLAN.md — the conversion gate stops claiming an unreachable rule, and stops reddening on a block comment and an editor backup
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -801,7 +801,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 24/25 | In Progress|  |
+| 41. Shared Primitives & Three-Tier Layout | 25/25 | Complete   | 2026-08-12 |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
