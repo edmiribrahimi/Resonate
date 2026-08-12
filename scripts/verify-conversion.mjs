@@ -261,13 +261,13 @@
  * each number, because these move whenever a line is added above them:
  *
  *   - `grep -nE '^[[:space:]]*failures\.push\(' | head -1` → the first is at
- *     line **1674**. Nothing below it has run when an earlier refusal is
+ *     line **1697**. Nothing below it has run when an earlier refusal is
  *     raised, so `failures` is empty at every call site above it. (Both greps
  *     are anchored to the line start on purpose: the unanchored forms match
  *     this paragraph, and a number measured by a command that reads the
  *     sentence claiming it is not a measurement.)
  *   - `grep -nE '^[[:space:]]*refuse\(' ` → **24** call sites. **23** are above
- *     1674. Exactly **one** is below it, at line **1789**: the
+ *     1697. Exactly **one** is below it, at line **1812**: the
  *     `ORPHANS_DECLARED` duplicate check, the only refusal that structurally
  *     cannot be hoisted, because it needs check C's data.
  *   - that one compares `orphanDeclared.size` with `ORPHANS_DECLARED.length`,
@@ -1250,7 +1250,7 @@ const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDEN
 
 /**
  * The literal, required to close on the same line — and tolerant of a trailing
- * line comment after it.
+ * comment after it, in either syntax.
  *
  * A focus root spread over several lines, or built by concatenation, is not a
  * thing this gate can read — and reading half of it would assert the absence of
@@ -1268,18 +1268,41 @@ const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDEN
  * exit 2, FATAL quoting the line verbatim). §0 rule 3: a gate that goes red on
  * correct code gets switched off.
  *
+ * **Round 3 added the block form, and it is the SAME argument, not a second
+ * one.** Fixing the `//` form and leaving the block form left the rule
+ * half-applied, one comment syntax away from where it had just been fixed: the
+ * identical declaration carrying a trailing block comment still took the gate
+ * to exit 2 and, through `verify-all.mjs`, the whole suite to `VERIFY_REFUSED`
+ * (41-GAP-REVIEW-2.md WR-03; reproduced on the shipped gate before this edit —
+ * exit 2, FATAL quoting the line verbatim). The tail now accepts either opener,
+ * and accepts a block comment that does NOT close on the line, because once the
+ * value has been captured between its two quotes nothing that follows on that
+ * line can change it.
+ *
  * **Why the anchor was relaxed rather than the comment stripped — one or the
- * other, not both.** A stripper would be a second transformation of the line,
- * running before the regex and needing its own notion of where a comment
- * begins; a `//` INSIDE the double-quoted literal would be indistinguishable
- * from one after it, and truncating there would hand the regex a fragment and
- * change the value read. That is the exact failure the refusal below exists to
- * prevent. The tail here cannot do that: the capture group is still bounded by
- * the same two quotes, so **the literal read is byte-for-byte the literal,
- * comment or no comment** — asserted by comparing the value the report prints
- * with and without one.
+ * other, not both, and this is the third syntax that one argument covers.** A
+ * stripper would be a second transformation of the line, running before the
+ * regex and needing its own notion of where a comment begins; a `//` or a `/*`
+ * INSIDE the double-quoted literal would be indistinguishable from one after
+ * it, and truncating there would hand the regex a fragment and change the value
+ * read. That is the exact failure the refusal below exists to prevent, and this
+ * file family already records two incomplete strippers — DEF-41-02 and
+ * DEF-41-06 — so a fourth would be the pattern rather than the exception. The
+ * tail here cannot do that: the capture group is still bounded by the same two
+ * quotes, so **the literal read is byte-for-byte the literal, comment or no
+ * comment** — asserted by comparing the value the report prints with and
+ * without one, and again for a literal whose own contents open a block comment.
+ *
+ * **What the widened tail hits, so it can be checked rather than trusted.** It
+ * hits only what follows the literal's CLOSING quote, past an optional
+ * semicolon and whitespace: a `//` to end of line, or a `/*` to end of line.
+ * Nothing before that quote. So a concatenation, a literal continuing onto the
+ * next line, a single-quoted literal and a backtick literal all still refuse,
+ * and each was exercised in that direction — narrowing a refusal to "not this"
+ * must not become narrowing it to "nothing". No correct declaration is caught
+ * by the widening: it only stops catching correct ones.
  */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*)?$/;
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*|\/\*[\s\S]*)?$/;
 
 const shellLines = liveLines(SHELL_FILE);
 const focusRootDeclarations = [];
