@@ -653,7 +653,7 @@ Plans:
 - [x] 41-07-PLAN.md — G1 conversion and G4 container, over the manifest
 - [x] 41-08-PLAN.md — Skeleton's first importer ever: /gallery and /admin/members/register
 - [x] 41-09-PLAN.md — the Dialog primitive, /admin/formats, and G2
-- [ ] 41-10-PLAN.md — DataTable, Checkbox, /admin/members, and G3
+- [x] 41-10-PLAN.md — DataTable, Checkbox, /admin/members, and G3
 - [ ] 41-11-PLAN.md — G5 touch targets, proven red and proven green on MemberTable — or not written
 - [ ] 41-12-PLAN.md — `npm run verify`, and 41-RELEASE-PASS.md with H41-1 … H41-6
 
@@ -742,7 +742,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 9/12 | In Progress|  |
+| 41. Shared Primitives & Three-Tier Layout | 10/12 | In Progress|  |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
