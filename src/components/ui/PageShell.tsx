@@ -22,11 +22,28 @@ import type { ReactNode } from "react";
  *     **The `focus` form is the exception, and it is an exception by census
  *     rather than by taste.** §4's focus list is closed at four routes —
  *     `/login`, `/register`, `/set-password`, `/payment/callback` — and **not
- *     one of them mounts a navigation**: only two route layouts exist in the
- *     tree, the root one and `(work)`'s, and neither covers `(auth)` or
- *     `(public)/payment`. So the focus form reserves nothing. The clearance
- *     did not leave this primitive; it left the one form whose surfaces have
- *     nothing to clear.
+ *     one of them mounts a navigation**. Two route layouts exist in the tree,
+ *     and the census is over what each one mounts, not over which routes it
+ *     reaches:
+ *
+ *       `src/app/layout.tsx` is the **root** layout, so in the App Router it
+ *       wraps **every** route, route groups included — all four of these among
+ *       them. It mounts `MotionProvider` and `ToastProvider`, and nothing that
+ *       is a navigation.
+ *
+ *       `(work)`'s mounts `AppNav`, and covers none of the four.
+ *
+ *     So the focus form reserves nothing. The clearance did not leave this
+ *     primitive; it left the one form whose surfaces have nothing to clear.
+ *
+ *     **Read the first bullet before adding anything to the root layout.** It
+ *     is the one that reaches these four surfaces, so a navigation mounted
+ *     there would land on all of them and this exception would stop holding.
+ *     *(This paragraph was corrected in 41-19: it used to claim the root layout
+ *     did not cover `(auth)` or `(public)/payment`, which is false of the App
+ *     Router. The conclusion was right and its stated measurement was wrong —
+ *     recorded rather than edited away, because that is exactly the failure
+ *     this docblock asks the next reader not to repeat.)*
  *  4. **Nothing else.** In particular it sets **no ground**: `globals.css`
  *     already binds `body` to the page ground, so a page that writes its own
  *     background colour on its root drops it as redundant when it converts.
