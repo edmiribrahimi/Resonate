@@ -281,3 +281,65 @@ All three were proven by asserted mutation before the gate was committed.
    merges — **a joint obligation between two plans in one wave belongs to
    neither of them afterwards**, and this is the second time this phase has paid
    for a merge artefact (the first is 41-05's note about the same file).
+
+---
+
+## DEF-41-04 — G4 cannot tell a typographic MEASURE from a container MAXIMUM, and a converted page lost a measure to it
+
+**Found during:** plan 41-09, Task 3 — `/admin/formats`.
+**Status:** open. The page was changed; the contract was not.
+
+### The finding
+
+`41-UI-SPEC.md` §4 and D-41-06 give the **content maximum** to `PageShell` and
+say a converted page writes none of its own. `verify-conversion.mjs` check D
+implements that with `MAX_WIDTH_RE` (`:1166`), which matches **any** width
+utility on a declared page file.
+
+The catalogue's retired section carries an explanatory paragraph that had a
+**reading measure** on it — a typographic property of a `<p>`, not a container
+width on a page root. The two are the same string to a grep, so check D opened
+red on it.
+
+### The evidence
+
+| Step | Result |
+|---|---|
+| `node scripts/verify-conversion.mjs` with the measure present | **exit 1**, `✗ D  1 maximum(s) written on a converted page itself`, naming the `<p>` and its line |
+| the same run with the measure removed | **exit 0**, all four checks |
+
+The gate is not wrong about what it can see. §4 is unqualified, and a page
+carrying a width utility is what it forbids.
+
+### Why the page changed rather than the gate
+
+Three reasons, in order:
+
+1. **This plan does not own `verify-conversion.mjs`.** Loosening a sibling
+   plan's gate from a conversion plan is how a check acquires an exemption
+   nobody debated.
+2. **An inline style would have dodged the grep**, which is evasion with a
+   different spelling and worse than the red.
+3. **§4 has no clause for a measure.** Adding one is a contract decision, and a
+   contract decision made inside a conversion commit is a contract decision
+   nobody reviewed.
+
+### The cost, stated rather than glossed
+
+The paragraph now runs the full width the shell allows — **1024px** at
+`default` — at the small type size. That is a poor measure for prose, and the
+loss is real: it is the one place on this surface where the asymmetry between
+retiring and restoring is explained, so it is a paragraph somebody actually
+reads.
+
+### What the phase should decide
+
+1. Whether §4 gains a sentence separating a **container maximum** (the shell's,
+   never a page's) from a **typographic measure** (a property of a text block,
+   which no tier owns).
+2. If it does, whether check D's matcher narrows to the page's **outermost**
+   element, or to the three declared maxima by name, or to a `max-w-*` that is
+   not one of the measure keywords.
+3. Whether the measure comes back to this paragraph when it does. **Nothing
+   will remind anyone** — the gate is green now, and a green says nothing about
+   a sentence that got wider.
