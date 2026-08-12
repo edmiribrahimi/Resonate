@@ -137,6 +137,42 @@
  * **E3b and E4 are the two that matter**, because they are the two ways a
  * looser parser would have gone green on a target a finger cannot hit.
  *
+ * **Four more cycles when 2a stopped being a blanket**, same discipline: the
+ * mutation asserted PRESENT before the gate was run, the revert asserted by an
+ * empty `git status`, and the file checked to be still TEXT to `grep` — this
+ * phase has already had one false negative caused by a NUL byte that made a
+ * script binary, whose result read exactly like a substitution that never landed.
+ *
+ *   A   an undeclared raw element added to the navigation primitive, with a
+ *       literal class attribute carrying no height utility
+ *                                       → exit 1, naming that file and line,
+ *                                         verdict *absent*, measured 9 → 10,
+ *                                         2a still 10. **Under the file-wide
+ *                                         blanket the same element would have
+ *                                         been forgiven in silence and 2a would
+ *                                         have read 11** — that is precisely
+ *                                         what the change bought. Note the
+ *                                         file-wide premise check still said
+ *                                         *declares the minimum* on that run:
+ *                                         the second guard passes while the
+ *                                         element fails, which is why it can no
+ *                                         longer be the premise
+ *   B   one entry's fragment pointed at a string nothing matches
+ *                                       → exit 2, a REFUSAL naming the stale
+ *                                         entry, and NO tick printed. Stale
+ *                                         forgives nothing while looking guarded
+ *   C   one entry's fragment widened until two elements of its tag matched
+ *                                       → exit 2, naming both lines. An
+ *                                         ambiguous entry forgives an element
+ *                                         nobody named
+ *   D   one entry's path moved to a file that is not a primitive
+ *                                       → exit 2. Forgiving an element in a file
+ *                                         this exemption was never about
+ *
+ * B, C and D are the three refusals this list added, and **each was proven
+ * reachable** rather than left as decoration — the same standard this file
+ * already applies to exemption 3.
+ *
  * ── PROVEN GREEN ON `MemberTable.tsx` — AND WHAT THAT FILE ACTUALLY HOLDS ────
  *
  * `41-VALIDATION.md`: *"proven green on the hardest correct file in the tree,
