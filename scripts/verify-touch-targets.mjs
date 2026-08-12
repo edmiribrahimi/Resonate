@@ -51,6 +51,22 @@
  * gate's scope when a human writes a surface into that manifest, which is a
  * decision somebody signs.
  *
+ * **That is measured, not argued.** This parser was run over all of `src/` once,
+ * read-only, on 2026-08-12, with the Phase 42 fence applied and the primitive
+ * files skipped:
+ *
+ *   180 files scanned · 328 raw interactive elements · **16 would pass, 312
+ *   would fail**
+ *
+ * Thirty-one in one form, fourteen in one transaction list, eleven each in three
+ * more. Run tree-wide this gate is red on nearly every unconverted file in the
+ * product — which is not a finding about the product, it is a description of a
+ * gate nobody would keep. Scoping is what makes it survivable, and the number it
+ * reports goes up only when a human converts a surface and says so.
+ *
+ * The same run is the evidence for the fifth comment shape below: **zero
+ * unterminated opening tags across all 180 files.**
+ *
  * ── THE SIX EXEMPTIONS, CLOSED BEFORE THE FIRST RUN ─────────────────────────
  *
  * §0 rule 3: an exemption list is written before the gate, not after its first
@@ -98,6 +114,39 @@
  *
  * **E3b and E4 are the two that matter**, because they are the two ways a
  * looser parser would have gone green on a target a finger cannot hit.
+ *
+ * ── PROVEN GREEN ON `MemberTable.tsx` — AND WHAT THAT FILE ACTUALLY HOLDS ────
+ *
+ * `41-VALIDATION.md`: *"proven green on the hardest correct file in the tree,
+ * `components/admin/MemberTable.tsx` — 1 395 lines, both branches, checkboxes,
+ * row actions and wrappers. **If it cannot go green on that file, it is not
+ * written.**"*
+ *
+ * It goes green, and the report says exactly what it took the green over:
+ *
+ *   found 11 · measured 1 · exempt 10 (eight call sites, two badges)
+ *
+ * **The obligation asked for more than twenty measured elements in that file,
+ * and one is what is there.** The count was reconciled line by line rather than
+ * argued with, and the plan's number is the one that was wrong — for a reason
+ * that is a compliment to the plan immediately before this one:
+ *
+ *   at `19de5a7~1`, before plan 41-10, the file held **14** raw interactive
+ *   elements — six act buttons, three filters, two checkboxes, a caret, a
+ *   staff-count shortcut. Plan 41-10 moved thirteen of them onto primitives.
+ *   **One raw element is not a thin measurement, it is a converted file.**
+ *
+ * More than twenty is not reachable by any WRITTEN-element count at any point in
+ * this file's history. It is reachable at RUNTIME — six act buttons per row,
+ * two boxes per row, four tabs — and a class-string parser counts what is
+ * written, never what is rendered. That distinction is the same one the header
+ * opens with.
+ *
+ * **What actually rules out the vacuous green here is not a count.** It is that
+ * the two red proofs R1 and R2 were run on *that exact element in that exact
+ * file*: the one element this gate measures in `MemberTable.tsx` has been
+ * observed failing twice and passing three times. A number can be inflated by a
+ * looser parser; an observed red on the line cannot.
  *
  * ── THE FIRST RUN WENT RED ON REAL CODE, AND THAT IS THE POINT ──────────────
  *
