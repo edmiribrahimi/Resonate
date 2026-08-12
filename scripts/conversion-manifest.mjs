@@ -257,44 +257,64 @@ export const PRIMITIVES = [
     "plan 41-08 — the line placeholder, listed in the plan that finally rendered it; its consumer is /gallery's loading state, which is the first import this file has ever had",
   ],
   [
+    "src/components/ui/DataTable.tsx", "DataTable",
+    "plan 41-10 — one data array, one column declaration, two trees that are never transformed, switching at md and nowhere else. Its consumer in the same commit range is the member table, which is the densest in the product and was the sixth of seven still choosing its own breakpoint. DS-09 is consolidation and not construction (D-41-17): six of the seven already dual-rendered, four at 640px and two at 1024px, and what this ends is the disagreement",
+  ],
+  [
+    "src/components/ui/Checkbox.tsx", "Checkbox",
+    "plan 41-10 — a 16px drawn box inside a 44x44 hit area, published in the plan that renders it (D-41-04). §6.4's ranked list opens with the two boxes it replaces; they are the smallest interactive elements in this phase's territory. The hit area is the <label>, which is also the control's programmatic name, so one element does both jobs and there is no state in which the target exists and the name does not",
+  ],
+  [
+    "src/components/ui/Input.tsx", "Select",
+    "plan 41-10 — the native select on the boundary that measures. It shipped with Input in plan 41-06 and was DELIBERATELY absent from this list until now, because the three (auth) screens that plan converted contain no select and an entry would have made check C go red on a correct file. Its first consumers are the member table's two filters and the create-account form's role field. The paragraph below records the absence; this entry closes it",
+  ],
+  [
+    "src/components/ui/Skeleton.tsx", "SkeletonCard",
+    "plan 41-10 — the card-shaped placeholder, listed in the plan that first rendered it. Same treatment and same reason as Select above: plan 41-08 converted this file and gave it its first importer, but a gallery's loading state renders no card-shaped placeholder, so this export had no consumer in its own wave and was recorded as absent rather than claimed. Its consumer is /admin/members' loading state, which is Skeleton's SECOND consumer overall — a first importer is a proof, a second is a pattern",
+  ],
+  [
     "src/components/ui/Skeleton.tsx", "SkeletonTile",
     "plan 41-08 — the square placeholder for a media thumbnail, published in the plan that renders it. A square is a different shape from a line, not a taller one: reaching it by passing a height through the caller's classes would have depended on which of two same-property utilities Tailwind emits last, which is measured below as unreliable in exactly this component",
   ],
 ];
 
 /**
- * `Textarea` and `Select` ship in the same file as `Input` and are DELIBERATELY
- * ABSENT from the list above.
+ * `Textarea` ships in the same file as `Input` and is DELIBERATELY ABSENT from
+ * the list above. **`Select` was, until plan 41-10, and is now entered.**
  *
  * Plan 41-06 was required to publish all three, and the three `(auth)` screens
  * it converts contain **seven text inputs, no textarea and no select**. So two
- * of the three exports have no consumer in their own wave — the exact orphan
- * shape D-41-04 exists to prevent, and the same shape `Skeleton.tsx` has been
+ * of the three exports had no consumer in their own wave — the exact orphan
+ * shape D-41-04 exists to prevent, and the same shape `Skeleton.tsx` had been
  * carrying since before this phase began.
  *
- * They are not entered here because an entry would make check C go red on a
- * file that is correct, and silencing that by removing the check is how a gate
+ * They were not entered because an entry would make check C go red on a file
+ * that is correct, and silencing that by removing the check is how a gate
  * becomes decoration. Recording the absence in writing is the honest form: the
- * plan that first renders a textarea or a select adds its entry, and until then
- * this paragraph is the record that nobody forgot rather than that nobody
- * looked. It is the same treatment `SPINE` gives `Skeleton.tsx` and the same
- * treatment the focus-expression constant gets above.
+ * plan that first renders a textarea or a select adds its entry.
  *
- * ── And `SkeletonCard` / `SkeletonAvatar`, for the same reason ───────────────
+ * **`Select`'s entry is that promise kept**, by the plan that gave it three
+ * consumers — two filters on the member table and the role field on the
+ * create-account form. `Textarea` still has none anywhere in this tree and
+ * stays absent, so this paragraph keeps its job for one export instead of two.
+ *
+ * ── And `SkeletonAvatar`, for the same reason ───────────────────────────────
  *
  * Plan 41-08 converted `Skeleton.tsx` and gave it its first consumer, but the
  * surface it converted is a **gallery**: its loading state is a heading, a
  * subtitle and two grids of square thumbnails. It renders no card-shaped
- * placeholder and no avatar, so two of the file's four exports have no importer
+ * placeholder and no avatar, so two of the file's four exports had no importer
  * in their own wave.
  *
- * They are therefore **not** entered above. Entering them would make check C go
- * red on a file that is correct, and the honest form is this paragraph: the
- * plan that first renders a card placeholder or an avatar placeholder adds its
- * entry. This is the third time this record has been written — the spine's own
- * note on this file, then the form controls, now these two — and the repetition
- * is the point: the alternative is a list of claims, and a list of claims is how
- * a gate becomes a rubber stamp.
+ * **`SkeletonCard` is entered above by plan 41-10**, whose members loading
+ * state renders eight of them — the file's second importer overall, which is
+ * what turns one proof into a pattern. `SkeletonAvatar` still has none and
+ * stays absent.
+ *
+ * This record has now been written four times — the spine's own note on this
+ * file, then the form controls, then the two skeleton exports, now the two that
+ * remain — and the repetition is the point: the alternative is a list of
+ * claims, and a list of claims is how a gate becomes a rubber stamp.
  */
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -346,6 +366,10 @@ export const CONVERTED = [
   [
     "/admin/members/register", "src/app/(admin)/admin/(work)/members/register/page.tsx", "default",
     "plan 41-08 — whole. NOT on §4's wide list and therefore default, which is not a fallback: it is the answer for every surface nobody had to argue about. Four raw palette colours went, and two of them were decisions rather than substitutions — the accent stopped being a state signal (§5.1 names that among the things it is never for) and the automatic author stopped being amber, since the only amber here is the warning semantic and it is also SunSet's identification colour. Personal data: no column added, no field surfaced, and who performed an act and when both still render",
+  ],
+  [
+    "/admin/members", "src/app/(admin)/admin/(work)/members/page.tsx", "wide",
+    "plan 41-10 — whole, and 'whole' here is FIVE files in two directories: the route file and its loading state under (work)/, and the table, the create-account form and the refusal notice one directory out, where R-WORK-ROUTES keeps everything that is not a route. Named on §4's CLOSED wide list, and it is the reason that list exists — the primary object is the densest table in the product. This is also the surface that first renders DataTable and Checkbox, and the second that renders Skeleton. THE CAUTION, because this is where the gating mechanism is operated: role and status are two orthogonal axes and stay two columns and two marks, no query changed, no column added, no capability check touched, no action payload altered, and who approved or rejected and when both still render. Seven raw palette families left the row — four role hues and three status hues — and that is a decision rather than a substitution: no token declares a role, and grading a person in the colours of success and failure is what community-membership.md calls a judgement. The words are the channel, and they always were, since each mark's content is the role's or the status's own name",
   ],
 ];
 

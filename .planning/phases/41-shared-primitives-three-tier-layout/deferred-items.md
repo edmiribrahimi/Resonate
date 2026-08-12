@@ -343,3 +343,61 @@ reads.
 3. Whether the measure comes back to this paragraph when it does. **Nothing
    will remind anyone** — the gate is green now, and a green says nothing about
    a sentence that got wider.
+
+---
+
+## DEF-41-05 — `SkeletonLine` fixes its own radius, so a caller cannot shape a placeholder
+
+**Found:** plan 41-10, task 3, converting `/admin/members`' loading state.
+**Owner:** the plan that next needs a placeholder shaped like anything but a
+line — or `41-12`, if the phase would rather close it as a contract question.
+**Status:** open. Nothing is broken today; one placeholder is the wrong shape.
+
+### The measurement
+
+`SkeletonLine` already carries two opt-outs, and they exist because this exact
+collision was measured inside that file: a caller's width or height is detected
+and the component's own default stands down, *"because appending the caller's
+classes after the component's own works only when the two collide on a utility
+Tailwind emits in ascending numeric order."*
+
+**There is no third opt-out for the radius**, and the radius has the same
+problem. Measured in the emitted stylesheet on 2026-08-12:
+
+```
+byte 21718   .rounded-full{…}      ← the pill radius, written FIRST
+byte 21846   .rounded-xl{…}        ← the component's own, written AFTER
+```
+
+Same property, same specificity, later rule wins. **A caller that appends a pill
+radius to a line placeholder gets the container radius anyway**, and gets no
+warning of any kind: it compiles, it renders, and the class is simply inert.
+
+### Where it bit
+
+The members loading state stands in for four status tabs that are 44px pills.
+The honest placeholder for a pill is a pill. It is drawn at the container radius
+instead, and the class that would have made it a pill was **removed rather than
+written**, because a line of code that provably does nothing is worse than the
+shape it fails to produce — it reads as a decision to whoever finds it next.
+
+### Why it was not fixed here
+
+`src/components/ui/Skeleton.tsx` belongs to plan 41-08 and is declared by no
+plan in this wave. The fix is small and is the same shape the file already
+carries twice — detect a radius in the caller's classes, stand the default down
+— but adding a third opt-out to a shared primitive from a conversion commit is
+the scope creep 41-07 refused for the same reason on `Toast.tsx`.
+
+### What the phase should decide
+
+1. Whether `SkeletonLine` gains a radius opt-out, or whether a placeholder for a
+   pill becomes a **fourth export** the way `SkeletonTile` did for a square —
+   which is that file's own precedent, and its stated reason was precisely that
+   reaching a different shape through the caller's classes *"would depend on
+   which of two same-property utilities Tailwind happens to emit last."*
+2. Whether the general form is worth a gate: **a primitive that fixes a property
+   and lets a caller append the same property silently discards it.** Three
+   instances are now recorded — a width, a padding and a radius — and the only
+   reason the first was ever found is that somebody finally rendered the
+   component.
