@@ -6,7 +6,38 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { claimGuestOrders } from "@/app/(public)/events/[slug]/menu/actions";
 import { resolveNext } from "@/lib/routes/next-redirect";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
+/**
+ * The front door, converted onto the shell and the form controls (plan 41-06).
+ *
+ * ── What changed, and it is only ever how this looks ─────────────────────────
+ *
+ * The two fields drew their boundary with the legacy boundary name, which
+ * aliases the decorative line token: **1.39 : 1**, against WCAG 1.4.11's 3 : 1
+ * for the boundary of an interactive control. They now carry `--control` —
+ * **7.14 : 1** on the page ground — which is finding A1 closed on the surface
+ * where it is most exposed. The submit filled with the accent under white ink at
+ * **2.91 : 1** and now carries the page ground at **6.85 : 1** (finding A2).
+ * Both fields killed their outline outright and drew nothing in its place
+ * (finding A3); the ring is now the system's one focus expression, offset so it
+ * lands on the page rather than inside the control.
+ *
+ * ── What did NOT change, which is the part that matters here ────────────────
+ *
+ * **Nothing this page decides.** Not the client it builds, not the call it makes
+ * with the credential, not which failures it distinguishes from which, not the
+ * guest-token claim, not the allow-list that decides which destination the
+ * browser may follow, and not where anybody lands afterwards. The middleware is
+ * UX and the RLS policy is the boundary; a conversion of colour, size and
+ * structure changes neither, and must not appear to. The long comments below are
+ * left exactly as they were, for the same reason: they are the record of why the
+ * destination is validated before it is followed, and a visual plan does not get
+ * to edit that record.
+ */
 function LoginForm() {
   const searchParams = useSearchParams();
 
@@ -108,71 +139,79 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight">Sign In</h1>
-        <p className="mb-8 text-muted">
-          Access your member area
-        </p>
+    <PageShell width="focus">
+      <PageTitle className="mb-2">Sign In</PageTitle>
+      <p className="mb-8 text-sm text-muted">Access your member area</p>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="h-12 rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="h-12 rounded-xl border border-card-border bg-card px-4 text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-          />
+      <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <Input
+          id="login-email"
+          type="email"
+          aria-label="Email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          id="login-password"
+          type="password"
+          aria-label="Password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
 
-          {error && <p className="text-sm text-accent">{error}</p>}
+        {/* The accent is reserved for the primary fill, the active navigation
+            entry, a link in prose and the lineup pills — never a state signal
+            (§5.1). A refusal is a state, so it takes the critical semantic, and
+            it is announced rather than merely coloured. */}
+        {error && (
+          <p role="alert" className="text-sm text-sem-crit">
+            {error}
+          </p>
+        )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-12 rounded-full bg-accent font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+        <Button
+          type="submit"
+          size="lg"
+          variant="primary"
+          disabled={loading}
+          className="w-full"
+        >
+          {loading ? "Signing in..." : "Sign In"}
+        </Button>
+      </form>
 
-        <p className="mt-6 text-center text-sm text-muted">
-          Don&apos;t have an account?{" "}
-          {/* Form 2 of plan 34-01: passed straight to `<Link>`, unannotated, so
-              `RouteType` is inferred per branch. The ternary replaces a single
-              template whose type widened to `/register${string}` — a shape
-              `RouteImpl` cannot accept, because it would also admit
-              `/registerXYZ`. Same two strings as before.
+      <p className="mt-6 text-center text-sm text-muted">
+        Don&apos;t have an account?{" "}
+        {/* Form 2 of plan 34-01: passed straight to `<Link>`, unannotated, so
+            `RouteType` is inferred per branch. The ternary replaces a single
+            template whose type widened to `/register${string}` — a shape
+            `RouteImpl` cannot accept, because it would also admit
+            `/registerXYZ`. Same two strings as before.
 
-              What plan 37-12 changed is WHICH value goes in. It was `nextUrl`,
-              the raw parameter, so `/login?next=https://example.org` produced
-              `/register?next=https%3A%2F%2Fexample.org` — observed in the
-              rendered page — and carried the same unvalidated string one hop
-              further, into a form that mails it back as the callback's
-              `redirectTo`. The callback allow-lists it on arrival, so this hop
-              was never the last line of defence; forwarding a value this page
-              has already refused would still be handing on something it just
-              declined to follow itself.
+            What plan 37-12 changed is WHICH value goes in. It was `nextUrl`,
+            the raw parameter, so `/login?next=https://example.org` produced
+            `/register?next=https%3A%2F%2Fexample.org` — observed in the
+            rendered page — and carried the same unvalidated string one hop
+            further, into a form that mails it back as the callback's
+            `redirectTo`. The callback allow-lists it on arrival, so this hop
+            was never the last line of defence; forwarding a value this page
+            has already refused would still be handing on something it just
+            declined to follow itself.
 
-              A refused value therefore does not travel: the link falls back to
-              a plain `/register`. Only a value that was BOTH supplied and
-              accepted is forwarded — an absent one is not turned into an
-              explicit `?next=/dashboard`, which would invent a destination
-              nobody asked for. */}
-          <Link href={rawNext !== null && !nextRefused ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className="text-accent hover:text-accent-hover">
-            Sign Up
-          </Link>
-        </p>
-      </div>
-    </div>
+            A refused value therefore does not travel: the link falls back to
+            a plain `/register`. Only a value that was BOTH supplied and
+            accepted is forwarded — an absent one is not turned into an
+            explicit `?next=/dashboard`, which would invent a destination
+            nobody asked for. */}
+        <Link href={rawNext !== null && !nextRefused ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} className={`text-accent hover:text-accent-hover ${FOCUS_RING}`}>
+          Sign Up
+        </Link>
+      </p>
+    </PageShell>
   );
 }
 

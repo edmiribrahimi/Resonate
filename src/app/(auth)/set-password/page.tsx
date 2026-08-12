@@ -1,4 +1,6 @@
 import SetPasswordForm from "./SetPasswordForm";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * Where a recovery link lands, and the only place in this product where a
@@ -29,6 +31,13 @@ import SetPasswordForm from "./SetPasswordForm";
  * `force-dynamic` for the reason `review/page.tsx` gives: the opt-out of caching
  * is otherwise implicit via cookies and easy to lose. A cached copy of this
  * page would be a cached copy of somebody's session state.
+ *
+ * ── Converted by plan 41-06, and only in appearance ──────────────────────────
+ *
+ * The shell, the page title and the type roles. **Nothing above this line moved**
+ * — not the caching opt-out, not the absence of a capability gate, and not the
+ * reasoning that says the boundary here is Supabase Auth. A visual conversion
+ * does not get a vote on any of the three.
  */
 export const dynamic = "force-dynamic";
 
@@ -38,18 +47,14 @@ export const metadata = {
 
 export default function SetPasswordPage() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight">
-          Set your password
-        </h1>
-        <p className="mb-8 text-muted">
-          Choose a password for your re:sonate account. Only you will ever know
-          it — nothing here is sent to us by email.
-        </p>
+    <PageShell width="focus">
+      <PageTitle className="mb-2">Set your password</PageTitle>
+      <p className="mb-8 text-sm text-muted">
+        Choose a password for your re:sonate account. Only you will ever know it
+        — nothing here is sent to us by email.
+      </p>
 
-        <SetPasswordForm />
-      </div>
-    </div>
+      <SetPasswordForm />
+    </PageShell>
   );
 }

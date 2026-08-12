@@ -244,7 +244,30 @@ export const PRIMITIVES = [
     "src/components/ui/Typography.tsx", "SectionHeading",
     "plan 41-05 — §7.3's four axes as one string; its consumer is the side column's work heading",
   ],
+  [
+    "src/components/ui/Input.tsx", "Input",
+    "plan 41-06 — the text-entry control on the boundary that measures; its consumers in that wave are the seven fields of /login, /register and /set-password",
+  ],
 ];
+
+/**
+ * `Textarea` and `Select` ship in the same file as `Input` and are DELIBERATELY
+ * ABSENT from the list above.
+ *
+ * Plan 41-06 was required to publish all three, and the three `(auth)` screens
+ * it converts contain **seven text inputs, no textarea and no select**. So two
+ * of the three exports have no consumer in their own wave — the exact orphan
+ * shape D-41-04 exists to prevent, and the same shape `Skeleton.tsx` has been
+ * carrying since before this phase began.
+ *
+ * They are not entered here because an entry would make check C go red on a
+ * file that is correct, and silencing that by removing the check is how a gate
+ * becomes decoration. Recording the absence in writing is the honest form: the
+ * plan that first renders a textarea or a select adds its entry, and until then
+ * this paragraph is the record that nobody forgot rather than that nobody
+ * looked. It is the same treatment `SPINE` gives `Skeleton.tsx` and the same
+ * treatment the focus-expression constant gets above.
+ */
 
 /* ────────────────────────────────────────────────────────────────────────────
  * CONVERTED — the surfaces declared converted, whole
@@ -271,6 +294,18 @@ export const CONVERTED = [
   [
     "/payment/callback", "src/app/(public)/payment/callback/page.tsx", "focus",
     "plan 41-05 — the smallest whole surface in the tree: one file, no imports of its own beyond the primitives and its own server action, and it exercises the shell, the card and the page title at once. Named on §4's closed focus list",
+  ],
+  [
+    "/login", "src/app/(auth)/login/page.tsx", "focus",
+    "plan 41-06 — the front door, whole: both fields on the control boundary, the submit on the accent fill's own ink, every outline-killer gone. Named on §4's closed focus list, and it already used the focus width by hand, so the shell is adoption",
+  ],
+  [
+    "/register", "src/app/(auth)/register/page.tsx", "focus",
+    "plan 41-06 — whole, including the branch that renders after a successful sign-up: three fields, the password checklist off the raw palette and onto the completion semantic, and the brand spelled re:sonate. Named on §4's closed focus list",
+  ],
+  [
+    "/set-password", "src/app/(auth)/set-password/page.tsx", "focus",
+    "plan 41-06 — the surface is TWO files, and this entry names the ROUTE file rather than the form, because the route file imports the form and an import-closure walk from it therefore covers both; naming the form instead would have fenced off the half that owns the shell and the page title. All four outcomes stayed four. Named on §4's closed focus list",
   ],
 ];
 
