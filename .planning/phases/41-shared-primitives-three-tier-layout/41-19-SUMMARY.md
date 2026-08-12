@@ -171,6 +171,12 @@ rather than assumed.**
 where a utility described with an ellipsis inside parens emitted a broken rule. Checked in
 the log, not assumed from a green exit.
 
+**The build was run a second time with this summary on disk**, because T-41-P4 is about
+Tailwind compiling prose and `.planning/` is prose Tailwind compiles — a build that only
+ever saw the source would not have tested the file you are reading. `BUILD_EXIT=0`, and the
+warning set did not grow. Independently: `grep -cE` for bracketed utility literals in this
+summary returns **0**.
+
 ## Supplementary gate run
 
 ```
