@@ -42,6 +42,13 @@
  *     re-export, a helper that raises one on its behalf — is invisible here.
  *   - **IT CANNOT SEE A CLASS BUILT BY CONCATENATION.** `` `fixed inset-0 ${z}` ``
  *     is text this script does not assemble. It reads lines.
+ *   - **IT CANNOT SEE A CLASS SPLIT ACROSS TWO LINES.** The overlay is three
+ *     parts on ONE line. A formatter that wraps a long class attribute puts the
+ *     rung on the next line and the shell becomes invisible — before this
+ *     change and after it. Matching across lines is a different change with a
+ *     different risk (a class attribute has no line-oriented end), so the limit
+ *     is **declared here rather than closed**: a green does not mean no copy
+ *     was wrapped.
  *   - **IT DOES NOT JUDGE THE COPIES IT TOLERATES.** A file on `REMAINING` is
  *     not blessed; it is *counted*. Every one of them is a dialog without a
  *     focus trap.
@@ -74,6 +81,10 @@
  *      FAILS. An entry whose path is gone FAILS; a list that cannot be measured
  *      is a decoration. An entry whose file no longer carries a shell is a
  *      **STALE** notice to delete, not a failure.
+ *
+ *      The hand-rolled shape is `OVERLAY_PARTS`, three boundary-guarded regexes
+ *      that match the rung as a FAMILY rather than as one literal, and that
+ *      prove themselves against three fixed probes on every run (WR-09).
  *
  *      **The subject is the SHELL, not one class string.** §13's G2 row names
  *      the hand-rolled overlay's utility, and taken literally that matches ten
@@ -433,13 +444,95 @@ function globToRegExp(glob) {
 /**
  * Shape 1 — the hand-rolled overlay. Three parts on ONE line.
  *
- * All three are required together because each alone is ordinary: the
- * positioning utility is everywhere, the inset is common, and the rung is
- * shared with anything that must clear the navigation without being modal
- * (§10 keeps that rung declared on purpose). Together on one line they are the
- * overlay, and eleven files carry exactly that.
+ * **All three are required together, because each alone is ordinary**: the
+ * positioning utility is everywhere and the inset is common. That sentence has
+ * always been true and it stays.
+ *
+ * **THE RUNG IS A FAMILY, NOT A LITERAL — and this is what changed.** The
+ * matcher used to require ONE specific z rung, the one the eleven incumbents
+ * happen to carry. But `41-UI-SPEC.md` §10 keeps that rung declared **for
+ * anything that must clear the navigation WITHOUT being modal**, which makes it
+ * a property an overlay usually has and never the property that makes it one.
+ * A nineteenth copy written one rung up, one rung down, or at any arbitrary
+ * rung was invisible to check B — a gate gone quiet while the thing it tracks is
+ * still there (WR-09, `41-REVIEW.md`). So the rung matches as a family: two or
+ * more digits, or an arbitrary bracketed integer.
+ *
+ * **BOTH TOKENS ARE BOUNDARY-GUARDED, and that guards the opposite error.**
+ * `line.includes` on the positioning utility also fired on the same letters at
+ * the end of an ordinary English word — a **red on a correct file**, which §0
+ * rule 3 records as the failure that gets a gate switched off, and which is a
+ * worse outcome than the miss it was meant to fix. The guards are this
+ * repository's own technique, `verify-tokens.mjs:553-559`.
+ *
+ * **WIDENING THE RUNG IS WHAT MADE THE PHASE 42 FENCE NECESSARY.** On this tree
+ * the family matcher reddens exactly one correct file —
+ * `src/components/scanner/ScanFlash.tsx:135`, the door's accept/refuse status
+ * flash, which is not a dialog — so `PHASE_42_EXEMPT_PATHS` above was declared
+ * FIRST and this widening landed behind it. The two changes are connected, not
+ * coincidental, and mutation A in `41-16-SUMMARY.md` is where the connection was
+ * observed rather than argued.
+ *
+ * Every fragment is concatenated and no complete utility appears as a literal —
+ * the DEF-41-01 reason in the header, which now covers the positioning utility
+ * too, since it used to be spelled whole.
  */
-const OVERLAY_PARTS = ['fixed', 'inset-' + '0', 'z-' + '[60]'];
+const LEFT_BOUNDARY = '(?<![' + '\\w-])';
+const RIGHT_BOUNDARY = '(?![' + '\\w-])';
+const POSITION_UTILITY = 'fix' + 'ed';
+const INSET_UTILITY = 'inset-' + '0';
+const RUNG_PREFIX = 'z' + '-';
+/** Two-or-more digits, or an arbitrary bracketed integer. */
+const RUNG_FAMILY = '(?:' + '\\d{2,}' + '|' + '\\[\\d+\\]' + ')';
+
+export const OVERLAY_PARTS = [
+  new RegExp(LEFT_BOUNDARY + POSITION_UTILITY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + INSET_UTILITY + RIGHT_BOUNDARY),
+  new RegExp(LEFT_BOUNDARY + RUNG_PREFIX + RUNG_FAMILY + RIGHT_BOUNDARY),
+];
+
+/** The one place the three parts are asked about a line. */
+function isOverlayLine(line) {
+  return OVERLAY_PARTS.every((re) => re.test(line));
+}
+
+/**
+ * `OVERLAY_PARTS` checked against its own description, on EVERY run.
+ *
+ * Three fixed strings, assembled the same way the regexes are. If any of them
+ * disagrees with its expectation the run **refuses** — a matcher that does not
+ * behave as its own docblock describes has not measured this tree, it has
+ * measured something else, and a verdict from it would be a number nobody can
+ * read.
+ *
+ * **THESE PROBES ARE NOT THE EVIDENCE.** They are three strings written by the
+ * same hand as the regexes above, so they share its blind spots and cannot
+ * discover a file nobody thought of. The evidence is the live run on the real
+ * tree — and this exact defect is why the distinction is written here rather
+ * than assumed: three probes of this shape passed while the widened matcher
+ * reddened a correct file at the door.
+ */
+const MATCHER_PROBES = [
+  {
+    verdict: 'no match',
+    label: 'the positioning utility at the end of a longer word',
+    line:
+      '<div className="pre' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]">',
+    expected: false,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a bracketed rung other than the incumbents\'',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'the three parts at a two-digit numeric rung',
+    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    expected: true,
+  },
+];
 
 /** Shape 2 — a native `<dialog>` element written outside the primitive. */
 const NATIVE_SHELL_RE = /<dialog\b/;
@@ -447,7 +540,7 @@ const NATIVE_SHELL_RE = /<dialog\b/;
 function shellShapes(relPath) {
   const found = [];
   liveLines(relPath).forEach((line, i) => {
-    if (OVERLAY_PARTS.every((part) => line.includes(part))) {
+    if (isOverlayLine(line)) {
       found.push({ line: i + 1, shape: 'hand-rolled overlay', source: line.trim() });
     }
     if (NATIVE_SHELL_RE.test(line)) {
@@ -674,6 +767,30 @@ function fenceMatch(relPath) {
   return fencePatterns.find(({ re }) => re.test(relPath)) ?? null;
 }
 
+/*
+ * The matcher against its own description, before it is pointed at the tree.
+ * Run here so a disagreement refuses with nothing measured; PRINTED further
+ * down, immediately before check B's numbers, where a reader meets it.
+ */
+const probeRows = MATCHER_PROBES.map((probe) => ({
+  ...probe,
+  measured: isOverlayLine(probe.line) ? 'match' : 'no match',
+}));
+
+const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
+
+if (probeDisagreements.length > 0) {
+  refuse(
+    `the overlay matcher disagrees with its own description on ${probeDisagreements.length} of\n` +
+      `       ${MATCHER_PROBES.length} fixed probe(s):\n\n       ` +
+      probeDisagreements
+        .map((row) => `${row.label}\n         expected ${row.verdict}, got ${row.measured}`)
+        .join('\n\n       ') +
+      '\n\n       A matcher that does not behave as its docblock says has not measured this tree,\n' +
+      '       it has measured something else. NOTHING WAS MEASURED — no check-B verdict follows.'
+  );
+}
+
 const failures = [];
 
 console.log(`  files walked under src/       : ${files.length}`);
@@ -786,6 +903,17 @@ for (const [path] of declaredPaths) {
 for (const [file, found] of measuredShells) {
   if (!declaredPaths.has(file)) undeclared.push({ file, found });
 }
+
+console.log('  the matcher self-check — three fixed probes, on every run:\n');
+for (const row of probeRows) {
+  console.log(`      ${row.measured.padEnd(9)} ${row.label}`);
+}
+console.log(
+  '\n      The rung is matched as a FAMILY, so a copy at any rung is seen; both tokens are\n' +
+    '      boundary-guarded, so a longer word cannot redden a correct file. These three\n' +
+    '      strings are the matcher describing itself — they are NOT the evidence. The live\n' +
+    '      run below is.\n'
+);
 
 console.log('  the Phase 42 fence — paths check B NEVER reads:\n');
 for (const [glob, reason] of PHASE_42_EXEMPT_PATHS) {
