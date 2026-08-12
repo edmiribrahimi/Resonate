@@ -797,17 +797,86 @@ export const FOCUS_ROOT_IDENTIFIER = 'FOCUS_ROOT';
 const NAV_PROPERTIES = ['--nav-inset-inline-start', '--nav-inset-block-end'];
 
 /**
- * The route root, and the four extensions Next resolves a layout at.
+ * The route root, every basename Next WRAPS a page with, and the four
+ * extensions it resolves one at.
  *
- * The enumeration refuses on any `layout.*` basename carrying a fifth. A walk
- * that silently skips a layout is a narrowing in the direction that prints a
- * tick — the same rule this file already applies to an unresolved specifier,
- * and the reason the enumeration reads EVERY file under the route root rather
- * than only the ones the scanner's extension list admits.
+ * **Why a list and not `layout.` alone.** Next renders `template.tsx` around a
+ * page in the same position a layout occupies. Until this list existed, that
+ * basename was neither climbed nor refused on, so a `src/app/(auth)/template.tsx`
+ * mounting a navigation left all four focus surfaces reported navigation-free,
+ * E2 found agreement, and the tick printed (41-GAP-REVIEW.md WR-05 — reproduced
+ * on the shipped gate before this edit: exit 0, `✓ E`, and `/login`,
+ * `/register`, `/set-password` all in the `none` column). A hole in the very
+ * enumeration check E depends on.
+ *
+ * Searching MORE wrappers can only make this gate more likely to FIND a
+ * navigation, never less — the same argument `ancestorLayoutFiles` already made
+ * for collecting both extensions when one directory carries two.
+ *
+ * ── `default.` is excluded, and this is the decision, not an omission ────────
+ *
+ * A `default.tsx` is a **parallel-route slot fallback**, not a wrapper around
+ * the page: it is what Next renders INTO a named slot when that slot has no
+ * match for the current URL. Climbing it would let a sibling slot's imports be
+ * counted as a navigation mounted over a surface that never renders it — a red
+ * on a correct file, which is the worse of the two failure directions (D-41-19,
+ * and §0 rule 3: a gate that goes red on correct code gets switched off).
+ *
+ * **Revisit condition, named so it is checkable rather than remembered: the
+ * first parallel route in this tree** — the first `@slot/` directory under
+ * `src/app`, at which point a `default.*` becomes reachable and this exclusion
+ * is re-argued in the same commit that introduces it. Measured 2026-08-12:
+ * `find src/app -name "default.*"` returns nothing, and no `@`-prefixed
+ * directory exists, so the exclusion costs nothing today.
+ *
+ * The extension list carries the same rule it always did: the enumeration
+ * refuses on any wrapper basename carrying a fifth extension that could
+ * plausibly be a route module. A walk that silently skips a wrapper is a
+ * narrowing in the direction that prints a tick — the same rule this file
+ * already applies to an unresolved specifier, and the reason the enumeration
+ * reads EVERY file under the route root rather than only the ones the scanner's
+ * extension list admits.
  */
 const APP_DIR_REL = 'src/app';
-const LAYOUT_BASENAME_PREFIX = 'layout.';
-const LAYOUT_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
+const WRAPPER_BASENAMES = ['layout.', 'template.'];
+const WRAPPER_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
+
+/**
+ * Extensions at which Next could never resolve a route file, with the reason
+ * each is not one. A wrapper-named file carrying one of these is **skipped**,
+ * not refused on.
+ *
+ * `src/app/layout.module.css` is the standard Next name for a layout's CSS
+ * module; `layout.tsx.orig` is what a merge conflict leaves behind. Both are
+ * CORRECT files, and until this list existed either took the whole conversion
+ * gate to exit 2 — which through `verify-all.mjs` is `VERIFY_REFUSED` for the
+ * entire suite (41-GAP-REVIEW.md WR-06). Measured before this edit, with one
+ * `src/app/layout.module.css` holding a single CSS comment: **exit 2**, FATAL
+ * naming it, nothing measured. §0 rule 3, quoted three times in this file
+ * family: a gate that goes red on correct code gets switched off.
+ *
+ * **Narrowing the refusal to "not a stylesheet" must not become narrowing it to
+ * "nothing."** This is a closed allow-list of extensions that CANNOT be a route
+ * module, never a heuristic about what looks like one: an extension in neither
+ * list still refuses, because an unknown extension is exactly the case the
+ * refusal was written for. Proven in that direction too — `src/app/layout.mts`
+ * refuses, and a fix that stopped it from refusing would be a hole dressed as a
+ * fix.
+ *
+ * **`.mdx` is deliberately absent.** Next resolves route files at it whenever
+ * `pageExtensions` says so, which makes it plausibly a module. It refuses, and
+ * that is the safe direction.
+ */
+const NON_ROUTE_WRAPPER_EXTENSIONS = [
+  ['.css', 'a stylesheet — layout.module.css is the standard Next name for a layout CSS module'],
+  ['.scss', 'a stylesheet'],
+  ['.sass', 'a stylesheet'],
+  ['.less', 'a stylesheet'],
+  ['.md', 'documentation — Next resolves no route file at .md'],
+  ['.orig', 'what a merge conflict leaves behind'],
+  ['.rej', 'what a rejected patch hunk leaves behind'],
+  ['.bak', 'a backup copy'],
+];
 
 /**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
@@ -995,28 +1064,48 @@ if (!existsSync(`${ROOT}/${APP_DIR_REL}`)) {
 }
 
 /*
- * Every file under the route root whose basename begins `layout.`, whatever its
- * extension — deliberately not filtered by the scanner's extension list, since
- * the whole point is to find the one the walk would not have tested.
+ * Every file under the route root whose basename begins with one of the wrapper
+ * prefixes, whatever its extension — deliberately not filtered by the scanner's
+ * extension list, since the whole point is to find the one the walk would not
+ * have tested.
  */
-const layoutFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel) =>
-  rel.split('/').pop().startsWith(LAYOUT_BASENAME_PREFIX)
+const wrapperFilesUnderApp = listEveryFile(`${ROOT}/${APP_DIR_REL}`).filter((rel) =>
+  WRAPPER_BASENAMES.some((base) => rel.split('/').pop().startsWith(base))
 );
 
-const layoutsWithUntestedExtension = layoutFilesUnderApp.filter(
-  (rel) => !LAYOUT_EXTENSIONS.some((ext) => rel.endsWith(ext))
+const wrappersWithUnknownExtension = wrapperFilesUnderApp.filter(
+  (rel) => !WRAPPER_EXTENSIONS.some((ext) => rel.endsWith(ext))
 );
 
-if (layoutsWithUntestedExtension.length > 0) {
+/*
+ * The refusal is reserved for an extension that could plausibly be a route
+ * module. Everything on NON_ROUTE_WRAPPER_EXTENSIONS is skipped instead — and
+ * printed under the wrapper list with the reason, so a green states what it
+ * passed over rather than going quiet about it.
+ */
+const skippedWrappers = [];
+const wrappersWithUntestedExtension = [];
+for (const rel of wrappersWithUnknownExtension) {
+  const known = NON_ROUTE_WRAPPER_EXTENSIONS.find(([ext]) => rel.endsWith(ext));
+  if (known) skippedWrappers.push({ rel, why: known[1] });
+  else wrappersWithUntestedExtension.push(rel);
+}
+
+if (wrappersWithUntestedExtension.length > 0) {
   refuse(
-    `${layoutsWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a layout but\n` +
-      `       carry an extension check E's ancestor walk does not test (${LAYOUT_EXTENSIONS.join(', ')}):\n\n       ` +
-      layoutsWithUntestedExtension.join('\n       ') +
-      '\n\n       A layout is where three of the eight declared surfaces get their navigation, and\n' +
+    `${wrappersWithUntestedExtension.length} file(s) under ${APP_DIR_REL} are named as a wrapper\n` +
+      `       (${WRAPPER_BASENAMES.join(', ')}) but carry an extension check E's ancestor walk does\n` +
+      `       not test (${WRAPPER_EXTENSIONS.join(', ')}), and which is not on the list of\n` +
+      `       extensions Next could never resolve a route file at\n` +
+      `       (${NON_ROUTE_WRAPPER_EXTENSIONS.map(([ext]) => ext).join(', ')}):\n\n       ` +
+      wrappersWithUntestedExtension.join('\n       ') +
+      '\n\n       A wrapper is where three of the eight declared surfaces get their navigation, and\n' +
       '       a walk that skips one reports those surfaces as navigation-free — which is a\n' +
       '       narrowing in the direction that prints a tick. Either the extension joins\n' +
-      '       LAYOUT_EXTENSIONS in the same commit, or the file is not a layout and should not\n' +
-      '       be named like one. Nothing was measured.'
+      '       WRAPPER_EXTENSIONS in the same commit and is climbed, or — if Next could never\n' +
+      '       resolve a route file at it — it joins NON_ROUTE_WRAPPER_EXTENSIONS carrying the\n' +
+      '       reason it is not one. Otherwise the file is not a wrapper and should not be named\n' +
+      '       like one. Nothing was measured.'
   );
 }
 
@@ -1115,14 +1204,37 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
 const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
 
 /**
- * The literal, required to close on the same line.
+ * The literal, required to close on the same line — and tolerant of a trailing
+ * line comment after it.
  *
  * A focus root spread over several lines, or built by concatenation, is not a
  * thing this gate can read — and reading half of it would assert the absence of
  * a property from a fragment, which is exactly how a check goes green on a
- * defect it never saw. So that is a refusal and not a pass.
+ * defect it never saw. So that is a refusal and not a pass. **That requirement
+ * is unchanged**: the closing quote still has to be on the same line as the
+ * opening one, and a declaration whose literal continues onto the next line
+ * still refuses.
+ *
+ * What changed is the tail. `liveLines` blanks a line that STARTS with `//`,
+ * never one that ends with it, so `const FOCUS_ROOT = "…"; // …` — an ordinary
+ * and entirely correct line — hit the end-of-line anchor and took the whole
+ * conversion gate to exit 2, and through `verify-all.mjs` the whole suite to
+ * `VERIFY_REFUSED` (41-GAP-REVIEW.md WR-06 half 2; measured before this edit:
+ * exit 2, FATAL quoting the line verbatim). §0 rule 3: a gate that goes red on
+ * correct code gets switched off.
+ *
+ * **Why the anchor was relaxed rather than the comment stripped — one or the
+ * other, not both.** A stripper would be a second transformation of the line,
+ * running before the regex and needing its own notion of where a comment
+ * begins; a `//` INSIDE the double-quoted literal would be indistinguishable
+ * from one after it, and truncating there would hand the regex a fragment and
+ * change the value read. That is the exact failure the refusal below exists to
+ * prevent. The tail here cannot do that: the capture group is still bounded by
+ * the same two quotes, so **the literal read is byte-for-byte the literal,
+ * comment or no comment** — asserted by comparing the value the report prints
+ * with and without one.
  */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$/;
+const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*)?$/;
 
 const shellLines = liveLines(SHELL_FILE);
 const focusRootDeclarations = [];
@@ -1245,23 +1357,31 @@ function layoutClosure(rel) {
 }
 
 /**
- * Every layout that wraps `pageFile`, nearest first, from the page's own
+ * Every wrapper that wraps `pageFile`, nearest first, from the page's own
  * directory up to the route root inclusive.
  *
- * It climbs **directories**, which is what Next nests layouts by — a route
+ * It climbs **directories**, which is what Next nests wrappers by — a route
  * group like `(work)` or `(admin)` is a directory and is therefore climbed
- * through, not around. Both extensions are collected if two ever sat in one
- * directory: Next would pick one, and searching both can only make this gate
+ * through, not around. Every basename in `WRAPPER_BASENAMES` and every
+ * extension is collected if several ever sat in one directory: Next would
+ * render its own combination, and searching all of them can only make this gate
  * MORE likely to find a navigation, never less.
+ *
+ * It reads `WRAPPER_BASENAMES` — the same list the enumeration under the route
+ * root reads — so the two cannot drift apart: a basename added there is climbed
+ * here, instead of being enumerated by one and skipped by the other.
  */
 function ancestorLayoutFiles(pageFile) {
   const found = [];
   let dir = pageFile.split('/').slice(0, -1).join('/');
 
   for (;;) {
-    for (const ext of LAYOUT_EXTENSIONS) {
-      const candidate = `${dir}/layout${ext}`;
-      if (existsSync(`${ROOT}/${candidate}`)) found.push(candidate);
+    for (const base of WRAPPER_BASENAMES) {
+      for (const ext of WRAPPER_EXTENSIONS) {
+        /* `base` carries its own trailing dot, `ext` leads with one. */
+        const candidate = `${dir}/${base}${ext.slice(1)}`;
+        if (existsSync(`${ROOT}/${candidate}`)) found.push(candidate);
+      }
     }
     if (dir === APP_DIR_REL) break;
     const parent = dir.split('/').slice(0, -1).join('/');
@@ -1724,8 +1844,18 @@ for (const [path, why] of NAV_MODULES) {
   console.log(`             ${why}`);
 }
 
-console.log(`      layout files under ${APP_DIR_REL} : ${layoutFilesUnderApp.length}`);
-for (const rel of layoutFilesUnderApp) console.log(`          ${rel}`);
+console.log(
+  `      wrapper files under ${APP_DIR_REL} : ${wrapperFilesUnderApp.length}` +
+    `   (basenames climbed: ${WRAPPER_BASENAMES.join(', ')})`
+);
+for (const rel of wrapperFilesUnderApp) console.log(`          ${rel}`);
+
+/* A green states what it passed over: the skips, with the reason each was one. */
+console.log(`      of those, skipped as not a route module : ${skippedWrappers.length}`);
+for (const { rel, why } of skippedWrappers) {
+  console.log(`          ${rel}`);
+  console.log(`             ${why}`);
+}
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
