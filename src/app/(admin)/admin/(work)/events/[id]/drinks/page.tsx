@@ -7,6 +7,9 @@ import { CAP } from "@/lib/capabilities/keys";
 import { getDrinkItems } from "@/app/(admin)/admin/events/actions";
 import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuManager";
 import EventQRCode from "@/app/(public)/events/[slug]/menu/EventQRCode";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * The drink menu of an event — the single surface, where there were two.
@@ -106,30 +109,35 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}/menu`;
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    /*
+      `default` and not `wide`: §4's wide list is closed and does not name this
+      route. The shell owns the maximum, the gutter, the vertical rhythm and the
+      navigation clearance in both tiers, so this page writes none of them — the
+      hand-written bottom clearance it used to carry was the phone number only,
+      and from 768px up the navigation leaves the bottom edge entirely.
+    */
+    <PageShell width="default">
+      <header className="mb-6">
         <Link
           href="/admin/events"
-          className="text-xs text-muted hover:text-foreground transition-colors"
+          className={`inline-flex min-h-11 items-center text-xs text-muted underline decoration-dotted underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           &larr; Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight mt-2">Drink Menu</h1>
+        <PageTitle className="mt-2">Drink Menu</PageTitle>
         <p className="text-sm text-muted mt-1">{event.title}</p>
       </header>
 
-      <div className="px-6">
-        <DrinkMenuManager
-          eventId={eventId}
-          eventTitle={event.title}
-          initialItems={items}
-        />
+      <DrinkMenuManager
+        eventId={eventId}
+        eventTitle={event.title}
+        initialItems={items}
+      />
 
-        {/* Menu QR Code */}
-        <div className="mt-8">
-          <EventQRCode url={menuUrl} eventTitle={event.title} />
-        </div>
+      {/* Menu QR Code */}
+      <div className="mt-8">
+        <EventQRCode url={menuUrl} eventTitle={event.title} />
       </div>
-    </div>
+    </PageShell>
   );
 }
