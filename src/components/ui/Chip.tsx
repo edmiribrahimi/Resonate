@@ -94,13 +94,47 @@ interface ChipCommon {
   style?: CSSProperties;
 }
 
-interface ChipLinkProps extends ChipCommon {
+interface ChipLinkProps<T extends string> extends ChipCommon {
   /**
    * `Route` and not `string`: `typedRoutes` is on, and a menu that cannot name
    * an address nobody serves is the property `src/lib/routes/staff-tabs.ts`
    * depends on.
+   *
+   * ── Why it is `Route<T>` and not `Route` (D-41.1-26) ──────────────────────
+   *
+   * It was the bare `Route` until phase 41.1, which is that type **at its
+   * default parameter** — and at the default parameter the dynamic arm of
+   * Next's route implementation collapses to `never`. The consequence is not
+   * theoretical: plan 41.1-07 tried to give six event controls a chip apiece
+   * and the compiler refused every one of them,
+   *
+   *     Type '`/admin/events/${string}/edit`' is not assignable to type
+   *     'Route | undefined'
+   *
+   * so it hand-composed six `<Link>` elements instead — a correct choice at the
+   * time and a worse component. `Link` never had the problem because **`Link` is
+   * generic** and infers its parameter from the template; this is the same
+   * treatment, and `next/link`'s own `LinkProps<RouteInferType>` is the shape it
+   * copies rather than a new idea.
+   *
+   * **Two ways out were refused, and the reasons stay written here** so nobody
+   * reaches for them again:
+   *
+   *  - **casting the href.** It is what would make an annotation compile, and it
+   *    switches off the only check that turns a stale address into a build error
+   *    instead of a 404 found by whoever clicked it. This file forbade it before
+   *    the problem appeared, and the prohibition is why the problem was reported
+   *    rather than quietly worked around.
+   *  - **widening `href` to `string`.** Same loss, spelled differently, and it is
+   *    the trap `Button`'s `href` still carries — see the note at the foot of
+   *    this file.
+   *
+   * **This change is type-only: no rendered output differs by a byte**, which is
+   * exactly why it could be made in a reconciliation wave and could not be made
+   * inside one of five parallel conversion worktrees (D-41.1-15). No converted
+   * surface needs re-observing on account of it.
    */
-  href: Route;
+  href: Route<T>;
   onClick?: never;
 }
 
@@ -109,14 +143,22 @@ interface ChipButtonProps extends ChipCommon {
   onClick: () => void;
 }
 
-export type ChipProps = ChipLinkProps | ChipButtonProps;
+export type ChipProps<T extends string = string> =
+  | ChipLinkProps<T>
+  | ChipButtonProps;
 
 /**
  * The discriminant is **not** destructured, deliberately: destructuring a
  * discriminated union collapses the narrowing, and the branch below reads
  * `props.href` so TypeScript still knows which of the two shapes it holds.
+ *
+ * The type parameter is inferred from the `href` a caller passes and is never
+ * written at a call site — `<Chip href={`/admin/events/${id}/edit`}>` compiles
+ * with nothing spelled. A caller passing no `href` lands on the button arm,
+ * where `T` is inferred as the default and means nothing, which is the same
+ * thing `next/link` does with an object href.
  */
-export function Chip(props: ChipProps) {
+export function Chip<T extends string>(props: ChipProps<T>) {
   const {
     children,
     selected = false,
@@ -239,3 +281,38 @@ export function Badge({
     </span>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE OTHER HALF OF D-41.1-26 — NAMED HERE, DELIBERATELY NOT FIXED
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * **A converted surface that needs internal navigation uses `Chip` or `Link`.
+ * Never `Button` with an `href`.** That is a standing constraint for the rest of
+ * this phase, and this is where it is written down, because this is the file a
+ * person is reading when they are choosing between the two.
+ *
+ * The measurement behind it: the button ladder's `href` branch renders a **bare
+ * anchor**, and its `href` is typed `string` rather than a route. So a call site
+ * reaching for it on an internal address gets neither client-side navigation nor
+ * prefetching — a full document load in an App Router application — and it gets
+ * no build-time check that the address exists either. Both silently.
+ *
+ * **It is not a defect phase 41 introduced.** That component's own docblock
+ * records that two of the three sites it first replaced were already plain
+ * anchors, so it preserved behaviour rather than changing it. What makes it worth
+ * a paragraph is that it is a **trap for every conversion still to come**: the
+ * failure is invisible on the surface that commits it.
+ *
+ * **Why it is named and not fixed.** Changing it is a **runtime** change to
+ * spine, in the middle of a conversion phase, and it would put every already
+ * converted surface back in front of a person. A reconciliation wave is exactly
+ * the wrong place for that: this file's own generic change above ships in the
+ * same commit precisely because it is type-only and this one is not. Deferred
+ * with its measurement attached, which is the difference between a deferral and
+ * a forgetting.
+ *
+ * *(A comment and not an exported constant, on purpose: a symbol nobody imports
+ * is the orphan shape D-41-04 exists to prevent, and a rule does not become more
+ * binding by being given a runtime value nobody reads.)*
+ */
