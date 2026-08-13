@@ -816,7 +816,7 @@ Plans:
 
 **Wave 2**
 
-- [ ] 41.1-05-PLAN.md — The navigation clearance stops being ambient; the toast's residue recorded; check E asserts a pairing
+- [x] 41.1-05-PLAN.md — The navigation clearance stops being ambient; the toast's residue recorded; check E asserts a pairing
 
 **Wave 3** *(the ordinary surfaces — ten pages)*
 
