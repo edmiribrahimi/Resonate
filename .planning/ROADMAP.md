@@ -850,9 +850,9 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7)*
 
-- [ ] 41.1-21-PLAN.md — /admin/events/[id]/sales and the fifth table, with its three empty states kept three
-- [ ] 41.1-22-PLAN.md — /admin/events/[id]/tickets and its four components: twenty focus suppressions, one import
-- [ ] 41.1-23-PLAN.md — /admin/events/new and /admin/events/[id]/edit — the last two route files
+- [x] 41.1-21-PLAN.md — /admin/events/[id]/sales and the fifth table, with its three empty states kept three
+- [x] 41.1-22-PLAN.md — /admin/events/[id]/tickets and its four components: twenty focus suppressions, one import
+- [x] 41.1-23-PLAN.md — /admin/events/new and /admin/events/[id]/edit — the last two route files
 
 **Wave 9** *(blocked on Wave 8)*
 
