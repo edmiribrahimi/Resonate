@@ -4,10 +4,21 @@
  * what it actually reaches, not by trusting the claim.
  *
  * WHAT IT ASSERTS, in one sentence: **for every surface `CONVERTED` declares,
- * nothing reachable from its page file through the import graph carries a raw
- * palette utility or a legacy token utility; every primitive `PRIMITIVES`
- * publishes has at least one importer; and the page's width comes from the
- * shell rather than from a maximum written on the page.**
+ * nothing reachable from its page file through the import graph — nor mounted
+ * beside that page by the router — carries a raw palette utility or a legacy
+ * token utility; every primitive `PRIMITIVES` publishes has at least one
+ * importer; and the page's width comes from the shell rather than from a
+ * maximum written on the page.**
+ *
+ * **The second clause was added by plan 41.1-04 and it is not a flourish.** A
+ * route-level `loading.tsx`, `error.tsx` or `not-found.tsx` is reached by the
+ * ROUTER, so no import walk can see it, and this gate scanned none of them —
+ * while criterion 3 says *"no file under the work surface"*. Seven such files
+ * under `(work)` were carrying 149 legacy-token utilities in full view of a gate
+ * that had never opened them (`41.1-RESEARCH.md` §1.6). The scanned set now
+ * grows by the route-adjacent files beside each declared page; the failure
+ * direction is that the gate finds MORE, and a file that was never measured
+ * stops passing by absence. See D-41.1-21 at the walk.
  *
  * This is **G1 (checks A, B, C) and G4 (checks D and E) in one script**, over one
  * manifest, with one walk. They are not split, and the reason is not economy:
@@ -309,9 +320,41 @@
  *      disk; a `layout.*` file carries an extension the walk does not test; the
  *      shell's focus root declaration is not the one accepted form; or the focus
  *      BRANCH's frozen window cannot be read — no opener, two openers, a file
- *      shorter than the window, the single `className={FOCUS_ROOT}` sitting
- *      outside the window, or the frozen shape itself carrying a navigation
+ *      shorter than the window, the focus root not rendered as the whole of
+ *      exactly one `className`, or the frozen shape itself carrying a navigation
  *      property. **No verdict is implied by a 2.**
+ *
+ *      ── A REFUSAL THIS LIST USED TO PROMISE, AND NO LONGER DOES ─────────────
+ *
+ *      The sentence above used to read *"…a file shorter than the window, **the
+ *      single `className={FOCUS_ROOT}` sitting outside the window**, or the
+ *      frozen shape…"*, and there was a refusal below carrying
+ *      `GATE_CANNOT_READ_MARKER` written to raise it. **That refusal could not
+ *      fire, on any tree.** Its guard was three conjuncts —
+ *      `propertiesInFocusBranch.length === 0`, a single render site, and that
+ *      site falling outside the frozen window — and the first conjunct is only
+ *      reached with the frozen shape MATCHED, because the shape-mismatch refusal
+ *      above it takes every other route. A matched shape puts
+ *      `<div className={FOCUS_ROOT}>` at window position 3, so the single render
+ *      site is inside the window and the third conjunct is unsatisfiable
+ *      whenever the first two hold. Measured and recorded as `DEF-41-07` item 2;
+ *      `41.1-RESEARCH.md` §4.6 row 2 carries the derivation.
+ *
+ *      **D-41.1-10 closed it by retiring the advertisement, not by making the
+ *      branch reachable.** The clause and the branch were deleted TOGETHER:
+ *      deleting the sentence alone would have left dead code beside a removed
+ *      promise, and making the branch reachable would have added code to keep a
+ *      sentence honest instead of removing a sentence that was not.
+ *
+ *      **WHAT IS NOW UNMEASURED, NOT APPROVED.** A focus-root render site that
+ *      sits outside the frozen window **is not detected by any refusal in this
+ *      file.** Nothing here permits it — it is a state no branch looks for. What
+ *      covers the same ground is `SHELL_CODE_OUTSIDE_WINDOW_DIGEST`: every
+ *      non-empty trimmed line of the shell's live code outside the window is
+ *      hashed on every run, so a render site moved out there changes that digest
+ *      and refuses under `SHAPE CHANGED`. That is a different assertion reaching
+ *      the same state, and it is the one that does the work — which is why it is
+ *      named here rather than left for a reader to find.
  *
  *      Every exit-2 message in check E's read carries one of two markers on its
  *      first line, and they mean different things to whoever meets a red suite:
@@ -1158,7 +1201,8 @@ try {
   );
 }
 
-const { SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, checkManifest, convertedSpinePaths } = manifest;
+const { SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, checkManifest, convertedSpinePaths, existsCaseExact } =
+  manifest;
 
 for (const [name, value] of [
   ['SPINE', SPINE], ['PHASE_42_PATHS', PHASE_42_PATHS],
@@ -1178,6 +1222,15 @@ if (typeof checkManifest !== 'function' || typeof convertedSpinePaths !== 'funct
     'the manifest does not export checkManifest() and convertedSpinePaths(). Its own\n' +
       '       docblock requires a consumer to call the first before reading a single entry.\n' +
       '       Nothing was measured.'
+  );
+}
+if (typeof existsCaseExact !== 'function') {
+  refuse(
+    'the manifest does not export existsCaseExact(). The route-adjacent extension of the\n' +
+      '       scanned set asks it whether a `loading.tsx` sits beside a declared page, and\n' +
+      '       falling back to `existsSync` would ask that question case-INSENSITIVELY on this\n' +
+      '       volume while every path it produces is compared case-exactly downstream — one\n' +
+      '       typo, two verdicts (DEF-41-07 item 3). Nothing was measured.'
   );
 }
 
@@ -1301,10 +1354,71 @@ function phase42Match(relPath) {
   return phase42Patterns.find((p) => p.re.test(relPath)) ?? null;
 }
 
+/* ── the route-adjacent extension of the scanned set (D-41.1-21) ─────────────
+ *
+ * **THE SET GROWS, SO THE GATE FINDS MORE, AND A FILE THAT WAS NEVER MEASURED
+ * STOPS PASSING BY ABSENCE.** That is the whole direction of this change and it
+ * is the safe one: every failure it can produce is a file entering checks A and
+ * B that was outside them before, never a file leaving.
+ *
+ * **The hole it closes, measured.** A route-level `loading.tsx` is mounted by
+ * the ROUTER, not by an import, so no closure walk reaches it — not this one,
+ * not any. Criterion 3 says *"no file under the work surface reads a legacy
+ * token name or carries a raw palette colour"*, and until this extension the
+ * word `loading` appeared **zero times** in this gate: seven `loading.tsx` files
+ * under `(work)` carrying 149 legacy-token utilities and 45 hand-rolled pulse
+ * blocks were invisible to every gate in this phase (`41.1-RESEARCH.md` §1.6).
+ * A criterion asserted over a set that cannot contain the counter-example is a
+ * claim, not a check.
+ *
+ * **What it still does not reach, and it is not approved by silence.** A file
+ * the router mounts that is neither the declared page nor route-adjacent to it —
+ * a `template.tsx` or a `layout.tsx` ABOVE the surface, a `default.tsx` in a
+ * parallel route, a `loading.tsx` at an ancestor segment that covers this one —
+ * is still outside checks A and B. E2 climbs ancestor wrappers, but it asks them
+ * exactly one question (is a navigation module reachable) and never opens their
+ * class strings; that limit is stated at the top of this file and it is
+ * unchanged here. **UNMEASURED, not approved:** those files are a region nobody
+ * looked at, and a tick printed over a region nobody looked at is the failure
+ * this phase exists to remove.
+ *
+ * `error` and `not-found` are PREVENTION, not observation. Measured 2026-08-13
+ * with `find src/app -name 'error.*'` and `-name 'not-found.*'`: **zero of each
+ * in the whole route tree**, so today those two names find nothing anywhere.
+ * They are tested because the day somebody adds one beside a declared page it
+ * should enter the scan on that commit rather than on the commit that notices —
+ * and saying they were measured at zero is what keeps a later reader from
+ * reading them as a guess.
+ *
+ * Existence is asked through `existsCaseExact` (the manifest's helper, DEF-41-07
+ * item 3): the path this produces is compared case-exactly against spine, Phase
+ * 42 and exemption lists a few lines below, so asking the question
+ * case-insensitively would let one typo produce two verdicts.
+ */
+const ROUTE_ADJACENT_BASENAMES = ['loading', 'error', 'not-found'];
+
+function routeAdjacentFiles(pageFile, alreadyReached) {
+  const lastSlash = pageFile.lastIndexOf('/');
+  const pageDir = lastSlash === -1 ? '' : pageFile.slice(0, lastSlash);
+  const found = [];
+  for (const basename of ROUTE_ADJACENT_BASENAMES) {
+    for (const ext of WRAPPER_EXTENSIONS) {
+      const rel = pageDir === '' ? `${basename}${ext}` : `${pageDir}/${basename}${ext}`;
+      if (!existsCaseExact(rel)) continue;
+      /* Already in the closure — some page imports its own loading component.
+       * Adding it twice would inflate the printed count without adding a file. */
+      if (alreadyReached.includes(rel) || found.includes(rel)) continue;
+      found.push(rel);
+    }
+  }
+  return found;
+}
+
 const surfaces = [];
 const excludedSpine = new Set();
 const excludedPhase42 = new Map();
 const exemptionsApplied = new Set();
+const routeAdjacentAdded = new Set();
 
 for (const [route, pageFile, width, reason] of CONVERTED) {
   if (!existsSync(`${ROOT}/${pageFile}`)) {
@@ -1324,8 +1438,14 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     );
   }
 
+  /* The route-adjacent files go through the SAME exclusion filter as the
+   * closure — spine, Phase 42, exemption — because a `loading.tsx` under the
+   * door is the door's, and an extension that widened the scan past a declared
+   * fence would be this gate quietly widening its own scope. */
+  const routeAdjacent = routeAdjacentFiles(pageFile, reached);
+
   const scanned = [];
-  for (const rel of reached) {
+  for (const rel of [...reached, ...routeAdjacent]) {
     if (EXEMPT_SET.has(rel)) {
       exemptionsApplied.add(rel);
       continue;
@@ -1342,6 +1462,11 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     scanned.push(rel);
   }
 
+  /* Counted only once it SURVIVED the filter, so the printed arithmetic —
+   * scanned minus route-adjacent equals reached-and-kept — cannot drift from a
+   * route-adjacent file that was excluded as spine, Phase 42 or exempt. */
+  for (const rel of routeAdjacent) if (scanned.includes(rel)) routeAdjacentAdded.add(rel);
+
   if (scanned.length === 0) {
     refuse(
       `the closure of ${route} is empty after exclusions — every file it reaches, its own\n` +
@@ -1351,7 +1476,7 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     );
   }
 
-  surfaces.push({ route, pageFile, width, reason, reached, scanned });
+  surfaces.push({ route, pageFile, width, reason, reached, routeAdjacent, scanned });
 }
 
 /* ── check E's measurement, taken here so its refusals precede every tick ────
@@ -1874,26 +1999,43 @@ if (propertiesInFocusBranch.length === 0 && focusBranchLines.length !== 1) {
   );
 }
 
-if (
-  propertiesInFocusBranch.length === 0 &&
-  focusRootRenderLineNo !== null &&
-  (focusRootRenderLineNo < focusWindow.start || focusRootRenderLineNo > focusWindow.end)
-) {
-  refuse(
-    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE}:${focusRootRenderLineNo} renders ` +
-      `${FOCUS_ROOT_IDENTIFIER} as the whole of a\n` +
-      `       className, but that line falls OUTSIDE the frozen window, lines ${focusWindow.start}-${focusWindow.end}.\n\n` +
-      '       WHAT WAS MEASURED AND FOUND. The exactly-one assertion is satisfied by an\n' +
-      '       occurrence anywhere in the file. It was, and the occurrence is not in the window —\n' +
-      '       so the focus form on screen is built from something this gate never read, while the\n' +
-      '       constant it did read renders somewhere else.\n\n' +
-      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the focus form was measured.\n' +
-      '       Asserting the absence of a property from a constant the focus branch does not\n' +
-      '       render is agreement with a form that was never opened.\n\n' +
-      FOCUS_BRANCH_WIDENING_NOTE +
-      '       Nothing was measured.'
-  );
-}
+/*
+ * ── THE RETIRED REFUSAL, AND WHAT REPLACES IT ───────────────────────────────
+ *
+ * A second refusal stood here: `GATE CANNOT READ — PageShell.tsx:N renders
+ * FOCUS_ROOT as the whole of a className, but that line falls OUTSIDE the frozen
+ * window`. **Nothing could reach it.** Its guard was
+ *
+ *     propertiesInFocusBranch.length === 0
+ *       && focusRootRenderLineNo !== null
+ *       && (render line outside the window)
+ *
+ * and the first conjunct is only live once the SHAPE-MISMATCH refusal above has
+ * declined to fire — which, with no property in the window, means the frozen
+ * shape MATCHED. A matched shape puts `<div className={FOCUS_ROOT}>` at window
+ * position 3 by construction, so the one render site is inside the window and
+ * the third conjunct cannot hold while the first two do. `DEF-41-07` item 2;
+ * derivation in `41.1-RESEARCH.md` §4.6 row 2. **`DEF-41-07` item 2 is closed by
+ * this deletion.**
+ *
+ * D-41.1-10 chose the direction: retire the advertisement rather than make the
+ * branch reachable. The branch is deleted here, the exit-code list at the top of
+ * this file no longer promises it, and the retired sentence is quoted there
+ * beside the measurement that retired it — recorded rather than edited away,
+ * the same treatment `PageShell.tsx:42-46` gives a claim it had to withdraw.
+ *
+ * **UNMEASURED, NOT APPROVED.** A focus-root render site outside the frozen
+ * window is not detected by any refusal in this file. Nothing here permits it;
+ * it is a state no branch looks for. `SHELL_CODE_OUTSIDE_WINDOW_DIGEST`, below,
+ * is what reaches the same ground — it hashes every non-empty trimmed line of
+ * the shell's live code outside the window, so a render site moved out there
+ * moves that digest and refuses under `SHAPE CHANGED`. Naming the assertion that
+ * does the work is the point: a gap declared without its counterpart reads as a
+ * hole, and a gap left undeclared reads as coverage.
+ *
+ * `focusRootRenderLineNo` survives the deletion because the report below prints
+ * it (search this file for its second use); it is not a leftover of the branch.
+ */
 
 /* ── E1's read, part three: THE SHELL OUTSIDE THE FROZEN WINDOW ──────────────
  *
@@ -1968,13 +2110,14 @@ if (
  *
  * ── THE STALE-PERMISSION CHECK THAT IS NOT WRITTEN HERE, AND WHY ────────────
  *
- * A permitted digest that matches no line would be a permission floating free.
+ * A permitted entry that matches no line would be a permission floating free.
  * It is not checked, and that is a decision: a permitted site lies outside the
- * window, so its text cannot change without changing (2)'s digest as well —
- * assertion (2) reaches that state first, on every tree. A branch no situation
- * can reach is a decoration that makes something look guarded (`ai-engineering.md`,
- * gate a gate must be able to fail), and this file already carries one such
- * branch it was told to leave alone rather than two it invented.
+ * window, so neither its text nor its position can change without changing (2)'s
+ * digest as well — assertion (2) reaches that state first, on every tree. A
+ * branch no situation can reach is a decoration that makes something look
+ * guarded (`ai-engineering.md`, gate a gate must be able to fail), and this file
+ * carried one such branch until plan 41.1-04 deleted it rather than inventing a
+ * second.
  *
  * ── THE ACCEPTED COST, WHICH IS NOW THE WHOLE FILE ──────────────────────────
  *
@@ -1987,30 +2130,112 @@ if (
 
 /**
  * The two lines of the default and wide form that legitimately read a navigation
- * property, by digest of their trimmed live text.
+ * property. **A permitted site is a PLACE as well as a string**: `path`, line
+ * number and the digest of the trimmed live text, all three, and a site is
+ * permitted only when all three agree.
  *
- * By digest and not verbatim: both carry whole utility tokens, and a frozen copy
- * of product code outlives the product code it copies (DEF-41-01). The refusal
- * prints the offending line and its digest, so adding a site is a copy rather
+ * ── WHY THE POSITION IS PART OF THE KEY (DEF-41-07 item 3) ──────────────────
+ *
+ * Until plan 41.1-04 this list held bare digests and the consumption hashed the
+ * trimmed line ALONE. So the permit travelled with the TEXT: the same characters
+ * anywhere in this file — a second component, a dead helper, a wrapper below the
+ * focus branch — matched a permitted digest and were waved through, having been
+ * approved somewhere else. The paragraph above records that a person confirmed
+ * *"a site cannot reach the focus form"*; that confirmation is about a LINE IN A
+ * PLACE, and a key that drops the place asserts a person's judgement about a
+ * position over a string that has none. Proved by mutation in 41.1-04: a
+ * permitted line's exact text copied to a second position was permitted before
+ * the change and is refused after it.
+ *
+ * ── STILL BY DIGEST AND NOT VERBATIM ────────────────────────────────────────
+ *
+ * Both lines carry whole utility tokens, and a frozen copy of product code
+ * outlives the product code it copies (DEF-41-01). The refusal prints the
+ * offending line, its position and its digest, so adding a site is a copy rather
  * than a computation.
+ *
+ * ── THE MEASURING COMMAND, so the next re-freeze is reproduced and not
+ *    re-derived ───────────────────────────────────────────────────────────────
+ *
+ *   node --input-type=module -e "
+ *   import { liveLines } from './scripts/lib/comments.mjs';
+ *   import { createHash } from 'node:crypto';
+ *   const P = 'src/components/ui/PageShell.tsx';
+ *   const NAV = ['--nav-inset-inline-start', '--nav-inset-block-end'];
+ *   liveLines(P).lines.forEach((l, i) => {
+ *     const t = l.trim();
+ *     if (!NAV.some((p) => t.includes(p))) return;
+ *     console.log(P + ':' + (i + 1) + '  ' + createHash('sha256').update(t).digest('hex'));
+ *     console.log('    ' + t);
+ *   });
+ *   "
+ *
+ * It reads the SAME stripper this gate reads (`scripts/lib/comments.mjs`,
+ * D-41.1-07), so a line the gate treats as a comment is a line the command
+ * treats as a comment; a second stripper would be a second opinion about which
+ * lines exist. Measured 2026-08-13, and this is the output the entries below are
+ * a copy of:
+ *
+ *     src/components/ui/PageShell.tsx:160  508027fb…c395f0
+ *     src/components/ui/PageShell.tsx:164  8f9c39ad…823e0
+ *
+ * ── WHY BOTH FROZEN CONSTANTS STAY VALID THROUGH PHASE 41.1 ─────────────────
+ *
+ * These positions and `SHELL_CODE_OUTSIDE_WINDOW_DIGEST` below both describe
+ * `src/components/ui/PageShell.tsx`, and **no plan in phase 41.1 edits that
+ * file** — checked against every plan's `files_modified` before this re-freeze.
+ * **The condition under which that stops being true:** any plan that touches
+ * `PageShell.tsx`'s CODE. When one does, both constants are re-frozen in the
+ * SAME COMMIT as the edit, each carrying the measurement that justified it —
+ * separately, because they answer different questions and a shared re-freeze
+ * would let one be updated on the other's evidence.
  *
  * **A site is frozen here only after confirming it cannot reach the focus form.**
  * That confirmation is a person's, and this list is the record that somebody made
  * it. Two entries today: §4's default and wide forms are the only forms that
  * reserve anything.
+ *
+ * Shape: `[path, lineNo, digest, reason]`.
  */
 const NAV_PROPERTY_SITE_DIGESTS = [
   [
+    'src/components/ui/PageShell.tsx', 160,
     '508027fb74a9bf829d9e02a44131d5705983eda85c02168aed74cead70c395f0',
     'the default and wide root — the leading inline-start inset, at and above 768px. ' +
       'It sits AFTER the focus branch has returned, so no focus surface reaches it',
   ],
   [
+    'src/components/ui/PageShell.tsx', 164,
     '8f9c39ad4e2711c6c39e515bc420c51b3524effe52bdf1eb8b30e349d38823e0',
     'the default and wide inner container — the block-end inset plus 16px. Same ' +
       'reason: below the focus branch\'s return, unreachable from the focus form',
   ],
 ];
+
+/*
+ * A permitted entry that names a file other than the one this read opens is a
+ * permission that can never match, and a list of them would look like coverage.
+ * The refusal is cheap and the condition is reachable the day somebody copies an
+ * entry from another gate.
+ */
+const permittedSitesNamingAnotherFile = NAV_PROPERTY_SITE_DIGESTS.filter(
+  ([path]) => path !== SHELL_FILE
+);
+if (permittedSitesNamingAnotherFile.length > 0) {
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — ${permittedSitesNamingAnotherFile.length} permitted ` +
+      'navigation-property site(s) name a file\n' +
+      `       this read never opens. This read covers ${SHELL_FILE} and nothing else:\n\n` +
+      permittedSitesNamingAnotherFile
+        .map(([path, lineNo]) => `         ${path}:${lineNo}`)
+        .join('\n') +
+      '\n\n       A permission that cannot match is not a permission, it is a line that makes\n' +
+      '       this list look longer than the ground it covers. Either the entry belongs to\n' +
+      `       another gate and comes out, or ${SHELL_FILE} is no longer the only file\n` +
+      '       composing the focus form and this read is scoped to the wrong thing.\n\n' +
+      '       Nothing was measured.'
+  );
+}
 
 /**
  * The digest of the shell's live code OUTSIDE the frozen window.
@@ -2036,7 +2261,16 @@ const shellCodeOutsideWindowDigest = sha256(
   shellCodeOutsideWindow.map(({ trimmed }) => trimmed).join('\n')
 );
 
-const permittedSiteDigests = new Set(NAV_PROPERTY_SITE_DIGESTS.map(([digest]) => digest));
+/*
+ * The permit key: PATH, LINE NUMBER and DIGEST joined, so a permitted site is a
+ * place as well as a string. ` ` as the joiner because no path, no decimal
+ * line number and no hex digest can contain it, so no two different triples can
+ * collide on one key by concatenation.
+ */
+const permitKey = (path, lineNo, digest) => `${path} ${lineNo} ${digest}`;
+const permittedSiteKeys = new Set(
+  NAV_PROPERTY_SITE_DIGESTS.map(([path, lineNo, digest]) => permitKey(path, lineNo, digest))
+);
 
 /*
  * The focus root's own declaration line is skipped, and only that line: it is
@@ -2049,7 +2283,7 @@ for (const { lineNo, trimmed } of shellCodeOutsideWindow) {
   if (lineNo === focusRootLineNo) continue;
   if (!NAV_PROPERTIES.some((prop) => trimmed.includes(prop))) continue;
   const digest = sha256(trimmed);
-  if (permittedSiteDigests.has(digest)) continue;
+  if (permittedSiteKeys.has(permitKey(SHELL_FILE, lineNo, digest))) continue;
   unfrozenPropertySites.push({ lineNo, trimmed, digest });
 }
 
@@ -2085,10 +2319,16 @@ if (nothingMeasurableWasWrong && unfrozenPropertySites.length > 0) {
       '       follows no data flow. Calling it CR-01 would redden a legitimate refactor of the\n' +
       '       default form, and a gate that reddens correct code gets switched off (§0 rule 3).\n' +
       '       Calling it clean is what three rounds did.\n\n' +
+      '       A PERMITTED SITE IS A PLACE, NOT A PHRASE (DEF-41-07 item 3). A permit is keyed on\n' +
+      '       path, line number and digest together, so a line whose text matches a permitted\n' +
+      '       one but sits somewhere else is listed above rather than waved through. If one of\n' +
+      '       the entries above IS a permitted site that simply moved, that is still a change\n' +
+      '       nobody was shown, and it is re-frozen at its new position rather than re-matched.\n\n' +
       '       WHAT TO DO. Establish which form that line reaches. If it is the default or wide\n' +
-      '       form, freeze it: add its digest above, in the same commit, with the reason. If it\n' +
-      '       reaches the focus form, it is CR-01 and the line comes out — §4\'s focus list is\n' +
-      '       closed at four routes and not one of them mounts a navigation.\n\n' +
+      '       form, freeze it: add its PATH, its LINE NUMBER and its digest above, in the same\n' +
+      '       commit, with the reason. If it reaches the focus form, it is CR-01 and the line\n' +
+      '       comes out — §4\'s focus list is closed at four routes and not one of them mounts a\n' +
+      '       navigation.\n\n' +
       '       Nothing was measured.'
   );
 }
@@ -2219,6 +2459,10 @@ for (const s of surfaces) for (const rel of s.scanned) allScanned.add(rel);
 
 console.log(`  surfaces declared converted : ${surfaces.length}`);
 console.log(`  files reached by the walk   : ${new Set(surfaces.flatMap((s) => s.reached)).size}`);
+console.log(
+  `  route-adjacent files added  : ${routeAdjacentAdded.size}   ` +
+    `(${ROUTE_ADJACENT_BASENAMES.join('/')} beside a declared page — mounted by the router, not by an import)`
+);
 console.log(`  files scanned by A, B and D : ${allScanned.size}`);
 console.log(`  excluded as converted spine : ${excludedSpine.size}`);
 console.log(`  excluded as Phase 42        : ${excludedPhase42.size}`);
@@ -2244,7 +2488,10 @@ if (excludedPhase42.size > 0) {
 console.log('\n  the surfaces, and what each reaches:\n');
 for (const s of surfaces) {
   console.log(`      ${s.route}  [${s.width}]  — ${s.scanned.length} file(s) scanned`);
-  for (const rel of s.scanned) console.log(`          ${rel}`);
+  for (const rel of s.scanned) {
+    const tag = s.routeAdjacent.includes(rel) ? '   [route-adjacent]' : '';
+    console.log(`          ${rel}${tag}`);
+  }
 }
 console.log('');
 
@@ -2296,8 +2543,10 @@ if (paletteHits.length > 0) {
   );
 } else {
   console.log(
-    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) reachable from ` +
-      `${surfaces.length} converted surface(s)\n`
+    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) under ` +
+      `${surfaces.length} converted surface(s)\n` +
+      `       (${allScanned.size - routeAdjacentAdded.size} reached through the import graph, ` +
+      `${routeAdjacentAdded.size} mounted beside a page by the router)\n`
   );
 }
 
@@ -2729,7 +2978,9 @@ console.log(
   `      sites permitted to read a navigation property : ${NAV_PROPERTY_SITE_DIGESTS.length}` +
     `   (found outside the permitted set: ${unfrozenPropertySites.length})`
 );
-for (const [, why] of NAV_PROPERTY_SITE_DIGESTS) console.log(`          ${why}`);
+for (const [path, lineNo, , why] of NAV_PROPERTY_SITE_DIGESTS) {
+  console.log(`          ${path}:${lineNo}  — ${why}`);
+}
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
