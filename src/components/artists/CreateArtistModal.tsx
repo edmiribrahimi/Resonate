@@ -1,8 +1,72 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { createArtist } from "@/app/(admin)/admin/artists/actions";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Input, Textarea } from "@/components/ui/Input";
+
+/**
+ * Create an artist profile — the dialog the event form mounts from the lineup
+ * field when a typed name matches nothing.
+ *
+ * ── The shell is no longer here ──────────────────────────────────────────────
+ *
+ * It was byte-identical to `CreateVenueModal.tsx`'s, which is the ancestor
+ * `src/components/ui/Dialog.tsx` was extracted from. Both are converted in the
+ * same plan, so the two copies leave together. What arrived with the primitive:
+ * the panel, the scrim, the sheet form below 768 px, the light dismiss handler,
+ * a 44 × 44 close control in place of the 32 px one, an accessible name this
+ * dialog did not have, and Escape, the focus trap and the inert background —
+ * from `showModal()` by specification, not from a listener anybody has to
+ * maintain.
+ *
+ * Its width is `lg` because §8.3's closed list names it there.
+ *
+ * ── The name is published verbatim, and that is a production rule ────────────
+ *
+ * An artist name is read off a poster and out of a caption, and
+ * `brand-visual-system.md` requires the spelling to be verified at the source
+ * before anything is produced with it. Nothing in this file transforms the
+ * name: it arrives from the event form and is rendered read-only. The
+ * conversion added no filter, no casing rule and no placeholder describing what
+ * anybody plays — three of the four formats have no written manifesto and a
+ * placeholder is not the place to write one (`sound-manifesto.md`).
+ *
+ * ── Initial focus: the close control, which is what it already was ───────────
+ *
+ * No `data-initial-focus` marker is declared, so `Dialog` falls back to the
+ * close control (`Dialog.tsx:246-258`) — the same element the user agent
+ * focused before, because it is first in the DOM. The focus target did not move.
+ *
+ * ── The refusal, and the half of it this file cannot reach ───────────────────
+ *
+ * The hand-rolled red panel is gone: the outcome travels as the primitive's
+ * `status` region, `role="alert"` in the semantic ink. The number of sentences
+ * changed with it, deliberately: the incumbent `catch` printed one message for
+ * every cause — the shape `meta-gates.md` records as this repository's own
+ * precedent not to repeat — and **Next redacts the message of an error thrown
+ * out of a Server Action in a production build**, so every server-side cause
+ * arrived as the same generic paragraph. Three causes are distinguishable from
+ * here and each gets its own sentence, branched on the **stage** rather than on
+ * message text.
+ *
+ * **The fourth distinction is not available from this file.** Telling a
+ * duplicate name from a missing name from a refused write needs `createArtist`
+ * to return a typed refusal instead of throwing, and that action is not on this
+ * plan's authorised file list. Recorded as owed rather than half-done.
+ */
+
+/**
+ * The form's name, so the submit control can address it from outside the
+ * `<form>` — the actions region sits below the scroller, so a submit inside the
+ * form would scroll away. `form="…"` is HTML's form-owner attribute.
+ */
+const FORM_ID = "create-artist-form";
+
+/** Where a failure happened. It is what the sentences below branch on. */
+type Stage = "photo" | "create";
 
 interface CreateArtistModalProps {
   name: string;
@@ -20,7 +84,6 @@ export default function CreateArtistModal({
   onClose,
   onCreated,
 }: CreateArtistModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [bio, setBio] = useState("");
@@ -34,17 +97,6 @@ export default function CreateArtistModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
-
   // Reset all state when modal opens (fixes stale data between consecutive creations)
   useEffect(() => {
     if (open) {
@@ -54,10 +106,6 @@ export default function CreateArtistModal({
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -104,16 +152,42 @@ export default function CreateArtistModal({
     return publicUrl;
   }
 
+  /**
+   * One sentence per cause. The photo arm runs in the browser, so its
+   * underlying message is readable and is carried through; the other two are
+   * branched on shape, because a production build redacts what the server said.
+   */
+  function describeFailure(stage: Stage, err: unknown): string {
+    if (stage === "photo") {
+      const detail = err instanceof Error ? err.message : String(err);
+      return `Could not create the profile. The photo could not be uploaded, so nothing was created — ${detail} Remove the photo and try again, or create the profile without one.`;
+    }
+
+    const unreachable =
+      err instanceof TypeError ||
+      (typeof navigator !== "undefined" && navigator.onLine === false);
+
+    if (unreachable) {
+      return "Could not create the profile. The request never reached the server. Nothing was created — check the connection and try again.";
+    }
+
+    return "Could not create the profile. The server refused the write, and in a production build its own reason does not reach this screen. Nothing was created. Check that no other artist already holds this name, and that this account still has permission to manage the catalogue.";
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
+    let stage: Stage = "photo";
 
     try {
       let photoUrl: string | null = null;
       if (imageFile) {
         photoUrl = await uploadPhoto(imageFile);
       }
+
+      stage = "create";
 
       const formData = new FormData();
       formData.set("name", name);
@@ -127,12 +201,16 @@ export default function CreateArtistModal({
       const result = await createArtist(formData);
       onCreated(result.slug);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred.");
+      setError(describeFailure(stage, err));
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  /**
+   * Every close route lands here, because the primitive calls `onClose` for the
+   * close control, for Escape and for the platform's own close event alike.
+   */
   function resetAndClose() {
     setBio("");
     setInstagramUrl("");
@@ -148,173 +226,133 @@ export default function CreateArtistModal({
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) resetAndClose();
-      }}
-    >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-foreground">
-              Create Artist Profile
-            </h2>
-            <button
-              type="button"
-              onClick={resetAndClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name (read-only) */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">
-                Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                readOnly
-                className="w-full rounded-xl border border-card-border bg-card px-4 py-3 text-foreground text-sm opacity-70"
-              />
-            </div>
-
-            {/* Bio */}
-            <div className="space-y-2">
-              <label htmlFor="artist-bio" className="block text-sm font-medium text-foreground">
-                Bio
-              </label>
-              <textarea
-                id="artist-bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Short bio..."
-                rows={3}
-                maxLength={2000}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y text-sm"
-              />
-            </div>
-
-            {/* Photo */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">
-                Profile Photo
-              </label>
-              {imagePreview && (
-                <div className="relative w-24 h-24">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-24 h-24 rounded-full object-cover border border-card-border"
-                  />
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageChange}
-                className="block w-full text-sm text-muted file:mr-4 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/30 file:cursor-pointer"
-              />
-              {imageError && (
-                <p className="text-sm text-red-400">{imageError}</p>
-              )}
-            </div>
-
-            {/* Social links */}
-            <div className="space-y-2">
-              <label htmlFor="artist-instagram" className="block text-sm font-medium text-foreground">
-                Instagram URL
-              </label>
-              <input
-                id="artist-instagram"
-                type="url"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder="https://instagram.com/..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="artist-soundcloud" className="block text-sm font-medium text-foreground">
-                SoundCloud URL
-              </label>
-              <input
-                id="artist-soundcloud"
-                type="url"
-                value={soundcloudUrl}
-                onChange={(e) => setSoundcloudUrl(e.target.value)}
-                placeholder="https://soundcloud.com/..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="artist-spotify" className="block text-sm font-medium text-foreground">
-                Spotify URL
-              </label>
-              <input
-                id="artist-spotify"
-                type="url"
-                value={spotifyUrl}
-                onChange={(e) => setSpotifyUrl(e.target.value)}
-                placeholder="https://open.spotify.com/artist/..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="artist-website" className="block text-sm font-medium text-foreground">
-                Website
-              </label>
-              <input
-                id="artist-website"
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Creating..." : "Create Profile"}
-              </button>
-              <button
-                type="button"
-                onClick={resetAndClose}
-                disabled={isSubmitting}
-                className="rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+    <Dialog
+      open={open}
+      onClose={resetAndClose}
+      title="Create Artist Profile"
+      size="lg"
+      status={error ? { tone: "crit", message: error } : null}
+      actions={
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            form={FORM_ID}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create Profile"}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={resetAndClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
         </div>
-      </div>
-    </dialog>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+        {/* Name — carried in from the lineup field, rendered verbatim. */}
+        <Input
+          id="artist-name"
+          label="Name"
+          type="text"
+          value={name}
+          readOnly
+          className="opacity-70"
+        />
+
+        <Textarea
+          id="artist-bio"
+          label="Bio"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder="Short bio..."
+          rows={3}
+          maxLength={2000}
+          className="resize-y"
+        />
+
+        {/*
+          The one field with no primitive — §8.6 specifies three text-entry
+          controls and no file control. The label, the failure region and the
+          association between them are written here with the tokens `Input`
+          uses, rather than a fourth control being published inside a conversion.
+        */}
+        <div className="space-y-2">
+          <label
+            htmlFor="artist-photo"
+            className="block text-xs font-semibold text-ink-2"
+          >
+            Profile Photo
+          </label>
+          {imagePreview && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="h-24 w-24 rounded-full border border-line object-cover"
+            />
+          )}
+          <input
+            ref={fileInputRef}
+            id="artist-photo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
+            {...(imageError
+              ? { "aria-invalid": true, "aria-describedby": "artist-photo-error" }
+              : null)}
+            className={`block min-h-11 w-full text-sm text-muted file:mr-4 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-control file:bg-transparent file:px-4 file:text-xs file:font-semibold file:text-ink ${FOCUS_RING}`}
+          />
+          {imageError && (
+            <p
+              id="artist-photo-error"
+              role="alert"
+              className="text-xs text-sem-crit"
+            >
+              {imageError}
+            </p>
+          )}
+        </div>
+
+        <Input
+          id="artist-instagram"
+          label="Instagram URL"
+          type="url"
+          value={instagramUrl}
+          onChange={(e) => setInstagramUrl(e.target.value)}
+          placeholder="https://instagram.com/..."
+        />
+
+        <Input
+          id="artist-soundcloud"
+          label="SoundCloud URL"
+          type="url"
+          value={soundcloudUrl}
+          onChange={(e) => setSoundcloudUrl(e.target.value)}
+          placeholder="https://soundcloud.com/..."
+        />
+
+        <Input
+          id="artist-spotify"
+          label="Spotify URL"
+          type="url"
+          value={spotifyUrl}
+          onChange={(e) => setSpotifyUrl(e.target.value)}
+          placeholder="https://open.spotify.com/artist/..."
+        />
+
+        <Input
+          id="artist-website"
+          label="Website"
+          type="url"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+          placeholder="https://..."
+        />
+      </form>
+    </Dialog>
   );
 }

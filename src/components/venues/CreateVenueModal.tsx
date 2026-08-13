@@ -1,8 +1,86 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { createVenue } from "@/app/(admin)/admin/venues/actions";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Input, Textarea } from "@/components/ui/Input";
+
+/**
+ * Create a venue profile — the dialog the event form mounts when a name the
+ * organiser typed matches nothing.
+ *
+ * ── The shell is no longer here ──────────────────────────────────────────────
+ *
+ * This file was the **ancestor** of the copy tree: `RetireFormatDialog.tsx`
+ * names it as its source, and `RevealVenueDialog.tsx` names that one in turn.
+ * `src/components/ui/Dialog.tsx` was extracted from it in phase 41, and this is
+ * the plan that pays the debt back into the file it came from. What arrived with
+ * the primitive: the panel, the scrim, the sheet form below 768 px, the light
+ * dismiss handler, a 44 × 44 close control in place of the 32 px one, an
+ * accessible name this dialog did not have, and — the part no class string
+ * shows — Escape, the focus trap and the inert background, all four from
+ * `showModal()` by specification rather than from a copy.
+ *
+ * Its width is `lg` because §8.3's closed list names it there.
+ *
+ * ── What this file does NOT do, and the reason is the domain ─────────────────
+ *
+ * It writes a venue, and a venue is the object `venue-secrecy.md` is about. The
+ * conversion moved colour, type, spacing, touch targets and the dialog shell.
+ * It moved **no field mapping, no validation attribute and no conditional
+ * governing whether a name or an address is shown**: the address field is the
+ * same field, in the same place, writing the same key, and there is no preview,
+ * no map and no geocode display here — not before, and deliberately not after.
+ * The secrecy flag is the event form's field and is not reachable from this
+ * file at all.
+ *
+ * ── Initial focus: the close control, which is what it already was ───────────
+ *
+ * No `data-initial-focus` marker is declared, so `Dialog` falls back to the
+ * close control (`Dialog.tsx:246-258`). That is the same element the user agent
+ * focused before this conversion — it is first in the DOM — so the focus target
+ * did not move. The analog declares the marker on its Cancel; a form dialog gets
+ * nothing from moving focus between two equally harmless controls, and not
+ * moving it is the smaller claim.
+ *
+ * ── The refusal, and the half of it this file cannot reach ───────────────────
+ *
+ * The hand-rolled red panel is gone: the outcome travels as the primitive's
+ * `status` region, which renders `role="alert"` for the critical tone in the
+ * semantic ink (`Dialog.tsx:316-322`). What changed with it is the **number of
+ * sentences**, and that is deliberate. The incumbent `catch` printed one
+ * message for every cause, which is the shape `meta-gates.md` records as this
+ * repository's own precedent not to repeat — and worse than it looks, because
+ * **Next redacts the message of an error thrown out of a Server Action in a
+ * production build**, so every server-side cause arrived as the same generic
+ * paragraph. Three causes are distinguishable from here and each gets its own
+ * sentence, branched on the **stage** the failure happened in rather than on
+ * message text, which is the same discipline `CreateFormatModal.tsx:340-353`
+ * applies to its two throwing paths.
+ *
+ * **The fourth distinction is not available from this file.** Telling a
+ * duplicate name from a missing name from a refused write needs
+ * `createVenue` to return a typed refusal instead of throwing — the argument
+ * `admin/venues/actions.ts:186-202` already makes for `updateVenue` — and that
+ * action is not on this plan's authorised file list. It is recorded as owed
+ * rather than half-done here, because a conversion commit is the wrong place to
+ * change what a write returns.
+ */
+
+/**
+ * The form's name, so the submit control can address it from outside.
+ *
+ * The primitive puts the actions in their own region below the scroller, so the
+ * buttons are not descendants of the `<form>`. `form="…"` is HTML's form-owner
+ * attribute, which is the mechanism for exactly this, and it keeps both routes
+ * to submission identical: Enter inside a field, and the button.
+ */
+const FORM_ID = "create-venue-form";
+
+/** Where a failure happened. It is what the sentences below branch on. */
+type Stage = "photo" | "create";
 
 interface CreateVenueModalProps {
   name: string;
@@ -20,7 +98,6 @@ export default function CreateVenueModal({
   onClose,
   onCreated,
 }: CreateVenueModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [bio, setBio] = useState("");
@@ -33,21 +110,6 @@ export default function CreateVenueModal({
   const [imageError, setImageError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -94,16 +156,46 @@ export default function CreateVenueModal({
     return publicUrl;
   }
 
+  /**
+   * One sentence per cause, and each one names what happened and whether
+   * anything was written.
+   *
+   * The photo arm runs in the browser, so its underlying message is readable
+   * and is carried through. The other two are branched on shape — a network
+   * fault never reaches server code, and everything else did reach it — because
+   * a production build redacts what the server said.
+   */
+  function describeFailure(stage: Stage, err: unknown): string {
+    if (stage === "photo") {
+      const detail = err instanceof Error ? err.message : String(err);
+      return `Could not create the profile. The photo could not be uploaded, so nothing was created — ${detail} Remove the photo and try again, or create the profile without one.`;
+    }
+
+    const unreachable =
+      err instanceof TypeError ||
+      (typeof navigator !== "undefined" && navigator.onLine === false);
+
+    if (unreachable) {
+      return "Could not create the profile. The request never reached the server. Nothing was created — check the connection and try again.";
+    }
+
+    return "Could not create the profile. The server refused the write, and in a production build its own reason does not reach this screen. Nothing was created. Check that no other venue already holds this name, and that this account still has permission to manage the catalogue.";
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
+    let stage: Stage = "photo";
 
     try {
       let photoUrl: string | null = null;
       if (imageFile) {
         photoUrl = await uploadPhoto(imageFile);
       }
+
+      stage = "create";
 
       const formData = new FormData();
       formData.set("name", name);
@@ -117,12 +209,18 @@ export default function CreateVenueModal({
       const result = await createVenue(formData);
       onCreated(result.id, result.slug);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred.");
+      setError(describeFailure(stage, err));
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  /**
+   * Every close route lands here, because the primitive calls `onClose` for the
+   * close control, for Escape and for the platform's own close event alike. The
+   * incumbent reset on two of the three, so an Escape left the last refusal and
+   * the last half-typed bio on screen at the next open.
+   */
   function resetAndClose() {
     setBio("");
     setAddress("");
@@ -138,175 +236,138 @@ export default function CreateVenueModal({
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) resetAndClose();
-      }}
-    >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-foreground">
-              Create Venue Profile
-            </h2>
-            <button
-              type="button"
-              onClick={resetAndClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name (read-only) */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">
-                Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                readOnly
-                className="w-full rounded-xl border border-card-border bg-card px-4 py-3 text-foreground text-sm opacity-70"
-              />
-            </div>
-
-            {/* Bio */}
-            <div className="space-y-2">
-              <label htmlFor="venue-bio" className="block text-sm font-medium text-foreground">
-                Bio
-              </label>
-              <textarea
-                id="venue-bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Short description..."
-                rows={3}
-                maxLength={2000}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y text-sm"
-              />
-            </div>
-
-            {/* Address */}
-            <div className="space-y-2">
-              <label htmlFor="venue-address" className="block text-sm font-medium text-foreground">
-                Address
-              </label>
-              <input
-                id="venue-address"
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Street address..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            {/* Google Maps URL */}
-            <div className="space-y-2">
-              <label htmlFor="venue-maps" className="block text-sm font-medium text-foreground">
-                Google Maps URL
-              </label>
-              <input
-                id="venue-maps"
-                type="url"
-                value={googleMapsUrl}
-                onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                placeholder="https://maps.google.com/..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            {/* Photo */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">
-                Photo
-              </label>
-              {imagePreview && (
-                <div className="relative w-24 h-24">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-24 h-24 rounded-xl object-cover border border-card-border"
-                  />
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageChange}
-                className="block w-full text-sm text-muted file:mr-4 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/30 file:cursor-pointer"
-              />
-              {imageError && (
-                <p className="text-sm text-red-400">{imageError}</p>
-              )}
-            </div>
-
-            {/* Social links */}
-            <div className="space-y-2">
-              <label htmlFor="venue-instagram" className="block text-sm font-medium text-foreground">
-                Instagram URL
-              </label>
-              <input
-                id="venue-instagram"
-                type="url"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder="https://instagram.com/..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="venue-website" className="block text-sm font-medium text-foreground">
-                Website
-              </label>
-              <input
-                id="venue-website"
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 text-sm"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Creating..." : "Create Profile"}
-              </button>
-              <button
-                type="button"
-                onClick={resetAndClose}
-                disabled={isSubmitting}
-                className="rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+    <Dialog
+      open={open}
+      onClose={resetAndClose}
+      title="Create Venue Profile"
+      size="lg"
+      status={error ? { tone: "crit", message: error } : null}
+      actions={
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            form={FORM_ID}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create Profile"}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={resetAndClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
         </div>
-      </div>
-    </dialog>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+        {/* Name — carried in from the event form, not editable here. */}
+        <Input
+          id="venue-name"
+          label="Name"
+          type="text"
+          value={name}
+          readOnly
+          className="opacity-70"
+        />
+
+        <Textarea
+          id="venue-bio"
+          label="Bio"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder="Short description..."
+          rows={3}
+          maxLength={2000}
+          className="resize-y"
+        />
+
+        {/*
+          The address field, unchanged in every respect that decides who can see
+          an address: same key, same place, same absence of a preview.
+        */}
+        <Input
+          id="venue-address"
+          label="Address"
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Street address..."
+        />
+
+        <Input
+          id="venue-maps"
+          label="Google Maps URL"
+          type="url"
+          value={googleMapsUrl}
+          onChange={(e) => setGoogleMapsUrl(e.target.value)}
+          placeholder="https://maps.google.com/..."
+        />
+
+        {/*
+          The one field with no primitive. §8.6 specifies three text-entry
+          controls and no file control, so the label, the failure region and the
+          association between them are written here in the same order and with
+          the same tokens `Input` uses — rather than a fourth control being
+          published from inside a conversion (D-41-04).
+        */}
+        <div className="space-y-2">
+          <label
+            htmlFor="venue-photo"
+            className="block text-xs font-semibold text-ink-2"
+          >
+            Photo
+          </label>
+          {imagePreview && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="h-24 w-24 rounded-xl border border-line object-cover"
+            />
+          )}
+          <input
+            ref={fileInputRef}
+            id="venue-photo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
+            {...(imageError
+              ? { "aria-invalid": true, "aria-describedby": "venue-photo-error" }
+              : null)}
+            className={`block min-h-11 w-full text-sm text-muted file:mr-4 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-control file:bg-transparent file:px-4 file:text-xs file:font-semibold file:text-ink ${FOCUS_RING}`}
+          />
+          {imageError && (
+            <p
+              id="venue-photo-error"
+              role="alert"
+              className="text-xs text-sem-crit"
+            >
+              {imageError}
+            </p>
+          )}
+        </div>
+
+        <Input
+          id="venue-instagram"
+          label="Instagram URL"
+          type="url"
+          value={instagramUrl}
+          onChange={(e) => setInstagramUrl(e.target.value)}
+          placeholder="https://instagram.com/..."
+        />
+
+        <Input
+          id="venue-website"
+          label="Website"
+          type="url"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+          placeholder="https://..."
+        />
+      </form>
+    </Dialog>
   );
 }
