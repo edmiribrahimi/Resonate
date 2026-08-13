@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
 - [~] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (5/5 plans executed 2026-08-11 — **verification `human_needed`**, not complete: DS-10 and DS-06's home-screen half are proven only by `40-RELEASE-PASS.md` H1/H3, every `Result: pending`, in the end-of-v1.5 sitting. Scheduled is not verified.)
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces
-- [ ] **Phase 41.1: Work-Surface Conversion** - The 21 remaining work pages convert onto the layer, the work-surface gates stop being ratchets, and the three knots the work surface reaches — the event form, the refunds, the venue reveal — are taken on their own in the last wave
+- [x] **Phase 41.1: Work-Surface Conversion** - The 21 remaining work pages convert onto the layer, the work-surface gates stop being ratchets, and the three knots the work surface reaches — the event form, the refunds, the venue reveal — are taken on their own in the last wave (completed 2026-08-13)
 - [ ] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, and the bar is taken on its own
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
 - [ ] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository
@@ -856,7 +856,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 41.1-24-PLAN.md — The last five declarations and the shim's deletion in one commit; the work group's debt to zero
+- [x] 41.1-24-PLAN.md — The last five declarations and the shim's deletion in one commit; the work group's debt to zero
 
 > **RESP-01 is advanced by this phase, never closed by it.** It says *every*
 > surface, so it closes in Phase 41.2 and only by a written human pass. Every plan
