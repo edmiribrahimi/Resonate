@@ -5,6 +5,9 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import EventList from "@/components/events/EventList";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * The single events surface, where `/admin/events` and `/organizer/events` were
@@ -120,25 +123,41 @@ export default async function EventsPage() {
 
   if (error) {
     return (
-      <div className="min-h-dvh pb-24">
-        <header className="flex items-center justify-between px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Events</h1>
+      /*
+        The refusal branch renders the SAME shell at the SAME maximum as the
+        branch below it. A page that changed width when it failed would move
+        the heading a person is looking at in the moment they most need it
+        where they left it.
+
+        The refusal itself is the semantic ink and the role that announces it,
+        not a tinted box: the box stated nothing its sentence did not, and it
+        was drawn in a raw palette. The message keeps the database's own words
+        — this product has no error tracking, so a cause collapsed here is a
+        cause nobody ever learns.
+      */
+      <PageShell width="default">
+        <header className="mb-6">
+          <PageTitle>Events</PageTitle>
         </header>
-        <div className="px-6">
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-            <p className="text-red-400">
-              Failed to load events: {error.message}
-            </p>
-          </div>
-        </div>
-      </div>
+        <p role="alert" className="text-sm text-sem-crit">
+          Failed to load events: {error.message}
+        </p>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-dvh pb-24">
+    /*
+      `default` and not `wide`: §4's wide list is closed and does not name this
+      route. That is not a fallback — it is the answer for every surface nobody
+      had to argue about. The shell owns the maximum, the gutter, the vertical
+      rhythm and the navigation clearance, so this file writes none of them, and
+      the hand-written bottom clearance it used to carry was the phone's number
+      only.
+    */
+    <PageShell width="default">
       <AnimatedSection>
-        <header className="flex items-center justify-between px-6 pt-12 pb-6">
+        <header className="mb-6 flex items-center justify-between gap-3">
           {/*
             One surface, one heading. `<h1>Admin</h1>` and `<h1>Organizer</h1>`
             both named a role rather than the surface, and after the collapse
@@ -149,19 +168,38 @@ export default async function EventsPage() {
             `admin` from the URL and the headings — is Phase 40/41's, and this
             is not it.
           */}
-          <h1 className="text-3xl font-bold tracking-tight">Events</h1>
+          <PageTitle>Events</PageTitle>
+
+          {/*
+            The surface's one primary action, on the ladder's geometry — the
+            44px floor, the named horizontal step, and an accent FILL whose ink
+            is the ground at 6.85 : 1 where white on accent was 2.91 and failed
+            1.4.3.
+
+            It stays a `<Link>` rather than becoming the button ladder's anchor
+            branch, and that is a decision rather than an oversight: the ladder
+            renders a plain anchor, which in the App Router is a full document
+            load. Converting this control onto it would have converted the
+            appearance and quietly removed client-side navigation and
+            prefetching from the primary action of a work surface — a behaviour
+            change, which a visual conversion may not make. The class string is
+            therefore written here, once, with the focus expression IMPORTED
+            rather than re-spelled (§3.4). The gap it exposes — that neither the
+            ladder nor the chip can BE a `next/link` — is reported by this
+            plan's summary as a question owed, not answered here.
+          */}
           <Link
             href="/admin/events/new"
-            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-all active:scale-95 active:opacity-80 ${FOCUS_RING}`}
           >
             Create Event
           </Link>
         </header>
       </AnimatedSection>
 
-      <AnimatedSection delay={0.1} className="px-6">
+      <AnimatedSection delay={0.1}>
         <EventList events={events ?? []} />
       </AnimatedSection>
-    </div>
+    </PageShell>
   );
 }

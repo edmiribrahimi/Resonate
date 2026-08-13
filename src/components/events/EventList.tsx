@@ -8,6 +8,8 @@ import {
   publishEvent,
   unpublishEvent,
 } from "@/app/(admin)/admin/events/actions";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Chip";
 
 interface EventItem {
   id: string;
@@ -53,7 +55,60 @@ interface EventListProps {
  * the cast — are the ones the plan's acceptance criteria grep this file for.
  * Plans 34-03 and 34-06 both recorded the same self-inflicted failure: a
  * criterion a comment can defeat is a criterion nobody can run.
+ *
+ * ── The six became one, and the reason is a measurement (plan 41.1-07) ───────
+ *
+ * `41-UI-SPEC.md` §6.4 names this row: six controls on one line, none of them
+ * reaching the 44px floor, on the surface a person operates a night from. The
+ * fix is the floor; what carries it needed deciding.
+ *
+ * **`Chip` cannot carry these hrefs, and that is measured rather than argued.**
+ * `Chip`'s prop is the bare route type, which is that type at its default
+ * parameter — and at the default parameter the dynamic arm collapses, which is
+ * the same collapse the paragraph above records for annotations. Written as
+ * `<Chip href={…}>` and typechecked on 2026-08-13, the compiler said:
+ *
+ *     TS2322: Type '`/admin/events/${string}/edit`' is not assignable to
+ *             type 'Route | undefined'.
+ *
+ * `Link` does not have the problem because `Link` is **generic** and infers the
+ * type argument from the template. Three ways out were available and two are
+ * refused: casting the href, which switches off the only check that makes a
+ * stale address a build error instead of a 404 somebody clicks; and widening
+ * `Chip` to be generic the way `Link` is, which is a change to a shared
+ * primitive that no plan in this wave was given and that two plans could
+ * collide on. **The third is taken here, and it is `41.1-PATTERNS.md` §2.5's own
+ * "best single call site to copy": a `<Link>` carrying the composed shape with
+ * the focus expression IMPORTED, never re-spelled.** The question it leaves —
+ * *should `Chip` be generic over its route so a dynamic address can be a chip?*
+ * — is written into this plan's summary as owed, not decided here.
+ *
+ * **One `<Link>`, rendered six times.** The class string is therefore written
+ * once and written literally inside the attribute, which is also the only form
+ * the touch-target gate can read: it does not resolve a module constant, and
+ * says so in its own exemption list. The segments are a literal union, so each
+ * of the six addresses is still checked by inference at build time — a segment
+ * that stops being a route is a build error here, exactly as it was when these
+ * were six hand-written hrefs. Still no annotation, still no cast.
  */
+
+/**
+ * The six addresses a night is operated from, and the label each carries.
+ *
+ * `as const` is load-bearing: without it the segment widens to `string`, the
+ * template stops matching any dynamic route, and the build fails loudly. It
+ * cannot fail quietly in this direction, which is the only property that
+ * matters here.
+ */
+const ROW_CONTROLS = [
+  { segment: "edit", label: "Edit" },
+  { segment: "tickets", label: "Manage Tickets" },
+  { segment: "sales", label: "Sales" },
+  { segment: "guest-list", label: "Guest List" },
+  { segment: "media", label: "Media" },
+  { segment: "analytics", label: "Analytics" },
+] as const;
+
 export default function EventList({
   events,
   showCreator = false,
@@ -139,9 +194,14 @@ export default function EventList({
 
   if (events.length === 0) {
     return (
-      <div className="rounded-xl border border-card-border bg-card p-8 text-center">
-        <p className="text-muted">
-          No events yet. Create your first event to get started.
+      /* §8.11's empty-state contract — a class string, not a component: a
+         heading, and one body sentence naming the next step. The words are the
+         ones that were already here, rearranged into the two lines the contract
+         asks for; none is introduced. */
+      <div className="px-6 py-12 text-center">
+        <p className="text-base font-semibold text-ink">No events yet</p>
+        <p className="mt-1 text-sm text-muted">
+          Create your first event to get started.
         </p>
       </div>
     );
@@ -149,33 +209,46 @@ export default function EventList({
 
   return (
     <div className="space-y-3">
+      {/* The refusal, in the semantic ink and with the role that announces it.
+          The tinted box that stood here stated nothing its sentence did not,
+          and it was drawn in a raw palette. The sentences are unchanged: each
+          of the three acts still names itself, and a thrown message still
+          reaches the screen — this product has no error tracking, so what is
+          printed here is the whole of what anybody will learn. */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
+        <p role="alert" className="text-sm text-sem-crit">
+          {error}
+        </p>
       )}
 
       <StaggeredList className="space-y-3">
       {events.map((event) => (
         <StaggeredItem
           key={event.id}
-          className="rounded-xl border border-card-border bg-card p-4"
+          /* The card contract — the container radius, the line token on the
+             edge, the surface ground and the 24px padding. The same three
+             values `SkeletonCard` writes, so the placeholder that precedes this
+             list occupies the box these rows will take. */
+          className="rounded-2xl border border-line bg-surface p-6"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-foreground truncate">
+                <h3 className="text-sm font-semibold text-ink truncate">
                   {event.title}
                 </h3>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                    event.is_published
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-muted/20 text-muted"
-                  }`}
+                {/* A mark, not a target: it states what this night is and
+                    cannot be operated, so it is a badge and renders a span.
+                    The emphasis stays where it already was — a published night
+                    is the one the eye should find first, because it is the one
+                    members can already see. The word is the channel; the fill
+                    only makes it findable. */}
+                <Badge
+                  tone={event.is_published ? "emphasis" : "neutral"}
+                  className="shrink-0"
                 >
                   {event.is_published ? "Published" : "Draft"}
-                </span>
+                </Badge>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted">
                 <span>{formatDate(event.date)}</span>
@@ -186,80 +259,62 @@ export default function EventList({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* The row of controls.
+
+              Every one of the eight is at the 44px floor now, and none of them
+              shrinks: the shrink allow-list is closed at one item and this row
+              is not on it. Where the eight no longer fit on one line at phone
+              width they WRAP — the row already wrapped, and no breakpoint
+              prefix is introduced to hide the width they need. */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <Link
-              href={`/admin/events/${event.id}/edit`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Edit
-            </Link>
+            {ROW_CONTROLS.map(({ segment, label }) => (
+              <Link
+                key={segment}
+                href={`/admin/events/${event.id}/${segment}`}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-control px-4 text-xs font-semibold normal-case tracking-wide text-ink-2 transition-all hover:text-ink active:scale-95 active:opacity-80 ${FOCUS_RING}`}
+              >
+                {label}
+              </Link>
+            ))}
 
-            <Link
-              href={`/admin/events/${event.id}/tickets`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Manage Tickets
-            </Link>
-
-            <Link
-              href={`/admin/events/${event.id}/sales`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Sales
-            </Link>
-
-            <Link
-              href={`/admin/events/${event.id}/guest-list`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Guest List
-            </Link>
-
-            <Link
-              href={`/admin/events/${event.id}/media`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Media
-            </Link>
-
-            <Link
-              href={`/admin/events/${event.id}/analytics`}
-              className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-            >
-              Analytics
-            </Link>
-
+            {/* Publishing a night makes it visible to members, so it keeps the
+                accent it already carried — on the ladder's terms, where an
+                accent FILL takes the ground as its ink at 6.85 : 1 instead of
+                accent ink on an accent wash. Unpublishing is the quiet half of
+                the same pair and is secondary. */}
             {event.is_published ? (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => handleUnpublish(event.id)}
                 disabled={isPending && pendingAction === `unpublish-${event.id}`}
-                className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-card-border/30 transition-colors disabled:opacity-50"
               >
                 {pendingAction === `unpublish-${event.id}`
                   ? "..."
                   : "Unpublish"}
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                size="sm"
                 onClick={() => handlePublish(event.id)}
                 disabled={isPending && pendingAction === `publish-${event.id}`}
-                className="rounded-full border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 transition-colors disabled:opacity-50"
               >
                 {pendingAction === `publish-${event.id}` ? "..." : "Publish"}
-              </button>
+              </Button>
             )}
 
-            <button
-              type="button"
+            {/* Deleting a night is the destructive rung, and it keeps the red
+                channel it had — at 7.36 : 1 rather than a palette ink on a
+                tint. The confirmation on a published night is unchanged: this
+                conversion touched no guard, only the pill it sits on. */}
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={() => handleDelete(event)}
               disabled={isPending && pendingAction === `delete-${event.id}`}
-              className="rounded-full border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
             >
               {pendingAction === `delete-${event.id}` ? "..." : "Delete"}
-            </button>
+            </Button>
           </div>
         </StaggeredItem>
       ))}

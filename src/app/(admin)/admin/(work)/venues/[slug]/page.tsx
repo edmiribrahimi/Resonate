@@ -5,6 +5,9 @@ import EditVenueButton from "@/components/venues/EditVenueButton";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
 /**
  * The venue profile — moved out of `(public)` (D-37-23, plan 37-08).
@@ -62,6 +65,22 @@ import { CAP } from "@/lib/capabilities/keys";
  * `staff.manage`. Had they diverged, this page would open and render an empty
  * card — no error, no log, nothing for anyone to notice — which is the worst
  * available failure and the reason the check is written down instead of trusted.
+ *
+ * ── Converted onto the shell (plan 41.1-07), and what that did NOT touch ─────
+ *
+ * `default` and not `wide`: §4's wide list is closed and does not name this
+ * route. That is not a fallback — it is the answer for every surface nobody had
+ * to argue about. The shell owns the maximum, the gutter, the vertical rhythm
+ * and the navigation clearance, so this file writes none of them.
+ *
+ * **This page renders a venue's ADDRESS to staff, so the conversion is bounded
+ * by more than taste.** Nothing below changed a query, a filter, a capability
+ * check or a visibility predicate: the withholding rule above still drops an
+ * event whose party at this venue is secret and unrevealed, the address is still
+ * inside the same conditional it was inside before, and the edit affordance is
+ * still drawn on the same role test. A class string cannot reveal a venue; a
+ * deleted conditional wrapper can, so the diff of this file is class strings,
+ * JSX structure and imports and nothing else (`venue-secrecy.md`).
  */
 export default async function VenuePage({
   params,
@@ -179,14 +198,17 @@ export default async function VenuePage({
   ].filter((l) => l.url);
 
   return (
-    <div className="min-h-dvh pb-24">
-      <div className="px-6 pt-6">
+    <PageShell width="default">
+      <div>
         {/* Back to the sister listing, not to the public events index: this page
             is reached from `/admin/venues` now, and `/events` would send a
-            member of production out of the work surface. */}
+            member of production out of the work surface.
+
+            It is a target as well as a label, so it declares the floor and
+            carries the one focus expression — imported, never re-spelled. */}
         <Link
           href="/admin/venues"
-          className="mb-6 inline-flex items-center text-sm text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80"
+          className={`mb-6 inline-flex min-h-11 items-center text-sm text-muted transition-all hover:text-ink active:scale-95 active:opacity-80 ${FOCUS_RING}`}
         >
           &larr; Back to venues
         </Link>
@@ -199,17 +221,15 @@ export default async function VenuePage({
               alt={venue.name}
               width={160}
               height={160}
-              className="h-40 w-40 rounded-2xl object-cover border-2 border-card-border"
+              className="h-40 w-40 rounded-2xl object-cover border-2 border-line"
             />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center rounded-2xl bg-card text-muted border-2 border-card-border">
+            <div className="flex h-40 w-40 items-center justify-center rounded-2xl bg-surface text-muted border-2 border-line">
               <span className="text-5xl">&#127963;</span>
             </div>
           )}
 
-          <h1 className="mt-4 text-3xl font-bold tracking-tight">
-            {venue.name}
-          </h1>
+          <PageTitle className="mt-4">{venue.name}</PageTitle>
 
           {/* Edit affordance for master/organizer.
               The predicate is deliberately UNCHANGED by the move.
@@ -246,55 +266,76 @@ export default async function VenuePage({
             </p>
           )}
 
-          {/* Google Maps link */}
+          {/* Google Maps link.
+
+              It keeps the emphasis it already had — it was the one accent-tinted
+              control on this page and it stays the emphasised one — but on the
+              ladder's terms: an accent FILL carries `--ground` as its ink at
+              6.85 : 1, where the tint it replaces put accent ink on an accent
+              wash. The rung is the ladder's, so the height is the 44px floor
+              rather than a vertical padding that happened to compute to 36. The
+              element is still an anchor to a third-party address, so it still
+              opens in a new context with the same rel. */}
           {venue.google_maps_url && (
-            <a
+            <Button
               href={venue.google_maps_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block rounded-full bg-accent/20 px-4 py-2 text-sm text-accent font-medium hover:bg-accent/30 transition-all active:scale-95 active:opacity-80"
+              className="mt-2"
             >
               Open in Google Maps
-            </a>
+            </Button>
           )}
 
-          {/* Social links */}
+          {/* Social links — secondary, because they were the quiet pair here and
+              re-ranking what a surface emphasises is not a conversion's to do. */}
           {socialLinks.length > 0 && (
             <div className="mt-3 flex gap-3">
               {socialLinks.map((link) => (
-                <a
+                <Button
                   key={link.label}
                   href={link.url!}
+                  variant="secondary"
+                  size="sm"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full bg-card border border-card-border px-4 py-2 text-sm text-muted hover:text-foreground transition-all active:scale-95 active:opacity-80"
                 >
                   {link.label}
-                </a>
+                </Button>
               ))}
             </div>
           )}
 
-          {/* Bio */}
+          {/* Bio.
+
+              The reading measure this paragraph carried is GONE, and it is a
+              loss rather than a tidy — the same one `(work)/formats/page.tsx`
+              records. §4 gives the content maximum to the shell and a converted
+              page writes none of its own; the gate reads that literally, so a
+              typographic measure on a `<p>` and a container maximum on a page
+              root are one string to it. DEF-41-04 is where the question of
+              whether a MEASURE is a MAXIMUM is kept, and it is still open. */}
           {venue.bio && (
-            <p className="mt-6 max-w-lg text-muted whitespace-pre-line text-left">
+            <p className="mt-6 text-muted whitespace-pre-line text-left">
               {venue.bio}
             </p>
           )}
         </div>
 
-        {/* Events at this venue */}
+        {/* Events at this venue.
+
+            The list, its order and its membership are the query's, above. This
+            block renders whatever survived the withholding rule and derives
+            nothing: no sort, no numbering, no progressivo. */}
         {events.length > 0 && (
           <div className="mt-10">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted">
-              Events
-            </h2>
+            <SectionHeading>Events</SectionHeading>
             <div className="space-y-3">
               {events.map((event) => (
                 <Link
                   key={event.id}
                   href={`/events/${event.slug}`}
-                  className="flex items-center gap-4 rounded-xl border border-card-border bg-card p-3 hover:bg-card/80 transition-all active:scale-[0.98] active:opacity-80"
+                  className={`flex min-h-11 items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-all hover:bg-raised active:scale-[0.98] active:opacity-80 ${FOCUS_RING}`}
                 >
                   {event.cover_image ? (
                     <Image
@@ -302,15 +343,15 @@ export default async function VenuePage({
                       alt={event.title}
                       width={56}
                       height={56}
-                      className="h-14 w-14 rounded-lg object-cover"
+                      className="h-14 w-14 rounded-xl object-cover"
                     />
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-background text-muted">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-ground text-muted">
                       <span className="text-2xl">&#127925;</span>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-sm font-semibold text-ink">
                       {event.title}
                     </p>
                     <p className="text-xs text-muted">
@@ -323,6 +364,6 @@ export default async function VenuePage({
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
