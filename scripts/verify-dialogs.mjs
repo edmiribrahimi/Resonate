@@ -1246,12 +1246,20 @@ export const REMAINING = [
     'a hand-rolled overlay shared by the refund paths. Tagged work for the same reason and at one more remove, re-derived: src/components/admin/TransactionList.tsx:4 imports it, and src/app/(admin)/admin/(work)/finance/page.tsx:2 imports TransactionList. Paid by the knot plans (D-41.1-19)',
     'reached from (work)/finance/page.tsx:2 via TransactionList.tsx:4',
   ],
-  [
-    'src/components/venues/EditVenueButton.tsx',
-    'work',
-    'a hand-rolled overlay editing a venue — on §8.3\'s closed lg list once it converts. The ONLY entry on this list that sits squarely on the work surface, re-derived: its only importer is src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
-    'only importer src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
-  ],
+  // PAID by plan 41.1-07 task 1 — `src/components/venues/EditVenueButton.tsx`
+  // was the only entry on this list sitting squarely on the work surface, and it
+  // declares no shell of its own now: it mounts the Dialog primitive, so Escape,
+  // the focus trap and the inert background come from the platform rather than
+  // from a copy. Declared entries went 14 → 13 and the work group 4 → 3; the
+  // MEASURED number did not move, because the file had already stopped carrying
+  // a shell in that plan's own commit and this gate had been printing it STALE
+  // ever since — *"converted; remove this entry"*. That notice is what makes this
+  // deletion a response rather than a tidy, and nothing else on the list moved.
+  //
+  // Deleted by plan 41.1-11, not by 41.1-07: D-41.1-22 gives every gate edit in a
+  // wave to the wave's reconciliation, and the entry was re-derived from the tree
+  // before the line was removed rather than taken from the SUMMARY that reported
+  // it — the gate's verdict and a second instrument agreed at zero.
   [
     'src/components/artists/EditArtistButton.tsx',
     'public-member-money',

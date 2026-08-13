@@ -389,12 +389,18 @@ export const REMAINING = [
     'the KPI card grid — the grid axis, §2.2. Work: its only importer is src/app/(admin)/admin/(work)/analytics/page.tsx:5',
     'work',
   ],
-  [
-    'src/components/media/MediaReviewGrid.tsx',
-    1,
-    'the moderation grid — the grid axis, §2.2 (its lg:grid-cols-3 already stays, §2.3). Work: its only importer is src/app/(admin)/admin/(work)/events/[id]/media/page.tsx:6 — a media component on a WORK surface, which is why the tag is read off the importer and not off components/media/',
-    'work',
-  ],
+  // PAID by plan 41.1-09 task 1 — `src/components/media/MediaReviewGrid.tsx`
+  // held one of this list's uses and holds none now. Its grid gained §2.2's
+  // middle step, so the small-tier column rule became a tablet-tier one and the
+  // image size hint moved with the boundary. Declared entries went 19 → 18 and
+  // declared uses 37 → 36; the work group's DECLARED figures went 14 → 13 files
+  // and 21 → 20 uses. The measured numbers did not move here, because the file
+  // had already stopped carrying the prefix in that plan's own commit and this
+  // gate had been printing it STALE ever since — *"converted; remove this
+  // entry"*, which is what makes this a response rather than a tidy.
+  //
+  // Deleted by plan 41.1-11 (D-41.1-22), after re-deriving it from the tree with
+  // a second instrument rather than trusting either the gate or the SUMMARY.
   // The file the tag exists for. It sits in `src/components/media/` — nowhere
   // near `(public)/events/[slug]/**` — and it is 41.2's all the same, because
   // `MediaGallerySection` is the only thing that mounts it. A tag derived from
@@ -482,16 +488,29 @@ export const REMAINING = [
     'work',
   ],
 
-  // ── a plain md: equivalent, §2.1. The second file the tag exists for: it
-  // lives OUTSIDE `(work)`, because R-WORK-ROUTES keeps non-route modules a
-  // level out, and it is work all the same. MediaUpload above fails the glob
-  // test in one direction and this one fails it in the other.
-  [
-    'src/app/(admin)/admin/events/[id]/assignments/AssignmentsClient.tsx',
-    1,
-    'one sm:grid-cols-[1fr_auto_auto] assignment row — its md: equivalent, §2.1. Work: only importer src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx:8, a work route (R-WORK-ROUTES keeps the client module outside the group)',
-    'work',
-  ],
+  // ── a plain md: equivalent, §2.1.
+  //
+  // PAID by plan 41.1-08 task 2 — `AssignmentsClient.tsx` held the last use on
+  // this axis and holds none now: the one small-tier rule was a track template
+  // and not a column count, and it was paid by reading the class rather than by
+  // moving it up a tier. Declared entries went 18 → 17 and declared uses 36 → 35;
+  // the work group's DECLARED figures went 13 → 12 files and 20 → 19 uses. The
+  // measured numbers did not move, for the same reason as the entry above: the
+  // gate had been printing it STALE since that plan's own commit.
+  //
+  // **This deletion takes the second of the two files this docblock's `group`
+  // paragraph argues from**, and the argument survives it. That paragraph names
+  // `MediaUpload.tsx` (outside `(work)`, tagged `public-member-money`) and this
+  // file (outside `(work)`, tagged `work`) as the pair proving a tag comes from
+  // the importer and never from the path. The first is still on the list; the
+  // second is now only in this comment. **It is deliberately kept here in full
+  // rather than allowed to leave with its entry** — a rule whose only worked
+  // counter-example has been deleted is a rule the next reader will re-derive as
+  // a preference. The measurement that made it `work`: its only importer was
+  // `src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx:8`, a work
+  // route, with R-WORK-ROUTES keeping the client module a level out of the group.
+  //
+  // Deleted by plan 41.1-11 (D-41.1-22), re-derived from the tree first.
 ];
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
