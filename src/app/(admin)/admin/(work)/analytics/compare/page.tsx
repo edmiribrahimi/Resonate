@@ -11,6 +11,11 @@ import {
 } from "@/lib/analytics/comparison-queries";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
+import { FOCUS_RING } from "@/components/ui/Button";
 
 interface PageProps {
   searchParams: Promise<{ events?: string; mode?: string }>;
@@ -63,67 +68,81 @@ export default async function AdminEventComparisonPage({
     ? `/admin/analytics/compare?${eventsParam}&mode=absolute`
     : "/admin/analytics/compare?mode=absolute";
 
+  // `wide` — `/admin/analytics/compare` is named on §4's CLOSED wide list. Its
+  // primary object is a chart of up to four series side by side, which is the
+  // multi-column case that list exists for: the content stops widening at
+  // 1280px instead of running edge to edge at 1920. The shell owns the maximum,
+  // the gutter, the vertical rhythm and the navigation clearance; this page
+  // writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
+    <PageShell width="wide">
       <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
+        <header className="mb-6">
+          {/* The way back up. It is a target as much as the chips below are, so
+              it declares the floor and carries the imported focus expression —
+              it had neither, and a 20px text link is the finding §6.4 ranks
+              first. */}
           <Link
             href="/admin/analytics"
-            className="text-sm text-muted hover:text-foreground transition-colors"
+            className={`inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
           >
             &larr; Back to Analytics
           </Link>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">
-            Event Comparison
-          </h1>
+          <PageTitle className="mt-2">Event Comparison</PageTitle>
         </header>
       </AnimatedSection>
 
       <AnimatedSection delay={0.1}>
-        <div className="px-6 space-y-6">
-          {/* Event selector */}
+        <div className="space-y-6">
           <EventSelector
             events={allEvents}
             selectedIds={selectedIds}
             maxSelection={4}
           />
 
-          {/* Mode toggle */}
-          <div className="flex gap-2">
-            <Link
-              href={perAttendeeHref}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                mode === "per-attendee"
-                  ? "bg-accent text-white"
-                  : "bg-card-border/30 text-muted hover:text-foreground"
-              }`}
-            >
+          {/* The mode toggle: RESP-04's filters, and the interactive kind of
+              pill, so they are chips and not badges — 44px targets, with the
+              current one named by an aria attribute as well as by its fill,
+              because colour is never the only channel. They were 30px and told
+              a screen reader nothing about which of the two was current.
+
+              They are chips rather than the button ladder's `href` branch:
+              D-41.1-26, and `Chip` became generic in the same decision, so a
+              route variable is passed without a cast.
+
+              The selected fill closes finding A2 on this surface. Light ink on
+              an accent fill measures 2.52 : 1 and white 2.91 : 1, both under
+              1.4.3's 4.5; the primitive writes the ground as its ink at 6.85. */}
+          <div className="flex flex-wrap gap-2">
+            <Chip href={perAttendeeHref} selected={mode === "per-attendee"}>
               Per Attendee
-            </Link>
-            <Link
-              href={absoluteHref}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                mode === "absolute"
-                  ? "bg-accent text-white"
-                  : "bg-card-border/30 text-muted hover:text-foreground"
-              }`}
-            >
+            </Chip>
+            <Chip href={absoluteHref} selected={mode === "absolute"}>
               Absolute
-            </Link>
+            </Chip>
           </div>
 
-          {/* Comparison chart or empty state */}
+          {/* Comparison chart, or the state before one can exist.
+              §8.11's contract — a heading and one body sentence naming the next
+              step — rather than one muted line at 60% opacity, which is a
+              contrast reduction applied to the only sentence on the surface
+              that tells somebody what to do. */}
           {selectedIds.length >= 2 ? (
             <EventComparisonChart data={comparisonData} mode={mode} />
           ) : (
-            <div className="rounded-2xl border border-card-border bg-card p-8">
-              <p className="text-center text-sm text-muted/60">
-                Select at least 2 events to compare
-              </p>
-            </div>
+            <Card>
+              <div className="px-6 py-12 text-center">
+                <p className="text-base font-semibold text-ink">
+                  Nothing to compare yet
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  Tick at least two nights above and the chart draws itself.
+                </p>
+              </div>
+            </Card>
           )}
         </div>
       </AnimatedSection>
-    </div>
+    </PageShell>
   );
 }

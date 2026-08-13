@@ -2,6 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { Card } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Badge } from "@/components/ui/Chip";
 
 interface EventOption {
   id: string;
@@ -15,6 +18,43 @@ interface EventSelectorProps {
   maxSelection?: number;
 }
 
+/**
+ * The section label, at the label/data role.
+ *
+ * The four axes are `SectionHeading`'s — 12px, weight 600, wide tracking, the
+ * data face — and the bottom margin is deliberately **not** among them: the row
+ * this heading shares with the counter carries the margin, and appending a
+ * zero margin after the component's own 16px would lose, because both are the
+ * same property at the same specificity and the larger step is written later in
+ * the emitted sheet. D-41-11 — a surface that writes the string is equally
+ * converted, and the component is a convenience rather than a demand.
+ */
+const SELECTOR_LABEL =
+  "font-mono text-xs font-semibold uppercase tracking-widest text-muted";
+
+/**
+ * The event picker — the only thing on this surface a person actually touches.
+ *
+ * ── Why the floor matters more here than anywhere else on this page ──────────
+ *
+ * Nothing else on `/admin/analytics/compare` is interactive except the two mode
+ * chips. If a row of this list is hard to hit on a tablet, the surface is hard
+ * to use, full stop. Each row's box was 16px with no hit area around it; it is
+ * the primitive now, which keeps the 16px drawn box — §8.6 chose that over
+ * enlarging the glyph, because a 44px checkbox in a list would be a different
+ * control — and puts a 44×44 target around it.
+ *
+ * ── The selected row is `--raised`, not an accent wash ───────────────────────
+ *
+ * §5.1 names `--raised` for exactly this: a selected row. The accent's
+ * reserved-for list is a positive enumeration and a row wash is not on it.
+ *
+ * ── The date is a Badge, and could not have been a Chip ──────────────────────
+ *
+ * It states when the night was and cannot be operated, so it renders a span.
+ * The sentence that decides it is at the top of `Chip.tsx`: a badge that is a
+ * link or a button is a chip. This one is neither.
+ */
 export default function EventSelector({
   events,
   selectedIds,
@@ -53,12 +93,10 @@ export default function EventSelector({
   };
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-muted">
-          Select Events
-        </h2>
-        <span className="text-xs text-muted">
+    <Card>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className={SELECTOR_LABEL}>Select Events</h2>
+        <span className="font-mono text-xs text-muted">
           {selectedIds.length}/{maxSelection} selected
         </span>
       </div>
@@ -69,37 +107,39 @@ export default function EventSelector({
           const isDisabled = !isSelected && selectedIds.length >= maxSelection;
 
           return (
-            <label
+            <div
               key={event.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-3 transition-colors ${
                 isSelected
-                  ? "bg-accent/10"
+                  ? "bg-raised"
                   : isDisabled
-                    ? "opacity-40 cursor-not-allowed"
-                    : "hover:bg-card-border/20"
+                    ? "opacity-40"
+                    : "hover:bg-raised"
               }`}
             >
-              <input
-                type="checkbox"
+              <Checkbox
+                id={`compare-event-${event.id}`}
+                label={event.title}
                 checked={isSelected}
                 disabled={isDisabled}
                 onChange={() => handleToggle(event.id)}
-                className="h-4 w-4 rounded border-card-border accent-accent"
               />
-              <span className="flex-1 text-sm truncate">{event.title}</span>
-              <span className="shrink-0 rounded-full bg-card-border/30 px-2 py-0.5 text-xs text-muted">
+              <Badge className="ml-auto shrink-0">
                 {formatDate(event.date)}
-              </span>
-            </label>
+              </Badge>
+            </div>
           );
         })}
 
         {events.length === 0 && (
-          <p className="py-4 text-center text-sm text-muted/60">
-            No events found
-          </p>
+          <div className="px-6 py-12 text-center">
+            <p className="text-base font-semibold text-ink">No nights yet</p>
+            <p className="mt-1 text-sm text-muted">
+              A night appears here once it exists in the calendar.
+            </p>
+          </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
