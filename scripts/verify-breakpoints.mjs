@@ -227,11 +227,20 @@ export const MIGRATING_PREFIX = 'sm';
  *
  * **Why the tag is load-bearing HERE, unlike on `verify-tables.mjs`.** Phase
  * 41.1's criterion 4 reads *"G6's `REMAINING` is empty for the work group"*,
- * and this list is **mixed**: 14 of its 19 entries are the work surface and 5
- * are not. Without the tag the criterion is satisfied by eye, off a flat list
- * of nineteen paths, and **a criterion that cannot be read off a gate is a
- * claim** (D-41.1-11). The sibling gate's five entries all happen to be `work`
- * today; these do not, and never did.
+ * and this list is **mixed**: 1 of its 6 entries is the work surface and 5 are
+ * not. Without the tag the criterion is satisfied by eye, off a flat list of
+ * paths, and **a criterion that cannot be read off a gate is a claim**
+ * (D-41.1-11). The sibling gate's entries all happen to be `work`; these do not,
+ * and never did.
+ *
+ * *(This paragraph read "14 of its 19 entries" when it was written in 41.1-03,
+ * and the ratio has moved the whole way the phase intends it to: **every one of
+ * the thirteen entries that has left this list was `work`, and not one
+ * `public-member-money` entry has moved at all.** That is the criterion working
+ * rather than the tag drifting — 41.2 owns the five that remain. Restated here
+ * with today's figures because the argument is about a RATIO, and a ratio quoted
+ * from a list that has since halved is an argument the next reader cannot
+ * check.)*
  *
  * **An unknown or missing tag is a REFUSAL (exit 2), not a failure** — the same
  * distinction this gate already draws: a failure says *the tree is wrong*, a
@@ -342,53 +351,44 @@ export const REMAINING = [
   // The six route files: they ARE work-surface routes, so for these six alone
   // the path and the importer say the same thing. They are still tagged by the
   // same rule as the rest, not by their prefix.
-  [
-    'src/app/(admin)/admin/(work)/analytics/loading.tsx',
-    2,
-    'the analytics KPI grids — the grid axis, §2.2 (one grid-cols-3 gains its middle step)',
-    'work',
-  ],
-  [
-    'src/app/(admin)/admin/(work)/analytics/members/loading.tsx',
-    1,
-    'the member-analytics skeleton grid — the grid axis, §2.2',
-    'work',
-  ],
-  [
-    'src/app/(admin)/admin/(work)/analytics/members/page.tsx',
-    1,
-    'the member-analytics KPI grid — the grid axis, §2.2',
-    'work',
-  ],
-  [
-    'src/app/(admin)/admin/(work)/analytics/page.tsx',
-    1,
-    'the analytics overview KPI grid — the grid axis, §2.2',
-    'work',
-  ],
-  [
-    'src/app/(admin)/admin/(work)/events/[id]/analytics/loading.tsx',
-    1,
-    'the per-event analytics skeleton grid — the grid axis, §2.2',
-    'work',
-  ],
-  [
-    'src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx',
-    1,
-    'the per-event analytics KPI grid — the grid axis, §2.2',
-    'work',
-  ],
   // PAID by plan 41-08 — `src/app/(public)/gallery/loading.tsx` (2) and
   // `src/components/media/MediaGrid.tsx` (1) held three of this list's uses and
   // hold none now. The grids they carry gained §2.2's desktop step and kept
   // their phone layout, which is what §2.3's map actually says for a grid whose
   // base column count was never itself a prefixed rule.
-  [
-    'src/components/analytics/KPIDashboard.tsx',
-    1,
-    'the KPI card grid — the grid axis, §2.2. Work: its only importer is src/app/(admin)/admin/(work)/analytics/page.tsx:5',
-    'work',
-  ],
+  //
+  // ── PAID BY WAVE 5 — SEVEN ENTRIES ON THE GRID AXIS ────────────────────────
+  //
+  // Every one of the seven was a KPI or skeleton grid declaring the multi-column
+  // axis from the SMALL prefix, which is the defect §2.2 exists for: it puts
+  // three columns into the 544px a portrait tablet leaves. All seven gained the
+  // middle step, which is the whole content of this axis's migration.
+  //
+  //   PAID by plan 41.1-12 — `(work)/analytics/members/loading.tsx` (1) and
+  //   `(work)/analytics/members/page.tsx` (1). **The page file is the fourth
+  //   entry on the member-analytics surface, and it is the reason this
+  //   reconciliation counted on the tree instead of reading a number out of a
+  //   plan.** That plan's own acceptance text named THREE entries — the two
+  //   tables and the loading file — and the page carries one too, for the same
+  //   KPI grid the loading file mirrors. Plan 41.1-12 measured the discrepancy
+  //   itself and reported it rather than quietly satisfying the smaller number.
+  //   A reconciliation working from the plan's figure would have removed three
+  //   and left a fourth entry asserting something that had stopped being true,
+  //   which is precisely how a debt list starts to lie.
+  //
+  //   PAID by plan 41.1-13 — `(work)/events/[id]/analytics/loading.tsx` (1) and
+  //   `(work)/events/[id]/analytics/page.tsx` (1).
+  //
+  //   PAID by plan 41.1-14 — `(work)/analytics/loading.tsx` (2),
+  //   `(work)/analytics/page.tsx` (1) and `components/analytics/KPIDashboard.tsx`
+  //   (1). Three entries and four uses, not six: that plan corrected its own
+  //   plan's figure with a measurement, and this gate agrees from the other side.
+  //
+  // The six route files above were the entries for which the path and the
+  // importer happened to say the same thing — they ARE work-surface routes — and
+  // they were tagged by the same importer rule as the rest all the same, never
+  // by their prefix. That rule's worked counter-examples are in the `group`
+  // paragraph above and at the foot of this list.
   // PAID by plan 41.1-09 task 1 — `src/components/media/MediaReviewGrid.tsx`
   // held one of this list's uses and holds none now. Its grid gained §2.2's
   // middle step, so the small-tier column rule became a tablet-tier one and the
@@ -447,44 +447,60 @@ export const REMAINING = [
   // ── the table dual-renders — consolidated onto the one table breakpoint,
   // `md`, by the DataTable primitive, §8.8. `sm:block` / `sm:hidden` is the
   // cards-or-table switch.
-  // The five tables are the same five `verify-tables.mjs` carries, and the two
-  // gates now agree entry for entry on which surface each belongs to. Their
-  // importers were re-measured in 41.1-03; three of the target strings on the
-  // sibling gate were wrong, so none of the five is taken on trust here.
-  [
-    'src/components/analytics/DrinkSalesBreakdown.tsx',
-    2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx:12',
-    'work',
-  ],
-  [
-    'src/components/analytics/MemberSpendTable.tsx',
-    2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/analytics/members/page.tsx:4',
-    'work',
-  ],
-  [
-    'src/components/analytics/ReferralChainTable.tsx',
-    2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/analytics/members/page.tsx:6',
-    'work',
-  ],
-  [
-    'src/components/events/SalesDashboard.tsx',
-    2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8',
-    'work',
-  ],
+  // The tables here are the same ones `verify-tables.mjs` carries, and the two
+  // gates agree entry for entry on which surface each belongs to — five apiece
+  // when this paragraph was written, **one apiece since plan 41.1-16**, and the
+  // two lists were re-derived from the tree in the same commit so they could not
+  // drift apart in it. Their importers were re-measured in 41.1-03; three of the
+  // target strings on the sibling gate were wrong, so none was taken on trust.
   // PAID by plan 41-10 — `src/components/admin/MemberTable.tsx` held four of
   // this list's uses and holds none now. Its dual-render moved onto the
   // DataTable primitive at md (§8.8), its filter row took the same boundary
   // (§2.1), and the detail region's three-column grid did too. The gate printed
   // it as STALE first, which is what made this deletion a response rather than
   // a tidy.
+  //
+  // ── PAID BY WAVE 5 — FOUR MORE OF THE TABLE DUAL-RENDERS ───────────────────
+  //
+  //   PAID by plan 41.1-12 — `MemberSpendTable.tsx` (2) and
+  //   `ReferralChainTable.tsx` (2).
+  //   PAID by plan 41.1-13 — `DrinkSalesBreakdown.tsx` (2).
+  //   PAID by plan 41.1-15 — `TransactionList.tsx` (3): the filter grid (§2.2)
+  //   and the toolbar row (§2.1). Its dual-render was already at 1024px and
+  //   moved to md with DataTable (§8.8). Its entry carried a measurement worth
+  //   keeping, because it is a worked instance of the rule this list's `group`
+  //   paragraph argues: **two docblocks NAME that file** —
+  //   `(work)/newsletter/page.tsx:10` and
+  //   `admin/events/[id]/reveal/VenueRevealPanel.tsx:172` — and **named is not
+  //   imported**. Its only importer was `(work)/finance/page.tsx:2`, which is
+  //   what made it `work`. Reading a mention in a comment as an import is how
+  //   these strings go wrong, and it is the same defect class as the six
+  //   wrong-surface reason strings this phase family has now corrected.
+  //
+  // `SalesDashboard.tsx` (2) is the ONE table dual-render that stays, on both
+  // this gate and `verify-tables.mjs`. Plan 41.1-21 converts it in wave 8. It is
+  // also this list's whole work group now, which is why criterion 4's
+  // `WORK GROUP REMAINING` line reads 1 rather than 0.
+  //
+  // ── WHAT THIS COMMIT DID AND DID NOT MOVE ──────────────────────────────────
+  //
+  // Declared entries **17 → 6** and declared uses **35 → 18**; the work group's
+  // DECLARED figures **12 → 1 file** and **19 → 2 uses**. **The MEASURED numbers
+  // did not move at all** — 6 files and 18 uses before and after — and that is
+  // correct rather than suspicious: every one of the eleven files had already
+  // stopped carrying the prefix in its own plan's commit, and this gate had been
+  // printing all eleven as STALE ever since. Declared and measured now agree
+  // exactly, which is the state a reconciliation exists to restore.
+  //
+  // Deleted by plan 41.1-16 (D-41.1-22), after re-deriving **every** entry on
+  // this list from the tree with a second instrument that deliberately does NOT
+  // use the gates' shared comment stripper. Tree and SUMMARYs agreed entry for
+  // entry; no claim had to be refused, and that is stated because the procedure
+  // exists for the case where it is false.
   [
-    'src/components/admin/TransactionList.tsx',
-    3,
-    'the filter grid (§2.2) and the toolbar row (§2.1) — the dual-render itself is already lg: and moves to md: with DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/finance/page.tsx:2 (two docblocks NAME it — (work)/newsletter/page.tsx:10 and admin/events/[id]/reveal/VenueRevealPanel.tsx:172 — and named is not imported)',
+    'src/components/events/SalesDashboard.tsx',
+    2,
+    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8',
     'work',
   ],
 
