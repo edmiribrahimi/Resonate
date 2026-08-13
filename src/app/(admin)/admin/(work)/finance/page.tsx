@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import TransactionList from "@/components/admin/TransactionList";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 
@@ -28,15 +30,25 @@ export default async function AdminFinancePage() {
     redirect("/dashboard");
   }
 
+  // `wide` — `/admin/finance` is on §4's CLOSED wide list, and it is there for
+  // the reason the list exists: the surface's primary object is a dense table of
+  // payments. The shell owns the maximum, the gutter, the vertical rhythm and
+  // the navigation clearance in both tiers; this page writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
+    <PageShell width="wide">
+      <header className="mb-6">
+        {/*
+          The surface's own name, not the tree's. `<h1>Admin</h1>` was the URL
+          prefix speaking, and after D-34-02 the word `admin` in an address no
+          longer describes who is standing on it. This page is the finance
+          surface; the members page took the same correction for the same
+          reason, and the two now read as one system rather than as two pages
+          that both call themselves Admin.
+        */}
+        <PageTitle>Finance</PageTitle>
       </header>
 
-      <div className="px-6">
-        <TransactionList />
-      </div>
-    </div>
+      <TransactionList />
+    </PageShell>
   );
 }
