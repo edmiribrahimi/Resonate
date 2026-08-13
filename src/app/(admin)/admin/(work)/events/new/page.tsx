@@ -5,6 +5,9 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import EventForm from "@/components/events/EventForm";
 import { createEvent } from "@/app/(admin)/admin/events/actions";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
+import { Chip } from "@/components/ui/Chip";
 
 /**
  * The single event-creation form, where `/admin/events/new` and
@@ -77,36 +80,65 @@ export default async function NewEventPage() {
         `series=${seriesError?.code ?? "ok"}`
     );
     return (
-      <div className="min-h-dvh pb-24">
-        <header className="px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Create Event</h1>
+      /*
+        `default` and not `wide`: §4's wide list is closed and does not name this
+        route, and default is not a fallback — it is the answer for every surface
+        nobody had to argue about. The refusal branch takes the same width as the
+        branch it replaces, so the page does not change measure on failing.
+      */
+      <PageShell width="default">
+        <header className="mb-6">
+          <PageTitle>Create Event</PageTitle>
         </header>
-        <div className="px-6">
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-            <p className="text-sm text-red-400">
-              The list of formats and series could not be loaded, so this form cannot be
-              shown: a night cannot be saved without a format and a series. Reload the
-              page — if it keeps failing, the catalogue is unreachable and creating an
-              event will not work until it is back.
-            </p>
-          </div>
-          <Link
-            href="/admin/events"
-            className="inline-flex items-center gap-2 rounded-xl border border-card-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:border-accent/50 transition-colors mt-4"
-          >
-            Back to Events
-          </Link>
+        {/*
+          §3.6's refusal region, and `meta-gates.md`'s zero-silent-failures rule.
+          `role="alert"` is the contract rather than a nicety: with no error
+          tracking in this project, a refusal nobody is looking at is a refusal
+          nobody ever reads. The sentence names its own cause and is not
+          collapsed into a generic one.
+        */}
+        <div
+          role="alert"
+          className="rounded-2xl border border-sem-crit/30 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm text-sem-crit">
+            The list of formats and series could not be loaded, so this form cannot be
+            shown: a night cannot be saved without a format and a series. Reload the
+            page — if it keeps failing, the catalogue is unreachable and creating an
+            event will not work until it is back.
+          </p>
         </div>
-      </div>
+        {/*
+          A chip and not a button with an address (D-41.1-26): this is internal
+          navigation, and the chip is the generic that carries the finger target
+          and the focus expression without a control's semantics.
+        */}
+        <div className="mt-4">
+          <Chip href="/admin/events">Back to Events</Chip>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    /*
+      `default` — see the refusal branch above for the reason. The shell owns the
+      maximum, the gutter, the vertical rhythm and the navigation clearance in
+      both tiers, so this page writes none of them: the hand-written bottom
+      clearance it used to carry was the phone number only, and from 768px up the
+      navigation leaves the bottom edge entirely.
+    */
+    <PageShell width="default">
+      <header className="mb-6">
+        {/*
+          The back link keeps its glyph and its words; what changed is that it is
+          now a finger target rather than a line of text one has to hit exactly.
+          It is navigation and is reversible in one press, so D-41.1-31 does not
+          bite — but the growth is named in the SUMMARY rather than left silent.
+        */}
         <Link
           href="/admin/events"
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-foreground transition-colors mb-4"
+          className="mb-4 inline-flex min-h-11 items-center gap-1 text-sm text-muted transition-colors hover:text-ink"
         >
           <svg
             className="h-4 w-4"
@@ -123,17 +155,15 @@ export default async function NewEventPage() {
           </svg>
           Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Create Event</h1>
+        <PageTitle>Create Event</PageTitle>
       </header>
 
-      <div className="px-6">
-        <EventForm
-          formats={formats ?? []}
-          series={series ?? []}
-          action={createEvent}
-          submitLabel="Create Event"
-        />
-      </div>
-    </div>
+      <EventForm
+        formats={formats ?? []}
+        series={series ?? []}
+        action={createEvent}
+        submitLabel="Create Event"
+      />
+    </PageShell>
   );
 }
