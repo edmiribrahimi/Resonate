@@ -1096,6 +1096,36 @@ const NON_ROUTE_WRAPPER_EXTENSIONS = [
 /**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
  * A surface whose primary object is a dense table or a multi-column grid.
+ *
+ * ── ONE REASON STRING NAMED THE WRONG SURFACE, AND IT IS THE SIXTH ──────────
+ *
+ * `41.1-CONTEXT.md` D-41.1-22 records *five* reason strings across two gates
+ * naming the wrong surface — three in `verify-tables.mjs`, two in
+ * `verify-dialogs.mjs` — and calls five a pattern rather than five slips.
+ * **This is the sixth, in a third file**, found by plan 41.1-09 while converting
+ * the surface it misdescribes and corrected here by plan 41.1-11, which owns the
+ * gate edits for the wave (D-41.1-22).
+ *
+ * `/admin/events/[id]/review` was described as *the media review grid*. That is
+ * `/admin/events/[id]/media`'s primary object, not this route's: this one is the
+ * night's **door-review list** — the entries a person compares against what
+ * happened at the entrance, plus the copy-out diagnostic grid that is
+ * permanently exempt from the table gate (D-41-16). The two routes are siblings
+ * under one segment and the wrong sentence reads plausibly, which is exactly the
+ * property that let it survive.
+ *
+ * **The mechanism is the same one in all six**, and it is worth naming because
+ * it predicts where the seventh will be: the string was written from the
+ * **path** — a route with `review` in it, near a route with `media` in it — and
+ * not from the thing that actually renders. A path is a sentence somebody
+ * believed; the importer, or here the page file, is something a command prints.
+ *
+ * **The route's membership of this list was never in question and is not
+ * changed.** Only the sentence describing it moved, which is the whole point:
+ * `checkManifest()` and check D compare the manifest's declared width against
+ * this list, and neither reads the reason. A wrong reason therefore fails
+ * nothing and is caught by nobody — which is why it lasted, and why correcting
+ * it is a deliberate edit rather than a by-product.
  */
 export const WIDE_ROUTES = [
   ['/admin/members', 'the member table — the densest table in the product'],
@@ -1103,7 +1133,7 @@ export const WIDE_ROUTES = [
   ['/admin/events/[id]/sales', 'the per-event sales table'],
   ['/admin/events/[id]/tickets', 'the ticket table, with its refund actions'],
   ['/admin/events/[id]/guest-list', 'the guest-list table'],
-  ['/admin/events/[id]/review', 'the media review grid'],
+  ['/admin/events/[id]/review', "the night's door-review list, and the copy-out diagnostic grid inside it"],
   ['/admin/events/[id]/analytics', 'the per-event KPI grid'],
   ['/admin/analytics', 'the analytics overview KPI grid'],
   ['/admin/analytics/members', 'the member-analytics tables'],

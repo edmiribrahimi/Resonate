@@ -112,14 +112,22 @@
  * in `41-UI-SPEC.md` §8.8 and §13's G3 row, in this constant, and in this
  * header, before the gate has run once.
  *
- * **What the exemption does NOT cover.** It exempts the TABLE, not the type
- * size. §8.8 is explicit that the grid does not keep its 11px text — 11px is
- * not a declared size, the grid is all identifiers, and it takes the label/data
- * size (12px) at `--muted` on `--surface`, **6.78 : 1**. The accepted
- * consequence is that 12px is wider than 11px and the grid scrolls slightly
- * more, on a surface that scrolls by design. **That change belongs to the plan
- * that converts the review surface, not to the plan that wrote this gate**, and
- * this paragraph is the record that it is owed rather than forgotten.
+ * **What the exemption does NOT cover — and this half is now PAID.** It exempts
+ * the TABLE, not the type size. §8.8 is explicit that the grid does not keep its
+ * 11px text — 11px is not a declared size, the grid is all identifiers, and it
+ * takes the label/data size (12px) at `--muted` on `--surface`, **6.78 : 1**.
+ * The accepted consequence is that 12px is wider than 11px and the grid scrolls
+ * slightly more, on a surface that scrolls by design.
+ *
+ * This paragraph used to end *"that change belongs to the plan that converts the
+ * review surface, not to the plan that wrote this gate"*, and it was the record
+ * that the work was owed rather than forgotten. **Plan 41.1-09 was that plan and
+ * the change has landed**, so the clause is retired here by plan 41.1-11, which
+ * owns the wave's gate edits (D-41.1-22). The wording is quoted rather than
+ * removed, because a record that stops saying *owed* without saying *paid* is
+ * indistinguishable from one nobody kept up.
+ *
+ * **The exemption is unchanged.** The table stays, at every width, for ever.
  *
  * ── COMMENT HYGIENE ─────────────────────────────────────────────────────────
  *
@@ -382,13 +390,34 @@ const DISPLAY_OVERRIDE_RE = new RegExp(
 
 /**
  * The copy-out diagnostic grid. **Exempt from check A, permanently.** See the
- * header for the whole argument, and for what the exemption does NOT cover: the
- * type size on that grid is still owed, by the plan that converts the review
- * surface.
+ * header for the whole argument.
  *
  * Deliberately NOT on `REMAINING`: an exemption and a debt are different kinds
  * of thing, and a file that will never convert on a list that can only shrink
  * makes the number lie.
+ *
+ * ── THE ONE CLAUSE THAT WAS AN OBLIGATION AND IS NOW HISTORY ────────────────
+ *
+ * The reason below used to end *"…and that change belongs to the plan that
+ * converts the review surface, not to this one"*. **That plan has landed** —
+ * 41.1-09, which converted `/admin/events/[id]/review` — and the change is in
+ * the tree: the undeclared eleven-pixel size is gone and the grid takes the
+ * label/data size, with the accepted consequence that it scrolls slightly more.
+ *
+ * So the clause is retired by plan 41.1-11, which owns the wave's gate edits
+ * (D-41.1-22). **Retired, not deleted in silence**: a sentence describing owed
+ * work, left standing after the work is done, is the same defect as a `REMAINING`
+ * entry left standing after its debt is paid — it reads to the next person as an
+ * open obligation, and they either redo it or conclude the file is not maintained.
+ * The withdrawn wording is quoted above so the correction can be told apart from
+ * a drive-by (`src/components/ui/PageShell.tsx:42-46`, this file family's habit).
+ *
+ * **The exemption itself is untouched, and that is the load-bearing half.**
+ * `ReviewListClient.tsx` stays a table for ever (D-41-16, D-41.1-14): the type
+ * size was the one thing the exemption never covered, and paying it changes
+ * nothing about what the exemption says. Nothing here puts the file on a debt
+ * list, and its absence from every one of them is asserted by grep after this
+ * edit, because the failure mode on this file is a tidy rather than a decision.
  */
 export const REVIEW_GRID_FILE =
   'src/app/(admin)/admin/events/[id]/review/ReviewListClient.tsx';
@@ -398,9 +427,9 @@ export const REVIEW_GRID_REASON =
   'pasted into a diagnostic tool. A card list actively destroys the thing it is for: a ' +
   'rectangle of identifiers that can be selected and copied stops being one when it becomes a ' +
   'stack of labelled cards. It keeps its table and its sideways scroller at every width ' +
-  '(§8.8, §13 G3 row, D-41-16). It does NOT keep its 11px type — 11px is not a declared size ' +
-  'and the grid takes the label/data size at 6.78:1 — and that change belongs to the plan that ' +
-  'converts the review surface, not to this one';
+  '(§8.8, §13 G3 row, D-41-16). What the exemption never covered has been PAID by plan ' +
+  '41.1-09: the undeclared eleven-pixel type is gone and the grid takes the label/data size ' +
+  'at 6.78:1, and it scrolls slightly more for it';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * The group tag — a closed vocabulary, validated at load
