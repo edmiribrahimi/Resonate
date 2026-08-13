@@ -19,6 +19,39 @@ import type { NewsletterFailure } from "./actions";
  *
  * `transport_unavailable` is the client-only third case — the action never
  * returned at all, so there is no tag to read.
+ *
+ * ── Converted by plan 41.1-06, and what the conversion did NOT do ────────────
+ *
+ * The class strings moved to the token system; **the three copy blocks below
+ * are untouched, byte for byte.** §11 says of the confirmations it converts
+ * *"none introduced"*, and the same restraint applies to a message whose
+ * wording is not a visual plan's to change. That matters more here than
+ * anywhere else in this surface, because the whole point of this component is
+ * that the three causes stay apart — a conversion that "tidied" them towards
+ * one sentence would recreate `CONCERNS.md`'s recorded defect while looking
+ * like a styling commit.
+ *
+ * **The finding this plan carries forward rather than fixes.** The three kinds
+ * here are distinguished and the copy is good. What is NOT covered by them is
+ * the fourth cause: `provider_unavailable` is one tag for every way Resend can
+ * fail — a missing key, a rejected key, a rate limit and an address already
+ * subscribed all arrive with the same title and the same instruction to check
+ * two environment variables. That is a narrower version of the same
+ * collapsed-cause shape, it lives in `actions.ts` and not here, and widening
+ * this plan to split it would have put a behavioural change inside a
+ * conversion commit. Recorded in the plan's summary, not silently repaired.
+ *
+ * ── Tone comes from the ink, not from a fill ─────────────────────────────────
+ *
+ * The incumbent drew a red-tinted box with a raw palette family. The two error
+ * regions this system has already built — `Dialog.tsx:316-322` and the field
+ * error inside `Input.tsx:183-187` — both carry the critical semantic as
+ * **ink**, on the ordinary container ground, with `role="alert"` doing the
+ * announcing. This follows them: the boundary and the title take `--sem-crit`
+ * (6.99 : 1 on the surface ground), the ground stays the ordinary surface, and
+ * no opacity modifier is stacked on a token — a second border colour appended
+ * after the first would depend on Tailwind's emission order, which is the trap
+ * WR-05 recorded in this same phase family.
  */
 export type NoticeKind = NewsletterFailure | "transport_unavailable";
 
@@ -61,12 +94,12 @@ export default function FailureNotice({
   return (
     <div
       role="alert"
-      className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6"
+      className="rounded-2xl border border-sem-crit bg-surface p-6"
     >
-      <p className="text-sm font-medium text-red-300">{notice.title}</p>
+      <p className="text-sm font-semibold text-sem-crit">{notice.title}</p>
       <p className="mt-1 text-xs text-muted">{notice.body}</p>
       {detail ? (
-        <p className="mt-2 break-words font-mono text-[11px] text-muted">
+        <p className="mt-2 break-words font-mono text-xs text-muted">
           {detail}
         </p>
       ) : null}
