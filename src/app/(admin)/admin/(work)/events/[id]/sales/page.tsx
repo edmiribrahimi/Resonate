@@ -6,9 +6,34 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import SalesDashboard from "@/components/events/SalesDashboard";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * The takings of one event — the collapsed surface.
+ *
+ * ── The shell, and the four things this page stopped writing ─────────────────
+ *
+ * `wide`, and it is **named on §4's closed list** rather than judged here: the
+ * primary object of this surface is a dense table of buyers. The width is
+ * written at the call rather than left to the default, because a width written
+ * is a width a reader can check against that list — and the manifest check
+ * compares the two.
+ *
+ * Four things left in the same move, and they are the four every page loses
+ * when it adopts the shell: the page root with its own minimum height and its
+ * hard-coded bottom padding; the gutter and the top rhythm on the header, and
+ * the repeated gutter on the section below it; the header's bottom padding,
+ * which becomes a margin **inside** the shell rather than a padding on a page
+ * root; and the hand-written top-level heading, which is the page-title role.
+ * The shell owns the maximum, the gutter, the vertical rhythm and the
+ * navigation clearance in both tiers, and this file now writes none of them.
+ *
+ * **There is no loading file for this route** — the directory holds this page
+ * and nothing else — so there is none to convert. Said here so the absence is
+ * not checked twice.
  *
  * ── The money question, asked before the merge and answered here ─────────────
  *
@@ -223,34 +248,41 @@ export default async function SalesPage({
   const guestCount = guestListCount ?? 0;
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="wide">
+      <header className="mb-6">
+        {/* A label and a target both. It declares the 44px floor and carries
+            the one focus expression — imported, never re-spelled. */}
         <Link
           href="/admin/events"
-          className="text-sm text-muted hover:text-foreground transition-colors"
+          className={`inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           &larr; Back to Events
         </Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Sales</h1>
+        <PageTitle className="mt-2">Sales</PageTitle>
         <p className="text-sm text-muted">{event.title}</p>
       </header>
 
-      <div className="px-6">
-        {guestCount > 0 && (
-          <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm text-muted">Guest List</p>
-            <p className="text-lg font-bold">{guestCount} free ticket{guestCount !== 1 ? "s" : ""}</p>
-          </div>
-        )}
-        <SalesDashboard
-          eventTitle={event.title}
-          tiers={tierSalesData}
-          buyers={buyers}
-          totalRevenue={totalRevenue}
-          totalSold={totalSold}
-          discountSummary={discountSummaryData}
-        />
-      </div>
-    </div>
+      {guestCount > 0 && (
+        /* The tile's own edge and ground were drawn out of the raw palette,
+           which is the one family a converted surface may not write. It is the
+           card shell now. The count takes the data face and the heavier of the
+           two weights this system has — the third weight it used to ask for
+           does not exist here. */
+        <Card className="mb-4">
+          <p className="text-sm text-muted">Guest List</p>
+          <p className="font-mono text-lg font-semibold text-ink">
+            {guestCount} free ticket{guestCount !== 1 ? "s" : ""}
+          </p>
+        </Card>
+      )}
+      <SalesDashboard
+        eventTitle={event.title}
+        tiers={tierSalesData}
+        buyers={buyers}
+        totalRevenue={totalRevenue}
+        totalSold={totalSold}
+        discountSummary={discountSummaryData}
+      />
+    </PageShell>
   );
 }
