@@ -806,7 +806,7 @@ Plans:
 
 **Wave 0** *(non-negotiable first — D-41.1-08)*
 
-- [ ] 41.1-01-PLAN.md — The shared comment stripper: one module, ten consumers, eight shapes proved by asserted mutation
+- [x] 41.1-01-PLAN.md — The shared comment stripper: one module, ten consumers, eight shapes proved by asserted mutation
 
 **Wave 1** *(the gate repairs, on three disjoint gate files)*
 
