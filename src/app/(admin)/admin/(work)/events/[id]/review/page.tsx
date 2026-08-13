@@ -7,6 +7,8 @@ import { CAP } from "@/lib/capabilities/keys";
 import { classifyNight } from "@/lib/door/classify";
 import { partyStartInstant, partyEndInstant } from "@/utils/datetime";
 import ReviewListClient from "@/app/(admin)/admin/events/[id]/review/ReviewListClient";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 import type { UserRole, DoorScanEvent, EventParty } from "@/types/database";
 
 /**
@@ -63,6 +65,27 @@ import type { UserRole, DoorScanEvent, EventParty } from "@/types/database";
  * surface that pings somebody every time a code was read twice trains the person
  * supervising the night to stop reading it. On a normal night nobody has to open
  * this page, and if they do it is empty and says so.
+ *
+ * ── Converted by plan 41.1-09, at the WIDE maximum ───────────────────────────
+ *
+ * `width="wide"` is written out and is not inferred: `/admin/events/[id]/review`
+ * is **named on §4's closed wide list**, and a width written is a width a reader
+ * can check against that list. The shell takes the maximum, the gutter, the top
+ * rhythm and the navigation clearance; this file writes none of the four.
+ *
+ * **The reads did not move.** Same event row, same parties, same scan columns,
+ * same ordering, same non-fatal operator-label lookup, same two-armed gate asked
+ * in the same order and after the same resolution of `?party=`. No query
+ * changed, no column was added, no capability check was touched and no action
+ * payload was altered.
+ *
+ * **And what this surface renders is door evidence, which a conversion may not
+ * touch.** `checkin-offline.md`: a conflict is recorded against a ticket and
+ * never as a label on a member. The classification is `classifyNight`'s and is
+ * unchanged; `operatorLabels` still names **operators only** and still travels
+ * to the prose view alone; and which role is offered the technical view is the
+ * same `role === "master"` affordance it was. A visual conversion promotes no
+ * identifier into a name.
  */
 
 /**
@@ -354,34 +377,32 @@ export default async function DoorReviewPage({
   }
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="wide">
+      <header className="pb-6">
         <Link
           href="/admin/events"
-          className="text-sm text-muted hover:text-foreground transition-colors"
+          className="inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink"
         >
           &larr; Back to Events
         </Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Door review</h1>
-        <p className="text-sm text-muted">{event.title}</p>
+        <PageTitle className="mt-2">Door review</PageTitle>
+        <p className="mt-1 text-sm text-muted">{event.title}</p>
       </header>
 
-      <div className="px-6">
-        <ReviewListClient
-          eventId={eventId}
-          parties={partyList.map((p) => ({ id: p.id, title: p.title }))}
-          selectedPartyId={selectedParty?.id ?? null}
-          entries={listed}
-          counters={counters}
-          unclassified={unclassified}
-          total={total}
-          operatorLabels={operatorLabels}
-          role={navRole}
-          nightStartIso={nightStart ? nightStart.toISOString() : null}
-          nightEndIso={nightEnd ? nightEnd.toISOString() : null}
-          readError={readError}
-        />
-      </div>
-    </div>
+      <ReviewListClient
+        eventId={eventId}
+        parties={partyList.map((p) => ({ id: p.id, title: p.title }))}
+        selectedPartyId={selectedParty?.id ?? null}
+        entries={listed}
+        counters={counters}
+        unclassified={unclassified}
+        total={total}
+        operatorLabels={operatorLabels}
+        role={navRole}
+        nightStartIso={nightStart ? nightStart.toISOString() : null}
+        nightEndIso={nightEnd ? nightEnd.toISOString() : null}
+        readError={readError}
+      />
+    </PageShell>
   );
 }
