@@ -244,11 +244,18 @@
  *      `src/app`; a surface's closure is empty; a local specifier could not be
  *      resolved; the shell is missing; a declared navigation module is not on
  *      disk; a `layout.*` file carries an extension the walk does not test; the
- *      shell's focus root cannot be read as a single closed literal; or the
- *      focus BRANCH cannot be bounded as a region — no opener, two openers, an
- *      opener that opens no block, a balance that never closes, or the single
- *      `className={FOCUS_ROOT}` sitting outside the region.
- *      **No verdict is implied by a 2.**
+ *      shell's focus root declaration is not the one accepted form; or the focus
+ *      BRANCH's frozen window cannot be read — no opener, two openers, a file
+ *      shorter than the window, the single `className={FOCUS_ROOT}` sitting
+ *      outside the window, or the frozen shape itself carrying a navigation
+ *      property. **No verdict is implied by a 2.**
+ *
+ *      Every exit-2 message in check E's read carries one of two markers on its
+ *      first line, and they mean different things to whoever meets a red suite:
+ *      `SHAPE CHANGED` says a person changed the focus branch or its declaration
+ *      and the frozen expectation in this file has to be updated with it;
+ *      `GATE CANNOT READ` says this gate is broken or blindfolded and nothing it
+ *      would print about the branch could be trusted.
  *
  * A run that BOTH failed a check and then hit a refusal exits **1**, not 2, and
  * prints the FATAL and the failure. A refusal means a measurement did not
@@ -1399,60 +1406,168 @@ shellLines.forEach((line, i) => {
   if (FOCUS_BRANCH_RE.test(line)) focusBranchLines.push(i + 1);
 });
 
-if (focusBranchLines.length !== 1) {
-  const where =
-    focusBranchLines.length > 0 ? `at line(s) ${focusBranchLines.join(', ')}` : 'nowhere in the file';
+/*
+ * The exactly-one assertion on that render site is NOT raised here, and the
+ * move is the WR-03 subsumption rather than a relaxation.
+ *
+ * Measured on the shipped gate: appending the clearance to the outer element
+ * through a template literal — the single most likely shape a reintroduction
+ * takes, because it is what a person writes to "add one class" — makes this
+ * count zero, and the refusal delivered a genuine CR-01 regression to the
+ * aggregate as "nothing was measured" for all sixteen gates. So the count is
+ * taken here and JUDGED below, after the frozen window has been scanned for the
+ * defect: when the window carries a navigation property, that is a measurement
+ * that happened and was wrong, and it is reported as a FAILURE. The refusal is
+ * kept for the case where the window is clean and the render site still cannot
+ * be located — there the gate really did not measure the focus form.
+ */
+
+/* ── E1's read, part two: the focus branch as a FROZEN SHAPE ─────────────────
+ *
+ * **This is round 4 of one guard, and it is the round that changes direction.**
+ *
+ * Round 1 asserted on the `FOCUS_ROOT` constant and the reintroduction moved to
+ * the render site. Round 2 asserted on the outer element and it moved to the
+ * inner element. Round 3 asserted on the branch as a brace-balanced region and
+ * it moved to the SHAPE of the branch: the balance opened on any brace that
+ * raised it — including the JSX expression brace on the opener's own line — so
+ * an `if` written without block braces truncated a seven-line region to three,
+ * and the reintroduced line was then printed in the report as EVIDENCE that the
+ * property "survives elsewhere". A ternary, a `}` inside a string and a
+ * concatenation behind a block comment took the same door.
+ *
+ * **The diagnosis is not a missing syntax. It is that an unrecognised shape
+ * produced a GREEN**, and every escape in three rounds went through that door.
+ * Enumerating a fourth syntax would be round 4 of the same mistake.
+ *
+ * So the direction is inverted. This read no longer hunts for the defect inside
+ * a shape it recognises. It asserts that the branch has EXACTLY the one frozen
+ * expected shape, line by line, over a window whose length is the frozen
+ * shape's length and whose start is the single opener. **No brace is counted
+ * anywhere in the derivation.** A ternary, a brace-less `if`, a brace inside a
+ * string, a fragment, a nested conditional, an extracted helper, a reordered
+ * attribute and any refactor nobody has imagined are all simply "not the
+ * expected shape", and none of them can produce a tick.
+ *
+ * **What was removed, said rather than deleted quietly.** The brace-balance
+ * derivation is gone, and with it the two refusals that depended on it: the one
+ * that fired when the opener opened no block, and the one that fired when the
+ * balance never returned to zero. The first was measured firing only on a shape
+ * its own message does not name, while the shape it does name — a ternary —
+ * passed green; the second described a condition the frozen comparison now
+ * reaches first, and reaches without needing to be right about braces.
+ *
+ * **The accepted cost, written here rather than discovered in 41.1.** This gate
+ * will refuse a LEGITIMATE refactor of the focus branch until somebody updates
+ * the frozen shape below. That is the correct direction — it fails closed — but
+ * it puts a red suite in front of whoever next edits the shell, so the refusal
+ * prints the expected shape, the found window, the first position at which they
+ * differ, and the single action that resolves it.
+ */
+const FOCUS_BRANCH_OPEN_RE = /\bwidth\s*===\s*(?:"focus"|'focus')/;
+
+/**
+ * The two markers, on the first line of every refusal in this read.
+ *
+ * One says a person changed the branch and the expectation here must be updated
+ * with it; the other says this gate is broken or blindfolded. A reader meeting a
+ * red suite has to be able to tell those apart without opening this file, and
+ * three rounds of refusals that all read alike are why they are constants rather
+ * than a phrasing convention.
+ */
+const SHAPE_CHANGED_MARKER = 'SHAPE CHANGED';
+const GATE_CANNOT_READ_MARKER = 'GATE CANNOT READ';
+
+/**
+ * The two utility tokens the focus branch's inner element carries, assembled
+ * from fragments so that neither appears contiguously in this script's source.
+ *
+ * **DEF-41-01 is the reason, and it is sharper here than anywhere else in this
+ * file.** Tailwind compiles class strings out of everything it scans, comments
+ * and phase documents included. A FROZEN COPY OF PRODUCT CODE OUTLIVES THE
+ * PRODUCT CODE IT COPIES — that is what freezing means — so a whole utility
+ * written here would keep a rule alive in the stylesheet after the shell had
+ * dropped it, and the gate meant to notice a change would itself be the reason
+ * the change had no effect.
+ *
+ * **`DECLARED_MAXIMA` above writes three whole utilities, and that is not
+ * licence.** It predates this rule, and it is a different risk: it is a
+ * DECLARATION the gate compares the shell against, not a frozen copy of product
+ * code. One of its three entries is the same token the frozen entries below
+ * carry, which is also why the no-whole-utility grep in this round's acceptance
+ * criteria is bounded to the frozen shape's own array literal rather than run
+ * over the whole file — the overlap is expected, not a contradiction.
+ */
+const FOCUS_TOKEN_WIDTH_FULL = 'w-' + 'ful' + 'l';
+const FOCUS_TOKEN_MAX_NARROW = 'max-' + 'w-' + 's' + 'm';
+
+/**
+ * The frozen expected shape of the focus branch: the exact trimmed text of each
+ * line, in order, first entry being the opener and last the line that closes
+ * the `if` block.
+ *
+ * This is a literal copy, not a pattern. It IS the expected shape, and anything
+ * that is not it is a deviation — which is the whole of round 4's inversion.
+ * The render-site entry is built from `FOCUS_ROOT_IDENTIFIER` so that renaming
+ * the constant moves both this expectation and the scan that reads it, rather
+ * than leaving one of them silently passing.
+ */
+const FOCUS_BRANCH_SHAPE = [
+  'if (width === "focus") {',
+  'return (',
+  '<div className={' + FOCUS_ROOT_IDENTIFIER + '}>',
+  '<div className={`' +
+    FOCUS_TOKEN_WIDTH_FULL +
+    ' ' +
+    FOCUS_TOKEN_MAX_NARROW +
+    ' ${className}`.trimEnd()}>{children}</div>',
+  '</div>',
+  ');',
+  '}',
+];
+
+/**
+ * The frozen shape's self-check, run on every run BEFORE it certifies anything.
+ *
+ * Without it, the refusal above instructs a reader to *update the frozen shape*
+ * — and updating it to include a navigation property would make this gate
+ * certify the exact defect it exists to catch. That is the fifth escape, and it
+ * would be written into the gate's own error message.
+ *
+ * The test is against the ASSEMBLED entry, the string the array actually holds
+ * once the fragments are joined, and not against this file's source text, which
+ * by construction does not carry those tokens contiguously at all. This branch
+ * is exercised by transiently injecting a property name into one entry, in the
+ * same fragment-assembled form as its neighbours, and requiring a refusal — a
+ * refusal branch described and never run is a defect this file family has
+ * already met.
+ */
+const frozenShapeCarryingDefect = [];
+FOCUS_BRANCH_SHAPE.forEach((entry, i) => {
+  for (const prop of NAV_PROPERTIES) {
+    if (entry.includes(prop)) frozenShapeCarryingDefect.push({ index: i, prop, entry });
+  }
+});
+
+if (frozenShapeCarryingDefect.length > 0) {
   refuse(
-    `${SHELL_FILE} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of exactly one className\n` +
-      `       ${focusBranchLines.length} time(s) — found ${where}. Exactly one is required.\n\n` +
-      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Check E1 asserts against the CONSTANT:\n' +
-      '       that its literal reserves neither navigation property, that it still declares a\n' +
-      '       height and a centring. A focus root assembled from that constant PLUS anything\n' +
-      '       else is a form this gate did not read, and asserting a property is absent from a\n' +
-      '       fragment is how a check goes green on a defect it never saw. It is not a\n' +
-      '       hypothetical: the constant was left untouched and the clearance was appended\n' +
-      '       here, and every assertion below passed — one of them BECAUSE of the addition.\n\n' +
-      '       WHAT A LEGITIMATE CHANGE DOES. If the focus branch one day needs a second class,\n' +
-      '       the named candidate is the `nav` prop D-41-04 deliberately did not write, arriving\n' +
-      '       with its first consumer. Then this assertion WIDENS — in the same commit, carrying\n' +
-      '       the measurement that justified it, and reading whatever new form the branch takes.\n' +
-      '       It does not get deleted, and the constant does not get inlined to make it quiet.\n\n' +
+    `${GATE_CANNOT_READ_MARKER} — the frozen expected shape of the focus branch, declared in\n` +
+      '       this file, itself carries a navigation property:\n\n' +
+      frozenShapeCarryingDefect
+        .map(({ index, prop, entry }) => `         entry ${index + 1}  ${prop}\n           ${entry}`)
+        .join('\n') +
+      '\n\n       WHAT THIS MEANS. This gate certifies the branch by comparing it against that\n' +
+      '       shape. A shape carrying the clearance would certify a focus form that reserves a\n' +
+      '       column and a bar its four routes do not mount — CR-01, blessed by its own guard.\n' +
+      '       Nothing this gate would say about the branch can be trusted while this holds.\n\n' +
+      '       WHAT TO DO. Every other refusal in this read tells a reader to update the frozen\n' +
+      '       shape when the branch legitimately changes. This is the one edit that instruction\n' +
+      '       does not license: remove the property from the entry above. If the focus form is\n' +
+      '       genuinely meant to reserve navigation clearance again, that is a product decision\n' +
+      '       about §4\'s closed focus list, and it is made there and not by editing a gate.\n\n' +
       '       Nothing was measured.'
   );
 }
-
-/* ── E1's read, part two: the focus branch as a REGION ────────────────────────
- *
- * **Why a region and not a line, written down because two rounds fixed this at
- * a point and the defect moved one element each time.**
- *
- * Round 1 (plan 41-17) asserted on the `FOCUS_ROOT` constant; the reintroduction
- * moved to the render site. Round 2 (plan 41-20) asserted on the outer element
- * of the focus branch; the reintroduction moved to the inner element, and the
- * gate printed `✓ E` over it (GAP-CR-02). Each fix aimed at the place the defect
- * was last seen, and each time the defect was one element deeper. The defect
- * does not live on a line — it lives anywhere inside the branch — so what is
- * asserted is the whole branch, from its opener to its balanced close.
- *
- * **Anchored on the opener, not on the render site**, and that is the second
- * thing this buys. `FOCUS_BRANCH_RE` above requires exactly one
- * `className={FOCUS_ROOT}` ANYWHERE in the file and never that the occurrence
- * sits inside the focus branch — so `FOCUS_ROOT` rendered on the default branch,
- * with the focus branch carrying an arbitrary class string, satisfied it. The
- * third refusal below closes that.
- *
- * **The end is computed by brace balance, and the bare-closing-brace regex is
- * the trim a later reader will be tempted to make.** `/^\s*\}\s*$/` — the shape
- * 41-GAP-REVIEW-2.md sketched — terminates the region at the first bare brace,
- * and a bare brace can appear inside the branch. A region shorter than the
- * branch is this round's defect for the third time, so the balance is counted
- * rather than a closing line recognised.
- *
- * The opener that never opens a block is a refusal rather than a one-line
- * region, for the same reason: a ternary would otherwise derive a region of one
- * line and assert almost nothing, silently.
- */
-const FOCUS_BRANCH_OPEN_RE = /\bwidth\s*===\s*(?:"focus"|'focus')/;
 
 const focusBranchOpeners = [];
 shellLines.forEach((line, i) => {
@@ -1465,11 +1580,11 @@ shellLines.forEach((line, i) => {
  * D-41-19's second failure mode), so the legitimate forms are named.
  */
 const FOCUS_BRANCH_WIDENING_NOTE =
-  '       WHAT A LEGITIMATE CHANGE DOES. Three future forms would trip this and all three are\n' +
-  '       legitimate: the branch rewritten as a ternary, the branch extracted into its own\n' +
-  '       component, or the opener written as part of a compound condition. In every case the\n' +
-  '       instruction is the same: this assertion WIDENS — in the same commit, carrying the\n' +
-  '       measurement that justified it, and reading whatever new form the branch takes. It\n' +
+  '       WHAT A LEGITIMATE CHANGE DOES. Several future forms would trip this and all of them\n' +
+  '       are legitimate: the branch rewritten as a ternary, the branch extracted into its own\n' +
+  '       component, the opener written as part of a compound condition, an attribute\n' +
+  '       reordered. In every case the instruction is the same: update the frozen expectation\n' +
+  '       in this file, in the same commit, carrying the measurement that justified it. It\n' +
   '       does not get deleted, and the branch does not get inlined to make it quiet.\n\n';
 
 if (focusBranchOpeners.length !== 1) {
@@ -1478,83 +1593,174 @@ if (focusBranchOpeners.length !== 1) {
       ? `at line(s) ${focusBranchOpeners.map((o) => o.lineNo).join(', ')}`
       : 'nowhere in the file';
   refuse(
-    `${SHELL_FILE} opens the focus branch ${focusBranchOpeners.length} time(s) — found ${where}.\n` +
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE} opens the focus branch ` +
+      `${focusBranchOpeners.length} time(s), found ${where}.\n` +
       '       Exactly one is required.\n\n' +
       '       WHAT WAS MEASURED AND FOUND. The comparison that selects the focus form was looked\n' +
       '       for over the whole comment-stripped file, tolerant of whitespace and of either\n' +
-      '       quote style. Check E1 bounds that branch as a REGION and asserts that no line of\n' +
-      '       it reads a navigation property; with no opener, or with two, there is no region to\n' +
-      '       bound and the assertion covers nothing.\n\n' +
+      '       quote style. The frozen window is ANCHORED on that single opener; with no opener,\n' +
+      '       or with two, there is no anchor and the assertion would cover nothing.\n\n' +
       '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the clearance was measured.\n' +
       '       Reporting a pass here would be reporting agreement with a branch never read — the\n' +
-      '       failure direction that prints a tick, and the one CR-01 already took twice.\n\n' +
+      '       failure direction that prints a tick, and the one CR-01 already took three times.\n\n' +
       FOCUS_BRANCH_WIDENING_NOTE +
       '       Nothing was measured.'
   );
 }
 
 const focusBranchStart = focusBranchOpeners[0].lineNo;
+const focusWindowEnd = focusBranchStart + FOCUS_BRANCH_SHAPE.length - 1;
 
-let focusBranchBalance = 0;
-let focusBranchOpened = false;
-let focusBranchEnd = 0;
-for (let n = focusBranchStart; n <= shellLines.length; n += 1) {
-  for (const ch of shellLines[n - 1]) {
-    if (ch === '{') focusBranchBalance += 1;
-    else if (ch === '}') focusBranchBalance -= 1;
-    if (focusBranchBalance > 0) focusBranchOpened = true;
-  }
-  if (focusBranchOpened && focusBranchBalance <= 0) {
-    focusBranchEnd = n;
-    break;
-  }
-}
-
-if (!focusBranchOpened) {
+if (focusWindowEnd > shellLines.length) {
   refuse(
-    `${SHELL_FILE}:${focusBranchStart} compares the width against the focus form, but that line\n` +
-      '       opens no block, so no region could be derived. Line, verbatim:\n\n       ' +
-      focusBranchOpeners[0].text.trim() +
-      '\n\n       WHY THIS IS A REFUSAL AND NOT A FAILURE. Deriving a one-line region here and\n' +
-      '       asserting over it would assert almost nothing while printing a tick — the shape a\n' +
-      '       ternary would take, and the shape a truncated region has taken twice in this phase.\n\n' +
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE} has ${shellLines.length} line(s), and the frozen\n` +
+      `       window anchored on the opener at line ${focusBranchStart} needs ` +
+      `${FOCUS_BRANCH_SHAPE.length}, ending at line ${focusWindowEnd}.\n` +
+      '       The file is shorter than the shape this gate expects, so there is nothing to\n' +
+      '       compare against and nothing to scan.\n\n' +
       FOCUS_BRANCH_WIDENING_NOTE +
       '       Nothing was measured.'
   );
 }
 
-if (focusBranchEnd === 0) {
-  refuse(
-    `${SHELL_FILE}:${focusBranchStart} opens the focus branch, but its brace balance never returns\n` +
-      '       to zero before the end of the file, so the focus branch has no readable end and\n' +
-      '       nothing was measured.\n\n' +
-      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. The region is bounded by counting braces\n' +
-      '       from the opener rather than by recognising a closing line, because a bare closing\n' +
-      '       brace can appear INSIDE the branch and a region shorter than the branch is exactly\n' +
-      '       the defect this check exists to stop. An unbalanced file is one this gate cannot\n' +
-      '       read; it is not one it may assume is clean.\n\n' +
-      FOCUS_BRANCH_WIDENING_NOTE +
-      '       Nothing was measured.'
-  );
-}
-
-/** The bounded branch: every line from the opener through its balanced close. */
-const focusBranchRegion = {
+/**
+ * The frozen window: a fixed number of lines from the opener, and NOT a region
+ * derived from the source.
+ *
+ * `lines` holds the trimmed live text at each position. The comparison, the
+ * defect scan and the evidence exclusion all read this one object, so there is
+ * no second derivation that could disagree with the first.
+ */
+const focusWindow = {
   start: focusBranchStart,
-  end: focusBranchEnd,
-  lineCount: focusBranchEnd - focusBranchStart + 1,
-  openerText: shellLines[focusBranchStart - 1],
-  closeText: shellLines[focusBranchEnd - 1],
+  end: focusWindowEnd,
+  lineCount: FOCUS_BRANCH_SHAPE.length,
+  lines: [],
 };
+for (let n = focusWindow.start; n <= focusWindow.end; n += 1) {
+  focusWindow.lines.push({ lineNo: n, text: shellLines[n - 1], trimmed: shellLines[n - 1].trim() });
+}
 
-const focusRootRenderLineNo = focusBranchLines[0];
+/**
+ * The comparison. Byte-for-byte against the frozen entry, position by position.
+ *
+ * Internal whitespace is significant, and a comment-only line inside the branch
+ * blanks to the empty string and therefore differs. **Both are deviations and
+ * both fail closed**, which is accepted here rather than left for a reader to
+ * discover: the alternative is a normaliser, and a normaliser is one more thing
+ * that has to recognise a shape.
+ */
+let focusShapeMatched = true;
+let focusShapeFirstDifference = null;
+for (let i = 0; i < FOCUS_BRANCH_SHAPE.length; i += 1) {
+  if (focusWindow.lines[i].trimmed === FOCUS_BRANCH_SHAPE[i]) continue;
+  focusShapeMatched = false;
+  focusShapeFirstDifference = {
+    index: i,
+    lineNo: focusWindow.lines[i].lineNo,
+    expected: FOCUS_BRANCH_SHAPE[i],
+    found: focusWindow.lines[i].trimmed,
+  };
+  break;
+}
 
-if (focusRootRenderLineNo < focusBranchRegion.start || focusRootRenderLineNo > focusBranchRegion.end) {
+/**
+ * The defect scan, taken over the window INDEPENDENTLY of whether the shape
+ * matched.
+ *
+ * This scan recognises nothing: it is a fixed-length window anchored on the
+ * opener, and every line of it is read for both property names. That is the
+ * half that makes an unanticipated refactor carrying a reintroduction a
+ * FAILURE rather than a refusal — a measurement happened, and it was wrong.
+ */
+const propertiesInFocusBranch = [];
+for (const { lineNo, text } of focusWindow.lines) {
+  for (const prop of NAV_PROPERTIES) {
+    if (text.includes(prop)) propertiesInFocusBranch.push({ prop, lineNo, text });
+  }
+}
+
+/*
+ * The verdict split.
+ *
+ * A deviation that CARRIES a navigation property is a failure and is reported
+ * below with the other `✗ E` verdicts; it must not be swallowed by a refusal
+ * here, because a refusal reports a real regression to the aggregate as
+ * "nothing was measured". A deviation that carries none is a refusal, because
+ * this gate genuinely cannot certify a shape it has never been shown.
+ */
+if (propertiesInFocusBranch.length === 0 && !focusShapeMatched) {
+  const expectedBlock = FOCUS_BRANCH_SHAPE.map(
+    (entry, i) => `         ${String(i + 1).padStart(2)}  ${entry}`
+  ).join('\n');
+  const foundBlock = focusWindow.lines
+    .map(({ lineNo, trimmed }) => `         ${String(lineNo).padStart(4)}  ${trimmed}`)
+    .join('\n');
   refuse(
-    `${SHELL_FILE}:${focusRootRenderLineNo} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of a className,\n` +
-      `       but that line falls OUTSIDE the focus branch, derived as lines ${focusBranchRegion.start}-${focusBranchRegion.end}.\n\n` +
-      '       WHAT WAS MEASURED AND FOUND. The exactly-one assertion above is satisfied by an\n' +
-      '       occurrence anywhere in the file. It was, and the occurrence is not in the branch —\n' +
+    `${SHAPE_CHANGED_MARKER} — ${SHELL_FILE}'s focus branch is not the shape this gate froze.\n\n` +
+      '       WHAT WAS EXPECTED, in order, trimmed:\n\n' +
+      expectedBlock +
+      '\n\n       WHAT WAS FOUND, over the window anchored on the single opener at line ' +
+      `${focusWindow.start} and running ${focusWindow.lineCount} line(s) to ${focusWindow.end}:\n\n` +
+      foundBlock +
+      `\n\n       FIRST DIFFERENCE — position ${focusShapeFirstDifference.index + 1}, at line ` +
+      `${focusShapeFirstDifference.lineNo}:\n` +
+      `         expected  ${focusShapeFirstDifference.expected}\n` +
+      `         found     ${focusShapeFirstDifference.found}\n\n` +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. No navigation property was found in the\n' +
+      '       window, so nothing was measured as wrong — but the branch is not the shape the\n' +
+      '       frozen expectation describes, and three rounds of this guard were escaped by a\n' +
+      '       shape it did not recognise being treated as clean. It refuses instead.\n\n' +
+      '       WHAT TO DO. If a person made this change, it is legitimate and the resolution is\n' +
+      '       one action: update the frozen shape in this file, in the same commit as the\n' +
+      '       branch, so the expectation and the code are edited together. Keep it free of both\n' +
+      '       navigation property names — this gate asserts that separately on every run and\n' +
+      '       will refuse if the expectation is edited to permit the defect it exists to catch.\n\n' +
+      FOCUS_BRANCH_WIDENING_NOTE +
+      '       Nothing was measured.'
+  );
+}
+
+/*
+ * The render-site assertions, raised only when the window came back clean.
+ *
+ * When the window carries the defect the failure below is the verdict, and
+ * refusing here would replace it with "nothing was measured" — WR-03.
+ */
+const focusRootRenderLineNo = focusBranchLines.length === 1 ? focusBranchLines[0] : null;
+
+if (propertiesInFocusBranch.length === 0 && focusBranchLines.length !== 1) {
+  const where =
+    focusBranchLines.length > 0 ? `at line(s) ${focusBranchLines.join(', ')}` : 'nowhere in the file';
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE} renders ${FOCUS_ROOT_IDENTIFIER} as the whole of\n` +
+      `       exactly one className ${focusBranchLines.length} time(s) — found ${where}. Exactly one is\n` +
+      '       required, and the frozen window came back carrying no navigation property.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Check E1 asserts against the CONSTANT:\n' +
+      '       that its literal reserves neither navigation property, that it still declares a\n' +
+      '       height and a centring. A focus root assembled from that constant PLUS anything\n' +
+      '       else is a form this gate did not read, and asserting a property is absent from a\n' +
+      '       fragment is how a check goes green on a defect it never saw. Nothing was measured\n' +
+      '       as wrong here — the window is clean — but the form on screen was not read.\n\n' +
+      '       WHAT A LEGITIMATE CHANGE DOES. If the focus branch one day needs a second class,\n' +
+      '       the named candidate is the `nav` prop D-41-04 deliberately did not write, arriving\n' +
+      '       with its first consumer. Then the frozen shape is updated in the same commit,\n' +
+      '       carrying the measurement that justified it.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
+if (
+  propertiesInFocusBranch.length === 0 &&
+  focusRootRenderLineNo !== null &&
+  (focusRootRenderLineNo < focusWindow.start || focusRootRenderLineNo > focusWindow.end)
+) {
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE}:${focusRootRenderLineNo} renders ` +
+      `${FOCUS_ROOT_IDENTIFIER} as the whole of a\n` +
+      `       className, but that line falls OUTSIDE the frozen window, lines ${focusWindow.start}-${focusWindow.end}.\n\n` +
+      '       WHAT WAS MEASURED AND FOUND. The exactly-one assertion is satisfied by an\n' +
+      '       occurrence anywhere in the file. It was, and the occurrence is not in the window —\n' +
       '       so the focus form on screen is built from something this gate never read, while the\n' +
       '       constant it did read renders somewhere else.\n\n' +
       '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the focus form was measured.\n' +
@@ -2067,40 +2273,36 @@ const focusRootHasCentring = CENTRING_RE.test(focusRoot);
  * produce, which is 41-GAP-REVIEW.md CR-02 and is still open.
  */
 
-/**
- * The assertion the two previous rounds did not make: every line of the branch.
- *
- * `propertiesInFocusRoot` above stays, and is not redundant with this — the
- * constant is declared OUTSIDE the branch, so the region does not cover it.
+/*
+ * `propertiesInFocusBranch` — every occurrence of either property on any line of
+ * the frozen window — is computed with the rest of check E's read, far above,
+ * so that the verdict split and every refusal it governs precede the first tick.
+ * `propertiesInFocusRoot` above stays and is not redundant with it: the constant
+ * is declared OUTSIDE the branch, so the window does not cover it.
  */
-const propertiesInFocusBranch = [];
-for (let n = focusBranchRegion.start; n <= focusBranchRegion.end; n += 1) {
-  const text = shellLines[n - 1];
-  for (const prop of NAV_PROPERTIES) {
-    if (text.includes(prop)) propertiesInFocusBranch.push({ prop, lineNo: n, text });
-  }
-}
 
 /**
- * Evidence that a property survives ELSEWHERE — with the region excluded.
+ * Evidence that a property survives ELSEWHERE — with the frozen window excluded.
  *
  * This exclusion is the half that stops the defect certifying itself. Before it,
  * a clearance appended inside the branch was counted here as proof that "the
  * shell still reads both properties elsewhere": measured on the shipped gate,
- * `read at line(s) 154, 160` listed the defect's own line as evidence for the
- * assertion meant to catch it (GAP-CR-02). A line inside the branch can never
- * be that evidence.
+ * the defect's own line was listed as evidence for the assertion meant to catch
+ * it (GAP-CR-02), and again a round later when a brace-less `if` truncated the
+ * derived region so the reintroduced line fell outside it. **It is keyed on the
+ * window now, and the window's length does not depend on the branch's shape** —
+ * so no rewrite can move the defect's line out of the exclusion.
  *
  * `propertiesDroppedEntirely` still evaluates over the narrowed set, and still
  * holds on a correct tree: the default and wide branch reads both properties,
- * outside the region, so the assertion that the clearance did not leave the
+ * outside the window, so the assertion that the clearance did not leave the
  * primitive is unweakened.
  */
 const propertyReadsElsewhere = new Map(NAV_PROPERTIES.map((prop) => [prop, []]));
 shellLines.forEach((line, i) => {
   const lineNo = i + 1;
   if (lineNo === focusRootLineNo) return;
-  if (lineNo >= focusBranchRegion.start && lineNo <= focusBranchRegion.end) return;
+  if (lineNo >= focusWindow.start && lineNo <= focusWindow.end) return;
   for (const prop of NAV_PROPERTIES) {
     if (line.includes(prop)) propertyReadsElsewhere.get(prop).push(lineNo);
   }
@@ -2135,18 +2337,30 @@ for (const { rel, why } of skippedWrappers) {
   console.log(`             ${why}`);
 }
 
-/* The region, printed before anything derived from it: a silently truncated
- * region has to be visible in the gate's own output, which is the property no
- * previous round's report had. */
+/* The window, printed before anything derived from it. A window whose length is
+ * frozen cannot be silently truncated, but it can be anchored on the wrong line,
+ * so its bounds, the shape verdict and the defect count are all in the gate's
+ * own output rather than inferred from a tick. */
 console.log(
-  `      the focus branch, ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end}` +
-    `   (${focusBranchRegion.lineCount} line(s), bounded by brace balance)`
+  `      the focus branch, ${SHELL_FILE}:${focusWindow.start}-${focusWindow.end}` +
+    `   (${focusWindow.lineCount} line(s), anchored on the single opener; no brace counted)`
 );
-console.log(`          opener  ${String(focusBranchRegion.start).padEnd(4)}: ${focusBranchRegion.openerText.trim()}`);
-console.log(`          close   ${String(focusBranchRegion.end).padEnd(4)}: ${focusBranchRegion.closeText.trim()}`);
-console.log(`          ${FOCUS_ROOT_IDENTIFIER} rendered at line ${focusRootRenderLineNo}`);
+console.log(`      the frozen expected shape                 : ${FOCUS_BRANCH_SHAPE.length} line(s)`);
 console.log(
-  `          navigation propert(y/ies) found inside the region: ${propertiesInFocusBranch.length}`
+  `      the window matches the frozen shape       : ${focusShapeMatched ? 'yes' : 'NO'}` +
+    (focusShapeMatched
+      ? ''
+      : `   (first difference at position ${focusShapeFirstDifference.index + 1}, line ${focusShapeFirstDifference.lineNo})`)
+);
+for (const { lineNo, trimmed } of focusWindow.lines) {
+  console.log(`          ${String(lineNo).padEnd(4)}: ${trimmed}`);
+}
+console.log(
+  `          ${FOCUS_ROOT_IDENTIFIER} rendered at line ` +
+    `${focusRootRenderLineNo === null ? 'NOT AS THE WHOLE OF EXACTLY ONE className' : focusRootRenderLineNo}`
+);
+console.log(
+  `          navigation propert(y/ies) found inside the window: ${propertiesInFocusBranch.length}`
 );
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
@@ -2192,7 +2406,7 @@ if (propertiesInFocusBranch.length > 0) {
   if (!failures.includes('E')) failures.push('E');
   console.log(
     `  ✗ E  the focus branch reads ${propertiesInFocusBranch.length} navigation propert(y/ies) — this is CR-01,\n` +
-      `       reintroduced inside ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end}:\n`
+      `       reintroduced inside ${SHELL_FILE}:${focusWindow.start}-${focusWindow.end}:\n`
   );
   for (const { prop, lineNo, text } of propertiesInFocusBranch) {
     console.log(`       ${prop}  at line ${lineNo}`);
@@ -2204,9 +2418,18 @@ if (propertiesInFocusBranch.length > 0) {
       '       last happened: 248px leading against 24px trailing at and above 768px, putting a\n' +
       '       centred card 112px right of the viewport centre; ~96px of bottom padding below\n' +
       '       768px under a card with no bar beneath it. Four checks were green throughout.\n\n' +
-      '       The assertion above it reads the CONSTANT and would not have seen this: the two\n' +
+      '       The assertion above it reads the CONSTANT and would not have seen this: three\n' +
       '       previous rounds each fixed this at the point the defect was last seen, and each\n' +
-      '       time it reappeared one element deeper. This one reads every line of the branch.\n'
+      '       time it reappeared somewhere the fix did not look. This one reads every line of a\n' +
+      '       window whose length is frozen, so no rewrite of the branch can move a line out of\n' +
+      '       it.\n' +
+      (focusShapeMatched
+        ? ''
+        : '\n       THE SHAPE ALSO DEVIATES from the frozen expectation, and this is reported as a\n' +
+          '       FAILURE rather than as a refusal on purpose: a measurement happened and it was\n' +
+          '       wrong. Reporting it as "nothing was measured" would hand the aggregate a real\n' +
+          '       regression wearing a neutral face. Update the frozen shape only after the\n' +
+          '       property above is removed.\n')
   );
 }
 
@@ -2280,10 +2503,12 @@ if (mountsUnderTheFocusForm.length > 0) {
 
 if (!failures.includes('E')) {
   console.log(
-    `  ✓ E  no line of the focus branch (${focusBranchRegion.lineCount}, at ${SHELL_FILE}:${focusBranchRegion.start}-${focusBranchRegion.end})\n` +
-      `       reads either navigation property, nor does the focus root, while the shell still\n` +
-      `       reads both OUTSIDE that region, and all ${navigationBySurface.length} converted surface(s) declare the width\n` +
-      '       their mounted navigation calls for — focus if and only if none is mounted\n'
+    `  ✓ E  the focus branch has the one frozen shape (${focusWindow.lineCount} line(s), at ` +
+      `${SHELL_FILE}:${focusWindow.start}-${focusWindow.end}),\n` +
+      '       no line of it reads either navigation property, nor does the focus root, while the\n' +
+      `       shell still reads both OUTSIDE that window, and all ${navigationBySurface.length} converted surface(s)\n` +
+      '       declare the width their mounted navigation calls for — focus if and only if none\n' +
+      '       is mounted\n'
   );
 }
 
