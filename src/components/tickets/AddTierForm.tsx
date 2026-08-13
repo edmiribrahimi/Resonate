@@ -2,6 +2,38 @@
 
 import { useState, useTransition } from "react";
 import { createTier } from "@/app/(admin)/admin/events/[id]/tickets/actions";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Input } from "@/components/ui/Input";
+import { SectionHeading } from "@/components/ui/Typography";
+
+/**
+ * The form that creates a ticket tier — converted onto the primitives in plan
+ * 41.1-22, and nothing it decides about money moved.
+ *
+ * ── What a conversion may NOT touch here, and why it is written on this file ──
+ *
+ * Every field below is an input to an amount the system will later charge. The
+ * price carries a minimum of zero and a hundredth-of-a-unit step; the quantity
+ * carries a minimum of one and is optional, where absent means unlimited. Those
+ * five facts — the control type, the required flag, the minimum, the step and
+ * the maximum length — are **validation, not styling**, and they are carried
+ * through this conversion attribute by attribute rather than re-typed. A step
+ * lost in a substitution is a price nobody can enter, or one nobody expected,
+ * and there is no test runner in this project to notice either.
+ *
+ * ── The identifiers are scoped, and that is a correction ─────────────────────
+ *
+ * This component is mounted **once per sub-event plus once for the event pass**,
+ * so the fixed identifiers it used to carry were duplicated across the document
+ * the moment a night had two paid sub-events. A duplicate identifier means the
+ * visible label binds to the *first* control of that name rather than to its
+ * own, which is a defect a sighted reviewer cannot see and a label convention
+ * cannot fix by itself. The sibling discount form already scoped its identifiers
+ * by sub-event; this one now does the same. No submitted name changed — the
+ * server reads `name`, never `id`.
+ */
 
 interface AddTierFormProps {
   eventId: string;
@@ -11,6 +43,11 @@ interface AddTierFormProps {
 export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // The event-pass mount has no sub-event, so it takes a name of its own rather
+  // than the empty string, which would collide with nothing today and with the
+  // next optional scope tomorrow.
+  const scope = partyId ?? "event";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,124 +71,93 @@ export default function AddTierForm({ eventId, partyId }: AddTierFormProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
-      <h2 className="text-sm font-semibold text-foreground mb-3">
-        Add Tier
-      </h2>
+    <Card className="overflow-hidden">
+      <SectionHeading>Add Tier</SectionHeading>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
+        <p role="alert" className="mb-3 text-sm text-sem-crit">
+          {error}
+        </p>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label
-            htmlFor="tier-name"
-            className="block text-xs text-muted mb-1"
-          >
-            Name
-          </label>
-          <input
-            id="tier-name"
-            name="name"
-            type="text"
+        <Input
+          id={`tier-name-${scope}`}
+          label="Name"
+          name="name"
+          type="text"
+          required
+          maxLength={100}
+          placeholder="e.g. Early Bird, VIP, General"
+        />
+
+        {/*
+          One column on a phone, two from tablet width up. The incumbent grid was
+          two columns at every width, and the two date controls in the second row
+          below carried a minimum-width override — the file's own record that the
+          row did not fit. The pair below the fold of a 390px viewport is a number
+          field and a number field; stacking them is what makes each one reachable
+          rather than merely present.
+        */}
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input
+            id={`tier-price-${scope}`}
+            label="Price (EUR)"
+            name="price"
+            type="number"
             required
-            maxLength={100}
-            placeholder="e.g. Early Bird, VIP, General"
-            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            min={0}
+            step={0.01}
+            placeholder="0.00"
+          />
+          <Input
+            id={`tier-quantity-${scope}`}
+            label="Quantity (empty = unlimited)"
+            name="quantity"
+            type="number"
+            min={1}
+            placeholder="Unlimited"
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              htmlFor="tier-price"
-              className="block text-xs text-muted mb-1"
-            >
-              Price (EUR)
-            </label>
-            <input
-              id="tier-price"
-              name="price"
-              type="number"
-              required
-              min={0}
-              step={0.01}
-              placeholder="0.00"
-              className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="tier-quantity"
-              className="block text-xs text-muted mb-1"
-            >
-              Quantity (empty = unlimited)
-            </label>
-            <input
-              id="tier-quantity"
-              name="quantity"
-              type="number"
-              min={1}
-              placeholder="Unlimited"
-              className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
+        {/*
+          The hidden field stays AFTER the box, because that order is the
+          behaviour: an unchecked box submits nothing, so the reader takes the
+          hidden value; a checked box submits first and wins. Reversing the two
+          would invert the flag without changing a single attribute.
+        */}
+        <div>
+          <Checkbox
+            id={`tier-show-remaining-${scope}`}
             name="show_remaining"
-            type="checkbox"
             defaultChecked
             value="true"
-            className="rounded border-card-border bg-background text-accent focus:ring-accent"
+            label="Show remaining tickets to users"
           />
-          <span className="text-xs text-muted">Show remaining tickets to users</span>
           <input type="hidden" name="show_remaining" value="false" />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              htmlFor="tier-starts"
-              className="block text-xs text-muted mb-1"
-            >
-              Starts at (optional)
-            </label>
-            <input
-              id="tier-starts"
-              name="starts_at"
-              type="datetime-local"
-              className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="tier-expires"
-              className="block text-xs text-muted mb-1"
-            >
-              Expires at (optional)
-            </label>
-            <input
-              id="tier-expires"
-              name="expires_at"
-              type="datetime-local"
-              className="w-full min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input
+            id={`tier-starts-${scope}`}
+            label="Starts at (optional)"
+            name="starts_at"
+            type="datetime-local"
+            className="min-w-0"
+          />
+          <Input
+            id={`tier-expires-${scope}`}
+            label="Expires at (optional)"
+            name="expires_at"
+            type="datetime-local"
+            className="min-w-0"
+          />
+        </div>
+
+        <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? "Adding..." : "Add Tier"}
-        </button>
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }
