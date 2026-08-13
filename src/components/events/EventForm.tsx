@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AutocompleteTagInput from "@/components/events/AutocompleteTagInput";
 import AutocompleteInput, { type AutocompleteOption } from "@/components/ui/AutocompleteInput";
+import { Input, Select, Textarea } from "@/components/ui/Input";
 import CreateArtistModal from "@/components/artists/CreateArtistModal";
 import VenueProfilePrompt from "@/components/venues/VenueProfilePrompt";
 import CreateVenueModal from "@/components/venues/CreateVenueModal";
@@ -60,6 +61,28 @@ export interface SeriesOption {
  */
 const SERIES_NUMBER_HELP =
   "Suggested from the last number in this series. What you save is stored as written and never recalculated — moving or deleting a night does not renumber the others.";
+
+/**
+ * The reveal window explained to the person typing — and, like the constant
+ * above, ONE copy rather than two.
+ *
+ * The sentence was written twice, byte-identical, on the per-night block and on
+ * the single-night Event Details block. Two copies of a sentence about **when an
+ * address leaves this system** is two places for it to drift, and the domain
+ * rule (`venue-secrecy.md`) is that a reveal has no rollback: a form that
+ * announced two different floors would send an operator to the one that reads
+ * more permissively. The floor itself is still imported and never retyped
+ * (plan 37-04); this constant only stops the explanation of it from forking.
+ *
+ * Verbatim from both incumbent copies. The apostrophe is the character, not the
+ * entity, because a JavaScript string is not JSX — the rendered text is the same.
+ */
+const VENUE_REVEAL_HOURS_HELP =
+  `Approved members see the venue this many hours before the night starts. ` +
+  `Minimum ${DEFAULT_VENUE_REVEAL_HOURS} hours: below that the address mail can ` +
+  `leave AFTER the party has started, because the reveal cron runs once a day and ` +
+  `a narrower window can open after the day's run has already gone. Widen the ` +
+  `window, not the floor.`;
 
 interface SubEventFormState {
   id?: string;
@@ -717,144 +740,130 @@ export default function EventForm({
       seriesId !== "" && !series.some((s) => s.id === seriesId);
 
     const numberError = numberRefusalFor(sortOrder);
-    const helpId = `${idPrefix}-number-help`;
-    const errorId = `${idPrefix}-number-error`;
+
+    /**
+     * The two sentences that explain a carried catalogue row, as ONE hint.
+     *
+     * They are mutually exclusive by construction — `carriedFormatIsRetired`
+     * needs the row to be readable and `carriedFormatIsUnreadable` needs it not
+     * to be — so the field never has two, and picking between them here is not a
+     * precedence rule being invented.
+     *
+     * They were loose paragraphs beside the control and are now the control's
+     * `hint`, which is the same words plus the association a sighted reviewer
+     * cannot see missing (`Input.tsx`'s `hint`, added by plan 41-09 for exactly
+     * this reason on a venue-secrecy sentence).
+     */
+    const formatHint = carriedFormatIsRetired
+      ? "This night was recorded under a retired format and keeps it. Pick another format only if you mean to move the night."
+      : carriedFormatIsUnreadable
+        ? "This night carries a format your account cannot see. It is kept as it is unless you pick another one."
+        : undefined;
+
+    const seriesHint = carriedSeriesIsUnreadable
+      ? "This night carries a series your account cannot see. It is kept as it is unless you pick another one."
+      : undefined;
 
     return (
       <>
         {/* Format */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-format`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Format {required && <span className="text-red-400">*</span>}
-          </label>
-          <select
-            id={`${idPrefix}-format`}
-            value={formatId}
-            required={required}
-            onChange={(e) =>
-              // Changing the format clears the series AND the number: a series
-              // belongs to exactly one format, so keeping either would leave a
-              // pair the composite key refuses to store.
-              onChange({ format_id: e.target.value, series_id: "", number: "" })
-            }
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground normal-case outline-none focus:ring-1 focus:ring-accent/50"
-          >
-            <option value="">Choose a format…</option>
-            {carriedFormatIsUnreadable && (
-              <option value={formatId}>
-                This night&apos;s format (not one you can see)
-              </option>
-            )}
-            {formatOptions.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.retired_at !== null ? `${f.name} (retired)` : f.name}
-              </option>
-            ))}
-          </select>
-          {carriedFormatIsRetired && (
-            <p className="text-xs text-muted">
-              This night was recorded under a retired format and keeps it. Pick another
-              format only if you mean to move the night.
-            </p>
-          )}
+        <Select
+          id={`${idPrefix}-format`}
+          label={required ? "Format *" : "Format"}
+          hint={formatHint}
+          value={formatId}
+          required={required}
+          onChange={(e) =>
+            // Changing the format clears the series AND the number: a series
+            // belongs to exactly one format, so keeping either would leave a
+            // pair the composite key refuses to store.
+            onChange({ format_id: e.target.value, series_id: "", number: "" })
+          }
+          className="normal-case"
+        >
+          <option value="">Choose a format…</option>
           {carriedFormatIsUnreadable && (
-            <p className="text-xs text-muted">
-              This night carries a format your account cannot see. It is kept as it is
-              unless you pick another one.
-            </p>
+            <option value={formatId}>
+              This night&apos;s format (not one you can see)
+            </option>
           )}
-        </div>
+          {formatOptions.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.retired_at !== null ? `${f.name} (retired)` : f.name}
+            </option>
+          ))}
+        </Select>
 
         {/* Series */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-series`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Series {required && <span className="text-red-400">*</span>}
-          </label>
-          <select
-            id={`${idPrefix}-series`}
-            value={seriesId}
-            required={required}
-            disabled={formatId === ""}
-            onChange={(e) => {
-              const nextId = e.target.value;
-              const chosen = seriesById.get(nextId);
-              // THE SUGGESTION, and it is a WATERMARK READ, never a count.
-              // `highest_assigned` only rises, so the proposal cannot land on a
-              // number a deleted night already used — which taking the highest
-              // stored number, or the length of the list plus one, would do the
-              // moment a night is removed.
-              //
-              // A count-like affordance is allowed HERE: this surface sits
-              // behind a capability, and the no-count rule governs the public
-              // ones. Said out loud because over-applying it would remove the
-              // one thing that makes the field usable.
-              onChange({
-                series_id: nextId,
-                number: chosen ? String(chosen.highest_assigned + 1) : "",
-              });
-            }}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground normal-case outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50"
-          >
-            <option value="">
-              {formatId === "" ? "Pick a format first…" : "Choose a series…"}
-            </option>
-            {carriedSeriesIsUnreadable && (
-              <option value={seriesId}>
-                This night&apos;s series (not one you can see)
-              </option>
-            )}
-            {seriesOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+        <Select
+          id={`${idPrefix}-series`}
+          label={required ? "Series *" : "Series"}
+          hint={seriesHint}
+          value={seriesId}
+          required={required}
+          disabled={formatId === ""}
+          className="normal-case disabled:opacity-50"
+          onChange={(e) => {
+            const nextId = e.target.value;
+            const chosen = seriesById.get(nextId);
+            // THE SUGGESTION, and it is a WATERMARK READ, never a count.
+            // `highest_assigned` only rises, so the proposal cannot land on a
+            // number a deleted night already used — which taking the highest
+            // stored number, or the length of the list plus one, would do the
+            // moment a night is removed.
+            //
+            // A count-like affordance is allowed HERE: this surface sits
+            // behind a capability, and the no-count rule governs the public
+            // ones. Said out loud because over-applying it would remove the
+            // one thing that makes the field usable.
+            onChange({
+              series_id: nextId,
+              number: chosen ? String(chosen.highest_assigned + 1) : "",
+            });
+          }}
+        >
+          <option value="">
+            {formatId === "" ? "Pick a format first…" : "Choose a series…"}
+          </option>
           {carriedSeriesIsUnreadable && (
-            <p className="text-xs text-muted">
-              This night carries a series your account cannot see. It is kept as it is
-              unless you pick another one.
-            </p>
+            <option value={seriesId}>
+              This night&apos;s series (not one you can see)
+            </option>
           )}
-        </div>
+          {seriesOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
 
-        {/* Number */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-number`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Number
-          </label>
-          <input
-            id={`${idPrefix}-number`}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={number}
-            // The typed value is NEVER cleared by a refusal: the person came
-            // here with a number from a poster, and clearing it would lose the
-            // only copy on screen.
-            onChange={(e) => onChange({ number: e.target.value })}
-            placeholder="Leave empty for a night with no number of its own"
-            aria-invalid={numberError ? true : undefined}
-            aria-describedby={numberError ? `${errorId} ${helpId}` : helpId}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground tabular-nums placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-          />
-          {numberError && (
-            <p id={errorId} className="text-sm text-red-400">
-              {numberError}
-            </p>
-          )}
-          <p id={helpId} className="text-xs text-muted">
-            {SERIES_NUMBER_HELP}
-          </p>
-        </div>
+        {/*
+          Number.
+
+          The refusal and the standing sentence both reach the control through
+          the primitive, which addresses them by id and names them in
+          `aria-describedby` — **failure first, then the standing sentence**,
+          which is the order the hand-written attribute already used. What moved
+          is where the refusal is DRAWN: it now sits below the standing sentence
+          rather than above it. Nothing else about this field changed, and in
+          particular the typed value is still never cleared by a refusal.
+        */}
+        <Input
+          id={`${idPrefix}-number`}
+          label="Number"
+          hint={SERIES_NUMBER_HELP}
+          error={numberError ?? undefined}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={number}
+          // The typed value is NEVER cleared by a refusal: the person came
+          // here with a number from a poster, and clearing it would lose the
+          // only copy on screen.
+          onChange={(e) => onChange({ number: e.target.value })}
+          placeholder="Leave empty for a night with no number of its own"
+          className="tabular-nums"
+        />
       </>
     );
   }
@@ -879,43 +888,36 @@ export default function EventForm({
           </button>
         </div>
 
-        {/* Title */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-title`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Title <span className="text-red-400">*</span>
-          </label>
-          <input
-            id={`${idPrefix}-title`}
-            type="text"
-            value={subEvent.title}
-            onChange={(e) => updateSubEvent(index, "title", e.target.value)}
-            placeholder="Sub-event name"
-            maxLength={100}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-          />
-        </div>
+        {/*
+          Title.
+
+          The asterisk is carried in the label TEXT and no longer in a coloured
+          span, because the label is a string on this control. **The `required`
+          attribute is not added here**: this field has never carried one, and a
+          field's required flag is validation rather than styling — adding it
+          would change what the browser refuses to submit.
+        */}
+        <Input
+          id={`${idPrefix}-title`}
+          label="Title *"
+          type="text"
+          value={subEvent.title}
+          onChange={(e) => updateSubEvent(index, "title", e.target.value)}
+          placeholder="Sub-event name"
+          maxLength={100}
+        />
 
         {/* Description */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-description`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Description
-          </label>
-          <textarea
-            id={`${idPrefix}-description`}
-            value={subEvent.description}
-            onChange={(e) => updateSubEvent(index, "description", e.target.value)}
-            placeholder="Optional description..."
-            rows={2}
-            maxLength={2000}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y"
-          />
-        </div>
+        <Textarea
+          id={`${idPrefix}-description`}
+          label="Description"
+          value={subEvent.description}
+          onChange={(e) => updateSubEvent(index, "description", e.target.value)}
+          placeholder="Optional description..."
+          rows={2}
+          maxLength={2000}
+          className="resize-y"
+        />
 
         {/* Format, series and number — a sub-event always becomes a night, so
             the two catalogue fields are always required here. */}
@@ -933,83 +935,58 @@ export default function EventForm({
         })}
 
         {/* Date */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-date`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Date <span className="text-red-400">*</span>
-          </label>
-          <input
-            id={`${idPrefix}-date`}
-            type="date"
-            value={subEvent.date}
-            onChange={(e) => updateSubEvent(index, "date", e.target.value)}
-            required
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-          />
-        </div>
+        <Input
+          id={`${idPrefix}-date`}
+          label="Date *"
+          type="date"
+          value={subEvent.date}
+          onChange={(e) => updateSubEvent(index, "date", e.target.value)}
+          required
+        />
 
         {/* Time row */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label
-              htmlFor={`${idPrefix}-time`}
-              className="block text-sm font-medium text-foreground"
-            >
-              Start Time <span className="text-red-400">*</span>
-            </label>
-            <input
-              id={`${idPrefix}-time`}
-              type="time"
-              value={subEvent.time}
-              onChange={(e) => updateSubEvent(index, "time", e.target.value)}
-              required
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-            />
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor={`${idPrefix}-end-time`}
-              className="block text-sm font-medium text-foreground"
-            >
-              End Time
-            </label>
-            <input
-              id={`${idPrefix}-end-time`}
-              type="time"
-              value={subEvent.end_time}
-              onChange={(e) => updateSubEvent(index, "end_time", e.target.value)}
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-            />
-          </div>
+          <Input
+            id={`${idPrefix}-time`}
+            label="Start Time *"
+            type="time"
+            value={subEvent.time}
+            onChange={(e) => updateSubEvent(index, "time", e.target.value)}
+            required
+          />
+          <Input
+            id={`${idPrefix}-end-time`}
+            label="End Time"
+            type="time"
+            value={subEvent.end_time}
+            onChange={(e) => updateSubEvent(index, "end_time", e.target.value)}
+          />
         </div>
 
         {/* Menu closes at */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-menu-closes-at`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Menu Closes At
-          </label>
-          <input
-            id={`${idPrefix}-menu-closes-at`}
-            type="time"
-            value={subEvent.menu_closes_at}
-            onChange={(e) => updateSubEvent(index, "menu_closes_at", e.target.value)}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-          />
-          <p className="text-xs text-muted">
-            If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour.
-          </p>
-        </div>
+        <Input
+          id={`${idPrefix}-menu-closes-at`}
+          label="Menu Closes At"
+          hint="If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour."
+          type="time"
+          value={subEvent.menu_closes_at}
+          onChange={(e) => updateSubEvent(index, "menu_closes_at", e.target.value)}
+        />
 
-        {/* Venue with autocomplete */}
+        {/*
+          Venue — the field the address arrives through, and it keeps its place.
+
+          `AutocompleteInput` belongs to plan 41.1-19 and is not opened here, so
+          this block keeps its own wrapper and its own label; only the label's
+          class string moves onto §8.6's convention. The DOM order of this region
+          — venue, then the secrecy control, then the fields the secrecy control
+          gates — is unchanged, and that is a `venue-secrecy.md` invariant rather
+          than a layout preference.
+        */}
         <div className="space-y-2">
           <label
             htmlFor={`${idPrefix}-venue`}
-            className="block text-sm font-medium text-foreground"
+            className="block text-xs font-semibold text-ink-2"
           >
             Venue
           </label>
@@ -1068,55 +1045,37 @@ export default function EventForm({
         {/* Venue secret hint & reveal hours */}
         {subEvent.venue_secret && (
           <div className="space-y-3 pl-2 border-l-2 border-accent/20">
-            <div className="space-y-2">
-              <label
-                htmlFor={`${idPrefix}-venue-hint`}
-                className="block text-sm font-medium text-foreground"
-              >
-                Venue Hint
-              </label>
-              <input
-                id={`${idPrefix}-venue-hint`}
-                type="text"
-                value={subEvent.venue_secret_hint}
-                onChange={(e) => updateSubEvent(index, "venue_secret_hint", e.target.value)}
-                placeholder="e.g. 'Near Trastevere...'"
-                maxLength={500}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-              />
-              <p className="text-xs text-muted">Shown to users who can&apos;t see the venue yet</p>
-            </div>
-            <div className="space-y-2">
-              <label
-                htmlFor={`${idPrefix}-reveal-hours`}
-                className="block text-sm font-medium text-foreground"
-              >
-                Reveal Hours Before Event
-              </label>
-              {/*
-                The window the staff side announces, and the floor it refuses
-                at, both read from `DEFAULT_VENUE_REVEAL_HOURS` — see the twin
-                field on the single-night form below, which carries the full
-                reasoning. `min` is UX, not a control: the real floor is
-                server-side in `validateEventData`.
-              */}
-              <input
-                id={`${idPrefix}-reveal-hours`}
-                type="number"
-                value={subEvent.venue_reveal_hours}
-                onChange={(e) => updateSubEvent(index, "venue_reveal_hours", e.target.value)}
-                placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
-                min={DEFAULT_VENUE_REVEAL_HOURS}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-              />
-              <p className="text-xs text-muted">
-                Approved members see the venue this many hours before the night
-                starts. Minimum {DEFAULT_VENUE_REVEAL_HOURS} hours: below that the
-                address mail can leave AFTER the party has started, because the
-                reveal cron runs once a day and a narrower window can open after
-                the day&apos;s run has already gone. Widen the window, not the floor.
-              </p>
-            </div>
+            <Input
+              id={`${idPrefix}-venue-hint`}
+              label="Venue Hint"
+              hint="Shown to users who can't see the venue yet"
+              type="text"
+              value={subEvent.venue_secret_hint}
+              onChange={(e) => updateSubEvent(index, "venue_secret_hint", e.target.value)}
+              placeholder="e.g. 'Near Trastevere...'"
+              maxLength={500}
+            />
+            {/*
+              The window the staff side announces, and the floor it refuses
+              at, both read from `DEFAULT_VENUE_REVEAL_HOURS` — see the twin
+              field on the single-night form below, which carries the full
+              reasoning. `min` is UX, not a control: the real floor is
+              server-side in `validateEventData`.
+
+              The explaining sentence is now the field's `hint`, so it is
+              addressed by `aria-describedby` instead of sitting beside the
+              control unassociated. Same words, one copy, one home.
+            */}
+            <Input
+              id={`${idPrefix}-reveal-hours`}
+              label="Reveal Hours Before Event"
+              hint={VENUE_REVEAL_HOURS_HELP}
+              type="number"
+              value={subEvent.venue_reveal_hours}
+              onChange={(e) => updateSubEvent(index, "venue_reveal_hours", e.target.value)}
+              placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
+              min={DEFAULT_VENUE_REVEAL_HOURS}
+            />
 
             {/* Reveal on Purchase toggle */}
             <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
@@ -1157,7 +1116,17 @@ export default function EventForm({
 
         {/* Lineup with autocomplete */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
+          {/*
+            The label is CONVERTED but still UNBOUND, and that is reported
+            rather than papered over.
+
+            `AutocompleteTagInput` exposes no `id`, so there is nothing for a
+            `htmlFor` to name, and the component belongs to plan 41.1-19 — this
+            plan does not open it. A `<label>` with no association is the state
+            this field arrived in; the class string moves onto §8.6's convention
+            and the association is owed to the plan that owns the component.
+          */}
+          <label className="block text-xs font-semibold text-ink-2">
             Lineup
           </label>
           <p className="text-xs text-muted">Press Enter to add artist</p>
@@ -1175,49 +1144,33 @@ export default function EventForm({
         </div>
 
         {/* Access Type */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-access-type`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Access Type
-          </label>
-          <select
-            id={`${idPrefix}-access-type`}
-            value={subEvent.access_type}
-            onChange={(e) =>
-              updateSubEvent(index, "access_type", e.target.value)
-            }
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50"
-          >
-            {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(
-              ([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              )
-            )}
-          </select>
-        </div>
+        <Select
+          id={`${idPrefix}-access-type`}
+          label="Access Type"
+          value={subEvent.access_type}
+          onChange={(e) =>
+            updateSubEvent(index, "access_type", e.target.value)
+          }
+        >
+          {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(
+            ([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            )
+          )}
+        </Select>
 
         {/* Capacity */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${idPrefix}-capacity`}
-            className="block text-sm font-medium text-foreground"
-          >
-            Capacity
-          </label>
-          <input
-            id={`${idPrefix}-capacity`}
-            type="number"
-            value={subEvent.capacity}
-            onChange={(e) => updateSubEvent(index, "capacity", e.target.value)}
-            placeholder="Leave empty for unlimited"
-            min={1}
-            className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-          />
-        </div>
+        <Input
+          id={`${idPrefix}-capacity`}
+          label="Capacity"
+          type="number"
+          value={subEvent.capacity}
+          onChange={(e) => updateSubEvent(index, "capacity", e.target.value)}
+          placeholder="Leave empty for unlimited"
+          min={1}
+        />
       </div>
     );
   }
@@ -1285,44 +1238,29 @@ export default function EventForm({
       )}
 
       {/* Title */}
-      <div className="space-y-2">
-        <label
-          htmlFor="event-title"
-          className="block text-sm font-medium text-foreground"
-        >
-          Title <span className="text-red-400">*</span>
-        </label>
-        <input
-          id="event-title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Event title"
-          required
-          maxLength={100}
-          className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-        />
-      </div>
+      <Input
+        id="event-title"
+        label="Title *"
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Event title"
+        required
+        maxLength={100}
+      />
 
       {/* Description */}
-      <div className="space-y-2">
-        <label
-          htmlFor="event-description"
-          className="block text-sm font-medium text-foreground"
-        >
-          Description <span className="text-red-400">*</span>
-        </label>
-        <textarea
-          id="event-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe the event..."
-          required
-          rows={4}
-          maxLength={5000}
-          className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50 resize-y"
-        />
-      </div>
+      <Textarea
+        id="event-description"
+        label="Description *"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Describe the event..."
+        required
+        rows={4}
+        maxLength={5000}
+        className="resize-y"
+      />
 
       {/* Event details (shown when no sub-events) */}
       {subEvents.length === 0 && (
@@ -1330,13 +1268,14 @@ export default function EventForm({
           <h3 className="text-sm font-semibold text-foreground">Event Details</h3>
 
           {/* Date */}
-          <div className="space-y-2">
-            <label htmlFor="event-date" className="block text-sm font-medium text-foreground">
-              Date <span className="text-red-400">*</span>
-            </label>
-            <input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
-          </div>
+          <Input
+            id="event-date"
+            label="Date *"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
 
           {/* Format, series and number.
               `required` only once a start time exists, because that is exactly
@@ -1359,31 +1298,39 @@ export default function EventForm({
 
           {/* Time row */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="main-time" className="block text-sm font-medium text-foreground">Start Time</label>
-              <input id="main-time" type="time" value={mainTime} onChange={(e) => setMainTime(e.target.value)}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="main-end-time" className="block text-sm font-medium text-foreground">End Time</label>
-              <input id="main-end-time" type="time" value={mainEndTime} onChange={(e) => setMainEndTime(e.target.value)}
-                className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
-            </div>
+            <Input
+              id="main-time"
+              label="Start Time"
+              type="time"
+              value={mainTime}
+              onChange={(e) => setMainTime(e.target.value)}
+            />
+            <Input
+              id="main-end-time"
+              label="End Time"
+              type="time"
+              value={mainEndTime}
+              onChange={(e) => setMainEndTime(e.target.value)}
+            />
           </div>
 
           {/* Menu closes at */}
-          <div className="space-y-2">
-            <label htmlFor="main-menu-closes-at" className="block text-sm font-medium text-foreground">Menu Closes At</label>
-            <input id="main-menu-closes-at" type="time" value={mainMenuClosesAt} onChange={(e) => setMainMenuClosesAt(e.target.value)}
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50" />
-            <p className="text-xs text-muted">
-              If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour.
-            </p>
-          </div>
+          <Input
+            id="main-menu-closes-at"
+            label="Menu Closes At"
+            hint="If empty, the menu closes at End Time. After closing, tokens are redeemable for 1 more hour."
+            type="time"
+            value={mainMenuClosesAt}
+            onChange={(e) => setMainMenuClosesAt(e.target.value)}
+          />
 
-          {/* Venue with autocomplete */}
+          {/*
+            Venue — the twin of the per-night field above, and it keeps its
+            place for the same reason: the DOM order of this region is venue,
+            then the secrecy control, then what the secrecy control gates.
+          */}
           <div className="space-y-2">
-            <label htmlFor="main-venue" className="block text-sm font-medium text-foreground">Venue</label>
+            <label htmlFor="main-venue" className="block text-xs font-semibold text-ink-2">Venue</label>
             <AutocompleteInput
               id="main-venue"
               value={mainVenueName}
@@ -1417,67 +1364,52 @@ export default function EventForm({
           {/* Venue secret hint & reveal hours */}
           {venueSecret && (
             <div className="space-y-3 pl-2 border-l-2 border-accent/20">
-              <div className="space-y-2">
-                <label htmlFor="main-venue-hint" className="block text-sm font-medium text-foreground">
-                  Venue Hint
-                </label>
-                <input
-                  id="main-venue-hint"
-                  type="text"
-                  value={mainVenueSecretHint}
-                  onChange={(e) => setMainVenueSecretHint(e.target.value)}
-                  placeholder="e.g. 'Near Trastevere...'"
-                  maxLength={500}
-                  className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-                />
-                <p className="text-xs text-muted">Shown to users who can&apos;t see the venue yet</p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="main-reveal-hours" className="block text-sm font-medium text-foreground">
-                  Reveal Hours Before Event
-                </label>
-                {/*
-                  ── The field announced a number the system no longer applies ──
+              <Input
+                id="main-venue-hint"
+                label="Venue Hint"
+                hint="Shown to users who can't see the venue yet"
+                type="text"
+                value={mainVenueSecretHint}
+                onChange={(e) => setMainVenueSecretHint(e.target.value)}
+                placeholder="e.g. 'Near Trastevere...'"
+                maxLength={500}
+              />
+              {/*
+                ── The field announced a number the system no longer applies ──
 
-                  It said `24` and accepted `min={1}`. Both were promises this
-                  form cannot keep: the effective default is
-                  `DEFAULT_VENUE_REVEAL_HOURS` (plan 37-04), and anything under
-                  that floor is refused by `validateEventData` at save time.
-                  Announcing 24 and taking 6 meant the operator discovered the
-                  refusal only after filling the whole form.
+                It said `24` and accepted `min={1}`. Both were promises this
+                form cannot keep: the effective default is
+                `DEFAULT_VENUE_REVEAL_HOURS` (plan 37-04), and anything under
+                that floor is refused by `validateEventData` at save time.
+                Announcing 24 and taking 6 meant the operator discovered the
+                refusal only after filling the whole form.
 
-                  Both values are built from the imported constant, never
-                  retyped: a literal here would be a fourth home for a number
-                  that phase 37 exists to keep in one.
+                Both values are built from the imported constant, never
+                retyped: a literal here would be a fourth home for a number
+                that phase 37 exists to keep in one.
 
-                  `min` is UX and nothing more. The browser attribute stops a
-                  spinner, not a request — the control that matters is the
-                  server-side floor, and it stays there. The point of this
-                  change is that the refusal is visible BEFORE saving, not that
-                  the browser enforces anything.
+                `min` is UX and nothing more. The browser attribute stops a
+                spinner, not a request — the control that matters is the
+                server-side floor, and it stays there. The point of this
+                change is that the refusal is visible BEFORE saving, not that
+                the browser enforces anything.
 
-                  The helper text names the CAUSE with the server's own words,
-                  so the operator does not read two different explanations of
-                  the same refusal.
-                */}
-                <input
-                  id="main-reveal-hours"
-                  type="number"
-                  value={mainVenueRevealHours}
-                  onChange={(e) => setMainVenueRevealHours(e.target.value)}
-                  placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
-                  min={DEFAULT_VENUE_REVEAL_HOURS}
-                  className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50"
-                />
-                <p className="text-xs text-muted">
-                  Approved members see the venue this many hours before the night
-                  starts. Minimum {DEFAULT_VENUE_REVEAL_HOURS} hours: below that
-                  the address mail can leave AFTER the party has started, because
-                  the reveal cron runs once a day and a narrower window can open
-                  after the day&apos;s run has already gone. Widen the window, not
-                  the floor.
-                </p>
-              </div>
+                The helper text names the CAUSE with the server's own words,
+                so the operator does not read two different explanations of
+                the same refusal — and it is now ONE copy shared with the
+                per-night field, addressed by `aria-describedby` rather than
+                sitting beside the control unassociated.
+              */}
+              <Input
+                id="main-reveal-hours"
+                label="Reveal Hours Before Event"
+                hint={VENUE_REVEAL_HOURS_HELP}
+                type="number"
+                value={mainVenueRevealHours}
+                onChange={(e) => setMainVenueRevealHours(e.target.value)}
+                placeholder={`${DEFAULT_VENUE_REVEAL_HOURS} (default)`}
+                min={DEFAULT_VENUE_REVEAL_HOURS}
+              />
 
               {/* Reveal on Purchase toggle */}
               <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
@@ -1511,23 +1443,27 @@ export default function EventForm({
           )}
 
           {/* Access Type */}
-          <div className="space-y-2">
-            <label htmlFor="main-access-type" className="block text-sm font-medium text-foreground">Access Type</label>
-            <select id="main-access-type" value={mainAccessType} onChange={(e) => setMainAccessType(e.target.value as AccessType)}
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground outline-none focus:ring-1 focus:ring-accent/50">
-              {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
+          <Select
+            id="main-access-type"
+            label="Access Type"
+            value={mainAccessType}
+            onChange={(e) => setMainAccessType(e.target.value as AccessType)}
+          >
+            {(Object.entries(ACCESS_TYPE_LABELS) as [AccessType, string][]).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
 
           {/* Capacity */}
-          <div className="space-y-2">
-            <label htmlFor="main-capacity" className="block text-sm font-medium text-foreground">Capacity</label>
-            <input id="main-capacity" type="number" value={mainCapacity} onChange={(e) => setMainCapacity(e.target.value)}
-              placeholder="Leave empty for unlimited" min={1}
-              className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-foreground placeholder:text-muted outline-none focus:ring-1 focus:ring-accent/50" />
-          </div>
+          <Input
+            id="main-capacity"
+            label="Capacity"
+            type="number"
+            value={mainCapacity}
+            onChange={(e) => setMainCapacity(e.target.value)}
+            placeholder="Leave empty for unlimited"
+            min={1}
+          />
         </div>
       )}
 
@@ -1536,7 +1472,17 @@ export default function EventForm({
       {/* Lineup - only shown when no sub-events */}
       {subEvents.length === 0 && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
+          {/*
+            The label is CONVERTED but still UNBOUND, and that is reported
+            rather than papered over.
+
+            `AutocompleteTagInput` exposes no `id`, so there is nothing for a
+            `htmlFor` to name, and the component belongs to plan 41.1-19 — this
+            plan does not open it. A `<label>` with no association is the state
+            this field arrived in; the class string moves onto §8.6's convention
+            and the association is owed to the plan that owns the component.
+          */}
+          <label className="block text-xs font-semibold text-ink-2">
             Lineup
           </label>
           <p className="text-xs text-muted">Press Enter to add artist</p>
@@ -1552,7 +1498,17 @@ export default function EventForm({
 
       {/* Cover Image */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-foreground">
+        {/*
+          This label CAN be bound, because the control it names lives in this
+          file: the file input gains an `id` and the label a `htmlFor`. That is
+          D-41-11's convention rather than a new idea, and it is the difference
+          between a control announced by its name and one announced as "file
+          upload" and nothing else.
+        */}
+        <label
+          htmlFor="event-cover-image"
+          className="block text-xs font-semibold text-ink-2"
+        >
           Cover Image
         </label>
         {imagePreview && (
@@ -1584,15 +1540,35 @@ export default function EventForm({
             </button>
           </div>
         )}
+        {/*
+          The file input stays a raw element rather than becoming the text
+          control: the shared control string draws a well and a boundary around
+          a value, and a file input has no typed value to draw them around. What
+          it takes from the system is the part that applies — the 44px floor on
+          both the element and the button the browser draws inside it (`file:`),
+          and a weight the type scale actually has.
+
+          `accept` is validation, not styling, and is unchanged; so is the
+          double check in `handleImageChange`, which is what actually refuses a
+          file, since the attribute is only a picker filter.
+        */}
         <input
           ref={fileInputRef}
+          id="event-cover-image"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleImageChange}
-          className="block w-full text-sm text-muted file:mr-4 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/30 file:cursor-pointer"
+          className="block min-h-11 w-full text-sm text-muted file:mr-4 file:min-h-11 file:rounded-full file:border-0 file:bg-accent/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-accent hover:file:bg-accent/30 file:cursor-pointer"
         />
+        {/*
+          Its own region, its own cause. `handleImageChange` sets one of two
+          distinct sentences — a rejected type and a rejected size — and neither
+          collapses into the other, nor into the submit failure above. §11's
+          `role="alert"` is what makes it reach a reader who is not looking at
+          it, which a bare paragraph did not.
+        */}
         {imageError && (
-          <p className="text-sm text-red-400">{imageError}</p>
+          <p role="alert" className="text-sm text-sem-crit">{imageError}</p>
         )}
       </div>
 
