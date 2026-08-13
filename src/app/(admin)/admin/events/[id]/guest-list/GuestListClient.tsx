@@ -3,8 +3,42 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast/ToastContext";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Chip";
+import { Input, Select } from "@/components/ui/Input";
 import { addGuest, removeGuest } from "./actions";
 import type { GuestListEntry, GuestListStatus } from "@/types/database";
+
+/**
+ * Who is on the list, and the one lane that adds a name to it.
+ *
+ * ── What the conversion was allowed to touch, and what it was not ────────────
+ *
+ * A guest-list entry is **an entry into a night that never passed approval**.
+ * `community-membership.md` is explicit that such a lane is an exception to the
+ * gating mechanism rather than a convenience feature, and that it has to be
+ * counted and attributed. So this pass changed markup and nothing else: **no
+ * query changed, no column added, no capability check touched, no action
+ * payload altered.** `addGuest` and `removeGuest` are called with byte-identical
+ * arguments, and the author of an entry is still recorded where it always was —
+ * inside `actions.ts`, from an identity the server resolved, which this file
+ * neither reads nor could forge.
+ *
+ * ── The toast, which is this file's other reason to exist ────────────────────
+ *
+ * The toast hook is imported and called here and **nowhere else in the tree**:
+ * this is the product's only toast consumer. *(The hook is named by description
+ * and not spelled in this sentence, so that a count of its occurrences in this
+ * file counts call sites and not prose — the discipline `ToastContainer.tsx`
+ * already applies to the property it stopped spelling.)* Plan 41.1-05 pinned
+ * the container's
+ * inline offset with a measured 32px overlap of the navigation column at exactly
+ * 768px, recorded as a loss rather than a substitution. **Not one call site, not
+ * one string and not one tone below was touched by this conversion** — the copy
+ * is a message a person reads at a door with no error tracking behind it, and
+ * §11 introduces none.
+ */
 
 interface GuestListClientProps {
   entries: GuestListEntry[];
@@ -12,57 +46,30 @@ interface GuestListClientProps {
   eventId: string;
 }
 
-const STATUS_CONFIG: Record<
-  GuestListStatus,
-  { label: string; className: string }
-> = {
-  pending: {
-    label: "Pending",
-    className: "bg-white/10 text-white/60",
-  },
-  invited: {
-    label: "Invited",
-    className: "bg-blue-500/20 text-blue-400",
-  },
-  registered: {
-    label: "Registered",
-    className: "bg-yellow-500/20 text-yellow-400",
-  },
-  ticket_issued: {
-    label: "Ticket Issued",
-    className: "bg-green-500/20 text-green-400",
-  },
-  checked_in: {
-    label: "Checked In",
-    className: "bg-teal-500/20 text-teal-400",
-  },
-  already_has_ticket: {
-    label: "Has Ticket",
-    className: "bg-white/10 text-white/40",
-  },
-  failed: {
-    label: "Failed",
-    className: "bg-red-500/20 text-red-400",
-  },
+/**
+ * The seven states, in the words the interface uses — **labels only now**.
+ *
+ * Each label used to travel with a raw palette pair (a blue, a yellow, a green,
+ * a teal, a red and two whites), so the state was told by hue first and by the
+ * word second. §8.5's badge has two tones and neither of them grades an
+ * outcome: `emphasis` means *look here first* and is a `--sem-done` fill, which
+ * on a failed row would say the opposite of what happened. So every mark is the
+ * neutral rung and **the word is the channel** — which is also §12's rule, that
+ * colour is never the only one.
+ *
+ * The one state that carries more than a word still does: a failed entry prints
+ * its own reason under the row, in the crit ink, and that sentence is the thing
+ * an operator acts on.
+ */
+const STATUS_LABELS: Record<GuestListStatus, string> = {
+  pending: "Pending",
+  invited: "Invited",
+  registered: "Registered",
+  ticket_issued: "Ticket Issued",
+  checked_in: "Checked In",
+  already_has_ticket: "Has Ticket",
+  failed: "Failed",
 };
-
-function StatusBadge({
-  status,
-  errorMessage,
-}: {
-  status: GuestListStatus;
-  errorMessage: string | null;
-}) {
-  const config = STATUS_CONFIG[status];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.className}`}
-      title={status === "failed" && errorMessage ? errorMessage : undefined}
-    >
-      {config.label}
-    </span>
-  );
-}
 
 export default function GuestListClient({
   entries,
@@ -156,65 +163,67 @@ export default function GuestListClient({
   return (
     <div className="space-y-6">
       {/* Add Guest Form */}
-      <form
-        onSubmit={handleAddGuest}
-        className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4"
-      >
-        <h2 className="text-lg font-semibold">Add Guest</h2>
+      <Card>
+        <form onSubmit={handleAddGuest} className="space-y-4">
+          {/*
+            The HEADING role and not the section label. §7.1 names the six
+            component headings that render one step above the heading size and
+            says what they become when their surface converts — this was one of
+            them, so it lands on the 16px/600 interface rung rather than on the
+            caps-and-tracking label above a group.
+          */}
+          <h2 className="text-base font-semibold text-ink">Add Guest</h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-muted mb-1">
-              First Name *
-            </label>
-            <input
+          {/*
+            One column on a phone, two from the tablet tier up. The pair used to
+            be two columns at every width, which puts two 44px fields into a
+            390px screen minus the gutter — §2.2's middle step is exactly the
+            width where a two-up row starts being readable.
+          */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Input
+              id="guest-first-name"
+              label="First Name *"
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
               placeholder="First name"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground placeholder:text-white/30 focus:border-accent focus:outline-none"
             />
-          </div>
-          <div>
-            <label className="block text-xs text-muted mb-1">
-              Last Name *
-            </label>
-            <input
+            <Input
+              id="guest-last-name"
+              label="Last Name *"
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               required
               placeholder="Last name"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground placeholder:text-white/30 focus:border-accent focus:outline-none"
             />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-xs text-muted mb-1">
-            Email (optional)
-          </label>
-          <input
+          {/*
+            The sentence under this field is a `hint`, not a loose paragraph: it
+            says the address triggers a registration and an email, which is the
+            one thing on this form a person needs to know BEFORE typing. As a
+            sibling it was visible and unassociated; as a hint it is named in
+            `aria-describedby` and reaches somebody who never sees it.
+          */}
+          <Input
+            id="guest-email"
+            label="Email (optional)"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="guest@example.com"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground placeholder:text-white/30 focus:border-accent focus:outline-none"
+            hint="If provided, the guest will be auto-registered and receive an invitation email with their ticket."
           />
-          <p className="text-xs text-muted mt-1">
-            If provided, the guest will be auto-registered and receive an
-            invitation email with their ticket.
-          </p>
-        </div>
 
-        {parties.length > 0 && (
-          <div>
-            <label className="block text-xs text-muted mb-1">Party</label>
-            <select
+          {parties.length > 0 && (
+            <Select
+              id="guest-party"
+              label="Party"
               value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
             >
               <option value="">All Parties</option>
               {parties.map((party) => (
@@ -222,36 +231,35 @@ export default function GuestListClient({
                   {party.title}
                 </option>
               ))}
-            </select>
-          </div>
-        )}
+            </Select>
+          )}
 
-        <button
-          type="submit"
-          disabled={isSubmitting || isPending}
-          className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {isSubmitting ? "Adding..." : "Add Guest"}
-        </button>
-      </form>
+          {/*
+            Width is the caller's, per the button ladder's own docblock — the
+            pill is inline by construction and a full-width action says so here.
+            The label is unchanged: §11 introduces no button copy.
+          */}
+          <Button
+            type="submit"
+            disabled={isSubmitting || isPending}
+            className="w-full"
+          >
+            {isSubmitting ? "Adding..." : "Add Guest"}
+          </Button>
+        </form>
+      </Card>
 
       {/* Summary Stats */}
       {entries.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/60">
-            Total: {entries.length}
-          </span>
+          <Badge>Total: {entries.length}</Badge>
           {Object.entries(statusCounts).map(([status, count]) => {
-            const config =
-              STATUS_CONFIG[status as GuestListStatus];
-            if (!config) return null;
+            const label = STATUS_LABELS[status as GuestListStatus];
+            if (!label) return null;
             return (
-              <span
-                key={status}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${config.className}`}
-              >
-                {config.label}: {count}
-              </span>
+              <Badge key={status}>
+                {label}: {count}
+              </Badge>
             );
           })}
         </div>
@@ -259,71 +267,94 @@ export default function GuestListClient({
 
       {/* Guest List */}
       {entries.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
-          <p className="text-muted text-sm">
-            No guests added yet. Use the form above to add guests.
+        /* §8.11's empty-state contract — a class string, not a component. */
+        <div className="px-6 py-12 text-center">
+          <p className="text-base font-semibold text-ink">No guests yet</p>
+          <p className="mt-1 text-sm text-muted">
+            Add the first one with the form above.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {entries.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {entry.first_name} {entry.last_name}
-                  </p>
-                  <StatusBadge
-                    status={entry.status}
-                    errorMessage={entry.error_message}
-                  />
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {entry.email && (
-                    <p className="text-xs text-muted truncate">{entry.email}</p>
-                  )}
-                  <p className="text-xs text-white/30">
-                    {entry.party_id
-                      ? partyMap.get(entry.party_id) || "Unknown Party"
-                      : "All Parties"}
-                  </p>
-                </div>
-                {entry.status === "failed" && entry.error_message && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {entry.error_message}
-                  </p>
-                )}
-              </div>
+            <li key={entry.id}>
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {entry.first_name} {entry.last_name}
+                      </p>
+                      {/*
+                        A mark that STATES and cannot be operated, so it is a
+                        badge and not a chip — the sentence at the top of
+                        `Chip.tsx` is what decides that.
+                      */}
+                      <Badge>{STATUS_LABELS[entry.status]}</Badge>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      {entry.email && (
+                        <p className="truncate text-xs text-muted">
+                          {entry.email}
+                        </p>
+                      )}
+                      {/*
+                        This line used to be dimmer than the muted ink, which is
+                        below the readable floor rather than a quieter rung of
+                        it — §5's ladder stops at muted, and muted is what
+                        clears 4.5 : 1 on the card ground.
+                      */}
+                      <p className="text-xs text-muted">
+                        {entry.party_id
+                          ? partyMap.get(entry.party_id) || "Unknown Party"
+                          : "All Parties"}
+                      </p>
+                    </div>
+                    {entry.status === "failed" && entry.error_message && (
+                      <p className="mt-1 text-xs text-sem-crit">
+                        {entry.error_message}
+                      </p>
+                    )}
+                  </div>
 
-              <button
-                onClick={() => handleRemoveGuest(entry)}
-                className="ml-2 shrink-0 rounded-lg p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                title="Remove guest"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </button>
-            </div>
+                  {/*
+                    An icon-only control has no name of its own, and the
+                    primitive makes the name a required prop rather than a
+                    convention. It names the ROW and not the column — a list of
+                    forty identical `Remove` buttons is what that avoids.
+
+                    `ghost` and not `destructive`: this control OPENS a
+                    confirmation, and §11 gives the destructive fill to the
+                    button that confirms, never to the one that asks.
+                  */}
+                  <IconButton
+                    aria-label={`Remove ${entry.first_name} ${entry.last_name} from the guest list`}
+                    onClick={() => handleRemoveGuest(entry)}
+                    className="ml-2 shrink-0"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  </IconButton>
+                </div>
+              </Card>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
