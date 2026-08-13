@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   reHideVenue,
   revealVenueNow,
@@ -8,6 +8,8 @@ import {
   type VenueRevealActionResult,
   type VenueRevealRefusal,
 } from "@/app/(admin)/admin/events/[id]/reveal/actions";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 
 /**
  * The confirmation asked before an address leaves — and the one asked before a
@@ -15,10 +17,10 @@ import {
  *
  * ── What this dialog IS, said where the analog says what it is NOT ───────────
  *
- * The shape below is copied from `admin/formats/RetireFormatDialog.tsx` — the
+ * The shape below came from `admin/formats/RetireFormatDialog.tsx` — the
  * `<dialog>` shell, `showModal()`, the focus on `Cancel`, the refusal box, the
  * `catch` that branches on the shape of a failure. That file's docblock
- * (`:27-35`) already names this one, in advance, as the opposite case:
+ * (`:41-49`) already names this one, in advance, as the opposite case:
  *
  *   "Retiring **publishes nothing** and is **reversible**. It is not a monotone
  *    switch and it must not be built like one: unlike `venue_reveal_sent`,
@@ -31,15 +33,70 @@ import {
  * person is **the number of people**, because it turns an abstraction into
  * human beings (D-37-16).
  *
+ * ── The shell is no longer in this file ──────────────────────────────────────
+ *
+ * Plan 41.1-20 moved it to `src/components/ui/Dialog.tsx`, which was extracted
+ * from the same ancestor this file and `RetireFormatDialog.tsx` both name. What
+ * the primitive brought with it, and what this file therefore stopped carrying:
+ * the panel geometry, the scrim, the light-dismiss handler, the open/close
+ * effect, and the initial focus. What stays here is what this dialog **is** —
+ * the question, the two answers, the eleven refusals, and the three acts.
+ *
+ * One consequence worth stating rather than discovering: the local reset of the
+ * refusal and the outcome used to happen in the open effect, so a dismissal by
+ * `Esc` left them standing until the next open. It now happens in `close()`,
+ * which the primitive calls on **every** close route — the control, `Esc`, and
+ * the platform's own close event. Same observable state, one place instead of
+ * two.
+ *
+ * ── The focus target, before and after, measured rather than argued ──────────
+ *
+ * `41-UI-SPEC.md` §11 fixes the rule for a destructive confirmation: the cancel
+ * is the default and the initial focus target, no Enter-to-confirm, and no
+ * autofocus on the confirming control. This file already kept that rule. What
+ * it did not keep was **one** mechanism for it, or a visible one.
+ *
+ * **Before**, two mechanisms sat here for one intent. The React `autofocus`
+ * prop on `Cancel` is **inert**: `Dialog.tsx:117-148` reads it out of the
+ * installed `react-dom@19` — the attribute writer skips it, so no `autofocus`
+ * attribute ever reaches the DOM, and `showModal()`, running later in an effect,
+ * cannot find one. But the effect in this file then called `.focus()` on the
+ * cancel ref immediately after `showModal()`, which is exactly the moment that
+ * lands. So `Cancel` **was** focused. It simply was not visible: the hand-rolled
+ * buttons declared no focus expression at all, so nothing on screen said which
+ * control held the focus.
+ *
+ * **This corrects D-41.1-24 and `41.1-PATTERNS.md` §5.3**, which read the inert
+ * attribute and concluded the focus placement here was *"unspecified in
+ * practice"*. The conclusion about the attribute is right; the conclusion about
+ * this file is not, because the imperative call one screen above it was not
+ * read. Recorded rather than edited away — a claim withdrawn without its
+ * measurement reads as a slip, and this one is the exact claim the phase asked
+ * to be verified rather than assumed.
+ *
+ * **After**, one mechanism: `Cancel` carries the initial-focus marker and the
+ * primitive focuses that element imperatively after `showModal()`
+ * (`Dialog.tsx:246-262`), the inert prop is gone rather than kept beside the
+ * marker, and `Cancel` is a `Button`, so it carries the shared focus expression
+ * and the placement is **observable**. The marker is written once, on the
+ * control, which is the whole point of a declared marker over a heuristic: it is
+ * greppable, and it appears exactly once in this file.
+ *
+ * **The sentence the monotone guard needs:** the reveal is at least as hard to
+ * trigger after this conversion as before, and harder in the one respect a
+ * person can check — the focus lands on `Cancel` by declaration instead of by
+ * two mechanisms of which one is dead, and a person can now see that it did.
+ * Nothing here shortens the path between opening this dialog and sending.
+ *
  * ── No typed confirmation, and that is a decision rather than an omission ────
  *
  * Two buttons, `Cancel` focused. No box to type the venue's name into, no word
  * to repeat. D-37-16: the wrong friction on an act performed in a hurry — on a
  * Friday, late, by whoever is at a keyboard — produces **postponement, not
  * prudence**, and a reveal postponed past its window is the failure this whole
- * phase exists to prevent. The analog states the other half of it: *a
- * confirmation whose Enter key performs the act is a confirmation that did not
- * ask*, which is why `Cancel` is first in the DOM and holds the focus.
+ * phase exists to prevent. The other half of it: *a confirmation whose Enter key
+ * performs the act is a confirmation that did not ask*, which is why `Cancel` is
+ * first in the DOM and holds the focus.
  *
  * ── No time limit, either (D-37-11) ─────────────────────────────────────────
  *
@@ -66,11 +123,23 @@ import {
  * *the request never left* against *the server refused it* — which is the most
  * that can honestly be told apart without a message.
  *
- * The ten refusals are rendered from a **total** `Record`. A member added to
+ * The eleven refusals are rendered from a **total** `Record`. A member added to
  * the union upstream turns this file red at build time instead of rendering a
  * blank at two in the morning. That is the opposite choice from the analog,
  * which narrows to a reachable subset — and the reason for the difference is
- * that these ten all reach here: one surface calls all three acts.
+ * that these eleven all reach here: one surface calls all three acts.
+ *
+ * (**Eleven**, not the ten this paragraph used to claim. Counted against the
+ * union at `actions.ts:144-275` — eleven members, and the `Record` below has
+ * always carried all eleven, so only the sentence was wrong. Corrected with its
+ * measurement rather than quietly, because a count in prose that nobody rechecks
+ * is how a file starts describing a neighbour it no longer resembles.)
+ *
+ * The refusal is now the primitive's `status` region rather than a box drawn
+ * here. It keeps its alert role and it moves **outside** the scrolling body
+ * (`Dialog.tsx:316-325`), so a refusal can no longer appear below the fold of a
+ * long consequence list. In a project with no error tracking, a refusal a person
+ * has to scroll to find is the newsletter form's failure with an extra step.
  */
 
 /** Which of the three acts this dialog is confirming. */
@@ -226,35 +295,9 @@ export default function RevealVenueDialog({
   onClose,
   onDone,
 }: RevealVenueDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) dialog.showModal();
-      setRefusal(null);
-      setOutcome(null);
-      // `Cancel` takes the default focus. A confirmation whose Enter key
-      // performs the act is a confirmation that did not ask — and on this
-      // surface the act publishes an address.
-      //
-      // `showModal()` also traps focus while the dialog is open — the rest of
-      // the document is inert — so no key handler is needed to keep it inside.
-      cancelRef.current?.focus();
-    } else {
-      if (dialog.open) dialog.close();
-    }
-  }, [open]);
-
-  const handleDialogClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   function close() {
     setRefusal(null);
@@ -330,8 +373,8 @@ export default function RevealVenueDialog({
         : `The page goes back to hiding the address of ${venueName}. This is not an undo.`;
 
   /**
-   * What stays true afterwards, in the shape `RetireFormatDialog:261-268` uses:
-   * the consequences named one by one, never a generic warning.
+   * What stays true afterwards, in the shape the analog uses: the consequences
+   * named one by one, never a generic warning.
    */
   const consequences =
     mode === "reveal"
@@ -359,107 +402,103 @@ export default function RevealVenueDialog({
         : "Take back to secret";
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="fixed inset-0 m-0 h-dvh w-dvw max-h-none max-w-none bg-black/80 backdrop:bg-transparent p-0"
-      onClose={handleDialogClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
+    <Dialog
+      open={open}
+      onClose={close}
+      title={heading}
+      status={refusal ? { tone: "crit", message: refusal } : null}
+      actions={
+        outcome ? (
+          <Button variant="secondary" className="w-full" onClick={close}>
+            Close
+          </Button>
+        ) : (
+          <div className="flex gap-3">
+            {/*
+              `Cancel` first in the DOM, first in the tab order, and carrying
+              the marker the primitive focuses on open. There is no text field
+              in this dialog and there must not be one: D-37-16 refuses a typed
+              confirmation, because the wrong friction on an act done in a hurry
+              produces postponement, not prudence.
+
+              `showModal()` also traps focus for as long as the dialog is open —
+              the rest of the document is inert — so no key handler keeps it
+              inside. That is the browser's, and it is why the native modal
+              element is the right shell for a confirmation.
+            */}
+            <Button
+              variant="secondary"
+              className="flex-1"
+              data-initial-focus
+              onClick={close}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+
+            {/*
+              The confirming control takes the destructive rung — and that
+              REVERSES what this file used to say, so the old reasoning is
+              quoted rather than deleted:
+
+                "NOT the destructive red … revealing does not destroy, it
+                 **publishes**. Red on this surface is the colour of a refusal
+                 box, and borrowing it here would say 'this might break
+                 something' when the true sentence is 'this reaches people and
+                 cannot be recalled'. The brake is the number in the paragraph
+                 above, not a hue."
+
+              Two things overrule it. First, `41-UI-SPEC.md` §11 names this
+              dialog by name as one of the three destructive confirmations and
+              fixes the rung for all three; a house rule that a surface opts out
+              of per file is not a rule. Second, the reason it argued from no
+              longer holds: the refusal is no longer a box drawn in a borrowed
+              colour, it is the primitive's status region in the critical
+              semantic ink, so the confirming control and a refusal are told
+              apart by position and role rather than by hue.
+
+              What does NOT change is the sentence it was defending: the brake
+              on this act is the number of people in the paragraph above, and
+              the rung is not asked to carry it. And the direction is the safe
+              one under a monotone guard — a heavier confirming control makes
+              the act harder to press by accident, never easier.
+
+              Taking a night back to secret is NOT destructive — it publishes
+              nothing and sends nothing — so it does not borrow that treatment.
+              It is still a decision of its own, which is why it is behind this
+              dialog at all, and it takes the primary rung so that it cannot be
+              mistaken for the cancel beside it. Same asymmetry, same shape, as
+              the analog's retire against restore.
+            */}
+            <Button
+              variant={mode === "re_hide" ? "primary" : "destructive"}
+              className="flex-1"
+              onClick={confirm}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Working…" : confirmLabel}
+            </Button>
+          </div>
+        )
+      }
     >
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div
-          role="document"
-          className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-card-border bg-background p-6"
-        >
-          {/* `normal-case`: the heading carries a night's title, and
+      {outcome ? (
+        <p className="text-sm text-ink">{outcome}</p>
+      ) : (
+        <>
+          {/* `normal-case`: the lead carries a venue's name, and
               `text-transform` inherits. */}
-          <h2 className="text-lg font-bold text-foreground normal-case">
-            {heading}
-          </h2>
+          <p className="text-sm text-ink normal-case">{lead}</p>
 
-          {outcome ? (
-            <>
-              <p className="mt-3 text-sm text-foreground">{outcome}</p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={close}
-                  className="w-full rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground"
-                >
-                  Close
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="mt-3 text-sm text-foreground normal-case">{lead}</p>
-
-              <ul className="mt-4 space-y-2">
-                {consequences.map((sentence) => (
-                  <li key={sentence} className="text-sm text-muted">
-                    {sentence}
-                  </li>
-                ))}
-              </ul>
-
-              {refusal && (
-                <div
-                  role="alert"
-                  className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-                >
-                  <p className="text-sm text-red-400">{refusal}</p>
-                </div>
-              )}
-
-              <div className="mt-6 flex gap-3">
-                {/*
-                  `Cancel` first in the DOM, first in the tab order, and holding
-                  the focus the effect above put on it. There is no text field
-                  in this dialog and there must not be one: D-37-16 refuses a
-                  typed confirmation, because the wrong friction on an act done
-                  in a hurry produces postponement, not prudence.
-                */}
-                <button
-                  ref={cancelRef}
-                  type="button"
-                  autoFocus
-                  onClick={close}
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-full border border-card-border px-6 py-3 text-sm font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={confirm}
-                  disabled={isSubmitting}
-                  className={
-                    mode === "re_hide"
-                      ? // Secondary treatment. Taking a night back to secret is
-                        // a decision of its own, but it publishes nothing and
-                        // sends nothing, so it does not take the weight of the
-                        // act above it.
-                        "flex-1 rounded-full border border-card-border px-6 py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-                      : // NOT the destructive red of `RetireFormatDialog:336`,
-                        // and the omission is reasoned rather than inherited:
-                        // revealing does not destroy, it **publishes**. Red on
-                        // this surface is the colour of a refusal box, and
-                        // borrowing it here would say "this might break
-                        // something" when the true sentence is "this reaches
-                        // people and cannot be recalled". The brake is the
-                        // number in the paragraph above, not a hue.
-                        "flex-1 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  }
-                >
-                  {isSubmitting ? "Working…" : confirmLabel}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </dialog>
+          <ul className="mt-4 space-y-2">
+            {consequences.map((sentence) => (
+              <li key={sentence} className="text-sm text-muted">
+                {sentence}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Dialog>
   );
 }

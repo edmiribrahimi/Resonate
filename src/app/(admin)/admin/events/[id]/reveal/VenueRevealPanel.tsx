@@ -10,6 +10,9 @@ import {
   type VenueRevealLastAct,
   type VenueRevealStateResult,
 } from "@/app/(admin)/admin/events/[id]/reveal/actions";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SectionHeading } from "@/components/ui/Typography";
 import type { VenueRevealAct } from "@/types/database";
 import { formatDateTime } from "@/utils/formatTime";
 
@@ -27,6 +30,27 @@ import { formatDateTime } from "@/utils/formatTime";
  * a target in state, `onDone` reloading — is copied from that file. The state
  * machine is not.
  *
+ * ── What plan 41.1-20 changed here, and what it deliberately did not ─────────
+ *
+ * Changed: the container is the shared card, the trace heading is the shared
+ * section heading, the three controls are the shared pill, and the four
+ * raw-palette sentences are semantic ink. The failed-read notice loses its
+ * tinted box and keeps its alert role on the sentence itself — a box around one
+ * sentence is a container that states nothing its content does not
+ * (`Dialog.tsx:180-193`), and the sentence is what a person reads either way.
+ *
+ * The outer element goes from a `<section>` to the card's `<div>`. **That
+ * removes nothing from the accessibility tree**: a `section` becomes a `region`
+ * landmark only when it carries an accessible name, and this one never did — no
+ * label, no `aria-labelledby`. Adding one now would be adding a landmark this
+ * surface does not have, which is a change and not a conversion.
+ *
+ * Not changed, and each for a reason older than this conversion: **which state
+ * the button is in, when it is offered at all, what it says, what the panel does
+ * when the read fails, and every sentence a person reads.** The three
+ * paragraphs below are the properties a conversion may not touch, and they are
+ * behaviour rather than appearance.
+ *
  * ── The three states, and why they share one position (D-37-19, D-37-20) ─────
  *
  *   1. `revealedAt === null`                → **Reveal now**
@@ -34,13 +58,13 @@ import { formatDateTime } from "@/utils/formatTime";
  *   3. `revealedAt` set, pending === 0      → **out**, with the date and the
  *                                              full name of whoever did it
  *
- * They are one `<button>` element whose label and handler change, not three
- * buttons drawn in three places. The reason is the second press: a person who
- * pressed once and is not sure comes back and looks **at the same spot**. If
- * the control has moved, or vanished, the question *"did I already do it?"* has
- * no answer there — and on an act that publishes an address, an unanswered
- * question is somebody pressing again to find out. The refusal is therefore
- * **visible instead of absent**, and it is the answer as well.
+ * They are one control whose label and handler change, not three controls drawn
+ * in three places. The reason is the second press: a person who pressed once and
+ * is not sure comes back and looks **at the same spot**. If the control has
+ * moved, or vanished, the question *"did I already do it?"* has no answer there
+ * — and on an act that publishes an address, an unanswered question is somebody
+ * pressing again to find out. The refusal is therefore **visible instead of
+ * absent**, and it is the answer as well.
  *
  * A spent button is drawn **out, not gone**, for the other half of the same
  * reason: a pressable control on an irreversible act invites a press just to
@@ -237,15 +261,17 @@ export default function VenueRevealPanel({
       : null;
 
   return (
-    <section className="rounded-2xl border border-card-border bg-card p-5">
-      <h3 className="text-sm font-semibold text-foreground normal-case">
+    <Card>
+      {/* `normal-case`: the heading carries a night's title, and
+          `text-transform` inherits. */}
+      <h3 className="text-sm font-semibold text-ink normal-case">
         {nightTitle}
       </h3>
 
       {venueName ? (
         <p className="mt-1 text-xs text-muted normal-case">{venueName}</p>
       ) : (
-        <p className="mt-1 text-xs text-red-400">
+        <p className="mt-1 text-xs text-sem-crit">
           This night names no venue and no venue text, so there is no address to
           release. Give it a venue in the form above first — a reveal that
           publishes nothing still writes an act that cannot be taken back.
@@ -253,18 +279,21 @@ export default function VenueRevealPanel({
       )}
 
       {disagreement && (
-        <p role="status" className="mt-3 text-xs text-amber-400">
+        <p role="status" className="mt-3 text-xs text-sem-warn">
           {disagreement}
         </p>
       )}
 
+      {/*
+        The failed read keeps its alert role and its own sentence, and loses the
+        tinted box it used to sit in. The role is what makes it announced; the
+        box was decoration around one paragraph, and the ink is the semantic
+        critical token rather than a raw palette step.
+      */}
       {panel.phase === "failed" && (
-        <div
-          role="alert"
-          className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
-        >
-          <p className="text-sm text-red-400">{panel.sentence}</p>
-        </div>
+        <p role="alert" className="mt-3 text-sm text-sem-crit">
+          {panel.sentence}
+        </p>
       )}
 
       {/*
@@ -272,18 +301,21 @@ export default function VenueRevealPanel({
         database; its position does not. Everything that could have been a
         second button — the answer to a second press — is the sentence
         underneath it.
+
+        The conditional below is the one that decides whether an irreversible
+        act can be started from this surface, and it is byte-for-byte the one
+        this file has always carried.
       */}
       <div className="mt-4">
-        <button
-          type="button"
+        <Button
+          className="w-full"
           disabled={button.mode === null}
           onClick={() => {
             if (button.mode !== null) setDialogMode(button.mode);
           }}
-          className="w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {button.working ? "Working…" : button.label}
-        </button>
+        </Button>
 
         {spentSentence && (
           <p className="mt-2 text-xs text-muted normal-case">{spentSentence}</p>
@@ -325,14 +357,14 @@ export default function VenueRevealPanel({
         a refusal that is visible beats one that is absent.
       */}
       {panel.phase === "ready" && revealed && venueName !== null && (
-        <div className="mt-5 border-t border-card-border pt-4">
-          <button
-            type="button"
+        <div className="mt-5 border-t border-line pt-4">
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => setDialogMode("re_hide")}
-            className="rounded-full border border-card-border px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-foreground"
           >
             Take back to secret
-          </button>
+          </Button>
           <p className="mt-2 text-xs text-muted">
             Master only. It unsends nothing and clears nothing: the acts above
             stay, so this night keeps saying it was revealed even while its page
@@ -358,7 +390,7 @@ export default function VenueRevealPanel({
           onDone={reload}
         />
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -396,15 +428,13 @@ function VenueRevealTrace({
   readonly phase: PanelState["phase"];
 }) {
   return (
-    <div className="mt-5 border-t border-card-border pt-4">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
-        Acts on this night
-      </h4>
+    <div className="mt-5 border-t border-line pt-4">
+      <SectionHeading as="h4">Acts on this night</SectionHeading>
 
       {phase === "loading" ? (
-        <p className="mt-2 text-xs text-muted">Reading…</p>
+        <p className="text-xs text-muted">Reading…</p>
       ) : phase === "failed" ? (
-        <p className="mt-2 text-xs text-red-400">
+        <p className="text-xs text-sem-crit">
           The trace could not be read, so what has been done to this night is
           unknown. This is NOT “nothing has been done”: if this night has
           already been revealed, that act happened and this list cannot show it.
@@ -413,17 +443,17 @@ function VenueRevealTrace({
       ) : acts.length === 0 ? (
         // Reached only on a successful read, so the sentence is a measurement
         // and may be stated as one.
-        <p className="mt-2 text-xs text-muted">
+        <p className="text-xs text-muted">
           Nothing has been done to this night&apos;s venue yet.
         </p>
       ) : (
-        <ul className="mt-2 space-y-1">
+        <ul className="space-y-1">
           {acts.map((act) => (
             <li
               key={`${act.at}-${act.act}`}
               className="text-xs text-muted normal-case"
             >
-              <span className="text-foreground">{ACT_LABEL[act.act]}</span>
+              <span className="text-ink">{ACT_LABEL[act.act]}</span>
               {" — "}
               {formatDateTime(act.at)}
               {" — "}
