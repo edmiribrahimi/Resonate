@@ -678,7 +678,7 @@ Plans:
 - [x] 41-27-PLAN.md — the hunt for a green: ten-plus rewrites of the branch, at least three invented by whoever runs them
 - [x] 41-28-PLAN.md — the dialog debt stops falling for a file outside the walk, and the docblock stops claiming two lists that cannot drift
 - [x] 41-29-PLAN.md — the comment stripper blanks the comment and not the line, in both gates, and both headers stop claiming a bound the code does not have
-- [ ] 41-30-PLAN.md — check E declares the reach it has: the file, not the route — unmeasured, not approved
+- [x] 41-30-PLAN.md — check E declares the reach it has: the file, not the route — unmeasured, not approved
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -859,7 +859,7 @@ Plans:
 | 38. Live Attendance Freshness | 6/7 | In Progress|  |
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
-| 41. Shared Primitives & Three-Tier Layout | 29/30 | In Progress|  |
+| 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
 | 42. Scanner Conversion | 0/TBD | Not started | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
