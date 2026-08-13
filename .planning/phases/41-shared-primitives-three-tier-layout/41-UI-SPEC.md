@@ -1187,6 +1187,51 @@ available, in which case criterion 5 is recorded `human_needed` and not ticked.
    is not one. **A badge that is a `<Link>` or a `<button>` is a Chip** and is
    not exempt.
 
+**Entries 7 and 8 were added on 2026-08-14, by the owner's authorisation, and
+the list is still closed.** They were opened by a decision, not by a red: the
+distinction is the whole of rule 3 in §0, and it is worth stating in the form
+the gate itself demanded. G5 predicted the first of these two shapes in its own
+source, declined to pre-empt it, and wrote that *when the first one arrives, the
+resolution is a contract edit that a person reads*. On 2026-08-14 nine elements
+arrived across five files, **every one of them correct code**, and this is that
+edit. **No threshold moved — 44px remains 44px at every tier — no existing entry
+was widened, and no element was changed to satisfy the parser.** The rejected
+alternative is recorded because it is the one somebody will propose again:
+writing the minimum onto each of the five call sites under 8 would have cleared
+the red without moving any work, and would have put a hard-coded value on five
+sites whose entire purpose is to share one constant.
+
+7. **An `<input>` whose type is hidden** — it is **not an interactive element**,
+   so it never enters the measured set at all. It renders no box, cannot be
+   pressed, cannot take focus and is not in the tab order; a height written on
+   it would apply to a box that does not exist. This is entry 6's distinction
+   one level down — 6 says a `<span>` is not interactive by its **tag**, and 7
+   says an input is not interactive by its **attribute** — so G5 reads it at the
+   element's own tag rather than from a per-file list. **The abuse route is
+   closed by a refusal, not by trust:** an input declared hidden that *also*
+   carries a height utility is a contradiction — one of the two statements is
+   false and the parser cannot say which — and G5 exits 2 on it, refusing rather
+   than forgiving. Not to be confused with entry 5, whose input is **visible**,
+   focusable, and merely moved off-screen.
+8. **A call site whose declared minimum lives in a module constant** — declared
+   **element by element**, never by shape, in G5's `CONSTANT_MINIMUM_ELEMENTS`,
+   each entry naming its file, its tag, a fragment that resolves to exactly one
+   element, the constant it rests on, and the reason. This is the residual G5
+   has stated since it was written and already forgives for the navigation
+   entry, for `Checkbox` and for `Switch`: **the parser reads class strings and
+   cannot resolve an interpolation.** The element is right; the reader is
+   limited. Three guards keep it from becoming a blanket, each pointing away
+   from a green: a fragment matching zero or several elements **refuses**; an
+   element that does not actually interpolate the named constant **refuses**;
+   and the constant no longer declaring the minimum is a **failure**, entry 2's
+   premise check applied per constant instead of per file.
+
+**Neither entry closes anything about rendered boxes.** Five more elements are
+forgiven on a stated reason rather than measured, and G5 prints all of them with
+their constants, so a green still states what it took itself over. **H41-4, on a
+large touch screen, remains the only thing in this repository that proves
+anything renders at 44px**, it is still owed, and no green here ticks it.
+
 **Before it is committed** (D-41-19): proven **red** by mutating one `min-h-11`
 to `min-h-8` in a converted file, with the mutation asserted to have landed
 before the result is read; and proven **green** on the hardest correct file in

@@ -67,21 +67,39 @@
  * The same run is the evidence for the fifth comment shape below: **zero
  * unterminated opening tags across all 180 files.**
  *
- * ── THE SIX EXEMPTIONS, CLOSED BEFORE THE FIRST RUN ─────────────────────────
+ * ── THE EXEMPTIONS: SIX CLOSED BEFORE THE FIRST RUN, TWO ADDED BY DECISION ──
  *
  * §0 rule 3: an exemption list is written before the gate, not after its first
- * red. All six below existed before this file was executed once. Each is a
- * named exported constant with its reason above it, and **the report prints how
- * many times each was applied** — a green must state what it forgave.
+ * red. Six below existed before this file was executed once. Each is a named
+ * exported constant with its reason above it, and **the report prints how many
+ * times each was applied** — a green must state what it forgave.
  *
  * **Three of the six have zero sites in this tree today** (3, 4 and 5). That is
  * recorded rather than hidden, and each was proven able to fire by mutation:
  * an exemption nobody can reach is decoration, and this repository already
  * measured what a decorative check costs.
  *
- * **Adding a seventh is a contract edit**, not a fix for a red. §13's list is
- * closed. The known future red is written at `KNOWN_FUTURE_REDS` below rather
- * than pre-empted by a quiet widening.
+ * **Adding a seventh is a contract edit**, not a fix for a red. That sentence
+ * stood here unexercised until 2026-08-14, when plan 41.1-24 brought the
+ * ticketing forms and two autocomplete components into the manifest and this
+ * gate went red on **nine elements in five files, every one of them correct
+ * code** — four inputs of type hidden, which render no box at all, and five call
+ * sites whose declared minimum lives in a module constant this parser has never
+ * been able to resolve.
+ *
+ * **The route this file named in advance is the one that was taken.** The owner
+ * authorised a contract edit to `41-UI-SPEC.md` §13 on 2026-08-14; entries 7 and
+ * 8 below are written to match it, each carrying its reason, each counted and
+ * printed. **The list is still closed** — it was opened by a decision somebody
+ * signed, not by a red — and the two things that were NOT done are worth as much
+ * as the thing that was: **no threshold moved** (44px is still 44px), and **no
+ * element was edited to satisfy the parser**, which would have moved the number
+ * without moving the work and put a hard-coded value on five call sites whose
+ * whole purpose is a shared constant.
+ *
+ * The second known future red is still future, at `KNOWN_FUTURE_REDS` below;
+ * the first is recorded at `ARRIVED_FUTURE_REDS` with how it was closed, rather
+ * than deleted on the day it came true.
  *
  * ── EXEMPTION 2a IS A DECLARED LIST OF ELEMENTS, NOT A FILE-WIDE BLANKET ─────
  *
@@ -849,22 +867,178 @@ export const NON_INTERACTIVE_COMPONENTS = [
 ];
 
 /**
- * The one shape this gate is known to red on, written down instead of pre-empted.
+ * EXEMPTION 7 — an input whose type is hidden: NOT AN INTERACTIVE ELEMENT.
  *
- * A hidden input has no box at all, so failing it would be a red on correct
- * code — and it is the most likely seventh exemption somebody will want. It is
- * NOT added here: §13's list is closed, and widening it to clear a red is the
- * tampering `T-41-42` names. There are zero such elements in scope today; when
- * the first one arrives, the resolution is a contract edit that a person reads.
+ * ── The known future red arrived, and this is the contract edit it named ─────
+ *
+ * `KNOWN_FUTURE_REDS` below predicted this shape verbatim and refused to
+ * pre-empt it: *"when the first one arrives, the resolution is a contract edit
+ * that a person reads."* Four arrived at once, on 2026-08-14, when plan 41.1-24
+ * brought the ticketing forms into the manifest. **The owner authorised the
+ * contract edit on that date**, and `41-UI-SPEC.md` §13 carries it as entry 7
+ * with the same reason written here. The list is still closed: it was opened by
+ * a decision somebody signed, not by a red.
+ *
+ * ── Why this is an EXCLUSION and not a forgiveness ──────────────────────────
+ *
+ * The other seven entries forgive an element whose minimum this parser cannot
+ * READ. This one is different in kind and the difference is the whole
+ * justification: an input of type hidden **renders no box at all**. It cannot be
+ * pressed, it cannot take focus, it is not in the tab order, and no height
+ * utility written on it would mean anything — Tailwind would emit the rule and
+ * the browser would apply it to a box that does not exist. It is not a target
+ * that is too small; it is not a target. §13's sentence — *every button, link,
+ * input … carries the minimum* — is about things a finger can land on, and this
+ * is the same distinction exemption 6 already draws for a badge, one level down:
+ * 6 says a span is not interactive by TAG, and 7 says an input is not
+ * interactive by ATTRIBUTE.
+ *
+ * **So it is read at the element's own tag**, where the attribute is written and
+ * a person can see it, rather than declared per file — the four sites are four
+ * instances of one shape, and a per-site list would go stale the moment a fifth
+ * form is converted, which is the staleness the 2a refusals exist to catch.
+ *
+ * ── The refusal that stops this becoming a smuggling route ──────────────────
+ *
+ * The obvious abuse is writing this attribute on something that DOES render, to
+ * clear a red. That abuse cannot work — an element with this attribute renders
+ * nothing, so dressing a visible control in it deletes the control rather than
+ * hiding its size — but the ATTEMPT leaves a fingerprint, and this gate refuses
+ * on it: **an input carrying this attribute AND a height utility is a
+ * contradiction**, and a contradiction is exit 2, never a silent exemption. One
+ * of the two statements is false and this parser cannot say which, so it says
+ * nothing was measured. That is the direction that does not produce a green, and
+ * it is the same call `readHeights` already makes for two different plain
+ * heights (DEF-41-05).
+ *
+ * Not to be confused with exemption 5, which is a VISIBLE input moved off-screen
+ * by a utility while its label carries the target. That input still renders and
+ * still takes focus. This one does neither.
+ */
+export const NON_INTERACTIVE_INPUT_ATTRIBUTE = 'type="hidden"';
+
+/**
+ * EXEMPTION 8 — a call site whose declared minimum lives in a module constant.
+ *
+ * ── The second half of the same authorisation, and the same date ────────────
+ *
+ * Five elements, in two autocomplete components, whose class attribute
+ * interpolates a constant declared at the top of their own file — and the
+ * minimum is declared IN that constant. **The elements are correct.** What
+ * cannot read them is this parser, which reads class strings and has never been
+ * able to resolve an interpolation: the residual is stated three times in the
+ * docblock above and forgiven twice already, for the navigation entry (2a's
+ * first line), for `Checkbox` and for `Switch`.
+ *
+ * The alternative was priced and REFUSED: writing the literal minimum onto each
+ * of the five call sites would have cleared the red without moving the work, and
+ * it would put a hard-coded value on five sites whose entire purpose is to share
+ * one constant — the next edit to the constant would then silently disagree with
+ * five call sites, which is a worse tree than the one that produced the red.
+ * §0 rule 3's principle applied in the direction it points: **fix the contract a
+ * person reads, never the element that was already right.**
+ *
+ * ── Shape, the premise, and the three refusals ──────────────────────────────
+ *
+ * `[path, tagName, fragment, constant, reason]`, deliberately 2a's shape with one
+ * field added. `fragment` picks out exactly one element of that tag in that file
+ * — an attribute, never a line number, because a line number drifts on the first
+ * edit above it and a stale one reads exactly like a current one.
+ *
+ * `constant` is the module-level binding the class attribute interpolates, and it
+ * is what makes this an assertion rather than a wave-through. It is checked three
+ * ways, each in the direction that does not produce a green:
+ *
+ *   · the fragment matching ZERO or TWO OR MORE elements REFUSES (exit 2) —
+ *     stale forgives nothing while looking guarded, ambiguous forgives an element
+ *     nobody named. Both are 2a's refusals, one level down;
+ *   · the named constant not being interpolated by the matched element's own
+ *     class attribute REFUSES — the entry would be forgiving an element on the
+ *     strength of a constant it does not use;
+ *   · **the constant not declaring the minimum is a FAILURE (exit 1), not a
+ *     refusal.** It is exemption 2's premise check, per constant instead of per
+ *     file: if somebody shrinks the shared string, this exemption would otherwise
+ *     forgive all five call sites in silence — a check going quiet while the
+ *     thing it tracked is still there. The premise being false is a defect, so it
+ *     reports as one.
+ *
+ * ── What this does NOT close, stated because it is easy to over-claim ───────
+ *
+ * Nothing here taught this gate to read an interpolation, and nothing here
+ * measures a rendered box. Five more elements are now forgiven on a declared
+ * reason rather than measured, and the report prints all five with their
+ * constants so a green states what it took itself over. **H41-4, on a large
+ * touch screen, remains the only thing in this repository that proves anything
+ * renders at 44px.**
+ */
+export const CONSTANT_MINIMUM_ELEMENTS = [
+  [
+    'src/components/ui/AutocompleteInput.tsx',
+    'input',
+    '${CONTROL}',
+    'CONTROL',
+    "the text-entry control of the autocomplete. Its class attribute interpolates this file's shared control string, where the unprefixed minimum is declared — the same construction Input.tsx uses, and 2a's seventh entry forgives there because it is a primitive. This file is not a primitive, so it needs its own declared line",
+  ],
+  [
+    'src/components/ui/AutocompleteInput.tsx',
+    'button',
+    '${OPTION} text-ink',
+    'OPTION',
+    'one result row of the dropdown, rendered per match. Its class attribute interpolates the shared option string, where the minimum is declared once for every row the list can draw',
+  ],
+  [
+    'src/components/ui/AutocompleteInput.tsx',
+    'button',
+    '${OPTION} border-t',
+    'OPTION',
+    'the create-new row at the foot of the same dropdown, on the same shared string plus a rule above it to separate it from the results',
+  ],
+  [
+    'src/components/events/AutocompleteTagInput.tsx',
+    'button',
+    '${OPTION} text-ink',
+    'OPTION',
+    "one result row of the tag dropdown. Its class attribute interpolates this file's own copy of the shared option string, where the minimum is declared",
+  ],
+  [
+    'src/components/events/AutocompleteTagInput.tsx',
+    'button',
+    '${OPTION} border-t',
+    'OPTION',
+    'the create-new row of the tag dropdown, on the same string plus its separating rule',
+  ],
+];
+
+/**
+ * The shapes this gate is known to red on, written down instead of pre-empted —
+ * and what happened when the first of them actually arrived.
+ *
+ * **The hidden input arrived on 2026-08-14 and is recorded here rather than
+ * deleted.** A prediction whose text is removed on the day it comes true leaves
+ * the next reader unable to tell a kept promise from a forgotten one — the same
+ * reason exemption 2 keeps `Switch`'s null-path paragraph. What it said:
+ *
+ * > *it renders no box, so no height class is meaningful — and adding it here
+ * > would be widening a closed list to clear a red. Zero in scope today*
+ *
+ * Both halves held. Four arrived at once, they are correct code, and the
+ * resolution was the one this list named in advance: a contract edit in §13,
+ * authorised by the owner on 2026-08-14, and exemption 7 above written to match
+ * it. **No threshold moved. 44px is still 44px, and no existing entry was
+ * widened by a character.**
  */
 export const KNOWN_FUTURE_REDS = [
   [
-    'an input of type hidden',
-    'it renders no box, so no height class is meaningful — and adding it here would be widening a closed list to clear a red. Zero in scope today',
-  ],
-  [
     'a height expressed with a keyword rather than a number',
     'a full or screen height declares a box the parser cannot resolve to pixels; it is not an explicit minimum, so it does not pass. Zero in scope today',
+  ],
+];
+
+/** Reds that were predicted, arrived, and were closed by a signed contract edit. */
+export const ARRIVED_FUTURE_REDS = [
+  [
+    'an input of type hidden',
+    'predicted here and left unpre-empted. Four arrived on 2026-08-14 with the ticketing forms; closed by exemption 7, a contract edit in §13 the owner authorised that day — not by widening anything',
   ],
 ];
 
@@ -1236,7 +1410,7 @@ console.log(
 /* ── Exemption 2's premise, asserted before it forgives anything ────────────── */
 
 const failures = [];
-const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0 };
+const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0 };
 
 const PRIMITIVE_FILES = new Map();
 for (const [symbol, path, reason] of PRIMITIVE_COMPONENTS) {
@@ -1355,6 +1529,150 @@ for (const e of RAW_ELEMENT_ENTRIES) {
 }
 console.log('');
 
+/* ── Exemption 8's declared elements, and the premise of each one ───────────── */
+
+/**
+ * The module constant's own declaration, as written in its file.
+ *
+ * Read by accumulating from the declaring line until the statement ends, because
+ * every one of these is written across more than one line and a single-line read
+ * would find no minimum on any of them — a false FAILURE, which is the safe
+ * direction but still a gate that reddens on correct code.
+ */
+function constantDeclaration(relPath, name) {
+  const lines = liveLines(relPath);
+  const start = lines.findIndex((line) =>
+    new RegExp(`^\\s*(?:export\\s+)?const\\s+${name}(?![\\w$])\\s*(?::[^=]*)?=`).test(line)
+  );
+  if (start === -1) return null;
+
+  let text = '';
+  for (let i = start; i < lines.length; i += 1) {
+    text += `${lines[i]}\n`;
+    if (/;\s*$/.test(lines[i])) break;
+    if (i > start && /^\s*(?:export\s+)?(?:const|let|var|function|class)\b/.test(lines[i])) break;
+  }
+  return text;
+}
+
+const CONSTANT_ENTRIES = [];
+
+for (const [path, tag, fragment, constant, reason] of CONSTANT_MINIMUM_ELEMENTS) {
+  if (!existsSync(`${ROOT}/${path}`)) {
+    refuse(
+      `exemption 8 declares an element in ${path}, which is not on disk. A stale\n` +
+        '       exemption silently removes a real file from a scan. Nothing was measured.'
+    );
+  }
+
+  const { found, unterminated } = scanElements(path);
+  if (unterminated.length > 0) {
+    refuse(
+      `${path} has ${unterminated.length} unterminated opening tag(s), so exemption 8's\n` +
+        '       declared elements could not be resolved against it. Nothing was measured.'
+    );
+  }
+
+  const matches = found.filter((el) => el.name === tag && el.text.includes(fragment));
+
+  if (matches.length === 0) {
+    refuse(
+      `exemption 8 declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        '       and NOTHING in that file matches it. The entry is stale: it forgives nothing\n' +
+        '       while looking like a guarded case, and the element it used to name is now\n' +
+        '       either gone or unforgiven without anybody saying so. Nothing was measured.'
+    );
+  }
+  if (matches.length > 1) {
+    refuse(
+      `exemption 8 declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        `       and ${matches.length} elements match it (lines ${matches.map((m) => m.line).join(', ')}).\n` +
+        '       An ambiguous entry forgives an element nobody named. Narrow the fragment.\n' +
+        '       Nothing was measured.'
+    );
+  }
+
+  /*
+   * The element must actually interpolate the constant this entry rests on.
+   * Without this the entry would forgive an element on the strength of a string
+   * it does not use — an exemption whose stated reason is false about its target.
+   */
+  const interpolation = new RegExp(`\\$\\{\\s*${constant}(?![\\w$])`);
+  if (!interpolation.test(matches[0].text)) {
+    refuse(
+      `exemption 8 forgives ${path}:${matches[0].line} because its minimum lives in ${constant},\n` +
+        `       and that element's opening tag does not interpolate ${constant} at all. The entry's\n` +
+        '       stated reason is false about the element it names. Nothing was measured.'
+    );
+  }
+
+  const declaration = constantDeclaration(path, constant);
+  if (declaration === null) {
+    refuse(
+      `exemption 8 names the constant ${constant} in ${path}, and no module-level\n` +
+        '       declaration of that name is in the file. Nothing was measured.'
+    );
+  }
+
+  let declaresMinimum = false;
+  HEIGHT_RE.lastIndex = 0;
+  let hm;
+  while ((hm = HEIGHT_RE.exec(declaration)) !== null) {
+    const px = heightToPx(hm[2]);
+    if (px !== null && px >= REQUIRED_PX) declaresMinimum = true;
+  }
+
+  CONSTANT_ENTRIES.push({
+    path,
+    tag,
+    fragment,
+    constant,
+    reason,
+    line: matches[0].line,
+    declaresMinimum,
+    applied: 0,
+  });
+
+  /*
+   * Exemption 2's premise check, one level down: per constant instead of per
+   * file. A FAILURE and not a refusal — the premise being false is a defect in
+   * the tree, not an inability to measure.
+   */
+  if (!declaresMinimum) {
+    failures.push({
+      path,
+      line: matches[0].line,
+      name: '(exemption 8)',
+      reason:
+        `this element is exempted because its minimum lives in ${constant}, and that constant ` +
+        `no longer declares any unprefixed minimum of at least ${REQUIRED_PX}px (${MINIMUM_UTILITY} or larger). ` +
+        "The exemption's premise is false, so it is forgiving this element for nothing",
+      text: '',
+    });
+  }
+}
+
+function constantEntry(relPath, el) {
+  return (
+    CONSTANT_ENTRIES.find(
+      (e) => e.path === relPath && e.tag === el.name && el.text.includes(e.fragment)
+    ) ?? null
+  );
+}
+
+console.log(
+  `  exemption 8 — ${CONSTANT_ENTRIES.length} call site(s) whose minimum lives in a module constant:\n`
+);
+for (const e of CONSTANT_ENTRIES) {
+  console.log(
+    `    ${e.path}:${e.line}  <${e.tag}>   ${e.constant} — ` +
+      `${e.declaresMinimum ? 'declares the minimum' : 'DOES NOT DECLARE IT'}`
+  );
+}
+console.log('');
+
 /* ── The scan ───────────────────────────────────────────────────────────────── */
 
 const perFile = [];
@@ -1369,7 +1687,7 @@ for (const rel of [...inScope].sort()) {
   const isPrimitiveFile = PRIMITIVE_FILES.has(rel);
   const importsDataTable = [...imports.values()].includes(SHRINK_REQUIRES_IMPORT);
 
-  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, skipped: 0 };
+  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, skipped: 0 };
 
   for (const el of found) {
     // A component call site: exemption 2b or 6, and only when the import agrees.
@@ -1414,6 +1732,36 @@ for (const rel of [...inScope].sort()) {
     if (el.name === 'input' && HIDDEN_INPUT_MARKERS.every((mark) => el.text.includes(mark))) {
       row.e5 += 1;
       applied.e5 += 1;
+      continue;
+    }
+
+    // Exemption 7 — an input of type hidden renders no box, so it is not an
+    // interactive element and never enters the measured set. A height utility
+    // written on one is a CONTRADICTION and refuses: one of the two statements
+    // is false and this parser cannot say which.
+    if (el.name === 'input' && el.text.includes(NON_INTERACTIVE_INPUT_ATTRIBUTE)) {
+      if (readHeights(el.text).verdict !== 'absent') {
+        refuse(
+          `${rel}:${el.line} is an input declared ${NON_INTERACTIVE_INPUT_ATTRIBUTE} that ALSO carries a\n` +
+            '       height utility. A hidden input renders no box, so the two statements contradict\n' +
+            '       each other: either it is not really hidden, or the height means nothing. This\n' +
+            '       gate cannot say which, and forgiving it under exemption 7 would make that\n' +
+            '       attribute a way to carry an element past the measurement. NOTHING WAS MEASURED.\n\n' +
+            `       ${el.text}`
+        );
+      }
+      row.e7 += 1;
+      applied.e7 += 1;
+      continue;
+    }
+
+    // Exemption 8 — a declared call site whose minimum lives in a module
+    // constant this parser cannot resolve. Named one by one, never by shape.
+    const constEntry = constantEntry(rel, el);
+    if (constEntry !== null) {
+      constEntry.applied += 1;
+      row.e8 += 1;
+      applied.e8 += 1;
       continue;
     }
 
@@ -1477,7 +1825,9 @@ console.log(
     'e3'.padStart(4) +
     'e4'.padStart(4) +
     'e5'.padStart(4) +
-    'e6'.padStart(4)
+    'e6'.padStart(4) +
+    'e7'.padStart(4) +
+    'e8'.padStart(4)
 );
 for (const row of perFile) {
   const name = row.path.length > 57 ? `…${row.path.slice(-56)}` : row.path;
@@ -1491,7 +1841,9 @@ for (const row of perFile) {
       String(row.e3).padStart(4) +
       String(row.e4).padStart(4) +
       String(row.e5).padStart(4) +
-      String(row.e6).padStart(4)
+      String(row.e6).padStart(4) +
+      String(row.e7).padStart(4) +
+      String(row.e8).padStart(4)
   );
 }
 console.log('');
@@ -1513,7 +1865,7 @@ for (const s of surfaces) {
     if (row === undefined) continue;
     found += row.found;
     measured += row.measured;
-    exempt += row.e2a + row.e2b + row.e3 + row.e4 + row.e5 + row.e6;
+    exempt += row.e2a + row.e2b + row.e3 + row.e4 + row.e5 + row.e6 + row.e7 + row.e8;
   }
   console.log(
     `    ${s.route.padEnd(26)} ${String(s.reached).padStart(3)} file(s) reached, ` +
@@ -1531,7 +1883,39 @@ console.log(`    3  the one permitted shrink               ${applied.e3}`);
 console.log(`    4  a wrapper marked as deferring to child ${applied.e4}`);
 console.log(`    5  a hidden input named by its label      ${applied.e5}`);
 console.log(`    6  a non-interactive badge                ${applied.e6}`);
+console.log(`    7  an input of type hidden — NOT a target ${applied.e7}`);
+console.log(`    8  a minimum living in a module constant   ${applied.e8}`);
 console.log('');
+
+/*
+ * Seven and eight are the 2026-08-14 contract edit, and a green must state what
+ * that edit forgave as plainly as it states the rest. Eight is printed in full,
+ * with the constant each entry rests on and how many times it was reached; seven
+ * is printed as its shape, because it is read at the tag and not declared per
+ * site.
+ */
+console.log('  exemptions 7 and 8 — the contract edit of 2026-08-14, in full:\n');
+console.log(
+  `    7  read at the element's own tag: an input declared ${NON_INTERACTIVE_INPUT_ATTRIBUTE} renders no box,\n` +
+    '       takes no focus and is not in the tab order, so it is not an interactive element\n' +
+    '       and never enters the measured set — exemption 6 by attribute instead of by tag.\n' +
+    '       One carrying a height utility REFUSES (exit 2) rather than being forgiven, so the\n' +
+    `       attribute cannot become a way past the measurement. Applied ${applied.e7}×.\n`
+);
+for (const e of CONSTANT_ENTRIES) {
+  console.log(
+    `    8  ${e.path}:${e.line}  <${e.tag}>  via ${e.constant}  applied ${e.applied}×` +
+      (e.applied === 0 ? '  — declared, reached by no converted closure today' : '')
+  );
+  console.log(`      ${e.reason}`);
+}
+console.log(
+  '\n    Both were opened by a DECISION the owner signed on 2026-08-14, not by a red.\n' +
+    '    No threshold moved and no existing entry was widened by a character: the five\n' +
+    '    elements under 8 were correct before this edit and are unchanged by it, and\n' +
+    '    writing the literal minimum onto them was priced and refused — it would put a\n' +
+    '    hard-coded value on five call sites whose whole purpose is one shared string.\n'
+);
 
 /*
  * A green must state what it forgave, and 2a is the category where "how many"
@@ -1561,6 +1945,8 @@ for (const [n, key, note] of [
   [3, 'e3', `its only possible site is a file importing ${SHRINK_REQUIRES_IMPORT}; the one shrink in this tree is written on a call site, which exemption 2b forgives first`],
   [4, 'e4', 'no wrapper in any converted closure has an interactive element as its only child'],
   [5, 'e5', "the checkbox in this tree is a VISIBLE box inside its label, so it is exemption 2, not 5"],
+  [7, 'e7', 'no converted closure writes an input of type hidden today — the entry stays, because the four that opened it are a shape and not a census'],
+  [8, 'e8', 'no declared call site is reached by a converted closure today'],
 ]) {
   if (applied[key] === 0) {
     console.log(`    exemption ${n} applied ZERO times. ${note}.`);
@@ -1570,6 +1956,13 @@ console.log('');
 
 console.log('  known future reds, declared instead of pre-empted:\n');
 for (const [shape, why] of KNOWN_FUTURE_REDS) {
+  console.log(`    ${shape}`);
+  console.log(`      ${why}`);
+}
+console.log('');
+
+console.log('  predicted reds that ARRIVED, and how each was closed:\n');
+for (const [shape, why] of ARRIVED_FUTURE_REDS) {
   console.log(`    ${shape}`);
   console.log(`      ${why}`);
 }
@@ -1609,6 +2002,6 @@ if (failures.length > 0) {
 }
 
 console.log('  PASSED — every measured element declares an unprefixed minimum of at least');
-console.log(`  ${REQUIRED_PX}px, or matches one of the six exemptions printed above.\n`);
+console.log(`  ${REQUIRED_PX}px, or matches one of the eight exemptions printed above.\n`);
 console.log('  This is NOT a statement that anything renders at 44px. H41-4 is.\n');
 process.exit(0);
