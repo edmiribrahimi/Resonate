@@ -2,6 +2,37 @@
 
 import { useState, useTransition } from "react";
 import { createDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/actions";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Input, Select } from "@/components/ui/Input";
+import { SectionHeading } from "@/components/ui/Typography";
+
+/**
+ * The form that creates a discount code — converted onto the primitives in plan
+ * 41.1-22, with every rule that bounds a discount carried through unchanged.
+ *
+ * ── What a discount decides, and what this conversion therefore may not do ────
+ *
+ * A discount is the amount that is **not** collected. Its value carries a
+ * minimum of one hundredth and the same hundredth step whether it is read as a
+ * percentage or as a currency amount; the usage ceiling is optional with a
+ * minimum of one, where absent means unlimited; the code itself is required and
+ * bounded in length. Those attributes are validation and are carried through
+ * field by field. The type selector switches only the **label** of the value
+ * field — the constraint on the value is identical on both arms, and it was
+ * identical before this conversion too.
+ *
+ * ── The refusal is one sentence per cause, and it is announced ────────────────
+ *
+ * The failure below is whatever the server action threw, rendered in an alert
+ * region rather than a hand-drawn coloured box. It relays the action's own
+ * sentence and does not collapse causes — but it also does not *separate* them,
+ * because the causes are separated upstream and this file did not write them.
+ * That limitation is recorded rather than fixed here: rewriting the copy is
+ * outside a conversion, and this project has no error tracking, so a refusal a
+ * person cannot read is a refusal nobody ever reads.
+ */
 
 interface AddDiscountCodeFormProps {
   eventId: string;
@@ -61,143 +92,120 @@ export default function AddDiscountCodeForm({
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4 overflow-hidden">
-      <h2 className="text-sm font-semibold text-foreground mb-3">
-        Add Discount Code
-      </h2>
+    <Card className="overflow-hidden">
+      <SectionHeading>Add Discount Code</SectionHeading>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
+        <p role="alert" className="mb-3 text-sm text-sem-crit">
+          {error}
+        </p>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label
-            htmlFor={`dc-code-${partyId}`}
-            className="block text-xs text-muted mb-1"
-          >
-            Code
-          </label>
-          <input
-            id={`dc-code-${partyId}`}
-            name="code"
-            type="text"
-            required
-            maxLength={50}
-            placeholder="e.g. EARLYBIRD20"
-            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-          />
-        </div>
+        <Input
+          id={`dc-code-${partyId}`}
+          label="Code"
+          name="code"
+          type="text"
+          required
+          maxLength={50}
+          placeholder="e.g. EARLYBIRD20"
+        />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              htmlFor={`dc-type-${partyId}`}
-              className="block text-xs text-muted mb-1"
-            >
-              Discount Type
-            </label>
-            <select
-              id={`dc-type-${partyId}`}
-              name="discount_type"
-              value={discountType}
-              onChange={(e) =>
-                setDiscountType(e.target.value as "percentage" | "fixed")
-              }
-              className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-            >
-              <option value="percentage">Percentage</option>
-              <option value="fixed">Fixed (EUR)</option>
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor={`dc-amount-${partyId}`}
-              className="block text-xs text-muted mb-1"
-            >
-              {discountType === "percentage" ? "Discount (%)" : "Discount (EUR)"}
-            </label>
-            <input
-              id={`dc-amount-${partyId}`}
-              name="discount_amount"
-              type="number"
-              required
-              min={0.01}
-              step={0.01}
-              placeholder="0.00"
-              className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor={`dc-max-${partyId}`}
-            className="block text-xs text-muted mb-1"
+        <div className="grid gap-3 md:grid-cols-2">
+          <Select
+            id={`dc-type-${partyId}`}
+            label="Discount Type"
+            name="discount_type"
+            value={discountType}
+            onChange={(e) =>
+              setDiscountType(e.target.value as "percentage" | "fixed")
+            }
           >
-            Max Uses
-          </label>
-          <input
-            id={`dc-max-${partyId}`}
-            name="max_uses"
+            <option value="percentage">Percentage</option>
+            <option value="fixed">Fixed (EUR)</option>
+          </Select>
+          {/*
+            One field, two labels, one constraint. The label follows the selector
+            above; the minimum and the step do not, and did not before either.
+          */}
+          <Input
+            id={`dc-amount-${partyId}`}
+            label={
+              discountType === "percentage"
+                ? "Discount (%)"
+                : "Discount (EUR)"
+            }
+            name="discount_amount"
             type="number"
-            min={1}
-            placeholder="Unlimited"
-            className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            required
+            min={0.01}
+            step={0.01}
+            placeholder="0.00"
           />
         </div>
+
+        <Input
+          id={`dc-max-${partyId}`}
+          label="Max Uses"
+          name="max_uses"
+          type="number"
+          min={1}
+          placeholder="Unlimited"
+        />
 
         {tiers.length > 0 && (
-          <div>
-            <p className="block text-xs text-muted mb-1">
+          <div
+            role="group"
+            aria-labelledby={`dc-apply-to-${partyId}`}
+            className="space-y-2"
+          >
+            <p
+              id={`dc-apply-to-${partyId}`}
+              className="block text-xs font-semibold text-ink-2"
+            >
               Apply to{" "}
-              <span className="text-muted/60">
+              <span className="text-muted">
                 {selectedTierIds.length === 0
                   ? "(All tiers)"
                   : `(${selectedTierIds.length} selected)`}
               </span>
             </p>
-            <div className="space-y-1.5">
+            {/* Column, because the hit area is an inline box and would otherwise
+                run several tier names onto one line. */}
+            <div className="flex flex-col items-start">
               {tiers.map((tier) => (
-                <label
+                <Checkbox
                   key={tier.id}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedTierIds.includes(tier.id)}
-                    onChange={() => toggleTier(tier.id)}
-                    className="rounded border-card-border bg-background text-accent focus:ring-accent"
-                  />
-                  <span className="text-xs text-foreground">{tier.name}</span>
-                </label>
+                  id={`dc-tier-${partyId}-${tier.id}`}
+                  label={tier.name}
+                  checked={selectedTierIds.includes(tier.id)}
+                  onChange={() => toggleTier(tier.id)}
+                />
               ))}
             </div>
           </div>
         )}
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
+        {/*
+          The hidden field stays AFTER the box: an unchecked box submits nothing
+          and the hidden value is read, a checked box submits first and wins.
+        */}
+        <div>
+          <Checkbox
+            id={`dc-active-${partyId}`}
             name="is_active"
-            type="checkbox"
             defaultChecked
             value="true"
-            className="rounded border-card-border bg-background text-accent focus:ring-accent"
+            label="Active"
           />
-          <span className="text-xs text-muted">Active</span>
           <input type="hidden" name="is_active" value="false" />
-        </label>
+        </div>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
+        <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? "Adding..." : "Add Code"}
-        </button>
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }

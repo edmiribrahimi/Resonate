@@ -10,6 +10,10 @@ import AddTierForm from "@/components/tickets/AddTierForm";
 import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
 import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
 /**
  * Ticket tiers, discount codes, sold tickets and pending refunds — the two
@@ -309,32 +313,30 @@ export default async function TicketTiersPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="wide">
+      <header className="mb-6">
         <Link
           href="/admin/events"
-          className="text-xs text-muted hover:text-foreground transition-colors"
+          className={`inline-flex min-h-11 items-center gap-1 text-xs text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           &larr; Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight mt-2">Ticket Tiers</h1>
+        <PageTitle className="mt-2">Ticket Tiers</PageTitle>
         <p className="text-sm text-muted mt-1">{event.title}</p>
       </header>
 
-      <div className="px-6 space-y-8">
+      <div className="space-y-8">
         {/* Event Pass Tiers -- only show when multiple parties exist */}
         {showEventPass && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Event Pass Tiers
-            </h2>
+            <SectionHeading>Event Pass Tiers</SectionHeading>
 
             <AddTierForm eventId={eventId} partyId={null} />
 
             {eventLevelTiers.length === 0 ? (
-              <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+              <Card className="text-center">
                 <p className="text-muted text-sm">No event-level tiers yet. Add one to offer an all-access pass.</p>
-              </div>
+              </Card>
             ) : (
               <div className="space-y-3">
                 {eventLevelTiers.map((tier) => (
@@ -347,25 +349,25 @@ export default async function TicketTiersPage({ params }: PageProps) {
 
         {/* Party-specific tiers */}
         {(parties ?? []).length === 0 ? (
-          <div className="rounded-2xl border border-card-border bg-card p-8 text-center">
+          <Card className="text-center">
             <p className="text-muted">No paid sub-events for this event. Change a sub-event&apos;s access type to &quot;Paid&quot; to add ticket tiers.</p>
-          </div>
+          </Card>
         ) : (
           (parties ?? []).map((party: { id: string; title: string; date: string }) => {
             const partyTiers = tiersByParty.get(party.id) ?? [];
 
             return (
               <div key={party.id} className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">
+                <SectionHeading>
                   {party.title} &middot; {formatPartyDate(party.date)}
-                </h2>
+                </SectionHeading>
 
                 <AddTierForm eventId={eventId} partyId={party.id} />
 
                 {partyTiers.length === 0 ? (
-                  <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+                  <Card className="text-center">
                     <p className="text-muted text-sm">No tiers yet for this sub-event.</p>
-                  </div>
+                  </Card>
                 ) : (
                   <div className="space-y-3">
                     {partyTiers.map((tier) => (
@@ -376,9 +378,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
 
                 {/* Discount Codes for this party */}
                 <div className="mt-6 space-y-4">
-                  <h3 className="text-base font-semibold text-foreground">
-                    Discount Codes
-                  </h3>
+                  <SectionHeading as="h3">Discount Codes</SectionHeading>
                   <AddDiscountCodeForm
                     eventId={eventId}
                     partyId={party.id}
@@ -388,9 +388,9 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     }))}
                   />
                   {(discountsByParty.get(party.id) ?? []).length === 0 ? (
-                    <div className="rounded-2xl border border-card-border bg-card p-6 text-center">
+                    <Card className="text-center">
                       <p className="text-muted text-sm">No discount codes for this sub-event.</p>
-                    </div>
+                    </Card>
                   ) : (
                     <div className="space-y-3">
                       {(discountsByParty.get(party.id) ?? []).map((dc) => (
@@ -415,20 +415,23 @@ export default async function TicketTiersPage({ params }: PageProps) {
         {/* Pending Refund Requests */}
         {pendingRefunds.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Pending Refund Requests
-            </h2>
+            {/*
+              The heading is the channel. This block used to be drawn in a raw
+              warning hue, which D-41.1-25 retires — the word is what says a
+              refund is waiting, and D-41.1-29 measured that the semantic fills
+              are 1.23 : 1 apart and could not carry it as colour anyway. The
+              block still renders only when there is something in it.
+            */}
+            <SectionHeading>Pending Refund Requests</SectionHeading>
             <div className="space-y-3">
               {pendingRefunds.map((refund) => (
-                <div
-                  key={refund.id}
-                  className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-foreground">
+                <Card key={refund.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-semibold text-ink">
                       {ticketBuyerMap.get(refund.ticket_id) || "Unknown"}
                     </p>
-                    <p className="text-sm font-bold text-accent">
+                    {/* The money mark — D-41.1-13. */}
+                    <p className="text-sm font-semibold text-ink">
                       {formatPrice(refund.amount)}
                     </p>
                   </div>
@@ -436,7 +439,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     <p className="text-xs text-muted mb-3">&ldquo;{refund.reason}&rdquo;</p>
                   )}
                   <RefundActions refundId={refund.id} />
-                </div>
+                </Card>
               ))}
             </div>
           </div>
@@ -445,9 +448,9 @@ export default async function TicketTiersPage({ params }: PageProps) {
         {/* Sold Tickets */}
         {(soldTickets ?? []).length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">
+            <SectionHeading>
               Sold Tickets ({(soldTickets ?? []).length})
-            </h2>
+            </SectionHeading>
             <div className="space-y-2">
               {(soldTickets ?? []).map((ticket: { id: string; amount_paid: number; created_at: string; profiles: unknown; ticket_tiers: unknown }) => {
                 const rawProfile = ticket.profiles as unknown;
@@ -455,26 +458,31 @@ export default async function TicketTiersPage({ params }: PageProps) {
                 const rawTier = ticket.ticket_tiers as unknown;
                 const tier = (Array.isArray(rawTier) ? rawTier[0] : rawTier) as { name: string } | null;
                 return (
-                  <div
+                  <Card
                     key={ticket.id}
-                    className="flex items-center justify-between rounded-xl border border-card-border bg-card p-3"
+                    className="flex flex-wrap items-center justify-between gap-3"
                   >
                     <div>
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-semibold text-ink">
                         {profile?.full_name || profile?.email || "Unknown"}
                       </p>
                       <p className="text-xs text-muted">
-                        {tier?.name} &middot; {formatPrice(ticket.amount_paid)}
+                        {tier?.name}
                       </p>
                     </div>
+                    {/* The money mark — D-41.1-13. It used to sit in the meta
+                        line beside the tier name, at the recessed ink. */}
+                    <p className="text-sm font-semibold text-ink">
+                      {formatPrice(ticket.amount_paid)}
+                    </p>
                     <RefundActions ticketId={ticket.id} isDirectRefund />
-                  </div>
+                  </Card>
                 );
               })}
             </div>
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
