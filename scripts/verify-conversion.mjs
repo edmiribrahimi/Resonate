@@ -2017,13 +2017,14 @@ if (propertiesInFocusBranch.length === 0 && focusBranchLines.length !== 1) {
  *
  * ── THE STALE-PERMISSION CHECK THAT IS NOT WRITTEN HERE, AND WHY ────────────
  *
- * A permitted digest that matches no line would be a permission floating free.
+ * A permitted entry that matches no line would be a permission floating free.
  * It is not checked, and that is a decision: a permitted site lies outside the
- * window, so its text cannot change without changing (2)'s digest as well —
- * assertion (2) reaches that state first, on every tree. A branch no situation
- * can reach is a decoration that makes something look guarded (`ai-engineering.md`,
- * gate a gate must be able to fail), and this file already carries one such
- * branch it was told to leave alone rather than two it invented.
+ * window, so neither its text nor its position can change without changing (2)'s
+ * digest as well — assertion (2) reaches that state first, on every tree. A
+ * branch no situation can reach is a decoration that makes something look
+ * guarded (`ai-engineering.md`, gate a gate must be able to fail), and this file
+ * carried one such branch until plan 41.1-04 deleted it rather than inventing a
+ * second.
  *
  * ── THE ACCEPTED COST, WHICH IS NOW THE WHOLE FILE ──────────────────────────
  *
@@ -2036,30 +2037,112 @@ if (propertiesInFocusBranch.length === 0 && focusBranchLines.length !== 1) {
 
 /**
  * The two lines of the default and wide form that legitimately read a navigation
- * property, by digest of their trimmed live text.
+ * property. **A permitted site is a PLACE as well as a string**: `path`, line
+ * number and the digest of the trimmed live text, all three, and a site is
+ * permitted only when all three agree.
  *
- * By digest and not verbatim: both carry whole utility tokens, and a frozen copy
- * of product code outlives the product code it copies (DEF-41-01). The refusal
- * prints the offending line and its digest, so adding a site is a copy rather
+ * ── WHY THE POSITION IS PART OF THE KEY (DEF-41-07 item 3) ──────────────────
+ *
+ * Until plan 41.1-04 this list held bare digests and the consumption hashed the
+ * trimmed line ALONE. So the permit travelled with the TEXT: the same characters
+ * anywhere in this file — a second component, a dead helper, a wrapper below the
+ * focus branch — matched a permitted digest and were waved through, having been
+ * approved somewhere else. The paragraph above records that a person confirmed
+ * *"a site cannot reach the focus form"*; that confirmation is about a LINE IN A
+ * PLACE, and a key that drops the place asserts a person's judgement about a
+ * position over a string that has none. Proved by mutation in 41.1-04: a
+ * permitted line's exact text copied to a second position was permitted before
+ * the change and is refused after it.
+ *
+ * ── STILL BY DIGEST AND NOT VERBATIM ────────────────────────────────────────
+ *
+ * Both lines carry whole utility tokens, and a frozen copy of product code
+ * outlives the product code it copies (DEF-41-01). The refusal prints the
+ * offending line, its position and its digest, so adding a site is a copy rather
  * than a computation.
+ *
+ * ── THE MEASURING COMMAND, so the next re-freeze is reproduced and not
+ *    re-derived ───────────────────────────────────────────────────────────────
+ *
+ *   node --input-type=module -e "
+ *   import { liveLines } from './scripts/lib/comments.mjs';
+ *   import { createHash } from 'node:crypto';
+ *   const P = 'src/components/ui/PageShell.tsx';
+ *   const NAV = ['--nav-inset-inline-start', '--nav-inset-block-end'];
+ *   liveLines(P).lines.forEach((l, i) => {
+ *     const t = l.trim();
+ *     if (!NAV.some((p) => t.includes(p))) return;
+ *     console.log(P + ':' + (i + 1) + '  ' + createHash('sha256').update(t).digest('hex'));
+ *     console.log('    ' + t);
+ *   });
+ *   "
+ *
+ * It reads the SAME stripper this gate reads (`scripts/lib/comments.mjs`,
+ * D-41.1-07), so a line the gate treats as a comment is a line the command
+ * treats as a comment; a second stripper would be a second opinion about which
+ * lines exist. Measured 2026-08-13, and this is the output the entries below are
+ * a copy of:
+ *
+ *     src/components/ui/PageShell.tsx:160  508027fb…c395f0
+ *     src/components/ui/PageShell.tsx:164  8f9c39ad…823e0
+ *
+ * ── WHY BOTH FROZEN CONSTANTS STAY VALID THROUGH PHASE 41.1 ─────────────────
+ *
+ * These positions and `SHELL_CODE_OUTSIDE_WINDOW_DIGEST` below both describe
+ * `src/components/ui/PageShell.tsx`, and **no plan in phase 41.1 edits that
+ * file** — checked against every plan's `files_modified` before this re-freeze.
+ * **The condition under which that stops being true:** any plan that touches
+ * `PageShell.tsx`'s CODE. When one does, both constants are re-frozen in the
+ * SAME COMMIT as the edit, each carrying the measurement that justified it —
+ * separately, because they answer different questions and a shared re-freeze
+ * would let one be updated on the other's evidence.
  *
  * **A site is frozen here only after confirming it cannot reach the focus form.**
  * That confirmation is a person's, and this list is the record that somebody made
  * it. Two entries today: §4's default and wide forms are the only forms that
  * reserve anything.
+ *
+ * Shape: `[path, lineNo, digest, reason]`.
  */
 const NAV_PROPERTY_SITE_DIGESTS = [
   [
+    'src/components/ui/PageShell.tsx', 160,
     '508027fb74a9bf829d9e02a44131d5705983eda85c02168aed74cead70c395f0',
     'the default and wide root — the leading inline-start inset, at and above 768px. ' +
       'It sits AFTER the focus branch has returned, so no focus surface reaches it',
   ],
   [
+    'src/components/ui/PageShell.tsx', 164,
     '8f9c39ad4e2711c6c39e515bc420c51b3524effe52bdf1eb8b30e349d38823e0',
     'the default and wide inner container — the block-end inset plus 16px. Same ' +
       'reason: below the focus branch\'s return, unreachable from the focus form',
   ],
 ];
+
+/*
+ * A permitted entry that names a file other than the one this read opens is a
+ * permission that can never match, and a list of them would look like coverage.
+ * The refusal is cheap and the condition is reachable the day somebody copies an
+ * entry from another gate.
+ */
+const permittedSitesNamingAnotherFile = NAV_PROPERTY_SITE_DIGESTS.filter(
+  ([path]) => path !== SHELL_FILE
+);
+if (permittedSitesNamingAnotherFile.length > 0) {
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — ${permittedSitesNamingAnotherFile.length} permitted ` +
+      'navigation-property site(s) name a file\n' +
+      `       this read never opens. This read covers ${SHELL_FILE} and nothing else:\n\n` +
+      permittedSitesNamingAnotherFile
+        .map(([path, lineNo]) => `         ${path}:${lineNo}`)
+        .join('\n') +
+      '\n\n       A permission that cannot match is not a permission, it is a line that makes\n' +
+      '       this list look longer than the ground it covers. Either the entry belongs to\n' +
+      `       another gate and comes out, or ${SHELL_FILE} is no longer the only file\n` +
+      '       composing the focus form and this read is scoped to the wrong thing.\n\n' +
+      '       Nothing was measured.'
+  );
+}
 
 /**
  * The digest of the shell's live code OUTSIDE the frozen window.
@@ -2085,7 +2168,16 @@ const shellCodeOutsideWindowDigest = sha256(
   shellCodeOutsideWindow.map(({ trimmed }) => trimmed).join('\n')
 );
 
-const permittedSiteDigests = new Set(NAV_PROPERTY_SITE_DIGESTS.map(([digest]) => digest));
+/*
+ * The permit key: PATH, LINE NUMBER and DIGEST joined, so a permitted site is a
+ * place as well as a string. ` ` as the joiner because no path, no decimal
+ * line number and no hex digest can contain it, so no two different triples can
+ * collide on one key by concatenation.
+ */
+const permitKey = (path, lineNo, digest) => `${path} ${lineNo} ${digest}`;
+const permittedSiteKeys = new Set(
+  NAV_PROPERTY_SITE_DIGESTS.map(([path, lineNo, digest]) => permitKey(path, lineNo, digest))
+);
 
 /*
  * The focus root's own declaration line is skipped, and only that line: it is
@@ -2098,7 +2190,7 @@ for (const { lineNo, trimmed } of shellCodeOutsideWindow) {
   if (lineNo === focusRootLineNo) continue;
   if (!NAV_PROPERTIES.some((prop) => trimmed.includes(prop))) continue;
   const digest = sha256(trimmed);
-  if (permittedSiteDigests.has(digest)) continue;
+  if (permittedSiteKeys.has(permitKey(SHELL_FILE, lineNo, digest))) continue;
   unfrozenPropertySites.push({ lineNo, trimmed, digest });
 }
 
@@ -2134,10 +2226,16 @@ if (nothingMeasurableWasWrong && unfrozenPropertySites.length > 0) {
       '       follows no data flow. Calling it CR-01 would redden a legitimate refactor of the\n' +
       '       default form, and a gate that reddens correct code gets switched off (§0 rule 3).\n' +
       '       Calling it clean is what three rounds did.\n\n' +
+      '       A PERMITTED SITE IS A PLACE, NOT A PHRASE (DEF-41-07 item 3). A permit is keyed on\n' +
+      '       path, line number and digest together, so a line whose text matches a permitted\n' +
+      '       one but sits somewhere else is listed above rather than waved through. If one of\n' +
+      '       the entries above IS a permitted site that simply moved, that is still a change\n' +
+      '       nobody was shown, and it is re-frozen at its new position rather than re-matched.\n\n' +
       '       WHAT TO DO. Establish which form that line reaches. If it is the default or wide\n' +
-      '       form, freeze it: add its digest above, in the same commit, with the reason. If it\n' +
-      '       reaches the focus form, it is CR-01 and the line comes out — §4\'s focus list is\n' +
-      '       closed at four routes and not one of them mounts a navigation.\n\n' +
+      '       form, freeze it: add its PATH, its LINE NUMBER and its digest above, in the same\n' +
+      '       commit, with the reason. If it reaches the focus form, it is CR-01 and the line\n' +
+      '       comes out — §4\'s focus list is closed at four routes and not one of them mounts a\n' +
+      '       navigation.\n\n' +
       '       Nothing was measured.'
   );
 }
@@ -2778,7 +2876,9 @@ console.log(
   `      sites permitted to read a navigation property : ${NAV_PROPERTY_SITE_DIGESTS.length}` +
     `   (found outside the permitted set: ${unfrozenPropertySites.length})`
 );
-for (const [, why] of NAV_PROPERTY_SITE_DIGESTS) console.log(`          ${why}`);
+for (const [path, lineNo, , why] of NAV_PROPERTY_SITE_DIGESTS) {
+  console.log(`          ${path}:${lineNo}  — ${why}`);
+}
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);

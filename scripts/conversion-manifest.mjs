@@ -42,11 +42,67 @@
  * make this module force the issue from here.**
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * `existsSync`, made CASE-EXACT — one verdict on any filesystem.
+ *
+ * ── The defect this closes, which is a CLASS and not a line ─────────────────
+ *
+ * `DEF-41-07` item 3 asked whether the case-sensitivity exposure at
+ * `scripts/verify-dialogs.mjs:1191` was a line or a class. **It is a class**,
+ * and this file held the other half of it: the three existence checks in
+ * `checkManifest()` below. The first half is repaired in `verify-dialogs.mjs`
+ * by plan 41.1-02, in the same wave; this is the second, and `41.1-RESEARCH.md`
+ * §4.6 row 4 is where both are named together.
+ *
+ * The house volume is APFS, **case-insensitive** (`CLAUDE.md` Guardrail 6),
+ * while every declared path here is compared case-EXACTLY by the gates that
+ * consume this list — an import-closure walk emits the path the filesystem
+ * spells, and a set membership test is byte-for-byte. So a single case typo in
+ * an entry below produced **two different verdicts depending on where the
+ * repository was checked out**: silently accepted here on a Mac, refused as
+ * missing on a case-sensitive volume, and in between, a gate asserting the right
+ * thing about a file it identified by a name the tree does not use. A gate whose
+ * answer depends on the filesystem is not a gate; it is a coin.
+ *
+ * ── How ─────────────────────────────────────────────────────────────────────
+ *
+ * Each segment of the relative path is matched byte-for-byte against the actual
+ * directory entries, from `ROOT` down. `Array.prototype.includes` on strings is
+ * an exact comparison, so `Login` never matches `login` — which is the whole
+ * point, and it is why this cannot be written as a second `existsSync`.
+ *
+ * `existsSync` is still asked FIRST, and only as a fast negative: a path that
+ * does not exist under any casing needs no directory read.
+ *
+ * **What it deliberately does not do.** It does not normalise Unicode. HFS+ and
+ * APFS can store a decomposed (NFD) form of a name a source file spells composed
+ * (NFC), and this would call those different. Every path in this manifest is
+ * ASCII, so the condition is not reachable today; it is written down rather than
+ * discovered by whoever first adds a path with an accent in it.
+ */
+export function existsCaseExact(relPath) {
+  if (!existsSync(join(ROOT, relPath))) return false;
+
+  let dir = ROOT;
+  for (const segment of relPath.split("/")) {
+    if (segment === "") continue;
+    let entries;
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return false;
+    }
+    if (!entries.includes(segment)) return false;
+    dir = join(dir, segment);
+  }
+  return true;
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * SPINE — the shared components, excluded from an import-closure walk
@@ -407,11 +463,14 @@ export function checkManifest() {
   }
 
   for (const [route, pageFile, width] of CONVERTED) {
-    if (!existsSync(join(ROOT, pageFile))) {
+    if (!existsCaseExact(pageFile)) {
       refusals.push(
-        `CONVERTED names ${route} at ${pageFile}, which is not on disk. Either the\n` +
-          "       surface moved and this entry moves with it in the same commit, or the entry\n" +
-          "       is a claim about a file that does not exist. Nothing was measured."
+        `CONVERTED names ${route} at ${pageFile}, which is not on disk under that exact\n` +
+          "       name. Either the surface moved and this entry moves with it in the same\n" +
+          "       commit, or the entry is a claim about a file that does not exist — and on a\n" +
+          "       case-insensitive volume the third possibility is a CASE TYPO in the path\n" +
+          "       above, which every consumer of this list compares case-exactly. Nothing was\n" +
+          "       measured."
       );
     }
     if (!WIDTHS.has(width)) {
@@ -423,19 +482,24 @@ export function checkManifest() {
   }
 
   for (const [path] of SPINE) {
-    if (!existsSync(join(ROOT, path))) {
+    if (!existsCaseExact(path)) {
       refusals.push(
-        `SPINE names ${path}, which is not on disk. A spine entry is an EXCLUSION from\n` +
-          "       an import-closure walk, so a stale one silently removes a real file from a\n" +
-          "       gate's scope — the one failure direction that produces a green."
+        `SPINE names ${path}, which is not on disk under that exact name. A spine\n` +
+          "       entry is an EXCLUSION from an import-closure walk, so a stale one silently\n" +
+          "       removes a real file from a gate's scope — the one failure direction that\n" +
+          "       produces a green. A CASE TYPO does it too: the walk emits the path the\n" +
+          "       filesystem spells, and the exclusion is matched case-exactly against it."
       );
     }
   }
 
   for (const [path, exportName] of PRIMITIVES) {
-    if (!existsSync(join(ROOT, path))) {
+    if (!existsCaseExact(path)) {
       refusals.push(
-        `PRIMITIVES names ${exportName} in ${path}, which is not on disk. Nothing was measured.`
+        `PRIMITIVES names ${exportName} in ${path}, which is not on disk under that\n` +
+          "       exact name — a missing file, or a case typo this repository's gates would\n" +
+          "       resolve differently from the volume it is checked out on. Nothing was\n" +
+          "       measured."
       );
     }
   }
