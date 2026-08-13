@@ -843,10 +843,10 @@ Plans:
 
 **Wave 7** *(the three knots — each its own plan, each with a written impact analysis)*
 
-- [ ] 41.1-17-PLAN.md — The refund controls: money, and a confirmation that must refuse the accidental path
-- [ ] 41.1-18-PLAN.md — The event form: 1 668 lines, three toggle tracks, and the venue secrecy control
-- [ ] 41.1-19-PLAN.md — The event form's five satellites, on a file set disjoint from 41.1-18
-- [ ] 41.1-20-PLAN.md — The venue reveal: a monotone guard, made strictly harder to trigger
+- [x] 41.1-17-PLAN.md — The refund controls: money, and a confirmation that must refuse the accidental path
+- [x] 41.1-18-PLAN.md — The event form: 1 668 lines, three toggle tracks, and the venue secrecy control
+- [x] 41.1-19-PLAN.md — The event form's five satellites, on a file set disjoint from 41.1-18
+- [x] 41.1-20-PLAN.md — The venue reveal: a monotone guard, made strictly harder to trigger
 
 **Wave 8** *(blocked on Wave 7)*
 
