@@ -1280,63 +1280,91 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
 
 /* ── E1's read: the shell's focus root, and the branch that renders it ────── */
 
+/**
+ * The two markers, on the first line of every refusal in check E's read.
+ *
+ * One says a person changed the branch or its declaration and the frozen
+ * expectation here has to be updated with it; the other says this gate is broken
+ * or blindfolded and nothing it would print about the focus form could be
+ * trusted. A reader meeting a red suite has to be able to tell those apart
+ * without opening this file, and three rounds of refusals that all read alike are
+ * why they are constants rather than a phrasing convention.
+ *
+ * Declared **here**, above the first refusal that uses one, for the reason
+ * `failures` is declared above `refuse()`: a `const` referenced before its
+ * declaration throws a `ReferenceError`, and a gate that throws is
+ * indistinguishable from a finding.
+ */
+const SHAPE_CHANGED_MARKER = 'SHAPE CHANGED';
+const GATE_CANNOT_READ_MARKER = 'GATE CANNOT READ';
+
 const FOCUS_ROOT_DECL_RE = new RegExp(`\\b(?:const|let|var)\\s+${FOCUS_ROOT_IDENTIFIER}\\b`);
 
 /**
- * The literal, required to close on the same line — and tolerant of a trailing
- * comment after it, in either syntax.
+ * ONE ACCEPTED FORM for the declaration line, anchored at both ends.
  *
- * A focus root spread over several lines, or built by concatenation, is not a
- * thing this gate can read — and reading half of it would assert the absence of
- * a property from a fragment, which is exactly how a check goes green on a
- * defect it never saw. So that is a refusal and not a pass. **That requirement
- * is unchanged**: the closing quote still has to be on the same line as the
- * opening one, and a declaration whose literal continues onto the next line
- * still refuses.
+ * The same inversion the focus branch gets: this does not hunt for a literal
+ * inside whatever the line happens to be, it states the one shape a declaration
+ * may have and refuses on everything else. The accepted form, over the TRIMMED
+ * live line: an optional `export`, a declaration keyword, the identifier, `=`,
+ * exactly one double-quoted literal with backslash escapes handled, an optional
+ * semicolon, and then optionally exactly ONE well-formed trailing comment —
+ * either a `//` running to end of line, or a `/*` that CLOSES on the same line
+ * with nothing but whitespace after its close. Nothing else.
  *
- * What changed is the tail. `liveLines` blanks a line that STARTS with `//`,
- * never one that ends with it, so `const FOCUS_ROOT = "…"; // …` — an ordinary
- * and entirely correct line — hit the end-of-line anchor and took the whole
- * conversion gate to exit 2, and through `verify-all.mjs` the whole suite to
- * `VERIFY_REFUSED` (41-GAP-REVIEW.md WR-06 half 2; measured before this edit:
- * exit 2, FATAL quoting the line verbatim). §0 rule 3: a gate that goes red on
- * correct code gets switched off.
+ * It is built from `FOCUS_ROOT_IDENTIFIER`, so the `=` it matches is provably
+ * the identifier's own rather than whichever `=` the engine retries at.
  *
- * **Round 3 added the block form, and it is the SAME argument, not a second
- * one.** Fixing the `//` form and leaving the block form left the rule
- * half-applied, one comment syntax away from where it had just been fixed: the
- * identical declaration carrying a trailing block comment still took the gate
- * to exit 2 and, through `verify-all.mjs`, the whole suite to `VERIFY_REFUSED`
- * (41-GAP-REVIEW-2.md WR-03; reproduced on the shipped gate before this edit —
- * exit 2, FATAL quoting the line verbatim). The tail now accepts either opener,
- * and accepts a block comment that does NOT close on the line, because once the
- * value has been captured between its two quotes nothing that follows on that
- * line can change it.
+ * ── A DOCBLOCK CLAIM THAT WAS FALSE, RECORDED RATHER THAN QUIETLY REPLACED ───
  *
- * **Why the anchor was relaxed rather than the comment stripped — one or the
- * other, not both, and this is the third syntax that one argument covers.** A
- * stripper would be a second transformation of the line, running before the
- * regex and needing its own notion of where a comment begins; a `//` or a `/*`
- * INSIDE the double-quoted literal would be indistinguishable from one after
- * it, and truncating there would hand the regex a fragment and change the value
- * read. That is the exact failure the refusal below exists to prevent, and this
- * file family already records two incomplete strippers — DEF-41-02 and
- * DEF-41-06 — so a fourth would be the pattern rather than the exception. The
- * tail here cannot do that: the capture group is still bounded by the same two
- * quotes, so **the literal read is byte-for-byte the literal, comment or no
- * comment** — asserted by comparing the value the report prints with and
- * without one, and again for a literal whose own contents open a block comment.
+ * The sentence that stood here said the literal read was *byte-for-byte the
+ * literal, comment or no comment*. **That was false on the code it described.**
+ * The tail it described accepted a block-comment opener followed by anything at
+ * all to end of line, so a declaration of the form `"…" /* c *\/ + "…"` matched:
+ * the capture stopped at the first literal's closing quote, the concatenation's
+ * second operand was swallowed by the tail, and the gate printed the FIRST
+ * FRAGMENT as though it were the whole value. Measured end to end on the shell
+ * with that form substituted: exit 0, `✓ E`, `CONVERSION_OK`, and a printed
+ * `FOCUS_ROOT = "…"` line that the browser never receives. The same unanchored
+ * head made a second declaration on one line read as this one's value, in the
+ * opposite direction — a false red, and equally untrustworthy as evidence.
  *
- * **What the widened tail hits, so it can be checked rather than trusted.** It
- * hits only what follows the literal's CLOSING quote, past an optional
- * semicolon and whitespace: a `//` to end of line, or a `/*` to end of line.
- * Nothing before that quote. So a concatenation, a literal continuing onto the
- * next line, a single-quoted literal and a backtick literal all still refuse,
- * and each was exercised in that direction — narrowing a refusal to "not this"
- * must not become narrowing it to "nothing". No correct declaration is caught
- * by the widening: it only stops catching correct ones.
+ * **What is true now.** The form either matches, in which case the capture is
+ * the whole literal by construction — the head is anchored at the start of the
+ * trimmed line and pinned to this identifier, so the opening quote is the first
+ * after that identifier's own `=`, and the tail admits only whitespace, an
+ * optional semicolon and one closed comment — or it does not match, in which
+ * case nothing is read and the run refuses. There is no third outcome in which a
+ * fragment is reported as a value.
+ *
+ * ── THE TWO LEGITIMATE TRAILING COMMENTS STAY GREEN ─────────────────────────
+ *
+ * Both were real defects when they reddened. `liveLines` blanks a line that
+ * STARTS with a comment opener, never one that ends with it, so an ordinary
+ * declaration carrying a trailing `//` comment — and later the same declaration
+ * carrying a trailing closed block comment — each took this gate to exit 2 and,
+ * through `verify-all.mjs`, the whole sixteen-gate suite to `VERIFY_REFUSED`.
+ * §0 rule 3: a gate that goes red on correct code gets switched off. Neither may
+ * regress, and both are exercised on every round of this guard.
+ *
+ * ── WHY NOT A STRIPPER, WHICH IS STILL THE ARGUMENT ─────────────────────────
+ *
+ * A stripper would be a second transformation of the line, running before this
+ * pattern and needing its own notion of where a comment begins; a comment opener
+ * INSIDE the double-quoted literal would be indistinguishable from one after it,
+ * and truncating there would hand the pattern a fragment and change the value
+ * read. This file family already records two incomplete strippers — DEF-41-02
+ * and DEF-41-06 — so a third would be the pattern rather than the exception. The
+ * anchored form needs none: the capture is bounded by two quotes and everything
+ * after them is described exactly.
  */
-const FOCUS_ROOT_LITERAL_RE = /=\s*"((?:[^"\\]|\\.)*)"\s*;?\s*(?:\/\/.*|\/\*[\s\S]*)?$/;
+const FOCUS_ROOT_LITERAL_RE = new RegExp(
+  '^(?:export\\s+)?(?:const|let|var)\\s+' +
+    FOCUS_ROOT_IDENTIFIER +
+    '\\s*=\\s*"((?:[^"\\\\]|\\\\.)*)"' +
+    '\\s*;?\\s*' +
+    '(?:\\/\\/[^\\n]*|\\/\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/\\s*)?$'
+);
 
 const shellLines = liveLines(SHELL_FILE);
 const focusRootDeclarations = [];
@@ -1346,7 +1374,8 @@ shellLines.forEach((line, i) => {
 
 if (focusRootDeclarations.length === 0) {
   refuse(
-    `${SHELL_FILE} declares no ${FOCUS_ROOT_IDENTIFIER}, so check E has nothing to read.\n` +
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE} declares no ${FOCUS_ROOT_IDENTIFIER}, so check E has\n` +
+      '       nothing to read.\n' +
       '       The focus form is the one CR-01 broke, and this gate reads it by the name it is\n' +
       '       declared under rather than by recognising a branch — a marker beats a heuristic,\n' +
       '       and a heuristic that finds nothing is indistinguishable from a form that reserves\n' +
@@ -1357,7 +1386,8 @@ if (focusRootDeclarations.length === 0) {
 
 if (focusRootDeclarations.length > 1) {
   refuse(
-    `${SHELL_FILE} declares ${FOCUS_ROOT_IDENTIFIER} ${focusRootDeclarations.length} times, at line(s) ` +
+    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE} declares ${FOCUS_ROOT_IDENTIFIER} ` +
+      `${focusRootDeclarations.length} times, at line(s) ` +
       `${focusRootDeclarations.map((d) => d.lineNo).join(', ')}.\n` +
       '       Check E would then assert against whichever one it read first, while the shell\n' +
       '       rendered the other. Nothing was measured.'
@@ -1365,17 +1395,30 @@ if (focusRootDeclarations.length > 1) {
 }
 
 const focusRootLineNo = focusRootDeclarations[0].lineNo;
-const focusRootLiteralMatch = focusRootDeclarations[0].text.match(FOCUS_ROOT_LITERAL_RE);
+const focusRootDeclarationText = focusRootDeclarations[0].text.trim();
+const focusRootLiteralMatch = focusRootDeclarationText.match(FOCUS_ROOT_LITERAL_RE);
 
 if (!focusRootLiteralMatch) {
   refuse(
-    `${SHELL_FILE}:${focusRootLineNo} declares ${FOCUS_ROOT_IDENTIFIER}, but not as a double-quoted\n` +
-      '       literal closing on that line, so check E cannot read the whole of it. Asserting\n' +
-      '       that a navigation property is absent from a FRAGMENT of the focus root is how a\n' +
-      '       check goes green on a defect it never saw, and CR-01 is precisely a defect that\n' +
-      '       four green checks never saw. Line, verbatim:\n\n       ' +
-      focusRootDeclarations[0].text.trim() +
-      '\n\n       Nothing was measured.'
+    `${SHAPE_CHANGED_MARKER} — ${SHELL_FILE}:${focusRootLineNo} declares ${FOCUS_ROOT_IDENTIFIER},\n` +
+      '       but not in the one accepted form.\n\n' +
+      '       THE ACCEPTED FORM, stated positively — this is not a list of rejected shapes,\n' +
+      '       because a list of rejected shapes is the direction that failed three times:\n\n' +
+      '         an optional `export`, a declaration keyword, the identifier, `=`, exactly ONE\n' +
+      '         double-quoted literal closing on this same line, an optional semicolon, and\n' +
+      '         then at most ONE well-formed trailing comment — a `//` running to end of\n' +
+      '         line, or a block comment that CLOSES on this line with nothing but whitespace\n' +
+      '         after its close. Anchored at both ends; nothing else is accepted.\n\n' +
+      '       FOUND, verbatim:\n\n         ' +
+      focusRootDeclarationText +
+      '\n\n       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing was read, so nothing was\n' +
+      '       measured. Asserting that a navigation property is absent from a FRAGMENT of the\n' +
+      '       focus root is how a check goes green on a defect it never saw, and CR-01 is\n' +
+      '       precisely a defect that four green checks never saw. A form this gate cannot read\n' +
+      '       whole is one it refuses rather than one it reads half of.\n\n' +
+      '       WHAT TO DO. If this declaration is a legitimate change, widen the accepted form\n' +
+      '       in this file, in the same commit, with the measurement that justified it.\n\n' +
+      '       Nothing was measured.'
   );
 }
 
@@ -1465,18 +1508,6 @@ shellLines.forEach((line, i) => {
  * differ, and the single action that resolves it.
  */
 const FOCUS_BRANCH_OPEN_RE = /\bwidth\s*===\s*(?:"focus"|'focus')/;
-
-/**
- * The two markers, on the first line of every refusal in this read.
- *
- * One says a person changed the branch and the expectation here must be updated
- * with it; the other says this gate is broken or blindfolded. A reader meeting a
- * red suite has to be able to tell those apart without opening this file, and
- * three rounds of refusals that all read alike are why they are constants rather
- * than a phrasing convention.
- */
-const SHAPE_CHANGED_MARKER = 'SHAPE CHANGED';
-const GATE_CANNOT_READ_MARKER = 'GATE CANNOT READ';
 
 /**
  * The two utility tokens the focus branch's inner element carries, assembled
