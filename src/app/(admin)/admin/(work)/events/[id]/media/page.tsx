@@ -4,9 +4,47 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 import MediaReviewGrid from "@/components/media/MediaReviewGrid";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 
 /**
  * Media moderation for one event — the collapsed surface.
+ *
+ * ── Converted by plan 41.1-09, and the conversion touched presentation ONLY ───
+ *
+ * The shell owns the maximum, the gutter, the vertical rhythm and the navigation
+ * clearance; the title carries the display role; the three status tiles stop
+ * naming a palette. **The three reads are untouched, byte for byte** — the event
+ * row, the status census and the pending list select the same columns, filter on
+ * the same values and order the same way. No query changed, no column was added,
+ * no capability check was touched and no action payload was altered, so a media
+ * item that is hidden today is hidden after.
+ *
+ * `width="default"` and not `wide`: §4's wide list is closed and does not name
+ * this route. That is not a fallback — it is the answer for every surface nobody
+ * had to argue about.
+ *
+ * ── The three tiles are NOT semantic, and that is a decision ──────────────────
+ *
+ * They used to be amber, green and red. None of the three survives, and no
+ * `--sem-*` token replaces it:
+ *
+ *  - **Amber cannot mean *caution* here.** `globals.css:161-163` records that the
+ *    warning semantic is also SunSet's identification colour, so an amber tile
+ *    cannot say *pending* rather than *this is a SunSet night* by hue alone.
+ *  - **Rejected is not critical.** A rejected upload is an ordinary moderation
+ *    outcome, and the critical semantic is the one that says a thing has gone
+ *    wrong. Spending it on a normal outcome is how a red stops meaning anything.
+ *
+ * So the three read as counts, with the label beside each doing the work the hue
+ * was doing badly. Colour was never the only channel here (`40-UI-SPEC.md` §10)
+ * and now it is not a channel at all.
+ *
+ * **They are not the `Card` primitive either**, and that is the same shape of
+ * decision the membership register records for its error region: §8.4 fixes the
+ * card's padding at 24px, and three tiles side by side inside a 390px phone
+ * gutter do not fit at that padding. The card's own edge and ground tokens are
+ * written out instead of overriding the one property the primitive decided.
  *
  * ── Cache: declared, not inherited ───────────────────────────────────────────
  *
@@ -99,12 +137,29 @@ export default async function MediaReviewPage({ params }: PageProps) {
 
   if (!event) {
     return (
-      <div className="min-h-dvh px-6 pt-12">
-        <p className="text-muted">Event not found.</p>
-        <Link href="/admin/events" className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover">
-          Back to events
-        </Link>
-      </div>
+      /*
+        A branch, not a second surface: this and the return below are mutually
+        exclusive, so exactly one page title ever reaches the browser (§7.1).
+      */
+      <PageShell width="default">
+        <header className="pb-6">
+          <PageTitle>Media review</PageTitle>
+        </header>
+        {/* §8.11's empty-state contract — a class string, not a component. */}
+        <div className="px-6 py-12 text-center">
+          <p className="text-base font-semibold text-ink">Event not found</p>
+          <p className="mt-1 text-sm text-muted">
+            This address names an event that does not exist, or one this account
+            cannot read.
+          </p>
+          <Link
+            href="/admin/events"
+            className="mt-4 inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink"
+          >
+            &larr; Back to events
+          </Link>
+        </div>
+      </PageShell>
     );
   }
 
@@ -143,50 +198,67 @@ export default async function MediaReviewPage({ params }: PageProps) {
   });
 
   return (
-    <div className="min-h-dvh px-6 pt-12 pb-24">
-      <Link
-        href="/admin/events"
-        className="mb-6 inline-block text-sm text-muted hover:text-foreground transition-colors"
-      >
-        &larr; Back to events
-      </Link>
+    <PageShell width="default">
+      <header className="pb-6">
+        <Link
+          href="/admin/events"
+          className="inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink"
+        >
+          &larr; Back to events
+        </Link>
+        <PageTitle className="mt-2">Media review</PageTitle>
+        <p className="mt-1 text-sm text-muted">{event.title}</p>
+      </header>
 
-      <h1 className="text-2xl font-bold tracking-tight mb-2">
-        Media Review
-      </h1>
-      <p className="text-sm text-muted mb-6">{event.title}</p>
-
-      {/* Status counts */}
-      <div className="flex gap-4 mb-6">
-        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2">
-          <p className="text-lg font-bold text-yellow-400">{counts.pending}</p>
+      {/*
+        The status census. Each figure carries the data face, which already
+        carries tabular figures at globals.css:308-310, so three counts of
+        different widths still line up with each other.
+      */}
+      <div className="mb-6 flex gap-4">
+        <div className="rounded-2xl border border-line bg-surface px-4 py-3">
+          <p className="font-mono text-base font-semibold text-ink">
+            {counts.pending}
+          </p>
           <p className="text-xs text-muted">Pending</p>
         </div>
-        <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2">
-          <p className="text-lg font-bold text-green-400">{counts.approved}</p>
+        <div className="rounded-2xl border border-line bg-surface px-4 py-3">
+          <p className="font-mono text-base font-semibold text-ink">
+            {counts.approved}
+          </p>
           <p className="text-xs text-muted">Approved</p>
         </div>
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2">
-          <p className="text-lg font-bold text-red-400">{counts.rejected}</p>
+        <div className="rounded-2xl border border-line bg-surface px-4 py-3">
+          <p className="font-mono text-base font-semibold text-ink">
+            {counts.rejected}
+          </p>
           <p className="text-xs text-muted">Rejected</p>
         </div>
       </div>
 
-      {/* Pending media grid */}
+      {/*
+        The queue is empty on arrival. §8.11's class contract again, and §11's
+        copy rule: a heading naming what is absent in this surface's own noun,
+        and a body saying why the emptiness is normal rather than an error.
+
+        This is NOT the same empty state the grid renders. That one appears when
+        the last pending item has just been dismissed in the browser, and it says
+        so in its own words; this one is the server's answer.
+      */}
       {items.length === 0 ? (
-        <div className="rounded-xl border border-card-border bg-card p-8 text-center">
-          <p className="text-muted">
-            No pending media to review.
+        <div className="px-6 py-12 text-center">
+          <p className="text-base font-semibold text-ink">
+            No pending media to review
           </p>
-          {counts.approved > 0 && (
-            <p className="mt-2 text-xs text-muted">
-              {counts.approved} media item{counts.approved !== 1 ? "s" : ""} approved.
-            </p>
-          )}
+          <p className="mt-1 text-sm text-muted">
+            {counts.approved + counts.rejected > 0
+              ? `Everything uploaded has been decided — ${counts.approved} approved, ${counts.rejected} rejected.`
+              : "Nothing has been uploaded for this event yet."}
+          </p>
         </div>
       ) : (
         <MediaReviewGrid items={items} />
       )}
-    </div>
+    </PageShell>
   );
 }
