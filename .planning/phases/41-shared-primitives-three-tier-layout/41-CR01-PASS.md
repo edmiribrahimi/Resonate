@@ -114,18 +114,54 @@ appears on any of them, that is the finding, and it is a bigger one than a centr
 
 | # | Route | Width | What must be true | Result |
 |---|---|---|---|---|
-| 1 | `/login` | 390 | space above the card and space below it equal within 4px; no navigation bar; no horizontal scroll | pending |
-| 2 | `/login` | 768 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
-| 3 | `/login` | 1440 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
-| 4 | `/register` | 390 | space above the card and space below it equal within 4px; no navigation bar; no horizontal scroll | pending |
-| 5 | `/register` | 768 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
-| 6 | `/register` | 1440 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
+| 1 | `/login` | 390 | space above the card and space below it equal within 4px; no navigation bar; no horizontal scroll | **measured, headless — see §1a** |
+| 2 | `/login` | 768 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | **measured, headless — offset 0px** |
+| 3 | `/login` | 1440 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | **measured, headless — offset 0px** |
+| 4 | `/register` | 390 | space above the card and space below it equal within 4px; no navigation bar; no horizontal scroll | **measured, headless — see §1a** |
+| 5 | `/register` | 768 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | **measured, headless — offset 0px** |
+| 6 | `/register` | 1440 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | **measured, headless — offset 0px** |
 | 7 | `/set-password` | 390 | space above the card and space below it equal within 4px; no navigation bar; no horizontal scroll | pending |
 | 8 | `/set-password` | 768 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
 | 9 | `/set-password` | 1440 | card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
 | 10 | `/payment/callback` | 390 | refusal branch, no parameters. Space above and below the card equal within 4px; no navigation bar; no horizontal scroll | pending |
 | 11 | `/payment/callback` | 768 | refusal branch, no parameters. Card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
 | 12 | `/payment/callback` | 1440 | refusal branch, no parameters. Card centre within 4px of the viewport centre; no side column; no horizontal scroll | pending |
+
+---
+
+## §1a — What was measured on 2026-08-13, and what that is not
+
+Rows 1–6 were measured on the owner's machine: the dev server against the real
+credentials, a **headless** browser driven over the debug protocol, and the two
+routes that are public and unauthenticated. Nothing was submitted and no row was
+created — these two pages read no member data.
+
+| Route | Width | Card left | Card width | Card centre | Viewport centre | **Offset** | Horizontal scroll | Navigation |
+|---|---|---|---|---|---|---|---|---|
+| `/login` | 390 | 24 | 342 | 195 | 195 | **0px** | no | absent |
+| `/login` | 768 | 192 | 384 | 384 | 384 | **0px** | no | absent |
+| `/login` | 1440 | 528 | 384 | 720 | 720 | **0px** | no | absent |
+| `/register` | 390 | 24 | 342 | 195 | 195 | **0px** | no | absent |
+| `/register` | 768 | 192 | 384 | 384 | 384 | **0px** | no | absent |
+| `/register` | 1440 | 528 | 384 | 720 | 720 | **0px** | no | absent |
+
+The tolerance in §1 is 4px. The old rendering put the card **112px** to the right
+at 768 and above. It is at zero. **CR-01 is now observed, not only asserted** —
+the first observed evidence this phase has produced.
+
+**And here is what this measurement is not.** A headless render is not a device
+render: it says nothing about fonts as they land on a real screen, about the
+safe-area inset, about pinch-zoom, or about whether a control can be hit by a
+thumb. **H41-4 is untouched by this and stays `human_needed`** — nothing in this
+repository has yet asserted that any control is physically 44px. It was also the
+dev server, not a production build. Rows 7–13 are still owed: `/set-password`
+needs a token and `/payment/callback` needs a payment id, and neither can be
+reached without the owner.
+
+Raw measurements and the six screenshots are in the session scratchpad, outside
+the repository — they are evidence of a run, not an artefact to version.
+
+---
 
 **Rows 2, 3, 5, 6, 8, 9, 11 and 12 are the ones that would have caught the regression.**
 At 768 and 1440 the old rendering put the card 112px to the right — a gap difference of
