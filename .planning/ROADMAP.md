@@ -788,7 +788,7 @@ Plans:
 
 ### Phase 41.1: Work-Surface Conversion
 
-**Goal**: The 22 remaining work pages convert onto the layer Phase 41 built, and the gates that shipped as ratchets stop being ratchets for the work group.
+**Goal**: The 21 remaining work pages convert onto the layer Phase 41 built, and the gates that shipped as ratchets stop being ratchets for the work group.
 **Depends on**: Phase 41
 **Requirements**: DS-07, DS-09, RESP-01, RESP-02, RESP-03 *(continued from Phase 41)*
 **Success Criteria** (what must be TRUE):
@@ -797,6 +797,7 @@ Plans:
   2. The five analytics tables and the finance transaction list read as cards on a phone, and G3's `REMAINING` list is empty for the work group
   3. No file under the work surface reads a legacy token name or carries a raw palette colour
   4. G6's `REMAINING` list is empty for the work group — no `sm:`, `xl:` or `2xl:` survives there
+  5. **The three knots reached from the work surface are converted with their domain gates held, not despite them** — the refund controls move money, the event form is 1 669 lines, and the venue reveal is a **monotone** guard. Each is its own plan in the last wave, each carries a written impact analysis before its diff, and a visual conversion here is Critical, not cosmetic
 
 **Plans**: TBD
 **UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
@@ -805,28 +806,47 @@ Plans:
 > `ReviewListClient.tsx`, which **stays a table** by D-41-16 and whose exemption
 > must survive this phase rather than be quietly converted.
 
+> **Why the knots moved here — owner decision, 2026-08-13.** They did not move
+> for convenience. Criterion 1 is enforced by a gate whose definition of *whole*
+> **is the import closure**, and six of the 21 work pages reach `EventForm.tsx`,
+> `RefundDialog.tsx`, `RefundActions.tsx`, `VenueRevealPanel.tsx` and
+> `RevealVenueDialog.tsx`. A file-level split was priced and **is not available**:
+> check A walks *through* `VenueRevealPanel.tsx` into `RevealVenueDialog.tsx`.
+> Leaving the knots in 41.2 would have meant six pages not closing here — and the
+> `(work)` layout shim, which protects exactly those six, surviving the phase whose
+> criterion 1 requires its deletion.
+>
+> The roadmap's original reason for putting the knots last is **kept, not
+> overruled**: *"prove it on the hardest correct file"* is not *"convert the most
+> dangerous surface first."* They are last **within this phase**, after fifteen
+> ordinary pages have proven the pattern. Measured in `41.1-RESEARCH.md` §7.3-7.5.
+
 ### Phase 41.2: Public, Member and Money Surfaces
 
-**Goal**: The public and member surfaces convert, and the three knots — where a mistake costs money or reveals an address — are taken deliberately and on their own.
+**Goal**: The public and member surfaces convert, and the bar — where a mistake costs money and reveals an address on the same pages — is taken deliberately and on its own.
 **Depends on**: Phase 41.1
 **Requirements**: DS-07, DS-08, RESP-01, RESP-02, RESP-03 *(RESP-01 closes here, and only here)*
 **Success Criteria** (what must be TRUE):
 
   1. The public and member surfaces have each converted whole
-  2. **The three knots are converted with their domain gates held, not despite them:** the bar and its tokens carry money **and** the venue's secrecy on the same pages; the event form is 1 668 lines; the refunds move money. A visual conversion here is Critical, not cosmetic
-  3. `RevealVenueDialog` adopts the Dialog primitive — deliberately last, because the reveal is **monotone**: once the mail is sent the address is public and there is no undo
-  4. Every `REMAINING` list in every ratchet gate is empty, and the gates become the absolutes the UI-SPEC wrote them as
-  5. **RESP-01 is finally true in its own words** — *every* surface is usable on phone, tablet and desktop — and is closed by the written human pass, since no script can close it
+  2. **The bar is converted with its domain gates held, not despite them:** the bar and its tokens carry money **and** the venue's secrecy on the same pages. A visual conversion here is Critical, not cosmetic
+  3. Every `REMAINING` list in every ratchet gate is empty, and the gates become the absolutes the UI-SPEC wrote them as
+  4. **RESP-01 is finally true in its own words** — *every* surface is usable on phone, tablet and desktop — and is closed by the written human pass, since no script can close it
 
 **Plans**: TBD
 **UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
 
-> **Why the knots are last and together.** They are the only surfaces in the
-> conversion where the failure is not visual: a wrong query on the bar's pages
-> can show an address before its reveal, and a refund path is money. Phase 41's
-> own plans deliberately kept `RevealVenueDialog` away from the Dialog
-> primitive's first use for the same reason — *"prove it on the hardest correct
-> file"* is not *"convert the most dangerous surface first."*
+> **Why the bar is last, and why it is now alone here.** It is the surface where
+> the failure is not visual: a wrong query on the bar's pages can show an address
+> before its reveal, and its tokens are money.
+>
+> **The other two knots — the event form and the refunds — and `RevealVenueDialog`
+> moved to Phase 41.1 by owner decision on 2026-08-13**, because six work pages
+> reach them through their import closures and no file-level split satisfies the
+> closure walk. The reasoning is written in full in Phase 41.1's section and
+> measured in `41.1-RESEARCH.md` §7.3-7.5. The principle they were held for —
+> *"prove it on the hardest correct file"* is not *"convert the most dangerous
+> surface first"* — is honoured there instead: they are last within 41.1.
 
 ### Phase 42: Scanner Conversion
 
