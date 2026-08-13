@@ -392,6 +392,47 @@ export const PRIMITIVES = [
  * not a typo to correct quietly: one of the two is wrong, and which one is a
  * question for a person.
  *
+ * ── `/admin` IS DELIBERATELY NOT DECLARED, AND THIS IS WHY ──────────────────
+ *
+ * The work surface has **24 pages and 23 declarable surfaces**. The one that is
+ * missing is `/admin` itself, at `src/app/(admin)/admin/(work)/page.tsx`, and it
+ * is left out on purpose so that the next reader counts 24, finds 23, and reads
+ * this paragraph instead of filing a defect.
+ *
+ * That file is 39 lines, carries **zero `className`**, renders no markup, and
+ * ends in a `redirect`. It is an entrance: it resolves the access context,
+ * refuses a visitor without `organizer.access`, and forwards. **It therefore can
+ * never import `PageShell`** — there is nothing for a shell to wrap — and check
+ * D of `verify-conversion.mjs` puts any declared surface whose page file does
+ * not import the shell into `pagesWithoutShell`, which is a FAILURE. Declaring
+ * it would produce a red on a correct file, and a gate that reddens correct code
+ * is a gate somebody switches off (§0 rule 3, D-41-19's second failure mode;
+ * `scripts/verify-media-strip.mjs:51-62` is this repository's own record of it
+ * happening).
+ *
+ * **Criterion 1 reads *every page that renders a surface*.** A redirect renders
+ * nothing and shows nobody a half-converted screen, which is the thing the
+ * criterion protects a person from. So `/admin` is not an exemption carved out
+ * of the criterion's scope; it was never inside it.
+ *
+ * **This was settled BEFORE check D's first red run**, which is the whole point
+ * of writing it here rather than discovering it: an exemption found on a red run
+ * is an exemption nobody trusts, and the gate is what gets edited next (D-41-16).
+ *
+ * The precedent for declining to make a claim rather than making a convenient
+ * one is the `PRIMITIVES` note a few hundred lines above this — *"Rendered
+ * primitives only"*, `conversion-manifest.mjs:206-214` at the time it was
+ * written, where the shared focus-expression constant is left off the list
+ * because it renders nothing and G1 check C's failure mode is a component nobody
+ * mounted. Same shape, same reason: a list of claims is how a gate becomes a
+ * rubber stamp.
+ *
+ * **What this does NOT say.** It does not say `/admin` is converted, and it does
+ * not say it is unconverted. It says this list is not where that question is
+ * answered. If a future plan gives that route markup — a chooser, a landing
+ * board, anything a person looks at — it stops being a redirect, it becomes
+ * declarable, and this paragraph comes out in the same commit as its entry.
+ *
  * Shape: `[route, pageFile, width, reason]`.
  */
 export const CONVERTED = [

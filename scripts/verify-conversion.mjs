@@ -4,10 +4,21 @@
  * what it actually reaches, not by trusting the claim.
  *
  * WHAT IT ASSERTS, in one sentence: **for every surface `CONVERTED` declares,
- * nothing reachable from its page file through the import graph carries a raw
- * palette utility or a legacy token utility; every primitive `PRIMITIVES`
- * publishes has at least one importer; and the page's width comes from the
- * shell rather than from a maximum written on the page.**
+ * nothing reachable from its page file through the import graph — nor mounted
+ * beside that page by the router — carries a raw palette utility or a legacy
+ * token utility; every primitive `PRIMITIVES` publishes has at least one
+ * importer; and the page's width comes from the shell rather than from a
+ * maximum written on the page.**
+ *
+ * **The second clause was added by plan 41.1-04 and it is not a flourish.** A
+ * route-level `loading.tsx`, `error.tsx` or `not-found.tsx` is reached by the
+ * ROUTER, so no import walk can see it, and this gate scanned none of them —
+ * while criterion 3 says *"no file under the work surface"*. Seven such files
+ * under `(work)` were carrying 149 legacy-token utilities in full view of a gate
+ * that had never opened them (`41.1-RESEARCH.md` §1.6). The scanned set now
+ * grows by the route-adjacent files beside each declared page; the failure
+ * direction is that the gate finds MORE, and a file that was never measured
+ * stops passing by absence. See D-41.1-21 at the walk.
  *
  * This is **G1 (checks A, B, C) and G4 (checks D and E) in one script**, over one
  * manifest, with one walk. They are not split, and the reason is not economy:
@@ -1190,7 +1201,8 @@ try {
   );
 }
 
-const { SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, checkManifest, convertedSpinePaths } = manifest;
+const { SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, checkManifest, convertedSpinePaths, existsCaseExact } =
+  manifest;
 
 for (const [name, value] of [
   ['SPINE', SPINE], ['PHASE_42_PATHS', PHASE_42_PATHS],
@@ -1210,6 +1222,15 @@ if (typeof checkManifest !== 'function' || typeof convertedSpinePaths !== 'funct
     'the manifest does not export checkManifest() and convertedSpinePaths(). Its own\n' +
       '       docblock requires a consumer to call the first before reading a single entry.\n' +
       '       Nothing was measured.'
+  );
+}
+if (typeof existsCaseExact !== 'function') {
+  refuse(
+    'the manifest does not export existsCaseExact(). The route-adjacent extension of the\n' +
+      '       scanned set asks it whether a `loading.tsx` sits beside a declared page, and\n' +
+      '       falling back to `existsSync` would ask that question case-INSENSITIVELY on this\n' +
+      '       volume while every path it produces is compared case-exactly downstream — one\n' +
+      '       typo, two verdicts (DEF-41-07 item 3). Nothing was measured.'
   );
 }
 
@@ -1333,10 +1354,71 @@ function phase42Match(relPath) {
   return phase42Patterns.find((p) => p.re.test(relPath)) ?? null;
 }
 
+/* ── the route-adjacent extension of the scanned set (D-41.1-21) ─────────────
+ *
+ * **THE SET GROWS, SO THE GATE FINDS MORE, AND A FILE THAT WAS NEVER MEASURED
+ * STOPS PASSING BY ABSENCE.** That is the whole direction of this change and it
+ * is the safe one: every failure it can produce is a file entering checks A and
+ * B that was outside them before, never a file leaving.
+ *
+ * **The hole it closes, measured.** A route-level `loading.tsx` is mounted by
+ * the ROUTER, not by an import, so no closure walk reaches it — not this one,
+ * not any. Criterion 3 says *"no file under the work surface reads a legacy
+ * token name or carries a raw palette colour"*, and until this extension the
+ * word `loading` appeared **zero times** in this gate: seven `loading.tsx` files
+ * under `(work)` carrying 149 legacy-token utilities and 45 hand-rolled pulse
+ * blocks were invisible to every gate in this phase (`41.1-RESEARCH.md` §1.6).
+ * A criterion asserted over a set that cannot contain the counter-example is a
+ * claim, not a check.
+ *
+ * **What it still does not reach, and it is not approved by silence.** A file
+ * the router mounts that is neither the declared page nor route-adjacent to it —
+ * a `template.tsx` or a `layout.tsx` ABOVE the surface, a `default.tsx` in a
+ * parallel route, a `loading.tsx` at an ancestor segment that covers this one —
+ * is still outside checks A and B. E2 climbs ancestor wrappers, but it asks them
+ * exactly one question (is a navigation module reachable) and never opens their
+ * class strings; that limit is stated at the top of this file and it is
+ * unchanged here. **UNMEASURED, not approved:** those files are a region nobody
+ * looked at, and a tick printed over a region nobody looked at is the failure
+ * this phase exists to remove.
+ *
+ * `error` and `not-found` are PREVENTION, not observation. Measured 2026-08-13
+ * with `find src/app -name 'error.*'` and `-name 'not-found.*'`: **zero of each
+ * in the whole route tree**, so today those two names find nothing anywhere.
+ * They are tested because the day somebody adds one beside a declared page it
+ * should enter the scan on that commit rather than on the commit that notices —
+ * and saying they were measured at zero is what keeps a later reader from
+ * reading them as a guess.
+ *
+ * Existence is asked through `existsCaseExact` (the manifest's helper, DEF-41-07
+ * item 3): the path this produces is compared case-exactly against spine, Phase
+ * 42 and exemption lists a few lines below, so asking the question
+ * case-insensitively would let one typo produce two verdicts.
+ */
+const ROUTE_ADJACENT_BASENAMES = ['loading', 'error', 'not-found'];
+
+function routeAdjacentFiles(pageFile, alreadyReached) {
+  const lastSlash = pageFile.lastIndexOf('/');
+  const pageDir = lastSlash === -1 ? '' : pageFile.slice(0, lastSlash);
+  const found = [];
+  for (const basename of ROUTE_ADJACENT_BASENAMES) {
+    for (const ext of WRAPPER_EXTENSIONS) {
+      const rel = pageDir === '' ? `${basename}${ext}` : `${pageDir}/${basename}${ext}`;
+      if (!existsCaseExact(rel)) continue;
+      /* Already in the closure — some page imports its own loading component.
+       * Adding it twice would inflate the printed count without adding a file. */
+      if (alreadyReached.includes(rel) || found.includes(rel)) continue;
+      found.push(rel);
+    }
+  }
+  return found;
+}
+
 const surfaces = [];
 const excludedSpine = new Set();
 const excludedPhase42 = new Map();
 const exemptionsApplied = new Set();
+const routeAdjacentAdded = new Set();
 
 for (const [route, pageFile, width, reason] of CONVERTED) {
   if (!existsSync(`${ROOT}/${pageFile}`)) {
@@ -1356,8 +1438,14 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     );
   }
 
+  /* The route-adjacent files go through the SAME exclusion filter as the
+   * closure — spine, Phase 42, exemption — because a `loading.tsx` under the
+   * door is the door's, and an extension that widened the scan past a declared
+   * fence would be this gate quietly widening its own scope. */
+  const routeAdjacent = routeAdjacentFiles(pageFile, reached);
+
   const scanned = [];
-  for (const rel of reached) {
+  for (const rel of [...reached, ...routeAdjacent]) {
     if (EXEMPT_SET.has(rel)) {
       exemptionsApplied.add(rel);
       continue;
@@ -1374,6 +1462,11 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     scanned.push(rel);
   }
 
+  /* Counted only once it SURVIVED the filter, so the printed arithmetic —
+   * scanned minus route-adjacent equals reached-and-kept — cannot drift from a
+   * route-adjacent file that was excluded as spine, Phase 42 or exempt. */
+  for (const rel of routeAdjacent) if (scanned.includes(rel)) routeAdjacentAdded.add(rel);
+
   if (scanned.length === 0) {
     refuse(
       `the closure of ${route} is empty after exclusions — every file it reaches, its own\n` +
@@ -1383,7 +1476,7 @@ for (const [route, pageFile, width, reason] of CONVERTED) {
     );
   }
 
-  surfaces.push({ route, pageFile, width, reason, reached, scanned });
+  surfaces.push({ route, pageFile, width, reason, reached, routeAdjacent, scanned });
 }
 
 /* ── check E's measurement, taken here so its refusals precede every tick ────
@@ -2366,6 +2459,10 @@ for (const s of surfaces) for (const rel of s.scanned) allScanned.add(rel);
 
 console.log(`  surfaces declared converted : ${surfaces.length}`);
 console.log(`  files reached by the walk   : ${new Set(surfaces.flatMap((s) => s.reached)).size}`);
+console.log(
+  `  route-adjacent files added  : ${routeAdjacentAdded.size}   ` +
+    `(${ROUTE_ADJACENT_BASENAMES.join('/')} beside a declared page — mounted by the router, not by an import)`
+);
 console.log(`  files scanned by A, B and D : ${allScanned.size}`);
 console.log(`  excluded as converted spine : ${excludedSpine.size}`);
 console.log(`  excluded as Phase 42        : ${excludedPhase42.size}`);
@@ -2391,7 +2488,10 @@ if (excludedPhase42.size > 0) {
 console.log('\n  the surfaces, and what each reaches:\n');
 for (const s of surfaces) {
   console.log(`      ${s.route}  [${s.width}]  — ${s.scanned.length} file(s) scanned`);
-  for (const rel of s.scanned) console.log(`          ${rel}`);
+  for (const rel of s.scanned) {
+    const tag = s.routeAdjacent.includes(rel) ? '   [route-adjacent]' : '';
+    console.log(`          ${rel}${tag}`);
+  }
 }
 console.log('');
 
@@ -2443,8 +2543,10 @@ if (paletteHits.length > 0) {
   );
 } else {
   console.log(
-    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) reachable from ` +
-      `${surfaces.length} converted surface(s)\n`
+    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) under ` +
+      `${surfaces.length} converted surface(s)\n` +
+      `       (${allScanned.size - routeAdjacentAdded.size} reached through the import graph, ` +
+      `${routeAdjacentAdded.size} mounted beside a page by the router)\n`
   );
 }
 
