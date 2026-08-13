@@ -74,6 +74,27 @@ interface AutocompleteTagInputProps {
   onCreateNew?: (name: string) => void;
   placeholder?: string;
   createLabel?: string;
+  /**
+   * Applied to the text input, so a visible `<label>` in the caller can name it
+   * with `htmlFor`. Added 2026-08-14 by plan 41.1-24.
+   *
+   * Plan 41.1-18 converted the two lineup labels in `EventForm.tsx` and left
+   * both UNBOUND, reporting it rather than papering over it: this component
+   * exposed no `id`, so there was nothing for a `htmlFor` to name. That is the
+   * whole defect and this prop is the whole fix — **a binding, not behaviour**.
+   * Nothing about the search, the debounce, the keyboard handling, the creation
+   * path or the option list is touched.
+   *
+   * Optional because the component has callers that do not label it, and a
+   * required prop would have been a breaking change dressed as an
+   * accessibility fix. Where it is omitted the input renders exactly as before.
+   *
+   * **The caller owns uniqueness.** This component mounts once per sub-event on
+   * the event form, so a fixed identifier here would bind every visible label to
+   * the first control of that name — the same defect plan 41.1-22 found and
+   * scoped in the tier form. `EventForm.tsx` passes its per-sub-event prefix.
+   */
+  id?: string;
 }
 
 /**
@@ -96,6 +117,7 @@ export default function AutocompleteTagInput({
   onCreateNew,
   placeholder = "Artist name",
   createLabel = "Create new artist",
+  id,
 }: AutocompleteTagInputProps) {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<ArtistOption[]>([]);
@@ -233,6 +255,7 @@ export default function AutocompleteTagInput({
         <div className="relative">
           <input
             ref={inputRef}
+            id={id}
             type="text"
             value={input}
             onChange={handleChange}

@@ -531,6 +531,45 @@ export const GROUP_TAGS = ['work', 'public-member-money', 'phase-42', 'exempt'];
  *
  * Shape: `[path, reason, target, group]`.
  */
+/**
+ * ── THE LIST IS EMPTY, AND THAT IS A DECISION RATHER THAN A DRIFT ────────────
+ *
+ * The emptiness guard below refuses an empty `REMAINING` and says why in its own
+ * sentence: *"the emptiness should be a DECISION written above the constant —
+ * not a list that quietly emptied itself while nobody was reading."* This is
+ * that decision, and the guard now reads it instead of refusing blind.
+ *
+ * **Written 2026-08-14 by plan 41.1-24, the phase's final reconciliation.** The
+ * last entry — `src/components/events/SalesDashboard.tsx` — was paid by plan
+ * 41.1-21 and removed here after being re-derived from the tree with a raw
+ * needle count that does NOT use the gates' shared comment stripper: asking the
+ * gate what it thinks is not a check on the gate. Measured `<table` occurrences
+ * in that file on 2026-08-14: **0**. The gate had been printing it STALE.
+ *
+ * **Why an empty list here does not become a number that lies.** This gate's
+ * check A is a TREE-SIDE accounting, not a list-side one: it counts every
+ * `<table` occurrence under `src/` and requires each to be the primitive, on
+ * `REMAINING`, or the declared exemption. With the list empty the arithmetic is
+ * 2 = 1 primitive + 0 remaining + 1 exempt, and an eighth hand-rolled table
+ * added tomorrow makes check A fail as an unaccounted file — not as a missing
+ * list entry. The migration can therefore be closed without the gate losing its
+ * teeth, which is exactly the condition the guard was protecting.
+ *
+ * **What this does NOT say.** It does not say the cards carry the columns that
+ * mattered. That is H41-3 — a person holding a phone — and it is still owed.
+ * `null` here means the migration is open; an object means it is closed and the
+ * guard requires all three fields, so this cannot be satisfied by a truthy
+ * placeholder.
+ */
+export const MIGRATION_CLOSED = {
+  date: '2026-08-14',
+  by: 'plan 41.1-24',
+  why:
+    'every hand-rolled table on the work surface is gone; check A still accounts for ' +
+    'every table occurrence in the tree, so an empty list is closable without the gate ' +
+    'losing the ability to catch the next one',
+};
+
 export const REMAINING = [
   // PAID by plan 41-10 task 2 — `src/components/admin/MemberTable.tsx` opened
   // this list and holds no table now. Its line left in the same commit that
@@ -577,12 +616,25 @@ export const REMAINING = [
   // the gate. Raw needle counts on 2026-08-14: 0, 0, 0, 0 for the four above and
   // **1** for the entry that stays. Tree and SUMMARYs agreed entry for entry; no
   // claim had to be refused.
-  [
-    'src/components/events/SalesDashboard.tsx',
-    'a dual-render switching at 640px, on a surface that moves money',
-    'the event sales work surface — src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8, its only importer',
-    'work',
-  ],
+  //
+  // PAID by plan 41.1-21 task 1 — `src/components/events/SalesDashboard.tsx`
+  // was the last entry on this list and the last hand-rolled table on the work
+  // surface: a dual-render switching at 640px, on a surface that moves money.
+  // It is DataTable's sixth importer now.
+  //
+  // **The declared list went 1 → 0. The PRINTED `REMAINING` did not move, and
+  // that is correct rather than suspicious** — the same two-numbers distinction
+  // this block already records above. `REMAINING entries declared` is this
+  // constant's length; `REMAINING` is the live count of declared files that
+  // STILL render a table. That file stopped rendering one in plan 41.1-21's own
+  // commit, so the live count had already been 0 and the gate had been printing
+  // it STALE — *"converted; remove this entry"* — ever since. The notice is what
+  // makes this deletion a response rather than a tidy.
+  //
+  // Deleted by plan 41.1-24 (D-41.1-22), after re-deriving it from the tree with
+  // a raw needle count that does not use the gates' shared comment stripper.
+  // Measured 2026-08-14: **0**. Tree and SUMMARY agreed; no claim had to be
+  // refused. The emptiness that results is declared in `MIGRATION_CLOSED` above.
 ];
 
 /**
@@ -667,11 +719,26 @@ if (!existsSync(`${ROOT}/${REVIEW_GRID_FILE}`)) {
 }
 
 if (REMAINING.length === 0) {
-  refuse(
-    'REMAINING is empty. If every hand-rolled table really is gone, that is the end of\n' +
-      '       this migration and the emptiness should be a DECISION written above the constant —\n' +
-      '       not a list that quietly emptied itself while nobody was reading.'
-  );
+  const c = MIGRATION_CLOSED;
+  const complete =
+    c &&
+    typeof c === 'object' &&
+    typeof c.date === 'string' &&
+    c.date.length > 0 &&
+    typeof c.by === 'string' &&
+    c.by.length > 0 &&
+    typeof c.why === 'string' &&
+    c.why.length > 0;
+
+  if (!complete) {
+    refuse(
+      'REMAINING is empty. If every hand-rolled table really is gone, that is the end of\n' +
+        '       this migration and the emptiness should be a DECISION written above the constant —\n' +
+        '       not a list that quietly emptied itself while nobody was reading.\n' +
+        '       Set MIGRATION_CLOSED to an object carrying a date, the plan that closed it, and\n' +
+        '       why. A truthy placeholder does not satisfy this: all three fields are required.'
+    );
+  }
 }
 
 const declaredPaths = new Map(

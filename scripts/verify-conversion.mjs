@@ -1206,6 +1206,28 @@ const NON_ROUTE_WRAPPER_EXTENSIONS = [
  * not from the thing that actually renders. A path is a sentence somebody
  * believed; the importer, or here the page file, is something a command prints.
  *
+ * ── THE SEVENTH, AND THE PREDICTION ABOVE HELD ──────────────────────────────
+ *
+ * Found and corrected 2026-08-14 by plan 41.1-24, the phase's final
+ * reconciliation, on the entry for `/admin/analytics/compare` a few lines below,
+ * where the superseded sentence is kept beside its measurement. It said *the
+ * comparison table*, and this surface renders no table at all — the whole tree
+ * holds exactly two `<table` occurrences, the primitive's and the permanent
+ * exemption's, and `verify-tables.mjs` prints that arithmetic on every run. It
+ * also said *two editions*, where plan 41.1-14 measured the primary object as up
+ * to four series.
+ *
+ * **The paragraph above predicted the mechanism and the mechanism is what it
+ * was**: the sentence was written from the ROUTE — a segment reading `compare`,
+ * beside `analytics` routes that really are grids and tables — and not from
+ * `EventComparisonChart.tsx`, which a command opens. Seven instances across four
+ * files is no longer a pattern that needs arguing for; what it changes is the
+ * procedure, which is that a reason string is written from the file that renders
+ * and re-derived when the surface converts, never carried forward on reading
+ * plausibly. **Nothing reads these strings** — `checkManifest()` and check D
+ * compare the declared width against the list and never the reason — so no gate
+ * will ever catch the eighth. Only a person re-deriving it will.
+ *
  * **The route's membership of this list was never in question and is not
  * changed.** Only the sentence describing it moved, which is the whole point:
  * `checkManifest()` and check D compare the manifest's declared width against
@@ -1223,7 +1245,15 @@ export const WIDE_ROUTES = [
   ['/admin/events/[id]/analytics', 'the per-event KPI grid'],
   ['/admin/analytics', 'the analytics overview KPI grid'],
   ['/admin/analytics/members', 'the member-analytics tables'],
-  ['/admin/analytics/compare', 'the comparison table — two editions side by side'],
+  // CORRECTED 2026-08-14 by plan 41.1-24. This read *"the comparison table — two
+  // editions side by side"*, kept here beside its measurement rather than
+  // overwritten in silence. It was wrong twice: this surface renders NO table —
+  // `EventComparisonChart.tsx` carries zero `<table`, and the whole tree holds
+  // exactly two, the primitive's and the declared exemption's — and the count is
+  // not two, since plan 41.1-14 measured the primary object as **up to four
+  // series**. Same mechanism as the other five: the sentence was written from
+  // the ROUTE, whose segment says compare, and not from the file that renders.
+  ['/admin/analytics/compare', 'the comparison chart — up to four editions side by side'],
   ['/admin/members/growth', 'the growth series, read as a grid'],
   ['/gallery', 'the public media grid'],
 ];
