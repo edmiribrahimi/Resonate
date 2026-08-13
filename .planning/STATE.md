@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 41 UI-SPEC approved 6/6 — context, research and validation reconciled; planner next
-last_updated: "2026-08-13T00:27:02.713Z"
+stopped_at: Phase 41.1 context gathered — DEF-41-08 measured as Structured, not Critical
+last_updated: "2026-08-13T12:05:28.884Z"
 last_activity: 2026-08-13 -- Phase 41 planning complete
 progress:
   total_phases: 17
-  completed_phases: 11
-  total_plans: 165
-  completed_plans: 162
-  percent: 65
+  completed_phases: 12
+  total_plans: 167
+  completed_plans: 167
+  percent: 71
 ---
 
 # State: Resonate
@@ -275,8 +275,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-11T21:27:13.858Z
-**Stopped at:** Phase 41 UI-SPEC approved 6/6 — context, research and validation reconciled; planner next
+**Last session:** 2026-08-13T12:05:28.880Z
+**Stopped at:** Phase 41.1 context gathered — DEF-41-08 measured as Structured, not Critical
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
