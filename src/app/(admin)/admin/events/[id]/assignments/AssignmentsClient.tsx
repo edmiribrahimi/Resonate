@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatEventDate, formatTime } from "@/utils/formatTime";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Input";
 import {
   assignToParty,
   revokeAssignment,
@@ -13,6 +16,21 @@ import type { UserRole } from "@/types/database";
 
 /**
  * The night-by-night roster, and the two controls.
+ *
+ * ── What the conversion was allowed to touch, and what it was not ────────────
+ *
+ * **This surface grants a capability for one night**, so the pass changed markup
+ * and nothing else: **no query changed, no column added, no capability check
+ * touched, no action payload altered.** `assignToParty` and `revokeAssignment`
+ * are called with byte-identical arguments; the four assignable keys, the closed
+ * refusal set and every sentence attached to it are untouched; and who may be
+ * offered at all is still the roster the page filtered, with the composite
+ * foreign key still the boundary behind it.
+ *
+ * The one thing the conversion *did* add is an accessible name on each of the
+ * two selects. They had none — a control that grants a job at a door was
+ * announced as "combo box" and nothing else — and §8.6 makes a name mandatory
+ * rather than conventional.
  *
  * ── Every refusal has its OWN sentence ───────────────────────────────────────
  *
@@ -169,23 +187,37 @@ export default function AssignmentsClient({
 
   return (
     <div className="space-y-6">
+      {/*
+        `role="alert"` on BOTH tones, unchanged. It is assertive for a success
+        as well as a refusal, which is not the house default — but changing it
+        would make an accepted grant announce more quietly than it does today,
+        and on a surface that hands somebody a job at a door that is a behaviour
+        decision rather than a styling one.
+
+        The tone-carrying fill and border are gone and the ink carries it: the
+        refusal is the warn semantic at 10.63 : 1 on the card ground, the
+        acceptance the done semantic at 5.69 : 1, both clearing 1.4.3's 4.5 : 1.
+        Neither is the only channel — the sentence says which happened, and §12
+        is explicit that colour may never be alone.
+      */}
       {feedback && (
-        <div
-          role="alert"
-          className={`rounded-2xl border p-4 text-sm ${
-            feedback.tone === "error"
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-              : "border-green-500/40 bg-green-500/10 text-green-300"
-          }`}
-        >
-          {feedback.text}
-        </div>
+        <Card role="alert">
+          <p
+            className={`text-sm ${
+              feedback.tone === "error" ? "text-sem-warn" : "text-sem-done"
+            }`}
+          >
+            {feedback.text}
+          </p>
+        </Card>
       )}
 
       {parties.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
-          <p className="text-muted text-sm">
-            This event has no nights yet. Add one before assigning anybody.
+        /* §8.11's empty-state contract — a class string, not a component. */
+        <div className="px-6 py-12 text-center">
+          <p className="text-base font-semibold text-ink">No nights yet</p>
+          <p className="mt-1 text-sm text-muted">
+            Add one before assigning anybody.
           </p>
         </div>
       ) : (
@@ -194,12 +226,25 @@ export default function AssignmentsClient({
           const draft = draftFor(party.id);
 
           return (
-            <section
-              key={party.id}
-              className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4"
-            >
+            /*
+              The card primitive replaces a hand-written panel. The element goes
+              from `<section>` to the card's `<div>`, and that loses nothing:
+              the section carried no accessible name, and an unnamed section is
+              generic in the accessibility tree rather than a landmark.
+            */
+            <Card key={party.id} className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold">{party.title}</h2>
+                {/*
+                  The HEADING role (§7.1), one step down from where this
+                  rendered — and `normal-case` is written rather than assumed:
+                  `text-transform` INHERITS, a night's title can carry a format
+                  name, and §11 says a format name is rendered literally with no
+                  CSS transform. Upper-casing appears in dozens of files in this
+                  tree, so "we did not ask for it" is not a guarantee.
+                */}
+                <h2 className="text-base font-semibold normal-case text-ink">
+                  {party.title}
+                </h2>
                 <p className="text-xs text-muted">
                   {formatEventDate(party.date)} &middot; {formatTime(party.time)}
                 </p>
@@ -216,12 +261,21 @@ export default function AssignmentsClient({
                   {live.map((assignment) => {
                     const person = rosterById.get(assignment.user_id);
                     return (
+                      /*
+                        A row sitting ON a card, so it takes the RAISED ground
+                        rather than a second card: §5's four grounds exist for
+                        exactly this stacking, and nesting the card primitive
+                        inside itself would put 24px of padding twice around one
+                        line of text. The edge is the line token — a container
+                        edge is a hint, not an affordance (`Card.tsx`'s own
+                        triage) — and the radius is §9's container rung.
+                      */
                       <li
                         key={`${assignment.user_id}-${assignment.capability}`}
-                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
+                        className="flex items-center justify-between rounded-xl border border-line bg-raised p-3"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
+                          <p className="truncate text-sm font-semibold text-ink">
                             {person ? person.full_name : "Account not listed"}
                           </p>
                           <p className="text-xs text-muted">
@@ -229,8 +283,23 @@ export default function AssignmentsClient({
                             {person ? ` · ${person.membership_code}` : null}
                           </p>
                         </div>
-                        <button
-                          type="button"
+                        {/*
+                          The dense-row rung — 44px like every other button, at
+                          the narrower padding a row full of actions wants. It
+                          was a 28px pill, below §6.1's floor on a surface whose
+                          primary device is a phone, and a mis-hit here is an
+                          access decision made by accident.
+
+                          `secondary` and not `destructive`: the destructive
+                          fill belongs to a button that CONFIRMS (§11), and this
+                          one acts on the press. It is also the narrowing
+                          direction — revoking takes a capability away — which
+                          is why acting without a confirmation is defensible
+                          here and would not be on the grant beside it.
+                        */}
+                        <Button
+                          size="sm"
+                          variant="secondary"
                           disabled={disabled}
                           onClick={() =>
                             run(
@@ -243,10 +312,10 @@ export default function AssignmentsClient({
                               "Assignment revoked. The revocation is recorded — it is not a deletion."
                             )
                           }
-                          className="ml-3 shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
+                          className="ml-3 shrink-0"
                         >
                           Revoke
-                        </button>
+                        </Button>
                       </li>
                     );
                   })}
@@ -255,14 +324,35 @@ export default function AssignmentsClient({
 
               {/* Only staff roles are offered — D-A. See the page for why the
                   filter is the affordance and the foreign key is the boundary. */}
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-                <select
+              {/*
+                The small prefix, paid by READING THE CLASS rather than renaming
+                the prefix (pitfall P6). This is a TRACK TEMPLATE for one control
+                row, not a column count: the three-columns-gain-a-middle-step
+                rule is about a count, and two of these three tracks are `auto` —
+                a short job select and a button — so the row needs the width for
+                one flexible track, not for three equal ones. §2.3 maps this
+                exact class to the `md` tier, and at 768px the shell leaves 544px
+                after the navigation column, which one 1fr track plus two `auto`
+                ones fits. Below that tier the three stack, which is what a phone
+                wants for a select whose options are long names.
+              */}
+              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                {/*
+                  `aria-label` and not a visible label: a visible one would put a
+                  caption above two of the three tracks and leave the button
+                  aligned against nothing. Neither select had ANY accessible name
+                  before — a control that grants a job at a door announced as
+                  "combo box" — and §8.6 makes the name mandatory, by either
+                  route, rather than optional.
+                */}
+                <Select
+                  id={`assign-subject-${party.id}`}
+                  aria-label="Account to assign"
                   value={draft.subjectId}
                   disabled={disabled}
                   onChange={(e) =>
                     setDraft(party.id, { subjectId: e.target.value })
                   }
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none disabled:opacity-50"
                 >
                   <option value="">Select an account&hellip;</option>
                   {roster.map((person) => (
@@ -271,9 +361,11 @@ export default function AssignmentsClient({
                       {person.membership_code}
                     </option>
                   ))}
-                </select>
+                </Select>
 
-                <select
+                <Select
+                  id={`assign-capability-${party.id}`}
+                  aria-label="Job to assign"
                   value={draft.capability}
                   disabled={disabled}
                   onChange={(e) =>
@@ -281,17 +373,15 @@ export default function AssignmentsClient({
                       capability: e.target.value as AssignableCapability,
                     })
                   }
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none disabled:opacity-50"
                 >
                   {CAPABILITY_OPTIONS.map((key) => (
                     <option key={key} value={key}>
                       {CAPABILITY_LABELS[key]}
                     </option>
                   ))}
-                </select>
+                </Select>
 
-                <button
-                  type="button"
+                <Button
                   disabled={disabled || !draft.subjectId}
                   onClick={() =>
                     run(
@@ -304,10 +394,9 @@ export default function AssignmentsClient({
                       "Assigned. The act is recorded with your name and the time."
                     )
                   }
-                  className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   Assign
-                </button>
+                </Button>
               </div>
 
               {roster.length === 0 && (
@@ -317,7 +406,7 @@ export default function AssignmentsClient({
                   and needs neither a role nor an account.
                 </p>
               )}
-            </section>
+            </Card>
           );
         })
       )}

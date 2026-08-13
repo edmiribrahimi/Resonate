@@ -6,6 +6,10 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import AssignmentsClient from "@/app/(admin)/admin/events/[id]/assignments/AssignmentsClient";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { FOCUS_RING } from "@/components/ui/Button";
 import type { AssignableCapability } from "@/app/(admin)/admin/events/[id]/assignments/actions";
 import type { UserRole } from "@/types/database";
 
@@ -186,44 +190,60 @@ export default async function AssignmentsPage({ params }: PageProps) {
   const liveAssignments = (assignmentsQuery.data ?? []) as LiveAssignment[];
   const rosterList = (roster ?? []) as RosterEntry[];
 
+  // `default` — this route is NOT on §4's closed `wide` list, and that is not a
+  // fallback: it is the answer for every surface nobody had to argue about. The
+  // roster is a short stack of night cards rather than a dense table, so the
+  // content stops widening at 1024px.
+  //
+  // The shell owns the maximum, the gutter, the vertical rhythm and the
+  // navigation clearance in both tiers, so this page writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="default">
+      <header className="mb-6">
+        {/*
+          Still a `Link`: this is navigation inside the app and `next/link` is
+          what keeps the client transition. What it gains is §6.1's 44px floor
+          and the one focus expression, imported rather than re-spelled (§5.4).
+        */}
         <Link
           href="/admin/events"
-          className="text-xs text-muted hover:text-foreground transition-colors"
+          className={`inline-flex min-h-11 items-center text-xs text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           &larr; Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight mt-2">Who works</h1>
-        <p className="text-sm text-muted mt-1">{event.title}</p>
+        <PageTitle>Who works</PageTitle>
+        <p className="mt-1 text-sm text-muted">{event.title}</p>
       </header>
 
-      <div className="px-6">
-        {lookupFailed ? (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
-            <p className="text-sm font-semibold text-red-400">
-              The assignments could not be loaded.
-            </p>
-            <p className="mt-2 text-sm text-foreground">
-              This is <strong>not</strong> an empty roster — the read failed. Do
-              not assume a night is uncovered, and do not assign over somebody
-              on the strength of this screen.
-            </p>
-            <p className="mt-3 text-xs text-muted">
-              Reload the page. If it fails again, report this code:{" "}
-              <code>{lookupFailed.code ?? "unknown"}</code>
-            </p>
-          </div>
-        ) : (
-          <AssignmentsClient
-            eventId={eventId}
-            parties={partyList}
-            assignments={liveAssignments}
-            roster={rosterList}
-          />
-        )}
-      </div>
-    </div>
+      {lookupFailed ? (
+        // Every word of this refusal survives the conversion, and the assertive
+        // role is added rather than traded for the ink: the raw red fill is gone
+        // because §5 gives the alarm to one semantic ink with a computed
+        // contrast (6.99 : 1 on the card ground) instead of to a colour family
+        // with none, and §12 forbids colour being the only channel — so the
+        // sentences and the role are what carry it now.
+        <Card role="alert">
+          <p className="text-sm font-semibold text-sem-crit">
+            The assignments could not be loaded.
+          </p>
+          <p className="mt-2 text-sm text-ink">
+            This is <strong>not</strong> an empty roster — the read failed. Do
+            not assume a night is uncovered, and do not assign over somebody on
+            the strength of this screen.
+          </p>
+          <p className="mt-3 text-xs text-muted">
+            Reload the page. If it fails again, report this code:{" "}
+            <code>{lookupFailed.code ?? "unknown"}</code>
+          </p>
+        </Card>
+      ) : (
+        <AssignmentsClient
+          eventId={eventId}
+          parties={partyList}
+          assignments={liveAssignments}
+          roster={rosterList}
+        />
+      )}
+    </PageShell>
   );
 }
