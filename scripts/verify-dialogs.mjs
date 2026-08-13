@@ -149,10 +149,46 @@
  * starts with a brace. `MyMediaSection.tsx:179` opens one immediately above the
  * overlay this gate must count, and the formats surface carries several. Read
  * as code, a JSX comment quoting a class string is a hit; read as what it is,
- * it is a sentence. Its error direction is stated rather than assumed: the
- * opener must be at the start of the trimmed line, so the shape **can blank
- * more than it should** only when a line begins with a JSX comment opener
- * inside a string. The count of lines blanked this way is printed on every run.
+ * it is a sentence. The count of lines blanked this way is printed on every
+ * run.
+ *
+ * ── A CLAIM THIS HEADER MADE, AND WHAT WITHDREW IT (41-29) ──────────────────
+ *
+ * Until 41-29 the paragraph above ended with a stated error direction:
+ *
+ *     "Its error direction is stated rather than assumed: the opener must be at
+ *      the start of the trimmed line, so the shape **can blank more than it
+ *      should** only when a line begins with a JSX comment opener inside a
+ *      string."
+ *
+ * **That sentence was false, and it is withdrawn.** The bound it claimed — over
+ * blanking only inside a string — was disproved by a shape with no string
+ * anywhere in it: a comment that OPENS AND CLOSES on its own line, followed by
+ * live code after the closer. The stripper blanked the whole line, so check B
+ * could not see an overlay that a single leading comment sat in front of: a
+ * nineteenth hand-rolled shell for the price of one comment, with `REMAINING`
+ * unmoved and this gate green. `41-GAP-REVIEW-4.md` CR-02 measured it here,
+ * with its control, and the sibling conversion gate carried the identical hole
+ * on its check A and on both of its frozen digests. It is the third false
+ * docblock claim this file family has carried, which is why it is quoted here
+ * rather than deleted.
+ *
+ * **The bound the shipped code has, in both directions.** A leading comment now
+ * consumes only its own span: everything after its closer is live text, and the
+ * span is replaced by the same number of spaces so no column moves.
+ *
+ *   - still blanked MORE than it should: a line that BEGINS with those
+ *     characters as part of a multi-line string literal loses its leading span;
+ *     and a JSX comment closed with a space between the star-slash and the
+ *     brace is not recognised as closed, so it blanks onward to its real
+ *     closer;
+ *   - no longer blanked, and used to be: every character after a leading
+ *     comment's closer — which is where the whole of CR-01 and CR-02 lived.
+ *
+ * Neither direction is asserted here. Both are re-proved on every run by the
+ * matcher self-check below, which now measures the stripper as well: two probes
+ * for an overlay behind a leading closed comment, two for prose quoting the
+ * same three parts that must still cost nothing.
  *
  * ── WHY THE UTILITIES ARE COMPOSED FROM PARTS AND NEVER SPELLED ─────────────
  *
@@ -242,21 +278,85 @@ function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
 
 const JSX_COMMENT_OPEN = '{/' + '*';
 const JSX_COMMENT_CLOSE = '*' + '/}';
+/** The block comment's closer, assembled at run time like the two above. */
+const BLOCK_COMMENT_CLOSE = '*' + '/';
 
 /** How many lines the JSX extension blanked, across every file read this run. */
 let jsxCommentLinesBlanked = 0;
 
-function isSiblingCommentLine(trimmed) {
-  return (
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('/' + '*')
-  );
+/**
+ * The openers that can CLOSE on their own line, each paired with ITS closer.
+ *
+ * Which closer belongs to which opener is the whole of the logic: the JSX
+ * opener is closed by the JSX closer; the block opener and the docblock
+ * continuation star are closed by the block closer. The double-slash opener is
+ * absent on purpose — everything after it genuinely IS the comment, so a line
+ * that starts with it keeps blanking whole. These are the same four line shapes
+ * the sibling heuristic recognised before 41-29; what is new is that three of
+ * them now carry the closer that ends them.
+ *
+ * The closer is looked for from the opener's LAST character rather than from
+ * past it, so a bare closing line, and the degenerate form in which the
+ * opener's own star begins the closer, keep blanking whole exactly as they did
+ * before this table existed.
+ */
+const CLOSING_COMMENT_OPENERS = [
+  { open: JSX_COMMENT_OPEN, close: JSX_COMMENT_CLOSE },
+  { open: '/' + '*', close: BLOCK_COMMENT_CLOSE },
+  { open: '*', close: BLOCK_COMMENT_CLOSE },
+];
+
+/**
+ * One line with its LEADING comments replaced by spaces — not the whole line.
+ *
+ * Until 41-29 a line whose trimmed text merely STARTED with an opener was
+ * blanked entire, so live code sitting after a closed comment on the same line
+ * was invisible to every check built on `liveLines`. `41-GAP-REVIEW-4.md` CR-01
+ * and CR-02 measured that shape hiding a navigation clearance on the shell, a
+ * raw palette colour on a converted surface, and an undeclared dialog overlay —
+ * each on a run that stayed green and printed unmoved numbers.
+ *
+ * The consumed span becomes the SAME NUMBER OF SPACES rather than being cut
+ * out: `findUtilityHits` computes its tolerated-scrim test from a match's
+ * column, so a shortened line would move what it reads.
+ *
+ * An opener with NO closer on the line still blanks the line whole and reports
+ * itself, so the caller can enter the multi-line state for the JSX form. A
+ * genuine full-line comment therefore still costs nothing, and a multi-line
+ * prose block quoting class strings still blanks onward to its closer — the
+ * half DEF-41-02 exists for, and the half a careless fix breaks.
+ */
+function stripLeadingComments(text) {
+  let out = text;
+  let jsx = false;
+
+  for (;;) {
+    const lead = out.length - out.trimStart().length;
+    const trimmed = out.slice(lead);
+
+    if (trimmed === '') return { text: out, jsx, unclosed: null };
+    if (trimmed.startsWith('//')) return { text: ' '.repeat(out.length), jsx, unclosed: null };
+
+    const span = CLOSING_COMMENT_OPENERS.find((one) => trimmed.startsWith(one.open));
+    if (!span) return { text: out, jsx, unclosed: null };
+    if (span.open === JSX_COMMENT_OPEN) jsx = true;
+
+    const at = trimmed.indexOf(span.close, span.open.length - 1);
+    if (at === -1) return { text: ' '.repeat(out.length), jsx, unclosed: span.open };
+
+    const end = lead + at + span.close.length;
+    out = ' '.repeat(end) + out.slice(end);
+  }
 }
 
 const liveLinesCache = new Map();
 
-/** The file's lines with every comment blanked, carriage returns removed. */
+/**
+ * The file's lines with every comment blanked, carriage returns removed.
+ *
+ * Cached: a file is read once per run however many checks ask for it, and the
+ * JSX counter must not count the same line twice.
+ */
 function liveLines(relPath) {
   const cached = liveLinesCache.get(relPath);
   if (cached) return cached;
@@ -275,13 +375,11 @@ function liveLines(relPath) {
       if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
       continue;
     }
-    if (trimmed.startsWith(JSX_COMMENT_OPEN)) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (!trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = true;
-      continue;
-    }
-    out.push(isSiblingCommentLine(trimmed) ? '' : text);
+
+    const stripped = stripLeadingComments(text);
+    if (stripped.jsx) jsxCommentLinesBlanked += 1;
+    if (stripped.unclosed === JSX_COMMENT_OPEN) insideJsxComment = true;
+    out.push(stripped.text.trim() === '' ? '' : stripped.text);
   }
 
   liveLinesCache.set(relPath, out);
@@ -673,13 +771,28 @@ function isOverlayLine(line) {
 }
 
 /**
- * `OVERLAY_PARTS` checked against its own description, on EVERY run.
+ * `OVERLAY_PARTS` and the STRIPPER checked against their own description, on
+ * EVERY run.
  *
- * Six fixed strings, assembled the same way the regexes are. If any of them
- * disagrees with its expectation the run **refuses** — a matcher that does not
- * behave as its own docblock describes has not measured this tree, it has
- * measured something else, and a verdict from it would be a number nobody can
- * read.
+ * Ten fixed strings, assembled the same way the regexes are, and every one of
+ * them is measured through `stripLeadingComments` before it reaches the
+ * matcher. If any disagrees with its expectation the run **refuses** — a
+ * matcher that does not behave as its own docblock describes has not measured
+ * this tree, it has measured something else, and a verdict from it would be a
+ * number nobody can read.
+ *
+ * **The last four arrived with 41-29, and they are the reason the probes now go
+ * through the stripper.** Until then the self-check fed `isOverlayLine` a raw
+ * string, so it said nothing about the helper the matcher is FED from — which
+ * is exactly where the defect was: a line whose trimmed text started with a
+ * closed comment was blanked entire, and the overlay after that comment was
+ * invisible to check B on a green run (`41-GAP-REVIEW-4.md` CR-02). Two of the
+ * four carry the direction that defect broke — an overlay behind a leading
+ * closed comment, in both comment forms — and two carry the OPPOSITE
+ * direction, which is DEF-41-02's whole reason: prose quoting the three parts
+ * must still cost nothing, whether it is a full-line JSX comment or a docblock
+ * continuation. A fix that bought sight by reddening a correct file would fail
+ * here, on every run, rather than in a review four rounds later.
  *
  * Three of them arrived with a widening, and each is a shape the report already
  * claimed to see while the regex did not: a single-digit rung and the keyword one
@@ -745,6 +858,67 @@ const MATCHER_PROBES = [
       RUNG_PREFIX +
       '10">',
     expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'an overlay behind a leading CLOSED JSX comment (41-29, CR-02)',
+    line:
+      JSX_COMMENT_OPEN +
+      ' the lid ' +
+      JSX_COMMENT_CLOSE +
+      ' <div className="' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      RUNG_PREFIX +
+      '[60]">',
+    expected: true,
+  },
+  {
+    verdict: 'match',
+    label: 'an overlay behind a leading CLOSED block comment (41-29)',
+    line:
+      '/' +
+      '*' +
+      ' the lid ' +
+      BLOCK_COMMENT_CLOSE +
+      ' <div className="' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      RUNG_PREFIX +
+      '[60]">',
+    expected: true,
+  },
+  {
+    verdict: 'no match',
+    label: 'a FULL-LINE JSX comment quoting the three parts (DEF-41-02)',
+    line:
+      JSX_COMMENT_OPEN +
+      ' the shell is ' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      RUNG_PREFIX +
+      '[60] ' +
+      JSX_COMMENT_CLOSE,
+    expected: false,
+  },
+  {
+    verdict: 'no match',
+    label: 'a docblock CONTINUATION line quoting the three parts (DEF-41-02)',
+    line:
+      '* the shell is ' +
+      POSITION_UTILITY +
+      ' ' +
+      INSET_UTILITY +
+      ' ' +
+      RUNG_PREFIX +
+      '[60]',
+    expected: false,
   },
 ];
 
@@ -1058,13 +1232,19 @@ if (unmeasurableRemaining.length > 0) {
 }
 
 /*
- * The matcher against its own description, before it is pointed at the tree.
- * Run here so a disagreement refuses with nothing measured; PRINTED further
- * down, immediately before check B's numbers, where a reader meets it.
+ * The matcher AND the stripper against their own description, before either is
+ * pointed at the tree. Run here so a disagreement refuses with nothing
+ * measured; PRINTED further down, immediately before check B's numbers, where a
+ * reader meets it.
+ *
+ * The probe goes through `stripLeadingComments` first, because that is the path
+ * a real line takes: check B reads `liveLines`, never the raw file. Measuring
+ * the matcher on a raw string tested half the pipeline and called it the whole
+ * of it (41-29).
  */
 const probeRows = MATCHER_PROBES.map((probe) => ({
   ...probe,
-  measured: isOverlayLine(probe.line) ? 'match' : 'no match',
+  measured: isOverlayLine(stripLeadingComments(probe.line).text) ? 'match' : 'no match',
 }));
 
 const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
