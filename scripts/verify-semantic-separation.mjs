@@ -185,6 +185,8 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 
@@ -299,20 +301,46 @@ export function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
   return out.sort();
 }
 
-/** Line-shape comment heuristic. See the hygiene paragraph for why not a parser. */
-export function isCommentLine(raw) {
-  const t = raw.trim();
-  return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('*/');
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
 }
 
-/** The file's lines, comments blanked, carriage returns removed. */
+/**
+ * The file's lines, comments blanked, carriage returns removed.
+ *
+ * The four-line `isCommentLine` that stood here — `41.1-RESEARCH.md` §4.1's
+ * family A, six byte-identical copies at digest `35d258011314` — is gone, and
+ * the stripper is imported (D-41.1-07). §4.4 measured the extraction over all
+ * 263 files under `src/`: against family A, **zero lines become live** and 1322
+ * become blank.
+ *
+ * **One of those 1322 is this gate's own near miss, and it is worth naming.**
+ * `src/components/formats/FormatMarker.tsx:128` sits inside a JSX comment that
+ * family A read as code, and it names a format identifier. Check C fails on a
+ * line carrying a semantic colour **utility** together with a format identifier;
+ * that line carries a custom property instead, so it does not match today —
+ * *purely by luck of phrasing*, as DEF-41-02 put it. Blanking it closes a latent
+ * false red and moves no count.
+ */
 export function liveLines(relPath) {
-  return readFileSync(`${ROOT}/${relPath}`, 'utf8')
-    .split('\n')
-    .map((l) => {
-      const raw = l.split('\r').join('');
-      return isCommentLine(raw) ? '' : raw;
-    });
+  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
+  return lines;
 }
 
 /** The `{ start, end }` line indices of the first block opened by `openerRe`, or `null`. */

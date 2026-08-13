@@ -124,19 +124,29 @@
  *
  * ── COMMENT HYGIENE, WHICH IS LOAD-BEARING HERE ─────────────────────────────
  *
- * Comment lines are blanked BEFORE any counting, with the line-shape heuristic
- * (`//`, `*`, `/*`, `*​/`) that `verify-tokens.mjs:437-450` and
- * `verify-media-strip.mjs:163` already use — deliberately not a tokeniser,
- * because WR-07 (`32-REVIEW.md`) records that a real comment parser written here
- * was unsound. It matters concretely: several files document their dual-render
- * by quoting `sm:hidden` in a docblock, and a check invalidated by its own
- * documentation is a precedent this repository has already recorded.
+ * Comment lines are blanked BEFORE any counting — deliberately not by a
+ * tokeniser, because WR-07 (`32-REVIEW.md`) records that a real comment parser
+ * written here was unsound. It matters concretely: several files document their
+ * dual-render by quoting a 640px-prefixed utility in a docblock, and a check
+ * invalidated by its own documentation is a precedent this repository has
+ * already recorded.
  *
- * The heuristic's error direction is to KEEP a trailing comment on a code line,
- * which can only make this script report MORE. Both checks fail on presence, so
- * that direction is safe.
+ * **The blanking is now done by `scripts/lib/comments.mjs`, and the sentence
+ * that stood here about its error direction was half right.** It said the
+ * heuristic's error direction is *to KEEP a trailing comment on a code line,
+ * which can only make this script report MORE* — true of a trailing comment, and
+ * false of a multi-line one, where the four-line heuristic handed every body
+ * line back as code. That is a **false red on a correct file**, not
+ * over-reporting, and §0 rule 3 says what happens next: the gate reddens,
+ * somebody switches it off, and it guards nothing. `41.1-RESEARCH.md` §4.2
+ * measured it on three of seven shapes.
  *
- * ── WHY THE HELPERS ARE LOCAL AND NOT IMPORTED ──────────────────────────────
+ * The merged stripper's error direction is the opposite and the safe one: a line
+ * whose first characters are a block opener inside a string blanks MORE than it
+ * should. Both checks here fail on presence, so blanking more can only
+ * under-report, never redden a correct file.
+ *
+ * ── WHY THE WALK IS LOCAL AND THE STRIPPER IS NOT ───────────────────────────
  *
  * `41-02-PLAN.md` asked for `listScannableFiles` and `liveLines` to be imported
  * from `./verify-tokens.mjs`, which exports both. **They cannot be**:
@@ -146,15 +156,22 @@
  *       The `.then` never runs.
  *
  * `verify-tokens.mjs` runs its checks at module scope and ends in
- * `process.exit()` (`:1041-1058`), so importing it RUNS THE TOKEN GATE AND EXITS
- * THIS PROCESS WITH THE TOKEN GATE'S VERDICT — this script would exit 0 having
- * measured nothing, which is the spoofing threat T-41-06 it exists to defend
- * against. The cross-script import the plan cites
- * (`verify-capabilities.mjs:145`) works because its target `rls-baseline.mjs`
- * has a main-module guard at `:2594`. The three sibling GATES
- * (`verify-media-strip.mjs:130,163`, `verify-sunset-gradient.mjs:152,185`,
- * `verify-semantic-separation.mjs:270,303`) each declare their own walk and
- * their own `isCommentLine`: self-contained is the house shape for a gate.
+ * `process.exit()`, so importing it RUNS THE TOKEN GATE AND EXITS THIS PROCESS
+ * WITH THE TOKEN GATE'S VERDICT — this script would exit 0 having measured
+ * nothing, which is the spoofing threat T-41-06 it exists to defend against.
+ *
+ * **The conclusion drawn from that was too wide, and this is the correction.**
+ * The paragraph used to end *"each declare their own walk and their own
+ * `isCommentLine`: self-contained is the house shape for a gate"*, and the
+ * second half of it had a price: `41.1-PATTERNS.md` §5.1 measured **six
+ * byte-identical copies** of that four-line function, digest `35d258011314`,
+ * two of them in scripts nobody had counted. What made `verify-tokens.mjs`
+ * unimportable was its **process exit at module scope**, not the fact of
+ * importing — the precedent that always worked (`verify-capabilities.mjs:145`
+ * importing `rls-baseline.mjs`) works because its target has a main-module
+ * guard. `scripts/lib/comments.mjs` is not a gate at all: it never exits, prints
+ * nothing and asserts nothing. So the walk stays local and the stripper is
+ * imported (D-41.1-07).
  *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (`CLAUDE.md`
  * Guardrail 5). This script reads only committed files, prints only paths, line
@@ -181,6 +198,8 @@
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { liveLinesFrom } from './lib/comments.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
@@ -365,20 +384,50 @@ export function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
   return out.sort();
 }
 
-/** Line-shape comment heuristic. See the hygiene paragraph for why not a parser. */
-export function isCommentLine(raw) {
-  const t = raw.trim();
-  return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('*/');
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
 }
 
-/** The file's lines, comments blanked, carriage returns removed. */
+/**
+ * The file's lines, comments blanked, carriage returns removed.
+ *
+ * **The four-line `isCommentLine` that stood here is gone, and this is the
+ * record of it.** It was `41.1-RESEARCH.md` §4.1's family A, in **six**
+ * byte-identical copies across `scripts/` (digest `35d258011314`), of which the
+ * comment-hygiene paragraph above named three. Family A read within a line only:
+ * no JSX awareness, no multi-line state. Its stated error direction — *to KEEP a
+ * trailing comment on a code line, which can only make this script report MORE* —
+ * was true and was only half the story: on a multi-line comment it handed every
+ * body line back as code, which is **false-red, not over-reporting**, and §0
+ * rule 3 says what happens to a gate that reddens on a correct file.
+ *
+ * §4.4 measured the extraction over all 263 files under `src/`: against family A,
+ * **zero lines become live** and 1322 become blank, of which exactly one carries
+ * a gate needle anywhere (`FormatMarker.tsx:128`, a custom property that matches
+ * no check today). So this gate cannot redden, and none of its counts moves.
+ *
+ * The paragraph is corrected rather than deleted, in the house shape
+ * (`PageShell.tsx:42-46`).
+ */
 export function liveLines(relPath) {
-  return readFileSync(`${ROOT}/${relPath}`, 'utf8')
-    .split('\n')
-    .map((l) => {
-      const raw = l.split('\r').join('');
-      return isCommentLine(raw) ? '' : raw;
-    });
+  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
+  return lines;
 }
 
 /**

@@ -287,6 +287,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** A refusal is not a failure: it means the measurement did not happen. */
@@ -296,18 +298,57 @@ function refuse(message) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Comment hygiene — five shapes, the last two measured rather than assumed
+ * Comment hygiene — ONE stripper, imported, no private copy (D-41.1-07)
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const JSX_COMMENT_OPEN = '{/' + '*';
-const JSX_COMMENT_CLOSE = '*' + '/}';
-const BLOCK_COMMENT_OPEN = '/' + '*';
-const BLOCK_COMMENT_CLOSE = '*' + '/';
-
-/** Counters the report prints, so both extensions are measurable, not trusted. */
-const blanked = { jsx: 0, block: 0, sibling: 0 };
-
+/**
+ * This gate no longer carries a stripper. It imports one.
+ *
+ * **The superseded implementation, recorded with the measurement that
+ * superseded it.** What stood here was `41.1-RESEARCH.md` §4.1's family D — the
+ * strongest of the four, and the one DEF-41-06's G5 fix produced: a JSX **and**
+ * block multi-line state, whole-line blanking. It was **never false-red**, and
+ * it was **blind on all three live-code shapes** (S3, S4, S5), because
+ * whole-line blanking cannot see live code on a comment's own line by
+ * construction. The merged module keeps its block state and its error direction
+ * verbatim — *a line whose first characters are a block opener inside a string
+ * blanks more than it should* — and adds the span logic that closes the three.
+ *
+ * §4.4 measured the extraction over all 263 files under `src/`: **zero lines
+ * become live** anywhere, so this gate cannot redden from the swap.
+ *
+ * **What the three-way counter became, and why.** The report used to print
+ * `sibling / JSX / block`, a split that was a property of THIS implementation's
+ * branches. Those branches no longer exist here, and reconstructing the split
+ * from the module's output would mean re-implementing the classification this
+ * commit exists to delete. So the counter is now one honest number — lines the
+ * shared stripper blanked — and it is EXPECTED to differ from the old total,
+ * because §4.4 measured that the merged stripper only ever blanks more. A
+ * counter that moved for a stated reason is a counter; one that moved silently
+ * is the defect D-41.1-16 exists for.
+ */
 const liveLinesCache = new Map();
+
+/** How many non-blank lines the shared stripper blanked, across this run. */
+let commentLinesBlanked = 0;
+
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
+}
 
 /** The file's lines with every comment blanked, carriage returns removed. */
 function liveLines(relPath) {
@@ -315,48 +356,15 @@ function liveLines(relPath) {
   if (cached) return cached;
 
   const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
-  const out = [];
-  let insideJsxComment = false;
-  let insideBlockComment = false;
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
-  for (const line of raw) {
-    const text = line.split('\r').join('');
-    const trimmed = text.trim();
-
-    if (insideJsxComment) {
-      out.push('');
-      blanked.jsx += 1;
-      if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
-      continue;
-    }
-    if (insideBlockComment) {
-      out.push('');
-      blanked.block += 1;
-      if (trimmed.includes(BLOCK_COMMENT_CLOSE)) insideBlockComment = false;
-      continue;
-    }
-    if (trimmed.startsWith(JSX_COMMENT_OPEN)) {
-      out.push('');
-      blanked.jsx += 1;
-      if (!trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = true;
-      continue;
-    }
-    if (trimmed.startsWith(BLOCK_COMMENT_OPEN)) {
-      out.push('');
-      blanked.block += 1;
-      if (!trimmed.includes(BLOCK_COMMENT_CLOSE)) insideBlockComment = true;
-      continue;
-    }
-    if (trimmed.startsWith('//') || trimmed.startsWith('*')) {
-      out.push('');
-      blanked.sibling += 1;
-      continue;
-    }
-    out.push(text);
+  for (let i = 0; i < raw.length; i += 1) {
+    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
   }
 
-  liveLinesCache.set(relPath, out);
-  return out;
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 const liveSourceCache = new Map();
@@ -1529,7 +1537,7 @@ for (const [shape, why] of KNOWN_FUTURE_REDS) {
 console.log('');
 
 console.log(
-  `  comment lines blanked — ${blanked.sibling} sibling, ${blanked.jsx} JSX, ${blanked.block} block\n`
+  `  comment lines blanked — ${commentLinesBlanked}, by the shared stripper (D-41.1-07)\n`
 );
 
 /* ── The verdict ────────────────────────────────────────────────────────────── */

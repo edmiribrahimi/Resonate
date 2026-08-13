@@ -198,15 +198,30 @@
  * utility written in this file would be a live candidate. Every needle below is
  * therefore assembled at run time and no whole utility appears as a literal.
  *
- * ── WHY THE HELPERS ARE LOCAL AND NOT IMPORTED ──────────────────────────────
+ * ── WHY THE WALK IS LOCAL AND THE STRIPPER IS NOT ───────────────────────────
  *
  * `verify-tokens.mjs` exports `listScannableFiles` and `liveLines`, and they
  * **cannot be imported**: that module runs its seven checks at module scope and
  * ends in `process.exit()` with no main-module guard, so importing it runs the
  * TOKEN gate and exits this process with the TOKEN gate's verdict — this script
- * would exit 0 having measured nothing. Plan 41-02 measured exactly that, and
- * every sibling gate declares its own walk and its own comment heuristic.
- * **Self-contained is the house shape for a gate.**
+ * would exit 0 having measured nothing. Plan 41-02 measured exactly that.
+ *
+ * **The conclusion drawn from it was too wide, and this is the correction.**
+ * The sentence used to end *"every sibling gate declares its own walk and its
+ * own comment heuristic — self-contained is the house shape for a gate"*, and
+ * the second half of that was a mistake with a price. `41.1-RESEARCH.md` §4.1
+ * measured **four families of the comment heuristic across ten scripts**, none
+ * correct on all seven shapes, and round 5 measured one of them hiding a
+ * money-domain entry while the gate printed a conversion notice and exited 0.
+ *
+ * What made `verify-tokens.mjs` unimportable was its **process exit at module
+ * scope**, not the fact of importing. `scripts/lib/comments.mjs` is not a gate:
+ * it never exits, prints nothing and asserts nothing, and it is proved by
+ * `verify-comment-stripper.mjs` against all eight shapes. So the walk stays
+ * local — self-contained is still right for a gate — and the stripper is now
+ * imported (D-41.1-07). The superseded sentence stays visible with the
+ * measurement that superseded it, because a decision undone without its
+ * measurement reads as a slip (`PageShell.tsx:42-46`).
  *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (`CLAUDE.md`
  * Guardrail 5). This script reads only committed files under `src/`, prints
@@ -235,6 +250,8 @@
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { liveLinesFrom } from './lib/comments.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
@@ -273,117 +290,72 @@ function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Comment hygiene — the sibling heuristic, plus the JSX form DEF-41-02 records
+ * Comment hygiene — ONE stripper, imported, no private copy (D-41.1-07)
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The three tokens stay, because `MATCHER_PROBES` below builds probe lines out
+ * of them. The stripper that used to sit here does not: it is imported.
+ */
 const JSX_COMMENT_OPEN = '{/' + '*';
 const JSX_COMMENT_CLOSE = '*' + '/}';
 /** The block comment's closer, assembled at run time like the two above. */
 const BLOCK_COMMENT_CLOSE = '*' + '/';
 
-/** How many lines the JSX extension blanked, across every file read this run. */
-let jsxCommentLinesBlanked = 0;
-
 /**
- * The openers that can CLOSE on their own line, each paired with ITS closer.
+ * **The superseded paragraph, kept visible with the measurement that superseded
+ * it.** What stood here was round 5's span implementation, and it said the
+ * closer is looked for *"from the opener's LAST character"* — right for the JSX
+ * opener, wrong for the block opener, whose degenerate form then read as already
+ * closed and handed its body back as code (WR-04). It looked for the JSX closer
+ * as an exact three-character token, so a comment closed with whitespace before
+ * the brace never closed and the state ran to end of file (CR-02). And it pushed
+ * an empty line for the terminating line of a multi-line comment, so live code
+ * on that line was invisible (CR-01).
  *
- * Which closer belongs to which opener is the whole of the logic: the JSX
- * opener is closed by the JSX closer; the block opener and the docblock
- * continuation star are closed by the block closer. The double-slash opener is
- * absent on purpose — everything after it genuinely IS the comment, so a line
- * that starts with it keeps blanking whole. These are the same four line shapes
- * the sibling heuristic recognised before 41-29; what is new is that three of
- * them now carry the closer that ends them.
- *
- * The closer is looked for from the opener's LAST character rather than from
- * past it, so a bare closing line, and the degenerate form in which the
- * opener's own star begins the closer, keep blanking whole exactly as they did
- * before this table existed.
+ * `41.1-RESEARCH.md` §4.4 measured the extraction over all 263 files under
+ * `src/`: against this gate's incumbent family, **zero lines become live** and
+ * 66 become blank. The merged stripper can only blank more here, so no verdict
+ * on this tree moves because of the swap.
  */
-const CLOSING_COMMENT_OPENERS = [
-  { open: JSX_COMMENT_OPEN, close: JSX_COMMENT_CLOSE },
-  { open: '/' + '*', close: BLOCK_COMMENT_CLOSE },
-  { open: '*', close: BLOCK_COMMENT_CLOSE },
-];
-
-/**
- * One line with its LEADING comments replaced by spaces — not the whole line.
- *
- * Until 41-29 a line whose trimmed text merely STARTED with an opener was
- * blanked entire, so live code sitting after a closed comment on the same line
- * was invisible to every check built on `liveLines`. `41-GAP-REVIEW-4.md` CR-01
- * and CR-02 measured that shape hiding a navigation clearance on the shell, a
- * raw palette colour on a converted surface, and an undeclared dialog overlay —
- * each on a run that stayed green and printed unmoved numbers.
- *
- * The consumed span becomes the SAME NUMBER OF SPACES rather than being cut
- * out: `findUtilityHits` computes its tolerated-scrim test from a match's
- * column, so a shortened line would move what it reads.
- *
- * An opener with NO closer on the line still blanks the line whole and reports
- * itself, so the caller can enter the multi-line state for the JSX form. A
- * genuine full-line comment therefore still costs nothing, and a multi-line
- * prose block quoting class strings still blanks onward to its closer — the
- * half DEF-41-02 exists for, and the half a careless fix breaks.
- */
-function stripLeadingComments(text) {
-  let out = text;
-  let jsx = false;
-
-  for (;;) {
-    const lead = out.length - out.trimStart().length;
-    const trimmed = out.slice(lead);
-
-    if (trimmed === '') return { text: out, jsx, unclosed: null };
-    if (trimmed.startsWith('//')) return { text: ' '.repeat(out.length), jsx, unclosed: null };
-
-    const span = CLOSING_COMMENT_OPENERS.find((one) => trimmed.startsWith(one.open));
-    if (!span) return { text: out, jsx, unclosed: null };
-    if (span.open === JSX_COMMENT_OPEN) jsx = true;
-
-    const at = trimmed.indexOf(span.close, span.open.length - 1);
-    if (at === -1) return { text: ' '.repeat(out.length), jsx, unclosed: span.open };
-
-    const end = lead + at + span.close.length;
-    out = ' '.repeat(end) + out.slice(end);
-  }
-}
-
 const liveLinesCache = new Map();
 
+/** How many non-blank lines the shared stripper blanked, across this run. */
+let commentLinesBlanked = 0;
+
 /**
- * The file's lines with every comment blanked, carriage returns removed.
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
  *
- * Cached: a file is read once per run however many checks ask for it, and the
- * JSX counter must not count the same line twice.
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
  */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
+}
+
+/** The file's lines with every comment blanked, carriage returns removed. */
 function liveLines(relPath) {
   const cached = liveLinesCache.get(relPath);
   if (cached) return cached;
 
   const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
-  const out = [];
-  let insideJsxComment = false;
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
-  for (const line of raw) {
-    const text = line.split('\r').join('');
-    const trimmed = text.trim();
-
-    if (insideJsxComment) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
-      continue;
-    }
-
-    const stripped = stripLeadingComments(text);
-    if (stripped.jsx) jsxCommentLinesBlanked += 1;
-    if (stripped.unclosed === JSX_COMMENT_OPEN) insideJsxComment = true;
-    out.push(stripped.text.trim() === '' ? '' : stripped.text);
+  for (let i = 0; i < raw.length; i += 1) {
+    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
   }
 
-  liveLinesCache.set(relPath, out);
-  return out;
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -775,7 +747,7 @@ function isOverlayLine(line) {
  * EVERY run.
  *
  * Ten fixed strings, assembled the same way the regexes are, and every one of
- * them is measured through `stripLeadingComments` before it reaches the
+ * them is measured through the shared stripper before it reaches the
  * matcher. If any disagrees with its expectation the run **refuses** — a
  * matcher that does not behave as its own docblock describes has not measured
  * this tree, it has measured something else, and a verdict from it would be a
@@ -1237,14 +1209,22 @@ if (unmeasurableRemaining.length > 0) {
  * measured; PRINTED further down, immediately before check B's numbers, where a
  * reader meets it.
  *
- * The probe goes through `stripLeadingComments` first, because that is the path
- * a real line takes: check B reads `liveLines`, never the raw file. Measuring
- * the matcher on a raw string tested half the pipeline and called it the whole
- * of it (41-29).
+ * The probe goes through the shared stripper first, because that is the path a
+ * real line takes: check B reads `liveLines`, never the raw file. Measuring the
+ * matcher on a raw string tested half the pipeline and called it the whole of it
+ * (41-29).
+ *
+ * **And half was still what it tested until D-41.1-07.** WR-01: the probe used
+ * to go through the single-line function alone, which is structurally unable to
+ * exercise the multi-line state that `liveLines` carries. It now goes through
+ * `liveLinesFrom`, which is the whole pipeline for a one-line file — the fix
+ * that made `liveLinesFrom` take an ARRAY rather than a string. Widening the
+ * probe rows themselves to multi-line shapes is `41.1-02`'s, which owns this
+ * file in wave 1.
  */
 const probeRows = MATCHER_PROBES.map((probe) => ({
   ...probe,
-  measured: isOverlayLine(stripLeadingComments(probe.line).text) ? 'match' : 'no match',
+  measured: isOverlayLine(liveLinesFrom([probe.line]).lines[0]) ? 'match' : 'no match',
 }));
 
 const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
@@ -1290,7 +1270,7 @@ const signatureRows = SIGNATURE.map(([label, needle, expected]) => ({
   measured: countNeedle(primitiveLines, needle),
 }));
 
-console.log(`  lines blanked as JSX comments : ${jsxCommentLinesBlanked}   (DEF-41-02)\n`);
+console.log(`  lines blanked as comments     : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)\n`);
 
 console.log('  declared exceptions: 2\n');
 for (const [path, reason] of DECLARED_EXCEPTIONS) {
