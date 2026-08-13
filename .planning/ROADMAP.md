@@ -820,11 +820,11 @@ Plans:
 
 **Wave 3** *(the ordinary surfaces — ten pages)*
 
-- [ ] 41.1-06-PLAN.md — /admin/artists, /admin/venues, /admin/newsletter
-- [ ] 41.1-07-PLAN.md — /admin/venues/[slug] with its modal on the Dialog primitive, /admin/events and its placeholder
-- [ ] 41.1-08-PLAN.md — /admin/events/[id]/guest-list and /assignments, plus the toast observation at 768px
-- [ ] 41.1-09-PLAN.md — /admin/events/[id]/media and /review, with the exempt grid left a grid
-- [ ] 41.1-10-PLAN.md — /admin/events/[id]/drinks, the `Switch` primitive and its first consumer, and the QR control
+- [x] 41.1-06-PLAN.md — /admin/artists, /admin/venues, /admin/newsletter
+- [x] 41.1-07-PLAN.md — /admin/venues/[slug] with its modal on the Dialog primitive, /admin/events and its placeholder
+- [x] 41.1-08-PLAN.md — /admin/events/[id]/guest-list and /assignments, plus the toast observation at 768px
+- [x] 41.1-09-PLAN.md — /admin/events/[id]/media and /review, with the exempt grid left a grid
+- [x] 41.1-10-PLAN.md — /admin/events/[id]/drinks, the `Switch` primitive and its first consumer, and the QR control
 
 **Wave 4** *(blocked on Wave 3)*
 
