@@ -87,6 +87,12 @@
  *      notice to delete, not a failure: a gate that reddens on a correct file
  *      gets switched off.
  *
+ *      Since 41.1-03 every entry also carries a **group tag** from a closed
+ *      vocabulary, and check C prints the count per group plus a
+ *      `WORK GROUP REMAINING` line — the line phase 41.1's criterion 2 is read
+ *      off. A missing or unknown tag is a **refusal**, not a failure: see
+ *      `GROUP_TAGS`.
+ *
  * ── THE ONE EXEMPTION, WRITTEN BEFORE THE GATE'S FIRST RUN (D-41-16) ────────
  *
  * `src/app/(admin)/admin/events/[id]/review/ReviewListClient.tsx` — the
@@ -165,8 +171,13 @@
  *   0  all three checks passed
  *   1  at least one failed — each is printed with its file and its line
  *   2  nothing was measured: `src/` is missing, the walk found no scannable
- *      file, the primitive is not on disk, the exemption's path is gone, or
- *      `REMAINING` is empty. **No verdict is implied by a 2.**
+ *      file, the primitive is not on disk, the exemption's path is gone,
+ *      `REMAINING` is empty, or a `REMAINING` entry carries a group tag that is
+ *      missing or outside the closed vocabulary. **No verdict is implied by a
+ *      2.** The last of those is a refusal and not a failure for a stated
+ *      reason: a per-group count computed over a partially tagged list is a
+ *      number nobody can read, and printing it anyway would be worse than
+ *      printing nothing.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -392,6 +403,46 @@ export const REVIEW_GRID_REASON =
   'converts the review surface, not to this one';
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * The group tag — a closed vocabulary, validated at load
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The four groups a `REMAINING` entry may belong to, and the only four.
+ *
+ * **Why a tag at all.** Phase 41.1's criterion 2 reads *"G3's `REMAINING` is
+ * empty for the work group"*, and this list is flat: without the tag that
+ * criterion is read by eye off a list of paths, and **a criterion that cannot
+ * be read off a gate is a claim** (D-41.1-11). The tag makes the sentence a
+ * printed number.
+ *
+ * **An unknown or missing tag is a REFUSAL (exit 2), not a failure.** The
+ * distinction is the same one this gate already draws everywhere else: a
+ * failure says *the tree is wrong*, a refusal says *nothing was measured*. A
+ * per-group count taken over a list where one entry has no group is not a
+ * smaller measurement — it is a wrong one, because the entry silently vanishes
+ * from every group total and the totals still add up to something that looks
+ * plausible.
+ *
+ * The vocabulary is deliberately closed rather than free text. A free-text
+ * group would let a typo — `work ` with a trailing space, `Work`, `works` —
+ * open a fifth group of one entry that no criterion reads, which is the exact
+ * shape of the defect the tag exists to prevent.
+ *
+ *   - `work`                — the work surface Phase 41.1 converts
+ *   - `public-member-money` — the public / member / money surfaces, Phase 41.2's
+ *   - `phase-42`            — deferred to Phase 42
+ *   - `exempt`              — carried for a reason that will never be paid
+ *
+ * `exempt` is in the vocabulary for completeness and **is not used here**: this
+ * gate's one exemption is a separate constant, deliberately not a `REMAINING`
+ * entry (see `REVIEW_GRID_FILE` above and the refusal at the foot of the
+ * pre-flight checks). If an `exempt` tag ever appears on this list, read that
+ * refusal's reasoning first — it almost certainly means an exemption has been
+ * tidied onto a list that can only shrink.
+ */
+export const GROUP_TAGS = ['work', 'public-member-money', 'phase-42', 'exempt'];
+
+/* ────────────────────────────────────────────────────────────────────────────
  * REMAINING — the tables not yet converted, with what will remove each
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -430,7 +481,21 @@ export const REVIEW_GRID_REASON =
  * a debt that looked owned and was not. What is true is the surface each one
  * belongs to, so that is what is written.
  *
- * Shape: `[path, reason, target]`.
+ * **The `group` column, added in 41.1-03.** A fourth field, not a fourth list:
+ * the reason and the target already travel with the entry, and the group has to
+ * travel the same way or an entry can sit in the wrong list silently
+ * (`conversion-manifest.mjs:80` carries a state column the same way, and says
+ * in its own docblock that the column is load-bearing).
+ *
+ * **All five entries are `work`.** So criterion 2 for THIS gate is simply
+ * *"`REMAINING` reaches 0"*, and the tag adds nothing here **except honesty
+ * about that** — which is worth the field. Two reasons it is still worth
+ * carrying: the same tag on `verify-breakpoints.mjs` is load-bearing (14 of its
+ * 19 entries are work and 5 are not), and a list whose group is implicit
+ * because "they all happen to be the same today" stops being true the first
+ * time somebody adds the sixth entry.
+ *
+ * Shape: `[path, reason, target, group]`.
  */
 export const REMAINING = [
   // PAID by plan 41-10 task 2 — `src/components/admin/MemberTable.tsx` opened
@@ -442,29 +507,79 @@ export const REMAINING = [
   [
     'src/components/analytics/MemberSpendTable.tsx',
     'a dual-render switching at 640px — seven columns, both branches, and the file §8.8 names as the best specimen of the technique this primitive consolidates',
-    'the /admin/analytics/members surface',
+    'the member-analytics work surface — src/app/(admin)/admin/(work)/analytics/members/page.tsx:4, its only importer',
+    'work',
   ],
   [
     'src/components/analytics/DrinkSalesBreakdown.tsx',
     'a dual-render switching at 640px',
-    'the /admin/analytics surface',
+    'the per-event analytics work surface — src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx:12, its only importer',
+    'work',
   ],
   [
     'src/components/analytics/ReferralChainTable.tsx',
     'a dual-render switching at 640px, and it renders a referral chain — personal data, so its conversion changes what is shown to nobody',
-    'the /admin/analytics surface',
+    'the member-analytics work surface — src/app/(admin)/admin/(work)/analytics/members/page.tsx:6, its only importer',
+    'work',
   ],
   [
     'src/components/events/SalesDashboard.tsx',
     'a dual-render switching at 640px, on a surface that moves money',
-    'the event sales work surface',
+    'the event sales work surface — src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8, its only importer',
+    'work',
   ],
   [
     'src/components/admin/TransactionList.tsx',
     'a dual-render switching at 1024px — the second of the two that do, and the one §8.9 names as the first proof for the skeleton, since it defines a local placeholder eight lines below the import that could have brought the shared one',
-    'the event tickets work surface',
+    'the finance work surface — src/app/(admin)/admin/(work)/finance/page.tsx:2, its only importer',
+    'work',
   ],
 ];
+
+/**
+ * ── The three targets that named a surface which does not import the file ────
+ *
+ * Recorded here rather than edited away, in this file's own house shape
+ * (`src/components/ui/PageShell.tsx:42-46`): **a decision undone without the
+ * measurement that undid it reads as a slip**, and the next reader has no way
+ * to tell a correction from a drive-by.
+ *
+ * What the three used to say, and what was measured on 2026-08-13:
+ *
+ *   - `DrinkSalesBreakdown` and `ReferralChainTable` both named an analytics
+ *     surface with no segment on it. They do not share one: the first is
+ *     mounted only by the **per-event** analytics page and the second only by
+ *     **member** analytics, so the one string named neither of them correctly.
+ *   - `TransactionList` named a tickets surface. **No tickets page imports it.**
+ *     Its only importer is `/admin/finance`.
+ *
+ * The command, run per file, and its result is what is now on the line:
+ *
+ *   grep -rn "<ComponentName>" src --include="*.tsx" --include="*.ts"
+ *
+ *   MemberSpendTable      → (work)/analytics/members/page.tsx:4
+ *   DrinkSalesBreakdown   → (work)/events/[id]/analytics/page.tsx:12
+ *   ReferralChainTable    → (work)/analytics/members/page.tsx:6
+ *   SalesDashboard        → (work)/events/[id]/sales/page.tsx:8
+ *   TransactionList       → (work)/finance/page.tsx:2
+ *
+ * (`TransactionList` and `SalesDashboard` are also NAMED in three docblocks —
+ * `(work)/newsletter/page.tsx:10`, `admin/events/[id]/reveal/VenueRevealPanel.tsx:172`,
+ * `(work)/events/[id]/tickets/page.tsx:25` — and named is not imported. Reading
+ * a mention as an importer is how a target string goes wrong in the first
+ * place, so the distinction is written down instead of assumed.)
+ *
+ * **The class, which matters more than the three lines.** A reason travels with
+ * an entry *so that it stays true*; if it can drift, it is decoration with the
+ * authority of a measurement. Five of these were wrong across two gates —
+ * three here and two in `verify-dialogs.mjs` — which is a **pattern**, not five
+ * typos: every one of them was written from the file's PATH rather than from
+ * its importer, and a path is not a surface. The rule that follows:
+ * **re-derive the target from the importer, never from the folder the file
+ * sits in.** `AssignmentsClient.tsx` on the sibling gate is the same lesson in
+ * the opposite direction — it lives outside `(work)` and is a work file,
+ * because a work page is the only thing that mounts it.
+ */
 
 /* ── the refusals, taken together, BEFORE any tick is printed ──────────────── */
 
@@ -519,6 +634,34 @@ if (declaredPaths.size !== REMAINING.length) {
     `REMAINING has ${REMAINING.length} entries but only ${declaredPaths.size} distinct paths —\n` +
       '       a duplicated path means one of the two reasons is silently ignored.'
   );
+}
+
+/* ── the group tag, validated before any count is computed ─────────────────── */
+
+const GROUP_TAG_SET = new Set(GROUP_TAGS);
+
+for (const entry of REMAINING) {
+  const [path, , , group] = entry;
+  if (group === undefined || group === null || group === '') {
+    refuse(
+      `the REMAINING entry ${path} carries no group tag.\n` +
+        `       Every entry declares one of: ${GROUP_TAGS.join(', ')}.\n` +
+        '       This is a refusal and not a failure because an untagged entry does not make the\n' +
+        '       per-group counts smaller — it makes them WRONG. The entry drops out of every\n' +
+        "       group total while the totals still look plausible, and criterion 2 is read off\n" +
+        '       one of those totals. Nothing was measured.'
+    );
+  }
+  if (!GROUP_TAG_SET.has(group)) {
+    refuse(
+      `the REMAINING entry ${path} carries the group tag "${group}", which is not in the\n` +
+        `       closed vocabulary: ${GROUP_TAGS.join(', ')}.\n` +
+        '       The vocabulary is closed on purpose: a free-text group lets a typo open a fifth\n' +
+        '       group of one entry that no criterion reads. If a fifth group is genuinely needed,\n' +
+        '       that is a DECISION that edits GROUP_TAGS with its reason, not a string typed on an\n' +
+        '       entry. Nothing was measured.'
+    );
+  }
 }
 
 if (declaredPaths.has(REVIEW_GRID_FILE)) {
@@ -785,11 +928,41 @@ for (const [path] of declaredPaths) {
 console.log('  check C — the tables still rendering their own:\n');
 console.log(`      REMAINING entries declared    : ${REMAINING.length}`);
 console.log(`      still carrying a table        : ${REMAINING.length - missing.length - stale.length}\n`);
-for (const [path, , target] of REMAINING) {
-  console.log(`      ${path}`);
+for (const [path, , target, group] of REMAINING) {
+  console.log(`      ${path}   [${group}]`);
   console.log(`         → ${target}`);
 }
-console.log(`\n      REMAINING = ${REMAINING.length - missing.length - stale.length}\n`);
+
+/**
+ * The per-group counts, on the same basis as the total: an entry counts for its
+ * group only while its file still renders a table. A missing path and a STALE
+ * entry are already reported separately, and neither is a debt anybody owes.
+ */
+const owedByGroup = new Map(GROUP_TAGS.map((tag) => [tag, 0]));
+const missingSet = new Set(missing);
+const staleSet = new Set(stale);
+for (const [path, , , group] of REMAINING) {
+  if (missingSet.has(path) || staleSet.has(path)) continue;
+  owedByGroup.set(group, owedByGroup.get(group) + 1);
+}
+const owedTotal = REMAINING.length - missing.length - stale.length;
+const groupBreakdown = GROUP_TAGS.map((tag) => `${tag} ${owedByGroup.get(tag)}`).join(' · ');
+
+console.log(`\n      REMAINING = ${owedTotal}      ${groupBreakdown}`);
+console.log(`      WORK GROUP REMAINING = ${owedByGroup.get('work')}\n`);
+
+if (owedByGroup.get('work') === 0) {
+  console.log(
+    '  ★  WORK GROUP REMAINING = 0 — no file on the work surface renders a table of its own.\n' +
+      '     This is the line phase 41.1 criterion 2 is read off, and it now reads zero.\n\n' +
+      '     Read it for exactly what it is. It says every work-surface entry left this list;\n' +
+      '     it does NOT say the cards carry the columns that mattered (H41-3, a person holding\n' +
+      '     a phone), and a count that FELL is not by itself evidence that work happened —\n' +
+      '     a debt tracked by a proxy metric is closed by anything that moves the metric\n' +
+      '     (D-41.1-16, four recorded recurrences). The per-wave reconciliation diffs the\n' +
+      '     ENTRIES against the tree, never the count.\n'
+  );
+}
 
 if (missing.length > 0) {
   failures.push('C');
