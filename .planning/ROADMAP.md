@@ -810,9 +810,9 @@ Plans:
 
 **Wave 1** *(the gate repairs, on three disjoint gate files)*
 
-- [ ] 41.1-02-PLAN.md — verify-dialogs: DEF-41-07 items 1 and 4, the self-check rebuilt on the real path, the group tag
-- [ ] 41.1-03-PLAN.md — verify-tables and verify-breakpoints: the group tag, the per-group print, three wrong reasons corrected
-- [ ] 41.1-04-PLAN.md — verify-conversion and the manifest: DEF-41-07 items 2 and 3, route-adjacent scanning, and `/admin` settled in writing
+- [x] 41.1-02-PLAN.md — verify-dialogs: DEF-41-07 items 1 and 4, the self-check rebuilt on the real path, the group tag
+- [x] 41.1-03-PLAN.md — verify-tables and verify-breakpoints: the group tag, the per-group print, three wrong reasons corrected
+- [x] 41.1-04-PLAN.md — verify-conversion and the manifest: DEF-41-07 items 2 and 3, route-adjacent scanning, and `/admin` settled in writing
 
 **Wave 2**
 
