@@ -1139,7 +1139,60 @@ function shellShapes(relPath) {
  * debt that looked owned and was not. What is true is the surface each one
  * belongs to, so that is what is written.
  *
- * Shape: `[path, reason, target]`.
+ * ── THE GROUP TAG (D-41.1-11) ───────────────────────────────────────────────
+ *
+ * Shape: `[path, group, reason, target]`. The group is a **tuple field and not a
+ * separate list per group**, and the reason is the decisive one rather than the
+ * tidy one:
+ *
+ *   1. **The reason must travel with the entry** — `verify-routes.mjs:130-152`'s
+ *      established form, quoted in this gate's own header. Splitting into
+ *      per-group lists puts the group in the LIST NAME, which leaves an entry
+ *      able to sit in the wrong list silently. Two of the entries below were
+ *      already mislabelled in prose; a per-group list would have made them
+ *      structurally wrong instead of merely wrong, and correcting a sentence
+ *      would have meant moving a file between lists.
+ *   2. `conversion-manifest.mjs:80` already carries a **state** column as a third
+ *      field (`[path, state, reason]`) with a docblock saying the column is
+ *      load-bearing. The tag is the same construction and needs no new idea.
+ *
+ * **THE VOCABULARY IS CLOSED AT FOUR VALUES** — `work`, `public-member-money`,
+ * `phase-42`, `exempt` — and an unknown or missing tag is a **REFUSAL**, not a
+ * warning. An untagged entry is not a small omission: it makes the per-group
+ * count meaningless, and a meaningless count is worse than no count at all,
+ * because criterion 2 and criterion 4 of this phase are read off it.
+ *
+ * **THE TAGS ARE ASSIGNED FROM THE MEASURED IMPORTERS, NEVER FROM THE PATH
+ * PREFIX.** `EditArtistButton.tsx` reads like an admin component and its only
+ * importer is `src/app/(public)/artists/[slug]/page.tsx:5`; a tag derived from a
+ * glob would have misfiled it, and the same derivation would have misfiled
+ * `MediaUpload.tsx` in the sibling breakpoints gate. Three entries below are
+ * tagged `work` although they sit outside `(work)/`: they are reached through a
+ * work page's import closure and are paid by the knot plans (D-41.1-19).
+ *
+ * ── A CLASS, AND NOT FIVE TYPOS ─────────────────────────────────────────────
+ *
+ * **Five reason strings across two gates named the wrong surface** — three in
+ * `verify-tables.mjs`, two here — and every one of them was true of an
+ * INTENTION and never of the tree. `EditArtistButton.tsx` was filed under an
+ * artists admin surface when no work page reaches it at all;
+ * `CreateVenueModal.tsx` was filed under a venues admin surface beside the event
+ * form when the event form is its only importer.
+ *
+ * Five is a pattern, not five slips, and the pattern has a mechanism: a surface
+ * name is a sentence somebody believed, while an importer is something a command
+ * prints. **So every target below now names the importer it was re-derived
+ * from, with its line.** The reason travels with the entry *so that it stays
+ * true*, and a sentence that cannot be re-derived cannot stay true.
+ *
+ * **The two withdrawn phrases are DESCRIBED here and not quoted verbatim, and
+ * that is a deliberate departure from this file's own habit** of keeping a
+ * superseded sentence visible word for word (`PageShell.tsx:42-46`). The reason
+ * is the same one that keeps whole utility class strings out of this file
+ * (DEF-41-01): a phrase that survives anywhere in the file cannot be grepped for.
+ * Reproducing them would have left `grep -n` unable to answer *does any entry
+ * still name the wrong surface?* — and that grep is the only cheap check a later
+ * reader has. The withdrawal is recorded; the strings are not, on purpose.
  */
 export const REMAINING = [
   // ── the eleven hand-rolled overlays. None of them handles Escape, none traps
@@ -1147,76 +1200,90 @@ export const REMAINING = [
   // the public purchase path is among them.
   [
     'src/app/(public)/tickets/[id]/RefundRequestButton.tsx',
+    'public-member-money',
     'a hand-rolled overlay on the ticket surface — a refund request, which is money leaving',
     'the /tickets/[id] surface',
   ],
   [
     'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay — one of the four the primitive takes its phone form from',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay on the purchase path — byte-identical sheet half to the one above',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/SecretVenueDialog.tsx',
+    'public-member-money',
     'a hand-rolled overlay that shows a venue — venue-secrecy primary, and the one on this list whose conversion is Critical rather than visual',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay on the drinks menu',
     'the drinks menu surface',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay holding a drink token at the bar',
     'the drinks menu surface',
   ],
   [
     'src/app/(admin)/admin/events/[id]/tickets/RefundActions.tsx',
-    'a hand-rolled overlay on the work surface that issues a refund',
-    'the event tickets work surface',
+    'work',
+    'a hand-rolled overlay that issues a refund. Tagged work although it sits outside (work)/: it is reached through a WORK PAGE\'S IMPORT CLOSURE, re-derived — src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx:12 imports it — and it is paid by the knot plans (D-41.1-19), not by 41.2',
+    'reached from (work)/events/[id]/tickets/page.tsx:12',
   ],
   [
     'src/components/admin/RefundDialog.tsx',
-    'a hand-rolled overlay shared by the refund paths',
-    'the work surfaces that reach it',
+    'work',
+    'a hand-rolled overlay shared by the refund paths. Tagged work for the same reason and at one more remove, re-derived: src/components/admin/TransactionList.tsx:4 imports it, and src/app/(admin)/admin/(work)/finance/page.tsx:2 imports TransactionList. Paid by the knot plans (D-41.1-19)',
+    'reached from (work)/finance/page.tsx:2 via TransactionList.tsx:4',
   ],
   [
     'src/components/venues/EditVenueButton.tsx',
-    'a hand-rolled overlay editing a venue — on §8.3\'s closed lg list once it converts',
-    'the venues work surface',
+    'work',
+    'a hand-rolled overlay editing a venue — on §8.3\'s closed lg list once it converts. The ONLY entry on this list that sits squarely on the work surface, re-derived: its only importer is src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
+    'only importer src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
   ],
   [
     'src/components/artists/EditArtistButton.tsx',
-    'a hand-rolled overlay editing an artist — on §8.3\'s closed lg list once it converts',
-    'the artists work surface',
+    'public-member-money',
+    'a hand-rolled overlay editing an artist — on §8.3\'s closed lg list once it converts. CORRECTED (D-41.1-11): this entry used to name an admin surface, and NO WORK PAGE REACHES IT. Re-derived with grep -rln: its only importer is src/app/(public)/artists/[slug]/page.tsx:5, the PUBLIC artist page. A tag taken from the path prefix would have misfiled it, which is why tags here come from importers',
+    'only importer src/app/(public)/artists/[slug]/page.tsx:5',
   ],
   [
     ROLE_DIALOG_OVERLAY,
-    'a hand-rolled overlay, and the tree\'s only role="dialog" — see the declared exceptions above: named by §13 as a warning about signature choice, not exempted from the debt',
-    'the member media surface',
+    'public-member-money',
+    'a hand-rolled overlay, and the tree\'s only role="dialog" — see the declared exceptions above: named by §13 as a warning about signature choice, not exempted from the debt. Re-derived: its only importer is src/app/(members)/dashboard/page.tsx:9, the member dashboard',
+    'only importer src/app/(members)/dashboard/page.tsx:9',
   ],
 
   // ── the native shells this plan does not convert. Each already has the
   // platform behaviours; what each still has is its own copy of the shell.
   [
     'src/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog.tsx',
-    'a native shell, and the UI of a MONOTONE guard: once the reveal is sent, the address is public and there is no undo. §2.1 names it explicitly as the wrong first consumer — "prove it on the hardest correct file" is not "convert the most dangerous surface first"',
-    'the venue reveal surface',
+    'work',
+    'a native shell, and the UI of a MONOTONE guard: once the reveal is sent, the address is public and there is no undo. §2.1 names it explicitly as the wrong first consumer — "prove it on the hardest correct file" is not "convert the most dangerous surface first". Tagged work because it is reached through a work page\'s import closure, re-derived: src/app/(admin)/admin/events/[id]/reveal/VenueRevealPanel.tsx:4 imports it and src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx:11 imports the panel. Paid by the knot plans (D-41.1-19)',
+    'reached from (work)/events/[id]/edit/page.tsx:11 via VenueRevealPanel.tsx:4',
   ],
   [
     'src/components/venues/CreateVenueModal.tsx',
-    'a native shell, and the ANCESTOR this primitive was extracted from. Not converted here because a second surface imports it — the event form — so converting it converts two surfaces at once, which is the event-form knot',
-    'the venues work surface and the event form',
+    'public-member-money',
+    'a native shell, and the ANCESTOR this primitive was extracted from. Not converted here because converting it converts the event form with it — the event-form knot. CORRECTED (D-41.1-11): this entry used to name a work surface beside the form. Re-derived with grep -rln on the import clause: its ONLY importer is src/components/events/EventForm.tsx:10. Every other file naming it merely mentions it in prose, which is exactly how a reason stops being true unnoticed',
+    'only importer src/components/events/EventForm.tsx:10',
   ],
   [
     'src/components/artists/CreateArtistModal.tsx',
-    'a native shell, byte-identical to the ancestor, and mounted from the same event form',
-    'the artists work surface and the event form',
+    'public-member-money',
+    'a native shell, byte-identical to the ancestor, and mounted from the same event form. CORRECTED alongside the two above and for the same measurement: its only importer is src/components/events/EventForm.tsx:8, and no artists surface under (work)/ reaches it',
+    'only importer src/components/events/EventForm.tsx:8',
   ],
 
   // PAID by plan 41-09 task 2 — the three native shells on `/admin/formats`
@@ -1225,6 +1292,31 @@ export const REMAINING = [
   // in the same commit that converted them, which is what a paid debt looks
   // like: the number went 17 → 14 and nothing else moved.
 ];
+
+/**
+ * The group vocabulary, CLOSED at four values (D-41.1-11, RESEARCH §5.2).
+ *
+ *   - `work`                 — this phase's surface, including the three files
+ *                              reached only through a work page's import closure.
+ *   - `public-member-money`  — the public, member and money surfaces. Phase 41.2's.
+ *   - `phase-42`             — the door. Behind this gate's fence today, so no
+ *                              entry carries it; the value exists because the
+ *                              fence's own arrival condition says an entry could.
+ *   - `exempt`               — declared correct as what it is. `Lightbox.tsx` is
+ *                              the tree's one exemption and it is deliberately
+ *                              NOT on this list, so no entry carries this value
+ *                              either: a file that will never convert is not a
+ *                              debt, and a list that cannot reach zero lies.
+ *
+ * **Two of the four are unused today, and that is written down rather than left
+ * to be noticed.** An unused value is not dead vocabulary here: `phase-42` is
+ * what an entry arriving behind the fence would carry, and the fence's own
+ * paragraph says which of the two lists must then give way.
+ */
+export const GROUPS = ['work', 'public-member-money', 'phase-42', 'exempt'];
+
+/** The one group every criterion of this phase is read off. */
+export const WORK_GROUP = 'work';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Check C's subjects — the files that render the primitive
@@ -1368,7 +1460,41 @@ if (REMAINING.length === 0) {
   );
 }
 
-const declaredPaths = new Map(REMAINING.map(([path, reason, target]) => [path, { reason, target }]));
+/*
+ * The tag validator, and it REFUSES rather than warning (D-41.1-11).
+ *
+ * An entry with an unknown or missing tag is not a small omission: every
+ * per-group number below is derived from these tags, criterion 2 and criterion 4
+ * of this phase are read off the work-group one, and a count computed over an
+ * entry nobody classified is a number that looks like a measurement. A
+ * meaningless count is worse than no count, so nothing is measured at all.
+ *
+ * Raised HERE, above every refusal that follows and far above check B's loop,
+ * for the reason `PHASE_42_EXEMPT_PATHS` gives about its own overlap refusal:
+ * the number is what a reader believes, so a run that cannot compute it honestly
+ * must not reach a tick, a STALE notice, or a count.
+ */
+const untagged = REMAINING.filter(([, group]) => !GROUPS.includes(group));
+
+if (untagged.length > 0) {
+  refuse(
+    `${untagged.length} REMAINING entr(y/ies) carry a group tag that is not in the closed set:\n\n       ` +
+      untagged
+        .map(([path, group]) => `${path}\n         tag: ${group === undefined ? '(missing)' : `"${group}"`}`)
+        .join('\n\n       ') +
+      `\n\n       The vocabulary is closed at: ${GROUPS.join(', ')}.\n` +
+      '       Every per-group number this gate prints is derived from these tags, and this\n' +
+      "       phase's criterion 2 and criterion 4 are read off the work-group one. A count\n" +
+      '       computed over an entry nobody classified looks exactly like a measurement and is\n' +
+      '       not one, and a meaningless count is worse than no count. Which group an entry\n' +
+      '       belongs to is a decision for a person — taken from the file\'s MEASURED IMPORTERS,\n' +
+      '       never from its path prefix. NOTHING WAS MEASURED.'
+  );
+}
+
+const declaredPaths = new Map(
+  REMAINING.map(([path, group, reason, target]) => [path, { group, reason, target }])
+);
 
 if (declaredPaths.size !== REMAINING.length) {
   refuse(
@@ -1768,6 +1894,56 @@ console.log(
     '      declared it correct; fenced means nobody measured it at all.\n'
 );
 console.log(`      REMAINING = ${measuredShells.size}\n`);
+
+/*
+ * The per-group breakdown, counted over `measuredShells` — the same set
+ * `REMAINING` is printed from, never over `REMAINING.length`. Counting the
+ * declared list instead would produce a work-group number that stays put while a
+ * file converts and its entry is still sitting there marked STALE, which is the
+ * proxy-goes-quiet defect wearing a group tag.
+ */
+const groupCounts = new Map(GROUPS.map((group) => [group, 0]));
+const workGroupEntries = [];
+
+for (const path of measuredShells.keys()) {
+  const declared = declaredPaths.get(path);
+  const group = declared === undefined ? '(undeclared)' : declared.group;
+  groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
+  if (group === WORK_GROUP) workGroupEntries.push(path);
+}
+
+console.log(
+  `      by group: ${[...groupCounts]
+    .filter(([group, n]) => n > 0 || GROUPS.includes(group))
+    .map(([group, n]) => `${group} ${n}`)
+    .join(' · ')}\n`
+);
+
+const workGroupRemaining = groupCounts.get(WORK_GROUP) ?? 0;
+
+console.log(`      WORK GROUP REMAINING = ${workGroupRemaining}`);
+console.log(
+  '         ↑ the line this phase\'s criteria are read off. A criterion that cannot be\n' +
+    '           read off a gate is a claim (D-41.1-11).\n'
+);
+
+if (workGroupRemaining === 0) {
+  console.log(
+    '  ★ THE WORK GROUP IS EMPTY — every dialog on this phase\'s surface has converted.\n' +
+      '       Printed as loudly as STALE is, because it is the condition this phase exits on\n' +
+      '       and a number nobody notices reaching zero is a number that was not doing its job.\n'
+  );
+} else {
+  for (const path of workGroupEntries) {
+    console.log(`         ${path}`);
+  }
+  console.log(
+    '\n      Those PATHS, and not that number, are what a later plan reconciles against\n' +
+      '      (D-41.1-16): a debt tracked by a proxy metric is closed by anything that moves\n' +
+      '      the metric, and this phase has four recorded recurrences of exactly that. Diff\n' +
+      '      the entries.\n'
+  );
+}
 
 if (missing.length > 0) {
   failures.push('B');
