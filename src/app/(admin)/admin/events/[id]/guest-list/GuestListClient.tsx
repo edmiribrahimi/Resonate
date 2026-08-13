@@ -7,7 +7,6 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { Input, Select } from "@/components/ui/Input";
-import { SectionHeading } from "@/components/ui/Typography";
 import { addGuest, removeGuest } from "./actions";
 import type { GuestListEntry, GuestListStatus } from "@/types/database";
 
@@ -166,7 +165,14 @@ export default function GuestListClient({
       {/* Add Guest Form */}
       <Card>
         <form onSubmit={handleAddGuest} className="space-y-4">
-          <SectionHeading>Add Guest</SectionHeading>
+          {/*
+            The HEADING role and not the section label. §7.1 names the six
+            component headings that render one step above the heading size and
+            says what they become when their surface converts — this was one of
+            them, so it lands on the 16px/600 interface rung rather than on the
+            caps-and-tracking label above a group.
+          */}
+          <h2 className="text-base font-semibold text-ink">Add Guest</h2>
 
           {/*
             One column on a phone, two from the tablet tier up. The pair used to
