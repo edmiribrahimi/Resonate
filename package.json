@@ -23,6 +23,7 @@
     "verify:breakpoints": "node scripts/verify-breakpoints.mjs",
     "verify:no-viewport-read": "node scripts/verify-no-viewport-read.mjs",
     "verify:touch-targets": "node scripts/verify-touch-targets.mjs",
+    "verify:comment-stripper": "node scripts/verify-comment-stripper.mjs",
     "verify": "node scripts/verify-all.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
