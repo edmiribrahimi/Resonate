@@ -473,3 +473,195 @@ tags.**
    reads **within a line**, and should say so at the top of its file. G5 is the
    phase's first cross-line reader, and it is the only one for which this
    finding was fatal rather than cosmetic.
+
+---
+
+## DEF-41-07 — four local defects in the refusal machinery, deferred by decision
+
+**Found during:** round 4's external review (`41-GAP-REVIEW-4.md` CR-03, WR-01,
+WR-02, WR-03), grouped by `41-VERIFICATION.md` as **Group B**.
+**Status:** open — deliberately not fixed in round 5, which was held to two
+items.
+
+### The finding
+
+Four independently-scoped defects, none of which needs a design decision. Each
+is a bounded correction to code that already states, in its own docblock or its
+own printed refusal, what it is trying to guarantee — and each currently fails
+that stated guarantee.
+
+### The four, with how each was established
+
+**1. The existence guard covers one of three branches.**
+`neverOpenedReason()` in `scripts/verify-dialogs.mjs` carries its own written
+statement of the defect it must not commit: an unguarded membership test turns a
+`REMAINING` entry naming a path that does not exist — today a FAILURE — into a
+refusal, *"a failure laundered into 'nothing was measured'"*. The guard was added
+to the **walk** branch only; the never-measured branch and the **fence** branch
+return a reason without testing existence. So a `REMAINING` entry whose path does
+not exist but matches a Phase 42 fence glob refuses instead of failing, and the
+refusal propagates as *nothing was measured* across the whole sixteen-gate
+aggregate.
+**Established by a run**, recorded in CR-03: one entry naming a non-existent
+scanner component added to `REMAINING` on a disposable copy produced exit 2
+rather than a failure. Not re-executed in round 5.
+
+**2. A refusal branch nothing can reach.**
+`scripts/verify-conversion.mjs` advertises, in its exit-code header, a refusal
+for a render site found outside the frozen window. Derivation over the shipped
+code shows an earlier refusal always fires first: by the time control reaches
+that branch, either the property count is above zero (so its guard fails) or the
+shape matched — and matching the shape requires the window to contain the render
+site line, so the site is always inside the window.
+**Established by derivation against the shipped code**, recorded as WR-01, with
+the review noting an empirical half beside it. Not re-executed in round 5, and
+the derivation is the load-bearing half.
+The cost is a header that promises a guard the code cannot deliver — the same
+class of false header sentence this phase has already corrected twice.
+
+**3. A permitted site is keyed on a line's text, not its position.**
+The permitted-site assertion hashes the **trimmed text** of a line and asks
+whether that hash is in the frozen set. It has no notion of position. So a
+byte-identical copy of an already-permitted line is permitted **wherever it is
+put**, including wrapping the focus form — which makes the digest refusal's own
+printed instruction false as written: it tells the reader that re-freezing does
+not bless a navigation property because the permitted-site assertion runs
+independently, and that assertion can in fact be satisfied by placing a
+duplicate.
+**Established by a run**, recorded in WR-02: on a disposable copy the shell was
+split into a wrapper plus an inner component, with the frozen lines and the
+focus root byte-identical, and the duplicate was permitted. Not re-executed in
+round 5; confirmed this round by direct reading of the shipped assertion.
+
+**4. One typo, two verdicts, depending on the filesystem.**
+The guard uses an existence check that, on the case-insensitive volume
+`CLAUDE.md` Guardrail 6 names as the house platform, returns true for a path
+whose case does not match the file on disk — while the walk's own output is
+case-exact. A case-typo therefore lands in the not-in-the-walk branch and
+**refuses**; on a case-sensitive volume the same entry is missing and **fails**.
+The verdict for one typo depends on which machine ran it, and on the house
+machine it is the refusal — the laundering the guard exists to prevent.
+**Established by a run on the house platform** (recorded in WR-03) **plus
+derivation for the case-sensitive half**, which was not run on a case-sensitive
+volume. Not re-executed in round 5.
+
+### Why these were NOT fixed in round 5
+
+Round 5 was held to two items — the shared stripper (Group A, shipped in 41-29)
+and the coverage declaration (Group C's declarable half, shipped in 41-30) — and
+the reason is not capacity.
+
+**Polishing refusals inside a mechanism whose limit is now known is work that
+looks like progress.** Items 1, 3 and 4 all sharpen the *refusal* behaviour of
+gates whose reach has just been shown to stop at a file boundary (DEF-41-08).
+Sharpening them is worth doing and none of it is hard; doing it in the same
+round that discovered the boundary would have produced a longer changelog and
+the same unanswered question.
+
+Item 2 is a different case again: it costs nothing at runtime and everything in
+trust, because a header that advertises an unreachable guard is a false header
+sentence, and this phase has now found three.
+
+### What the phase should decide
+
+1. Whether the four go into one plan or land beside the code they touch when
+   `verify-dialogs.mjs` and `verify-conversion.mjs` are next opened.
+2. For item 2 specifically — whether the fix is to make the branch reachable or
+   to **retire the advertisement**. Those are different answers, and only one of
+   them adds code.
+3. For item 4 — whether every existence check in this gate family should compare
+   against the walk's own case-exact output rather than the filesystem, since
+   the defect is a class and not one line.
+
+---
+
+## DEF-41-08 — the clearance reaches the four focus routes from outside the shell; the structural resolution is the owner's, and is routed to 41.1
+
+**Found during:** round 4's external review (`41-GAP-REVIEW-4.md` CR-04),
+reproduced independently by `41-VERIFICATION.md` as **Group C**.
+**Status:** open — the structural half is **not** this round's to take.
+
+### The fact
+
+Check E reads **one file** for the clearance. A clearance that reaches a focus
+route from anywhere else is outside the gate by construction: a route wrapper
+above the surface, a constant imported from elsewhere, a stylesheet rule.
+
+The wrappers are not unknown to the walk. The check climbs each ancestor wrapper
+and asks it exactly one question — is a declared navigation module reachable from
+it. Its own class strings are opened by nothing, and it never enters the set
+checks A, B and D read.
+
+**Measured 2026-08-13, reproduced twice on disposable copies.** An ordinary Next
+route wrapper above the auth group, carrying the three things the gate exists to
+forbid — a leading inline-start clearance drawn from the navigation inset
+variable, a raw palette colour, and a container maximum wider than anything the
+UI-SPEC declares — reached three of the four focus routes with:
+
+- the printed scanned-file count **unchanged from the clean tree**;
+- the route table still printing **no navigation** for all three;
+- the run **exiting 0**.
+
+### Why this is not a fifth pattern for the matcher
+
+Four consecutive rounds taught the matcher one more shape and the same defect
+moved: round 1 asserted on the constant and it moved to the render site; round 2
+asserted on the outer element and it moved to the inner one; round 3 asserted on
+the branch as a region and it moved to the branch's shape; round 4 asserted on
+the file by digest and it moved to what the digest is computed from — and to a
+route the digest was never asked to cover.
+
+The mechanism is a text scanner over one file. The property that matters is what
+reaches a route **at render**. No textual mechanism over one file spans that, so
+a fifth pattern buys one more round and no more.
+
+### The two resolutions, and which one is the owner's
+
+1. **Declare the limit** — say in the gate's own header that it covers the FILE
+   and not the ROUTE, in the fence vocabulary this repository already uses:
+   *unmeasured, not approved.*
+2. **Make the clearance structurally unable to reach those routes** — for
+   instance by moving the navigation clearance to the layout that actually mounts
+   the navigation, or by extending the scanned set and the property scan to every
+   climbed ancestor of a focus surface.
+
+**Round 5 took (1), in plan 41-30 Task 1**, as the fifth entry in the header's
+`WHAT A GREEN DOES NOT MEAN` block. It states the one-file reach, states that a
+climbed wrapper is enumerated and opened by nothing, and states that the
+difference is a boundary rather than a blessing.
+
+**(2) is the owner's decision, and it is not this round's.** It edits product
+files under the auth group and the payment callback. Those paths are
+`access-gating` and `ticketing-payments` primary in `meta-gates.md`'s routing
+table, and this project requires the owner's validation before a Critical path is
+touched — the impact analysis comes first, not the diff.
+
+### Why 41.1
+
+Those surfaces convert in **41.1** anyway. That is where the question is cheapest
+to answer — the wrappers are already open on the desk — and where it is most
+dangerous to skip, because a conversion that adds or moves a wrapper is exactly
+the change this gate cannot see.
+
+### A declaration is not a closure
+
+The header now says the gate does not measure this. It does not say the routes
+are correct, and it does not close the gap: it makes the gap visible to a reader
+who would otherwise have read a tick as coverage.
+
+**No requirement moved.** All seven of the phase's requirements stayed PARTIAL
+across round 5.
+
+### What the phase should decide
+
+1. Which of the two structural forms of (2) — move the clearance to the layout
+   that mounts the navigation, or widen the scan to climbed ancestors. The first
+   removes the reachability; the second only measures it.
+2. Whether the widening, if chosen, is worth its own failure direction: a scan
+   over every climbed ancestor reddens correct files the moment a wrapper
+   legitimately reserves a column, and a gate that reddens a correct file gets
+   switched off.
+3. Whether the four focus screens get looked at by a person **before** either
+   answer is chosen. `41-CR01-PASS.md` has rows 1-6 measured in a headless
+   browser and rows 7-13 `pending`; a headless render is not a device render,
+   H41-4 stays `human_needed`, and no amount of gate work substitutes for it.
