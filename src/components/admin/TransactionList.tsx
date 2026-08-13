@@ -42,9 +42,20 @@ import {
  * active it renders an **entirely different list** instead of the table — two
  * whole renderings of the same facts, not two branches of one declaration.
  *
- * That second rendering is still hand-written below and still carries its own
- * copy of how an amount and a date are written. Task 2 of this plan is what
- * removes the copy.
+ * The second rendering therefore does **not** get its own list of fields. It
+ * builds the same row shape and calls the same cell renderers **by key**, so the
+ * amount, the status word and the date are each written by one function and
+ * cannot drift apart. It stays hand-written as a *layout*, because it cannot
+ * become a table without changing what search does — and that would be a
+ * behaviour change, which this conversion is not allowed to make. Where it
+ * genuinely shows something the table does not, that is written down beside the
+ * markup as a **declared divergence**, numbered, so the next reader meets a
+ * decision instead of re-deriving an accident.
+ *
+ * There is no precedent for this construction anywhere in the tree — every other
+ * converted table has two *branches* of one declaration, which is the opposite
+ * shape. That is why the mechanism is written here in prose rather than left to
+ * be inferred from the call sites.
  *
  * ── What stays at the call site, because the primitive declines it ───────────
  *
@@ -111,7 +122,14 @@ interface TransactionRow {
   readonly status?: string;
   readonly refundedAmount: number;
   readonly timestamp?: string;
-  /** The API item, handed unchanged to the detail region and to the refund dialog. */
+  /**
+   * The item handed unchanged to the detail region and to the refund dialog.
+   *
+   * For a transaction it is the API item itself. For a search result it is the
+   * same four-field object the search branch has always built for that dialog,
+   * moved out of the JSX so there is one place that says what a refund is asked
+   * about instead of two.
+   */
   readonly item: TransactionItem;
 }
 
@@ -131,6 +149,45 @@ function rowOfTransaction(
     refundedAmount: txn.refunded_amount ?? 0,
     timestamp: txn.timestamp,
     item: txn,
+  };
+}
+
+/**
+ * A search result, in the same shape.
+ *
+ * Three mappings are carried over from the markup this replaces, and every one
+ * of them is a **rendering** rather than a transition — nothing here writes a
+ * status, an amount or a refund:
+ *
+ *  - the purchases table writes a completed sale as `COMPLETED` while the
+ *    transaction list writes the same fact as `SUCCESSFUL`; the badge has always
+ *    shown the second word for both, and still does. The **raw** word is left on
+ *    the result and is what the refund control's own test still reads;
+ *  - a search result carries no refunded figure, so the partial-refund reading
+ *    is never reached for one — which is exactly what the previous markup did by
+ *    passing no refunded figure at all;
+ *  - the refund target is the same four fields it has always been.
+ */
+function rowOfSearchResult(
+  result: PurchaseSearchResult,
+  index: number
+): TransactionRow {
+  return {
+    id: `${result.id}-${index}`,
+    code: result.transactionCode ?? "",
+    description: result.description,
+    buyer: result.memberName,
+    amount: result.amount,
+    currency: result.currency,
+    status: result.status === "COMPLETED" ? "SUCCESSFUL" : result.status,
+    refundedAmount: 0,
+    timestamp: result.purchaseDate,
+    item: {
+      transaction_code: result.transactionCode ?? undefined,
+      amount: result.amount,
+      refunded_amount: 0,
+      currency: result.currency,
+    },
   };
 }
 
@@ -622,6 +679,23 @@ export default function TransactionList() {
     },
   ];
 
+  /**
+   * The mechanism that keeps the two whole renderings from drifting.
+   *
+   * The search rendering reads the **same** column declarations by key and calls
+   * the same cell renderers. Change how an amount is written and both renderings
+   * change together; there is no second place to forget, which is the property
+   * `DataTable` gives the two branches of a table and which nothing gave these
+   * two lists.
+   *
+   * A key that names no column returns nothing rather than throwing. On a
+   * finance surface a missing field is visible to the operator reading it and a
+   * thrown render is a blank page — between the two failure directions only one
+   * is noticed, and it is not the blank page.
+   */
+  const cellFor = (key: string, row: TransactionRow) =>
+    columns.find((column) => column.key === key)?.cell(row) ?? null;
+
   const rows = transactions.map((txn) =>
     rowOfTransaction(txn, buyerMap[txn.transaction_code ?? ""] ?? null)
   );
@@ -706,55 +780,76 @@ export default function TransactionList() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-muted">{searchResults.length} purchase(s) found</p>
-              {/* The second whole rendering. It is still hand-written and still
-                  carries its own copy of how an amount and a date are written —
-                  the drift this file's primitive exists to prevent, surviving
-                  one task longer because removing it is task 2's job and not
-                  this one's. */}
-              {searchResults.map((result, i) => (
-                <Card key={`${result.id}-${i}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-ink">{result.memberName}</p>
-                        <Badge>{result.type === "ticket" ? "Ticket" : "Drinks"}</Badge>
+              {/* The second whole rendering.
+
+                  Its layout is its own — it answers "what did this person buy",
+                  not "what happened on this account" — but every field it shows
+                  in common with the table is drawn by that table's own cell
+                  renderer, fetched by key. The four things it shows that the
+                  table does not are numbered below with their reasons. */}
+              {searchResults.map((result, i) => {
+                const row = rowOfSearchResult(result, i);
+                return (
+                  <Card key={row.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* DIVERGENCE 1 — the lead. The table leads with what
+                              was bought; this list leads with who bought it,
+                              because that is the question it was asked. Same
+                              renderer, different position. */}
+                          <p className="truncate text-sm font-semibold text-ink">
+                            {cellFor("buyer", row)}
+                          </p>
+                          {/* DIVERGENCE 2 — the kind of purchase. A ticket and a
+                              bar order are two different objects in one list;
+                              the transaction list holds one kind and so has no
+                              such column. It names a thing rather than grading
+                              an outcome, so it takes the plain mark and is told
+                              apart by its word. */}
+                          <Badge>
+                            {result.type === "ticket" ? "Ticket" : "Drinks"}
+                          </Badge>
+                        </div>
+                        {/* DIVERGENCE 3 — the member's address. The search
+                            matched on a person, so the address is what confirms
+                            it matched the right one. The table has no person to
+                            confirm. */}
+                        <p className="truncate text-xs text-muted">{result.memberEmail}</p>
+                        {/* DIVERGENCE 4 — the night. One member's purchases span
+                            several, so the event's title qualifies the
+                            description. Every row of the table already belongs
+                            to whatever the filters selected. */}
+                        <p className="mt-1 text-xs text-muted">
+                          {result.eventTitle} &middot; {cellFor("description", row)}
+                        </p>
+                        <p className="text-xs text-muted">{cellFor("date", row)}</p>
                       </div>
-                      <p className="truncate text-xs text-muted">{result.memberEmail}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        {result.eventTitle} &middot; {result.description}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {formatDate(result.purchaseDate)}
-                      </p>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        {cellFor("amount", row)}
+                        {cellFor("status", row)}
+                      </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <p className="font-mono text-sm font-semibold text-ink">{result.currency} {result.amount.toFixed(2)}</p>
-                      <StatusBadge status={result.status === "COMPLETED" ? "SUCCESSFUL" : result.status} />
-                    </div>
-                  </div>
-                  {result.transactionCode && result.status !== "REFUNDED" && (
-                    <div className="mt-3 border-t border-line pt-3">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setRefundTarget({
-                            transaction_code: result.transactionCode!,
-                            amount: result.amount,
-                            refunded_amount: 0,
-                            currency: result.currency,
-                          });
-                        }}
-                      >
-                        Refund
-                      </Button>
-                    </div>
-                  )}
-                  {!result.transactionCode && (
-                    <p className="mt-2 text-xs italic text-muted">Transaction code unavailable -- refund via SumUp dashboard</p>
-                  )}
-                </Card>
-              ))}
+                    {/* The eligibility test is the one this branch has always
+                        used, unchanged: it reads the RAW word the search
+                        returned, not the word the badge shows. */}
+                    {result.transactionCode && result.status !== "REFUNDED" && (
+                      <div className="mt-3 border-t border-line pt-3">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setRefundTarget(row.item)}
+                        >
+                          Refund
+                        </Button>
+                      </div>
+                    )}
+                    {!result.transactionCode && (
+                      <p className="mt-2 text-xs italic text-muted">Transaction code unavailable -- refund via SumUp dashboard</p>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
