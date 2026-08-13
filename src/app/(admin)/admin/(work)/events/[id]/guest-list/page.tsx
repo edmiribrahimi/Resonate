@@ -7,6 +7,9 @@ import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import GuestListClient from "@/app/(admin)/admin/events/[id]/guest-list/GuestListClient";
 import GuestListUnavailable from "@/components/guest-list/GuestListUnavailable";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
+import { FOCUS_RING } from "@/components/ui/Button";
 import type { GuestListEntry } from "@/types/database";
 
 /**
@@ -119,30 +122,44 @@ export default async function GuestListPage({ params }: PageProps) {
   const guestEntries = (entries ?? []) as GuestListEntry[];
   const partyList = (parties ?? []) as { id: string; title: string }[];
 
+  // `wide` — `/admin/events/[id]/guest-list` is NAMED on §4's closed wide list,
+  // so the width is checkable rather than chosen: a reader verifies it against
+  // that list instead of agreeing with a judgement made here. It is on the list
+  // for the reason the list exists — the surface's primary object is a dense
+  // roster of rows, and at 1440px it should stop widening at 1280 rather than
+  // running edge to edge.
+  //
+  // The shell owns the maximum, the gutter, the vertical rhythm and the
+  // navigation clearance in both tiers, so this page writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
-      <header className="px-6 pt-12 pb-6">
+    <PageShell width="wide">
+      <header className="mb-6">
+        {/*
+          Still a `Link` and not the button ladder's anchor branch: this is
+          navigation inside the app, and `next/link` is what keeps the client
+          transition and the prefetch. What it gains is the 44px floor of §6.1
+          and the one focus expression — imported from the button ladder, never
+          re-spelled (§5.4).
+        */}
         <Link
           href="/admin/events"
-          className="text-xs text-muted hover:text-foreground transition-colors"
+          className={`inline-flex min-h-11 items-center text-xs text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           &larr; Back to Events
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight mt-2">Guest List</h1>
-        <p className="text-sm text-muted mt-1">{event.title}</p>
+        <PageTitle>Guest List</PageTitle>
+        <p className="mt-1 text-sm text-muted">{event.title}</p>
       </header>
 
-      <div className="px-6">
-        {entriesError ? (
-          <GuestListUnavailable code={entriesError.code ?? "unknown"} />
-        ) : (
-          <GuestListClient
-            entries={guestEntries}
-            parties={partyList}
-            eventId={eventId}
-          />
-        )}
-      </div>
-    </div>
+      {entriesError ? (
+        <GuestListUnavailable code={entriesError.code ?? "unknown"} />
+      ) : (
+        <GuestListClient
+          entries={guestEntries}
+          parties={partyList}
+          eventId={eventId}
+        />
+      )}
+    </PageShell>
   );
 }
