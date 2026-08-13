@@ -640,10 +640,11 @@ gates. What is partial is the *manifest of surfaces that have adopted it*: eight
 of roughly thirty-four. Criterion 1 is what makes that honest rather than
 half-finished — an unconverted surface is untouched, not half-converted.
 
-**Plans**: 25 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
+**Plans**: 28 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
 gap-closure plans in 2 waves added 2026-08-12 after verification, plus 5 second-round
 gap-closure plans in 4 waves added 2026-08-12 after re-verification, plus 3 third-round
-gap-closure plans in 2 waves added 2026-08-13 after the third verification. The remaining
+gap-closure plans in 2 waves added 2026-08-13 after the third verification, plus 3
+fourth-round gap-closure plans in 2 waves added 2026-08-13 after the fourth. The remaining
 conversion units are **not** covered by any of them; see the note below.
 
 Plans:
@@ -672,6 +673,9 @@ Plans:
 - [x] 41-23-PLAN.md — check E asserts the focus branch as a REGION, and every line of it is proven red by mutation
 - [x] 41-24-PLAN.md — the dialog debt stops shrinking because the gate stopped looking, and the rung matcher matches what its sentence promises
 - [x] 41-25-PLAN.md — the conversion gate stops claiming an unreachable rule, and stops reddening on a block comment and an editor backup
+- [ ] 41-26-PLAN.md — the focus branch gets ONE frozen shape, and everything else refuses instead of ticking
+- [ ] 41-27-PLAN.md — the hunt for a green: ten-plus rewrites of the branch, at least three invented by whoever runs them
+- [ ] 41-28-PLAN.md — the dialog debt stops falling for a file outside the walk, and the docblock stops claiming two lists that cannot drift
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -715,6 +719,27 @@ Plans:
 > either**, and the human observations remain exactly as owed: H41-1…H41-6 unmade, H41-4
 > still `human_needed`, `41-CR01-PASS.md`'s thirteen rows still `pending`. A gate that can
 > finally fail is not a surface anyone has seen.
+
+> **Gap closure, fourth round, 2026-08-13. The direction changes.** The fourth
+> verification found the guard open a **third** time: the region derivation opens on any
+> brace that raises the balance — including the JSX expression brace on the opener line —
+> so an `if` without block braces truncates the region from seven lines to three, and the
+> reintroduced line is then printed as *evidence* that the property survives elsewhere.
+> Same signature as rounds 1 and 2. Round 1 asserted on the constant and the defect moved
+> to the render site; round 2 asserted on the outer element and it moved to the inner one;
+> round 3 asserted on the branch as a region and it moved to the **shape** of the branch.
+> **The diagnosis is not a missing syntax: an unrecognised shape produces a GREEN, and
+> every escape in three rounds went through that door.** So plan 41-26 inverts the
+> assertion — the focus branch must have exactly one frozen expected shape and anything
+> else refuses, which needs no anticipation of syntaxes — 41-27 hunts for a green with
+> ten-plus rewrites of which at least three are invented by whoever runs them, and 41-28
+> closes the third occurrence of the debt-goes-quiet family in `verify-dialogs.mjs` plus
+> the two false docblock claims. **The inversion's cost is accepted, not discovered:** this
+> gate will refuse a legitimate refactor of that branch until the frozen shape is updated,
+> and the refusal says what was expected, what was found and what to do. **No requirement
+> closes here either** — all seven stay PARTIAL, RESP-01 only after 41.2 — and the human
+> observations remain exactly as owed: H41-1…H41-6 unmade, H41-4 still `human_needed`,
+> `41-CR01-PASS.md`'s thirteen rows still `pending` on four screens nobody has opened.
 
 > **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
 > system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
