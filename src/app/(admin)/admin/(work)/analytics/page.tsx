@@ -55,10 +55,25 @@ const SUB_SURFACES: readonly { href: Route; label: string; blurb: string }[] = [
  * The focus expression is imported, never re-spelled (§3.4). It was absent from
  * both of these links entirely, which on a keyboard is a card you can reach and
  * cannot see you have reached.
+ *
+ * **The 44px floor is NOT in this constant, and that is a measurement.** It is
+ * written on the element below instead. Two lines of text at the 24px padding
+ * cannot come out under 44px, so the minimum is inert today — §6.3 nonetheless
+ * says every target is 44px *unconditionally*, and a height that is a
+ * consequence of the current copy is one blurb-shortening away from not being
+ * one.
+ *
+ * Where it is written matters. `verify-touch-targets.mjs` reads the element's
+ * own class attribute and **cannot resolve an interpolated module constant** —
+ * its own closing note says so in as many words, about a navigation entry it
+ * still forgives. Measured here rather than assumed: with the floor inside this
+ * string the gate reported this exact element as declaring no minimum, and it
+ * was right to, because a reader of the element cannot see the floor either.
+ * The gate was not widened to accept the constant; the element was fixed.
  */
 const SUB_SURFACE_CARD =
-  "group flex items-center justify-between gap-3 rounded-2xl border border-line " +
-  "bg-surface p-6 transition-colors hover:border-line-strong";
+  "group flex items-center justify-between gap-3 rounded-2xl " +
+  "border border-line bg-surface p-6 transition-colors hover:border-line-strong";
 
 export default async function AdminAnalyticsOverviewPage() {
   // `(work)/layout.tsx` already resolved this for the whole tree, and
@@ -110,7 +125,7 @@ export default async function AdminAnalyticsOverviewPage() {
               <Link
                 key={label}
                 href={href}
-                className={`${SUB_SURFACE_CARD} ${FOCUS_RING}`}
+                className={`min-h-11 ${SUB_SURFACE_CARD} ${FOCUS_RING}`}
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-ink-2 group-hover:text-ink">
