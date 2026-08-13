@@ -1,71 +1,112 @@
+import { DataTable, type DataColumn } from "@/components/ui/DataTable";
 import type { DrinkSalesItem } from "@/lib/analytics/event-queries";
 
+/**
+ * What each drink sold, on the per-event analytics surface.
+ *
+ * ── One column declaration, two branches ─────────────────────────────────────
+ *
+ * This file used to carry both renderings by hand: a real table above 640px and
+ * a card list below it, each spelling its own layout, each free to gain a column
+ * the other did not. `DataTable` owns both now (D-41.1-12), and the boundary
+ * moves to 768px with it — the primitive writes the breakpoint once so no table
+ * chooses again.
+ *
+ * ── Revenue is a `mark`, and that is the money floor ─────────────────────────
+ *
+ * D-41.1-13: on a surface that carries money, a figure that decides money is a
+ * `mark` and never a `meta`. This page reads money and moves none, but what an
+ * operator reads first on a phone is decided here — a revenue figure buried in
+ * the detail line among three counts is a card that changed what the surface
+ * says. The mark slot gives the value POSITION (opposite the title, at the top
+ * of the card) and nothing else, so the renderer supplies the emphasis and the
+ * data face itself. Re-stating the data face on a descendant is safe and is
+ * recorded as safe at `globals.css:441-449`: it re-states the value rather than
+ * rebuilding the shorthand, and only the ordinal and slashed-zero utilities
+ * would drop the inherited alignment.
+ *
+ * ── The four raw palette hits are DELETED, not recoloured ────────────────────
+ *
+ * The redeemed count was in a green from the raw palette and the refunded count
+ * in a red, twice each — once per hand-written branch. Neither is a colour this
+ * system has: `41-UI-SPEC.md` §5 inherits four semantic tokens with literal
+ * values on both sides of the separation, and the set CONTAINS NO GREEN
+ * (`globals.css:169-173`) — adding one would be adding a colour to the brand,
+ * which is the owner's. So the completed count takes the completion semantic and
+ * the refunded count takes the critical one, taken from the spec rather than
+ * matched by eye to the nearest hue.
+ *
+ * ── And colour was never the only channel ────────────────────────────────────
+ *
+ * §10. Above 768px each figure sits under its own header cell; below it, the
+ * meta slot prints the label with the value, so the two counts are told apart by
+ * the words `Redeemed` and `Refunded` whether or not the hue is perceived. With
+ * the semantics carrying less chromatic distance than the raw green/red pair
+ * did, that label is now the primary distinction rather than a redundancy — the
+ * reason it is asserted here rather than assumed.
+ */
+
 const eur = (n: number) => `EUR ${n.toFixed(2)}`;
+
+const columns: DataColumn<DrinkSalesItem>[] = [
+  {
+    key: "name",
+    header: "Name",
+    card: "title",
+    cell: (d) => d.drinkName,
+  },
+  {
+    key: "revenue",
+    header: "Revenue",
+    card: "mark",
+    figure: true,
+    align: "end",
+    // The mark slot is a bare span: emphasis and the data face are the cell's
+    // own, in both branches, so the money figure reads as money on the card too.
+    cell: (d) => (
+      <span className="font-mono text-sm font-semibold text-ink">
+        {eur(d.revenue)}
+      </span>
+    ),
+  },
+  {
+    key: "quantity",
+    header: "Qty",
+    card: "meta",
+    figure: true,
+    align: "end",
+    cell: (d) => d.quantity,
+  },
+  {
+    key: "redeemed",
+    header: "Redeemed",
+    card: "meta",
+    figure: true,
+    align: "end",
+    cell: (d) => <span className="text-sem-done">{d.redeemed}</span>,
+  },
+  {
+    key: "refunded",
+    header: "Refunded",
+    card: "meta",
+    figure: true,
+    align: "end",
+    cell: (d) => <span className="text-sem-crit">{d.refunded}</span>,
+  },
+];
 
 export default function DrinkSalesBreakdown({
   drinks,
 }: {
   drinks: DrinkSalesItem[];
 }) {
-  if (drinks.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted/60">
-        No drink sales yet
-      </p>
-    );
-  }
-
   return (
-    <>
-      {/* Desktop table */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-card-border text-left text-xs uppercase tracking-wider text-muted">
-              <th className="pb-3 font-medium">Name</th>
-              <th className="pb-3 font-medium text-right">Qty</th>
-              <th className="pb-3 font-medium text-right">Revenue</th>
-              <th className="pb-3 font-medium text-right">Redeemed</th>
-              <th className="pb-3 font-medium text-right">Refunded</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-card-border/50">
-            {drinks.map((d) => (
-              <tr key={d.drinkName}>
-                <td className="py-3 font-medium">{d.drinkName}</td>
-                <td className="py-3 text-right text-muted">{d.quantity}</td>
-                <td className="py-3 text-right">{eur(d.revenue)}</td>
-                <td className="py-3 text-right text-green-500">
-                  {d.redeemed}
-                </td>
-                <td className="py-3 text-right text-red-400">{d.refunded}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile cards */}
-      <div className="space-y-3 sm:hidden">
-        {drinks.map((d) => (
-          <div
-            key={d.drinkName}
-            className="rounded-xl border border-card-border/50 bg-card/50 p-4"
-          >
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{d.drinkName}</p>
-              <p className="text-sm font-semibold">{eur(d.revenue)}</p>
-            </div>
-            <div className="mt-2 flex gap-4 text-xs text-muted">
-              <span>Qty: {d.quantity}</span>
-              <span className="text-green-500">
-                Redeemed: {d.redeemed}
-              </span>
-              <span className="text-red-400">Refunded: {d.refunded}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
+    <DataTable
+      rows={drinks}
+      columns={columns}
+      rowKey={(d) => d.drinkName}
+      caption="Drink sales for this event, with the revenue, the quantity sold and how many tokens were redeemed or refunded"
+      empty="No drink sales yet"
+    />
   );
 }

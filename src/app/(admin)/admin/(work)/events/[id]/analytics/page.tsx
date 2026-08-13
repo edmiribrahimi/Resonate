@@ -5,6 +5,10 @@ import { getAccessContext } from "@/lib/capabilities/server";
 import { ownsOrIsMaster } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { PageShell } from "@/components/ui/PageShell";
+import { Card } from "@/components/ui/Card";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { FOCUS_RING } from "@/components/ui/Button";
 import RevenueCard from "@/components/analytics/RevenueCard";
 import AttendanceCard from "@/components/analytics/AttendanceCard";
 import TokenLifecycleCard from "@/components/analytics/TokenLifecycleCard";
@@ -116,55 +120,63 @@ export default async function AnalyticsPage({
     ]);
 
   return (
-    <div className="min-h-dvh pb-24">
+    // `wide`, and it is named on §4's CLOSED wide list rather than judged here:
+    // the primary object of this surface is a table beside a multi-column grid.
+    // Its placeholder next door declares the same width, because a placeholder
+    // at a different maximum makes the content jump sideways the moment the data
+    // lands — the defect a skeleton exists to prevent.
+    <PageShell width="wide">
       <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
+        <header className="mb-6">
+          {/* A label and a target both. It declares the 44px floor and carries
+              the one focus expression — imported, never re-spelled. */}
           <Link
             href="/admin/events"
-            className="text-sm text-muted hover:text-foreground transition-colors"
+            className={`inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
           >
             &larr; Back to Events
           </Link>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Analytics</h1>
+          <PageTitle className="mt-2">Analytics</PageTitle>
           <p className="text-sm text-muted">{event.title}</p>
         </header>
       </AnimatedSection>
 
       <AnimatedSection delay={0.1}>
-        <div className="px-6 space-y-6">
+        <div className="space-y-6">
           {/* Revenue summary -- full width */}
           <RevenueCard revenue={revenue} />
 
-          {/* Attendance + Token lifecycle -- two columns on desktop */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Attendance + Token lifecycle.
+              The breakpoint is MAPPED, not renamed (§2.3): the pair used to
+              split at 640px, which puts the tablet layout on a phone held
+              sideways and the phone layout on a portrait tablet. It splits at
+              the portrait-tablet edge now. Two panels are a two-tier axis, so
+              there is no middle step to gain — that belongs to the three-column
+              grids, and inventing one here would be a tier this contract does
+              not have. */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <AttendanceCard attendance={attendance} />
             <TokenLifecycleCard lifecycle={lifecycle} />
           </div>
 
           {/* Ticket velocity chart */}
-          <div className="rounded-2xl border border-card-border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
-              Ticket Sales
-            </h2>
+          <Card>
+            <SectionHeading>Ticket Sales</SectionHeading>
             <TicketVelocityChart data={velocity} />
-          </div>
+          </Card>
 
           {/* Drink sales breakdown */}
-          <div className="rounded-2xl border border-card-border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
-              Drink Sales
-            </h2>
+          <Card>
+            <SectionHeading>Drink Sales</SectionHeading>
             <DrinkSalesBreakdown drinks={drinkSales} />
-          </div>
+          </Card>
 
           {/* Drink popularity ranking — `admin.access` only, see the docblock */}
           {seesMasterOnlyPanels && (
-            <div className="rounded-2xl border border-card-border bg-card p-6">
-              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
-                Drink Popularity
-              </h2>
+            <Card>
+              <SectionHeading>Drink Popularity</SectionHeading>
               <DrinkPopularityChart drinks={drinkSales} />
-            </div>
+            </Card>
           )}
 
           {/* Market insights */}
@@ -172,15 +184,13 @@ export default async function AnalyticsPage({
 
           {/* Purchase funnel — `admin.access` only, see the docblock */}
           {seesMasterOnlyPanels && purchaseFunnel && (
-            <div className="rounded-2xl border border-card-border bg-card p-6">
-              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted">
-                Purchase Funnel
-              </h2>
+            <Card>
+              <SectionHeading>Purchase Funnel</SectionHeading>
               <PurchaseFunnelChart data={purchaseFunnel} />
-            </div>
+            </Card>
           )}
         </div>
       </AnimatedSection>
-    </div>
+    </PageShell>
   );
 }
