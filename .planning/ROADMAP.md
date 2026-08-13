@@ -640,11 +640,12 @@ gates. What is partial is the *manifest of surfaces that have adopted it*: eight
 of roughly thirty-four. Criterion 1 is what makes that honest rather than
 half-finished — an unconverted surface is untouched, not half-converted.
 
-**Plans**: 28 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
+**Plans**: 30 plans — 12 in 9 waves for the layer and its first eight surfaces, plus 5
 gap-closure plans in 2 waves added 2026-08-12 after verification, plus 5 second-round
 gap-closure plans in 4 waves added 2026-08-12 after re-verification, plus 3 third-round
 gap-closure plans in 2 waves added 2026-08-13 after the third verification, plus 3
-fourth-round gap-closure plans in 2 waves added 2026-08-13 after the fourth. The remaining
+fourth-round gap-closure plans in 2 waves added 2026-08-13 after the fourth, plus 2
+fifth-round gap-closure plans in 2 waves added 2026-08-13 after the fifth. The remaining
 conversion units are **not** covered by any of them; see the note below.
 
 Plans:
@@ -676,6 +677,8 @@ Plans:
 - [x] 41-26-PLAN.md — the focus branch gets ONE frozen shape, and everything else refuses instead of ticking
 - [x] 41-27-PLAN.md — the hunt for a green: ten-plus rewrites of the branch, at least three invented by whoever runs them
 - [x] 41-28-PLAN.md — the dialog debt stops falling for a file outside the walk, and the docblock stops claiming two lists that cannot drift
+- [ ] 41-29-PLAN.md — the comment stripper blanks the comment and not the line, in both gates, and both headers stop claiming a bound the code does not have
+- [ ] 41-30-PLAN.md — check E declares the reach it has: the file, not the route — unmeasured, not approved
 
 > **Gap closure, 2026-08-12.** `41-VERIFICATION.md` returned `gaps_found` with one
 > blocking gap — CR-01, a live layout regression on `/login`, `/register`,
@@ -740,6 +743,36 @@ Plans:
 > closes here either** — all seven stay PARTIAL, RESP-01 only after 41.2 — and the human
 > observations remain exactly as owed: H41-1…H41-6 unmade, H41-4 still `human_needed`,
 > `41-CR01-PASS.md`'s thirteen rows still `pending` on four screens nobody has opened.
+
+> **Gap closure, fifth round, 2026-08-13. Two items, and the smallest round of the
+> five on purpose.** The fifth verification found the guard open a **fourth**
+> consecutive round, through two structurally different routes, and split what remains
+> into three groups of different tractability. The owner delegated the call and it was
+> made on the evidence. **In scope: two items.** (1) `liveLines()` — the shared comment
+> stripper both gates are built on — blanks a WHOLE line when its trimmed text starts
+> with a comment opener instead of blanking only the comment span, so the closed
+> one-line form hides live code from check A, from check B and from both of round 4's
+> new frozen digests. One fix, roughly twenty call sites, three blinded checks, two
+> files; it repairs the foundation ten gates stand on rather than only the guard CR-01
+> needs, and it is the one item that improves things regardless of any other decision.
+> Both files' headers claim the over-blank can only happen inside a string; that claim
+> is false and goes with the fix, quoted in place — the third false header sentence
+> this file family has carried. (2) Check E **declares its own limit**: a clearance
+> reaches the four focus routes from outside the shell — a route wrapper, an imported
+> constant, a stylesheet — with every number the gate prints unchanged, and the gate is
+> a text scanner over one file. No fifth pattern is taught and no check for layouts is
+> written: the property that matters is what reaches a route at render, and no textual
+> mechanism over one file spans it. Unmeasured, **not approved**. **Out of scope by
+> decision, not oversight:** Group B's four local items, recorded as DEF-41-07; and
+> Group C's structural half — making the clearance structurally unreachable from those
+> four routes — which edits product files under the auth group and the payment
+> callback, `access-gating` and `ticketing-payments` primary, and therefore needs the
+> owner's validation. **It is routed to 41.1**, where those surfaces convert anyway,
+> and recorded as DEF-41-08. **No requirement closes here either** — all seven stay
+> PARTIAL — and after five rounds of gate work the most valuable thing still undone is
+> a person opening four screens: `41-CR01-PASS.md`'s thirteen rows are still `pending`,
+> H41-1…H41-6 unobserved, H41-4 `human_needed`, RESP-03 unticked. A gate that can
+> finally fail is not a surface anyone has seen.
 
 > **Scope note, 2026-08-12 — split decided.** The seven requirements are delivered as a
 > system plus a declared manifest of converted surfaces. **141 of 181 `.tsx` files still
