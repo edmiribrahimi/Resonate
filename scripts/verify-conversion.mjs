@@ -45,6 +45,35 @@
  *     that say any of the four focus surfaces looks right**, and both are owed
  *     and unmade. A green on E means the two declarations agree with each
  *     other — not that either of them is what a person would want to see.
+ *   - **CHECK E READS ONE FILE FOR THE CLEARANCE — THE SHELL — AND ASKS THE
+ *     MOUNT QUESTION OF AN IMPORT GRAPH. IT COVERS THE FILE, NOT THE ROUTE.** A
+ *     clearance that reaches a focus route from anywhere else is outside this
+ *     gate by construction: a route wrapper above the surface, a constant
+ *     imported from elsewhere, a stylesheet rule. And the wrappers are not
+ *     unknown to the walk — E2 climbs them. **A climbed ancestor wrapper is
+ *     enumerated and asked exactly one question: is a declared navigation module
+ *     reachable from it.** Its own class strings are opened by nothing, and it
+ *     never enters the set checks A, B and D read — so the printed scanned-file
+ *     count does not include it, and a wrapper carrying a leading inline-start
+ *     clearance, a raw palette colour and a container maximum moves no number
+ *     this gate prints. Measured 2026-08-13 and reproduced twice on disposable
+ *     copies (`41-GAP-REVIEW-4.md` CR-04, then independently by
+ *     `41-VERIFICATION.md` Group C): an ordinary route wrapper above the auth
+ *     group reached three of the four focus routes, with the scanned-file count
+ *     unchanged from the clean tree, the route table still printing no
+ *     navigation for all three, and the run exiting 0.
+ *
+ *     **THAT IS A BOUNDARY, NOT AN APPROVAL — unmeasured, not approved.** This
+ *     gate's silence over a wrapper permits nothing; it is a region nobody
+ *     looked at, and a tick printed over a region nobody looked at is the exact
+ *     failure this phase exists to remove. A limit stated and then read as
+ *     permission is that same failure with better manners. Two things would
+ *     settle it, and neither is another matcher here: a person opening the four
+ *     focus screens — `41-CR01-PASS.md`, where rows 1-6 are measured in a
+ *     HEADLESS browser (not a device render, so H41-4 stays `human_needed`) and
+ *     rows 7-13 are `pending` — and the structural resolution, which edits
+ *     product files under the auth group and the payment callback and is
+ *     therefore the owner's decision, recorded as DEF-41-08 and routed to 41.1.
  *   - THE SCOPE IS THE MANIFEST, AND NOTHING ELSE. A surface nobody declared is
  *     not scanned and not counted as a failure. The printed surface count is
  *     the honest reading of this gate — the tick only says the declared ones
@@ -2761,8 +2790,10 @@ const mountedCount = navigationBySurface.filter((s) => s.mounted).length;
 console.log(
   `\n      ${mountedCount} of ${navigationBySurface.length} surface(s) mount a navigation; ` +
     `${navigationBySurface.length - mountedCount} do not.\n` +
-    "      That partition is the check: the ones that do not are exactly §4's focus list, or\n" +
-    '      one of the two halves below fails.\n'
+    "      That partition compares a DECLARED width against a MOUNTED navigation module: the\n" +
+    "      ones that do not mount are exactly §4's focus list, or one of the two halves below\n" +
+    '      fails. It says nothing about what clearance a route receives at render — a wrapper\n' +
+    '      above the page is climbed for modules and never opened for class strings.\n'
 );
 
 if (propertiesInFocusRoot.length > 0) {
