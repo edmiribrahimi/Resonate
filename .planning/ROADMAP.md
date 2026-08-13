@@ -828,7 +828,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 41.1-11-PLAN.md — Reconcile wave 3: ten surfaces declared, entries diffed against the tree, H41-1
+- [x] 41.1-11-PLAN.md — Reconcile wave 3: ten surfaces declared, entries diffed against the tree, H41-1
 
 **Wave 5** *(the tables and the dashboards)*
 
