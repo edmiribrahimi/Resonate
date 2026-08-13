@@ -839,7 +839,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 41.1-16-PLAN.md — Reconcile wave 5: five surfaces declared, the table gate to one, H41-1 and H41-3
+- [x] 41.1-16-PLAN.md — Reconcile wave 5: five surfaces declared, the table gate to one, H41-1 and H41-3
 
 **Wave 7** *(the three knots — each its own plan, each with a written impact analysis)*
 
