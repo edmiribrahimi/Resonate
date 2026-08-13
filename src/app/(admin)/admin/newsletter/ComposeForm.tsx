@@ -3,6 +3,10 @@
 import { useState, useTransition } from "react";
 import { createAndSendBroadcast } from "./actions";
 import FailureNotice, { type NoticeKind } from "./FailureNotice";
+import { Card } from "@/components/ui/Card";
+import { SectionHeading } from "@/components/ui/Typography";
+import { Input, Textarea } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 /**
  * CR-01, third call site.
@@ -14,6 +18,34 @@ import FailureNotice, { type NoticeKind } from "./FailureNotice";
  * now returns the category as a value; a validation complaint stays a plain
  * inline message, because it is a different kind of thing and must not be
  * dressed as a system fault.
+ *
+ * ── Converted by plan 41.1-06 ────────────────────────────────────────────────
+ *
+ * The two fields take `Input` and `Textarea` from §8.6, and that is not a
+ * restyle. **Neither field had an accessible name before this change**: both
+ * labels were bare `<label>` elements with no `htmlFor` and no wrapping, so a
+ * screen reader announced two controls called "edit text". The primitive binds
+ * the label by id and is the whole reason the substitution is worth a diff.
+ * Its boundary is the second half — `--control` measures 6.78 : 1 on a card
+ * against the 1.39 : 1 the legacy line token reached, and on these controls the
+ * boundary is the only channel there is: the well and the card differ by
+ * 1.04 : 1, so the fill cannot say where the field starts.
+ *
+ * The validation complaint stays what the paragraph above says it is — one
+ * plain inline sentence, not a boxed system fault — and it gains `role="alert"`
+ * because §11 asks every error region for one. Its ink is the critical
+ * semantic, which is the same ink the field-level error inside the primitive
+ * uses, so the two cannot be told apart by colour when both are on screen. That
+ * is deliberate: they are the same kind of thing.
+ *
+ * ── The email body below is NOT this plan's, and that is a decision ──────────
+ *
+ * `wrappedHtml` carries six literal hex values in inline styles. They are the
+ * **email** palette, they are read by mail clients that support no custom
+ * property and very little CSS, and `DI-40-01` defers the email palette
+ * explicitly as an owner decision. A conversion that "tokenised" them would
+ * have changed what lands in somebody's inbox, from a plan whose whole claim is
+ * that it changes nothing that runs.
  */
 export default function ComposeForm({ onSent }: { onSent: () => void }) {
   const [subject, setSubject] = useState("");
@@ -69,13 +101,13 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
   `.trim();
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-6">
-      <h2 className="mb-4 text-lg font-bold">Compose Broadcast</h2>
+    <Card>
+      <SectionHeading>Compose Broadcast</SectionHeading>
 
       {inputError && (
-        <div className="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+        <p role="alert" className="mb-4 text-xs text-sem-crit">
           {inputError}
-        </div>
+        </p>
       )}
 
       {failure && (
@@ -85,50 +117,40 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
       )}
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-muted">
-          Subject
-        </label>
-        <input
+        <Input
+          id="newsletter-subject"
+          label="Subject"
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
           placeholder="Newsletter subject..."
         />
       </div>
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-muted">
-          HTML Content
-        </label>
-        <textarea
+        <Textarea
+          id="newsletter-html"
+          label="HTML Content"
           value={htmlContent}
           onChange={(e) => setHtmlContent(e.target.value)}
           rows={10}
-          className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none font-mono"
+          className="font-mono"
           placeholder="<h1>Hello!</h1><p>Your content here...</p>"
         />
       </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={handleSend}
-          disabled={isPending}
-          className="rounded-full bg-accent px-6 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-        >
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={handleSend} disabled={isPending}>
           {isPending ? "Sending..." : "Send Now"}
-        </button>
-        <button
-          onClick={() => setShowPreview(!showPreview)}
-          className="rounded-full border border-card-border px-6 py-2 text-sm font-medium text-muted hover:text-foreground"
-        >
+        </Button>
+        <Button variant="secondary" onClick={() => setShowPreview(!showPreview)}>
           {showPreview ? "Hide Preview" : "Preview"}
-        </button>
+        </Button>
       </div>
 
       {showPreview && htmlContent && (
-        <div className="mt-4 rounded-lg border border-card-border overflow-hidden">
-          <div className="bg-zinc-900 px-3 py-1.5 text-xs text-muted">
+        <div className="mt-4 overflow-hidden rounded-xl border border-line">
+          <div className="bg-raised px-3 py-1.5 text-xs text-muted">
             Preview
           </div>
           <iframe
@@ -139,6 +161,6 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
           />
         </div>
       )}
-    </div>
+    </Card>
   );
 }
