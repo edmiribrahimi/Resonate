@@ -118,9 +118,21 @@
  * because its target, `rls-baseline.mjs`, has a main-module guard at `:2594`.
  * `verify-tokens.mjs` has none. And the three sibling GATES —
  * `verify-media-strip.mjs:130,163`, `verify-sunset-gradient.mjs:152,185`,
- * `verify-semantic-separation.mjs:270,303` — each declare their own `SKIP_DIRS`,
- * their own walk and their own `isCommentLine`. Self-contained is the house
- * shape for a gate; the importable module is the exception, not the rule.
+ * `verify-semantic-separation.mjs:270,303` — each declare their own `SKIP_DIRS`
+ * and their own walk. Self-contained is the house shape for a gate.
+ *
+ * **The sentence used to end "and their own `isCommentLine`", and that half was
+ * a mistake with a price (D-41.1-07).** `41.1-PATTERNS.md` §5.1 measured **six
+ * byte-identical copies** of that four-line function, digest `35d258011314`, two
+ * of them in scripts nobody had counted; `41.1-RESEARCH.md` §4.2 measured it
+ * false-red on three of seven comment shapes. What made `verify-tokens.mjs`
+ * unimportable was its **process exit at module scope**, not the fact of
+ * importing — which is why the precedent that always worked, `rls-baseline.mjs`,
+ * works: it has a main-module guard. `scripts/lib/comments.mjs` is not a gate at
+ * all: it never exits, prints nothing and asserts nothing, and it is proved
+ * against all eight shapes by `verify-comment-stripper.mjs`. So the walk stays
+ * local and the stripper is imported. The superseded sentence stays visible with
+ * the measurement that superseded it (`PageShell.tsx:42-46`).
  *
  * Adding the guard to `verify-tokens.mjs` was the alternative and was refused:
  * plan 41-01 owns that file in this same wave, and two plans editing one file in
@@ -155,6 +167,8 @@
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { liveLinesFrom } from './lib/comments.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
@@ -203,20 +217,39 @@ export function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
   return out.sort();
 }
 
-/** Line-shape comment heuristic. See the hygiene paragraph for why not a parser. */
-export function isCommentLine(raw) {
-  const t = raw.trim();
-  return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('*/');
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
 }
 
-/** The file's lines, comments blanked, carriage returns removed. */
+/**
+ * The file's lines, comments blanked, carriage returns removed.
+ *
+ * The four-line `isCommentLine` that stood here — `41.1-RESEARCH.md` §4.1's
+ * family A, six byte-identical copies at digest `35d258011314` — is gone.
+ * §4.4 measured the extraction over all 263 files under `src/`: against family
+ * A, **zero lines become live** and 1322 become blank, of which **zero** carry
+ * any of this gate's three needles. This is an absence check, so blanking more
+ * can only under-report; it cannot redden a correct file.
+ */
 export function liveLines(relPath) {
-  return readFileSync(`${ROOT}/${relPath}`, 'utf8')
-    .split('\n')
-    .map((l) => {
-      const raw = l.split('\r').join('');
-      return isCommentLine(raw) ? '' : raw;
-    });
+  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
+  return lines;
 }
 
 /** Every occurrence of `name` in `relPath`'s live lines, as `{ line, source }`. */

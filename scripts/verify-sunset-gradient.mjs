@@ -126,6 +126,8 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 
@@ -181,10 +183,50 @@ export function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
   return out.sort();
 }
 
-/** Line-shape comment heuristic. See the hygiene paragraph for why not a parser. */
-export function isCommentLine(raw) {
-  const t = raw.trim();
-  return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('*/');
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
+}
+
+const liveLinesCache = new Map();
+
+/**
+ * The file's lines, comments blanked, carriage returns removed.
+ *
+ * **This gate was the second of the two `41.1-PATTERNS.md` §5.1 found.**
+ * D-41.1-07 named eight scripts; the count was taken with a grep for the
+ * state-machine identifiers, and this file carries only the line-shape half —
+ * the four-line `isCommentLine` at digest `35d258011314`, in six copies rather
+ * than four. Deleting it here is what makes *"one module"* true rather than
+ * nearly true.
+ *
+ * §4.4 measured the extraction over all 263 files under `src/`: against family
+ * A, **zero lines become live**. Both consumers below fail on presence of the
+ * gradient, so blanking more can only under-report, never redden.
+ */
+function liveLines(relPath) {
+  const cached = liveLinesCache.get(relPath);
+  if (cached) return cached;
+
+  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
+
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 /**
@@ -196,7 +238,7 @@ export function isCommentLine(raw) {
  * report somebody has to go looking for.
  */
 export function normalised(relPath) {
-  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const raw = liveLines(relPath);
   let text = '';
   const lineOf = [];
   const push = (ch, line) => {
@@ -211,8 +253,7 @@ export function normalised(relPath) {
     lineOf.push(line);
   };
   for (let i = 0; i < raw.length; i += 1) {
-    const line = raw[i].split('\r').join('');
-    const live = isCommentLine(line) ? '' : line.toLowerCase();
+    const live = raw[i].toLowerCase();
     for (const ch of live) push(ch, i + 1);
     push(' ', i + 1); // the newline itself becomes a separator
   }
@@ -251,12 +292,12 @@ export function findSignature(relPath) {
  * and a bare `--grad-sunset` all are.
  */
 export function findNameReferences(relPath) {
-  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const raw = liveLines(relPath);
   const re = new RegExp(`(?<![a-zA-Z0-9])${GRADIENT_TOKEN}(?![a-zA-Z0-9-])`, 'g');
   const hits = [];
   for (let i = 0; i < raw.length; i += 1) {
-    const line = raw[i].split('\r').join('');
-    if (isCommentLine(line)) continue;
+    const line = raw[i];
+    if (line === '') continue;
     re.lastIndex = 0;
     if (!re.test(line.toLowerCase())) continue;
     hits.push({ path: relPath, line: i + 1, text: line.trim() });

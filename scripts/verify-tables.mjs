@@ -173,6 +173,8 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 
@@ -210,24 +212,49 @@ function listScannableFiles(dir, extensions = SCANNED_EXTENSIONS) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Comment hygiene — the sibling heuristic, plus the JSX form DEF-41-02 records
+ * Comment hygiene — ONE stripper, imported, no private copy (D-41.1-07)
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const JSX_COMMENT_OPEN = '{/' + '*';
-const JSX_COMMENT_CLOSE = '*' + '/}';
+/**
+ * This gate no longer carries a stripper. It imports one.
+ *
+ * **The superseded implementation, recorded with the measurement that
+ * superseded it.** What stood here was `41.1-RESEARCH.md` §4.1's family C: a JSX
+ * multi-line state, whole-line blanking, and **no block state at all**. It was
+ * false-red on a block comment inside a JSX opening tag and on a multi-line
+ * block comment with prose body lines (S2, W3), and blind on a closed JSX
+ * comment carrying live code after its closer (S3, S4, S5) — because whole-line
+ * blanking cannot see live code on a comment's line by construction.
+ *
+ * §4.4 measured the extraction over all 263 files under `src/`: **zero lines
+ * become live** anywhere, so this gate cannot redden from the swap.
+ *
+ * The paragraph is corrected rather than deleted, in the house shape
+ * (`PageShell.tsx:42-46`): a decision undone without its measurement reads as a
+ * slip to the next person.
+ */
+const liveLinesCache = new Map();
 
-/** How many lines the JSX extension blanked, across every file read this run. */
-let jsxCommentLinesBlanked = 0;
+/** How many non-blank lines the shared stripper blanked, across this run. */
+let commentLinesBlanked = 0;
 
-function isSiblingCommentLine(trimmed) {
-  return (
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('/' + '*')
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
   );
 }
-
-const liveLinesCache = new Map();
 
 /** The file's lines with every comment blanked, carriage returns removed. */
 function liveLines(relPath) {
@@ -235,30 +262,15 @@ function liveLines(relPath) {
   if (cached) return cached;
 
   const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
-  const out = [];
-  let insideJsxComment = false;
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
-  for (const line of raw) {
-    const text = line.split('\r').join('');
-    const trimmed = text.trim();
-
-    if (insideJsxComment) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
-      continue;
-    }
-    if (trimmed.startsWith(JSX_COMMENT_OPEN)) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (!trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = true;
-      continue;
-    }
-    out.push(isSiblingCommentLine(trimmed) ? '' : text);
+  for (let i = 0; i < raw.length; i += 1) {
+    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
   }
 
-  liveLinesCache.set(relPath, out);
-  return out;
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -558,7 +570,7 @@ for (const file of files) {
 console.log(`  files walked under src/       : ${files.length}`);
 console.log(`  extensions in scope           : ${SCANNED_EXTENSIONS.join(', ')}`);
 console.log(
-  `  lines blanked as JSX comments : ${jsxCommentLinesBlanked}   (DEF-41-02)\n`
+  `  lines blanked as comments     : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)\n`
 );
 
 console.log('  declared exemptions: 1\n');

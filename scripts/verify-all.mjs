@@ -226,6 +226,13 @@ const OFFLINE = [
   ["verify:breakpoints", false, "Phase 41 — G6"],
   ["verify:no-viewport-read", false, "Phase 41 — G7"],
   [
+    "verify:comment-stripper", false,
+    "Phase 41.1 — wave 0. It measures the MODULE the other ten gates import, not " +
+      "the tree: eight comment shapes, each of which has blinded or false-reddened " +
+      "a gate on this repository. It is listed after them on purpose — read its " +
+      "matrix before believing any REMAINING count printed above",
+  ],
+  [
     "verify:touch-targets", true,
     "Phase 41 — G5. Plan 41-11 was permitted to end by deleting this gate " +
       "rather than shipping one that reddened on correct code. It did not: the " +

@@ -101,6 +101,8 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 const MIGRATIONS_DIR = `${ROOT}/supabase/migrations`;
@@ -159,10 +161,52 @@ export function listScannableFiles(dir) {
   return out.sort();
 }
 
-/** Line-shape comment heuristic. See the hygiene paragraph for why not a parser. */
-export function isCommentLine(raw) {
-  const t = raw.trim();
-  return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('*/');
+/**
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
+ *
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
+ */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
+}
+
+const liveLinesCache = new Map();
+
+/**
+ * The file's lines, comments blanked, carriage returns removed.
+ *
+ * **This gate was one of the two `41.1-PATTERNS.md` §5.1 found.** D-41.1-07
+ * named eight scripts carrying the stripper; the count was taken with a grep for
+ * the state-machine identifiers, and this file carries only the line-shape half
+ * — the four-line `isCommentLine` at digest `35d258011314`, in six copies rather
+ * than four. It is deleted here rather than left, because closing a phase that
+ * says *"one module"* while byte-identical copies survive in the same directory
+ * is the shape DEF-41-06 recorded and this phase exists to close.
+ *
+ * The three places that asked *"is this line a comment?"* now ask the live line
+ * whether it came back blank, which is the same question answered with the
+ * multi-line state family A never had. §4.4: **zero lines become live**, so this
+ * gate cannot redden.
+ */
+function liveLines(relPath) {
+  const cached = liveLinesCache.get(relPath);
+  if (cached) return cached;
+
+  const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
+
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 /**
@@ -183,11 +227,11 @@ export function namesPublicBucket(raw) {
 
 /** Every non-comment line of `relPath` that names the public bucket, in any role. */
 export function findPublicBucketLines(relPath) {
-  const lines = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const live = liveLines(relPath);
   const hits = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    const raw = lines[i].split('\r').join('');
-    if (isCommentLine(raw)) continue;
+  for (let i = 0; i < live.length; i += 1) {
+    const raw = live[i];
+    if (raw === '') continue;
     if (!namesPublicBucket(raw)) continue;
     hits.push({ path: relPath, line: i + 1, text: raw.trim() });
   }
@@ -281,11 +325,7 @@ function writeCallIn(window) {
 }
 
 export function findPublicBucketWrites(relPath) {
-  const lines = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
-  const live = lines.map((l) => {
-    const raw = l.split('\r').join('');
-    return isCommentLine(raw) ? '' : raw;
-  });
+  const live = liveLines(relPath);
 
   const hits = [];
   for (let i = 0; i < live.length; i += 1) {
@@ -324,11 +364,11 @@ export function findPublicBucketWrites(relPath) {
 
 /** Every non-comment line of `relPath` that calls the stripper. */
 export function findStripLines(relPath) {
-  const lines = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
+  const live = liveLines(relPath);
   const hits = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    const raw = lines[i].split('\r').join('');
-    if (isCommentLine(raw)) continue;
+  for (let i = 0; i < live.length; i += 1) {
+    const raw = live[i];
+    if (raw === '') continue;
     if (!raw.includes(STRIP_CALL)) continue;
     hits.push({ path: relPath, line: i + 1, text: raw.trim() });
   }

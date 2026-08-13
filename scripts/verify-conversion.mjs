@@ -375,6 +375,8 @@ import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
+import { liveLinesFrom } from './lib/comments.mjs';
+
 /**
  * The digest the two frozen shell assertions in check E are built on.
  *
@@ -481,117 +483,75 @@ function listEveryFile(dir) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Comment hygiene — the sibling heuristic, plus the JSX form DEF-41-02 records
+ * Comment hygiene — ONE stripper, imported, no private copy (D-41.1-07)
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const JSX_COMMENT_OPEN = '{/' + '*';
-const JSX_COMMENT_CLOSE = '*' + '/}';
-/** The block comment's closer, assembled at run time like the two above. */
-const BLOCK_COMMENT_CLOSE = '*' + '/';
-
-/** How many lines the JSX extension blanked, across every file read this run. */
-let jsxCommentLinesBlanked = 0;
-
 /**
- * The openers that can CLOSE on their own line, each paired with ITS closer.
+ * This gate no longer carries a stripper. It imports one.
  *
- * Which closer belongs to which opener is the whole of the logic: the JSX
- * opener is closed by the JSX closer; the block opener and the docblock
- * continuation star are closed by the block closer. The double-slash opener is
- * absent on purpose — everything after it genuinely IS the comment, so a line
- * that starts with it keeps blanking whole. These are the same four line shapes
- * the sibling heuristic recognised before 41-29; what is new is that three of
- * them now carry the closer that ends them.
+ * **The superseded paragraph, kept visible with the measurement that superseded
+ * it.** What stood here was round 5's span implementation, and it said the
+ * closer is looked for *"from the opener's LAST character"*, which was right for
+ * the JSX opener and wrong for the block opener: from that offset the degenerate
+ * block form reads as already closed and its body is handed back as code
+ * (WR-04). It also looked for the JSX closer as an exact three-character token,
+ * so a comment closed with whitespace before the brace never closed and the
+ * state ran to end of file (CR-02) — and it pushed an empty line for the
+ * terminating line of a multi-line comment, so live code on that line was
+ * invisible (CR-01).
  *
- * The closer is looked for from the opener's LAST character rather than from
- * past it, so a bare closing line, and the degenerate form in which the
- * opener's own star begins the closer, keep blanking whole exactly as they did
- * before this table existed.
+ * `41.1-RESEARCH.md` §4.1 measured that this was not one heuristic in eight
+ * copies but **four families in ten scripts**, no family correct on all seven
+ * shapes, with the two error directions split across families. §4.4 then
+ * measured the extraction over all 263 files under `src/`: against this gate's
+ * incumbent family, **zero lines become live** and 66 become blank. So the
+ * merged stripper can only blank more here, never less, and no verdict on this
+ * tree can move because of the swap.
+ *
+ * The paragraph is corrected rather than deleted because a decision undone
+ * without its measurement reads as a slip to the next person
+ * (`PageShell.tsx:42-46`, the house shape for exactly this).
+ *
+ * The per-run cache below stays here: it belongs to the gate, not to the module.
  */
-const CLOSING_COMMENT_OPENERS = [
-  { open: JSX_COMMENT_OPEN, close: JSX_COMMENT_CLOSE },
-  { open: '/' + '*', close: BLOCK_COMMENT_CLOSE },
-  { open: '*', close: BLOCK_COMMENT_CLOSE },
-];
-
-/**
- * One line with its LEADING comments replaced by spaces — not the whole line.
- *
- * Until 41-29 a line whose trimmed text merely STARTED with an opener was
- * blanked entire, so live code sitting after a closed comment on the same line
- * was invisible to every check built on `liveLines`. `41-GAP-REVIEW-4.md` CR-01
- * and CR-02 measured that shape hiding a navigation clearance on the shell, a
- * raw palette colour on a converted surface, and an undeclared dialog overlay —
- * each on a run that stayed green and printed unmoved numbers.
- *
- * The consumed span becomes the SAME NUMBER OF SPACES rather than being cut
- * out: `findUtilityHits` computes its tolerated-scrim test from a match's
- * column, so a shortened line would move what it reads.
- *
- * An opener with NO closer on the line still blanks the line whole and reports
- * itself, so the caller can enter the multi-line state for the JSX form. A
- * genuine full-line comment therefore still costs nothing, and a multi-line
- * prose block quoting class strings still blanks onward to its closer — the
- * half DEF-41-02 exists for, and the half a careless fix breaks.
- */
-function stripLeadingComments(text) {
-  let out = text;
-  let jsx = false;
-
-  for (;;) {
-    const lead = out.length - out.trimStart().length;
-    const trimmed = out.slice(lead);
-
-    if (trimmed === '') return { text: out, jsx, unclosed: null };
-    if (trimmed.startsWith('//')) return { text: ' '.repeat(out.length), jsx, unclosed: null };
-
-    const span = CLOSING_COMMENT_OPENERS.find((one) => trimmed.startsWith(one.open));
-    if (!span) return { text: out, jsx, unclosed: null };
-    if (span.open === JSX_COMMENT_OPEN) jsx = true;
-
-    const at = trimmed.indexOf(span.close, span.open.length - 1);
-    if (at === -1) return { text: ' '.repeat(out.length), jsx, unclosed: span.open };
-
-    const end = lead + at + span.close.length;
-    out = ' '.repeat(end) + out.slice(end);
-  }
-}
-
 const liveLinesCache = new Map();
 
+/** How many non-blank lines the shared stripper blanked, across this run. */
+let commentLinesBlanked = 0;
+
 /**
- * The file's lines with every comment blanked, carriage returns removed.
+ * The refusal every consumer of the shared stripper carries (T-41.1-03).
  *
- * Cached: a file is read once per run however many checks ask for it, and the
- * JSX counter must not count the same line twice.
+ * A file whose comment never closes is a file the stripper cannot measure, and
+ * a gate that kept going would have produced a green about nothing. Measured on
+ * 2026-08-13: this fires on **zero** of the 263 files under `src/`, so it is
+ * prevention rather than a wave-0 blocker.
  */
+function refuseUnterminated(relPath, unterminated) {
+  refuse(
+    `${relPath}:${unterminated.lineNo} opens a ${unterminated.kind} comment that never closes.\n` +
+      '       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,\n' +
+      '       so every line after it is unmeasurable and any verdict here would be a green about\n' +
+      '       nothing. Measured 2026-08-13: zero of the 263 files under src/ trip this, so it is\n' +
+      '       prevention rather than a blocker. NOTHING WAS MEASURED.'
+  );
+}
+
+/** The file's lines with every comment blanked, carriage returns removed. */
 function liveLines(relPath) {
   const cached = liveLinesCache.get(relPath);
   if (cached) return cached;
 
   const raw = readFileSync(`${ROOT}/${relPath}`, 'utf8').split('\n');
-  const out = [];
-  let insideJsxComment = false;
+  const { lines, unterminated } = liveLinesFrom(raw);
+  if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
-  for (const line of raw) {
-    const text = line.split('\r').join('');
-    const trimmed = text.trim();
-
-    if (insideJsxComment) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
-      continue;
-    }
-
-    const stripped = stripLeadingComments(text);
-    if (stripped.jsx) jsxCommentLinesBlanked += 1;
-    if (stripped.unclosed === JSX_COMMENT_OPEN) insideJsxComment = true;
-    out.push(stripped.text.trim() === '' ? '' : stripped.text);
+  for (let i = 0; i < raw.length; i += 1) {
+    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
   }
 
-  liveLinesCache.set(relPath, out);
-  return out;
+  liveLinesCache.set(relPath, lines);
+  return lines;
 }
 
 const liveSourceCache = new Map();
@@ -2263,7 +2223,7 @@ console.log(`  files scanned by A, B and D : ${allScanned.size}`);
 console.log(`  excluded as converted spine : ${excludedSpine.size}`);
 console.log(`  excluded as Phase 42        : ${excludedPhase42.size}`);
 console.log(`  files walked under src/     : ${allSrcFiles.length}   (check C's scope)`);
-console.log(`  lines blanked as JSX comments: ${jsxCommentLinesBlanked}   (DEF-41-02)`);
+console.log(`  lines blanked as comments   : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)`);
 
 console.log(`\n  exemptions declared: ${EXEMPT_PATHS.length}`);
 for (const [path, why] of EXEMPT_PATHS) {
