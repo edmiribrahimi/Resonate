@@ -32,14 +32,17 @@
  *     mattered, whether anything scrolls sideways at 390px, and whether a
  *     seven-column table is comprehensible as a card is **H41-3**, which is a
  *     person holding a phone. No tick here stands in for that.
- *   - **A GREEN ON `REMAINING` IS NOT PROGRESS.** Five tables still rendering
- *     their own dual-render is a green, and it is supposed to be: the list
- *     exists so this gate can be switched on TODAY rather than after the
- *     migration (`verify-media-strip.mjs:51-62`; §0 rule 3). **Read the printed
- *     count, not the tick.**
+ *   - **A GREEN ON `REMAINING` IS NOT PROGRESS.** A table still rendering its
+ *     own dual-render is a green, and it is supposed to be: the list exists so
+ *     this gate can be switched on TODAY rather than after the migration
+ *     (`verify-media-strip.mjs:51-62`; §0 rule 3). **Read the printed count, not
+ *     the tick.** *(This sentence read "Five tables" until plan 41.1-16, when
+ *     wave 5 took the list to one. Restated rather than left standing: a
+ *     sentence whose figure has stopped being true reads to the next person
+ *     either as an open obligation or as a file nobody maintains.)*
  *   - **IT DOES NOT JUDGE THE TABLES IT TOLERATES.** A file on `REMAINING` is
- *     not blessed; it is *counted*. Four of the five switch at a breakpoint
- *     §2.1 does not have.
+ *     not blessed; it is *counted*. The one that remains switches at a
+ *     breakpoint §2.1 does not have — as four of the original five did.
  *   - **IT CANNOT SEE A CLASS BUILT BY CONCATENATION.** `` `hidden ${bp}:block` ``
  *     is text this script does not assemble. It reads lines.
  *   - **IT READS `.ts`-FAMILY FILES ONLY.** `src/emails/templates/` holds an
@@ -516,13 +519,15 @@ export const GROUP_TAGS = ['work', 'public-member-money', 'phase-42', 'exempt'];
  * (`conversion-manifest.mjs:80` carries a state column the same way, and says
  * in its own docblock that the column is load-bearing).
  *
- * **All five entries are `work`.** So criterion 2 for THIS gate is simply
- * *"`REMAINING` reaches 0"*, and the tag adds nothing here **except honesty
- * about that** — which is worth the field. Two reasons it is still worth
- * carrying: the same tag on `verify-breakpoints.mjs` is load-bearing (14 of its
- * 19 entries are work and 5 are not), and a list whose group is implicit
- * because "they all happen to be the same today" stops being true the first
- * time somebody adds the sixth entry.
+ * **Every entry is `work`** — five of them when this paragraph was written, one
+ * since plan 41.1-16. So criterion 2 for THIS gate is simply *"`REMAINING`
+ * reaches 0"*, and the tag adds nothing here **except honesty about that** —
+ * which is worth the field. Two reasons it is still worth carrying: the same tag
+ * on `verify-breakpoints.mjs` is load-bearing (6 entries there today, 1 work and
+ * 5 not — it was 14 of 19 when this was written, and every one of the thirteen
+ * that left was work), and a list whose group is implicit because "they all
+ * happen to be the same today" stops being true the first time somebody adds the
+ * second entry.
  *
  * Shape: `[path, reason, target, group]`.
  */
@@ -533,34 +538,49 @@ export const REMAINING = [
   // and nothing else moved. The gate printed it as STALE first — *"converted;
   // remove this entry"* — which is the notice that made this deletion a
   // response rather than a tidy.
-  [
-    'src/components/analytics/MemberSpendTable.tsx',
-    'a dual-render switching at 640px — seven columns, both branches, and the file §8.8 names as the best specimen of the technique this primitive consolidates',
-    'the member-analytics work surface — src/app/(admin)/admin/(work)/analytics/members/page.tsx:4, its only importer',
-    'work',
-  ],
-  [
-    'src/components/analytics/DrinkSalesBreakdown.tsx',
-    'a dual-render switching at 640px',
-    'the per-event analytics work surface — src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx:12, its only importer',
-    'work',
-  ],
-  [
-    'src/components/analytics/ReferralChainTable.tsx',
-    'a dual-render switching at 640px, and it renders a referral chain — personal data, so its conversion changes what is shown to nobody',
-    'the member-analytics work surface — src/app/(admin)/admin/(work)/analytics/members/page.tsx:6, its only importer',
-    'work',
-  ],
+  // PAID by plan 41.1-12 task 1 — `src/components/analytics/MemberSpendTable.tsx`
+  // was seven columns in two hand-written branches, the file §8.8 named as the
+  // best specimen of the technique this primitive consolidates, and it holds no
+  // table now: one column declaration, seven slots. It is DataTable's second
+  // adopter, which is what turns one proof into a pattern.
+  //
+  // PAID by plan 41.1-12 task 2 — `src/components/analytics/ReferralChainTable.tsx`
+  // held the third. Its conversion is the one that changed a fact rather than a
+  // layout: the old body held ONE cell spanning all three columns with a native
+  // disclosure inside it, so three headers labelled columns no cell aligned to.
+  // The three are actual cells now, and the disclosure became the expansion
+  // apparatus, which is why that file crossed to the client.
+  //
+  // PAID by plan 41.1-13 — `src/components/analytics/DrinkSalesBreakdown.tsx`,
+  // the fourth adopter, on the per-event analytics surface.
+  //
+  // PAID by plan 41.1-15 tasks 1 and 2 — `src/components/admin/TransactionList.tsx`
+  // was the second of the two that switched at 1024px and is now the fifth
+  // adopter at md. §8.9 named it as the first proof for the skeleton because it
+  // defined a local placeholder eight lines below the import that could have
+  // brought the shared one; that placeholder is gone.
+  //
+  // **The declared list went 5 → 1 and the work group went 5 → 1. The PRINTED
+  // `REMAINING` did not move, and that is correct rather than suspicious.** This
+  // gate prints two different numbers on purpose: `REMAINING entries declared`
+  // is this constant's length, and `REMAINING` is the live count of declared
+  // files that STILL render a table. All four files above stopped rendering one
+  // in their own plans' commits, so the live count had already fallen to 1 and
+  // the gate had been printing all four as STALE — *"converted; remove this
+  // entry"* — ever since. The notice is what makes these four deletions a
+  // response rather than a tidy, and a reader who conflates the two numbers will
+  // read this commit as work vanishing.
+  //
+  // Deleted by plan 41.1-16 (D-41.1-22), after re-deriving each of the five from
+  // the tree with a second instrument that deliberately does NOT use the gates'
+  // shared comment stripper — asking the gate what it thinks is not a check on
+  // the gate. Raw needle counts on 2026-08-14: 0, 0, 0, 0 for the four above and
+  // **1** for the entry that stays. Tree and SUMMARYs agreed entry for entry; no
+  // claim had to be refused.
   [
     'src/components/events/SalesDashboard.tsx',
     'a dual-render switching at 640px, on a surface that moves money',
     'the event sales work surface — src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8, its only importer',
-    'work',
-  ],
-  [
-    'src/components/admin/TransactionList.tsx',
-    'a dual-render switching at 1024px — the second of the two that do, and the one §8.9 names as the first proof for the skeleton, since it defines a local placeholder eight lines below the import that could have brought the shared one',
-    'the finance work surface — src/app/(admin)/admin/(work)/finance/page.tsx:2, its only importer',
     'work',
   ],
 ];
