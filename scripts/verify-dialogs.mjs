@@ -370,13 +370,50 @@ export const DECLARED_EXCEPTIONS = [
  * two lists said what is skipped and only one of them was refused on.
  *
  * So there is now ONE list. Check B's loop reads it, and the refusal is keyed on
- * it: the set that decides what is skipped IS the set the refusal is keyed on,
- * and the two cannot drift apart by an edit to either.
+ * it.
  *
- * **THE THREE REASONS STAY APART, and that is the substance rather than the
- * wording.** This gate keeps `fenced by path, never measured` and `exempt from
- * this check … measured, declared correct` on separate printed lines because
- * they are different facts about a file:
+ * **AND THE SENTENCE THAT USED TO CLOSE THAT PARAGRAPH WAS FALSE (CR-03).** It
+ * read, verbatim: *"the set that decides what is skipped IS the set the refusal
+ * is keyed on, and the two cannot drift apart by an edit to either."* It is
+ * quoted here rather than deleted, because a claim withdrawn silently reads as a
+ * slip, and a false sentence in a gate's header is what the next reader trusts
+ * without re-deriving it.
+ *
+ * **What made it false was not an edit — it was a category no edit ever added to
+ * either list.** Check B skips on THREE mechanisms and only two of them are
+ * lists: this Map, the fence, and **not being in `files` at all**. `files` is
+ * `listScannableFiles(SRC_DIR)`, a walk restricted to `src/` and to
+ * `SCANNED_EXTENSIONS`, so a `REMAINING` entry naming a real path outside `src/`,
+ * or carrying an extension the walk does not scan, was never opened by any loop
+ * and reached neither list. `stale` is computed as *on disk and not in
+ * `measuredShells`*, so the same wrong report returned a third time. Measured on
+ * this tree before the fix, with one entry naming a real stylesheet under `src/`:
+ * exit **0**, one entry marked STALE with `→ converted; remove this entry`, and
+ * `REMAINING` one below the declared count — about a file the gate never opened.
+ *
+ * **What is true now, and true by construction rather than by list maintenance:**
+ * `neverOpenedReason()` is keyed on all three mechanisms. The third is `walked`,
+ * a Set built from the very `files` array check B's loop iterates — not a fourth
+ * list somebody must remember to edit. A list can drift from the loop; a set
+ * derived from the loop's own input cannot, which is the difference between a
+ * guarantee and a habit.
+ *
+ * **Two properties of that branch are load-bearing, and neither is decoration:**
+ *
+ *   - It is tested **FIRST**, because a path outside `files` never reaches the
+ *     loop at all — the fence and this Map never got the chance to act on it. A
+ *     path that is both fenced and unwalked is not fenced in any operative sense.
+ *   - It is **guarded on the path existing on disk**. This refusal is computed
+ *     BEFORE `missing` is, so an unguarded membership test would turn a
+ *     `REMAINING` entry with a typo — today a FAILURE, *names a path that does
+ *     not exist* — into a refusal. That is a failure laundered into "nothing was
+ *     measured": this defect wearing the fix's clothes. A non-existent path
+ *     returns null here and reaches the failure it reaches today.
+ *
+ * **THE REASONS STAY APART, and that is the substance rather than the wording.**
+ * This gate keeps `fenced by path, never measured` and `exempt from this check …
+ * measured, declared correct` on separate printed lines because they are
+ * different facts about a file:
  *
  *   - **the primitive itself** — check B measures copies OF it; the one
  *     implementation cannot be one of its own copies.
@@ -384,6 +421,9 @@ export const DECLARED_EXCEPTIONS = [
  *     is. A statement about its markup, made by a person.
  *   - **fenced** — a file **nobody measured at all**. A scope boundary, saying
  *     nothing whatever about the markup behind it.
+ *   - **not in the walk** — a path that exists, and that this gate's own walk
+ *     does not produce. Not a statement about the file and not a scope boundary
+ *     either: the gate simply cannot reach it, and says which shapes it can.
  *
  * Collapsing them into one sentence in the refusal would re-lose the distinction
  * the docblock below keeps deliberately, so the refusal prints the reason **per
@@ -952,9 +992,36 @@ function fenceMatch(relPath) {
  * `PHASE_42_EXEMPT_PATHS` below for why this is a refusal rather than a warning.
  *
  * The categories are tested in the SAME ORDER the loop skips them, so the reason
- * a reader is given is the reason the loop would actually have acted on.
+ * a reader is given is the reason the loop would actually have acted on. The walk
+ * comes first for that exact reason: a path the walk never produced does not
+ * reach the loop at all, so neither the Map nor the fence ever acted on it.
  */
+
+/**
+ * What check B's loop actually iterates — the same array, not a second list.
+ *
+ * Derived rather than declared: this is the third mechanism by which a file goes
+ * unopened (CR-03, and see `NEVER_MEASURED_BY_B` above for the claim it makes
+ * true). A fourth hand-maintained list would be a fourth occurrence waiting.
+ */
+const walked = new Set(files);
+
 function neverOpenedReason(path) {
+  /*
+   * Guarded on the file existing, and that guard is the whole difference between
+   * closing this and recycling it: `unmeasurableRemaining` refuses BEFORE
+   * `missing` is computed, so an unguarded membership test would turn a typo'd
+   * entry from a FAILURE into a refusal. A refusal is not a pass, and a refusal
+   * that hides a FAILED verdict is worse than either.
+   */
+  if (!walked.has(path) && existsSync(`${ROOT}/${path}`)) {
+    return (
+      'NOT IN THE WALK — this path is on disk, and this gate\'s walk does not produce\n' +
+      '         it. The walk covers files under src/ carrying one of these extensions:\n' +
+      `         ${SCANNED_EXTENSIONS.join(', ')}. So check B never opened this path and\n` +
+      '         cannot tell a debt somebody PAID from one it simply never read'
+    );
+  }
   const skip = NEVER_MEASURED_BY_B.get(path);
   if (skip) return `${skip.kind}\n         ${skip.reason}`;
   const behind = fenceMatch(path);
@@ -982,9 +1049,11 @@ if (unmeasurableRemaining.length > 0) {
       '       marking the entry STALE ("converted; remove this entry") and dropping REMAINING\n' +
       '       by one. A debt counter that falls because the gate stopped looking is worse than\n' +
       '       no counter.\n\n' +
-      '       Either the entry leaves REMAINING as a declared decision, or the fence or the\n' +
-      '       exemption does. Both are decisions, and which one is a question for a person, not\n' +
-      '       for this script. Nothing was measured.'
+      '       Either the entry leaves REMAINING as a declared decision, or the thing that keeps\n' +
+      '       this gate from opening it does — the fence, the exemption, or, for a path the walk\n' +
+      '       does not produce, the path itself, corrected to one the walk reaches. Each of those\n' +
+      '       is a decision, and which one is a question for a person, not for this script.\n' +
+      '       Nothing was measured.'
   );
 }
 
