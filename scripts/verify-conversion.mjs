@@ -309,9 +309,41 @@
  *      disk; a `layout.*` file carries an extension the walk does not test; the
  *      shell's focus root declaration is not the one accepted form; or the focus
  *      BRANCH's frozen window cannot be read — no opener, two openers, a file
- *      shorter than the window, the single `className={FOCUS_ROOT}` sitting
- *      outside the window, or the frozen shape itself carrying a navigation
+ *      shorter than the window, the focus root not rendered as the whole of
+ *      exactly one `className`, or the frozen shape itself carrying a navigation
  *      property. **No verdict is implied by a 2.**
+ *
+ *      ── A REFUSAL THIS LIST USED TO PROMISE, AND NO LONGER DOES ─────────────
+ *
+ *      The sentence above used to read *"…a file shorter than the window, **the
+ *      single `className={FOCUS_ROOT}` sitting outside the window**, or the
+ *      frozen shape…"*, and there was a refusal below carrying
+ *      `GATE_CANNOT_READ_MARKER` written to raise it. **That refusal could not
+ *      fire, on any tree.** Its guard was three conjuncts —
+ *      `propertiesInFocusBranch.length === 0`, a single render site, and that
+ *      site falling outside the frozen window — and the first conjunct is only
+ *      reached with the frozen shape MATCHED, because the shape-mismatch refusal
+ *      above it takes every other route. A matched shape puts
+ *      `<div className={FOCUS_ROOT}>` at window position 3, so the single render
+ *      site is inside the window and the third conjunct is unsatisfiable
+ *      whenever the first two hold. Measured and recorded as `DEF-41-07` item 2;
+ *      `41.1-RESEARCH.md` §4.6 row 2 carries the derivation.
+ *
+ *      **D-41.1-10 closed it by retiring the advertisement, not by making the
+ *      branch reachable.** The clause and the branch were deleted TOGETHER:
+ *      deleting the sentence alone would have left dead code beside a removed
+ *      promise, and making the branch reachable would have added code to keep a
+ *      sentence honest instead of removing a sentence that was not.
+ *
+ *      **WHAT IS NOW UNMEASURED, NOT APPROVED.** A focus-root render site that
+ *      sits outside the frozen window **is not detected by any refusal in this
+ *      file.** Nothing here permits it — it is a state no branch looks for. What
+ *      covers the same ground is `SHELL_CODE_OUTSIDE_WINDOW_DIGEST`: every
+ *      non-empty trimmed line of the shell's live code outside the window is
+ *      hashed on every run, so a render site moved out there changes that digest
+ *      and refuses under `SHAPE CHANGED`. That is a different assertion reaching
+ *      the same state, and it is the one that does the work — which is why it is
+ *      named here rather than left for a reader to find.
  *
  *      Every exit-2 message in check E's read carries one of two markers on its
  *      first line, and they mean different things to whoever meets a red suite:
@@ -1874,26 +1906,43 @@ if (propertiesInFocusBranch.length === 0 && focusBranchLines.length !== 1) {
   );
 }
 
-if (
-  propertiesInFocusBranch.length === 0 &&
-  focusRootRenderLineNo !== null &&
-  (focusRootRenderLineNo < focusWindow.start || focusRootRenderLineNo > focusWindow.end)
-) {
-  refuse(
-    `${GATE_CANNOT_READ_MARKER} — ${SHELL_FILE}:${focusRootRenderLineNo} renders ` +
-      `${FOCUS_ROOT_IDENTIFIER} as the whole of a\n` +
-      `       className, but that line falls OUTSIDE the frozen window, lines ${focusWindow.start}-${focusWindow.end}.\n\n` +
-      '       WHAT WAS MEASURED AND FOUND. The exactly-one assertion is satisfied by an\n' +
-      '       occurrence anywhere in the file. It was, and the occurrence is not in the window —\n' +
-      '       so the focus form on screen is built from something this gate never read, while the\n' +
-      '       constant it did read renders somewhere else.\n\n' +
-      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing about the focus form was measured.\n' +
-      '       Asserting the absence of a property from a constant the focus branch does not\n' +
-      '       render is agreement with a form that was never opened.\n\n' +
-      FOCUS_BRANCH_WIDENING_NOTE +
-      '       Nothing was measured.'
-  );
-}
+/*
+ * ── THE RETIRED REFUSAL, AND WHAT REPLACES IT ───────────────────────────────
+ *
+ * A second refusal stood here: `GATE CANNOT READ — PageShell.tsx:N renders
+ * FOCUS_ROOT as the whole of a className, but that line falls OUTSIDE the frozen
+ * window`. **Nothing could reach it.** Its guard was
+ *
+ *     propertiesInFocusBranch.length === 0
+ *       && focusRootRenderLineNo !== null
+ *       && (render line outside the window)
+ *
+ * and the first conjunct is only live once the SHAPE-MISMATCH refusal above has
+ * declined to fire — which, with no property in the window, means the frozen
+ * shape MATCHED. A matched shape puts `<div className={FOCUS_ROOT}>` at window
+ * position 3 by construction, so the one render site is inside the window and
+ * the third conjunct cannot hold while the first two do. `DEF-41-07` item 2;
+ * derivation in `41.1-RESEARCH.md` §4.6 row 2. **`DEF-41-07` item 2 is closed by
+ * this deletion.**
+ *
+ * D-41.1-10 chose the direction: retire the advertisement rather than make the
+ * branch reachable. The branch is deleted here, the exit-code list at the top of
+ * this file no longer promises it, and the retired sentence is quoted there
+ * beside the measurement that retired it — recorded rather than edited away,
+ * the same treatment `PageShell.tsx:42-46` gives a claim it had to withdraw.
+ *
+ * **UNMEASURED, NOT APPROVED.** A focus-root render site outside the frozen
+ * window is not detected by any refusal in this file. Nothing here permits it;
+ * it is a state no branch looks for. `SHELL_CODE_OUTSIDE_WINDOW_DIGEST`, below,
+ * is what reaches the same ground — it hashes every non-empty trimmed line of
+ * the shell's live code outside the window, so a render site moved out there
+ * moves that digest and refuses under `SHAPE CHANGED`. Naming the assertion that
+ * does the work is the point: a gap declared without its counterpart reads as a
+ * hole, and a gap left undeclared reads as coverage.
+ *
+ * `focusRootRenderLineNo` survives the deletion because the report below prints
+ * it (search this file for its second use); it is not a leftover of the branch.
+ */
 
 /* ── E1's read, part three: THE SHELL OUTSIDE THE FROZEN WINDOW ──────────────
  *
