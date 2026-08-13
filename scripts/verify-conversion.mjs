@@ -310,6 +310,20 @@
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+
+/**
+ * The digest the two frozen shell assertions in check E are built on.
+ *
+ * A digest and not a frozen copy of the text, and the reason is DEF-41-01 rather
+ * than brevity: a frozen copy of `PageShell.tsx`'s code would carry a dozen whole
+ * utility tokens into this file, where Tailwind would compile every one of them
+ * and keep the rules alive after the shell had dropped them. A hex digest is not
+ * a candidate for anything. What a digest costs is legibility on a red, and that
+ * is paid back in the refusal: it prints the shell's live code verbatim and the
+ * digest to copy, so the reader never has to compute one.
+ */
+const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
@@ -1802,6 +1816,237 @@ if (
   );
 }
 
+/* ── E1's read, part three: THE SHELL OUTSIDE THE FROZEN WINDOW ──────────────
+ *
+ * **This is round 4's second inversion, and it was forced by a measurement
+ * rather than by symmetry.** Plan 41-27 ran fifteen rewrites of the focus form
+ * against the gate as round 4 first shipped it. Six of them printed a tick over
+ * a focus form that reserved navigation clearance, and every one of the six left
+ * the frozen window and the focus root BYTE-IDENTICAL. They put the clearance
+ * somewhere else in the same file:
+ *
+ *   - on the `className` prop's DEFAULT VALUE, which lands on the focus form's
+ *     inner container on all four routes, since none of them passes one
+ *   - on a `let` declaration of the focus root AUGMENTED by a separate statement
+ *     below it — the accepted form matched, the literal read was clean, and the
+ *     value that reached the browser was not
+ *   - through a WRAPPER: the implementation renamed, an exported wrapper of the
+ *     same name injecting the clearance as a className
+ *   - through a DECOY ANCHOR: a dead helper carrying the frozen shape verbatim,
+ *     while the live branch selected the focus form by a different condition and
+ *     carried the clearance on its outer element. The window matched perfectly —
+ *     it was anchored on a witness that renders nothing
+ *   - through a SECOND COMPONENT in the same file rendering the focus root plus
+ *     the clearance
+ *   - and once with no property name at all, as a plain length utility on the
+ *     same prop default
+ *
+ * **The class, named rather than the six shapes.** The gate's premise was that
+ * the focus form's rendered class strings are determined by the focus root's
+ * literal plus the seven frozen lines. **That premise is false**: the shell can
+ * compose them from any other line of the same file. Worse, the evidence scan
+ * (`propertyReadsElsewhere`, far below) read every occurrence outside the window
+ * as proof that *the clearance survives in the primitive* — so a clearance
+ * introduced on the prop default was counted IN FAVOUR of the assertion meant to
+ * catch it. That is GAP-CR-02's shape one level out.
+ *
+ * So the region is not the branch any more; it is the file. Two frozen
+ * assertions, and they guard each other the way `FOCUS_BRANCH_SHAPE` and its
+ * self-check do:
+ *
+ *   1. **Every occurrence of a navigation property anywhere in the shell must
+ *      sit at a FROZEN PERMITTED SITE.** The permitted sites are the default and
+ *      wide form's two lines — the root that reserves the leading inset, and the
+ *      inner container that reserves the block-end inset. Anything else is a
+ *      site this gate has never been shown, and an unshown site is exactly what
+ *      three rounds were escaped through.
+ *
+ *   2. **The shell's live code outside the frozen window must be byte-for-byte
+ *      what this gate was shown**, by digest. This is what closes the sixth
+ *      rewrite, which carried no property name at all and therefore cannot be
+ *      caught by any name-based scan.
+ *
+ * **Why (1) is not made redundant by (2).** (2) tells a reader to update the
+ * digest when the shell legitimately changes. Updating it to bless a shell whose
+ * prop default reserves a clearance would make this gate certify the exact
+ * defect it exists to catch — the fifth escape, written into the gate's own
+ * instruction. (1) is what refuses that, and it cannot be satisfied by
+ * re-hashing. It is the same relationship the frozen shape has with its own
+ * self-check, and it is why both exist.
+ *
+ * **What (1) does NOT do, said rather than left to be discovered.** It matches by
+ * PROPERTY NAME. A clearance spelled as a literal length — the sixth rewrite —
+ * carries no name and is invisible to it; only (2) sees that one, and only until
+ * somebody re-freezes the digest. Re-freezing is a human act and a reviewable
+ * one; it is not a mechanism, and this comment does not pretend it is.
+ *
+ * ── WHAT THE DIGEST DELIBERATELY DOES NOT SEE ───────────────────────────────
+ *
+ * It is taken over the NON-EMPTY TRIMMED lines of the comment-stripped source.
+ * So a docblock edit, a blank line and a reindentation change nothing — which
+ * matters in a file whose prose has been edited in nearly every plan of this
+ * phase. Only code text moves it.
+ *
+ * ── THE STALE-PERMISSION CHECK THAT IS NOT WRITTEN HERE, AND WHY ────────────
+ *
+ * A permitted digest that matches no line would be a permission floating free.
+ * It is not checked, and that is a decision: a permitted site lies outside the
+ * window, so its text cannot change without changing (2)'s digest as well —
+ * assertion (2) reaches that state first, on every tree. A branch no situation
+ * can reach is a decoration that makes something look guarded (`ai-engineering.md`,
+ * gate a gate must be able to fail), and this file already carries one such
+ * branch it was told to leave alone rather than two it invented.
+ *
+ * ── THE ACCEPTED COST, WHICH IS NOW THE WHOLE FILE ──────────────────────────
+ *
+ * Editing any line of `PageShell.tsx`'s CODE reddens this gate until the digest
+ * below is updated in the same commit. That is a real cost and it is paid on
+ * purpose: this is the primitive four gated surfaces and forty-seven work
+ * surfaces render through, and CR-01 has been reintroduced into it three times
+ * by an edit nobody was asked to look at twice.
+ */
+
+/**
+ * The two lines of the default and wide form that legitimately read a navigation
+ * property, by digest of their trimmed live text.
+ *
+ * By digest and not verbatim: both carry whole utility tokens, and a frozen copy
+ * of product code outlives the product code it copies (DEF-41-01). The refusal
+ * prints the offending line and its digest, so adding a site is a copy rather
+ * than a computation.
+ *
+ * **A site is frozen here only after confirming it cannot reach the focus form.**
+ * That confirmation is a person's, and this list is the record that somebody made
+ * it. Two entries today: §4's default and wide forms are the only forms that
+ * reserve anything.
+ */
+const NAV_PROPERTY_SITE_DIGESTS = [
+  [
+    '508027fb74a9bf829d9e02a44131d5705983eda85c02168aed74cead70c395f0',
+    'the default and wide root — the leading inline-start inset, at and above 768px. ' +
+      'It sits AFTER the focus branch has returned, so no focus surface reaches it',
+  ],
+  [
+    '8f9c39ad4e2711c6c39e515bc420c51b3524effe52bdf1eb8b30e349d38823e0',
+    'the default and wide inner container — the block-end inset plus 16px. Same ' +
+      'reason: below the focus branch\'s return, unreachable from the focus form',
+  ],
+];
+
+/**
+ * The digest of the shell's live code OUTSIDE the frozen window.
+ *
+ * Re-frozen whenever `PageShell.tsx`'s code legitimately changes, in the same
+ * commit, after checking that the changed line does not put a clearance on the
+ * focus form. The gate prints the found digest on every run, so the update is a
+ * copy; the check above is what stops the copy from being a blessing.
+ */
+const SHELL_CODE_OUTSIDE_WINDOW_DIGEST =
+  '73adc18b822ace6679b5d0f22b7b1e442dc2d7718619d08e46c87ee14acc754f';
+
+const shellCodeOutsideWindow = [];
+shellLines.forEach((line, i) => {
+  const lineNo = i + 1;
+  if (lineNo >= focusWindow.start && lineNo <= focusWindow.end) return;
+  const trimmed = line.trim();
+  if (trimmed === '') return;
+  shellCodeOutsideWindow.push({ lineNo, trimmed });
+});
+
+const shellCodeOutsideWindowDigest = sha256(
+  shellCodeOutsideWindow.map(({ trimmed }) => trimmed).join('\n')
+);
+
+const permittedSiteDigests = new Set(NAV_PROPERTY_SITE_DIGESTS.map(([digest]) => digest));
+
+/*
+ * The focus root's own declaration line is skipped, and only that line: it is
+ * asserted separately by `propertiesInFocusRoot`, which FAILS on it. Refusing
+ * here instead would replace a measurement that happened with "nothing was
+ * measured" — WR-03's exact shape, and the reason the verdict split exists.
+ */
+const unfrozenPropertySites = [];
+for (const { lineNo, trimmed } of shellCodeOutsideWindow) {
+  if (lineNo === focusRootLineNo) continue;
+  if (!NAV_PROPERTIES.some((prop) => trimmed.includes(prop))) continue;
+  const digest = sha256(trimmed);
+  if (permittedSiteDigests.has(digest)) continue;
+  unfrozenPropertySites.push({ lineNo, trimmed, digest });
+}
+
+/*
+ * Both refusals are gated on nothing measurable having come back wrong — the
+ * same guard the three refusals above carry, extended with the focus root.
+ *
+ * Without the extension, a clearance appended to the focus root's literal would
+ * also change the code outside the window, this refusal would fire first, and a
+ * genuine CR-01 failure would reach `verify-all.mjs` as "nothing was measured"
+ * for all sixteen gates. That is WR-03 reintroduced by its own fix, and it was
+ * caught here by asking what each new refusal could mask rather than by running
+ * into it.
+ */
+const focusRootCarriesProperty = NAV_PROPERTIES.some((prop) => focusRoot.includes(prop));
+const nothingMeasurableWasWrong = propertiesInFocusBranch.length === 0 && !focusRootCarriesProperty;
+
+if (nothingMeasurableWasWrong && unfrozenPropertySites.length > 0) {
+  refuse(
+    `${SHAPE_CHANGED_MARKER} — ${SHELL_FILE} reads a navigation property at ` +
+      `${unfrozenPropertySites.length} site(s)\n       this gate has not been shown:\n\n` +
+      unfrozenPropertySites
+        .map(({ lineNo, trimmed, digest }) => `         ${SHELL_FILE}:${lineNo}\n           ${trimmed}\n           digest ${digest}`)
+        .join('\n\n') +
+      '\n\n       WHAT WAS MEASURED AND FOUND. The frozen window is clean and so is the focus\n' +
+      '       root, so the branch this gate freezes is correct. But the clearance is read\n' +
+      '       somewhere else in the same file, and the shell composes the focus form from more\n' +
+      '       than its branch: a prop default, a reassignment, a wrapper or a second component\n' +
+      '       all reach the same rendered class strings without touching a frozen line. Six\n' +
+      '       rewrites doing exactly that printed a tick before this assertion existed.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Whether that site reaches the focus form\n' +
+      '       or only the default and wide forms is not something this gate can read — it\n' +
+      '       follows no data flow. Calling it CR-01 would redden a legitimate refactor of the\n' +
+      '       default form, and a gate that reddens correct code gets switched off (§0 rule 3).\n' +
+      '       Calling it clean is what three rounds did.\n\n' +
+      '       WHAT TO DO. Establish which form that line reaches. If it is the default or wide\n' +
+      '       form, freeze it: add its digest above, in the same commit, with the reason. If it\n' +
+      '       reaches the focus form, it is CR-01 and the line comes out — §4\'s focus list is\n' +
+      '       closed at four routes and not one of them mounts a navigation.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
+if (nothingMeasurableWasWrong && shellCodeOutsideWindowDigest !== SHELL_CODE_OUTSIDE_WINDOW_DIGEST) {
+  refuse(
+    `${SHAPE_CHANGED_MARKER} — ${SHELL_FILE}'s code outside the frozen window is not what\n` +
+      '       this gate was shown.\n\n' +
+      `         expected digest  ${SHELL_CODE_OUTSIDE_WINDOW_DIGEST}\n` +
+      `         found digest     ${shellCodeOutsideWindowDigest}\n` +
+      `         over ${shellCodeOutsideWindow.length} non-empty line(s) of live code, trimmed, ` +
+      `outside lines ${focusWindow.start}-${focusWindow.end}\n\n` +
+      '       WHAT WAS FOUND, verbatim — comments and blank lines are already excluded, so this\n' +
+      '       is every line of code the digest covers:\n\n' +
+      shellCodeOutsideWindow
+        .map(({ lineNo, trimmed }) => `         ${String(lineNo).padStart(4)}  ${trimmed}`)
+        .join('\n') +
+      '\n\n       WHY THIS EXISTS. The frozen window certifies a REGION; the focus form is composed\n' +
+      '       by a FILE. A clearance can be put on the prop default, on a reassignment of the\n' +
+      '       focus root, in a wrapper or in a second component, and reach all four focus routes\n' +
+      '       with the branch and the root byte-identical. One such rewrite carried no property\n' +
+      '       name at all — a plain length utility on the prop default — and no name-based scan\n' +
+      '       can ever see it. This digest is the only thing that does.\n\n' +
+      '       WHY THIS IS A REFUSAL AND NOT A FAILURE. Nothing was measured as wrong: the branch\n' +
+      '       is the frozen shape and no navigation property was found outside its permitted\n' +
+      '       sites. What changed is code this gate certifies by having been shown it, and it\n' +
+      '       has not been shown this.\n\n' +
+      '       WHAT TO DO — one action. Read the changed line. Satisfy yourself that it does not\n' +
+      '       put a clearance on the focus form, which reserves nothing by census. Then copy the\n' +
+      '       FOUND digest above into SHELL_CODE_OUTSIDE_WINDOW_DIGEST in this file, in the same\n' +
+      '       commit as the change. Re-freezing does NOT bless a navigation property: the\n' +
+      '       permitted-site assertion above runs independently and cannot be satisfied by a\n' +
+      '       digest.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
 /* ── E2's read: the layouts each surface climbs through ───────────────────── */
 
 const layoutClosureCache = new Map();
@@ -2393,6 +2638,19 @@ console.log(
 console.log(
   `          navigation propert(y/ies) found inside the window: ${propertiesInFocusBranch.length}`
 );
+
+/* The file-level half, printed on every run — a green states what it certified
+ * by having been shown it, and the digest a reader would have to copy is in the
+ * output rather than in a command they have to reconstruct. */
+console.log(
+  `      the shell OUTSIDE that window             : ${shellCodeOutsideWindow.length} line(s) of live code, ` +
+    `digest ${shellCodeOutsideWindowDigest}`
+);
+console.log(
+  `      sites permitted to read a navigation property : ${NAV_PROPERTY_SITE_DIGESTS.length}` +
+    `   (found outside the permitted set: ${unfrozenPropertySites.length})`
+);
+for (const [, why] of NAV_PROPERTY_SITE_DIGESTS) console.log(`          ${why}`);
 
 console.log(`      the shell's focus root, ${SHELL_FILE}:${focusRootLineNo}`);
 console.log(`          ${FOCUS_ROOT_IDENTIFIER} = "${focusRoot}"`);
