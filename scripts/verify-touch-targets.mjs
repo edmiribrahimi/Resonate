@@ -601,11 +601,24 @@ export const PHASE_42_EXEMPT_PATHS = [
  * That assertion is a FAILURE (exit 1), not a refusal: the premise being false
  * is a defect, not an inability to measure.
  *
- * `Switch` carries a null path: **it does not exist in this tree.** D-41-04
- * forbids publishing a primitive in a wave that does not render it, and no
- * surface converted so far has a switch. The entry is kept so this list holds
- * §13's ten names rather than nine, and so the plan that publishes `Switch` has
- * a place to put its path. A null removes nothing from scope; a wrong path would.
+ * `Switch` **carried a null path until plan 41.1-11, and now carries its file.**
+ * The paragraph is kept rather than deleted, because a null that becomes a path
+ * is the promise this list made being kept, and a promise whose text is removed
+ * on the day it is kept leaves the next reader unable to tell a kept one from a
+ * forgotten one:
+ *
+ * > *it does not exist in this tree. D-41-04 forbids publishing a primitive in a
+ * > wave that does not render it, and no surface converted so far has a switch.
+ * > The entry is kept so this list holds §13's ten names rather than nine, and so
+ * > the plan that publishes `Switch` has a place to put its path. A null removes
+ * > nothing from scope; a wrong path would.*
+ *
+ * Plan 41.1-10 built the file and rendered it on the drinks menu; plan 41.1-11
+ * declares that surface and enters the path here, in the same commit, because
+ * D-41.1-22 makes the wave's reconciliation the single owner of every gate edit.
+ * The two halves cannot be split: a path here without the declared surface would
+ * widen this exemption over a file no closure reaches, and the declared surface
+ * without the path would leave the drawn track measured as an ordinary element.
  *
  * Shape: `[symbol, modulePath | null, reason]`.
  */
@@ -617,13 +630,33 @@ export const PRIMITIVE_COMPONENTS = [
   ['Select', 'src/components/ui/Input.tsx', 'the native select on the same boundary'],
   ['Textarea', 'src/components/ui/Input.tsx', 'the multi-line control on the same boundary'],
   ['Checkbox', 'src/components/ui/Checkbox.tsx', 'a drawn box inside a hit area that is also the control name'],
-  ['Switch', null, 'NOT PUBLISHED — no converted surface renders one (D-41-04). A null path removes nothing from scope'],
+  ['Switch', 'src/components/ui/Switch.tsx', 'a drawn track inside a hit area that is also the control name'],
   ['AppNav', 'src/components/layout/AppNav.tsx', 'the product navigation in both tiers'],
   ['StaffNav', 'src/components/staff/StaffNav.tsx', 'the eight work tabs in two forms'],
 ];
 
 /**
- * EXEMPTION 2a's TEN ELEMENTS — declared one by one, each with its own reason.
+ * EXEMPTION 2a's ELEVEN ELEMENTS — declared one by one, each with its own reason.
+ *
+ * ── The eleventh, and why it is the mechanism working rather than failing ────
+ *
+ * It was **ten** until plan 41.1-11. The eleventh is the switch's drawn track,
+ * and it arrived by the route the last paragraph of this docblock prescribes:
+ * plan 41.1-10 built `Switch.tsx`, simulated the declaration on a disposable copy
+ * outside the repository, and **measured** this gate exiting 1 with exactly one
+ * failure — the track, with no unprefixed height declaration on its own element.
+ * It then handed the red forward rather than resolving it, because D-41.1-22
+ * gives every gate edit in a wave to the reconciliation.
+ *
+ * So the entry below is *"a declared line here carrying its reason, written by a
+ * person, never a widening"* — this file's own words, applied to the first case
+ * that reached them. The alternative was priced and refused: making the input
+ * itself 44px with the 24px track drawn behind it would have cleared the gate
+ * with no hand-off, and it is neither of the two mechanisms §8.6 names, it
+ * contradicts the primitive's own contract (24px drawn, 44px hit area), and it
+ * puts the focus indicator around a transparent box instead of around the
+ * control. `Checkbox.tsx` is the tenth entry for the identical reason, which is
+ * what makes this a second instance of one contract and not a second exception.
  *
  * ── What this replaced, and why ──────────────────────────────────────────────
  *
@@ -744,6 +777,12 @@ export const PRIMITIVE_RAW_ELEMENTS = [
     'input',
     'type="checkbox"',
     'THE ONE ENTRY WHOSE SIZE IS NOT ON THIS ELEMENT AT ALL, AND THAT IS THE CONTRACT: the drawn box is 16px on purpose and its class attribute interpolates the box string, which declares 16px deliberately. The 44×44 target is the enclosing label, which carries the hit-area string. §8.6 chose this over enlarging the glyph — a 44px checkbox in a table column would be a different control, and the thing that has to be 44px is what a finger can land on, not what an eye reads',
+  ],
+  [
+    'src/components/ui/Switch.tsx',
+    'input',
+    'role="switch"',
+    'the drawn track, and the ELEVENTH entry for the same reason as the tenth: its size is not on this element at all, and that is the contract. Its class attribute interpolates the track string, which declares 24px deliberately — §8.6 keeps the drawn size and moves the target instead. The 44×44 hit area is the enclosing label, which carries the hit-area string, and that label is also the control name',
   ],
 ];
 

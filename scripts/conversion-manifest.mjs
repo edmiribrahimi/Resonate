@@ -332,6 +332,10 @@ export const PRIMITIVES = [
     "src/components/ui/Skeleton.tsx", "SkeletonTile",
     "plan 41-08 — the square placeholder for a media thumbnail, published in the plan that renders it. A square is a different shape from a line, not a taller one: reaching it by passing a height through the caller's classes would have depended on which of two same-property utilities Tailwind emits last, which is measured below as unreliable in exactly this component",
   ],
+  [
+    "src/components/ui/Switch.tsx", "Switch",
+    "plan 41.1-10 — the one primitive this phase builds; its consumer in the same commit is the drinks menu's availability toggle. Entered by plan 41.1-11, which is the wave's single declared owner of every gate edit (D-41.1-22) — the plan that built it deliberately did not enter it, because check C asserts no published primitive is an orphan and the entry may only land in the same reconciliation that declares the surface rendering it (D-41-04)",
+  ],
 ];
 
 /**
@@ -467,6 +471,65 @@ export const CONVERTED = [
   [
     "/admin/members", "src/app/(admin)/admin/(work)/members/page.tsx", "wide",
     "plan 41-10 — whole, and 'whole' here is FIVE files in two directories: the route file and its loading state under (work)/, and the table, the create-account form and the refusal notice one directory out, where R-WORK-ROUTES keeps everything that is not a route. Named on §4's CLOSED wide list, and it is the reason that list exists — the primary object is the densest table in the product. This is also the surface that first renders DataTable and Checkbox, and the second that renders Skeleton. THE CAUTION, because this is where the gating mechanism is operated: role and status are two orthogonal axes and stay two columns and two marks, no query changed, no column added, no capability check touched, no action payload altered, and who approved or rejected and when both still render. Seven raw palette families left the row — four role hues and three status hues — and that is a decision rather than a substitution: no token declares a role, and grading a person in the colours of success and failure is what community-membership.md calls a judgement. The words are the channel, and they always were, since each mark's content is the role's or the status's own name",
+  ],
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * WAVE 3 — the ten surfaces plans 41.1-06 … 41.1-10 converted.
+   *
+   * Every reason below is the text the plan that did the work reported in its
+   * own SUMMARY, taken verbatim rather than re-composed here. That is not
+   * deference: the plan that walked the closure is the one that knows what
+   * *whole* turned out to mean, and a reconciliation re-writing those sentences
+   * would be asserting about files it did not open. The only editorial change
+   * is that a reason reported across several lines of a SUMMARY is joined into
+   * one string, because this list's shape is one string per entry.
+   *
+   * They are entered HERE and not by their own plans because D-41.1-22 makes
+   * the wave's reconciliation the single declared owner of every gate edit in
+   * the wave: a `CONVERTED` list is one file that every plan in a wave would
+   * want to edit, which is exactly what D-41.1-15's partition rule cannot
+   * express. Five plans reported; one plan writes.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [
+    "/admin/artists", "src/app/(admin)/admin/(work)/artists/page.tsx", "default",
+    "plan 41.1-06 — whole, and 'whole' here is ONE file: the closure reaches only three modules under @/lib and all three carry zero class attributes, and no loading/error/not-found file exists beside the route. NOT on §4's closed wide list and therefore default, which is not a fallback: it is the answer for every surface nobody had to argue about, and this is a list of one-line rows rather than a dense table. The empty state's next-step sentence is measured rather than assumed — CreateArtistModal has exactly one importer in the tree and it is components/events/EventForm.tsx:8, so an artist is created from a night's line-up and not from here. No query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/admin/venues", "src/app/(admin)/admin/(work)/venues/page.tsx", "default",
+    "plan 41.1-06 — whole, and 'whole' here is ONE file. The profile at /admin/venues/[slug] is a DIFFERENT surface with its own closure, which reaches EditVenueButton.tsx and is not declared by this plan: a sibling route under one directory is not one surface. NOT on §4's closed wide list and therefore default, which is not a fallback. THE CAUTION, because this page renders venues.address: no query changed, no column added, no capability check touched, no action payload altered — so the audience of that column is exactly what it was, nothing here reads or writes venue_reveal_sent, venue_reveal_on_purchase or venue_secret_hint_reveal_hours, and the empty state's copy names the route to take and no place at all",
+  ],
+  [
+    "/admin/newsletter", "src/app/(admin)/admin/(work)/newsletter/page.tsx", "default",
+    "plan 41.1-06 — whole, and 'whole' here is FIVE files in two directories: the route file plus the four co-located client modules one group shallower, which is R-WORK-ROUTES working as declared. actions.ts is in the closure and carries zero class attributes, so it is reached and has nothing to convert. NOT on §4's closed wide list and therefore default, which is not a fallback: the surface is one figure, one form and one short history, none of which is a dense table. THE CAUTION: the three failure kinds in FailureNotice.tsx keep their copy byte for byte — keeping the causes apart is the reason that component exists, and a conversion that tidied them towards one sentence would recreate CONCERNS.md's recorded defect while looking like a styling commit. No query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/admin/venues/[slug]", "src/app/(admin)/admin/(work)/venues/[slug]/page.tsx", "default",
+    "plan 41.1-07 — whole, and 'whole' here is TWO files: the page and the edit modal its only local import mounts. NOT on §4's closed wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about. THE CAUTION, because this page renders a venue's ADDRESS to staff: no query changed, no column added, no capability check touched, no action payload altered, and no visibility predicate moved — the withholding rule that drops an event whose party here is secret and unrevealed is byte-identical, the address renders inside the same conditional, and the edit affordance is drawn on the same role test. The modal's hand-rolled overlay is gone and the platform supplies Escape, the focus trap and the top layer; its four raw palette values were deleted by the status prop rather than recoloured",
+  ],
+  [
+    "/admin/events", "src/app/(admin)/admin/(work)/events/page.tsx", "default",
+    "plan 41.1-07 — whole, and 'whole' here is THREE files: the page, the row renderer it imports, and the route-adjacent placeholder the extension of the scanned set now reaches. NOT on §4's closed wide list and therefore default. Both branches render the same shell at the same maximum, so the page does not change width when it fails. §6.4's six-in-a-row case is paid: eight controls, every one at the floor, none shrinking, and the row still wraps rather than gaining a breakpoint prefix. THE CAUTION: no query changed, no column added, no capability check touched, no action payload altered, and no series identifier was renumbered, re-sorted or re-derived — the order is still the query's. The six navigation controls are Links and not Chips, and the reason is a compiler error recorded in the file's own docblock",
+  ],
+  [
+    "/admin/events/[id]/guest-list", "src/app/(admin)/admin/(work)/events/[id]/guest-list/page.tsx", "wide",
+    "plan 41.1-08 — whole, and 'whole' here is THREE files in three directories: the route file, the client component R-WORK-ROUTES keeps a level out, and the failed-read state. wide because the route is NAMED on §4's closed wide list, so the width is checkable against that list rather than agreed with. THE CAUTION, because this is a lane around the approval gate and community-membership.md counts such a lane as an exception to the gating mechanism rather than a convenience: no query changed, no column added, no capability check touched, no action payload altered, and no entry path, attribution or count moved — who added an entry is still written server-side. It is also the tree's ONLY toast consumer and not one call site, string or tone was touched",
+  ],
+  [
+    "/admin/events/[id]/assignments", "src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx", "default",
+    "plan 41.1-08 — whole, and 'whole' here is TWO files: the route file and the client component a level out. NOT on §4's wide list and therefore default, which is not a fallback: the roster is a short stack of night cards, not a dense table. THE CAUTION, because this surface grants a capability for one night: no capability key, guard or action payload changed, the four assignable keys and the closed refusal set are byte-identical, and the composite foreign key is still the boundary behind an affordance that is still only a filter. Its one small-prefix use was paid by reading the class — a track template, not a column count — and the gate reported the entry STALE rather than this plan deleting it (D-41.1-22)",
+  ],
+  [
+    "/admin/events/[id]/media", "src/app/(admin)/admin/(work)/events/[id]/media/page.tsx", "default",
+    "plan 41.1-09 — whole, and 'whole' here is TWO files: the route and the moderation grid it is the only importer of. NOT on §4's wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about. The grid gained §2.2's middle step — one column, two at the tablet tier, three at desktop — and the image size hint moved with the boundary, or every browser between the two widths fetches a half-width file for a full-width slot. The three status tiles take NO semantic token: the warning semantic is also SunSet's identification colour and a rejected upload is not a critical outcome, so the label beside each count carries what the hue carried badly. THE CAUTION, because this surface decides what a member's upload becomes: no query changed, no column added, no capability check touched, no action payload altered, and moderation still flips the ROW and not the OBJECT — media-and-storage.md's gate moderazione = rimozione is open before this conversion and open after it, and no visual change closes it",
+  ],
+  [
+    "/admin/events/[id]/review", "src/app/(admin)/admin/(work)/events/[id]/review/page.tsx", "wide",
+    "plan 41.1-09 — whole, and 'whole' here is TWO files: the route and the client list one directory out, which R-WORK-ROUTES keeps outside the route group. Named on §4's closed wide list, and the width is written out so a reader can check it against that list rather than infer it. The copy-out diagnostic grid inside it is PERMANENTLY EXEMPT (D-41-16, D-41.1-14) and stayed a table: no card branch, no data-table primitive, and no entry on any debt list — the negative obligation was asserted by grep AFTER the conversion, because the failure mode here is a later tidy. What it did owe is paid: the eleven-pixel type size is gone and the grid takes the label/data size, with the accepted consequence that it scrolls slightly more. THE CAUTION, because this is door evidence: no classification moved, no identifier became a name, the technical view still receives entries and nothing else, no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/admin/events/[id]/drinks", "src/app/(admin)/admin/(work)/events/[id]/drinks/page.tsx", "default",
+    "plan 41.1-10 — whole, and 'whole' here is FOUR files in three directories: the route file under (work)/, the menu manager one directory out where R-WORK-ROUTES keeps everything that is not a route, the Switch primitive this plan publishes, and the QR control under (public)/ — the sixth entry on D-41.1-19's authorised list, in this phase BY THE OWNER'S DATED DECISION of 2026-08-13 and not by this plan's measurement of it. NOT on §4's closed wide list and therefore default. This is the surface that first renders Switch, and the reason that file could be published at all (D-41-04): four hand-written 24px tracks were one accessibility finding written four times, and the other three are the event form's, adopted by plan 41.1-18. THE CAUTION, because this surface governs what a guest can be sold: no query changed, no column added, no capability check touched, no action payload altered — handleToggle does not appear in the diff, so the availability flag keeps its name, its value and the negation that produces it, and nothing about a price, an order, a token, a refund or a closing time was opened. Phase 41.2 inherits both the QR control and the menu manager already converted, which is the harmless direction",
   ],
 ];
 

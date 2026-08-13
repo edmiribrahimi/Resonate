@@ -940,6 +940,92 @@ export const SHELL_FILE = 'src/components/ui/PageShell.tsx';
 export const DECLARED_MAXIMA = ['max-w-5xl', 'max-w-7xl', 'max-w-sm'];
 
 /**
+ * A TYPOGRAPHIC MEASURE, declared — D-41.1-27, and `DEF-41-04`'s mechanism.
+ *
+ * ── The defect, and it has two victims rather than one ──────────────────────
+ *
+ * Check D reads a width written on a converted page as **a container maximum
+ * taken back from the shell**, which is right almost always and wrong in one
+ * case. A *container maximum* is the shell's business and never a page's
+ * (D-41-06). A **typographic measure** is a different animal: it is a property
+ * of one block of text — how many characters fit on a line before the eye stops
+ * finding the next one — and **no tier owns it**, because it does not change
+ * with the viewport.
+ *
+ * To this gate the two are the same string. Twice now the page has been changed
+ * rather than the contract: phase 41 deleted the measure from the format
+ * catalogue's explanatory paragraph, and wave 3 of this phase deleted it from
+ * the venue bio. **Two paragraphs got wider so that a gate would go green**,
+ * which is a gate deciding a typographic question it cannot see.
+ *
+ * ── The fix that was REFUSED, and why it is the dangerous one ───────────────
+ *
+ * The tempting repair is to narrow the matcher — stop flagging a width that
+ * sits on a paragraph, flag one on a page root. **Refused.** Narrowing makes
+ * this gate find *less*, and the thing it would stop finding is a genuine
+ * container maximum written on an inner element — a page taking the width back
+ * one `<div>` down, which is exactly D-41-06's defect wearing a hat. That is the
+ * **silent** direction, and this phase family has spent four separate mechanisms
+ * learning what the silent direction costs: a never-measured map, a fence match,
+ * an unguarded walk-membership test, and a comment stripper going blind inside a
+ * file. Every one of them made a number improve while the tree did not.
+ *
+ * ── What was done instead: the measure is STATED, never inferred ────────────
+ *
+ * A measure that a person has decided is a measure gets a line here, carrying
+ * the page, the exact width token, a fragment picking out the one element, and
+ * the reason. **Anything not on this list is still a failure**, including a
+ * width on a paragraph — so the gate finds strictly no less than it did, and a
+ * page cannot exempt itself by writing its width somewhere the matcher stopped
+ * looking. The entry is the decision; the diff is not.
+ *
+ * The shape is not invented: `verify-touch-targets.mjs`'s exemption 2a is
+ * `[path, tag, fragment, reason]`, where the fragment is an attribute rather
+ * than a line number **because a line number drifts on the first edit above it
+ * and a stale one reads exactly like a current one**. This is the same
+ * construction, one field narrower, and it inherits the same three refusals:
+ *
+ *   · an entry naming a page no `CONVERTED` surface declares — it forgives
+ *     nothing today and would begin forgiving silently the day that page is
+ *     declared, which is a guard nobody wrote;
+ *   · an entry matching ZERO widths — stale, and a stale exemption reads exactly
+ *     like a live one;
+ *   · an entry matching TWO OR MORE — ambiguous: it would forgive a width nobody
+ *     named.
+ *
+ * All three are REFUSALS (exit 2), not failures, and the distinction is this
+ * file's own: a failure says *the tree is wrong*, a refusal says *nothing was
+ * measured*. A dead exemption measures nothing while looking supervised.
+ *
+ * ── IT IS EMPTY TODAY, AND THAT IS THE MEASURED STATE ───────────────────────
+ *
+ * Not a list nobody got round to filling. Measured on the tree by plan 41.1-11:
+ * **zero of the eighteen declared page files carries any width at all**, because
+ * both paragraphs that wanted one had it deleted before this mechanism existed.
+ * An empty list forgives nothing, which is why an empty one is honest here and
+ * would not be honest on a `REMAINING` list. `ORPHANS_DECLARED` a few hundred
+ * lines below is this file's own precedent for the shape.
+ *
+ * **This is written BEFORE the first red run**, which is the whole point and the
+ * house rule (D-41-16): an exemption discovered on a red run is an exemption
+ * nobody trusts, and the gate is what gets edited next. The next plan that
+ * decides a paragraph should read at a measure adds its line here **in the same
+ * commit** as the width, and meets this paragraph on the way rather than meeting
+ * a red and reaching for the matcher.
+ *
+ * **And it is what closes `DEF-41-04` on a schedule rather than on goodwill.**
+ * That deferred item asks whether the measure comes back to the paragraph that
+ * lost one. It is not answered here — restoring a measure changes what a person
+ * sees on an already-converted surface, and this is a reconciliation wave, so it
+ * would owe a fresh observation. What changes is that the answer is now **an
+ * entry** rather than an argument with a gate, and nothing about a paragraph
+ * that got wider protests on its own.
+ *
+ * Shape: `[pageFile, maximum, fragment, reason]`.
+ */
+export const TYPOGRAPHIC_MEASURES = [];
+
+/**
  * The two modules through which a navigation reaches a surface — check E2.
  *
  * They are two rather than one, and the reason is measured rather than
@@ -1096,6 +1182,36 @@ const NON_ROUTE_WRAPPER_EXTENSIONS = [
 /**
  * §4's `wide` list, closed, and edited by decision rather than by diff.
  * A surface whose primary object is a dense table or a multi-column grid.
+ *
+ * ── ONE REASON STRING NAMED THE WRONG SURFACE, AND IT IS THE SIXTH ──────────
+ *
+ * `41.1-CONTEXT.md` D-41.1-22 records *five* reason strings across two gates
+ * naming the wrong surface — three in `verify-tables.mjs`, two in
+ * `verify-dialogs.mjs` — and calls five a pattern rather than five slips.
+ * **This is the sixth, in a third file**, found by plan 41.1-09 while converting
+ * the surface it misdescribes and corrected here by plan 41.1-11, which owns the
+ * gate edits for the wave (D-41.1-22).
+ *
+ * `/admin/events/[id]/review` was described as *the media review grid*. That is
+ * `/admin/events/[id]/media`'s primary object, not this route's: this one is the
+ * night's **door-review list** — the entries a person compares against what
+ * happened at the entrance, plus the copy-out diagnostic grid that is
+ * permanently exempt from the table gate (D-41-16). The two routes are siblings
+ * under one segment and the wrong sentence reads plausibly, which is exactly the
+ * property that let it survive.
+ *
+ * **The mechanism is the same one in all six**, and it is worth naming because
+ * it predicts where the seventh will be: the string was written from the
+ * **path** — a route with `review` in it, near a route with `media` in it — and
+ * not from the thing that actually renders. A path is a sentence somebody
+ * believed; the importer, or here the page file, is something a command prints.
+ *
+ * **The route's membership of this list was never in question and is not
+ * changed.** Only the sentence describing it moved, which is the whole point:
+ * `checkManifest()` and check D compare the manifest's declared width against
+ * this list, and neither reads the reason. A wrong reason therefore fails
+ * nothing and is caught by nobody — which is why it lasted, and why correcting
+ * it is a deliberate edit rather than a by-product.
  */
 export const WIDE_ROUTES = [
   ['/admin/members', 'the member table — the densest table in the product'],
@@ -1103,7 +1219,7 @@ export const WIDE_ROUTES = [
   ['/admin/events/[id]/sales', 'the per-event sales table'],
   ['/admin/events/[id]/tickets', 'the ticket table, with its refund actions'],
   ['/admin/events/[id]/guest-list', 'the guest-list table'],
-  ['/admin/events/[id]/review', 'the media review grid'],
+  ['/admin/events/[id]/review', "the night's door-review list, and the copy-out diagnostic grid inside it"],
   ['/admin/events/[id]/analytics', 'the per-event KPI grid'],
   ['/admin/analytics', 'the analytics overview KPI grid'],
   ['/admin/analytics/members', 'the member-analytics tables'],
@@ -2962,6 +3078,25 @@ const pagesWithoutShell = [];
 const pagesWithOwnMaximum = [];
 const widthDisagreements = [];
 
+/**
+ * The declared typographic measures, resolved against the tree BEFORE any width
+ * is judged — D-41.1-27. `hits` counts the widths each entry actually matched,
+ * which is what the three refusals below are read off: zero is stale, two or
+ * more is ambiguous, and a page nobody declared is a guard nobody wrote.
+ */
+const measureUsage = TYPOGRAPHIC_MEASURES.map(([pageFile, maximum, fragment, reason]) => ({
+  pageFile,
+  maximum,
+  fragment,
+  reason,
+  hits: 0,
+}));
+
+const declaredPageFiles = new Set(surfaces.map((s) => s.pageFile));
+const measuresOnUndeclaredPage = measureUsage.filter((e) => !declaredPageFiles.has(e.pageFile));
+
+const measuresApplied = [];
+
 for (const s of surfaces) {
   const importsShell = importedSymbolsFrom(s.pageFile, SHELL_FILE).has('PageShell');
   if (!importsShell) pagesWithoutShell.push(s);
@@ -2970,7 +3105,20 @@ for (const s of surfaces) {
     MAX_WIDTH_RE.lastIndex = 0;
     let m;
     while ((m = MAX_WIDTH_RE.exec(line)) !== null) {
-      pagesWithOwnMaximum.push({ route: s.route, path: s.pageFile, line: i + 1, match: m[0], source: line.trim() });
+      const hit = { route: s.route, path: s.pageFile, line: i + 1, match: m[0], source: line.trim() };
+      // A width is forgiven ONLY by a line naming this page, this exact token and
+      // a fragment present on the same line. Anything else is still a failure —
+      // the matcher was not narrowed, so a container maximum on an inner element
+      // is caught exactly as it was before this mechanism existed.
+      const entry = measureUsage.find(
+        (e) => e.pageFile === s.pageFile && e.maximum === m[0] && line.includes(e.fragment)
+      );
+      if (entry) {
+        entry.hits += 1;
+        measuresApplied.push({ ...hit, reason: entry.reason });
+      } else {
+        pagesWithOwnMaximum.push(hit);
+      }
     }
   });
 
@@ -2978,11 +3126,43 @@ for (const s of surfaces) {
   if (expected !== s.width) widthDisagreements.push({ route: s.route, declared: s.width, expected });
 }
 
+const measuresStale = measureUsage.filter((e) => e.hits === 0 && declaredPageFiles.has(e.pageFile));
+const measuresAmbiguous = measureUsage.filter((e) => e.hits > 1);
+
+if (measuresOnUndeclaredPage.length > 0 || measuresStale.length > 0 || measuresAmbiguous.length > 0) {
+  const lines = [];
+  for (const e of measuresOnUndeclaredPage) {
+    lines.push(`       ${e.pageFile}   ${e.maximum}   — no CONVERTED surface declares this page file`);
+  }
+  for (const e of measuresStale) {
+    lines.push(`       ${e.pageFile}   ${e.maximum}   — matches NOTHING: stale`);
+  }
+  for (const e of measuresAmbiguous) {
+    lines.push(`       ${e.pageFile}   ${e.maximum}   — matches ${e.hits} widths: ambiguous`);
+  }
+  refuse(
+    `${lines.length} TYPOGRAPHIC_MEASURES entr(y/ies) could not be resolved:\n\n` +
+      lines.join('\n') +
+      '\n\n       A typographic measure is DECLARED, never inferred (D-41.1-27), and a declaration\n' +
+      '       that resolves to nothing is not a smaller exemption — it is one that looks\n' +
+      '       supervised and forgives nothing, or one that will begin forgiving on a day\n' +
+      '       nobody chose. The fragment is an attribute rather than a line number precisely\n' +
+      '       so it goes stale loudly instead of drifting quietly.\n\n' +
+      '       This is a REFUSAL and not a failure: the tree may well be right, and nothing\n' +
+      '       was measured about it. Either the entry leaves this list in the same commit as\n' +
+      '       the width it forgave, or the width comes back.'
+  );
+}
+
 console.log('  check D — the container (G4):\n');
 console.log(`      maxima the shell declares : ${[...shellMaxima].sort().join(' · ') || '(none)'}`);
 console.log(`      §4 wide list  : ${WIDE_ROUTES.length} route(s), closed`);
 console.log(`      §4 focus list : ${FOCUS_ROUTES.length} route(s), closed`);
-console.log(`      surfaces whose width was compared against §4 : ${surfaces.length}\n`);
+console.log(`      surfaces whose width was compared against §4 : ${surfaces.length}`);
+console.log(
+  `      typographic measures declared : ${TYPOGRAPHIC_MEASURES.length}` +
+    `, applied ${measuresApplied.length} time(s)   (D-41.1-27)\n`
+);
 
 if (maximaMissing.length > 0 || maximaExtra.length > 0) {
   failures.push('D');
@@ -3035,10 +3215,32 @@ if (widthDisagreements.length > 0) {
   );
 }
 
+if (measuresApplied.length > 0) {
+  console.log(`  ! D  ${measuresApplied.length} width(s) forgiven as a DECLARED typographic measure:\n`);
+  for (const hit of measuresApplied) {
+    console.log(`       ${hit.path}:${hit.line}   ${hit.match}     (${hit.route})`);
+    console.log(`         ${hit.reason.replace(/(.{82}) /g, '$1\n         ')}`);
+  }
+  console.log(
+    '\n       Not a failure and not a narrowing: a measure is a property of a block of TEXT,\n' +
+      '       which no tier owns, and it is forgiven here only because a person wrote the line\n' +
+      '       above. Every width NOT on that list still fails, including one on a paragraph.\n'
+  );
+}
+
 if (!failures.includes('D')) {
+  const measureNote =
+    TYPOGRAPHIC_MEASURES.length === 0
+      ? '\n       No typographic measure is declared, which is the measured state of the tree and\n' +
+        '       not an unfilled list: an empty exemption forgives nothing. The mechanism is here\n' +
+        '       BEFORE its first red run (D-41-16), so the next plan that decides a paragraph\n' +
+        '       should read at a measure adds a line rather than deleting the width.\n'
+      : '\n';
   console.log(
     `  ✓ D  the shell declares §4's three maxima and only those; all ${surfaces.length} converted\n` +
-      '       page(s) import it, write no maximum of their own, and carry the width §4 assigns\n'
+      '       page(s) import it, write no undeclared maximum of their own, and carry the width\n' +
+      '       §4 assigns' +
+      measureNote
   );
 }
 
