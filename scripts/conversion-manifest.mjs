@@ -547,16 +547,24 @@ export const CONVERTED = [
    * on agreement: `verify-conversion.mjs`'s `WIDE_ROUTES` carries all five at
    * :1223-:1227.
    *
-   * ── THE SIXTH SURFACE OF THIS WAVE IS DELIBERATELY NOT DECLARED ────────────
+   * ── THE SIXTH SURFACE OF THIS WAVE WAS HELD, AND THE HOLD IS NOW SPENT ─────
    *
-   * `/admin/finance` was converted by plan 41.1-15 and is **held**, not
+   * `/admin/finance` was converted by plan 41.1-15 and was **held**, not
    * forgotten. Check A walks a declared surface's import closure, and this one
    * goes through `src/components/admin/TransactionList.tsx` into
    * `src/components/admin/RefundDialog.tsx`, which **plan 41.1-17 converts in
-   * wave 7**. An entry written today would be a claim about a file nobody has
-   * opened yet, and check A would redden on that file's palette hits —
-   * correctly. The declaration belongs to plan **41.1-24**, the reconciliation
-   * that follows the wave which converts the refund dialog.
+   * wave 7**. An entry written then would have been a claim about a file nobody
+   * had opened yet, and check A would have reddened on that file's palette hits
+   * — correctly. The declaration belonged to plan **41.1-24**, the
+   * reconciliation that follows the wave which converts the refund dialog.
+   *
+   * **RELEASED 2026-08-14 by plan 41.1-24, and the hold's reason was checked
+   * expired rather than assumed expired.** The entry is in the WAVE 9 block at
+   * the end of this list. What was checked before writing it: `RefundDialog.tsx`
+   * is on plan 41.1-17's SUMMARY as converted, and the file on this tree carries
+   * no raw palette hit for check A to redden on. A hold released because its
+   * calendar passed rather than because its cause was re-measured is the same
+   * defect as a count that fell for the wrong reason (§9 P1).
    *
    * **An absence with a written reason is a decision; an absence without one is
    * read as an oversight**, which is the argument the `/admin` paragraph above
@@ -605,6 +613,63 @@ export const CONVERTED = [
   [
     "/admin/members/growth", "src/app/(admin)/admin/(work)/members/growth/page.tsx", "wide",
     "plan 41.1-14 — whole, and 'whole' here is four files: the route file, its placeholder, the growth chart and the summary card. Named on §4's closed wide list. THE CAUTION, because this is the surface where the community's growth is read: `community-membership.md` says growth is only meaningful next to how many seats a night has, and NO capacity figure, ratio or caption implying one was added — that is a product question and it went to the SUMMARY, not into the page. The heading read Admin, which is the prefix speaking, and is the surface's own name now, second instance of the correction /admin/members already made. Ten hand-rolled pulsing blocks, the most of the seven placeholders, gone. The chart's two band colours were read and recorded, not substituted. No query changed, no column added, no capability check touched, no action payload altered.",
+  ],
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * WAVE 9 — the last five, and the commit that carries them is also the commit
+   * that deletes the layout shim.
+   *
+   * Four of the five reasons below are the text the plan that did the work
+   * reported in its own SUMMARY, taken verbatim rather than re-composed, on the
+   * same argument as the wave-3 and wave-5 blocks: the plan that walked the
+   * closure is the one that knows what *whole* turned out to mean. The only
+   * editorial change is that a reason a SUMMARY printed across several lines is
+   * joined into the one string this list's shape requires. Three plans reported;
+   * this one writes (D-41.1-22).
+   *
+   * The fifth — `/admin/finance` — is the entry plan 41.1-15 drafted and this
+   * list held; see the WAVE 5 block above for why it was held and what was
+   * re-measured before releasing it. **The draft was THREE elements where this
+   * list takes FOUR**, which plan 41.1-15 recorded rather than silently
+   * corrected. The missing element is `pageFile`, supplied here from the tree;
+   * the reason text itself is unedited. Pasted as drafted, `pageFile` would have
+   * received `'wide'` and `checkManifest()` would have refused with "not on disk
+   * under that exact name" — a sentence pointing at a missing file rather than
+   * at a missing field.
+   *
+   * ── THE ARITHMETIC, so nobody counts 24 and finds 23 ───────────────────────
+   *
+   * 24 page files live under `admin/(work)/`. One of them — `/admin` itself —
+   * renders nothing and ends in a `redirect`, and the paragraph at the head of
+   * this list explains at length why it is not declarable. That leaves **23
+   * declarable work pages, all 23 declared**. With the 8 surfaces Phase 41
+   * declared before this phase opened, this list holds **28** entries.
+   *
+   * That count is also the precondition the layout shim's removal was waiting
+   * for: `src/app/(admin)/admin/(work)/layout.tsx` stopped applying the leading
+   * clearance in the same commit as these five entries, and may never stop
+   * declaring it.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [
+    "/admin/finance", "src/app/(admin)/admin/(work)/finance/page.tsx", "wide",
+    "the finance ledger — the transaction list on DataTable, its cursor pagination and async detail intact; no query changed, no column added, no capability check touched, no action payload altered, and no status transition, refund amount, idempotency key or webhook path moved",
+  ],
+  [
+    "/admin/events/[id]/sales", "src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx", "wide",
+    "plan 41.1-21 — whole, and 'whole' here is TWO files: the route file and SalesDashboard.tsx, its only importer. The third file in the closure, RefundActions.tsx, was converted once as spine in plan 41.1-17 precisely so this surface and the tickets surface could stay two plans, and it is not opened here. THE MONEY FLOOR'S ONE EXCEPTION IS HERE and is written in the component rather than only in a plan: D-41.1-13 puts the figure that decides money in a row's mark, and on this surface there is no such figure on a row — the event total is a card ABOVE the table, so the row's mark is the tier pill. A reader who finds a money table whose mark is a pill and no explanation concludes the rule was skipped. wide, named on §4's closed list as 'the per-event sales table'. There is no loading file for this route to convert. Three empty states in, three out, and the one that matters is chosen by a named value in the caller so a search matching nothing cannot claim the night sold nothing. No query changed, no column added, no capability check touched, no action payload altered; no status transition, no refund amount, no idempotency key and no webhook path moved.",
+  ],
+  [
+    "/admin/events/[id]/tickets", "src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx", "wide",
+    "plan 41.1-22 — whole, and 'whole' here is FIVE files in two directories: the route file and the four ticket components, with the refund control they mount converted one wave earlier as spine so that two plans in the same wave would not both reach it. Named on §4's closed wide list. THE CAUTION, because this is the surface that decides what a guest pays: no query changed, no column added, no capability check touched, no action payload altered, and no validation attribute moved — every price, quantity, discount value and usage ceiling keeps its type, its required flag, its minimum and its step, proved as a multiset over comment-stripped source rather than by reading a diff. No status transition, refund amount, idempotency key or webhook path is reachable from any of the five. The closure's twenty focus suppressions are now one imported expression — eighteen paid here, two paid by plan 41.1-17.",
+  ],
+  [
+    "/admin/events/new", "src/app/(admin)/admin/(work)/events/new/page.tsx", "default",
+    "plan 41.1-23 — the route file only, and 'only' is the point: the 1669-line form it mounts was converted whole by plan 41.1-18 and its five satellites by 41.1-19, so this entry declares the last file of that closure rather than the closure. NOT on §4's wide list and therefore default, which is not a fallback. Both branches take the same width, so the page does not change measure when the catalogue read fails. THE CAUTION: this route resolves who may create a night — no query changed, no column added, no capability check touched, no action payload altered, and the refusal redirect goes where it went. The refusal region gained an alert role because there is no error tracking here; its sentence is unchanged.",
+  ],
+  [
+    "/admin/events/[id]/edit", "src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx", "default",
+    "plan 41.1-23 — the route file only; the form (41.1-18), its five satellites (41.1-19) and the reveal panel (41.1-20) were converted before it. NOT on §4's wide list and therefore default, which is not a fallback. THE CAUTION, because this is the one work page that reaches the venue reveal: the conditional deciding whether the panel is drawn at all, and all five props it is given, are byte-identical before and after — no query changed, no column added, no capability check touched, no action payload altered, the ownership guard and both refusal redirects are where they were, and a night's format, series and number pass through untouched. Not drawing the panel was never the guard and this conversion did not make it one.",
   ],
 ];
 

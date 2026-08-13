@@ -1234,18 +1234,19 @@ export const REMAINING = [
     'a hand-rolled SHEET overlay holding a drink token at the bar',
     'the drinks menu surface',
   ],
-  [
-    'src/app/(admin)/admin/events/[id]/tickets/RefundActions.tsx',
-    'work',
-    'a hand-rolled overlay that issues a refund. Tagged work although it sits outside (work)/: it is reached through a WORK PAGE\'S IMPORT CLOSURE, re-derived — src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx:12 imports it — and it is paid by the knot plans (D-41.1-19), not by 41.2',
-    'reached from (work)/events/[id]/tickets/page.tsx:12',
-  ],
-  [
-    'src/components/admin/RefundDialog.tsx',
-    'work',
-    'a hand-rolled overlay shared by the refund paths. Tagged work for the same reason and at one more remove, re-derived: src/components/admin/TransactionList.tsx:4 imports it, and src/app/(admin)/admin/(work)/finance/page.tsx:2 imports TransactionList. Paid by the knot plans (D-41.1-19)',
-    'reached from (work)/finance/page.tsx:2 via TransactionList.tsx:4',
-  ],
+  // PAID by plan 41.1-17 — the two refund overlays,
+  // `src/app/(admin)/admin/events/[id]/tickets/RefundActions.tsx` and
+  // `src/components/admin/RefundDialog.tsx`, both converted as SPINE in wave 7
+  // precisely so that the two wave-8 plans reaching them would not both open the
+  // same file. Both were tagged `work` — reached through a work page's import
+  // closure though they sit outside `(work)/` — so these two are the deletions
+  // that took the WORK GROUP to 0 and left it there.
+  //
+  // Deleted by plan 41.1-24 (D-41.1-22) after re-deriving both from the tree
+  // with a raw needle count that does NOT use the gates' shared comment
+  // stripper. Hand-rolled overlay markers measured 2026-08-14: **0** and **0**.
+  // The gate had been printing both STALE — *"converted; remove this entry"* —
+  // which is what makes these deletions a response rather than a tidy.
   // PAID by plan 41.1-07 task 1 — `src/components/venues/EditVenueButton.tsx`
   // was the only entry on this list sitting squarely on the work surface, and it
   // declares no shell of its own now: it mounts the Dialog primitive, so Escape,
@@ -1275,24 +1276,31 @@ export const REMAINING = [
 
   // ── the native shells this plan does not convert. Each already has the
   // platform behaviours; what each still has is its own copy of the shell.
-  [
-    'src/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog.tsx',
-    'work',
-    'a native shell, and the UI of a MONOTONE guard: once the reveal is sent, the address is public and there is no undo. §2.1 names it explicitly as the wrong first consumer — "prove it on the hardest correct file" is not "convert the most dangerous surface first". Tagged work because it is reached through a work page\'s import closure, re-derived: src/app/(admin)/admin/events/[id]/reveal/VenueRevealPanel.tsx:4 imports it and src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx:11 imports the panel. Paid by the knot plans (D-41.1-19)',
-    'reached from (work)/events/[id]/edit/page.tsx:11 via VenueRevealPanel.tsx:4',
-  ],
-  [
-    'src/components/venues/CreateVenueModal.tsx',
-    'public-member-money',
-    'a native shell, and the ANCESTOR this primitive was extracted from. Not converted here because converting it converts the event form with it — the event-form knot. CORRECTED (D-41.1-11): this entry used to name a work surface beside the form. Re-derived with grep -rln on the import clause: its ONLY importer is src/components/events/EventForm.tsx:10. Every other file naming it merely mentions it in prose, which is exactly how a reason stops being true unnoticed',
-    'only importer src/components/events/EventForm.tsx:10',
-  ],
-  [
-    'src/components/artists/CreateArtistModal.tsx',
-    'public-member-money',
-    'a native shell, byte-identical to the ancestor, and mounted from the same event form. CORRECTED alongside the two above and for the same measurement: its only importer is src/components/events/EventForm.tsx:8, and no artists surface under (work)/ reaches it',
-    'only importer src/components/events/EventForm.tsx:8',
-  ],
+  // PAID by plan 41.1-20 — `RevealVenueDialog.tsx`, the UI of a MONOTONE guard,
+  // converted last among the three knots and with its domain gate held: the
+  // conditional deciding whether the panel is drawn, and every prop it is given,
+  // are byte-identical. It was tagged `work`, reached from the edit page through
+  // the reveal panel.
+  //
+  // PAID by plan 41.1-19 — the two creation modals,
+  // `src/components/venues/CreateVenueModal.tsx` and
+  // `src/components/artists/CreateArtistModal.tsx`, both mounted from the event
+  // form and both converted as satellites of the event-form knot.
+  //
+  // **A DISAGREEMENT WITH THIS PLAN'S OWN EXPECTATION, RECORDED RATHER THAN
+  // RESOLVED QUIETLY.** Plan 41.1-24 expected the list to keep every
+  // `public-member-money` entry as Phase 41.2's, and these two carry that tag —
+  // but they are CONVERTED, measured on the tree, and the gate had been printing
+  // both STALE. The tree wins over any plan's expectation (D-41.1-22): an entry
+  // left behind because its tag says it belongs to a later phase is a gate
+  // quietly loosened, and it would permit re-adding the very shell that was just
+  // removed. The tag was never a claim about whether a file had converted; it
+  // says which group's debt the file counted against while it was still owed.
+  // No entry was moved between groups to make a count come out right.
+  //
+  // All three deleted by plan 41.1-24 (D-41.1-22) after re-deriving each from the
+  // tree with a raw needle count that does not use the gates' shared comment
+  // stripper. Measured 2026-08-14: **0**, **0**, **0**.
 
   // PAID by plan 41-09 task 2 — the three native shells on `/admin/formats`
   // (`CreateFormatModal`, `CreateSeriesModal`, `RetireFormatDialog`) were on

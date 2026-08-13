@@ -1169,20 +1169,24 @@ export default function EventForm({
         {/* Lineup with autocomplete */}
         <div className="space-y-2">
           {/*
-            The label is CONVERTED but still UNBOUND, and that is reported
-            rather than papered over.
-
-            `AutocompleteTagInput` exposes no `id`, so there is nothing for a
-            `htmlFor` to name, and the component belongs to plan 41.1-19 — this
-            plan does not open it. A `<label>` with no association is the state
-            this field arrived in; the class string moves onto §8.6's convention
-            and the association is owed to the plan that owns the component.
+            BOUND 2026-08-14 by plan 41.1-24. Plan 41.1-18 converted this label
+            and left it unbound, reporting it rather than papering over it —
+            `AutocompleteTagInput` exposed no `id`, so there was nothing for a
+            `htmlFor` to name. That component now takes one, and the identifier
+            is scoped to the sub-event: this block renders once per night on the
+            bill, and a fixed name would bind every visible label to the first
+            control of that name. Same scoping plan 41.1-22 applied to the tier
+            form, and the same one the fields above already use.
           */}
-          <label className="block text-xs font-semibold text-ink-2">
+          <label
+            className="block text-xs font-semibold text-ink-2"
+            htmlFor={`${idPrefix}-lineup`}
+          >
             Lineup
           </label>
           <p className="text-xs text-muted">Press Enter to add artist</p>
           <AutocompleteTagInput
+            id={`${idPrefix}-lineup`}
             value={subEvent.lineup}
             onChange={(newLineup) => {
               setSubEvents((prev) =>
@@ -1550,20 +1554,20 @@ export default function EventForm({
       {subEvents.length === 0 && (
         <div className="space-y-2">
           {/*
-            The label is CONVERTED but still UNBOUND, and that is reported
-            rather than papered over.
-
-            `AutocompleteTagInput` exposes no `id`, so there is nothing for a
-            `htmlFor` to name, and the component belongs to plan 41.1-19 — this
-            plan does not open it. A `<label>` with no association is the state
-            this field arrived in; the class string moves onto §8.6's convention
-            and the association is owed to the plan that owns the component.
+            BOUND 2026-08-14 by plan 41.1-24, as the per-sub-event label above
+            was. This one takes a bare identifier and needs no prefix: it renders
+            only when the night has no sub-events, so it never coexists with the
+            prefixed ones and cannot collide with them.
           */}
-          <label className="block text-xs font-semibold text-ink-2">
+          <label
+            className="block text-xs font-semibold text-ink-2"
+            htmlFor="lineup"
+          >
             Lineup
           </label>
           <p className="text-xs text-muted">Press Enter to add artist</p>
           <AutocompleteTagInput
+            id="lineup"
             value={lineup}
             onChange={setLineup}
             search={searchArtistsWrapped}

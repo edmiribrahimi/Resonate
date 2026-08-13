@@ -497,12 +497,21 @@ export const REMAINING = [
   // use the gates' shared comment stripper. Tree and SUMMARYs agreed entry for
   // entry; no claim had to be refused, and that is stated because the procedure
   // exists for the case where it is false.
-  [
-    'src/components/events/SalesDashboard.tsx',
-    2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8',
-    'work',
-  ],
+  // PAID by plan 41.1-21 task 1 — `src/components/events/SalesDashboard.tsx`
+  // held this list's whole work group: 2 declared uses of the small prefix on a
+  // table dual-render, consolidated onto the one permitted breakpoint by
+  // DataTable. It was also the last entry on `verify-tables.mjs`'s list, and the
+  // two fell in the same conversion. **Declared entries 6 → 5; the work group's
+  // declared figures 1 file → 0 and 2 uses → 0, so criterion 4's
+  // `WORK GROUP REMAINING` line reads 0 rather than 1.** The MEASURED number had
+  // already been 0 and the gate had been printing it STALE — *"declared 2,
+  // measured 0 → converted; remove this entry"* — which is what makes this
+  // deletion a response rather than a tidy.
+  //
+  // Deleted by plan 41.1-24 (D-41.1-22) after re-deriving it from the tree with a
+  // raw count that does NOT use the gates' shared comment stripper. Small-prefix
+  // occurrences measured 2026-08-14: **0**. The five entries that stay are not
+  // work and are Phase 41.2's; none was moved between groups.
 
   // ── a plain md: equivalent, §2.1.
   //
