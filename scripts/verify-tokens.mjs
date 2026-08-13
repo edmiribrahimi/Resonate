@@ -228,6 +228,51 @@
  * This script is the guard against the half-rename, which is the one that file
  * cannot refuse on its own.
  *
+ * ── THE HOLE, COUNTED — added by plan 41.1-16, measured 2026-08-14 ───────────
+ *
+ * The paragraph above has said "invisible to all five" since this gate was
+ * written, and a general disclaimer is a sentence nobody can check. Wave 5
+ * converted five analytics surfaces and **two of its plans independently walked
+ * into the same hole and both refused to fill it**, so it is worth saying
+ * exactly how big it is rather than only that it exists.
+ *
+ * **Eight raw palette values reach the screen from three files this gate READS
+ * and is silent about**, because not one of them is a class attribute:
+ *
+ *     src/lib/analytics/event-queries.ts:354-356      3   a `fill` on a DATA ROW
+ *     src/components/analytics/EventComparisonChart.tsx:58-60  3   a module
+ *                                                          constant fed to a
+ *                                                          rendering prop
+ *     src/components/analytics/MemberGrowthChart.tsx:108-109   2   `fill` and
+ *                                                          `stroke` props
+ *
+ * The first is the sharpest: those three values are returned **by a query
+ * function**, so the colour of a chart segment is literally part of a query's
+ * result. **Every gate under `scripts/` reads class strings and import clauses**,
+ * so a colour that never becomes a class is outside the whole family's reach —
+ * the same species of blind spot as the route-adjacent `loading.tsx` gap
+ * D-41.1-21 closed, met from the other direction.
+ *
+ * Two of the four-step palettes also open with `var(--color-accent)`, which is a
+ * token and therefore visible — but §5.1's reserved-for list names four things
+ * and a chart series is on neither that list nor its never-list, so **the token
+ * already filling bars on two surfaces is outside its own list.**
+ *
+ * Regenerate the count with:
+ *
+ *     grep -rnE "#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}[^0-9a-fA-F]" \
+ *       src/lib/analytics src/components/analytics src/components/events
+ *
+ * **THIS IS A NOTE AND NOT A CHECK, DELIBERATELY.** No constant was added, no
+ * exit code can change because of it, and nothing here chooses a colour.
+ * **D-41.1-30 is OPEN and it is the owner's**, in two halves: whether a chart
+ * series gets its own scale at all, and — separately — whether this gate family
+ * should be able to see a colour that never becomes a class. Building the
+ * mechanism here would answer the second half by precedent inside a
+ * reconciliation commit, which is the move that decision exists to prevent, and
+ * it would do it in the same wave in which two agents declined to answer the
+ * first half in a component. Counting is not deciding; this counts.
+ *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (`CLAUDE.md`
  * Guardrail 5). This script reads only committed files, prints only paths, line
  * numbers and source lines, opens no network connection, reads no environment
