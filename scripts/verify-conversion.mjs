@@ -197,11 +197,45 @@
  *
  * So a JSX comment is a fourth line shape here, and a JSX comment that opens
  * without closing on its own line blanks the lines up to its closer. That is
- * still a line shape and not a parse. Its error direction is stated rather than
- * assumed: **it can blank more than it should** if a line's first characters
- * are a JSX comment opener inside a string, which is why the opener must be at
- * the start of the trimmed line. The count of lines blanked this way is printed
- * on every run, so the extension is measurable rather than trusted.
+ * still a line shape and not a parse. The count of lines blanked this way is
+ * printed on every run, so the extension is measurable rather than trusted.
+ *
+ * ── A CLAIM THIS HEADER MADE, AND WHAT WITHDREW IT (41-29) ──────────────────
+ *
+ * Until 41-29 the paragraph above ended with a stated error direction:
+ *
+ *     "Its error direction is stated rather than assumed: **it can blank more
+ *      than it should** if a line's first characters are a JSX comment opener
+ *      inside a string, which is why the opener must be at the start of the
+ *      trimmed line."
+ *
+ * **That sentence was false, and it is withdrawn.** The bound it claimed —
+ * over-blanking only inside a string — was disproved by a shape with no string
+ * anywhere in it: a comment that OPENS AND CLOSES on its own line, followed by
+ * live code after the closer. The stripper blanked the whole line, so the code
+ * after the closer was outside every measurement this file makes.
+ * `41-GAP-REVIEW-4.md` measured it on three separate checks, each with a
+ * control: check A missed a raw palette utility on a converted surface, check
+ * E's two frozen digests missed a navigation clearance appended to the shell's
+ * focus branch — digest byte-identical, permitted sites at zero, tick on E,
+ * exit 0 — and the sibling dialogs gate's check B missed an undeclared overlay.
+ * It is the third false docblock claim this file family has carried, which is
+ * why it is quoted here rather than deleted.
+ *
+ * **The bound the shipped code has, in both directions.** A leading comment now
+ * consumes only its own span: everything after its closer is live text, and the
+ * span is replaced by the same number of spaces so no column moves.
+ *
+ *   - still blanked MORE than it should: a line that BEGINS with those
+ *     characters as part of a multi-line string literal loses its leading span;
+ *     and a JSX comment closed with a space between the star-slash and the
+ *     brace is not recognised as closed, so it blanks onward to its real
+ *     closer;
+ *   - no longer blanked, and used to be: every character after a leading
+ *     comment's closer — which is where the whole of CR-01 and CR-02 lived.
+ *
+ * Both directions are re-proved on every run of the sibling dialogs gate, whose
+ * self-check now measures the stripper and not only the matcher.
  *
  * ── WHY THE HELPERS ARE LOCAL AND NOT IMPORTED ──────────────────────────────
  *
@@ -423,17 +457,75 @@ function listEveryFile(dir) {
 
 const JSX_COMMENT_OPEN = '{/' + '*';
 const JSX_COMMENT_CLOSE = '*' + '/}';
+/** The block comment's closer, assembled at run time like the two above. */
+const BLOCK_COMMENT_CLOSE = '*' + '/';
 
 /** How many lines the JSX extension blanked, across every file read this run. */
 let jsxCommentLinesBlanked = 0;
 
-/** The three sibling openers. A line shape, not a parse — see the header. */
-function isSiblingCommentLine(trimmed) {
-  return (
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('/' + '*')
-  );
+/**
+ * The openers that can CLOSE on their own line, each paired with ITS closer.
+ *
+ * Which closer belongs to which opener is the whole of the logic: the JSX
+ * opener is closed by the JSX closer; the block opener and the docblock
+ * continuation star are closed by the block closer. The double-slash opener is
+ * absent on purpose — everything after it genuinely IS the comment, so a line
+ * that starts with it keeps blanking whole. These are the same four line shapes
+ * the sibling heuristic recognised before 41-29; what is new is that three of
+ * them now carry the closer that ends them.
+ *
+ * The closer is looked for from the opener's LAST character rather than from
+ * past it, so a bare closing line, and the degenerate form in which the
+ * opener's own star begins the closer, keep blanking whole exactly as they did
+ * before this table existed.
+ */
+const CLOSING_COMMENT_OPENERS = [
+  { open: JSX_COMMENT_OPEN, close: JSX_COMMENT_CLOSE },
+  { open: '/' + '*', close: BLOCK_COMMENT_CLOSE },
+  { open: '*', close: BLOCK_COMMENT_CLOSE },
+];
+
+/**
+ * One line with its LEADING comments replaced by spaces — not the whole line.
+ *
+ * Until 41-29 a line whose trimmed text merely STARTED with an opener was
+ * blanked entire, so live code sitting after a closed comment on the same line
+ * was invisible to every check built on `liveLines`. `41-GAP-REVIEW-4.md` CR-01
+ * and CR-02 measured that shape hiding a navigation clearance on the shell, a
+ * raw palette colour on a converted surface, and an undeclared dialog overlay —
+ * each on a run that stayed green and printed unmoved numbers.
+ *
+ * The consumed span becomes the SAME NUMBER OF SPACES rather than being cut
+ * out: `findUtilityHits` computes its tolerated-scrim test from a match's
+ * column, so a shortened line would move what it reads.
+ *
+ * An opener with NO closer on the line still blanks the line whole and reports
+ * itself, so the caller can enter the multi-line state for the JSX form. A
+ * genuine full-line comment therefore still costs nothing, and a multi-line
+ * prose block quoting class strings still blanks onward to its closer — the
+ * half DEF-41-02 exists for, and the half a careless fix breaks.
+ */
+function stripLeadingComments(text) {
+  let out = text;
+  let jsx = false;
+
+  for (;;) {
+    const lead = out.length - out.trimStart().length;
+    const trimmed = out.slice(lead);
+
+    if (trimmed === '') return { text: out, jsx, unclosed: null };
+    if (trimmed.startsWith('//')) return { text: ' '.repeat(out.length), jsx, unclosed: null };
+
+    const span = CLOSING_COMMENT_OPENERS.find((one) => trimmed.startsWith(one.open));
+    if (!span) return { text: out, jsx, unclosed: null };
+    if (span.open === JSX_COMMENT_OPEN) jsx = true;
+
+    const at = trimmed.indexOf(span.close, span.open.length - 1);
+    if (at === -1) return { text: ' '.repeat(out.length), jsx, unclosed: span.open };
+
+    const end = lead + at + span.close.length;
+    out = ' '.repeat(end) + out.slice(end);
+  }
 }
 
 const liveLinesCache = new Map();
@@ -441,8 +533,8 @@ const liveLinesCache = new Map();
 /**
  * The file's lines with every comment blanked, carriage returns removed.
  *
- * Cached: check C reads every file under `src/` once per primitive export
- * otherwise, and the JSX counter must not count the same line twice.
+ * Cached: a file is read once per run however many checks ask for it, and the
+ * JSX counter must not count the same line twice.
  */
 function liveLines(relPath) {
   const cached = liveLinesCache.get(relPath);
@@ -462,13 +554,11 @@ function liveLines(relPath) {
       if (trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = false;
       continue;
     }
-    if (trimmed.startsWith(JSX_COMMENT_OPEN)) {
-      out.push('');
-      jsxCommentLinesBlanked += 1;
-      if (!trimmed.includes(JSX_COMMENT_CLOSE)) insideJsxComment = true;
-      continue;
-    }
-    out.push(isSiblingCommentLine(trimmed) ? '' : text);
+
+    const stripped = stripLeadingComments(text);
+    if (stripped.jsx) jsxCommentLinesBlanked += 1;
+    if (stripped.unclosed === JSX_COMMENT_OPEN) insideJsxComment = true;
+    out.push(stripped.text.trim() === '' ? '' : stripped.text);
   }
 
   liveLinesCache.set(relPath, out);
