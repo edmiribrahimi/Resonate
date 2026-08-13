@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import AnimatedSection from "@/components/motion/AnimatedSection";
 import MemberGrowthChart from "@/components/analytics/MemberGrowthChart";
@@ -7,6 +6,10 @@ import GrowthSummaryCard from "@/components/analytics/GrowthSummaryCard";
 import { fetchMemberGrowth } from "@/lib/analytics/member-queries";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
 
 /**
  * Master-only, and it stays master-only across the collapse.
@@ -23,6 +26,16 @@ import { CAP } from "@/lib/capabilities/keys";
  *
  * So opening the members surface to organizers does not open this one, and the
  * guard below is unchanged in key and in meaning.
+ *
+ * ── One thing this surface deliberately does NOT say ─────────────────────────
+ *
+ * It draws a number going up. `community-membership.md`'s own gate says growth
+ * is only meaningful **next to how many seats a night actually has** — the
+ * venues in target hold 150–300 people, and a member who never gets in is a
+ * former member. **That is a product question and not a conversion**, so no
+ * capacity figure, no ratio and no caption implying one was added here. The
+ * finding is raised where findings belong, in the plan's SUMMARY. Markup moved;
+ * the meaning is exactly the meaning it had.
  */
 export default async function MemberGrowthPage({
   searchParams,
@@ -50,47 +63,64 @@ export default async function MemberGrowthPage({
   const supabase = await createClient();
   const { data, summary } = await fetchMemberGrowth(supabase, granularity);
 
+  // `wide` — `/admin/members/growth` is named on §4's CLOSED wide list. The
+  // shell owns the maximum, the gutter, the vertical rhythm and the navigation
+  // clearance in both tiers; this page writes none of them.
   return (
-    <div className="min-h-dvh pb-24">
+    <PageShell width="wide">
       <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
+        <header className="mb-6">
+          {/*
+            The surface's own name, not the tree's. The heading here read
+            `Admin`, which is the prefix speaking: after D-34-02 the word
+            `admin` in a URL no longer describes who is on it, and it never
+            described what this page shows. `(work)/members/page.tsx` made the
+            identical correction with the identical reason, and this is the
+            second instance of one move rather than a second decision.
+
+            One word, because the card below already carries the fuller name of
+            what is drawn, and repeating it in two roles would be the page
+            telling you the same thing twice.
+          */}
+          <PageTitle>Growth</PageTitle>
         </header>
       </AnimatedSection>
 
-      <AnimatedSection delay={0.1} className="px-6 space-y-4">
-        {/* Granularity toggle */}
-        <div className="flex gap-2">
-          <Link
+      <AnimatedSection delay={0.1} className="space-y-4">
+        {/* The granularity toggle: RESP-04's filters, and the interactive kind
+            of pill, so they are chips and not badges — 44px targets, with the
+            current one named by an aria attribute as well as by its fill,
+            because colour is never the only channel. They were 30px and told a
+            screen reader nothing about which of the two was current.
+
+            Chips rather than the button ladder's `href` branch, which renders a
+            bare anchor typed as a plain string — D-41.1-26. */}
+        <div className="flex flex-wrap gap-2">
+          <Chip
             href="/admin/members/growth?granularity=weekly"
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              granularity === "weekly"
-                ? "bg-accent text-white"
-                : "bg-card border border-card-border text-muted hover:text-foreground"
-            }`}
+            selected={granularity === "weekly"}
           >
             Weekly
-          </Link>
-          <Link
+          </Chip>
+          <Chip
             href="/admin/members/growth?granularity=monthly"
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              granularity === "monthly"
-                ? "bg-accent text-white"
-                : "bg-card border border-card-border text-muted hover:text-foreground"
-            }`}
+            selected={granularity === "monthly"}
           >
             Monthly
-          </Link>
+          </Chip>
         </div>
 
         <GrowthSummaryCard summary={summary} />
 
-        {/* Chart container */}
-        <div className="rounded-2xl border border-card-border bg-card p-6">
-          <h2 className="text-lg font-semibold mb-4">Member Growth</h2>
+        <Card>
+          {/* This was an `<h1>`-sized heading inside a card — a component
+              heading, at a size §7's ladder gives to nothing. It is a section
+              heading now: the label/data role, in the data face, at the one
+              weight above 400 this system has. */}
+          <SectionHeading>Member Growth</SectionHeading>
           <MemberGrowthChart data={data} />
-        </div>
+        </Card>
       </AnimatedSection>
-    </div>
+    </PageShell>
   );
 }
