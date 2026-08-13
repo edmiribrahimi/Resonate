@@ -799,8 +799,74 @@ Plans:
   4. G6's `REMAINING` list is empty for the work group — no `sm:`, `xl:` or `2xl:` survives there
   5. **The three knots reached from the work surface are converted with their domain gates held, not despite them** — the refund controls move money, the event form is 1 669 lines, and the venue reveal is a **monotone** guard. Each is its own plan in the last wave, each carries a written impact analysis before its diff, and a visual conversion here is Critical, not cosmetic
 
-**Plans**: TBD
+**Plans**: 24 plans, in 10 waves (0-9)
 **UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
+
+Plans:
+
+**Wave 0** *(non-negotiable first — D-41.1-08)*
+
+- [ ] 41.1-01-PLAN.md — The shared comment stripper: one module, ten consumers, eight shapes proved by asserted mutation
+
+**Wave 1** *(the gate repairs, on three disjoint gate files)*
+
+- [ ] 41.1-02-PLAN.md — verify-dialogs: DEF-41-07 items 1 and 4, the self-check rebuilt on the real path, the group tag
+- [ ] 41.1-03-PLAN.md — verify-tables and verify-breakpoints: the group tag, the per-group print, three wrong reasons corrected
+- [ ] 41.1-04-PLAN.md — verify-conversion and the manifest: DEF-41-07 items 2 and 3, route-adjacent scanning, and `/admin` settled in writing
+
+**Wave 2**
+
+- [ ] 41.1-05-PLAN.md — The navigation clearance stops being ambient; the toast's residue recorded; check E asserts a pairing
+
+**Wave 3** *(the ordinary surfaces — ten pages)*
+
+- [ ] 41.1-06-PLAN.md — /admin/artists, /admin/venues, /admin/newsletter
+- [ ] 41.1-07-PLAN.md — /admin/venues/[slug] with its modal on the Dialog primitive, /admin/events and its placeholder
+- [ ] 41.1-08-PLAN.md — /admin/events/[id]/guest-list and /assignments, plus the toast observation at 768px
+- [ ] 41.1-09-PLAN.md — /admin/events/[id]/media and /review, with the exempt grid left a grid
+- [ ] 41.1-10-PLAN.md — /admin/events/[id]/drinks, the `Switch` primitive and its first consumer, and the QR control
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 41.1-11-PLAN.md — Reconcile wave 3: ten surfaces declared, entries diffed against the tree, H41-1
+
+**Wave 5** *(the tables and the dashboards)*
+
+- [ ] 41.1-12-PLAN.md — /admin/analytics/members: the member-spend table and the referral chain onto DataTable
+- [ ] 41.1-13-PLAN.md — /admin/events/[id]/analytics: the drink sales table, eight components, the heaviest placeholder
+- [ ] 41.1-14-PLAN.md — /admin/analytics, /analytics/compare, /members/growth and their three placeholders
+- [ ] 41.1-15-PLAN.md — /admin/finance: the transaction list, its two renderings, its status collapse
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 41.1-16-PLAN.md — Reconcile wave 5: five surfaces declared, the table gate to one, H41-1 and H41-3
+
+**Wave 7** *(the three knots — each its own plan, each with a written impact analysis)*
+
+- [ ] 41.1-17-PLAN.md — The refund controls: money, and a confirmation that must refuse the accidental path
+- [ ] 41.1-18-PLAN.md — The event form: 1 668 lines, three toggle tracks, and the venue secrecy control
+- [ ] 41.1-19-PLAN.md — The event form's five satellites, on a file set disjoint from 41.1-18
+- [ ] 41.1-20-PLAN.md — The venue reveal: a monotone guard, made strictly harder to trigger
+
+**Wave 8** *(blocked on Wave 7)*
+
+- [ ] 41.1-21-PLAN.md — /admin/events/[id]/sales and the fifth table, with its three empty states kept three
+- [ ] 41.1-22-PLAN.md — /admin/events/[id]/tickets and its four components: twenty focus suppressions, one import
+- [ ] 41.1-23-PLAN.md — /admin/events/new and /admin/events/[id]/edit — the last two route files
+
+**Wave 9** *(blocked on Wave 8)*
+
+- [ ] 41.1-24-PLAN.md — The last five declarations and the shim's deletion in one commit; the work group's debt to zero
+
+> **RESP-01 is advanced by this phase, never closed by it.** It says *every*
+> surface, so it closes in Phase 41.2 and only by a written human pass. Every plan
+> that carries it claims it advanced, not closed.
+
+> **`/admin` is not a declared surface.** It renders nothing and ends in a
+> redirect, so check D could never bless it. Twenty-four page files exist under the
+> work surface and **twenty-three** are declared; the manifest's docblock says so
+> in writing (plan 41.1-04), decided before check D's first red run rather than
+> after it.
 
 > Includes the review surface, the guest list, the events surface, and
 > `ReviewListClient.tsx`, which **stays a table** by D-41-16 and whose exemption
