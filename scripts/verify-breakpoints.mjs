@@ -68,6 +68,13 @@
  *      notice instead, loudly, because a count left too high is a gate quietly
  *      loosened: it would permit re-adding what was just removed.
  *
+ *      Since 41.1-03 every entry also carries a **group tag** from a closed
+ *      vocabulary, assigned from the file's measured importer and never from
+ *      its path. Check B prints files and uses per group plus a
+ *      `WORK GROUP REMAINING` line — the line phase 41.1's criterion 4 is read
+ *      off. A missing or unknown tag is a **refusal**, not a failure: see
+ *      `GROUP_TAGS`.
+ *
  * ── ON EXEMPTING PHASE 42'S PATHS, WHICH THIS GATE DOES NOT DO ──────────────
  *
  * §0 rule 7 asks every gate in this phase to exempt `src/app/(admin)/**\/scanner/**`,
@@ -191,8 +198,13 @@
  * Exit codes:
  *   0  both checks passed
  *   1  at least one failed — each is printed with its file and its count
- *   2  nothing was measured: `src/` is missing, or the walk found no scannable
- *      file. No verdict is implied by a 2.
+ *   2  nothing was measured: `src/` is missing, the walk found no scannable
+ *      file, `REMAINING` is empty, or a `REMAINING` entry carries a group tag
+ *      that is missing or outside the closed vocabulary. No verdict is implied
+ *      by a 2. The last of those is a refusal and not a failure for a stated
+ *      reason: a per-group count computed over a partially tagged list is a
+ *      number nobody can read, and printing it anyway would be worse than
+ *      printing nothing.
  */
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'node:fs';
@@ -209,6 +221,38 @@ export const FORBIDDEN_PREFIXES = ['xl', '2xl'];
 
 /** The prefix being migrated away. Its debt is `REMAINING`. */
 export const MIGRATING_PREFIX = 'sm';
+
+/**
+ * The four groups a `REMAINING` entry may belong to, and the only four.
+ *
+ * **Why the tag is load-bearing HERE, unlike on `verify-tables.mjs`.** Phase
+ * 41.1's criterion 4 reads *"G6's `REMAINING` is empty for the work group"*,
+ * and this list is **mixed**: 14 of its 19 entries are the work surface and 5
+ * are not. Without the tag the criterion is satisfied by eye, off a flat list
+ * of nineteen paths, and **a criterion that cannot be read off a gate is a
+ * claim** (D-41.1-11). The sibling gate's five entries all happen to be `work`
+ * today; these do not, and never did.
+ *
+ * **An unknown or missing tag is a REFUSAL (exit 2), not a failure** — the same
+ * distinction this gate already draws: a failure says *the tree is wrong*, a
+ * refusal says *nothing was measured*. An entry with no group does not make the
+ * per-group counts smaller, it makes them **wrong**: the entry drops out of
+ * every group while the totals still look plausible, and criterion 4 is read
+ * off one of those totals.
+ *
+ * The vocabulary is closed rather than free text so a typo — `work ` with a
+ * trailing space, `Work`, `works` — cannot open a fifth group of one entry that
+ * no criterion reads.
+ *
+ *   - `work`                — the work surface Phase 41.1 converts
+ *   - `public-member-money` — the public / member / money surfaces, Phase 41.2's
+ *   - `phase-42`            — deferred to Phase 42
+ *   - `exempt`              — carried for a reason that will never be paid
+ *
+ * `phase-42` and `exempt` are in the vocabulary for completeness and are not
+ * used on this list today.
+ */
+export const GROUP_TAGS = ['work', 'public-member-money', 'phase-42', 'exempt'];
 
 /**
  * Every file still carrying `sm:`, with the count it carries today and the
@@ -232,56 +276,138 @@ export const MIGRATING_PREFIX = 'sm';
  *     a list of paths with the reasons kept somewhere else is a list whose
  *     reasons stop being true without anybody noticing.
  *
+ *   - **A GROUP COUNT THAT FALLS IS SUBJECT TO THE SAME DEFECT AS A TOTAL THAT
+ *     FALLS.** This rule is new in 41.1-03 and it is the one the other four do
+ *     not carry. *A debt tracked by a proxy metric is closed by anything that
+ *     moves the metric* (D-41.1-16, four recorded recurrences in this project).
+ *     Splitting the debt into groups multiplies the proxies rather than fixing
+ *     them: `WORK GROUP REMAINING = 0` is reached just as well by converting
+ *     fourteen files as by re-tagging one of them `phase-42`. So the per-wave
+ *     reconciliation **diffs the ENTRIES against the tree, never the counts** —
+ *     and a tag that changed is a decision that has to be defended on the line,
+ *     exactly like a count that went down.
+ *
  * Only files a measurement actually found are listed. An entry no file backs is
  * a decoration that makes the list look thorough, so a missing path FAILS check
  * B rather than being skipped.
+ *
+ * ── The `group` column, added in 41.1-03 ────────────────────────────────────
+ *
+ * A fourth field, not a fourth list: the count and the reason already travel
+ * with the entry, and the group has to travel the same way or an entry sits in
+ * the wrong list silently. (`conversion-manifest.mjs:80` carries a state column
+ * the same way and says in its docblock that the column is load-bearing.)
+ *
+ * **Every tag is assigned from the file's measured IMPORTER, never from its
+ * path prefix.** Two entries make that a rule rather than a preference, and
+ * they fail in opposite directions:
+ *
+ *   - `src/components/media/MediaUpload.tsx` is **not** under
+ *     `(public)/events/[slug]/**` at all — it is a shared component — and it is
+ *     nonetheless `public-member-money`, because its only importer is
+ *     `src/app/(public)/events/[slug]/MediaGallerySection.tsx:8`. **A tag
+ *     derived from a glob would have missed it**, and it would have been
+ *     counted as one of the fourteen files Phase 41.1 has to clear.
+ *   - `AssignmentsClient.tsx` lives outside `(work)` — R-WORK-ROUTES keeps
+ *     non-route modules a level out — and is `work`, because the only thing
+ *     that mounts it is
+ *     `src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx:8`.
+ *
+ * That single pair is the whole argument for tagging by **decision**: the path
+ * is where a file lives, the importer is which surface it is on, and only the
+ * second one is what a criterion about a surface means. It is the same class of
+ * defect as the three wrong target strings 41.1-03 corrected on
+ * `verify-tables.mjs` — all of them written from the folder rather than the
+ * importer.
+ *
+ * **The measured split, and a corrected estimate.** `41.1-CONTEXT.md`'s
+ * D-41.1-11 estimated *"roughly fifteen are work-group and four are
+ * `(public)/events/[slug]/**`"*. Measured on this tree on 2026-08-13 it is
+ * **14 work / 21 uses** and **5 public-member-money / 16 uses** — the fifth
+ * being `MediaUpload.tsx` above, which is why the estimate of four was low.
+ * The correction is recorded with its command rather than silently applied:
+ *
+ *   grep -rn "<ComponentName>" src --include="*.tsx" --include="*.ts"
+ *
+ * run once per entry, reading only the `import` lines and discarding mentions
+ * inside docblocks — a file NAMED in a comment is not a file imported, and
+ * reading the one as the other is how these strings go wrong.
+ *
+ * Shape: `[path, count, reason, group]`.
  */
 export const REMAINING = [
   // ── the multi-column grid axis (§2.2) — the one genuinely three-tier axis.
   // `sm:grid-cols-2` becomes `md:grid-cols-2`; `sm:grid-cols-3` becomes
   // `md:grid-cols-2 lg:grid-cols-3`, gaining the middle step it skipped.
+  // The six route files: they ARE work-surface routes, so for these six alone
+  // the path and the importer say the same thing. They are still tagged by the
+  // same rule as the rest, not by their prefix.
   [
     'src/app/(admin)/admin/(work)/analytics/loading.tsx',
     2,
     'the analytics KPI grids — the grid axis, §2.2 (one grid-cols-3 gains its middle step)',
+    'work',
   ],
   [
     'src/app/(admin)/admin/(work)/analytics/members/loading.tsx',
     1,
     'the member-analytics skeleton grid — the grid axis, §2.2',
+    'work',
   ],
   [
     'src/app/(admin)/admin/(work)/analytics/members/page.tsx',
     1,
     'the member-analytics KPI grid — the grid axis, §2.2',
+    'work',
   ],
   [
     'src/app/(admin)/admin/(work)/analytics/page.tsx',
     1,
     'the analytics overview KPI grid — the grid axis, §2.2',
+    'work',
   ],
   [
     'src/app/(admin)/admin/(work)/events/[id]/analytics/loading.tsx',
     1,
     'the per-event analytics skeleton grid — the grid axis, §2.2',
+    'work',
   ],
   [
     'src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx',
     1,
     'the per-event analytics KPI grid — the grid axis, §2.2',
+    'work',
   ],
   // PAID by plan 41-08 — `src/app/(public)/gallery/loading.tsx` (2) and
   // `src/components/media/MediaGrid.tsx` (1) held three of this list's uses and
   // hold none now. The grids they carry gained §2.2's desktop step and kept
   // their phone layout, which is what §2.3's map actually says for a grid whose
   // base column count was never itself a prefixed rule.
-  ['src/components/analytics/KPIDashboard.tsx', 1, 'the KPI card grid — the grid axis, §2.2'],
+  [
+    'src/components/analytics/KPIDashboard.tsx',
+    1,
+    'the KPI card grid — the grid axis, §2.2. Work: its only importer is src/app/(admin)/admin/(work)/analytics/page.tsx:5',
+    'work',
+  ],
   [
     'src/components/media/MediaReviewGrid.tsx',
     1,
-    'the moderation grid — the grid axis, §2.2 (its lg:grid-cols-3 already stays, §2.3)',
+    'the moderation grid — the grid axis, §2.2 (its lg:grid-cols-3 already stays, §2.3). Work: its only importer is src/app/(admin)/admin/(work)/events/[id]/media/page.tsx:6 — a media component on a WORK surface, which is why the tag is read off the importer and not off components/media/',
+    'work',
   ],
-  ['src/components/media/MediaUpload.tsx', 1, 'the upload preview grid — the grid axis, §2.2'],
+  // The file the tag exists for. It sits in `src/components/media/` — nowhere
+  // near `(public)/events/[slug]/**` — and it is 41.2's all the same, because
+  // `MediaGallerySection` is the only thing that mounts it. A tag derived from
+  // a glob over the public route group would have missed this entry and
+  // counted it among the fourteen this phase has to clear. Its neighbour
+  // `MediaReviewGrid.tsx` sits in the SAME folder and is `work`: the folder
+  // decides nothing, the importer decides everything.
+  [
+    'src/components/media/MediaUpload.tsx',
+    1,
+    'the upload preview grid — the grid axis, §2.2. Phase 41.2: its only importer is src/app/(public)/events/[slug]/MediaGallerySection.tsx:8, the member upload box on the public event page',
+    'public-member-money',
+  ],
 
   // ── the four sheet modals — absorbed by the Dialog primitive, §8.3. These
   // uses are not migrated to `md:` and then kept: the primitive owns
@@ -291,45 +417,57 @@ export const REMAINING = [
     'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
     4,
     'a sheet modal — absorbed by the Dialog primitive, §8.3 (plus one sm:text-5xl, §2.1)',
+    'public-member-money',
   ],
   [
     'src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx',
     4,
     'a sheet modal — absorbed by the Dialog primitive, §8.3 (its sm:max-h-[90vh] becomes an unprefixed max-h-[85dvh], §2.3)',
+    'public-member-money',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx',
     3,
     'a sheet modal — absorbed by the Dialog primitive, §8.3',
+    'public-member-money',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
     4,
     'a sheet modal — absorbed by the Dialog primitive, §8.3 (plus one sm:text-5xl, §2.1)',
+    'public-member-money',
   ],
 
   // ── the table dual-renders — consolidated onto the one table breakpoint,
   // `md`, by the DataTable primitive, §8.8. `sm:block` / `sm:hidden` is the
   // cards-or-table switch.
+  // The five tables are the same five `verify-tables.mjs` carries, and the two
+  // gates now agree entry for entry on which surface each belongs to. Their
+  // importers were re-measured in 41.1-03; three of the target strings on the
+  // sibling gate were wrong, so none of the five is taken on trust here.
   [
     'src/components/analytics/DrinkSalesBreakdown.tsx',
     2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8',
+    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx:12',
+    'work',
   ],
   [
     'src/components/analytics/MemberSpendTable.tsx',
     2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8',
+    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/analytics/members/page.tsx:4',
+    'work',
   ],
   [
     'src/components/analytics/ReferralChainTable.tsx',
     2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8',
+    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/analytics/members/page.tsx:6',
+    'work',
   ],
   [
     'src/components/events/SalesDashboard.tsx',
     2,
-    'a table dual-render — consolidated onto md by DataTable, §8.8',
+    'a table dual-render — consolidated onto md by DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx:8',
+    'work',
   ],
   // PAID by plan 41-10 — `src/components/admin/MemberTable.tsx` held four of
   // this list's uses and holds none now. Its dual-render moved onto the
@@ -340,14 +478,19 @@ export const REMAINING = [
   [
     'src/components/admin/TransactionList.tsx',
     3,
-    'the filter grid (§2.2) and the toolbar row (§2.1) — the dual-render itself is already lg: and moves to md: with DataTable, §8.8',
+    'the filter grid (§2.2) and the toolbar row (§2.1) — the dual-render itself is already lg: and moves to md: with DataTable, §8.8. Work: only importer src/app/(admin)/admin/(work)/finance/page.tsx:2 (two docblocks NAME it — (work)/newsletter/page.tsx:10 and admin/events/[id]/reveal/VenueRevealPanel.tsx:172 — and named is not imported)',
+    'work',
   ],
 
-  // ── a plain md: equivalent, §2.1.
+  // ── a plain md: equivalent, §2.1. The second file the tag exists for: it
+  // lives OUTSIDE `(work)`, because R-WORK-ROUTES keeps non-route modules a
+  // level out, and it is work all the same. MediaUpload above fails the glob
+  // test in one direction and this one fails it in the other.
   [
     'src/app/(admin)/admin/events/[id]/assignments/AssignmentsClient.tsx',
     1,
-    'one sm:grid-cols-[1fr_auto_auto] assignment row — its md: equivalent, §2.1',
+    'one sm:grid-cols-[1fr_auto_auto] assignment row — its md: equivalent, §2.1. Work: only importer src/app/(admin)/admin/(work)/events/[id]/assignments/page.tsx:8, a work route (R-WORK-ROUTES keeps the client module outside the group)',
+    'work',
   ],
 ];
 
@@ -518,7 +661,37 @@ if (!failures.includes('A')) {
 
 // ── check B — sm: only where it is declared ────────────────────────────────
 
-const declared = new Map(REMAINING.map(([path, count, reason]) => [path, { count, reason }]));
+/* ── the group tag, validated before any count is computed ─────────────────── */
+
+const GROUP_TAG_SET = new Set(GROUP_TAGS);
+
+for (const entry of REMAINING) {
+  const [path, , , group] = entry;
+  if (group === undefined || group === null || group === '') {
+    refuse(
+      `the REMAINING entry ${path} carries no group tag.\n` +
+        `       Every entry declares one of: ${GROUP_TAGS.join(', ')}.\n` +
+        '       This is a refusal and not a failure because an untagged entry does not make the\n' +
+        '       per-group counts smaller — it makes them WRONG. The entry drops out of every\n' +
+        '       group total while the totals still look plausible, and phase 41.1 criterion 4 is\n' +
+        '       read off one of those totals. Nothing was measured.'
+    );
+  }
+  if (!GROUP_TAG_SET.has(group)) {
+    refuse(
+      `the REMAINING entry ${path} carries the group tag "${group}", which is not in the\n` +
+        `       closed vocabulary: ${GROUP_TAGS.join(', ')}.\n` +
+        '       The vocabulary is closed on purpose: free text lets a typo open a fifth group of\n' +
+        '       one entry that no criterion reads. If a fifth group is genuinely needed, that is a\n' +
+        '       DECISION that edits GROUP_TAGS with its reason, not a string typed on an entry.\n' +
+        '       Nothing was measured.'
+    );
+  }
+}
+
+const declared = new Map(
+  REMAINING.map(([path, count, reason, group]) => [path, { count, reason, group }])
+);
 
 if (declared.size !== REMAINING.length) {
   refuse(
@@ -562,6 +735,53 @@ console.log(`      REMAINING entries declared : ${REMAINING.length}`);
 console.log(`      sm: uses declared          : ${declaredTotal}`);
 console.log(`      files measured carrying sm: : ${measured.size}`);
 console.log(`      sm: uses measured          : ${measuredTotal}`);
+
+/**
+ * The per-group counts, on the same basis as the totals above: a file counts
+ * for its group while it still carries at least one `sm:`, and the uses counted
+ * are the ones MEASURED on the tree, not the ones declared. Declared and
+ * measured agree while nothing is STALE, and when they disagree the stale
+ * notice below says so by name.
+ *
+ * **Computed over the DECLARED entries only.** A file carrying `sm:` while on
+ * no entry is check B's failure and belongs to no group — it appears in the
+ * undeclared list below and in no total here. That is deliberate: inventing a
+ * group for it would let an undeclared file be silently absorbed into a count
+ * somebody reads a criterion off.
+ */
+const filesByGroup = new Map(GROUP_TAGS.map((tag) => [tag, 0]));
+const usesByGroup = new Map(GROUP_TAGS.map((tag) => [tag, 0]));
+for (const [path, { group }] of declared) {
+  const actual = (measured.get(path) ?? []).length;
+  if (actual === 0) continue;
+  filesByGroup.set(group, filesByGroup.get(group) + 1);
+  usesByGroup.set(group, usesByGroup.get(group) + actual);
+}
+
+console.log('\n      by group (measured):');
+for (const tag of GROUP_TAGS) {
+  console.log(
+    `        ${tag.padEnd(20)} ${String(filesByGroup.get(tag)).padStart(3)} file(s)  ` +
+      `${String(usesByGroup.get(tag)).padStart(3)} use(s)`
+  );
+}
+console.log(
+  `\n      WORK GROUP REMAINING = ${filesByGroup.get('work')}` +
+    `      (${usesByGroup.get('work')} sm: use(s))`
+);
+
+if (filesByGroup.get('work') === 0) {
+  console.log(
+    '\n  ★  WORK GROUP REMAINING = 0 — no file on the work surface carries sm: any more.\n' +
+      '     This is the line phase 41.1 criterion 4 is read off, and it now reads zero.\n\n' +
+      '     Read it for exactly what it is. It COUNTS PREFIXES, NOT LAYOUTS: a work file using\n' +
+      '     only md: and lg: is counted at zero here and can still be wrong at every width\n' +
+      '     (H41-1, a person at three widths). And a count that FELL is not by itself evidence\n' +
+      "     that work happened — `WORK GROUP REMAINING = 0` is reached just as well by\n" +
+      '     re-tagging fourteen entries as by converting fourteen files. The reconciliation\n' +
+      '     diffs the ENTRIES against the tree, never the counts (D-41.1-16).\n'
+  );
+}
 
 const heaviest = [...measured.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 3);
 if (heaviest.length > 0) {
