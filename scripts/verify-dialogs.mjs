@@ -223,6 +223,35 @@
  * measurement that superseded it, because a decision undone without its
  * measurement reads as a slip (`PageShell.tsx:42-46`).
  *
+ * ── THE TWO REFUSAL DEFECTS THIS GATE CARRIED, AND WHAT CLOSED THEM (41.1-02) ─
+ *
+ * `DEF-41-07` registered four defects in the refusal machinery of this gate and
+ * of `verify-conversion.mjs`. **Two of them are this file's**, and both are
+ * closed here:
+ *
+ *   - **item 1** — `neverOpenedReason()`'s existence guard covered ONE of its
+ *     three branches, so a declared path that is not on disk was given a
+ *     confident explanation of why it was never opened. The obligation is now
+ *     discharged once, above all three.
+ *   - **item 4** — one typo, two verdicts: `existsSync` on the house APFS volume
+ *     is case-insensitive (`CLAUDE.md` Guardrail 6) while the walk is case-exact,
+ *     so a mis-cased entry refused here and failed on a case-sensitive volume.
+ *     `walked` is now the authority and the spelling is confirmed against the
+ *     directory's own entries.
+ *
+ * **A numbering note, so the next reader does not re-derive it.** Plan
+ * `41.1-02`'s own prose calls these *"items 1 and 3"*; the register in
+ * `.planning/phases/41-shared-primitives-three-tier-layout/deferred-items.md`
+ * numbers the case-typo defect **4**, and its item 3 is a different defect
+ * entirely — a permitted site keyed on a line's text rather than its position,
+ * which lives in `verify-conversion.mjs` and is **plan 41.1-04's**. Item 2 is
+ * that file's too. This gate carries neither.
+ *
+ * **AND ITEM 4 IS A CLASS RATHER THAN A LINE.** Every `existsSync` whose subject
+ * is a DECLARED path rather than a walked one has the same exposure, including
+ * `scripts/conversion-manifest.mjs:410,426,436`. Plan `41.1-04` owns those three;
+ * they are named here so the class is inherited rather than rediscovered.
+ *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (`CLAUDE.md`
  * Guardrail 5). This script reads only committed files under `src/`, prints
  * only paths, line numbers and source lines, opens no network connection, reads
@@ -320,8 +349,33 @@ const BLOCK_COMMENT_CLOSE = '*' + '/';
  */
 const liveLinesCache = new Map();
 
-/** How many non-blank lines the shared stripper blanked, across this run. */
+/**
+ * TWO counters, not one, and they are printed BELOW the walk — WR-02.
+ *
+ * **The defect this replaces.** There was one counter and it was printed before
+ * check B walked `src/`. At that point exactly one file had been read — the
+ * primitive — so the number described `Dialog.tsx` and not the run. A counter
+ * that cannot report a blindness spike is the one thing a counter like this is
+ * for, and in a repository with **no error tracking** a printed number is one of
+ * the few observables a gate has at all (`meta-gates.md`). This one observed the
+ * wrong thing.
+ *
+ * **Why two numbers rather than one.** They are the two directions of the
+ * stripper, and collapsing them hides whichever one moved:
+ *
+ *   - **lines blanked whole** — the line was comment to its end. This is
+ *     DEF-41-02's direction: prose quoting a class string must cost nothing. A
+ *     spike here is a gate seeing LESS of the tree.
+ *   - **leading spans consumed** — a comment ended and live code continued on the
+ *     same line, so the span became spaces and the code stayed visible. This is
+ *     CR-01 and CR-02's direction, and it is the number that would have moved
+ *     when an overlay behind a leading closed comment stopped being invisible.
+ *
+ * Both are measured over the files THIS RUN opened, and that count is printed
+ * beside them: a count without its denominator is not a measurement.
+ */
 let commentLinesBlanked = 0;
+let commentSpansStripped = 0;
 
 /**
  * The refusal every consumer of the shared stripper carries (T-41.1-03).
@@ -351,7 +405,19 @@ function liveLines(relPath) {
   if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
   for (let i = 0; i < raw.length; i += 1) {
-    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
+    const rawLine = raw[i].split('\r').join('');
+    if (rawLine.trim() === '') continue;
+    if (lines[i] === '') {
+      commentLinesBlanked += 1;
+      continue;
+    }
+    /*
+     * Live code survived on a line the stripper touched: a LEADING SPAN was
+     * consumed and replaced by the same number of spaces. Compared against the
+     * carriage-return-stripped raw line so a CRLF file does not read as a
+     * stripped span on every line of it.
+     */
+    if (lines[i] !== rawLine) commentSpansStripped += 1;
   }
 
   liveLinesCache.set(relPath, lines);
@@ -479,6 +545,25 @@ export const DECLARED_EXCEPTIONS = [
  *     not exist* — into a refusal. That is a failure laundered into "nothing was
  *     measured": this defect wearing the fix's clothes. A non-existent path
  *     returns null here and reaches the failure it reaches today.
+ *
+ * **AND THE SECOND PROPERTY WAS TRUE OF ONE BRANCH OUT OF THREE (DEF-41-07 item
+ * 1, repaired by 41.1-02).** The paragraph above is kept exactly as it stood
+ * rather than rewritten, because it states the right obligation — and the code
+ * discharged it only on the walk branch. THIS Map's branch and the fence branch
+ * each returned their reason with no existence test at all, so a `REMAINING`
+ * entry naming a non-existent path that happened to match a fence glob refused
+ * with a confident *"fenced — behind that glob"* about a file that is not there.
+ * CR-03 established it with a run on a disposable copy: exit **2** rather than a
+ * failure, and the refusal propagates as *nothing was measured* across the whole
+ * aggregate. The obligation is now discharged ONCE, above all three branches, so
+ * the three are equal by construction rather than by three copies of one test.
+ *
+ * **And the existence question is now asked case-exactly (DEF-41-07 item 4).**
+ * `existsSync` on the house APFS volume is case-insensitive while the walk is
+ * case-exact, so one typo had two verdicts depending on the machine. `walked` is
+ * the authority and `existsSync` is a second opinion that can only rule a path
+ * out — see `existsCaseExact`, which also names the sibling exposure in
+ * `conversion-manifest.mjs` that plan 41.1-04 owns.
  *
  * **THE REASONS STAY APART, and that is the substance rather than the wording.**
  * This gate keeps `fenced by path, never measured` and `exempt from this check …
@@ -784,112 +869,224 @@ function isOverlayLine(line) {
  * reddened a correct file at the door — and, on the other side of the same coin,
  * three probes of this shape passed for a whole round while the printed sentence
  * promised a family the regex did not match.
+ *
+ * ── EVERY `line` IS A LINE ARRAY, AND THAT IS WR-01's FIX ────────────────────
+ *
+ * Until `41.1-02` each row's `line` was a single STRING fed through
+ * `stripLeadingComments` alone, under a comment claiming it was *"the path a
+ * real line takes"*. **It was not.** Check B reads `liveLines`, and the
+ * multi-line state — the thing that decides whether a comment's body is prose or
+ * code, and the thing CR-01 and CR-02 both live in — exists only there. A
+ * self-check built on the single-line function is not weak at seeing that state:
+ * it is **structurally unable** to reach it.
+ *
+ * So every row now carries an ARRAY of raw lines and goes through
+ * `liveLinesFrom`, which is exactly the function `liveLines` calls on a real
+ * file. A row matches when ANY of its live lines matches — which is precisely
+ * how `shellShapes` decides a file carries a shell.
+ *
+ * **The four rows at the end were INEXPRESSIBLE before the array**, and that is
+ * the evidence WR-01 is closed rather than merely described. They come in two
+ * pairs, and the pairing is the point:
+ *
+ *   - **CR-01** — a multi-line JSX comment whose TERMINATING line carries a live
+ *     overlay after the closer. Expected **match**: span-stripping resumes after
+ *     the closer instead of pushing an empty line.
+ *   - **CR-02** — a JSX comment whose closer carries whitespace before the
+ *     closing brace, with a live overlay on a later line. Expected **match**: the
+ *     closer is a regular expression, not the exact three-character token, so the
+ *     state does not run to end of file.
+ *   - **and each of those two has its CONTROL**, in the opposite direction: the
+ *     same multi-line comment with the three parts quoted INSIDE the body and no
+ *     live code after the closer. Expected **no match**, because prose must still
+ *     cost nothing (DEF-41-02).
+ *
+ * The controls are not decoration and they are not symmetry for its own sake.
+ * **A `match` expectation cannot discriminate against a stripper that sees too
+ * much code** — a blind stripper matches too, for the wrong reason, and the row
+ * goes green. The two `no match` controls are the rows that actually go red when
+ * the multi-line state is taken away, which is what makes this table able to
+ * report the defect it exists for rather than merely to describe it.
  */
 const MATCHER_PROBES = [
   {
     verdict: 'no match',
     label: 'the positioning utility at the end of a longer word',
-    line:
+    line: [
       '<div className="pre' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]">',
+    ],
     expected: false,
   },
   {
     verdict: 'match',
     label: 'the three parts at a bracketed rung other than the incumbents\'',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    line: [
+      '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a two-digit numeric rung',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    line: ['<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">'],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a SINGLE-DIGIT rung (WR-03)',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">',
+    line: ['<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">'],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at the auto KEYWORD rung (WR-03)',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    line: [
+      '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a NEGATIVE rung (WR-05)',
-    line:
+    line: [
       '<div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      '-' +
-      RUNG_PREFIX +
-      '10">',
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        '-' +
+        RUNG_PREFIX +
+        '10">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'an overlay behind a leading CLOSED JSX comment (41-29, CR-02)',
-    line:
+    line: [
       JSX_COMMENT_OPEN +
-      ' the lid ' +
-      JSX_COMMENT_CLOSE +
-      ' <div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]">',
+        ' the lid ' +
+        JSX_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'an overlay behind a leading CLOSED block comment (41-29)',
-    line:
+    line: [
       '/' +
-      '*' +
-      ' the lid ' +
-      BLOCK_COMMENT_CLOSE +
-      ' <div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]">',
+        '*' +
+        ' the lid ' +
+        BLOCK_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
     expected: true,
   },
   {
     verdict: 'no match',
     label: 'a FULL-LINE JSX comment quoting the three parts (DEF-41-02)',
-    line:
+    line: [
       JSX_COMMENT_OPEN +
-      ' the shell is ' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60] ' +
-      JSX_COMMENT_CLOSE,
+        ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60] ' +
+        JSX_COMMENT_CLOSE,
+    ],
     expected: false,
   },
   {
     verdict: 'no match',
     label: 'a docblock CONTINUATION line quoting the three parts (DEF-41-02)',
-    line:
-      '* the shell is ' +
-      POSITION_UTILITY +
+    line: [
+      '* the shell is ' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]',
+    ],
+    expected: false,
+  },
+
+  // ── the four MULTI-LINE rows (WR-01). None of these can be written as a single
+  // string, which is why they did not exist before `liveLinesFrom` took an array.
+  {
+    verdict: 'match',
+    label: 'MULTI-LINE: an overlay on the TERMINATING line of a JSX comment (CR-01)',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, opened here and',
+      ' terminated here ' +
+        JSX_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
+    expected: true,
+  },
+  {
+    verdict: 'no match',
+    label: 'MULTI-LINE control: the same comment quoting the three parts in its BODY',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, opened here and',
+      ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60], terminated here ' +
+        JSX_COMMENT_CLOSE,
+    ],
+    expected: false,
+  },
+  {
+    verdict: 'match',
+    label: 'MULTI-LINE: a closer with WHITESPACE before the brace, overlay after (CR-02)',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, closed with a space before its brace',
       ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]',
+        BLOCK_COMMENT_CLOSE +
+        ' } <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
+    expected: true,
+  },
+  {
+    verdict: 'no match',
+    label: 'MULTI-LINE control: the same spaced closer, three parts quoted in the BODY',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, closed with a space before its brace, and',
+      ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60] ' +
+        BLOCK_COMMENT_CLOSE +
+        ' }',
+    ],
     expected: false,
   },
 ];
@@ -942,7 +1139,60 @@ function shellShapes(relPath) {
  * debt that looked owned and was not. What is true is the surface each one
  * belongs to, so that is what is written.
  *
- * Shape: `[path, reason, target]`.
+ * ── THE GROUP TAG (D-41.1-11) ───────────────────────────────────────────────
+ *
+ * Shape: `[path, group, reason, target]`. The group is a **tuple field and not a
+ * separate list per group**, and the reason is the decisive one rather than the
+ * tidy one:
+ *
+ *   1. **The reason must travel with the entry** — `verify-routes.mjs:130-152`'s
+ *      established form, quoted in this gate's own header. Splitting into
+ *      per-group lists puts the group in the LIST NAME, which leaves an entry
+ *      able to sit in the wrong list silently. Two of the entries below were
+ *      already mislabelled in prose; a per-group list would have made them
+ *      structurally wrong instead of merely wrong, and correcting a sentence
+ *      would have meant moving a file between lists.
+ *   2. `conversion-manifest.mjs:80` already carries a **state** column as a third
+ *      field (`[path, state, reason]`) with a docblock saying the column is
+ *      load-bearing. The tag is the same construction and needs no new idea.
+ *
+ * **THE VOCABULARY IS CLOSED AT FOUR VALUES** — `work`, `public-member-money`,
+ * `phase-42`, `exempt` — and an unknown or missing tag is a **REFUSAL**, not a
+ * warning. An untagged entry is not a small omission: it makes the per-group
+ * count meaningless, and a meaningless count is worse than no count at all,
+ * because criterion 2 and criterion 4 of this phase are read off it.
+ *
+ * **THE TAGS ARE ASSIGNED FROM THE MEASURED IMPORTERS, NEVER FROM THE PATH
+ * PREFIX.** `EditArtistButton.tsx` reads like an admin component and its only
+ * importer is `src/app/(public)/artists/[slug]/page.tsx:5`; a tag derived from a
+ * glob would have misfiled it, and the same derivation would have misfiled
+ * `MediaUpload.tsx` in the sibling breakpoints gate. Three entries below are
+ * tagged `work` although they sit outside `(work)/`: they are reached through a
+ * work page's import closure and are paid by the knot plans (D-41.1-19).
+ *
+ * ── A CLASS, AND NOT FIVE TYPOS ─────────────────────────────────────────────
+ *
+ * **Five reason strings across two gates named the wrong surface** — three in
+ * `verify-tables.mjs`, two here — and every one of them was true of an
+ * INTENTION and never of the tree. `EditArtistButton.tsx` was filed under an
+ * artists admin surface when no work page reaches it at all;
+ * `CreateVenueModal.tsx` was filed under a venues admin surface beside the event
+ * form when the event form is its only importer.
+ *
+ * Five is a pattern, not five slips, and the pattern has a mechanism: a surface
+ * name is a sentence somebody believed, while an importer is something a command
+ * prints. **So every target below now names the importer it was re-derived
+ * from, with its line.** The reason travels with the entry *so that it stays
+ * true*, and a sentence that cannot be re-derived cannot stay true.
+ *
+ * **The two withdrawn phrases are DESCRIBED here and not quoted verbatim, and
+ * that is a deliberate departure from this file's own habit** of keeping a
+ * superseded sentence visible word for word (`PageShell.tsx:42-46`). The reason
+ * is the same one that keeps whole utility class strings out of this file
+ * (DEF-41-01): a phrase that survives anywhere in the file cannot be grepped for.
+ * Reproducing them would have left `grep -n` unable to answer *does any entry
+ * still name the wrong surface?* — and that grep is the only cheap check a later
+ * reader has. The withdrawal is recorded; the strings are not, on purpose.
  */
 export const REMAINING = [
   // ── the eleven hand-rolled overlays. None of them handles Escape, none traps
@@ -950,76 +1200,90 @@ export const REMAINING = [
   // the public purchase path is among them.
   [
     'src/app/(public)/tickets/[id]/RefundRequestButton.tsx',
+    'public-member-money',
     'a hand-rolled overlay on the ticket surface — a refund request, which is money leaving',
     'the /tickets/[id] surface',
   ],
   [
     'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay — one of the four the primitive takes its phone form from',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay on the purchase path — byte-identical sheet half to the one above',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/SecretVenueDialog.tsx',
+    'public-member-money',
     'a hand-rolled overlay that shows a venue — venue-secrecy primary, and the one on this list whose conversion is Critical rather than visual',
     'the public event page',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay on the drinks menu',
     'the drinks menu surface',
   ],
   [
     'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
+    'public-member-money',
     'a hand-rolled SHEET overlay holding a drink token at the bar',
     'the drinks menu surface',
   ],
   [
     'src/app/(admin)/admin/events/[id]/tickets/RefundActions.tsx',
-    'a hand-rolled overlay on the work surface that issues a refund',
-    'the event tickets work surface',
+    'work',
+    'a hand-rolled overlay that issues a refund. Tagged work although it sits outside (work)/: it is reached through a WORK PAGE\'S IMPORT CLOSURE, re-derived — src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx:12 imports it — and it is paid by the knot plans (D-41.1-19), not by 41.2',
+    'reached from (work)/events/[id]/tickets/page.tsx:12',
   ],
   [
     'src/components/admin/RefundDialog.tsx',
-    'a hand-rolled overlay shared by the refund paths',
-    'the work surfaces that reach it',
+    'work',
+    'a hand-rolled overlay shared by the refund paths. Tagged work for the same reason and at one more remove, re-derived: src/components/admin/TransactionList.tsx:4 imports it, and src/app/(admin)/admin/(work)/finance/page.tsx:2 imports TransactionList. Paid by the knot plans (D-41.1-19)',
+    'reached from (work)/finance/page.tsx:2 via TransactionList.tsx:4',
   ],
   [
     'src/components/venues/EditVenueButton.tsx',
-    'a hand-rolled overlay editing a venue — on §8.3\'s closed lg list once it converts',
-    'the venues work surface',
+    'work',
+    'a hand-rolled overlay editing a venue — on §8.3\'s closed lg list once it converts. The ONLY entry on this list that sits squarely on the work surface, re-derived: its only importer is src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
+    'only importer src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:4',
   ],
   [
     'src/components/artists/EditArtistButton.tsx',
-    'a hand-rolled overlay editing an artist — on §8.3\'s closed lg list once it converts',
-    'the artists work surface',
+    'public-member-money',
+    'a hand-rolled overlay editing an artist — on §8.3\'s closed lg list once it converts. CORRECTED (D-41.1-11): this entry used to name an admin surface, and NO WORK PAGE REACHES IT. Re-derived with grep -rln: its only importer is src/app/(public)/artists/[slug]/page.tsx:5, the PUBLIC artist page. A tag taken from the path prefix would have misfiled it, which is why tags here come from importers',
+    'only importer src/app/(public)/artists/[slug]/page.tsx:5',
   ],
   [
     ROLE_DIALOG_OVERLAY,
-    'a hand-rolled overlay, and the tree\'s only role="dialog" — see the declared exceptions above: named by §13 as a warning about signature choice, not exempted from the debt',
-    'the member media surface',
+    'public-member-money',
+    'a hand-rolled overlay, and the tree\'s only role="dialog" — see the declared exceptions above: named by §13 as a warning about signature choice, not exempted from the debt. Re-derived: its only importer is src/app/(members)/dashboard/page.tsx:9, the member dashboard',
+    'only importer src/app/(members)/dashboard/page.tsx:9',
   ],
 
   // ── the native shells this plan does not convert. Each already has the
   // platform behaviours; what each still has is its own copy of the shell.
   [
     'src/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog.tsx',
-    'a native shell, and the UI of a MONOTONE guard: once the reveal is sent, the address is public and there is no undo. §2.1 names it explicitly as the wrong first consumer — "prove it on the hardest correct file" is not "convert the most dangerous surface first"',
-    'the venue reveal surface',
+    'work',
+    'a native shell, and the UI of a MONOTONE guard: once the reveal is sent, the address is public and there is no undo. §2.1 names it explicitly as the wrong first consumer — "prove it on the hardest correct file" is not "convert the most dangerous surface first". Tagged work because it is reached through a work page\'s import closure, re-derived: src/app/(admin)/admin/events/[id]/reveal/VenueRevealPanel.tsx:4 imports it and src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx:11 imports the panel. Paid by the knot plans (D-41.1-19)',
+    'reached from (work)/events/[id]/edit/page.tsx:11 via VenueRevealPanel.tsx:4',
   ],
   [
     'src/components/venues/CreateVenueModal.tsx',
-    'a native shell, and the ANCESTOR this primitive was extracted from. Not converted here because a second surface imports it — the event form — so converting it converts two surfaces at once, which is the event-form knot',
-    'the venues work surface and the event form',
+    'public-member-money',
+    'a native shell, and the ANCESTOR this primitive was extracted from. Not converted here because converting it converts the event form with it — the event-form knot. CORRECTED (D-41.1-11): this entry used to name a work surface beside the form. Re-derived with grep -rln on the import clause: its ONLY importer is src/components/events/EventForm.tsx:10. Every other file naming it merely mentions it in prose, which is exactly how a reason stops being true unnoticed',
+    'only importer src/components/events/EventForm.tsx:10',
   ],
   [
     'src/components/artists/CreateArtistModal.tsx',
-    'a native shell, byte-identical to the ancestor, and mounted from the same event form',
-    'the artists work surface and the event form',
+    'public-member-money',
+    'a native shell, byte-identical to the ancestor, and mounted from the same event form. CORRECTED alongside the two above and for the same measurement: its only importer is src/components/events/EventForm.tsx:8, and no artists surface under (work)/ reaches it',
+    'only importer src/components/events/EventForm.tsx:8',
   ],
 
   // PAID by plan 41-09 task 2 — the three native shells on `/admin/formats`
@@ -1028,6 +1292,31 @@ export const REMAINING = [
   // in the same commit that converted them, which is what a paid debt looks
   // like: the number went 17 → 14 and nothing else moved.
 ];
+
+/**
+ * The group vocabulary, CLOSED at four values (D-41.1-11, RESEARCH §5.2).
+ *
+ *   - `work`                 — this phase's surface, including the three files
+ *                              reached only through a work page's import closure.
+ *   - `public-member-money`  — the public, member and money surfaces. Phase 41.2's.
+ *   - `phase-42`             — the door. Behind this gate's fence today, so no
+ *                              entry carries it; the value exists because the
+ *                              fence's own arrival condition says an entry could.
+ *   - `exempt`               — declared correct as what it is. `Lightbox.tsx` is
+ *                              the tree's one exemption and it is deliberately
+ *                              NOT on this list, so no entry carries this value
+ *                              either: a file that will never convert is not a
+ *                              debt, and a list that cannot reach zero lies.
+ *
+ * **Two of the four are unused today, and that is written down rather than left
+ * to be noticed.** An unused value is not dead vocabulary here: `phase-42` is
+ * what an entry arriving behind the fence would carry, and the fence's own
+ * paragraph says which of the two lists must then give way.
+ */
+export const GROUPS = ['work', 'public-member-money', 'phase-42', 'exempt'];
+
+/** The one group every criterion of this phase is read off. */
+export const WORK_GROUP = 'work';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Check C's subjects — the files that render the primitive
@@ -1058,10 +1347,108 @@ if (files.length === 0) {
   );
 }
 
-if (!existsSync(`${ROOT}/${PRIMITIVE_FILE}`)) {
+/**
+ * What check B's loop actually iterates — the same array, not a second list.
+ *
+ * Derived rather than declared: this is the third mechanism by which a file goes
+ * unopened (CR-03, and see `NEVER_MEASURED_BY_B` above for the claim it makes
+ * true). A fourth hand-maintained list would be a fourth occurrence waiting.
+ *
+ * **It is declared HERE, immediately after the walk that produces it**, because
+ * `existsCaseExact` below is keyed on it and the primitive's own existence
+ * refusal now asks that function. It used to be declared beside
+ * `neverOpenedReason`; nothing about it moved except its position.
+ */
+const walked = new Set(files);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CASE-EXACT EXISTENCE — DEF-41-07 item 4, and it is a CLASS rather than a line
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * `existsSync` on the house volume answers a question nobody asked.
+ *
+ * **The defect, as DEF-41-07 item 4 states it.** The house volume is APFS and
+ * **case-insensitive** (`CLAUDE.md` Guardrail 6), so `existsSync` returns true
+ * for a declared path whose case does not match the file on disk — while the
+ * walk's own output is **case-exact**. A `REMAINING` entry carrying a case-typo
+ * therefore landed in the not-in-the-walk branch and **REFUSED** here, while the
+ * same entry on a case-sensitive volume was `missing` and **FAILED**. One typo,
+ * two verdicts, decided by which machine ran the gate — and on the house machine
+ * it is the refusal, which is *"the laundering the guard exists to prevent"* in
+ * that register's own words.
+ *
+ * **The repair, and the order is the substance.** Membership in `walked` — the
+ * set built from the walk's own case-exact output — is asked FIRST and is the
+ * authority. `existsSync` is consulted only after that, and only as a cheap
+ * negative: it can rule a path out, and it can never rule one in on its own,
+ * because its yes is confirmed segment by segment against the directory's own
+ * entries. `readdirSync` returns names as the filesystem stores them on APFS and
+ * on a case-sensitive volume alike (APFS is case-INSENSITIVE but
+ * case-PRESERVING), so the answer this function gives does not move between the
+ * two. That is the whole property: not "the typo now refuses", but **the verdict
+ * for one typo is the same verdict on every filesystem**.
+ *
+ * **And the verdict it settles on is the FAILURE, not the refusal.** DEF-41-07
+ * item 1's own text calls a typo'd entry *"today a FAILURE"* and names turning it
+ * into a refusal *"a failure laundered into 'nothing was measured'"*; item 4
+ * calls the house machine's refusal the laundering itself. A refusal would also
+ * suppress the other thirteen entries' verdicts, so it reports LESS about a tree
+ * the gate could read perfectly well. `check B ✗ names a path that does not
+ * exist` is reached on both volumes now.
+ *
+ * **THIS IS A CLASS AND NOT A LINE, and the siblings are named so the class is
+ * not re-derived.** `scripts/conversion-manifest.mjs:410,426,436` carry the
+ * identical exposure — three `existsSync` calls whose subject is a declared path
+ * rather than a walked one. **Plan 41.1-04 owns those three**; this gate does not
+ * touch that file, and naming them here is what keeps the next reader from
+ * finding the class a third time and calling it new.
+ */
+const directoryEntriesCache = new Map();
+
+function directoryEntries(absDir) {
+  const cached = directoryEntriesCache.get(absDir);
+  if (cached !== undefined) return cached;
+  let entries;
+  try {
+    entries = readdirSync(absDir);
+  } catch {
+    entries = null;
+  }
+  directoryEntriesCache.set(absDir, entries);
+  return entries;
+}
+
+/** Every segment of `relPath` spelled exactly as the directory holding it spells it. */
+function spelledExactly(relPath) {
+  let abs = ROOT;
+  for (const segment of relPath.split('/')) {
+    const entries = directoryEntries(abs);
+    if (entries === null || !entries.includes(segment)) return false;
+    abs = `${abs}/${segment}`;
+  }
+  return true;
+}
+
+/**
+ * Is there a file at EXACTLY this path, spelled exactly this way?
+ *
+ * `walked.has` first — the authority. `existsSync` second, and it is a second
+ * OPINION: its yes is never taken on its own.
+ */
+function existsCaseExact(relPath) {
+  if (walked.has(relPath)) return true;
+  if (!existsSync(`${ROOT}/${relPath}`)) return false;
+  return spelledExactly(relPath);
+}
+
+if (!existsCaseExact(PRIMITIVE_FILE)) {
   refuse(
     `the primitive is not on disk at ${PRIMITIVE_FILE}. Check A has nothing to read and\n` +
-      '       checks B and C would be measuring a tree with no dialog in it. Nothing was measured.'
+      '       checks B and C would be measuring a tree with no dialog in it. Nothing was measured.\n' +
+      '       Asked case-exactly (DEF-41-07 item 4): on the house volume existsSync would answer\n' +
+      '       yes to a mis-cased constant here and check A would then measure a file this gate\n' +
+      '       did not name.'
   );
 }
 
@@ -1073,7 +1460,41 @@ if (REMAINING.length === 0) {
   );
 }
 
-const declaredPaths = new Map(REMAINING.map(([path, reason, target]) => [path, { reason, target }]));
+/*
+ * The tag validator, and it REFUSES rather than warning (D-41.1-11).
+ *
+ * An entry with an unknown or missing tag is not a small omission: every
+ * per-group number below is derived from these tags, criterion 2 and criterion 4
+ * of this phase are read off the work-group one, and a count computed over an
+ * entry nobody classified is a number that looks like a measurement. A
+ * meaningless count is worse than no count, so nothing is measured at all.
+ *
+ * Raised HERE, above every refusal that follows and far above check B's loop,
+ * for the reason `PHASE_42_EXEMPT_PATHS` gives about its own overlap refusal:
+ * the number is what a reader believes, so a run that cannot compute it honestly
+ * must not reach a tick, a STALE notice, or a count.
+ */
+const untagged = REMAINING.filter(([, group]) => !GROUPS.includes(group));
+
+if (untagged.length > 0) {
+  refuse(
+    `${untagged.length} REMAINING entr(y/ies) carry a group tag that is not in the closed set:\n\n       ` +
+      untagged
+        .map(([path, group]) => `${path}\n         tag: ${group === undefined ? '(missing)' : `"${group}"`}`)
+        .join('\n\n       ') +
+      `\n\n       The vocabulary is closed at: ${GROUPS.join(', ')}.\n` +
+      '       Every per-group number this gate prints is derived from these tags, and this\n' +
+      "       phase's criterion 2 and criterion 4 are read off the work-group one. A count\n" +
+      '       computed over an entry nobody classified looks exactly like a measurement and is\n' +
+      '       not one, and a meaningless count is worse than no count. Which group an entry\n' +
+      '       belongs to is a decision for a person — taken from the file\'s MEASURED IMPORTERS,\n' +
+      '       never from its path prefix. NOTHING WAS MEASURED.'
+  );
+}
+
+const declaredPaths = new Map(
+  REMAINING.map(([path, group, reason, target]) => [path, { group, reason, target }])
+);
 
 if (declaredPaths.size !== REMAINING.length) {
   refuse(
@@ -1143,24 +1564,45 @@ function fenceMatch(relPath) {
  * reach the loop at all, so neither the Map nor the fence ever acted on it.
  */
 
-/**
- * What check B's loop actually iterates — the same array, not a second list.
- *
- * Derived rather than declared: this is the third mechanism by which a file goes
- * unopened (CR-03, and see `NEVER_MEASURED_BY_B` above for the claim it makes
- * true). A fourth hand-maintained list would be a fourth occurrence waiting.
+/*
+ * `walked` used to be declared here. It is declared immediately after the walk
+ * that produces it — see `existsCaseExact` above, which is keyed on it.
  */
-const walked = new Set(files);
 
+/**
+ * Why this file was never opened by check B, or `null` if it was.
+ *
+ * **DEF-41-07 item 1 — the existence obligation now covers all THREE branches,
+ * and it used to cover one.** The walk branch tested existence; the
+ * `NEVER_MEASURED_BY_B` branch and the fence branch each returned their reason
+ * **unconditionally**, so a declared path that is not on disk was handed a
+ * confident explanation of why it was never opened — *"the primitive itself"*,
+ * *"fenced — behind that glob"* — when the true and simpler fact is that there is
+ * no such file. CR-03 established it with a run: one entry naming a non-existent
+ * scanner component produced exit **2** rather than a failure, and a refusal
+ * propagates as *nothing was measured* across the whole aggregate.
+ *
+ * The obligation is now discharged **once, at the top**, rather than repeated
+ * three times: a path that is not in `walked` and does not exist case-exactly
+ * returns `null` here and reaches the failure it has always deserved. Nothing
+ * below the guard can be reached by a path that is not on disk, which is what
+ * makes the three branches equal rather than merely all-guarded.
+ *
+ * **The order of the three is unchanged and is load-bearing.** The walk is tested
+ * FIRST because a path outside `files` never reaches check B's loop at all — the
+ * Map and the fence never got the chance to act on it, so a path that is both
+ * fenced and unwalked is not fenced in any operative sense.
+ *
+ * **What did NOT change: a typo is still a FAILURE, not a refusal.** That was the
+ * property the old guard existed for — *"a failure laundered into 'nothing was
+ * measured'"* — and it is now true on a case-sensitive volume as well, because
+ * the existence question is asked case-exactly (DEF-41-07 item 4; see
+ * `existsCaseExact`).
+ */
 function neverOpenedReason(path) {
-  /*
-   * Guarded on the file existing, and that guard is the whole difference between
-   * closing this and recycling it: `unmeasurableRemaining` refuses BEFORE
-   * `missing` is computed, so an unguarded membership test would turn a typo'd
-   * entry from a FAILURE into a refusal. A refusal is not a pass, and a refusal
-   * that hides a FAILED verdict is worse than either.
-   */
-  if (!walked.has(path) && existsSync(`${ROOT}/${path}`)) {
+  if (!existsCaseExact(path)) return null;
+
+  if (!walked.has(path)) {
     return (
       'NOT IN THE WALK — this path is on disk, and this gate\'s walk does not produce\n' +
       '         it. The walk covers files under src/ carrying one of these extensions:\n' +
@@ -1216,16 +1658,44 @@ if (unmeasurableRemaining.length > 0) {
  *
  * **And half was still what it tested until D-41.1-07.** WR-01: the probe used
  * to go through the single-line function alone, which is structurally unable to
- * exercise the multi-line state that `liveLines` carries. It now goes through
- * `liveLinesFrom`, which is the whole pipeline for a one-line file — the fix
- * that made `liveLinesFrom` take an ARRAY rather than a string. Widening the
- * probe rows themselves to multi-line shapes is `41.1-02`'s, which owns this
- * file in wave 1.
+ * exercise the multi-line state that `liveLines` carries. It went through
+ * `liveLinesFrom` from 41.1-01 — but on a one-line array, which is the whole
+ * pipeline for a one-line file and still not the multi-line state.
+ *
+ * **41.1-02 closes it.** Every probe row is now a LINE ARRAY, four of them carry
+ * more than one line, and a row matches when ANY of its live lines matches —
+ * which is exactly how `shellShapes` decides a real file carries a shell. The
+ * probe now takes the path a real line takes, in the only sense of that phrase
+ * that can be checked.
  */
-const probeRows = MATCHER_PROBES.map((probe) => ({
-  ...probe,
-  measured: isOverlayLine(liveLinesFrom([probe.line]).lines[0]) ? 'match' : 'no match',
-}));
+const probeRows = MATCHER_PROBES.map((probe) => {
+  const { lines, unterminated } = liveLinesFrom(probe.line);
+  return {
+    ...probe,
+    unterminated,
+    measured: lines.some((line) => isOverlayLine(line)) ? 'match' : 'no match',
+  };
+});
+
+/*
+ * A probe whose own comment never closes is a probe nobody can read a verdict
+ * from: every line after the opener is blanked, so the row would report `no
+ * match` for a reason that has nothing to do with the matcher. Raised as a
+ * refusal rather than a failure, because it says the SELF-CHECK is malformed —
+ * and a malformed self-check has measured nothing about this tree.
+ */
+const malformedProbes = probeRows.filter((row) => row.unterminated !== null);
+
+if (malformedProbes.length > 0) {
+  refuse(
+    `${malformedProbes.length} of ${MATCHER_PROBES.length} matcher probe(s) open a comment that\n` +
+      '       never closes, so their verdicts describe the probe rather than the matcher:\n\n       ' +
+      malformedProbes
+        .map((row) => `${row.label}\n         unterminated ${row.unterminated.kind} comment opened on probe line ${row.unterminated.lineNo}`)
+        .join('\n\n       ') +
+      '\n\n       NOTHING WAS MEASURED — no check-B verdict follows.'
+  );
+}
 
 const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
 
@@ -1270,7 +1740,12 @@ const signatureRows = SIGNATURE.map(([label, needle, expected]) => ({
   measured: countNeedle(primitiveLines, needle),
 }));
 
-console.log(`  lines blanked as comments     : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)\n`);
+/*
+ * The comment counters used to print HERE, and here is before check B walks
+ * `src/` — so they described the one file check A had just read. They are two
+ * numbers now and they print below the walk, at the end of the run. See the
+ * counters' own docblock (WR-02).
+ */
 
 console.log('  declared exceptions: 2\n');
 for (const [path, reason] of DECLARED_EXCEPTIONS) {
@@ -1355,8 +1830,15 @@ const undeclared = [];
 const missing = [];
 const stale = [];
 
+/*
+ * Asked CASE-EXACTLY, and that is the other half of DEF-41-07 item 4: this is the
+ * verdict a mis-cased entry now reaches, and it must be the same verdict on the
+ * house volume and on a case-sensitive one. `existsSync` alone answered yes here
+ * on APFS, so a mis-cased entry skipped `missing` and went on to be reported
+ * STALE — a debt counter falling because the gate could not spell.
+ */
 for (const [path] of declaredPaths) {
-  if (!existsSync(`${ROOT}/${path}`)) {
+  if (!existsCaseExact(path)) {
     missing.push(path);
     continue;
   }
@@ -1412,6 +1894,56 @@ console.log(
     '      declared it correct; fenced means nobody measured it at all.\n'
 );
 console.log(`      REMAINING = ${measuredShells.size}\n`);
+
+/*
+ * The per-group breakdown, counted over `measuredShells` — the same set
+ * `REMAINING` is printed from, never over `REMAINING.length`. Counting the
+ * declared list instead would produce a work-group number that stays put while a
+ * file converts and its entry is still sitting there marked STALE, which is the
+ * proxy-goes-quiet defect wearing a group tag.
+ */
+const groupCounts = new Map(GROUPS.map((group) => [group, 0]));
+const workGroupEntries = [];
+
+for (const path of measuredShells.keys()) {
+  const declared = declaredPaths.get(path);
+  const group = declared === undefined ? '(undeclared)' : declared.group;
+  groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
+  if (group === WORK_GROUP) workGroupEntries.push(path);
+}
+
+console.log(
+  `      by group: ${[...groupCounts]
+    .filter(([group, n]) => n > 0 || GROUPS.includes(group))
+    .map(([group, n]) => `${group} ${n}`)
+    .join(' · ')}\n`
+);
+
+const workGroupRemaining = groupCounts.get(WORK_GROUP) ?? 0;
+
+console.log(`      WORK GROUP REMAINING = ${workGroupRemaining}`);
+console.log(
+  '         ↑ the line this phase\'s criteria are read off. A criterion that cannot be\n' +
+    '           read off a gate is a claim (D-41.1-11).\n'
+);
+
+if (workGroupRemaining === 0) {
+  console.log(
+    '  ★ THE WORK GROUP IS EMPTY — every dialog on this phase\'s surface has converted.\n' +
+      '       Printed as loudly as STALE is, because it is the condition this phase exits on\n' +
+      '       and a number nobody notices reaching zero is a number that was not doing its job.\n'
+  );
+} else {
+  for (const path of workGroupEntries) {
+    console.log(`         ${path}`);
+  }
+  console.log(
+    '\n      Those PATHS, and not that number, are what a later plan reconciles against\n' +
+      '      (D-41.1-16): a debt tracked by a proxy metric is closed by anything that moves\n' +
+      '      the metric, and this phase has four recorded recurrences of exactly that. Diff\n' +
+      '      the entries.\n'
+  );
+}
 
 if (missing.length > 0) {
   failures.push('B');
@@ -1510,6 +2042,27 @@ if (toastOffenders.length > 0) {
       '       neither does the primitive\n'
   );
 }
+
+/* ── comment hygiene, measured over the run and printed BELOW it (WR-02) ───── */
+
+console.log('');
+console.log(
+  `  comment hygiene — measured over the ${liveLinesCache.size} file(s) this run actually opened,\n` +
+    `  out of ${files.length} walked (D-41.1-07, one shared stripper):\n`
+);
+console.log(
+  `      lines blanked whole           : ${commentLinesBlanked}   (DEF-41-02 — prose quoting a class string costs nothing)`
+);
+console.log(
+  `      leading spans consumed        : ${commentSpansStripped}   (CR-01, CR-02 — live code kept on a comment's line)`
+);
+console.log(
+  '\n      Printed HERE, below the walk, and not above it: until 41.1-02 one counter printed\n' +
+    '      before check B opened a single file, so it described the primitive and not the run\n' +
+    '      and could not report a blindness spike — which is the only thing a counter like this\n' +
+    '      is for. This project has NO ERROR TRACKING, so a printed number is one of the few\n' +
+    '      observables a gate has at all.\n'
+);
 
 /* ── verdict ──────────────────────────────────────────────────────────────── */
 
