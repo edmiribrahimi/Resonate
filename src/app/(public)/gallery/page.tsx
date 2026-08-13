@@ -17,6 +17,14 @@ import type { UserRole, UserStatus } from "@/types/database";
  * **page-level** navigation mount to move off the phone-locked wrapper, which
  * is what gives a public surface the side column from tablet width up.
  *
+ * **Amended 2026-08-13 (D-41.1-01), and the amendment follows from that last
+ * clause.** The shell still APPLIES the clearance, but it no longer inherits the
+ * number from the stylesheet: being one of only two pages that mount the
+ * responsive form, this page now DECLARES it, on the wrapper added below. The
+ * ambient default is zero everywhere precisely so that the eleven sites which
+ * mount the bar-locked wrapper — and every route that mounts no navigation —
+ * cannot inherit a column they do not have.
+ *
  * **The read is untouched, byte for byte.** Not as a courtesy — as the
  * requirement. This surface renders event media, so what it fetches, how it
  * filters, how it orders and how much it takes are the difference between a
@@ -79,18 +87,40 @@ export default async function GalleryPage() {
 
   return (
     <>
-      <PageShell width="wide">
-        <AnimatedSection>
-          <header className="pb-6">
-            <PageTitle>Gallery</PageTitle>
-            <p className="mt-1 text-sm text-muted">Moments from our events</p>
-          </header>
-        </AnimatedSection>
+      {/*
+        This wrapper is the other half of the pairing check E of
+        scripts/verify-conversion.mjs asserts in both directions: the files
+        declaring the leading-edge column clearance are exactly the files
+        mounting the responsive navigation form. This page and the work-surface
+        layout are the two; every other mount site reaches the navigation through
+        the phone-locked wrapper and has no column at any width.
 
-        <AnimatedSection delay={0.1}>
-          <GalleryClient groups={groups} />
-        </AnimatedSection>
-      </PageShell>
+        It carries an arbitrary-property utility at the md tier setting
+        --nav-inset-inline-start to fourteen rems, which the shell below reads
+        with its own inline-start padding. Since D-41.1-01 the stylesheet's
+        ambient value is zero at every width, so without this line the content
+        would slide UNDER the 224 px column from 768 px up — visible at first
+        look, which is why the failure direction that catches its absence is the
+        loud one.
+
+        The utility is written whole in the class list and is not spelled here:
+        Tailwind scans comments, cannot tell a description from a use, and an
+        abbreviated one emits a malformed rule and a build warning.
+      */}
+      <div className="md:[--nav-inset-inline-start:14rem]">
+        <PageShell width="wide">
+          <AnimatedSection>
+            <header className="pb-6">
+              <PageTitle>Gallery</PageTitle>
+              <p className="mt-1 text-sm text-muted">Moments from our events</p>
+            </header>
+          </AnimatedSection>
+
+          <AnimatedSection delay={0.1}>
+            <GalleryClient groups={groups} />
+          </AnimatedSection>
+        </PageShell>
+      </div>
 
       <AppNav
         role={role as UserRole | null}

@@ -2452,6 +2452,200 @@ const navigationBySurface = surfaces.map((s) => {
   return { ...s, layouts, modules, through, mounted: modules.length > 0 };
 });
 
+/* ── E3's read: the pairing — who DECLARES the column, and who MOUNTS the
+ *    responsive form ─────────────────────────────────────────────────────────
+ *
+ * **This is the half of check E that carries DEF-41-08, and it is the first
+ * form of it in six rounds that is not chasing a shape.**
+ *
+ * The five previous rounds each taught the matcher one more shape and watched
+ * the defect move: round 1 asserted on the constant and it moved to the render
+ * site; round 2 on the outer element, it moved to the inner; round 3 on the
+ * branch as a region, it moved to the branch's shape; round 4 on the file by
+ * digest, it moved to what the digest was computed from. A sixth shape was
+ * available and is deliberately not here.
+ *
+ * What changed is not the matcher, it is the ground. Until D-41.1-01 the
+ * stylesheet declared the column clearance AMBIENTLY at the tier boundary — a
+ * statement already false for eleven of the thirteen navigation mount sites and
+ * for every route that mounts no navigation at all — so any wrapper anywhere
+ * that READ the property received 224px whether it had a column or not, and the
+ * only defence was to enumerate the places a read could hide. With the ambient
+ * value emptied to zero, **reading is harmless**: a reader on a route with no
+ * column resolves to nothing. The property that decides the outcome is no longer
+ * who reads, it is **who declares** — and that is a closed set with one token in
+ * it.
+ *
+ * So the assertion is an equality between two sets, computed from two greps:
+ *
+ *     the files DECLARING the column clearance
+ *   = the files MOUNTING the responsive navigation form
+ *
+ * and it FAILS IN BOTH DIRECTIONS, deliberately, because the two failures are
+ * different accidents:
+ *
+ *   - declares, does not mount → the DEF-41-08 shape: a wrapper reserving a
+ *     column on a route that has none. Silent — nothing renders wrong on the
+ *     wrapper's own page, it is the leading edge of a surface nobody was looking
+ *     at that moves.
+ *   - mounts, does not declare → content sliding UNDER the column, visible at
+ *     first look. Loud, and the cheaper of the two to find without a gate — but
+ *     a gate that only caught the silent one would be trusted for a symmetry it
+ *     did not have.
+ *
+ * **The discriminator on the mounting side is textual and local.** `AppNav`
+ * carries both tiers; `MobileNav` is the thin wrapper that renders it locked to
+ * the phone form, so that the door keeps the bar at every width (D-41-21).
+ * A file therefore mounts the RESPONSIVE form when it imports `AppNav`
+ * **directly** and is not `MobileNav` itself — the single file that passes the
+ * phone form. Measured 2026-08-13 that yields exactly two files, which is the
+ * intended set; every other mount site reaches the navigation through the
+ * wrapper and is correctly absent from both halves of the equality.
+ *
+ * **The declaring side is assembled at run time and never written whole.** A
+ * complete utility written in this file would be a live Tailwind candidate and
+ * would ship a dead rule (DEF-41-01) — the reason `MAX_WIDTH_RE` and
+ * `MIN_HEIGHT_RE` above are patterns rather than literals, stated at their
+ * declarations. The token is built from `NAV_PROPERTIES`, so it cannot drift
+ * from the names the rest of check E reads, and the matched text is PRINTED
+ * rather than described: a reader of the run sees the actual value declared,
+ * which is the one thing a name-only assertion could not show them.
+ *
+ * **It reads live lines**, so a declaration inside a comment does not count and
+ * neither does an explanation of one. That is not a nicety here: both mount
+ * sites carry a comment naming this pairing, and a gate that counted its own
+ * documentation would be green on two files that had stopped declaring anything.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The inline axis, taken from `NAV_PROPERTIES` BY NAME and not by position.
+ *
+ * By position it would keep working after somebody reordered that array and
+ * would then be pairing on the block axis — which every surface legitimately
+ * reads, so the equality would be over thirteen files and would fail on all of
+ * them for a reason that is not theirs. A refusal is the right answer to a
+ * constant this check cannot find: nothing would have been measured.
+ */
+const COLUMN_CLEARANCE_PROPERTY = NAV_PROPERTIES.find((prop) => prop.endsWith('inline-start'));
+if (COLUMN_CLEARANCE_PROPERTY === undefined) {
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — NAV_PROPERTIES names no inline-axis property, so check E's\n` +
+      '       pairing has no token to key on:\n\n' +
+      NAV_PROPERTIES.map((prop) => `         ${prop}`).join('\n') +
+      '\n\n       The pairing asserts who declares the LEADING-EDGE column clearance. Without that\n' +
+      '       name it cannot tell a column from a bottom bar, and an equality computed on the\n' +
+      '       wrong axis would fail on every surface for a reason that is not theirs.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
+/**
+ * §2.1's tier boundary, as Tailwind spells the variant.
+ *
+ * The column exists at and above 48rem and nowhere below it, so a declaration at
+ * any OTHER variant — or at none — is a column reserved at a width where §3.2
+ * says there is not one. That is asserted separately below rather than being
+ * silently excluded by the match: a declaration this check could not see is a
+ * hole in the direction that prints a tick.
+ */
+const COLUMN_CLEARANCE_TIER = 'md';
+
+/**
+ * The needle, assembled — an opening bracket, the property name, a colon.
+ *
+ * Never a whole utility, for DEF-41-01's reason. The variant prefix is recovered
+ * by walking LEFT from the needle to the nearest token boundary, so the full
+ * token can be printed and its tier asserted without any part of it having been
+ * spelled here.
+ */
+const COLUMN_CLEARANCE_NEEDLE = `[${COLUMN_CLEARANCE_PROPERTY}:`;
+
+/** Where a class token can begin: whitespace, a quote, a brace, a backtick. */
+const TOKEN_BOUNDARY = new Set([' ', '\t', '"', "'", '`', '{', '(', '=', '>']);
+
+/** Every bracketed declaration of the column property, with its whole token. */
+const columnClearanceDeclarations = [];
+for (const rel of allSrcFiles) {
+  liveLines(rel).forEach((line, i) => {
+    let from = 0;
+    for (;;) {
+      const at = line.indexOf(COLUMN_CLEARANCE_NEEDLE, from);
+      if (at === -1) break;
+      from = at + 1;
+
+      let start = at;
+      while (start > 0 && !TOKEN_BOUNDARY.has(line[start - 1])) start -= 1;
+      const close = line.indexOf(']', at);
+      if (close === -1) continue;
+
+      const token = line.slice(start, close + 1);
+      const variants = token
+        .slice(0, token.indexOf('['))
+        .split(':')
+        .filter((part) => part !== '');
+
+      columnClearanceDeclarations.push({
+        rel,
+        lineNo: i + 1,
+        token,
+        variants,
+        atTier: variants.length === 1 && variants[0] === COLUMN_CLEARANCE_TIER,
+      });
+    }
+  });
+}
+
+const declarationsOffTier = columnClearanceDeclarations.filter((d) => !d.atTier);
+const filesDeclaringColumnClearance = [
+  ...new Set(columnClearanceDeclarations.filter((d) => d.atTier).map((d) => d.rel)),
+].sort();
+
+/**
+ * The two navigation modules this pairing distinguishes, named rather than
+ * indexed out of `NAV_MODULES` — and REFUSED on if either is not there.
+ *
+ * `NAV_MODULES` already refuses on a path that is not on disk. This is the other
+ * half of the same guard: a path that is on disk but no longer declared would
+ * leave this check pairing on a module the rest of check E does not consider
+ * navigation, and the two halves of one gate would be reading different trees.
+ */
+const RESPONSIVE_NAV_MODULE = 'src/components/layout/AppNav.tsx';
+const PHONE_LOCKED_NAV_WRAPPER = 'src/components/layout/MobileNav.tsx';
+
+const pairingModulesUndeclared = [RESPONSIVE_NAV_MODULE, PHONE_LOCKED_NAV_WRAPPER].filter(
+  (path) => !NAV_MODULE_PATHS.includes(path)
+);
+if (pairingModulesUndeclared.length > 0) {
+  refuse(
+    `${GATE_CANNOT_READ_MARKER} — check E's pairing names ${pairingModulesUndeclared.length} navigation module(s)\n` +
+      '       NAV_MODULES does not declare:\n\n' +
+      pairingModulesUndeclared.map((path) => `         ${path}`).join('\n') +
+      '\n\n       The pairing separates the RESPONSIVE mount from the PHONE-LOCKED one, and it can\n' +
+      '       only do that against the same two modules the rest of this check calls navigation.\n' +
+      '       If a module moved, it moves in NAV_MODULES and here in the same commit.\n\n' +
+      '       Nothing was measured.'
+  );
+}
+
+/** Does `rel` import `targetRel` in its own import clauses — not transitively? */
+function importsDirectly(rel, targetRel) {
+  for (const spec of localSpecifiers(rel)) {
+    if (resolveSpecifier(spec, rel) === targetRel) return true;
+  }
+  return false;
+}
+
+const filesMountingResponsiveForm = allSrcFiles
+  .filter((rel) => rel !== PHONE_LOCKED_NAV_WRAPPER && importsDirectly(rel, RESPONSIVE_NAV_MODULE))
+  .sort();
+
+const declaringWithoutMounting = filesDeclaringColumnClearance.filter(
+  (rel) => !filesMountingResponsiveForm.includes(rel)
+);
+const mountingWithoutDeclaring = filesMountingResponsiveForm.filter(
+  (rel) => !filesDeclaringColumnClearance.includes(rel)
+);
+
 /* ── print what was counted, before any verdict ───────────────────────────── */
 
 const allScanned = new Set();
@@ -3007,6 +3201,55 @@ console.log(
     '      above the page is climbed for modules and never opened for class strings.\n'
 );
 
+/* ── E3's report: the pairing, both sides printed before either verdict ───── */
+
+console.log(
+  `      the column clearance, paired — declared at the ${COLUMN_CLEARANCE_TIER} tier ` +
+    'against the responsive mount:\n'
+);
+console.log(
+  `          bracketed declaration(s) of the inline axis found : ${columnClearanceDeclarations.length}` +
+    `   (${allSrcFiles.length} file(s) read, comments blanked)`
+);
+for (const { rel, lineNo, token, atTier, variants } of columnClearanceDeclarations) {
+  const tier = atTier
+    ? ''
+    : `   <- NOT at the ${COLUMN_CLEARANCE_TIER} tier (variants: ${variants.join(':') || 'none'})`;
+  console.log(`              ${rel}:${lineNo}   ${token}${tier}`);
+}
+console.log(
+  `          file(s) DECLARING the column clearance            : ${filesDeclaringColumnClearance.length}`
+);
+for (const rel of filesDeclaringColumnClearance) console.log(`              ${rel}`);
+console.log(
+  `          file(s) MOUNTING the responsive form              : ${filesMountingResponsiveForm.length}` +
+    `   (import ${RESPONSIVE_NAV_MODULE.split('/').pop()} directly, and are not the phone-locked wrapper)`
+);
+for (const rel of filesMountingResponsiveForm) console.log(`              ${rel}`);
+console.log('');
+
+/*
+ * The boundary, in the sibling gate's vocabulary and printed where a reader of
+ * the RUN meets it — not only in the header, which is 41-GAP-REVIEW-5 WR-05's
+ * finding about this very gate. The last sentence matters most: it is the region
+ * this construction structurally cannot reach, and it is where a real, accepted
+ * loss lives.
+ */
+console.log(
+  '      What the pairing does NOT measure — UNMEASURED, not approved:\n' +
+    '          It reads TEXT in two files. It does not render, and it does not know what\n' +
+    '          clearance a route actually receives: a declaration it can see could sit on an\n' +
+    '          element that never wraps the content, and it would still be counted.\n' +
+    '          AND IT DOES NOT KNOW THAT THE TOAST SEES ZERO. ToastContainer is mounted at the\n' +
+    '          root, inside <body> as a sibling of the route tree — BELOW NEITHER of the files\n' +
+    '          above — so a custom property declared on either wrapper cannot reach it. That\n' +
+    '          container therefore pins to the inline start on every route, including the two\n' +
+    '          that do have a column. The overlap is measured and recorded as a LOSS in\n' +
+    '          src/components/toast/ToastContainer.tsx, with the condition that reopens the\n' +
+    '          alternative D-41.1-03 refused. A textual pairing cannot see any of that, and a\n' +
+    '          green here says nothing about it.\n'
+);
+
 if (propertiesInFocusRoot.length > 0) {
   failures.push('E');
   console.log(
@@ -3122,6 +3365,72 @@ if (mountsUnderTheFocusForm.length > 0) {
   );
 }
 
+/* ── E3's verdicts: the equality, failing in both directions ──────────────── */
+
+if (declaringWithoutMounting.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${declaringWithoutMounting.length} file(s) DECLARE the column clearance and mount no responsive navigation:\n`
+  );
+  for (const rel of declaringWithoutMounting) {
+    console.log(`       ${rel}`);
+    for (const d of columnClearanceDeclarations.filter((x) => x.rel === rel && x.atTier)) {
+      console.log(`         line ${d.lineNo}:  ${d.token}`);
+    }
+  }
+  console.log(
+    '\n       **THIS IS DEF-41-08\'s SHAPE**: a wrapper reserving 224px of leading edge on a\n' +
+      '       route that has no column to reserve it against. It is the SILENT direction — the\n' +
+      '       declaring file renders correctly on its own, and what moves is the leading edge of\n' +
+      '       every surface underneath it. Five rounds of this gate chased that defect by\n' +
+      "       learning the shapes it hid in; this asks the only question that decides it — does\n" +
+      '       this file actually mount the form that becomes a column?\n\n' +
+      '       Either the file mounts the responsive navigation and the pairing is wrong about\n' +
+      '       it, or the declaration comes out. The stylesheet default is 0 at every width\n' +
+      '       (D-41.1-01), so removing the declaration removes the column and nothing else.\n'
+  );
+}
+
+if (mountingWithoutDeclaring.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${mountingWithoutDeclaring.length} file(s) MOUNT the responsive navigation and declare no column clearance:\n`
+  );
+  for (const rel of mountingWithoutDeclaring) {
+    console.log(`       ${rel} — imports ${RESPONSIVE_NAV_MODULE} directly`);
+  }
+  console.log(
+    '\n       This is the LOUD direction: from 768px up the navigation occupies 224px at the\n' +
+      '       leading edge and the content of this surface slides underneath it, visible at\n' +
+      '       first look. Since D-41.1-01 the clearance is no longer ambient — nothing above a\n' +
+      '       page declares it any more — so a file that takes the responsive form and forgets\n' +
+      '       the declaration gets no clearance at all rather than a wrong one.\n\n' +
+      '       Either this file declares the clearance on the wrapper around its own content, at\n' +
+      `       the ${COLUMN_CLEARANCE_TIER} tier, or it mounts the phone-locked wrapper instead and keeps the bar\n` +
+      '       at every width — which is what the door does, by decision (D-41-21, D-41.1-06).\n'
+  );
+}
+
+if (declarationsOffTier.length > 0) {
+  if (!failures.includes('E')) failures.push('E');
+  console.log(
+    `  ✗ E  ${declarationsOffTier.length} declaration(s) of the column clearance sit at the wrong tier:\n`
+  );
+  for (const { rel, lineNo, token, variants } of declarationsOffTier) {
+    console.log(`       ${rel}:${lineNo}   ${token}`);
+    console.log(`         variants: ${variants.join(':') || '(none — unconditional)'}`);
+  }
+  console.log(
+    '\n       The column exists at and above the tier boundary and NOWHERE BELOW IT (§3.2). A\n' +
+      '       declaration at another variant — or at none — reserves 224px of leading edge on a\n' +
+      '       phone, where the navigation is a bar at the bottom and there is nothing at the\n' +
+      '       side to clear.\n\n' +
+      '       This assertion exists so the pairing above cannot be satisfied by a declaration\n' +
+      '       it declined to look at: a match narrowed to one tier would have counted an\n' +
+      '       untiered declaration as ABSENT, which is the direction that prints a tick.\n'
+  );
+}
+
 if (!failures.includes('E')) {
   console.log(
     `  ✓ E  the focus branch has the one frozen shape (${focusWindow.lineCount} line(s), at ` +
@@ -3129,7 +3438,10 @@ if (!failures.includes('E')) {
       '       no line of it reads either navigation property, nor does the focus root, while the\n' +
       `       shell still reads both OUTSIDE that window, and all ${navigationBySurface.length} converted surface(s)\n` +
       '       declare the width their mounted navigation calls for — focus if and only if none\n' +
-      '       is mounted\n'
+      `       is mounted; and the ${filesDeclaringColumnClearance.length} file(s) declaring the column clearance at the ` +
+      `${COLUMN_CLEARANCE_TIER} tier are\n       EXACTLY the ${filesMountingResponsiveForm.length} file(s) mounting the responsive navigation form:\n\n` +
+      filesDeclaringColumnClearance.map((rel) => `           ${rel}`).join('\n') +
+      '\n'
   );
 }
 

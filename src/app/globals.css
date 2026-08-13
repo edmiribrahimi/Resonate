@@ -275,11 +275,46 @@
    * scale above: declared here, exposed nowhere, and verify-tokens.mjs check D
    * holds it — a declared name with no utility must have ZERO consumers.
    *
-   * DECLARED AT TOP LEVEL EVEN THOUGH THE MEDIA QUERY BELOW REDECLARES THEM,
-   * and that is not belt-and-braces. `findBlock()` in scripts/verify-tokens.mjs
-   * returns only the FIRST `:root` block, so a media-query-only declaration
-   * referenced anywhere in this file makes check A go red on a CORRECT file.
-   * That is 40-REVIEW.md WR-02's exact shape and Phase 40 paid for it once.
+   * DECLARED AT TOP LEVEL — and as of D-41.1-01 the two names are declared here
+   * for two different reasons, so they are given separately.
+   *
+   * `--nav-inset-block-end` is redeclared by the media query below, and its
+   * top-level declaration is not belt-and-braces: `findBlock()` in
+   * scripts/verify-tokens.mjs returns only the FIRST `:root` block, so a
+   * media-query-only declaration referenced anywhere in this file makes check A
+   * go red on a CORRECT file. That is 40-REVIEW.md WR-02's exact shape and
+   * Phase 40 paid for it once.
+   *
+   * ── `--nav-inset-inline-start` WAS ALSO REDECLARED BELOW, AND IS NOT ────────
+   *
+   * SUPERSEDED, and the superseded sentence is kept beside the measurement that
+   * superseded it. The media query below used to set this name to fourteen rems,
+   * on the reading that at and above the tier boundary the navigation column
+   * holds the leading edge of every surface.
+   *
+   * **Measured 2026-08-13 (D-41.1-01): that statement was already false for
+   * eleven of the thirteen navigation mount sites**, and false for every route
+   * that mounts no navigation at all. Only two sites mount the responsive form
+   * that becomes a column — the work-surface layout and the public gallery. The
+   * other eleven reach the navigation through the phone-locked wrapper, which
+   * renders the bar at EVERY width and never a column. Nothing broke visibly
+   * only because those eleven hard-code their own bottom clearance and never
+   * read this name; DEF-41-08 was the first place the false default produced a
+   * visible effect, not a hole that had just opened.
+   *
+   * **The property that holds now: the inline axis defaults to nothing, and a
+   * wrapper that reads it on a route with no navigation resolves to nothing.**
+   * The two sites that do have a column declare the fourteen rems themselves, at
+   * the same tier, on the wrapper around their own content — so the clearance is
+   * structurally unable to reach a route that does not mount the responsive
+   * form. That pairing is asserted in BOTH directions by check E of
+   * scripts/verify-conversion.mjs; it is not a convention.
+   *
+   * **The block axis deliberately did not move** (D-41.1-02). The bar IS mounted
+   * at phone width on twelve of the thirteen sites, so the ambient value is
+   * approximately true where it is read, and moving it would change the dialog's
+   * sheet padding and the toast's bottom offset on surfaces this phase does not
+   * convert — to fix no measured defect.
    */
   --nav-inset-block-end: calc(5rem + env(safe-area-inset-bottom));
   --nav-inset-inline-start: 0px;
@@ -289,18 +324,27 @@
  * The one boundary the navigation clearance moves at (41-UI-SPEC.md §3.2).
  *
  * 48rem is the `md` tier boundary of §2.1 — Tailwind's own default, read from
- * node_modules/tailwindcss/theme.css, and the portrait-tablet edge exactly.
- * 14rem is 224px, the side column's width from §8.2. Both numbers are written
- * with their reference rather than as bare values, because a bare 14rem here
- * and a bare `w-56` in the nav component are two authors of one measurement.
+ * node_modules/tailwindcss/theme.css, and the portrait-tablet edge exactly. It
+ * is written with its reference rather than as a bare value, because a bare
+ * 48rem here and the same boundary named in a component are two authors of one
+ * measurement.
  *
- * At and above this line the bar is gone from the bottom edge and the column
- * holds the leading edge — so the two swap, they do not both grow.
+ * SUPERSEDED, kept beside its replacement: this block also used to set the
+ * inline axis to fourteen rems — 224px, the column's width from §8.2 — and the
+ * sentence that justified it read *"the two swap, they do not both grow."*
+ * They still swap; they just do not swap HERE. Eleven of the thirteen mount
+ * sites have no column at any width, so declaring one at this tier for every
+ * route was a claim about eleven surfaces that was never true of them
+ * (D-41.1-01, and the docblock above carries the measurement).
+ *
+ * What survives in this block is the half that IS true of every site: at and
+ * above this line the bar leaves the bottom edge. The leading edge is claimed
+ * at this same tier by the two sites that actually have a column, on the
+ * wrapper around their own content — and by nothing else.
  */
 @media (min-width: 48rem) {
   :root {
     --nav-inset-block-end: 0px;
-    --nav-inset-inline-start: 14rem;
   }
 }
 
