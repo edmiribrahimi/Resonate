@@ -832,10 +832,10 @@ Plans:
 
 **Wave 5** *(the tables and the dashboards)*
 
-- [ ] 41.1-12-PLAN.md — /admin/analytics/members: the member-spend table and the referral chain onto DataTable
-- [ ] 41.1-13-PLAN.md — /admin/events/[id]/analytics: the drink sales table, eight components, the heaviest placeholder
-- [ ] 41.1-14-PLAN.md — /admin/analytics, /analytics/compare, /members/growth and their three placeholders
-- [ ] 41.1-15-PLAN.md — /admin/finance: the transaction list, its two renderings, its status collapse
+- [x] 41.1-12-PLAN.md — /admin/analytics/members: the member-spend table and the referral chain onto DataTable
+- [x] 41.1-13-PLAN.md — /admin/events/[id]/analytics: the drink sales table, eight components, the heaviest placeholder
+- [x] 41.1-14-PLAN.md — /admin/analytics, /analytics/compare, /members/growth and their three placeholders
+- [x] 41.1-15-PLAN.md — /admin/finance: the transaction list, its two renderings, its status collapse
 
 **Wave 6** *(blocked on Wave 5)*
 
