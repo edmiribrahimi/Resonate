@@ -349,8 +349,33 @@ const BLOCK_COMMENT_CLOSE = '*' + '/';
  */
 const liveLinesCache = new Map();
 
-/** How many non-blank lines the shared stripper blanked, across this run. */
+/**
+ * TWO counters, not one, and they are printed BELOW the walk — WR-02.
+ *
+ * **The defect this replaces.** There was one counter and it was printed before
+ * check B walked `src/`. At that point exactly one file had been read — the
+ * primitive — so the number described `Dialog.tsx` and not the run. A counter
+ * that cannot report a blindness spike is the one thing a counter like this is
+ * for, and in a repository with **no error tracking** a printed number is one of
+ * the few observables a gate has at all (`meta-gates.md`). This one observed the
+ * wrong thing.
+ *
+ * **Why two numbers rather than one.** They are the two directions of the
+ * stripper, and collapsing them hides whichever one moved:
+ *
+ *   - **lines blanked whole** — the line was comment to its end. This is
+ *     DEF-41-02's direction: prose quoting a class string must cost nothing. A
+ *     spike here is a gate seeing LESS of the tree.
+ *   - **leading spans consumed** — a comment ended and live code continued on the
+ *     same line, so the span became spaces and the code stayed visible. This is
+ *     CR-01 and CR-02's direction, and it is the number that would have moved
+ *     when an overlay behind a leading closed comment stopped being invisible.
+ *
+ * Both are measured over the files THIS RUN opened, and that count is printed
+ * beside them: a count without its denominator is not a measurement.
+ */
 let commentLinesBlanked = 0;
+let commentSpansStripped = 0;
 
 /**
  * The refusal every consumer of the shared stripper carries (T-41.1-03).
@@ -380,7 +405,19 @@ function liveLines(relPath) {
   if (unterminated !== null) refuseUnterminated(relPath, unterminated);
 
   for (let i = 0; i < raw.length; i += 1) {
-    if (lines[i] === '' && raw[i].trim() !== '') commentLinesBlanked += 1;
+    const rawLine = raw[i].split('\r').join('');
+    if (rawLine.trim() === '') continue;
+    if (lines[i] === '') {
+      commentLinesBlanked += 1;
+      continue;
+    }
+    /*
+     * Live code survived on a line the stripper touched: a LEADING SPAN was
+     * consumed and replaced by the same number of spaces. Compared against the
+     * carriage-return-stripped raw line so a CRLF file does not read as a
+     * stripped span on every line of it.
+     */
+    if (lines[i] !== rawLine) commentSpansStripped += 1;
   }
 
   liveLinesCache.set(relPath, lines);
@@ -832,112 +869,224 @@ function isOverlayLine(line) {
  * reddened a correct file at the door — and, on the other side of the same coin,
  * three probes of this shape passed for a whole round while the printed sentence
  * promised a family the regex did not match.
+ *
+ * ── EVERY `line` IS A LINE ARRAY, AND THAT IS WR-01's FIX ────────────────────
+ *
+ * Until `41.1-02` each row's `line` was a single STRING fed through
+ * `stripLeadingComments` alone, under a comment claiming it was *"the path a
+ * real line takes"*. **It was not.** Check B reads `liveLines`, and the
+ * multi-line state — the thing that decides whether a comment's body is prose or
+ * code, and the thing CR-01 and CR-02 both live in — exists only there. A
+ * self-check built on the single-line function is not weak at seeing that state:
+ * it is **structurally unable** to reach it.
+ *
+ * So every row now carries an ARRAY of raw lines and goes through
+ * `liveLinesFrom`, which is exactly the function `liveLines` calls on a real
+ * file. A row matches when ANY of its live lines matches — which is precisely
+ * how `shellShapes` decides a file carries a shell.
+ *
+ * **The four rows at the end were INEXPRESSIBLE before the array**, and that is
+ * the evidence WR-01 is closed rather than merely described. They come in two
+ * pairs, and the pairing is the point:
+ *
+ *   - **CR-01** — a multi-line JSX comment whose TERMINATING line carries a live
+ *     overlay after the closer. Expected **match**: span-stripping resumes after
+ *     the closer instead of pushing an empty line.
+ *   - **CR-02** — a JSX comment whose closer carries whitespace before the
+ *     closing brace, with a live overlay on a later line. Expected **match**: the
+ *     closer is a regular expression, not the exact three-character token, so the
+ *     state does not run to end of file.
+ *   - **and each of those two has its CONTROL**, in the opposite direction: the
+ *     same multi-line comment with the three parts quoted INSIDE the body and no
+ *     live code after the closer. Expected **no match**, because prose must still
+ *     cost nothing (DEF-41-02).
+ *
+ * The controls are not decoration and they are not symmetry for its own sake.
+ * **A `match` expectation cannot discriminate against a stripper that sees too
+ * much code** — a blind stripper matches too, for the wrong reason, and the row
+ * goes green. The two `no match` controls are the rows that actually go red when
+ * the multi-line state is taken away, which is what makes this table able to
+ * report the defect it exists for rather than merely to describe it.
  */
 const MATCHER_PROBES = [
   {
     verdict: 'no match',
     label: 'the positioning utility at the end of a longer word',
-    line:
+    line: [
       '<div className="pre' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]">',
+    ],
     expected: false,
   },
   {
     verdict: 'match',
     label: 'the three parts at a bracketed rung other than the incumbents\'',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    line: [
+      '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[70]">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a two-digit numeric rung',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">',
+    line: ['<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '50">'],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a SINGLE-DIGIT rung (WR-03)',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">',
+    line: ['<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '0">'],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at the auto KEYWORD rung (WR-03)',
-    line: '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    line: [
+      '<div className="' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + 'auto">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'the three parts at a NEGATIVE rung (WR-05)',
-    line:
+    line: [
       '<div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      '-' +
-      RUNG_PREFIX +
-      '10">',
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        '-' +
+        RUNG_PREFIX +
+        '10">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'an overlay behind a leading CLOSED JSX comment (41-29, CR-02)',
-    line:
+    line: [
       JSX_COMMENT_OPEN +
-      ' the lid ' +
-      JSX_COMMENT_CLOSE +
-      ' <div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]">',
+        ' the lid ' +
+        JSX_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
     expected: true,
   },
   {
     verdict: 'match',
     label: 'an overlay behind a leading CLOSED block comment (41-29)',
-    line:
+    line: [
       '/' +
-      '*' +
-      ' the lid ' +
-      BLOCK_COMMENT_CLOSE +
-      ' <div className="' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]">',
+        '*' +
+        ' the lid ' +
+        BLOCK_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
     expected: true,
   },
   {
     verdict: 'no match',
     label: 'a FULL-LINE JSX comment quoting the three parts (DEF-41-02)',
-    line:
+    line: [
       JSX_COMMENT_OPEN +
-      ' the shell is ' +
-      POSITION_UTILITY +
-      ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60] ' +
-      JSX_COMMENT_CLOSE,
+        ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60] ' +
+        JSX_COMMENT_CLOSE,
+    ],
     expected: false,
   },
   {
     verdict: 'no match',
     label: 'a docblock CONTINUATION line quoting the three parts (DEF-41-02)',
-    line:
-      '* the shell is ' +
-      POSITION_UTILITY +
+    line: [
+      '* the shell is ' + POSITION_UTILITY + ' ' + INSET_UTILITY + ' ' + RUNG_PREFIX + '[60]',
+    ],
+    expected: false,
+  },
+
+  // ── the four MULTI-LINE rows (WR-01). None of these can be written as a single
+  // string, which is why they did not exist before `liveLinesFrom` took an array.
+  {
+    verdict: 'match',
+    label: 'MULTI-LINE: an overlay on the TERMINATING line of a JSX comment (CR-01)',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, opened here and',
+      ' terminated here ' +
+        JSX_COMMENT_CLOSE +
+        ' <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
+    expected: true,
+  },
+  {
+    verdict: 'no match',
+    label: 'MULTI-LINE control: the same comment quoting the three parts in its BODY',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, opened here and',
+      ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60], terminated here ' +
+        JSX_COMMENT_CLOSE,
+    ],
+    expected: false,
+  },
+  {
+    verdict: 'match',
+    label: 'MULTI-LINE: a closer with WHITESPACE before the brace, overlay after (CR-02)',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, closed with a space before its brace',
       ' ' +
-      INSET_UTILITY +
-      ' ' +
-      RUNG_PREFIX +
-      '[60]',
+        BLOCK_COMMENT_CLOSE +
+        ' } <div className="' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60]">',
+    ],
+    expected: true,
+  },
+  {
+    verdict: 'no match',
+    label: 'MULTI-LINE control: the same spaced closer, three parts quoted in the BODY',
+    line: [
+      JSX_COMMENT_OPEN + ' the lid, closed with a space before its brace, and',
+      ' the shell is ' +
+        POSITION_UTILITY +
+        ' ' +
+        INSET_UTILITY +
+        ' ' +
+        RUNG_PREFIX +
+        '[60] ' +
+        BLOCK_COMMENT_CLOSE +
+        ' }',
+    ],
     expected: false,
   },
 ];
@@ -1383,16 +1532,44 @@ if (unmeasurableRemaining.length > 0) {
  *
  * **And half was still what it tested until D-41.1-07.** WR-01: the probe used
  * to go through the single-line function alone, which is structurally unable to
- * exercise the multi-line state that `liveLines` carries. It now goes through
- * `liveLinesFrom`, which is the whole pipeline for a one-line file — the fix
- * that made `liveLinesFrom` take an ARRAY rather than a string. Widening the
- * probe rows themselves to multi-line shapes is `41.1-02`'s, which owns this
- * file in wave 1.
+ * exercise the multi-line state that `liveLines` carries. It went through
+ * `liveLinesFrom` from 41.1-01 — but on a one-line array, which is the whole
+ * pipeline for a one-line file and still not the multi-line state.
+ *
+ * **41.1-02 closes it.** Every probe row is now a LINE ARRAY, four of them carry
+ * more than one line, and a row matches when ANY of its live lines matches —
+ * which is exactly how `shellShapes` decides a real file carries a shell. The
+ * probe now takes the path a real line takes, in the only sense of that phrase
+ * that can be checked.
  */
-const probeRows = MATCHER_PROBES.map((probe) => ({
-  ...probe,
-  measured: isOverlayLine(liveLinesFrom([probe.line]).lines[0]) ? 'match' : 'no match',
-}));
+const probeRows = MATCHER_PROBES.map((probe) => {
+  const { lines, unterminated } = liveLinesFrom(probe.line);
+  return {
+    ...probe,
+    unterminated,
+    measured: lines.some((line) => isOverlayLine(line)) ? 'match' : 'no match',
+  };
+});
+
+/*
+ * A probe whose own comment never closes is a probe nobody can read a verdict
+ * from: every line after the opener is blanked, so the row would report `no
+ * match` for a reason that has nothing to do with the matcher. Raised as a
+ * refusal rather than a failure, because it says the SELF-CHECK is malformed —
+ * and a malformed self-check has measured nothing about this tree.
+ */
+const malformedProbes = probeRows.filter((row) => row.unterminated !== null);
+
+if (malformedProbes.length > 0) {
+  refuse(
+    `${malformedProbes.length} of ${MATCHER_PROBES.length} matcher probe(s) open a comment that\n` +
+      '       never closes, so their verdicts describe the probe rather than the matcher:\n\n       ' +
+      malformedProbes
+        .map((row) => `${row.label}\n         unterminated ${row.unterminated.kind} comment opened on probe line ${row.unterminated.lineNo}`)
+        .join('\n\n       ') +
+      '\n\n       NOTHING WAS MEASURED — no check-B verdict follows.'
+  );
+}
 
 const probeDisagreements = probeRows.filter((row) => row.measured !== row.verdict);
 
@@ -1437,7 +1614,12 @@ const signatureRows = SIGNATURE.map(([label, needle, expected]) => ({
   measured: countNeedle(primitiveLines, needle),
 }));
 
-console.log(`  lines blanked as comments     : ${commentLinesBlanked}   (DEF-41-02, D-41.1-07)\n`);
+/*
+ * The comment counters used to print HERE, and here is before check B walks
+ * `src/` — so they described the one file check A had just read. They are two
+ * numbers now and they print below the walk, at the end of the run. See the
+ * counters' own docblock (WR-02).
+ */
 
 console.log('  declared exceptions: 2\n');
 for (const [path, reason] of DECLARED_EXCEPTIONS) {
@@ -1684,6 +1866,27 @@ if (toastOffenders.length > 0) {
       '       neither does the primitive\n'
   );
 }
+
+/* ── comment hygiene, measured over the run and printed BELOW it (WR-02) ───── */
+
+console.log('');
+console.log(
+  `  comment hygiene — measured over the ${liveLinesCache.size} file(s) this run actually opened,\n` +
+    `  out of ${files.length} walked (D-41.1-07, one shared stripper):\n`
+);
+console.log(
+  `      lines blanked whole           : ${commentLinesBlanked}   (DEF-41-02 — prose quoting a class string costs nothing)`
+);
+console.log(
+  `      leading spans consumed        : ${commentSpansStripped}   (CR-01, CR-02 — live code kept on a comment's line)`
+);
+console.log(
+  '\n      Printed HERE, below the walk, and not above it: until 41.1-02 one counter printed\n' +
+    '      before check B opened a single file, so it described the primitive and not the run\n' +
+    '      and could not report a blindness spike — which is the only thing a counter like this\n' +
+    '      is for. This project has NO ERROR TRACKING, so a printed number is one of the few\n' +
+    '      observables a gate has at all.\n'
+);
 
 /* ── verdict ──────────────────────────────────────────────────────────────── */
 
