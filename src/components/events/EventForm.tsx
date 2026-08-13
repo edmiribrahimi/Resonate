@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import AutocompleteTagInput from "@/components/events/AutocompleteTagInput";
 import AutocompleteInput, { type AutocompleteOption } from "@/components/ui/AutocompleteInput";
 import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Chip";
+import { Card } from "@/components/ui/Card";
+import { Switch } from "@/components/ui/Switch";
 import CreateArtistModal from "@/components/artists/CreateArtistModal";
 import VenueProfilePrompt from "@/components/venues/VenueProfilePrompt";
 import CreateVenueModal from "@/components/venues/CreateVenueModal";
@@ -633,39 +637,68 @@ export default function EventForm({
     }
   }
 
+  /**
+   * The secrecy control — and the one place in this file where a conversion has
+   * to prove a negative.
+   *
+   * ── What changed, and what deliberately did not ─────────────────────────────
+   *
+   * The hand-written track is now the `Switch` primitive. That is a **target**
+   * change, not a **guard** change: the drawn track keeps its 24px size and
+   * gains the 44×44 hit area §6.1 requires, and the focus expression is imported
+   * rather than suppressed, which is what the incumbent's own class string did.
+   *
+   * **A larger hit area is a fix for a mis-hit, not an invitation.** The three
+   * properties that decide how hard this is to trip are unchanged, and they are
+   * listed rather than assumed:
+   *
+   *  1. **Its default.** `defaultSubEvent` sets `venue_secret: false` and the
+   *     event-level state falls back to `false`. Still false, on both paths.
+   *  2. **What stands between the operator and the change.** Nothing did, and
+   *     nothing does: this control has never carried a confirmation, and adding
+   *     one here would be a behaviour change inside a conversion commit. It is
+   *     reported instead.
+   *  3. **Its position.** The control sits AFTER the venue field and BEFORE the
+   *     fields it gates, in both blocks. Unchanged — see the venue field's own
+   *     comment. Nothing in this file moves an address earlier in the reading
+   *     order, and the only component that renders one is not opened here.
+   *
+   * The row already names the thing being switched, so the control's own label
+   * is hidden from sight and kept for assistive technology — `Switch.tsx`'s
+   * `labelHidden`, and the case its docblock says it exists for. The name is
+   * built from the row's own words so two switches on one page are told apart
+   * by somebody who cannot see which row they are in.
+   *
+   * `id` is a parameter because this renders once per night plus once for the
+   * single-night block, and a duplicated id would bind a label to the wrong
+   * control — silently, and only for the reader who depends on it.
+   */
   function renderVenueSecretToggle(
+    id: string,
     value: boolean,
     onToggle: () => void,
     label?: string
   ) {
+    const name = label ?? "Secret Venue";
     return (
-      <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+      <Card className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-foreground">
-            {label ?? "Secret Venue"}
-          </p>
+          <p className="text-sm font-semibold text-ink">{name}</p>
           {value && (
-            <p className="text-xs text-muted mt-0.5">
+            <p className="mt-1 text-xs text-muted">
               Venue will be hidden until members purchase a ticket or a configurable time before event
             </p>
           )}
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={value}
-          onClick={onToggle}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
-            value ? "bg-accent" : "bg-card-border"
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              value ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
-      </div>
+        <Switch
+          id={id}
+          label={name}
+          labelHidden
+          checked={value}
+          onChange={onToggle}
+          className="shrink-0"
+        />
+      </Card>
     );
   }
 
@@ -874,18 +907,43 @@ export default function EventForm({
   ) {
     const idPrefix = `sub-${index}`;
     return (
-      <div key={index} className="space-y-4 rounded-xl border border-card-border bg-card/50 p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">
+      <Card key={index} className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          {/*
+            The section-heading class string, written out rather than imported.
+            D-41-11: the component is a convenience and a surface that writes the
+            string is equally converted — and the string is written here without
+            the component's own bottom margin, which would push a flex row's
+            baseline apart for nothing.
+          */}
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
             Sub-Event {index + 1}
           </h3>
-          <button
-            type="button"
+          {/*
+            Remove — the SAME visual weight it had, on a 44px target.
+
+            Not the `destructive` variant: that rung is a fill, and a fill here
+            would make the control that deletes a night LOUDER than the one that
+            adds one. The removal is real — `updateEvent` deletes the nights
+            taken off this form — and a night can carry a series progressivo that
+            is already on a poster, so the safe direction for this control is
+            "no more inviting than before", which is what the bordered rung is.
+            The red tone is not replaced: D-41.1-25 refuses outcome tones and
+            D-41.1-29 measured that the palette could not carry a distinguishable
+            pair anyway. The word is the channel.
+
+            **That this control has no confirmation at all is a finding, not a
+            thing fixed here** — adding one would be a behaviour change inside a
+            conversion commit.
+          */}
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => removeSubEvent(index)}
-            className="rounded-full border border-red-500/30 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+            className="shrink-0"
           >
             Remove
-          </button>
+          </Button>
         </div>
 
         {/*
@@ -1032,6 +1090,7 @@ export default function EventForm({
 
         {/* Venue Secret toggle */}
         {renderVenueSecretToggle(
+          `${idPrefix}-venue-secret`,
           subEvent.venue_secret,
           () => {
             setSubEvents((prev) =>
@@ -1078,39 +1137,32 @@ export default function EventForm({
             />
 
             {/* Reveal on Purchase toggle */}
-            <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+            <Card className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-semibold text-ink">
                   Reveal on Ticket Purchase
                 </p>
-                <p className="text-xs text-muted mt-0.5">
+                <p className="mt-1 text-xs text-muted">
                   {subEvent.venue_reveal_on_purchase
                     ? "Ticket holders see the venue immediately"
                     : "Ticket holders see the venue only when the reveal timer triggers"}
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={subEvent.venue_reveal_on_purchase}
-                onClick={() => {
+              <Switch
+                id={`${idPrefix}-reveal-on-purchase`}
+                label="Reveal on Ticket Purchase"
+                labelHidden
+                checked={subEvent.venue_reveal_on_purchase}
+                onChange={() => {
                   setSubEvents((prev) =>
                     prev.map((se, i) =>
                       i === index ? { ...se, venue_reveal_on_purchase: !se.venue_reveal_on_purchase } : se
                     )
                   );
                 }}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
-                  subEvent.venue_reveal_on_purchase ? "bg-accent" : "bg-card-border"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    subEvent.venue_reveal_on_purchase ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
+                className="shrink-0"
+              />
+            </Card>
           </div>
         )}
 
@@ -1171,7 +1223,7 @@ export default function EventForm({
           placeholder="Leave empty for unlimited"
           min={1}
         />
-      </div>
+      </Card>
     );
   }
 
@@ -1195,28 +1247,39 @@ export default function EventForm({
     if (allLineup.size === 0 && venuesBySubEvent.length === 0) return null;
 
     return (
-      <div className="rounded-xl border border-card-border bg-card/30 p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-muted uppercase tracking-wider">
+      <Card className="space-y-3">
+        <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
           Aggregated View (read-only)
         </h3>
         {allLineup.size > 0 && (
           <div>
-            <p className="text-xs text-muted mb-1">Lineup (all sub-events)</p>
+            <p className="mb-1 text-xs text-muted">Lineup (all sub-events)</p>
             <div className="flex flex-wrap gap-1.5">
+              {/*
+                A mark that names a thing and cannot be operated is a badge, not
+                a chip (§8.5). These are read, never pressed — so no 44px floor
+                applies to them, and giving them one would make a read-only
+                summary look like a row of controls.
+              */}
               {[...allLineup].sort().map((a) => (
-                <span key={a} className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent">
-                  {a}
-                </span>
+                <Badge key={a}>{a}</Badge>
               ))}
             </div>
           </div>
         )}
         {venuesBySubEvent.length > 0 && (
           <div>
-            <p className="text-xs text-muted mb-1">Venues</p>
+            <p className="mb-1 text-xs text-muted">Venues</p>
             <div className="space-y-1">
+              {/*
+                THE CONDITIONAL THAT DECIDES WHETHER A VENUE NAME IS DRAWN, and
+                it is byte-identical to what it was. It reads the night's own
+                secrecy flag and prints the words `Secret Venue` in place of the
+                name — a `venue-secrecy.md` decision wearing a summary's clothes.
+                Nothing about this line, its branches or its order moved.
+              */}
               {venuesBySubEvent.map((v, i) => (
-                <p key={i} className="text-xs text-foreground">
+                <p key={i} className="text-xs text-ink">
                   <span className="text-muted">{v.title}:</span>{" "}
                   {v.venueSecret ? "Secret Venue" : v.venueName}
                 </p>
@@ -1224,16 +1287,34 @@ export default function EventForm({
             </div>
           </div>
         )}
-      </div>
+      </Card>
     );
   }
 
   return (
     <>
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/*
+        The form's refusal region — §11, and `meta-gates.md`'s zero-silent-
+        failures rule.
+
+        `role="alert"` is the addition, and it is the contract rather than a
+        nicety: this region is the only place a refused save is announced, and
+        without the role it is announced to nobody who is not looking at it.
+
+        The sentence it carries is NOT collapsed and is not made generic. Three
+        distinct causes reach it — a network or upload failure, a named refusal
+        from the action, and a refusal that arrived with no reason at all — and
+        each keeps its own words, which is why `handleSubmit` sets the category
+        before the sentence. This repository already records what the other
+        shape costs: the newsletter form's one message for every failure.
+      */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-          <p className="text-sm text-red-400">{error}</p>
+        <div
+          role="alert"
+          className="rounded-2xl border border-sem-crit/30 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm text-sem-crit">{error}</p>
         </div>
       )}
 
@@ -1264,8 +1345,10 @@ export default function EventForm({
 
       {/* Event details (shown when no sub-events) */}
       {subEvents.length === 0 && (
-        <div className="space-y-4 rounded-xl border border-card-border bg-card/50 p-4">
-          <h3 className="text-sm font-semibold text-foreground">Event Details</h3>
+        <Card className="space-y-4">
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
+            Event Details
+          </h3>
 
           {/* Date */}
           <Input
@@ -1357,6 +1440,7 @@ export default function EventForm({
 
           {/* Secret Venue toggle */}
           {renderVenueSecretToggle(
+            "main-venue-secret",
             venueSecret,
             () => setVenueSecret(!venueSecret)
           )}
@@ -1412,33 +1496,26 @@ export default function EventForm({
               />
 
               {/* Reveal on Purchase toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3">
+              <Card className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-semibold text-ink">
                     Reveal on Ticket Purchase
                   </p>
-                  <p className="text-xs text-muted mt-0.5">
+                  <p className="mt-1 text-xs text-muted">
                     {mainVenueRevealOnPurchase
                       ? "Ticket holders see the venue immediately"
                       : "Ticket holders see the venue only when the reveal timer triggers"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={mainVenueRevealOnPurchase}
-                  onClick={() => setMainVenueRevealOnPurchase(!mainVenueRevealOnPurchase)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-background ${
-                    mainVenueRevealOnPurchase ? "bg-accent" : "bg-card-border"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      mainVenueRevealOnPurchase ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+                <Switch
+                  id="main-reveal-on-purchase"
+                  label="Reveal on Ticket Purchase"
+                  labelHidden
+                  checked={mainVenueRevealOnPurchase}
+                  onChange={() => setMainVenueRevealOnPurchase(!mainVenueRevealOnPurchase)}
+                  className="shrink-0"
+                />
+              </Card>
             </div>
           )}
 
@@ -1464,7 +1541,7 @@ export default function EventForm({
             placeholder="Leave empty for unlimited"
             min={1}
           />
-        </div>
+        </Card>
       )}
 
       {/* Secret venue toggle and hint/reveal fields are now inside the Event Details card, right after the venue field */}
@@ -1511,21 +1588,36 @@ export default function EventForm({
         >
           Cover Image
         </label>
+        {/*
+          ── The preview LOST ITS WIDTH CAP, and that is recorded, not hidden ──
+
+          The wrapper carried a container maximum, and D-41-06 says a maximum is
+          the shell's and never a page's. It is NOT a typographic measure — no
+          text reads across it — so D-41.1-27's declared-measure mechanism does
+          not apply and inventing an arbitrary width to satisfy a grep would be
+          moving a number without moving the work.
+
+          So the cap is dropped and the preview is as wide as the shell lets it
+          be, which is `Card.tsx`'s own sentence. **The consequence is visible**:
+          on a desktop the thumbnail becomes a wide 160px-tall strip instead of a
+          320px card. It is reversible, it changes no behaviour, and it is a row
+          in this plan's human pass rather than something a person meets by
+          surprise.
+        */}
         {imagePreview && (
-          <div className="relative w-full max-w-xs">
+          <div className="relative w-full">
             <img
               src={imagePreview}
               alt="Cover preview"
-              className="rounded-xl border border-card-border object-cover w-full h-40"
+              className="h-40 w-full rounded-xl border border-line object-cover"
             />
-            <button
-              type="button"
+            <IconButton
               onClick={clearImage}
-              className="absolute top-2 right-2 rounded-full bg-background/80 p-1.5 text-foreground hover:bg-background transition-colors"
               aria-label="Remove image"
+              className="absolute top-2 right-2 bg-ground/80"
             >
               <svg
-                className="h-4 w-4"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1537,7 +1629,7 @@ export default function EventForm({
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-            </button>
+            </IconButton>
           </div>
         )}
         {/*
@@ -1577,29 +1669,43 @@ export default function EventForm({
 
       {/* Sub-Events */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Sub-Events</h2>
-          <button
-            type="button"
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
+            Sub-Events
+          </h2>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={addSubEvent}
-            className="rounded-full border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 transition-colors"
+            className="shrink-0"
           >
             + Add Sub-Event
-          </button>
+          </Button>
         </div>
         {subEvents.map((subEvent, index) =>
           renderSubEventSection(subEvent, index)
         )}
       </div>
 
-      {/* Submit */}
-      <button
+      {/*
+        Submit.
+
+        `type="submit"` is written AFTER the variant props so it reaches the
+        element: the ladder writes `type="button"` before its own spread
+        precisely so a caller can still say this. Without it the one control
+        that saves the form would stop saving it, silently.
+
+        The ink moves from the achromatic light name to the page ground —
+        finding A2's arithmetic, 2.91:1 becoming 6.85:1 on the accent fill. The
+        label is untouched; §11 introduces no copy.
+      */}
+      <Button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full"
       >
         {isSubmitting ? "Saving..." : submitLabel}
-      </button>
+      </Button>
     </form>
 
     {/* Modals rendered outside <form> to avoid nested form hydration error */}
