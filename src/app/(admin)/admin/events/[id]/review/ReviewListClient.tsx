@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Input";
 import { EVENT_TIME_ZONE } from "@/utils/datetime";
 import { DOUBLE_READ_WINDOW_SECONDS } from "@/lib/door/classify";
 import type { ClassifiedEntry } from "@/lib/door/classify";
@@ -39,6 +42,39 @@ import type { UserRole } from "@/types/database";
  * thing the requirement forbids: "could we see who does this most often?" The
  * answer is no, and the reason is that a list which answers it has decided
  * something about a person without anybody choosing to.
+ *
+ * ── Converted by plan 41.1-09, AND THE GRID IS STILL A GRID ──────────────────
+ *
+ * This is the one table in this product that is **permanently exempt** from the
+ * table→card contract (D-41-16, restated as D-41.1-14). The exemption was
+ * written in three places before the gate that enforces it had run once —
+ * `41-UI-SPEC.md` §8.8, §13's G3 row, and `scripts/verify-tables.mjs` — and it
+ * is deliberately **not** on that gate's `REMAINING` list, because a file that
+ * will never convert, sitting on a list that can only shrink, guarantees the
+ * number never reaches zero, and a number that cannot reach zero is a number
+ * that lies.
+ *
+ * The reason is four lines below this paragraph, in the technical view's own
+ * copy: it exists **to be pasted into a diagnostic tool**. A rectangle of
+ * identifiers that can be selected and copied stops being one the moment it
+ * becomes a stack of labelled cards, so a card branch here would not be a
+ * conversion — it would destroy the thing the view is for. It keeps its table
+ * and its sideways scroller at every width.
+ *
+ * **So this conversion is everything around the grid, and one thing inside it.**
+ * The colours, the type, the spacing, the two controls and the three states all
+ * move onto the system. The one debt the exemption explicitly does not cover —
+ * `verify-tables.mjs:115-122`, *"it exempts the TABLE, not the type size"* — is
+ * **paid here**: the eleven-pixel type size is gone, and the grid takes the
+ * label/data size instead, `--muted` on `--surface` at **6.78 : 1**. The
+ * accepted consequence, written into the exemption's own reason and therefore a
+ * decision already taken rather than one discovered now: 12px is wider than
+ * 11px and the grid scrolls slightly more, on a surface that scrolls by design.
+ *
+ * **Nothing above this paragraph changed.** No classification moved, no
+ * identifier became a name, and the technical view's props are still `entries`
+ * and nothing else — FIX-12 expressed as a function signature, which is exactly
+ * why a visual pass cannot weaken it by forgetting.
  */
 
 interface ReviewListClientProps {
@@ -179,20 +215,19 @@ function TechnicalView({ entries }: { entries: ClassifiedEntry[] }) {
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">
-          Technical detail
-        </h2>
-        <button
-          type="button"
-          onClick={copy}
-          className="rounded-full border border-card-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border/30 transition-colors"
-        >
+        <h2 className="text-base font-semibold text-ink">Technical detail</h2>
+        {/*
+          The label still carries all three states verbatim. §11 introduces no
+          copy in this phase, and this one is load-bearing: a clipboard the
+          browser refused and a night with nothing in it must not read the same.
+        */}
+        <Button size="sm" variant="secondary" onClick={copy}>
           {copied === "done"
             ? "Copied"
             : copied === "failed"
               ? "Copy blocked by the browser"
               : "Copy as TSV"}
-        </button>
+        </Button>
       </div>
 
       <p className="mt-1 text-xs text-muted">
@@ -201,12 +236,22 @@ function TechnicalView({ entries }: { entries: ClassifiedEntry[] }) {
         anybody&apos;s personal data out with it.
       </p>
 
-      <div className="mt-3 overflow-x-auto rounded-xl border border-card-border">
-        <table className="min-w-full text-left text-[11px]">
+      {/*
+        THE TABLE STAYS A TABLE, and the sideways scroller stays with it at every
+        width — §8.8's named exemption, and the paragraph at the head of this
+        file is its reason. No card branch, no data-table primitive, no entry on
+        any debt list. What did change is the type size: eleven pixels is not a
+        step this system's scale has, so the grid takes the label/data size.
+      */}
+      <div className="mt-3 overflow-x-auto rounded-xl border border-line">
+        <table className="min-w-full text-left text-xs">
           <thead className="text-muted">
             <tr>
               {COLUMNS.map((column) => (
-                <th key={column} className="whitespace-nowrap px-3 py-2 font-medium">
+                <th
+                  key={column}
+                  className="whitespace-nowrap px-3 py-2 font-semibold"
+                >
                   {column}
                 </th>
               ))}
@@ -214,11 +259,11 @@ function TechnicalView({ entries }: { entries: ClassifiedEntry[] }) {
           </thead>
           <tbody className="font-mono">
             {entries.map((entry) => (
-              <tr key={entry.id} className="border-t border-card-border">
+              <tr key={entry.id} className="border-t border-line">
                 {rowValues(entry).map((value, index) => (
                   <td
                     key={COLUMNS[index]}
-                    className="whitespace-nowrap px-3 py-2 text-foreground"
+                    className="whitespace-nowrap px-3 py-2 text-ink"
                   >
                     {value || "—"}
                   </td>
@@ -263,14 +308,16 @@ export default function ReviewListClient({
     <div>
       {parties.length > 1 && (
         <div className="mb-5">
-          <label
-            htmlFor="review-party"
-            className="block text-xs font-medium text-muted"
-          >
-            Night
-          </label>
-          <select
+          {/*
+            The native control through the primitive, which is where the label
+            binding, the 44px minimum and the measured boundary come from. §5.2:
+            an input's well is 1.04 : 1 against the card it sits on, so the
+            boundary is not decoration on a control — it is the only channel
+            saying where the control is, and it now measures 7.03 : 1.
+          */}
+          <Select
             id="review-party"
+            label="Night"
             value={selectedPartyId ?? ""}
             // The collapsed address (D-34-03). This control is the one that
             // exercises the per-night gate: changing the night rewrites
@@ -284,14 +331,13 @@ export default function ReviewListClient({
                 `/admin/events/${eventId}/review?party=${e.target.value}`
               )
             }
-            className="mt-1 w-full rounded-xl border border-card-border bg-card px-3 py-2 text-sm text-foreground"
           >
             {parties.map((party) => (
               <option key={party.id} value={party.id}>
                 {party.title}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 
@@ -308,11 +354,22 @@ export default function ReviewListClient({
         this block is loud while the empty state below is not.
       */}
       {readError && (
-        <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-          <p className="text-sm font-medium text-red-400">
+        /*
+          NOT a Card, and it is the same decision the membership register
+          records: §8.4 fixes a card's edge as a line token because a card's
+          content already says where the card is, so the edge is a hint. A
+          failed read is not a hint, and its boundary carries the critical
+          semantic. `role="alert"` is §11's requirement on every error region,
+          and it is what makes this reach somebody who is not looking at it.
+        */
+        <div
+          role="alert"
+          className="mb-5 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-6"
+        >
+          <p className="text-sm font-semibold text-sem-crit">
             The night&apos;s record could not be read
           </p>
-          <p className="mt-1 text-xs text-red-400/80">{readError}</p>
+          <p className="mt-1 text-xs text-muted">{readError}</p>
         </div>
       )}
 
@@ -323,8 +380,15 @@ export default function ReviewListClient({
         no notification and asks for nothing.
       */}
       {!readError && parties.length > 0 && entries.length === 0 && (
-        <div className="rounded-xl border border-card-border bg-card p-5">
-          <p className="text-sm font-medium text-foreground">
+        /*
+          §8.11's class contract, and the copy is the copy it already had: a
+          heading naming what is absent and a sentence saying why the emptiness
+          is normal. It keeps no boundary and no ground, which is the point —
+          the region above is the one that draws an edge, and the two must not
+          look alike.
+        */
+        <div className="px-6 py-12 text-center">
+          <p className="text-base font-semibold text-ink">
             Nothing needed attention on this night.
           </p>
           <p className="mt-1 text-sm text-muted">
@@ -336,82 +400,92 @@ export default function ReviewListClient({
       )}
 
       {entries.length > 0 && (
+        /*
+          Still a list, and the card shell comes from the primitive rather than
+          from a class string written on the item: the entries are a sequence a
+          screen reader should be able to count, and §8.4 owns what a card looks
+          like. One element each, and neither borrows the other's job.
+        */
         <ul className="space-y-3">
           {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded-xl border border-card-border bg-card p-4"
-            >
-              <p className="text-sm text-foreground">
-                At {timeInTurin(entry.scannedAt)},{" "}
-                {entry.cause ? PROSE[entry.cause](entry) : "a scan was recorded"}
-                {" — "}
-                {entry.subjectType === "ticket"
-                  ? `ticket ${shortId(entry.subjectId)}`
-                  : entry.subjectType === "guest_list_entry"
-                    ? `guest-list entry ${shortId(entry.subjectId)}`
-                    : `membership ${shortId(entry.subjectId)}`}
-                .
-              </p>
-
-              <p className="mt-1 text-xs text-muted">
-                Read by {operatorLabels[entry.operatorId] || "an unnamed operator"}
-                {entry.source === "offline_sync" ? ", synced from offline" : ""}
-                {landedAfterTheNight(entry)
-                  ? `, recorded at ${timeInTurin(entry.recordedAt)} — after the night had ended`
-                  : ""}
-                .
-                {entry.cause && NOTE[entry.cause] ? ` ${NOTE[entry.cause]}` : ""}
-              </p>
-
-              {entry.undoneAt && (
-                <p className="mt-1 text-xs text-muted">
-                  This entry was reversed at {timeInTurin(entry.undoneAt)}.
+            <li key={entry.id}>
+              <Card>
+                <p className="text-sm text-ink">
+                  At {timeInTurin(entry.scannedAt)},{" "}
+                  {entry.cause
+                    ? PROSE[entry.cause](entry)
+                    : "a scan was recorded"}
+                  {" — "}
+                  {entry.subjectType === "ticket"
+                    ? `ticket ${shortId(entry.subjectId)}`
+                    : entry.subjectType === "guest_list_entry"
+                      ? `guest-list entry ${shortId(entry.subjectId)}`
+                      : `membership ${shortId(entry.subjectId)}`}
+                  .
                 </p>
-              )}
+
+                <p className="mt-1 text-xs text-muted">
+                  Read by{" "}
+                  {operatorLabels[entry.operatorId] || "an unnamed operator"}
+                  {entry.source === "offline_sync" ? ", synced from offline" : ""}
+                  {landedAfterTheNight(entry)
+                    ? `, recorded at ${timeInTurin(entry.recordedAt)} — after the night had ended`
+                    : ""}
+                  .
+                  {entry.cause && NOTE[entry.cause] ? ` ${NOTE[entry.cause]}` : ""}
+                </p>
+
+                {entry.undoneAt && (
+                  <p className="mt-1 text-xs text-muted">
+                    This entry was reversed at {timeInTurin(entry.undoneAt)}.
+                  </p>
+                )}
+              </Card>
             </li>
           ))}
         </ul>
       )}
 
       {(doubleReads > 0 || otherCounters.length > 0) && (
-        <section className="mt-6 rounded-xl border border-card-border bg-card p-4">
-          <h2 className="text-sm font-semibold text-foreground">
-            Counted for this night
-          </h2>
+        <section className="mt-6">
+          <Card>
+            <h2 className="text-base font-semibold text-ink">
+              Counted for this night
+            </h2>
 
-          {doubleReads > 0 && (
-            <div className="mt-2">
-              <p className="text-sm text-foreground">
-                {doubleReads} read{doubleReads === 1 ? " was" : "s were"} the same
-                code within seconds and {doubleReads === 1 ? "is" : "are"} not
-                listed.
-              </p>
-              <p className="mt-1 text-xs text-muted">
-                A rising number here means the scanner&apos;s feedback was not
-                visible at the door — a defect to correct in the phone and the
-                lighting, rather than one to filter away. It says nothing about
-                any guest: nobody enters twice from one door in{" "}
-                {DOUBLE_READ_WINDOW_SECONDS} seconds.
-              </p>
-            </div>
-          )}
+            {doubleReads > 0 && (
+              <div className="mt-2">
+                <p className="text-sm text-ink">
+                  {doubleReads} read{doubleReads === 1 ? " was" : "s were"} the
+                  same code within seconds and {doubleReads === 1 ? "is" : "are"}{" "}
+                  not listed.
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  A rising number here means the scanner&apos;s feedback was not
+                  visible at the door — a defect to correct in the phone and the
+                  lighting, rather than one to filter away. It says nothing about
+                  any guest: nobody enters twice from one door in{" "}
+                  {DOUBLE_READ_WINDOW_SECONDS} seconds.
+                </p>
+              </div>
+            )}
 
-          {otherCounters.length > 0 && (
-            <ul className="mt-3 space-y-1">
-              {otherCounters.map(([cause, count]) => (
-                <li key={cause} className="text-xs text-muted">
-                  {count} — {COUNTER_LABEL[cause]}
-                </li>
-              ))}
-            </ul>
-          )}
+            {otherCounters.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {otherCounters.map(([cause, count]) => (
+                  <li key={cause} className="text-xs text-muted">
+                    {count} — {COUNTER_LABEL[cause]}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          <p className="mt-3 text-xs text-muted">
-            {total} scan{total === 1 ? "" : "s"} in all, of which {unclassified}{" "}
-            {unclassified === 1 ? "was" : "were"} an ordinary admission or a
-            reversal.
-          </p>
+            <p className="mt-3 text-xs text-muted">
+              {total} scan{total === 1 ? "" : "s"} in all, of which{" "}
+              {unclassified} {unclassified === 1 ? "was" : "were"} an ordinary
+              admission or a reversal.
+            </p>
+          </Card>
         </section>
       )}
 
