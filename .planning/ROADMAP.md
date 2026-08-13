@@ -91,8 +91,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
 - [~] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (5/5 plans executed 2026-08-11 — **verification `human_needed`**, not complete: DS-10 and DS-06's home-screen half are proven only by `40-RELEASE-PASS.md` H1/H3, every `Result: pending`, in the end-of-v1.5 sitting. Scheduled is not verified.)
 - [ ] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces
-- [ ] **Phase 41.1: Work-Surface Conversion** - The 22 remaining work pages convert onto the layer, and the work-surface gates stop being ratchets
-- [ ] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, and the three knots — the bar, the event form, the refunds — are taken on their own
+- [ ] **Phase 41.1: Work-Surface Conversion** - The 21 remaining work pages convert onto the layer, the work-surface gates stop being ratchets, and the three knots the work surface reaches — the event form, the refunds, the venue reveal — are taken on their own in the last wave
+- [ ] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, and the bar is taken on its own
 - [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched
 - [ ] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository
 - [ ] **Phase 45: Production Sections, Section by Section** - Each production section is entitled separately, because they do not carry the same risk
@@ -906,7 +906,7 @@ Plans:
 > the failure is not visual: a wrong query on the bar's pages can show an address
 > before its reveal, and its tokens are money.
 >
-> **The other two knots — the event form and the refunds — and `RevealVenueDialog`
+> **The other three knots — the event form, the refunds and the venue reveal —
 > moved to Phase 41.1 by owner decision on 2026-08-13**, because six work pages
 > reach them through their import closures and no file-level split satisfies the
 > closure walk. The reasoning is written in full in Phase 41.1's section and

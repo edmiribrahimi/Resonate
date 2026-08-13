@@ -4,12 +4,12 @@ milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
 stopped_at: Phase 41.1 context gathered — DEF-41-08 measured as Structured, not Critical
-last_updated: "2026-08-13T12:05:28.884Z"
-last_activity: 2026-08-13 -- Phase 41 planning complete
+last_updated: "2026-08-13T14:01:39.190Z"
+last_activity: 2026-08-13 -- Phase 41.1 planning complete
 progress:
   total_phases: 17
   completed_phases: 12
-  total_plans: 167
+  total_plans: 191
   completed_plans: 167
   percent: 71
 ---
@@ -156,7 +156,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-13 -- Phase 41 planning complete
+Last activity: 2026-08-13 -- Phase 41.1 planning complete
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
