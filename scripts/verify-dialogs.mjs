@@ -223,6 +223,35 @@
  * measurement that superseded it, because a decision undone without its
  * measurement reads as a slip (`PageShell.tsx:42-46`).
  *
+ * ── THE TWO REFUSAL DEFECTS THIS GATE CARRIED, AND WHAT CLOSED THEM (41.1-02) ─
+ *
+ * `DEF-41-07` registered four defects in the refusal machinery of this gate and
+ * of `verify-conversion.mjs`. **Two of them are this file's**, and both are
+ * closed here:
+ *
+ *   - **item 1** — `neverOpenedReason()`'s existence guard covered ONE of its
+ *     three branches, so a declared path that is not on disk was given a
+ *     confident explanation of why it was never opened. The obligation is now
+ *     discharged once, above all three.
+ *   - **item 4** — one typo, two verdicts: `existsSync` on the house APFS volume
+ *     is case-insensitive (`CLAUDE.md` Guardrail 6) while the walk is case-exact,
+ *     so a mis-cased entry refused here and failed on a case-sensitive volume.
+ *     `walked` is now the authority and the spelling is confirmed against the
+ *     directory's own entries.
+ *
+ * **A numbering note, so the next reader does not re-derive it.** Plan
+ * `41.1-02`'s own prose calls these *"items 1 and 3"*; the register in
+ * `.planning/phases/41-shared-primitives-three-tier-layout/deferred-items.md`
+ * numbers the case-typo defect **4**, and its item 3 is a different defect
+ * entirely — a permitted site keyed on a line's text rather than its position,
+ * which lives in `verify-conversion.mjs` and is **plan 41.1-04's**. Item 2 is
+ * that file's too. This gate carries neither.
+ *
+ * **AND ITEM 4 IS A CLASS RATHER THAN A LINE.** Every `existsSync` whose subject
+ * is a DECLARED path rather than a walked one has the same exposure, including
+ * `scripts/conversion-manifest.mjs:410,426,436`. Plan `41.1-04` owns those three;
+ * they are named here so the class is inherited rather than rediscovered.
+ *
  * SECRECY. `.planning/` is tracked and this repository is PUBLIC (`CLAUDE.md`
  * Guardrail 5). This script reads only committed files under `src/`, prints
  * only paths, line numbers and source lines, opens no network connection, reads
@@ -479,6 +508,25 @@ export const DECLARED_EXCEPTIONS = [
  *     not exist* — into a refusal. That is a failure laundered into "nothing was
  *     measured": this defect wearing the fix's clothes. A non-existent path
  *     returns null here and reaches the failure it reaches today.
+ *
+ * **AND THE SECOND PROPERTY WAS TRUE OF ONE BRANCH OUT OF THREE (DEF-41-07 item
+ * 1, repaired by 41.1-02).** The paragraph above is kept exactly as it stood
+ * rather than rewritten, because it states the right obligation — and the code
+ * discharged it only on the walk branch. THIS Map's branch and the fence branch
+ * each returned their reason with no existence test at all, so a `REMAINING`
+ * entry naming a non-existent path that happened to match a fence glob refused
+ * with a confident *"fenced — behind that glob"* about a file that is not there.
+ * CR-03 established it with a run on a disposable copy: exit **2** rather than a
+ * failure, and the refusal propagates as *nothing was measured* across the whole
+ * aggregate. The obligation is now discharged ONCE, above all three branches, so
+ * the three are equal by construction rather than by three copies of one test.
+ *
+ * **And the existence question is now asked case-exactly (DEF-41-07 item 4).**
+ * `existsSync` on the house APFS volume is case-insensitive while the walk is
+ * case-exact, so one typo had two verdicts depending on the machine. `walked` is
+ * the authority and `existsSync` is a second opinion that can only rule a path
+ * out — see `existsCaseExact`, which also names the sibling exposure in
+ * `conversion-manifest.mjs` that plan 41.1-04 owns.
  *
  * **THE REASONS STAY APART, and that is the substance rather than the wording.**
  * This gate keeps `fenced by path, never measured` and `exempt from this check …
@@ -1058,10 +1106,108 @@ if (files.length === 0) {
   );
 }
 
-if (!existsSync(`${ROOT}/${PRIMITIVE_FILE}`)) {
+/**
+ * What check B's loop actually iterates — the same array, not a second list.
+ *
+ * Derived rather than declared: this is the third mechanism by which a file goes
+ * unopened (CR-03, and see `NEVER_MEASURED_BY_B` above for the claim it makes
+ * true). A fourth hand-maintained list would be a fourth occurrence waiting.
+ *
+ * **It is declared HERE, immediately after the walk that produces it**, because
+ * `existsCaseExact` below is keyed on it and the primitive's own existence
+ * refusal now asks that function. It used to be declared beside
+ * `neverOpenedReason`; nothing about it moved except its position.
+ */
+const walked = new Set(files);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CASE-EXACT EXISTENCE — DEF-41-07 item 4, and it is a CLASS rather than a line
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * `existsSync` on the house volume answers a question nobody asked.
+ *
+ * **The defect, as DEF-41-07 item 4 states it.** The house volume is APFS and
+ * **case-insensitive** (`CLAUDE.md` Guardrail 6), so `existsSync` returns true
+ * for a declared path whose case does not match the file on disk — while the
+ * walk's own output is **case-exact**. A `REMAINING` entry carrying a case-typo
+ * therefore landed in the not-in-the-walk branch and **REFUSED** here, while the
+ * same entry on a case-sensitive volume was `missing` and **FAILED**. One typo,
+ * two verdicts, decided by which machine ran the gate — and on the house machine
+ * it is the refusal, which is *"the laundering the guard exists to prevent"* in
+ * that register's own words.
+ *
+ * **The repair, and the order is the substance.** Membership in `walked` — the
+ * set built from the walk's own case-exact output — is asked FIRST and is the
+ * authority. `existsSync` is consulted only after that, and only as a cheap
+ * negative: it can rule a path out, and it can never rule one in on its own,
+ * because its yes is confirmed segment by segment against the directory's own
+ * entries. `readdirSync` returns names as the filesystem stores them on APFS and
+ * on a case-sensitive volume alike (APFS is case-INSENSITIVE but
+ * case-PRESERVING), so the answer this function gives does not move between the
+ * two. That is the whole property: not "the typo now refuses", but **the verdict
+ * for one typo is the same verdict on every filesystem**.
+ *
+ * **And the verdict it settles on is the FAILURE, not the refusal.** DEF-41-07
+ * item 1's own text calls a typo'd entry *"today a FAILURE"* and names turning it
+ * into a refusal *"a failure laundered into 'nothing was measured'"*; item 4
+ * calls the house machine's refusal the laundering itself. A refusal would also
+ * suppress the other thirteen entries' verdicts, so it reports LESS about a tree
+ * the gate could read perfectly well. `check B ✗ names a path that does not
+ * exist` is reached on both volumes now.
+ *
+ * **THIS IS A CLASS AND NOT A LINE, and the siblings are named so the class is
+ * not re-derived.** `scripts/conversion-manifest.mjs:410,426,436` carry the
+ * identical exposure — three `existsSync` calls whose subject is a declared path
+ * rather than a walked one. **Plan 41.1-04 owns those three**; this gate does not
+ * touch that file, and naming them here is what keeps the next reader from
+ * finding the class a third time and calling it new.
+ */
+const directoryEntriesCache = new Map();
+
+function directoryEntries(absDir) {
+  const cached = directoryEntriesCache.get(absDir);
+  if (cached !== undefined) return cached;
+  let entries;
+  try {
+    entries = readdirSync(absDir);
+  } catch {
+    entries = null;
+  }
+  directoryEntriesCache.set(absDir, entries);
+  return entries;
+}
+
+/** Every segment of `relPath` spelled exactly as the directory holding it spells it. */
+function spelledExactly(relPath) {
+  let abs = ROOT;
+  for (const segment of relPath.split('/')) {
+    const entries = directoryEntries(abs);
+    if (entries === null || !entries.includes(segment)) return false;
+    abs = `${abs}/${segment}`;
+  }
+  return true;
+}
+
+/**
+ * Is there a file at EXACTLY this path, spelled exactly this way?
+ *
+ * `walked.has` first — the authority. `existsSync` second, and it is a second
+ * OPINION: its yes is never taken on its own.
+ */
+function existsCaseExact(relPath) {
+  if (walked.has(relPath)) return true;
+  if (!existsSync(`${ROOT}/${relPath}`)) return false;
+  return spelledExactly(relPath);
+}
+
+if (!existsCaseExact(PRIMITIVE_FILE)) {
   refuse(
     `the primitive is not on disk at ${PRIMITIVE_FILE}. Check A has nothing to read and\n` +
-      '       checks B and C would be measuring a tree with no dialog in it. Nothing was measured.'
+      '       checks B and C would be measuring a tree with no dialog in it. Nothing was measured.\n' +
+      '       Asked case-exactly (DEF-41-07 item 4): on the house volume existsSync would answer\n' +
+      '       yes to a mis-cased constant here and check A would then measure a file this gate\n' +
+      '       did not name.'
   );
 }
 
@@ -1143,24 +1289,45 @@ function fenceMatch(relPath) {
  * reach the loop at all, so neither the Map nor the fence ever acted on it.
  */
 
-/**
- * What check B's loop actually iterates — the same array, not a second list.
- *
- * Derived rather than declared: this is the third mechanism by which a file goes
- * unopened (CR-03, and see `NEVER_MEASURED_BY_B` above for the claim it makes
- * true). A fourth hand-maintained list would be a fourth occurrence waiting.
+/*
+ * `walked` used to be declared here. It is declared immediately after the walk
+ * that produces it — see `existsCaseExact` above, which is keyed on it.
  */
-const walked = new Set(files);
 
+/**
+ * Why this file was never opened by check B, or `null` if it was.
+ *
+ * **DEF-41-07 item 1 — the existence obligation now covers all THREE branches,
+ * and it used to cover one.** The walk branch tested existence; the
+ * `NEVER_MEASURED_BY_B` branch and the fence branch each returned their reason
+ * **unconditionally**, so a declared path that is not on disk was handed a
+ * confident explanation of why it was never opened — *"the primitive itself"*,
+ * *"fenced — behind that glob"* — when the true and simpler fact is that there is
+ * no such file. CR-03 established it with a run: one entry naming a non-existent
+ * scanner component produced exit **2** rather than a failure, and a refusal
+ * propagates as *nothing was measured* across the whole aggregate.
+ *
+ * The obligation is now discharged **once, at the top**, rather than repeated
+ * three times: a path that is not in `walked` and does not exist case-exactly
+ * returns `null` here and reaches the failure it has always deserved. Nothing
+ * below the guard can be reached by a path that is not on disk, which is what
+ * makes the three branches equal rather than merely all-guarded.
+ *
+ * **The order of the three is unchanged and is load-bearing.** The walk is tested
+ * FIRST because a path outside `files` never reaches check B's loop at all — the
+ * Map and the fence never got the chance to act on it, so a path that is both
+ * fenced and unwalked is not fenced in any operative sense.
+ *
+ * **What did NOT change: a typo is still a FAILURE, not a refusal.** That was the
+ * property the old guard existed for — *"a failure laundered into 'nothing was
+ * measured'"* — and it is now true on a case-sensitive volume as well, because
+ * the existence question is asked case-exactly (DEF-41-07 item 4; see
+ * `existsCaseExact`).
+ */
 function neverOpenedReason(path) {
-  /*
-   * Guarded on the file existing, and that guard is the whole difference between
-   * closing this and recycling it: `unmeasurableRemaining` refuses BEFORE
-   * `missing` is computed, so an unguarded membership test would turn a typo'd
-   * entry from a FAILURE into a refusal. A refusal is not a pass, and a refusal
-   * that hides a FAILED verdict is worse than either.
-   */
-  if (!walked.has(path) && existsSync(`${ROOT}/${path}`)) {
+  if (!existsCaseExact(path)) return null;
+
+  if (!walked.has(path)) {
     return (
       'NOT IN THE WALK — this path is on disk, and this gate\'s walk does not produce\n' +
       '         it. The walk covers files under src/ carrying one of these extensions:\n' +
@@ -1355,8 +1522,15 @@ const undeclared = [];
 const missing = [];
 const stale = [];
 
+/*
+ * Asked CASE-EXACTLY, and that is the other half of DEF-41-07 item 4: this is the
+ * verdict a mis-cased entry now reaches, and it must be the same verdict on the
+ * house volume and on a case-sensitive one. `existsSync` alone answered yes here
+ * on APFS, so a mis-cased entry skipped `missing` and went on to be reported
+ * STALE — a debt counter falling because the gate could not spell.
+ */
 for (const [path] of declaredPaths) {
-  if (!existsSync(`${ROOT}/${path}`)) {
+  if (!existsCaseExact(path)) {
     missing.push(path);
     continue;
   }
