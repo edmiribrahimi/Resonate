@@ -3,13 +3,13 @@ phase: 46-silent-failures-on-the-money-path
 plan: 01
 subsystem: planning-artifacts
 tags: [requirements, copy, observability, money-path, checkpoint]
-status: paused-at-checkpoint
+status: complete
 requires: []
 provides:
   - "OBS-02, OBS-03 and OBS-04 declared in .planning/REQUIREMENTS.md with traceability rows"
-  - "46-COPY.md — every sentence phase 46 will ship, in one list, awaiting one-pass approval"
+  - "46-COPY.md — every sentence phase 46 will ship, in one list, APPROVED in one pass 2026-08-14"
 affects:
-  - "46-04, 46-05, 46-06, 46-07 — held until the list at 46-COPY.md is approved"
+  - "46-04, 46-05, 46-06, 46-07 — RELEASED by the approval at 46-COPY.md"
 tech-stack:
   added: []
   patterns:
@@ -23,20 +23,23 @@ decisions:
   - "OBS-05 is not created: it covered DI-41.2-09, out of perimeter under D-46-11"
   - "The traceability rows name every in-perimeter site explicitly rather than saying 'the in-perimeter sites'"
   - "The coverage figure was recounted by command (76), not derived by adding three to the printed 73"
+  - "D-46-13 (owner, 2026-08-14): refundErrors > 0 terminates the refund cron run as failed, not 200"
+  - "D-46-14 (owner, 2026-08-14): no channel is named to a guest who loses their receipts; the drink menu is QR-only at the bar and no staff surface shows orders"
+  - "D-46-15 (owner, 2026-08-14): RECEIPT_KEEP_TAB_OPEN added — a preventive warning shown on a healthy state, explicitly NOT a member of any refusal union"
 metrics:
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   completed: 2026-08-14
 ---
 
 # Phase 46 Plan 01: Requirements and the Sentence List — Summary
 
-Declared the three requirements this phase is measured against, and drafted
-every sentence it will ship into one document — then halted at the blocking
-checkpoint that requires the owner to approve that list in a single pass.
+Declared the three requirements this phase is measured against, drafted every
+sentence it will ship into one document, and had that list approved by the owner
+in a single pass with both open decisions answered.
 
-**Status: PAUSED AT CHECKPOINT (Task 3).** No sentence has been merged into any
-source file. Plans 46-04, 46-05, 46-06 and 46-07 remain held.
+**Status: COMPLETE.** No sentence was merged into any source file — this plan
+opened none. **Plans 46-04, 46-05, 46-06 and 46-07 are released.**
 
 ---
 
@@ -84,13 +87,20 @@ the sentence.
 | Plan | Rows | Surface |
 |---|---|---|
 | 46-04 | 3 constants + 1 caller fallback | the organizer's menu-closing command |
-| 46-05 | 6 | the guest's drink receipts |
+| 46-05 | 6 refusals **+ 1 preventive warning** (added at approval) | the guest's drink receipts |
 | 46-06 | 1 | the public event page |
 | 46-07 | 4 | the refund cron's report |
 | 46-03 | **0, stated out loud** | observability, not a new refusal (D-46-08) |
 
 Plus `## Two decisions inside this approval`, holding exactly the two questions
-the plan defers to the owner.
+the plan defers to the owner — both now answered in place.
+
+### Task 3 — the approval (commit `db406f1`)
+
+The list was presented whole and approved whole. The document was then amended
+with what the approval settled: the two answers recorded in place beside the
+questions that produced them, the added sentence, the domain facts behind
+Decision 2, and a disposition note on the refund cron string.
 
 ---
 
@@ -118,26 +128,85 @@ at the time it was written, extended to record its own two-behind drift.
 
 `.planning/phases/46-silent-failures-on-the-money-path/46-COPY.md`
 
-**Approval state: PENDING.** Rounds of amendment so far: 0.
+**Approval state: APPROVED, 2026-08-14, by the project owner, in one pass over
+the whole list** (D-46-10a).
+
+**Rounds of amendment: 1.** The list was approved **as presented, with no
+correction to any sentence**, and **one sentence was added in the same pass**.
+The addition did not reopen anything already on the list, so the one-pass
+property holds rather than degrading into a second round.
+
+`git diff --stat src/` was empty at the moment of approval: no sentence had been
+merged before the list was approved.
 
 ---
 
 ## The owner's verbatim answers to the two decisions
 
-**Not yet given — Task 3 is the blocking checkpoint and it was not answered.**
+### The approval itself, verbatim
 
-This section is left in place, empty and named, rather than removed: the plan's
-acceptance criterion is that neither question is left as *to be decided during
-execution*, and an absent section reads as an oversight where an empty one reads
-as a state.
+> **La lista delle frasi: APPROVATA**
+>
+> Approvata in blocco, in un passaggio solo, senza correzioni al testo
+> presentato.
 
 ### Decision 1 — does `refundErrors > 0` make the refund cron run go red?
 
-> *(awaiting the owner's answer — A or B, verbatim)*
+> **RISPOSTA: A — sì, rosso.**
+>
+> Con `refundErrors > 0` la run del cron termina come **fallita** (non-2xx),
+> esattamente come già deciso per il delete di pulizia fallito (D-46-06).
+> Ragione messa a verbale dal proprietario: è l'unico percorso della fase in cui
+> del denaro deve tornare indietro e non torna, e senza error tracking un
+> contatore dentro un 200 è una riga di log — un posto dove nessuno guarda. La
+> fase che dichiara OBS-02 non può violarlo proprio lì.
+
+**Carried into `46-COPY.md`** as a disposition note beside
+`CRON_REFUND_REFUNDS_FAILED`: that string accompanies a **failed** run, not a
+200. `CRON_REFUND_OK` stays a 200; the two delete strings were already failed
+runs under D-46-06. Plan 46-07 implements it.
 
 ### Decision 2 — what a guest is told when the browser cannot hold their receipt, given that D-46-10c ships no bar-side lookup
 
-> *(awaiting the owner's answer — A or B, and if B, the named channel)*
+> **RISPOSTA: A — le frasi restano come scritte. Nessun canale nominato.**
+
+The owner supplied four domain facts during the approval, and they are the
+**reason** rather than a preference. They are recorded in `46-COPY.md` §2
+alongside the sentences, because a reason kept only in a summary is a reason the
+next reader will not find before adding the missing route back in:
+
+1. **The drink menu is reachable only by scanning a QR code at the bar**, and
+   not before the night. Nobody buys who is not inside the venue with the code
+   in front of them.
+2. **The cross-browser loss scenario is therefore unreachable** — the camera
+   opens the system browser, so the purchase and the re-read share one storage.
+3. **No staff surface shows orders or tokens.** `DrinkMenuManager.tsx` manages
+   the price list, not the orders. *Ask at the bar* would be a promise the
+   product does not keep.
+4. **The counter-side screen stays deferred** and no sentence anticipates it.
+
+Owner's position, recorded: **the only real way to lose the tokens is to browse
+privately and close the tab.** The menu ran without trouble at a past public
+edition.
+
+### The sentence added in the same pass
+
+Verified by the orchestrator with `LC_ALL=C /usr/bin/grep` over `menu/`: **zero**
+occurrences of any *don't close this tab* notice. The owner believed one was
+already there. It was not.
+
+> **Keep this tab open until your drinks are served — if you are browsing
+> privately, closing it will lose them.**
+
+Recorded in `46-COPY.md` §2b as `RECEIPT_KEEP_TAB_OPEN`, owned by plan 46-05,
+rendered at `GuestTokenDisplay.tsx:637-663` above the grid at `:652`, on the
+predicate the card already uses (`token.status === "active"`, `:441`).
+
+**It is annotated, twice and in bold, as NOT a refusal and NOT a member of any
+refusal union.** It is drawn when the state is healthy — a warning that arrives
+before the failure it prevents, which is the opposite of every other row in the
+document. Folding it into the union would make a `Record` total over a set that
+no longer describes one thing.
 
 ---
 
@@ -160,6 +229,10 @@ the gate — the gate is the derivations below, each run and recorded.
 | the reversed e appears nowhere | `grep -c 'ɘ'` | `0` ✅ |
 | no sentence composed at run time | `grep -n '\${'` | no hits ✅ |
 | the two-decisions section exists | `grep -c '^## Two decisions inside this approval'` | `1` ✅ |
+| the added sentence is present and attributed | `grep -c 'RECEIPT_KEEP_TAB_OPEN'` | `4` ✅ |
+| fifteen constant-bearing rows after the addition | `grep -cE '^\| \`[A-Z_]+\`'` | `15` ✅ |
+| no *don't close this tab* notice exists today | `LC_ALL=C /usr/bin/grep` over `src/app/(public)/events/[slug]/menu/` | `0` — the reason the sentence was added ✅ |
+| the render predicate for the added sentence is real | `grep -n 'token.status === "active"'` | `GuestTokenDisplay.tsx:441` ✅ |
 | **no source file was opened** | `git diff --stat src/` | empty ✅ |
 | no migration, no package change | `git diff --stat supabase/ package.json` | empty ✅ |
 | **`npm run verify` never run** | — | confirmed; it reaches the Supabase Management API against production ✅ |
@@ -226,9 +299,16 @@ Two threat-register dispositions were applied rather than merely noted:
 
 ## Known Stubs
 
-None. The two empty answer blocks under *The owner's verbatim answers* are not
-stubs — they are the recorded state of a blocking checkpoint, and the plan is
-explicitly **not** marked complete while they are empty.
+None. Both decision blocks now carry the owner's answer verbatim; neither is
+left as *to be decided during execution*.
+
+## Deferred, and named so it is not mistaken for an omission
+
+- **The counter-side lookup** stays deferred (D-46-10c, reaffirmed in this
+  approval). No sentence in the approved list anticipates it.
+- **`OBS-01`**, error tracking, stays in `## Future Requirements`. It is the
+  reason OBS-02 is worded as *an effect somebody can see* rather than *an error
+  that is logged*.
 
 ---
 
@@ -238,3 +318,4 @@ explicitly **not** marked complete while they are empty.
 - `FOUND: .planning/REQUIREMENTS.md`
 - `FOUND: a8be947` — `docs(46-01): OBS-02, OBS-03 e OBS-04 …`
 - `FOUND: ac0dc7f` — `docs(46-01): la lista delle frasi …`
+- `FOUND: db406f1` — `docs(46-01): lista approvata in un passaggio …`
