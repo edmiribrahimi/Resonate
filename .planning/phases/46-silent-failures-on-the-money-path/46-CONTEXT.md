@@ -31,10 +31,11 @@ a measurable consequence in the data.
 | `DI-41.2-02` | `GuestTokenDisplay.tsx:20-31` | guest drink-receipt custody, **write** side, swallowed |
 | `DI-41.2-03` | `GuestTokenDisplay.tsx:34-40` | same custody, **read** side, returns `[]` — a failed read rendered as a legitimate value |
 | `DI-41.2-04` | `GuestTokenDisplay.tsx:403-410`, polled from `:485-488` | a failed token fetch reports `"unknown"`, and the poll keeps polling |
-| `DI-41.2-06` | `menu/actions.ts:48,51,60` | an organizer's menu-closing command throws and **nothing at all** is shown |
+| `DI-41.2-06` | `(public)/events/[slug]/menu/actions.ts:48,51,60` | an organizer's menu-closing command throws and **nothing at all** is shown |
+| `DI-41.2-06b` | `(public)/events/[slug]/menu/PartyDrinkMenu.tsx:146`, `:156` | **added after pattern mapping** — the only two callers of `updateMenuClosesAt`, both bare `await` with no `catch`. D-46-10b asks for two distinguishable outcomes, and **an outcome nobody renders is not an outcome**: without this file the decision is void. Scope clarification, not a new capability |
 | `DI-41.2-08` | `(public)/events/[slug]/page.tsx` | a full night renders as open, with the control that takes money beside it |
 | `F-46-01` | `(admin)/admin/events/actions.ts:1271`, `:1279` | two server reads discard their error and fail **permissive** |
-| `DI-TODO-A` | `(admin)/admin/events/actions.ts:1228-1233` | a discount code's usage limit opens on a failed read (folded todo) |
+| `DI-TODO-A` | `(admin)/admin/events/actions.ts:1412-1416` | a discount code's usage limit opens on a failed read (folded todo). **⚠ The todo's own coordinate is wrong** — it says `:1228-1233`, which is the *profile* read inside `purchaseTicket`. Re-measured 2026-08-14 against the current tree; a plan aimed at `:1228` would edit the wrong guard |
 | `DI-TODO-B` | `api/cron/refund-expired-tokens/route.ts:163-168` | the cron reports as deleted the rows that **remain**, and declares success (folded todo) |
 
 **OUT — depends on the members area, which is under review (D-46-11):**
@@ -250,6 +251,15 @@ decomposition; the wording of the manual verification procedures; whether `DI-TO
 - `GuestTokenDisplay.tsx` — three of the five survivors (`-02`, `-03`, `-04`) live here and
   are one question, not three: *what does a guest see when the browser cannot hold their
   receipt.* Splitting them yields half an answer.
+- **Coordinates: trust `46-PATTERNS.md` §0 over the research and over the folded todo.** The
+  pattern mapper re-measured every site against the current tree and found **six of eight
+  stale**. The one that matters most is `DI-TODO-A` above. Nothing in this phase is edited
+  at a line number taken from a document without re-measuring it first.
+- **`GuestTokenDisplay.tsx` cannot use a toast.** It imports and renders `Dialog` (`:15`,
+  `:337`), and `scripts/verify-dialogs.mjs` forbids `useToast` in any file that renders a
+  `Dialog`. Three of the five in-perimeter findings live in that file, so their refusals are
+  rendered **in place**, not thrown to a toast. Found by pattern mapping, verified at the
+  source; the research does not mention it.
 - `L6` from the research still binds: `GuestDrinkMenu.tsx:119-121` keeps a fallback alive
   only because `localStorage.removeItem` sits inside the `.then`. The research calls it
   *"the one mercy here, and it is accidental rather than designed."* A tidy-up of that
