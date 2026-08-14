@@ -1067,7 +1067,7 @@ Not preferences — each one has a failure mode behind it.
   4. **The monotone guards are untouched.** A payment reaching completion still corrects forward; nothing makes an amount that was taken look like it was not; no reveal becomes reachable earlier
   5. Each fix is proved by an **observable outcome**, not by a log line — and where the outcome can only be seen by a person, it goes in a written procedure with its `Result: pending`, because there is still no test runner
 
-**Plans:** 2/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -1077,11 +1077,11 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 46-03-PLAN.md — the three permissive reads inside `purchaseTicket` say which failure they had (F-46-01, DI-TODO-A)
-- [ ] 46-04-PLAN.md — the organizer's menu-closing command gets two distinguishable outcomes (DI-41.2-06, -06b)
-- [ ] 46-05-PLAN.md — what a guest sees when the browser cannot hold their receipt (DI-41.2-02, -03, -04)
-- [ ] 46-06-PLAN.md — the public event page stops printing counts it could not read (DI-41.2-08) — Critical, owner in the loop
-- [ ] 46-07-PLAN.md — the refund cron tells the truth and terminates as failed (DI-TODO-B)
+- [x] 46-03-PLAN.md — the three permissive reads inside `purchaseTicket` say which failure they had (F-46-01, DI-TODO-A)
+- [x] 46-04-PLAN.md — the organizer's menu-closing command gets two distinguishable outcomes (DI-41.2-06, -06b)
+- [x] 46-05-PLAN.md — what a guest sees when the browser cannot hold their receipt (DI-41.2-02, -03, -04)
+- [x] 46-06-PLAN.md — the public event page stops printing counts it could not read (DI-41.2-08) — Critical, owner in the loop
+- [x] 46-07-PLAN.md — the refund cron tells the truth and terminates as failed (DI-TODO-B)
 
 **UI hint**: partial — several fixes are copy a person reads, which is a product decision before it is a visual one
 
