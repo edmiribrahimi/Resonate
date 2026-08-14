@@ -344,6 +344,80 @@ export const GROUP_TAGS = ['work', 'public-member-money', 'phase-42', 'exempt'];
  *
  * Shape: `[path, count, reason, group]`.
  */
+/**
+ * ── THE LIST IS EMPTY, AND THAT IS A DECISION RATHER THAN A DRIFT ────────────
+ *
+ * The emptiness guard below refuses an empty `REMAINING` and says why in its own
+ * sentence: *"the emptiness should be a DECISION written above the constant —
+ * not a list that quietly emptied itself."* This is that decision, and the guard
+ * now reads it instead of refusing blind. The shape is
+ * `verify-tables.mjs:534-571`'s, **copied rather than invented**, because a gate
+ * in this tree has already made this transition once and inventing a second
+ * shape for the same act is how two gates stop being comparable.
+ *
+ * **Written 2026-08-14 by plan 41.2-19, the phase's final reconciliation.** The
+ * last five entries were all `public-member-money`, all PAID, and all had been
+ * printing STALE — *"declared N, measured 0 → converted; remove this entry"* —
+ * since their own plans' commits:
+ *
+ *   - `src/components/media/MediaUpload.tsx` (1) — plan 41.2-18, and it held the
+ *     tree's **LAST** use of the retired tier. Its grid axis was MIGRATED by
+ *     copying the analog's RULE rather than its literal string: the base stays
+ *     at two columns because these are square thumbnails.
+ *   - `…/events/[slug]/RedeemConfirmationModal.tsx` (4) — plan 41.2-10.
+ *   - `…/events/[slug]/SumUpCheckoutModal.tsx` (4) — plan 41.2-10, the shared
+ *     money core.
+ *   - `…/events/[slug]/menu/GuestLoginBanner.tsx` (3) — plan 41.2-02, one of the
+ *     two unreachable files D-41.2-03 ordered converted.
+ *   - `…/events/[slug]/menu/GuestTokenDisplay.tsx` (4) — plan 41.2-12.
+ *
+ * **The two bartender files are on this list's DELETIONS and on the sibling
+ * gate's EXEMPTIONS, and that is not a contradiction.** `RedeemConfirmationModal`
+ * and `GuestTokenDisplay` hold shells a person measured and declared correct
+ * (D-41.2-06, D-41.2-07) — an exemption about the SHELL. The retired-tier prefix
+ * is a different debt on the same files and it is simply PAID: raw counts on
+ * 2026-08-14, **0** and **0**. An exemption is granted for a specific thing on a
+ * specific file, never for the file as such, or it becomes a technique for
+ * making every list empty at once.
+ *
+ * **All five were re-derived from the tree first**, with a second instrument
+ * that deliberately does NOT use the gates' shared comment stripper (D-41.1-22),
+ * and that instrument reproduced a known non-zero on a positive fixture and a
+ * known zero on a negative one before reporting anything — refusing with exit 2
+ * if it could not. Wave 4 of this phase recorded a corroborating instrument that
+ * measured NOTHING and therefore agreed with everything; believing it would have
+ * authorised deleting every entry with a second instrument's agreement on each
+ * deletion. Raw counts measured 2026-08-14: **0, 0, 0, 0, 0**. No row's raw
+ * count came out LOWER than its stripped count, which is the direction that
+ * would have stopped the deletion.
+ *
+ * **Why an empty list here does not become a number that lies.** Check B is a
+ * TREE-SIDE accounting, not a list-side one: it walks **every** file under
+ * `src/`, and any file carrying the prefix while on no entry FAILS as
+ * `undeclared` — never as a missing list entry. With the list empty the gate
+ * becomes, in arithmetic, *the prefix appears nowhere*: `0 declared + 0 measured
+ * + 0 undeclared`, and a single use written tomorrow reddens check B on its own
+ * path with its own line number. That is the outcome this gate's own header
+ * already names — *two prefixes, and a written list of the files still carrying
+ * a third* — with the third list now at nothing. Check A never depended on the
+ * list at all.
+ *
+ * **What this does NOT say.** It COUNTS PREFIXES, NOT LAYOUTS. A file using only
+ * the two permitted tiers is counted at zero here and can still be wrong at
+ * every width. H41-1 — every converted surface observed at three widths by a
+ * person — is the only thing that says otherwise, and it is still owed. `null`
+ * here means the migration is open; an object means it is closed, and the guard
+ * requires all three fields so a truthy placeholder cannot satisfy it.
+ */
+export const MIGRATION_CLOSED = {
+  date: '2026-08-14',
+  by: 'plan 41.2-19',
+  why:
+    'no file under src/ carries the retired tier any more; check B still walks every ' +
+    'file and fails an undeclared one on its own path, so with the list empty the gate ' +
+    'becomes "the prefix appears nowhere" without losing the ability to catch the next use',
+};
+
 export const REMAINING = [
   // ── the multi-column grid axis (§2.2) — the one genuinely three-tier axis.
   // `sm:grid-cols-2` becomes `md:grid-cols-2`; `sm:grid-cols-3` becomes
@@ -408,41 +482,61 @@ export const REMAINING = [
   // counted it among the fourteen this phase has to clear. Its neighbour
   // `MediaReviewGrid.tsx` sits in the SAME folder and is `work`: the folder
   // decides nothing, the importer decides everything.
-  [
-    'src/components/media/MediaUpload.tsx',
-    1,
-    'the upload preview grid — the grid axis, §2.2. Phase 41.2: its only importer is src/app/(public)/events/[slug]/MediaGallerySection.tsx:8, the member upload box on the public event page',
-    'public-member-money',
-  ],
+  // PAID by plan 41.2-18 task 2 — `src/components/media/MediaUpload.tsx` held
+  // this list's last grid-axis use and, as it turned out, the tree's LAST use of
+  // the retired tier anywhere. The axis was migrated by copying the analog's
+  // RULE rather than its literal string: these are square thumbnails, so the
+  // base stays at two columns and the axis gains the tablet step instead of
+  // inheriting a text grid's shape. It is also the file this docblock's `group`
+  // paragraph argues from — it sits in `src/components/media/`, nowhere near the
+  // public event route, and was `public-member-money` all the same because
+  // `MediaGallerySection.tsx:8` is the only thing that mounts it. **That
+  // argument is kept here in full rather than allowed to leave with its entry**,
+  // for the same reason its counter-example was kept when it left: a rule whose
+  // only worked specimens have both been deleted is a rule the next reader
+  // re-derives as a preference.
 
   // ── the four sheet modals — absorbed by the Dialog primitive, §8.3. These
-  // uses are not migrated to `md:` and then kept: the primitive owns
-  // `items-end md:items-center` and the sheet radius, so the classes are
-  // DELETED from the call site when the surface converts.
-  [
-    'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
-    4,
-    'a sheet modal — absorbed by the Dialog primitive, §8.3 (plus one sm:text-5xl, §2.1)',
-    'public-member-money',
-  ],
-  [
-    'src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx',
-    4,
-    'a sheet modal — absorbed by the Dialog primitive, §8.3 (its sm:max-h-[90vh] becomes an unprefixed max-h-[85dvh], §2.3)',
-    'public-member-money',
-  ],
-  [
-    'src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx',
-    3,
-    'a sheet modal — absorbed by the Dialog primitive, §8.3',
-    'public-member-money',
-  ],
-  [
-    'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
-    4,
-    'a sheet modal — absorbed by the Dialog primitive, §8.3 (plus one sm:text-5xl, §2.1)',
-    'public-member-money',
-  ],
+  // uses were not migrated to the tablet tier and then kept: the primitive owns
+  // the sheet↔window pair and the sheet radius, so the classes were DELETED
+  // from the call site when each surface converted.
+  //
+  // PAID by plan 41.2-02 — `…/menu/GuestLoginBanner.tsx` (3), one of the two
+  // unreachable files D-41.2-03 ordered CONVERTED rather than deleted or
+  // exempted: no closure reaches it, so no surface conversion would ever have
+  // cleared it as a by-product.
+  //
+  // PAID by plan 41.2-10 — `…/RedeemConfirmationModal.tsx` (4) and
+  // `…/SumUpCheckoutModal.tsx` (4), the shared money core, converted once in
+  // wave 5 as spine so that three later surfaces would not all open it.
+  //
+  // PAID by plan 41.2-12 — `…/menu/GuestTokenDisplay.tsx` (4).
+  //
+  // **TWO OF THOSE FOUR ARE EXEMPT ON THE SIBLING DIALOGS GATE AND DELETED
+  // HERE, AND THAT IS NOT A CONTRADICTION.** D-41.2-06 and D-41.2-07 exempt the
+  // bartender SHELLS in `RedeemConfirmationModal.tsx` and `GuestTokenDisplay.tsx`
+  // — an exemption about one specific thing in one specific file. The retired
+  // tier is a different debt on the same two files, and it is simply paid: raw
+  // counts 0 and 0. An exemption granted for a FILE rather than for a THING
+  // would empty every list at once, which is the technique both decisions
+  // explicitly refuse.
+  //
+  // ── WHAT THIS COMMIT MOVED ────────────────────────────────────────────────
+  //
+  // Declared entries **5 → 0** and declared uses **16 → 0**; the work group was
+  // 0 before and is 0 after, and no entry was moved between groups to make any
+  // count come out right. **The MEASURED numbers did not move at all** — 0 files
+  // and 0 uses before and after — because every one of the five had already
+  // stopped carrying the prefix in its own plan's commit and this gate had been
+  // printing all five STALE ever since. That notice is what makes these five
+  // deletions a RESPONSE rather than a tidy, and the emptiness that results is
+  // declared in `MIGRATION_CLOSED` above rather than left to be noticed.
+  //
+  // All five deleted by plan 41.2-19 (D-41.1-22) after re-deriving each from the
+  // tree with a second instrument that does NOT use the gates' shared comment
+  // stripper and that proved it can see — a known non-zero on a positive fixture
+  // and a known zero on a negative one — before it reported anything. Measured
+  // 2026-08-14: **0, 0, 0, 0, 0**.
 
   // ── the table dual-renders — consolidated onto the one table breakpoint,
   // `md`, by the DataTable primitive, §8.8. `sm:block` / `sm:hidden` is the
@@ -659,11 +753,26 @@ if (files.length === 0) {
 }
 
 if (REMAINING.length === 0) {
-  refuse(
-    'REMAINING is empty. If every sm: really is gone, this gate has become check A\n' +
-      '       alone and the emptiness should be a DECISION written above the constant —\n' +
-      '       not a list that quietly emptied itself.'
-  );
+  const c = MIGRATION_CLOSED;
+  const complete =
+    c &&
+    typeof c === 'object' &&
+    typeof c.date === 'string' &&
+    c.date.length > 0 &&
+    typeof c.by === 'string' &&
+    c.by.length > 0 &&
+    typeof c.why === 'string' &&
+    c.why.length > 0;
+
+  if (!complete) {
+    refuse(
+      'REMAINING is empty. If every use of the migrating prefix really is gone, that is the\n' +
+        '       end of this migration and the emptiness should be a DECISION written above the\n' +
+        '       constant — not a list that quietly emptied itself.\n' +
+        '       Set MIGRATION_CLOSED to an object carrying a date, the plan that closed it, and\n' +
+        '       why. A truthy placeholder does not satisfy this: all three fields are required.'
+    );
+  }
 }
 
 const failures = [];
