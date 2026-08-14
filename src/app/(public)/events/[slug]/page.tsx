@@ -1,8 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import MobileNav from "@/components/layout/MobileNav";
+import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { Chip, Badge } from "@/components/ui/Chip";
+import { FOCUS_RING } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, hasCapability } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
@@ -806,14 +811,48 @@ export default async function EventDetailPage({
   }
 
   return (
-    <div className="min-h-dvh pb-24">
+    <>
+      {/*
+        The other half of the pairing check E of scripts/verify-conversion.mjs
+        asserts in both directions: the files declaring the leading-edge column
+        clearance are exactly the files mounting the responsive navigation form.
+        Reaching the navigation THROUGH the phone-locked wrapper does not count —
+        the gate's route table says this surface already mounts one and its
+        pairing says it does not, and the pairing is the half that fails.
+
+        It carries an arbitrary-property utility at the md tier setting the
+        inline-start navigation-inset custom property to fourteen rems, which the
+        shell below reads with its own inline-start padding. Without it the
+        content would slide UNDER the 224 px column from 768 px up.
+
+        The utility is written whole in the class list and is not spelled here,
+        and the line is copied byte-for-byte from
+        src/app/(public)/gallery/page.tsx:110 — Tailwind scans comments, cannot
+        tell a description from a use, and an abbreviated one emits a malformed
+        rule and a build warning (DEF-41-01).
+
+        ── WHY THE BODY BELOW IS TWO LEVELS SHALLOWER THAN ITS WRAPPERS ────────
+
+        The shell and this div moved the markup two levels deeper and the body
+        was NOT re-indented. That is the record rather than a slip, and the
+        reason is the venue block further down: its guard, its three branches
+        and its else-null are asserted BYTE-IDENTICAL before and after this
+        conversion, indentation included, and re-indenting would have cost that
+        claim its qualifier-free form. *Byte-identical* would have become
+        *byte-identical apart from whitespace*, which is a weaker claim than a
+        one-way switch with no undo deserves. `41.2-08-SUMMARY.md` made the same
+        choice on the ticket surface, for the same reason, and this file follows
+        it rather than inventing a second answer.
+      */}
+      <div className="md:[--nav-inset-inline-start:14rem]">
+        <PageShell width="default">
       {isAuthenticated && <PendingIntentHandler eventSlug={slug} />}
 
       {/* Cover */}
-      <AnimatedSection className="relative px-6 pt-6">
+      <AnimatedSection className="relative">
         <Link
           href="/events"
-          className="absolute left-10 top-10 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm active:scale-95 active:opacity-80 transition-transform"
+          className={`absolute left-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-ground/80 backdrop-blur-sm active:scale-95 active:opacity-80 transition-transform ${FOCUS_RING}`}
         >
           &larr;
         </Link>
@@ -827,13 +866,13 @@ export default async function EventDetailPage({
             priority
           />
         ) : (
-          <div className="flex h-48 items-center justify-center rounded-2xl bg-card text-muted">
+          <div className="flex h-48 items-center justify-center rounded-2xl bg-surface text-muted">
             <MusicalNoteIcon className="h-12 w-12" />
           </div>
         )}
       </AnimatedSection>
 
-      <div className="px-6 pt-6">
+      <div className="pt-6">
         {/* Date range, Title + Share, Description */}
         <AnimatedSection delay={0.1}>
           <p className="mb-1 text-sm font-medium text-accent">
@@ -841,9 +880,7 @@ export default async function EventDetailPage({
           </p>
 
           <div className="mb-4 flex items-start justify-between gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">
-              {event.title}
-            </h1>
+            <PageTitle>{event.title}</PageTitle>
             <ShareButton title={event.title} description={event.description} />
           </div>
 
@@ -874,27 +911,31 @@ export default async function EventDetailPage({
 
           return (
             <div className="mb-6">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-                Lineup
-              </h2>
+              <SectionHeading>Lineup</SectionHeading>
+              {/*
+                A lineup pill that is a <Link> is a CHIP, at 44 px — not a badge
+                shrunk to fit. `41-UI-SPEC.md` §6.4 records this exact site by
+                file and line, and §8.5 states the rule that decides it: a badge
+                that is a <Link> or a <button> is a Chip. The pill that has no
+                artist page is not a target and is therefore a Badge, which
+                renders a <span> and has no prop that would make it one.
+
+                The accent tint goes with the change. §5.1 lists the lineup pills
+                among the four things the accent is for, so this is a loss and
+                not a correction — but the chip's unselected form is the shape
+                the contract assigns, its selected form is an accent FILL that
+                also emits aria-current, and a pill that is not "current" may not
+                claim to be. Declared, and owed to a person to look at.
+              */}
               <div className="flex flex-wrap gap-2">
                 {unique.map((artist: string) => {
                   const slug = artistSlugs.get(artist);
                   return slug ? (
-                    <Link
-                      key={artist}
-                      href={`/artists/${slug}`}
-                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium hover:bg-accent/30 transition-colors active:scale-95 active:opacity-80"
-                    >
+                    <Chip key={artist} href={`/artists/${slug}`}>
                       {artist}
-                    </Link>
+                    </Chip>
                   ) : (
-                    <span
-                      key={artist}
-                      className="rounded-full bg-accent/20 px-3 py-1 text-sm text-accent font-medium"
-                    >
-                      {artist}
-                    </span>
+                    <Badge key={artist}>{artist}</Badge>
                   );
                 })}
               </div>
@@ -907,13 +948,22 @@ export default async function EventDetailPage({
         {parties.length > 1 && eventTiers.length > 0 && (
           <AnimatedSection scrollTriggered className="mb-6 rounded-xl border border-accent/30 bg-accent/5 p-4">
             {hasMasterTicket ? (
-              <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
-                <p className="text-sm font-medium text-green-400 mb-3">
+              <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 p-4 text-center">
+                <p className="text-sm font-medium text-sem-done mb-3">
                   You have an Event Pass
                 </p>
+                {/*
+                  A <Link>, never `Button` with an `href`: the button ladder's
+                  href branch renders a BARE ANCHOR on a `string`, so an internal
+                  address loses client-side navigation, prefetching and the
+                  build-time check that the route exists — silently, all three.
+                  `Chip.tsx` states that constraint at the foot of the file. The
+                  geometry, the fill and the focus expression are the ladder's md
+                  rung, declared at the call site on the correct element.
+                */}
                 <Link
                   href={`/tickets/${masterTicketId}`}
-                  className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80"
+                  className={`inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
                 >
                   View Your Event Pass
                 </Link>
@@ -960,10 +1010,7 @@ export default async function EventDetailPage({
           const venueRow = venueByParty.get(party.id);
 
           return (
-            <div
-              key={party.id}
-              className="mb-6 rounded-xl border border-card-border bg-card p-4"
-            >
+            <Card key={party.id} className="mb-6">
               {/* Party header */}
               <div className="mb-3">
                 {/*
@@ -1016,7 +1063,7 @@ export default async function EventDetailPage({
                     />
                   </div>
                 )}
-                <p className="text-foreground font-medium">{party.title}</p>
+                <p className="text-ink font-medium">{party.title}</p>
                 <div className="flex items-center gap-3 mt-1 text-sm text-muted">
                   <span className="inline-flex items-center gap-1">
                     <CalendarIcon /> {formatPartyDate(party.date)}
@@ -1076,7 +1123,7 @@ export default async function EventDetailPage({
                   <div className="mt-1">
                     {venueVisible && venueRow ? (
                       <div className="text-sm">
-                        <p className="inline-flex items-center gap-1 text-foreground">
+                        <p className="inline-flex items-center gap-1 text-ink">
                           <MapPinIcon /> {venueRow.name}
                         </p>
                         {venueRow.address && (
@@ -1087,7 +1134,7 @@ export default async function EventDetailPage({
                             href={venueRow.google_maps_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-0.5 inline-block text-accent hover:text-accent-hover active:scale-95 active:opacity-80 transition-transform"
+                            className={`mt-0.5 inline-flex min-h-11 items-center text-accent hover:text-accent-hover active:scale-95 active:opacity-80 transition-transform ${FOCUS_RING}`}
                           >
                             Open in Maps
                           </a>
@@ -1130,23 +1177,17 @@ export default async function EventDetailPage({
               {/* Party lineup (inside the card) */}
               {party.lineup.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-1.5">
+                  {/* §6.4 names this pill by file and line — 20 px, a <Link>,
+                      and therefore a Chip at 44 px. See the note on the
+                      event-level row above. */}
                   {[...party.lineup].sort().map((artist) => {
                     const slug = artistSlugs.get(artist);
                     return slug ? (
-                      <Link
-                        key={artist}
-                        href={`/artists/${slug}`}
-                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium hover:bg-accent/30 transition-colors active:scale-95 active:opacity-80"
-                      >
+                      <Chip key={artist} href={`/artists/${slug}`}>
                         {artist}
-                      </Link>
+                      </Chip>
                     ) : (
-                      <span
-                        key={artist}
-                        className="rounded-full bg-accent/20 px-2.5 py-0.5 text-xs text-accent font-medium"
-                      >
-                        {artist}
-                      </span>
+                      <Badge key={artist}>{artist}</Badge>
                     );
                   })}
                 </div>
@@ -1157,7 +1198,7 @@ export default async function EventDetailPage({
                 <p
                   className={`mb-3 text-sm ${
                     party.spotsLeft <= 0
-                      ? "text-red-400 font-medium"
+                      ? "text-sem-crit font-medium"
                       : "text-muted"
                   }`}
                 >
@@ -1167,13 +1208,13 @@ export default async function EventDetailPage({
 
               {/* Already has ticket for this party */}
               {isAuthenticated && party.userTicket && (
-                <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center">
-                  <p className="text-sm font-medium text-green-400 mb-3">
+                <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 p-4 text-center">
+                  <p className="text-sm font-medium text-sem-done mb-3">
                     You have a ticket for this
                   </p>
                   <Link
                     href={`/tickets/${party.userTicket.id}`}
-                    className="inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80"
+                    className={`inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
                   >
                     View Your Ticket
                   </Link>
@@ -1182,8 +1223,8 @@ export default async function EventDetailPage({
 
               {/* Master ticket holder sees "covered" badge */}
               {isAuthenticated && hasMasterTicket && !party.userTicket && (
-                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-center">
-                  <p className="text-sm font-medium text-green-400">
+                <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-sem-done">
                     Covered by your Event Pass
                   </p>
                 </div>
@@ -1222,14 +1263,14 @@ export default async function EventDetailPage({
 
               {/* Free public party: badge (upcoming only) */}
               {isUpcoming && party.access_type === "free_public" && (
-                <div className="rounded-xl bg-green-500/10 border border-green-500/30 px-4 py-3 text-center">
-                  <p className="text-sm font-medium text-green-400">
+                <div className="rounded-xl bg-sem-done/10 border border-sem-done/30 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-sem-done">
                     Free Entry
                   </p>
                 </div>
               )}
 
-            </div>
+            </Card>
           );
         })}
 
@@ -1237,11 +1278,16 @@ export default async function EventDetailPage({
         {/* Drink Menu — link for master/organizer only */}
         {canSeeDrafts && (drinkItemCount ?? 0) > 0 && (
           <AnimatedSection scrollTriggered className="mb-6">
+            {/* Still an <a> and not a <Link>: converting the element would swap
+                a full document load for a client navigation, which is a
+                behaviour change dressed as a styling one. The card-sized link
+                declares the floor and the focus ring at its own call site, as
+                the converted night card on /events does. */}
             <a
               href={`/events/${event.slug}/menu`}
-              className="block w-full rounded-xl border border-card-border bg-card p-4 text-center transition-colors hover:border-accent/50"
+              className={`block min-h-11 w-full rounded-xl border border-line bg-surface p-4 text-center transition-colors hover:border-accent/50 ${FOCUS_RING}`}
             >
-              <p className="text-sm font-medium text-foreground">Drink Menu</p>
+              <p className="text-sm font-medium text-ink">Drink Menu</p>
               <p className="mt-1 text-xs text-muted">View available drinks</p>
             </a>
           </AnimatedSection>
@@ -1256,9 +1302,7 @@ export default async function EventDetailPage({
 
         {/* Event Gallery */}
         <AnimatedSection scrollTriggered className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-            Gallery
-          </h2>
+          <SectionHeading>Gallery</SectionHeading>
           <MediaGallerySection
             media={mediaItems}
             canUpload={canUpload}
@@ -1267,10 +1311,23 @@ export default async function EventDetailPage({
           />
         </AnimatedSection>
       </div>
+        </PageShell>
+      </div>
 
-      {/* Presentation. Cast at the page boundary because MobileNav is a client
-          component; phase 34 (STAFF-03) owns the nav vocabulary. */}
-      <MobileNav
+      {/* Presentation. Cast at the page boundary because the navigation is a
+          client component; phase 34 (STAFF-03) owns the nav vocabulary.
+
+          The mount moved UP A LEVEL, out of the deleted page root and into the
+          fragment, and it is a SIBLING of the declaring div rather than a child
+          of it — inside, it would still satisfy the textual pairing and would
+          pad the column by its own clearance. The shape is
+          src/app/(public)/gallery/page.tsx:88-133.
+
+          The four props are the four the phone-locked wrapper received, in the
+          same order. Width may change layout, never membership: the server
+          decides which entries exist and CSS decides only how they sit. NO
+          CAPABILITY CHECK IS TOUCHED. */}
+      <AppNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
         capabilities={[...capabilities]}
@@ -1278,6 +1335,6 @@ export default async function EventDetailPage({
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
         }
       />
-    </div>
+    </>
   );
 }
