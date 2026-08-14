@@ -1067,13 +1067,13 @@ Not preferences — each one has a failure mode behind it.
   4. **The monotone guards are untouched.** A payment reaching completion still corrects forward; nothing makes an amount that was taken look like it was not; no reveal becomes reachable earlier
   5. Each fix is proved by an **observable outcome**, not by a log line — and where the outcome can only be seen by a person, it goes in a written procedure with its `Result: pending`, because there is still no test runner
 
-**Plans:** 7 plans in 2 waves
+**Plans:** 2/7 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 46-01-PLAN.md — the three requirements, and every sentence this phase ships, approved in one pass (blocking checkpoint)
-- [ ] 46-02-PLAN.md — the one refusal shape, and a comment on the accidental fallback that must survive
+- [x] 46-01-PLAN.md — the three requirements, and every sentence this phase ships, approved in one pass (blocking checkpoint)
+- [x] 46-02-PLAN.md — the one refusal shape, and a comment on the accidental fallback that must survive
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
