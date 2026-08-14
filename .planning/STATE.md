@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phase 41.2 planned and checked — 20 plans in 9 waves. Upstream: Phases 41 and 41.1 both `human_needed` with 0 gaps (41's five-round reintroduction guard closed by 41.1-01's shared comment stripper). Thirteen human rows across the two, all in the end-of-v1.5 batch, and 41.2's RESP-01 pass will carry their union"
-last_updated: "2026-08-14T08:11:25.431Z"
-last_activity: 2026-08-14 -- Phase 41.2 execution started
+stopped_at: "Phase 41.2 EXECUTED — 21 plans in 9 waves, all four ratchets at ZERO, 16/16 gates green, build 0. Verification not yet run."
+last_updated: "2026-08-14T18:00:00.000Z"
+last_activity: 2026-08-14 -- Phase 41.2 executed (21 plans, 9 waves, ratchets closed)
 progress:
   total_phases: 17
   completed_phases: 13
