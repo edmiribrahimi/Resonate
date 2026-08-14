@@ -254,6 +254,34 @@ rather than a reading of any document:
   row-level policy must ask the same question of the same definition —
   `src/lib/routes/capability-routes.ts` is that definition.
 
+### The two decisions the researcher returned to the owner — both closed 2026-08-15
+
+- **D-44-26: the import is a LOCAL SCRIPT ONLY.** No upload surface inside the
+  product. The owner's flow is *many changes on the Mac, then update the app*,
+  and against that flow an in-product upload buys no convenience while adding a
+  real cost: the `.ics` would **transit a Vercel server**, carrying spaces under
+  negotiation and unannounced dates into logs, caches and runtime errors. That
+  surface does not exist today, and criterion 2 of this phase exists to keep it
+  from existing. **The parser stays a shared module** (researcher's Wave-0 gap:
+  `src/lib/production/ics/`), so adding an upload caller later is a caller, not
+  a redesign.
+
+- **D-44-27: the calendar is opened by ROLE, not by approval state.** Owner,
+  2026-08-15: *from now on organizer accounts are created inside the app by an
+  admin or an organizer; nobody signs up any more, so `pending` no longer has a
+  meaning.* An organizer created by the owner is trusted by construction, so
+  requiring an approved state would gate on a value that is about to stop
+  varying. **This is the first place the coming milestone reaches into current
+  work** — see [[milestone-platform-not-community]]. The researcher's
+  recommendation (a dedicated key with `requires_approved = true`) was correct
+  for the model as it stands today and is superseded by the owner's decision
+  about what the model becomes.
+
+  **Consequence to carry into planning:** do not build the calendar's gate on
+  `status`. If a gate on `status` is unavoidable for consistency with the
+  surfaces around it, say so and flag it as debt the milestone removes — do not
+  smuggle it in silently.
+
 ### Claude's Discretion
 
 The owner stated explicitly in this session: **every technical checkpoint is the
