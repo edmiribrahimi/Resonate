@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phase 41.2 PLANNED — 20 plans in 9 waves, plan-checker 0 blockers, 9 findings applied. Ready to execute."
-last_updated: "2026-08-14T05:40:00.000Z"
-last_activity: 2026-08-14 -- Phase 41.2 planned (research, context, validation, patterns, 20 plans, checker)
+stopped_at: "Phase 41.2 planned and checked — 20 plans in 9 waves. Upstream: Phases 41 and 41.1 both `human_needed` with 0 gaps (41's five-round reintroduction guard closed by 41.1-01's shared comment stripper). Thirteen human rows across the two, all in the end-of-v1.5 batch, and 41.2's RESP-01 pass will carry their union"
+last_updated: "2026-08-14T08:11:25.431Z"
+last_activity: 2026-08-14 -- Phase 41.2 execution started
 progress:
   total_phases: 17
   completed_phases: 13
-  total_plans: 191
+  total_plans: 211
   completed_plans: 192
   percent: 76
 ---
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 41.2 — public-member-and-money-surfaces (planned, ready to execute)
+**Current Focus:** Phase 41.2 — public-member-and-money-surfaces
 
 ## Current Position
 
-Phase: 41 (shared-primitives-three-tier-layout) — EXECUTING
+Phase: 41.2 (public-member-and-money-surfaces) — EXECUTING
 quattro, tre onde, gate automatici verdi. `39-VERIFICATION.md` e' `human_needed`:
 i criteri 2 e 3 li chiude solo `39-DOOR-PASS.md` §8, alla serata di fine v1.5,
 insieme al lotto della fase 38 (D-39-07). Vedi `## Blockers`.
@@ -66,7 +66,7 @@ dice 7 su 7 mentre il lavoro e' 6 su 7. La riga vera e' questa, non quella.
 serie e' in produzione dal 2026-08-10** (piano 36-05, versione `20260810144239`):
 questa riga diceva ancora "PLANNED, not yet executed" e da oggi sarebbe stata
 falsa contro un database.
-Plan: 1 of 12
+Plan: 1 of 20
 (contati sui SUMMARY.md presenti su disco, non supposti). Il contatore avanza di
 uno per piano, e le onde di questa fase girano in parallelo: `state.begin-phase`
 lo riporta a 1 a ogni chiamata, quindi il numero va riletto dai file. **Quindici
@@ -75,7 +75,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 41.2
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -156,7 +156,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-13 -- Phase 41.1 planning complete
+Last activity: 2026-08-14 -- Phase 41.2 execution started
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
