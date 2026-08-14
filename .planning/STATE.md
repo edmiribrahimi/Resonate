@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phase 41.2 EXECUTED — 21 plans in 9 waves, all four ratchets at ZERO, build 0, and 15 offline gates green with verify:capabilities REFUSING (it reaches production; see D-41.2-04). VERIFIED human_needed, 3/4 criteria."
+stopped_at: "Phase 41.2 VERIFIED human_needed — 3/4 criteria in their mechanical half, 0 gaps, all four ratchets at 0. RESP-01 closes only by the human pass; RESP-03 criterion 5 partly false by declared decision."
 last_updated: "2026-08-14T18:00:00.000Z"
-last_activity: 2026-08-14 -- Phase 41.2 executed (21 plans, 9 waves, ratchets closed)
+last_activity: 2026-08-14 -- Phase 41.2 executed and verified (human_needed, 0 gaps)
 progress:
   total_phases: 17
   completed_phases: 13
