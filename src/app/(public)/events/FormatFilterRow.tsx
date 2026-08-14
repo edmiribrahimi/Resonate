@@ -1,5 +1,6 @@
 import Link from "next/link";
 import FormatMarker from "@/components/formats/FormatMarker";
+import { FOCUS_RING } from "@/components/ui/Button";
 
 /**
  * The format filter on `/events` — the chip row that must look the same to
@@ -52,6 +53,48 @@ import FormatMarker from "@/components/formats/FormatMarker";
  *    from the format channel: the moment one channel borrows the other, a
  *    format stops being identifiable. The on state here is ground, ink and
  *    `aria-current`.
+ *
+ * ── The inversion, decided in writing (phase 41.2, plan 41.2-06) ─────────────
+ *
+ * `41.2-PATTERNS.md` §6.3 names this file as one of the map's three declared
+ * gaps, and the reason is that the ordinary direction is inverted: the tree's
+ * chip primitive was copied FROM the row below — `Chip.tsx:28-48` says so in
+ * its own docblock, and the 44px minimum occurs exactly twice tree-wide, both
+ * of them here. So replacing those two declarations with the primitive is a
+ * judgement, not a copy, and the two readings were weighed rather than assumed.
+ *
+ * **The judgement: the floor declarations STAY, and this file does not adopt
+ * the primitive.** The reason is mechanical rather than sentimental, and it is
+ * the two paragraphs above this one:
+ *
+ *   * the primitive's ONLY filled form is its selected state
+ *     (`Chip.tsx:62-69`), and that fill is the interaction accent. Handing the
+ *     current format chip to it would put the interaction hue on the format
+ *     channel — the exact borrowing this file's docblock refuses, one element
+ *     below a tab row that legitimately owns that hue;
+ *   * and the selected state is also what emits `aria-current`
+ *     (`Chip.tsx:178`), so declining the fill by passing `selected={false}`
+ *     would silently drop the only non-colour channel the current chip has.
+ *
+ * The remaining road — an unselected chip with the ground and ink re-applied
+ * from the call site — is the WR-05 trap named at `PageShell.tsx:109-114`: the
+ * same property at the same specificity, so the emitted stylesheet's order
+ * decides, not the class list.
+ *
+ * **What this file DID take from the contract**, so that "stays" does not mean
+ * "untouched": the legacy ground, ink and boundary aliases are gone onto the
+ * current tokens, and the boundary is `--control` rather than a line token,
+ * because a chip is a control and `Chip.tsx:41-44` records the ratio that makes
+ * the difference (7.14 : 1 against 1.39 : 1). The focus expression is now the
+ * one imported from the ladder, never re-spelled, so this file stops being the
+ * only interactive row on the surface with no declared indicator.
+ *
+ * **And the run-time border composition below is NOT simplified into a
+ * literal.** `verify-sunset-gradient`'s own header says the gate cannot see a
+ * colour composed at run time, so nothing would go red if it were — which is
+ * exactly why it is written down here. The hue comes from a catalogue row; a
+ * literal would be a brand colour hard-coded from data, and changing a format's
+ * colour would become a deploy (D-36-12, FMT-05).
  */
 
 interface FormatChip {
@@ -106,16 +149,20 @@ export default function FormatFilterRow({
         focal point of the screen is the list below it, so no icons on the
         chips and no heading of its own.
       */}
-      <nav aria-label="Filter events by format" className="mb-4 px-6">
+      {/* The page gutter is the shell's since this surface converted, so it is
+          not written again here — but `-mx-6 px-6` on the scroller below still
+          bleeds the row out to it and back, because the two are the same 24px
+          step and that is what lets a partial chip show past the margin. */}
+      <nav aria-label="Filter events by format" className="mb-4">
         <div className="format-filter-scroll -mx-6 flex gap-4 overflow-x-auto px-6">
           <Link
             href={isPast ? "/events?tab=past" : "/events"}
             aria-current={allIsCurrent ? "true" : undefined}
             style={allIsCurrent ? { scrollMarginInline: "24px" } : undefined}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-card-border px-4 text-xs font-semibold tracking-wide normal-case transition-colors ${
+            className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-control px-4 text-xs font-semibold tracking-wide normal-case transition-colors ${FOCUS_RING} ${
               allIsCurrent
-                ? "bg-card text-foreground"
-                : "text-muted hover:text-foreground"
+                ? "bg-surface text-ink"
+                : "text-muted hover:text-ink"
             }`}
           >
             {/*
@@ -146,11 +193,17 @@ export default function FormatFilterRow({
                 }
                 aria-current={isCurrent ? "true" : undefined}
                 // The border colour is applied INLINE while the neutral
-                // `border-card-border` class stays on the element: if
-                // `color-mix` is unsupported the declaration is dropped and the
-                // neutral border remains, so there is no state in which a chip
-                // loses its border. The hue comes from the catalogue row and
-                // never from a constant here (D-36-12, FMT-05).
+                // boundary class stays on the element: if `color-mix` is
+                // unsupported the declaration is dropped and the neutral border
+                // remains, so there is no state in which a chip loses its
+                // border. The hue comes from the catalogue row and never from a
+                // constant here (D-36-12, FMT-05).
+                //
+                // NOT simplified into a literal, and the reason is that nothing
+                // would have caught it: `verify-sunset-gradient`'s own header
+                // says the gate cannot see a colour composed at run time. A
+                // literal would put a brand colour in this file and make
+                // changing a format's colour a deploy.
                 style={
                   isCurrent
                     ? {
@@ -159,8 +212,8 @@ export default function FormatFilterRow({
                       }
                     : undefined
                 }
-                className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-card-border px-4 transition-colors ${
-                  isCurrent ? "bg-card" : ""
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-control px-4 transition-colors ${FOCUS_RING} ${
+                  isCurrent ? "bg-surface" : ""
                 }`}
               >
                 {/*
