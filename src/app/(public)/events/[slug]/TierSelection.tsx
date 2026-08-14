@@ -1,10 +1,72 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useId } from "react";
 import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
 import { validateDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/actions";
-import PressableButton from "@/components/motion/PressableButton";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Chip";
+import { Input } from "@/components/ui/Input";
+import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
+
+/**
+ * The surface that decides what a guest pays, on the design system.
+ *
+ * ── The money path is untouched, and that is the point of this conversion ────
+ *
+ * Two server actions are reachable from here and **both are called with the same
+ * arguments, in the same order, as before**: the purchase takes the night, the
+ * tier and the discount identifier; the validation takes the night and the typed
+ * code. No status transition, no amount, no discount computation, no idempotency
+ * key and no webhook path is written, read or reshaped by this file — it renders
+ * controls and reports what an action returned or threw. Both action modules were
+ * **read** so that a rendering change could be told from a payload change, and
+ * neither was edited.
+ *
+ * The rule this inherits is `ticketing-payments.md`'s: the price that counts is
+ * the one the server computes. The arithmetic below decides what a guest is
+ * *shown* while choosing; it decides nothing about what is charged, and a
+ * conversion that made this file a second author of that number would be a
+ * behaviour change wearing a visual costume.
+ *
+ * ── Every validation attribute was proved unchanged, not eyeballed ───────────
+ *
+ * A diff read by eye shows what *moved*; it cannot show what was *dropped*,
+ * because a dropped attribute produces a deletion that looks exactly like a
+ * relocation. So the controls' attributes were extracted as a **sorted multiset
+ * over comment-stripped source** before and after, with a raw count beside them
+ * as a second instrument — the technique plan 41.1-22 established on the four
+ * ticket components and recorded in the conversion manifest in its own words.
+ *
+ * ── The checkout panel is NOT opened here ────────────────────────────────────
+ *
+ * `SumUpCheckoutModal` was converted one wave earlier as spine, by plan 41.2-10,
+ * precisely so that this plan and the bar's plans stayed separate plans instead
+ * of being merged into one — 41.1-17's scheduling, applied again. Its mount
+ * conditional and all three props it is given are byte-identical either side of
+ * this diff.
+ *
+ * ── The one selectable control that stays a raw element, and why ─────────────
+ *
+ * A tier row is a full-width card in a single-select group. Neither pill rung
+ * fits it: both `Button` and `Chip` declare a fully round radius, horizontal
+ * padding, centred content and non-wrapping text, and defeating those from a
+ * caller's class list would rely on class-list order — which Tailwind does not
+ * honour, it resolves by source order. Delegating instead to the pressable card
+ * would trade a `button` element for a `div`, taking keyboard operability and
+ * the disabled state off the surface that decides what a guest pays.
+ *
+ * So the row stays a `button` and pays the contract **at the element**: the 44px
+ * floor, the container radius, the imported focus expression, and semantic ink.
+ * The colour-swatch picker under the format catalogue is the tree's converted
+ * precedent for the same judgement — a selectable control kept as a raw element,
+ * with the contract paid on it rather than around it.
+ *
+ * `aria-pressed` is the one behaviour this conversion adds, and it is declared
+ * rather than slipped in: selection had exactly one channel before, a border
+ * hue, which says nothing at all to a person who cannot see it. No wording, no
+ * payload and no condition moves with it.
+ */
 
 interface Tier {
   id: string;
@@ -93,14 +155,18 @@ function statusLabel(status: TierStatus): string {
   }
 }
 
-function statusBadgeClasses(status: TierStatus): string {
-  switch (status) {
-    case "coming_soon": return "bg-blue-500/20 text-blue-400";
-    case "available": return "bg-green-500/20 text-green-400";
-    case "sold_out": return "bg-red-500/20 text-red-400";
-    case "expired": return "bg-zinc-500/20 text-zinc-400";
-  }
-}
+/**
+ * The four states carried one hue apiece — blue, green, red and grey.
+ *
+ * All four now take the neutral badge, and the loss is nothing: the state is
+ * already **written** on the mark, and an unavailable row is already dimmed and
+ * already refuses the press. Colour was the third channel, not the only one.
+ *
+ * D-41.1-25 refuses a tone per outcome, and the badge primitive says so in its
+ * own words — the emphasis fill means *look here first*, it does not grade an
+ * outcome. Wave 6 reached the same answer on this surface's sibling, where three
+ * tinted marks went to one neutral badge for the same reason.
+ */
 
 /**
  * Countdown timer for a given target date.
@@ -145,7 +211,7 @@ function CountdownDisplay({ targetDate }: { targetDate: Date }) {
   parts.push(`${String(remaining.seconds).padStart(2, "0")}s`);
 
   return (
-    <span className="text-xs text-amber-400 tabular-nums" suppressHydrationWarning>
+    <span className="text-xs text-sem-warn tabular-nums" suppressHydrationWarning>
       {parts.join(" ")}
     </span>
   );
@@ -169,6 +235,7 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const discountCodeId = useId();
 
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
   useEffect(() => {
@@ -241,18 +308,22 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-        {label ?? "Get Your Ticket"}
-      </h2>
+      <SectionHeading>{label ?? "Get Your Ticket"}</SectionHeading>
 
+      {/*
+        The refusal keeps its position and its condition; only its ink and its
+        role move. It was a tinted box with no role, which said nothing at all to
+        a person not looking straight at it — and this repository has no error
+        tracking, so a refusal nobody sees is a refusal that exists nowhere.
+      */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
+        <p role="alert" className="mb-3 text-sm text-sem-crit">
+          {error}
+        </p>
       )}
 
       {countdownTarget && countdownTarget.getTime() > Date.now() && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 mb-3">
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 mb-3">
           <span className="text-xs text-muted">Offer ends in</span>
           <CountdownDisplay targetDate={countdownTarget} />
         </div>
@@ -268,25 +339,24 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             <button
               key={tier.id}
               type="button"
+              aria-pressed={isSelected}
               disabled={isDisabled || isPending}
               onClick={() => setSelectedTierId(tier.id)}
-              className={`w-full rounded-xl border p-4 text-left transition-all active:scale-[0.98] active:opacity-80 ${
+              className={`min-h-11 w-full rounded-2xl border p-4 text-left transition-all active:scale-95 active:opacity-80 ${FOCUS_RING} ${
                 isDisabled
-                  ? "border-card-border bg-card/50 opacity-50 cursor-not-allowed"
+                  ? "border-line bg-surface/50 opacity-50 cursor-not-allowed"
                   : isSelected
                     ? "border-accent bg-accent/10"
-                    : "border-card-border bg-card hover:border-accent/50"
+                    : "border-line bg-surface hover:border-accent/50"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-sm font-semibold text-ink">
                     {tier.name}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${statusBadgeClasses(status)}`}>
-                      {statusLabel(status)}
-                    </span>
+                    <Badge className="shrink-0">{statusLabel(status)}</Badge>
                     {status === "available" && tier.show_remaining !== false && tier.available !== null && (
                       <span className="text-xs text-muted">
                         {tier.available} available
@@ -295,10 +365,17 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
+                  {/*
+                    The struck-through original beside the payable figure is the
+                    channel that says a discount applied — a structural one, not
+                    a hue. So the payable figure takes the same ink every price
+                    on this surface takes, and D-41.1-25's refusal of a tone per
+                    outcome is kept.
+                  */}
                   {discount && (discount.applicable_tier_ids === null || discount.applicable_tier_ids.includes(tier.id)) && computeDiscountedPrice(tier.price, discount) >= 1.00 ? (
                     <>
                       <p className="text-xs text-muted line-through">{formatPrice(tier.price)}</p>
-                      <p className="text-sm font-bold text-green-400">{formatPrice(computeDiscountedPrice(tier.price, discount))}</p>
+                      <p className="text-sm font-bold text-accent">{formatPrice(computeDiscountedPrice(tier.price, discount))}</p>
                     </>
                   ) : (
                     <p className="shrink-0 text-sm font-bold text-accent">{formatPrice(tier.price)}</p>
@@ -314,64 +391,85 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         <div className="mb-4">
           {!discount ? (
             <>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => setShowDiscountInput(!showDiscountInput)}
-                className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
                 {showDiscountInput ? "Hide" : "Have a discount code?"}
-              </button>
+              </Button>
               {showDiscountInput && (
-                <div className="mt-2 flex gap-2">
-                  <input
+                <div className="mt-2 flex items-start gap-2">
+                  {/*
+                    The field had a placeholder and no name of any kind, so a
+                    screen reader announced it as "edit text" and nothing else.
+                    The primitive's type requires one; the name added here is
+                    the placeholder's own subject, and no visible word changed.
+                  */}
+                  <Input
+                    id={discountCodeId}
+                    aria-label="Discount code"
+                    className="flex-1"
                     type="text"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleValidateCode(); } }}
                     placeholder="Enter code"
-                    className="flex-1 rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   />
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
                     onClick={handleValidateCode}
                     disabled={!discountCode.trim() || isValidating}
-                    className="rounded-lg bg-accent/20 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/30 transition-colors disabled:opacity-50"
                   >
                     {isValidating ? "..." : "Apply"}
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
-              <p className="text-xs text-green-400">
+            <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2">
+              <p className="text-xs text-ink-2">
                 Discount applied: {discount.discount_type === "percentage"
                   ? `${discount.discount_amount}%`
                   : formatPrice(discount.discount_amount)}
               </p>
-              <button
-                type="button"
-                onClick={handleClearDiscount}
-                className="text-xs text-muted hover:text-foreground transition-colors"
-              >
+              <Button size="sm" variant="ghost" onClick={handleClearDiscount}>
                 Rimuovi
-              </button>
+              </Button>
             </div>
           )}
+          {/*
+            The refusal stays OUTSIDE the field, at the same position and under
+            the same condition as before. It is deliberately not handed to the
+            primitive's own error slot: that slot renders inside the field's
+            block, so a refusal raised and then hidden with the field would
+            disappear — a change to WHEN a person is told a code was rejected,
+            which is not a rendering change.
+          */}
           {discountError && (
-            <p className="mt-1 text-xs text-red-400">{discountError}</p>
+            <p role="alert" className="mt-1 text-xs text-sem-crit">{discountError}</p>
           )}
         </div>
       )}
 
-      <PressableButton
+      {/*
+        The accent fill carried white ink, which is 2.91 : 1 on it and fails the
+        4.5 : 1 the text rule asks for. The ladder's own arithmetic puts the page
+        ground on an accent fill at 6.85 : 1, so the label on the control that
+        starts a payment became readable as a by-product of using the rung.
+      */}
+      <Button
+        className="w-full"
         disabled={!selectedTierId || isPending}
         onClick={handlePurchase}
-        className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? "Processing..." : label ? `Buy ${label}` : "Buy Ticket"}
-      </PressableButton>
+      </Button>
 
+      {/*
+        Converted one wave earlier as spine by plan 41.2-10 and NOT opened here.
+        The conditional and all three props are byte-identical either side.
+      */}
       {checkoutId && (
         <SumUpCheckoutModal
           checkoutId={checkoutId}
