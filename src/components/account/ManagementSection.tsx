@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { CapabilityKey } from "@/lib/capabilities/keys";
 import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import CollapsibleSection from "@/components/account/CollapsibleSection";
+import { FOCUS_RING } from "@/components/ui/Button";
 
 /**
  * The Management Tools list on the account page — the third hand-maintained
@@ -42,16 +43,22 @@ export default function ManagementSection({
   const links = visibleStaffTabs(capabilities);
 
   return (
-    <div className="border-t border-card-border pt-6 mt-6">
+    <div className="border-t border-line pt-6 mt-6">
       <CollapsibleSection title="Management Tools" defaultOpen>
         <div>
+          {/*
+            Each entry is a navigation target, so it declares the 44 px floor
+            and carries the focus expression. The separator keeps a line token:
+            it is the edge of a row and not the boundary of a control, which is
+            the triage `ui/Card.tsx:20-33` states both halves of.
+          */}
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center justify-between py-3 border-b border-card-border last:border-0"
+              className={`flex min-h-11 items-center justify-between py-3 border-b border-line last:border-0 ${FOCUS_RING}`}
             >
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-ink">
                 {link.label}
               </span>
               <span className="text-muted">&rsaquo;</span>

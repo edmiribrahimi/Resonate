@@ -2,7 +2,37 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
+/**
+ * Begin a credential reset for the signed-in account.
+ *
+ * ── The act is untouched ─────────────────────────────────────────────────────
+ *
+ * The shell and the control converted; **the reset target did not**. The
+ * redirect below still aims at the callback with the same `next` parameter, for
+ * the reason the comment inside `handleReset` gives — and that comment is kept
+ * whole rather than trimmed, because it is the record of a loop this button
+ * once created and the thing that stops it being "simplified" back.
+ *
+ * ── The success box is an announced region, not a green card ─────────────────
+ *
+ * It carried a green-family border, ground and ink. The set contains **no
+ * green** and Phase 40 did not invent one (`globals.css:169-173`), so the
+ * confirmation takes `--sem-done` as ink inside the card shell, and it is
+ * `role="status"` so it is announced rather than merely coloured.
+ *
+ * ── A refusal that names one cause for two, recorded and NOT reworded ────────
+ *
+ * `status === "error"` is reachable two ways — the account has no address on
+ * it, and the provider refused to send — and both draw the same four words. It
+ * is recorded in this plan's findings at its two line numbers and carried
+ * forward rather than rewritten here: rewording a refusal is changing what a
+ * person reads, which is not this pass's remit. It matters more than it looks
+ * because this repository has **no error tracking**: a cause that is not
+ * distinguishable on screen is not distinguishable anywhere.
+ */
 export default function ResetPasswordButton() {
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
 
@@ -38,19 +68,22 @@ export default function ResetPasswordButton() {
 
   if (status === "sent") {
     return (
-      <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-sm text-green-400">
-        Password reset email sent. Check your inbox.
-      </div>
+      <Card>
+        <p role="status" className="text-sm text-sem-done">
+          Password reset email sent. Check your inbox.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <button
+    <Button
+      variant="secondary"
       onClick={handleReset}
       disabled={status === "loading"}
-      className="w-full rounded-2xl border border-card-border bg-card p-5 text-left text-sm font-medium text-muted transition-all hover:border-accent/50 hover:text-foreground active:scale-[0.98] active:opacity-80 disabled:opacity-50"
+      className="w-full justify-start"
     >
       {status === "loading" ? "Sending..." : status === "error" ? "Failed — try again" : "Reset Password"}
-    </button>
+    </Button>
   );
 }
