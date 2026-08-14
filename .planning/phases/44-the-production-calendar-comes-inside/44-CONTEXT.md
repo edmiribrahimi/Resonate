@@ -182,9 +182,24 @@ rather than a reading of any document:
   three anchors were re-measured on the calendar on 2026-08-15 and **all three
   were wrong in the module**. Persona 1.13.0 corrects them; the phase must build
   against these, not against the older prose:
-  - **Timetable: the night itself**, not −1 (6 of 7; `RSNT-003` is the override)
-  - **LiveCut: anchored to the NEXT night, at −4 / −3 / −2** — not to its own
-  - **After movie: −1 from the NEXT edition's listing. Six out of six.**
+  - **Timetable: the night itself**
+  - **LiveCut: Tuesday, Wednesday and Thursday of the NEXT night's week** — not
+    its own
+  - **After movie: the Monday before the next edition's listing**
+
+  **[CORRECTED — and this correction is the single most important thing this
+  phase must build against.] The pipeline is expressed in DAYS OF THE WEEK, not
+  in offsets.** Persona 1.14.0 carries the full table. The night falls **Friday
+  or Saturday**, so the same Tuesday sits −4 from a Saturday and −3 from a
+  Friday. A planner that stores offsets sees two rules where there is one, and
+  **flags a perfectly correct night as an error**.
+
+  This is not hypothetical: a check written during this discussion reported
+  `RSNT-003` as out of rule on three pieces, and it was the check that was
+  wrong. The owner settled it in one sentence — *the next night falls on a
+  Friday*. **Two earlier passes had measured correctly and still written the
+  consequence instead of the rule.** Any anchor computation in this phase
+  resolves a weekday relative to the anchor event, never a day count.
 
   **The measurement that matters for how this phase computes anything:** from
   its own night, the after movie looked irregular (−12, −12, −12, −18, −19).
