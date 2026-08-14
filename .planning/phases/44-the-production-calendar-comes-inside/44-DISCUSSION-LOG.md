@@ -178,3 +178,51 @@ is not delegation of the four Critical domains.
   first thing owed back if that ever inverts
 - A cancelled night, and two formats falling on the same day → identified as
   gray areas, not discussed; left to research and planning
+
+---
+
+## Addendum — after reading the real calendar (2026-08-15)
+
+The owner supplied the updated `.ics`. It was copied to `docs/` and its
+gitignore status **verified before it was read** — that order is the point, not
+a formality. Reading it for structure produced three findings that changed
+decisions taken earlier in the same session.
+
+**What the file actually holds:** 88 entries, Nov 2024 → Jul 2027. It contains
+nights, *and* editorial pieces as entries of their own (14 listings, 7
+timetables, 7 after movies — and zero podcasts, recaps or tonights), *and* a
+third kind entirely: dates belonging to a collective the owner takes part in,
+present so nothing gets scheduled against them.
+
+| Finding | Owner's reading | Effect |
+|---|---|---|
+| A name the production module does not know, 14 entries | Not re:sonate production — a collective the owner is part of, kept so dates do not clash | New entry kind: **external commitment**. Must be recognised and separated, never imported as a night |
+| MotionLab absent entirely | Not yet programmed — the space is not acquired | `production-calendar.md` states a cadence and an unbroken rotation the calendar does not support. Calendar wins; module to be corrected **in its own commit** |
+| Some pieces already written in the file, others absent | — | Turned "derive or not" into "what wins where" |
+
+### The collision, and how it was resolved
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Reads what is there, computes the rest | File dates win; missing ones computed | |
+| Computes everything, ignores the file | One rule, but overrides already written would be overwritten | |
+| Reads only, computes nothing | No surprises — but the checklist cannot warn about a missing piece | first choice |
+
+**First answer:** "Reads only, computes nothing."
+
+**Raised rather than implemented:** that answer collided with two things decided
+minutes earlier — D-44-15, where the owner asked that a late piece be flagged
+prominently (impossible if the system cannot tell "never written" from "not
+needed"), and the phase's own **criterion 3**, which is requirement PROD-01 and
+asks for pieces derived from date and format. Left alone, the phase would have
+shipped without covering its own criterion.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Knows what is owed, invents no dates | Checklist works; criterion 3 covered in declared form | |
+| Reads only, for real | Legitimate, but criterion 3 must then be rewritten in the roadmap | |
+| Knows what is owed AND proposes missing dates | Maximum help; proposed dates appear that are not in the owner's calendar | ✓ |
+
+**Final answer:** knows what is owed and proposes the missing dates, marked as
+proposals until written in the file. Both answers are recorded: a superseded
+decision without its reason reads as an oversight.

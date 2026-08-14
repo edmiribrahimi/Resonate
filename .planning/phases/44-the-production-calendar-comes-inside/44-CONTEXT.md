@@ -78,16 +78,44 @@ system holds nothing secret, so they cannot share one lock.
   left to be discovered. *(Same discipline as the calendar-beats-tracker gate:
   a divergence that blocks is better than one nobody sees.)*
 
-- **D-44-08:** The calendar shows **past nights too** — the full archive. It is
-  also what makes the three-cycle rotation (Booze → MotionLab → Muro, unbroken
-  across 27 dates) verifiable in the product rather than remembered.
+- **D-44-08:** The calendar shows **past nights too** — the full archive, back to
+  the file's earliest entry (Nov 2024). Its purpose is to make the rotation
+  **checkable in the product instead of remembered** — which matters more than
+  it did an hour ago: the file does not show the three-cycle rotation this
+  project has been describing as unbroken (D-44-19). The archive is how a claim
+  like that gets settled by looking rather than by recalling.
 
 ### Editorial anchors
 
-- **D-44-09:** The anchors are **derived from the night's date and format**, per
-  `production-calendar.md`: listing at −2, tonight on the day, recap and podcast
-  cover at +4, timetable at −1 for the night, and the after movie anchored to
-  the **next edition's listing** — never to a day count.
+- **D-44-09 [REVISED after reading the file — see D-44-09b]:** The anchors are
+  **derived from the night's date and format**, per `production-calendar.md`:
+  listing at −2, tonight on the day, recap and podcast cover at +4, timetable at
+  −1 for the night, and the after movie anchored to the **next edition's
+  listing** — never to a day count.
+
+- **D-44-09b [supersedes the reading above, and is the operative rule]:** The
+  updated calendar turned out to **already contain some pieces as entries of
+  their own** — 14 listings, 7 timetables, 7 after movies, and **zero** podcasts,
+  recaps or tonights. That measurement changed the question from *derive or not*
+  to *what wins where*. The rule is three-part:
+
+  1. **A date written in the file WINS.** It is a decision already taken,
+     overrides included. Nothing recomputes it.
+  2. **The product knows which pieces a format OWES**, because the pipeline is a
+     written rule — a satellite owes listing, tonight, recap and podcast cover;
+     the night owes timetable, one podcast per dj, and an after movie. This is
+     what lets the checklist say a piece is *missing* rather than treating
+     "never written" and "not needed" as the same fact.
+  3. **A missing piece gets a PROPOSED date** from the rule (−2 / +4 / −1), and
+     it is **marked as a proposal** until it is written in the file. Accepted
+     consequence, stated when the choice was made: dates appear on screen that
+     do not exist in the owner's calendar, and they must never read as settled.
+
+  *(Route taken: the owner first chose "read only, compute nothing"; the
+  collision that choice created with the checklist (D-44-15) and with the
+  phase's own criterion 3 was surfaced, and the owner then chose the fuller
+  rule. Both are recorded — a superseded decision without its reason reads as an
+  oversight.)*
 
 - **D-44-10:** A single piece's date **can be moved**, and the override is **not
   surfaced as a label**. *(Owner's choice over "the override is visible" and
@@ -125,6 +153,35 @@ system holds nothing secret, so they cannot share one lock.
 - **D-44-16:** A tick **warns but does not block**. Announcing a night with open
   items tells you and lets you proceed. It protects against distraction without
   ever standing in the way.
+
+### What the calendar holds besides nights — measured, not assumed
+
+The updated file was read for **structure** on 2026-08-15 (88 entries, Nov 2024
+→ Jul 2027). Three findings changed the model, and each is a fact from the file
+rather than a reading of any document:
+
+- **D-44-18: a third kind of entry exists — the external commitment.** A share
+  of the entries belong to a collective the owner takes part in. It is **not
+  re:sonate production**, but it **occupies a day**, and the reason it is in the
+  calendar is to avoid scheduling a night against it. It is neither a night nor
+  a piece: importing it as a night would hand it a format and a progressivo it
+  does not have, and those reach surfaces that name formats. The import must
+  **recognise and separate** it, and the calendar must show the day as taken
+  without implying a night. *(The collective's name is deliberately not written
+  in this file: `.planning/` is public. The import reads it from the file.)*
+
+- **D-44-19: MotionLab has no dates in the calendar.** Zero occurrences. Per the
+  owner: **not yet programmed**, because the space is not acquired. Consequence
+  outside this phase: `production-calendar.md` currently states a cadence
+  ("one every 6 weeks") and a rotation ("unbroken across nine cycles") that the
+  calendar does not support. The calendar wins and the module is the source to
+  correct — **as its own commit, not inside this phase**, since a persona module
+  change needs `verify:persona` and a changelog entry.
+
+- **D-44-20: the import needs an explicit inclusion rule.** With nights, pieces
+  and external commitments in one file — plus entries carrying no sigla at all —
+  "import everything" is not a specification. What enters, as what kind, and
+  what is skipped, must be declared and testable against the real file.
 
 ### Access
 
@@ -186,9 +243,13 @@ delegation of those four.
   series as they exist in production
 
 ### The material — read locally, never committed
-- `docs/Music-2026-08-02.ics` — the calendar's current file form. Read for
-  **structure**; an updated file will be placed alongside it by the owner.
-  `docs/` is gitignored on purpose
+- `docs/Music-2026-08-15.ics` — **the current calendar**, supplied by the owner
+  on 2026-08-15 and placed in `docs/`, which is gitignored (`.gitignore:67`) and
+  held there by check F of `verify:persona`. Confirmed invisible to git before
+  anything was read from it. 88 entries, Nov 2024 → Jul 2027. Read it for
+  **structure and content when implementing the import** — and write neither
+  into any tracked file
+- `docs/Music-2026-08-02.ics` — the previous file, kept for comparison
 
 </canonical_refs>
 
@@ -232,8 +293,10 @@ delegation of those four.
 <specifics>
 ## Specific Ideas
 
-- The owner will supply an updated `.ics` reflecting recent changes. It goes in
-  `docs/`, not into conversation and not into `.planning/` (D-44-04)
+- The updated `.ics` was supplied on 2026-08-15 and is at
+  `docs/Music-2026-08-15.ics`. It was copied there and its gitignore status
+  verified **before** being read — the order matters, and it is the order the
+  next person should follow (D-44-04)
 - "MotionLab today" is the concrete case for D-44-05: a format on the calendar
   whose space is not acquired. The stage must be visible without the name
   leaving the internal surface
@@ -254,6 +317,10 @@ delegation of those four.
 - **What happens to a cancelled night, and two formats on the same day** —
   identified as gray areas but not discussed; the owner chose to proceed. Left
   to research and planning
+- **Correcting `production-calendar.md`** — the module states a MotionLab
+  cadence and an unbroken rotation the calendar does not support (D-44-19). The
+  calendar wins; the module is the source to correct, in its own commit with a
+  `verify:persona` run and a changelog entry. **Not** part of this phase
 
 ### Reviewed Todos (not folded)
 - `form-untick-venue-secret-leaves-no-trace.md` (score 0.4, venue-secrecy) —
