@@ -2,7 +2,9 @@
 
 **Drafted:** 2026-08-14
 **Plan:** 46-01, task 2
-**Status:** awaiting the owner's approval in **one pass** (D-46-10a)
+**Status:** **APPROVED** by the project owner on 2026-08-14, in **one pass** over
+the whole list (D-46-10a). See `## Sign-off` at the foot for what was approved
+and what was added in the same pass.
 
 > `.planning/` is public. Roles below, never people. No venue, no unannounced
 > date, no line-up, no contact, and no order id — in the document or in any
@@ -129,6 +131,53 @@ only be given where the screen still renders the order — and where it does not
 | `TOKENS_REFUSED` | 46-05 | `GuestTokenDisplay.tsx:506` (`!res.ok`), and the poll's `!res.ok` at `:564` | the server answered and would not give the order | **The server could not answer for this order. Your payment is not affected — reload in a moment.** |
 | `TOKENS_GAVE_UP` | 46-05 | `GuestTokenDisplay.tsx:581` — the bound, `pollCountRef.current >= 10` | the poll reached its bound with no answer. **Today this is the commonest terminal state and it produces nothing at all** — `clearInterval` and no state change | **Your drinks have not been confirmed yet and we have stopped checking. Your payment is not affected — reload this page to check again.** |
 
+### 2b · One added sentence, and it is **not a refusal**
+
+Approved in the same pass as the list (2026-08-14). It belongs to 46-05 and it
+is drawn when the state is **healthy** — the guest has active tokens and nothing
+has gone wrong. It is a warning that arrives *before* the failure it prevents,
+which is the opposite of every other row in this document.
+
+**It is not a member of any refusal union, and it must not be made one.** A
+category means *something went wrong*; this sentence means *nothing has, and
+here is how to keep it that way*. Folding it into the union would make a
+`Record` total over a set that no longer describes one thing.
+
+| Constant | Plan | Renders at | Condition | Sentence |
+|---|---|---|---|---|
+| `RECEIPT_KEEP_TAB_OPEN` | 46-05 | `GuestTokenDisplay.tsx:637-663`, above the grid at `:652` | the guest holds at least one **active** token — the predicate the card already uses, `token.status === "active"` at `:441` | **Keep this tab open until your drinks are served — if you are browsing privately, closing it will lose them.** |
+
+**Why it was added rather than assumed.** The owner believed a warning of this
+kind was already on the surface. It is not:
+`LC_ALL=C /usr/bin/grep` over the `menu/` directory returns **zero** occurrences
+of any *don't close this tab* notice. The one real way to lose the receipts is
+to browse privately and close the tab, and until this sentence ships nothing
+tells a guest that.
+
+### The domain facts that make the six sentences say what they say
+
+Given by the owner during the approval, and recorded here because they are the
+**reason** no sentence sends a guest anywhere else. Without the reason written
+down, the next reader will add the missing route back in as an obvious
+improvement.
+
+1. **The drink menu is reachable only by scanning a QR code at the bar**, and it
+   is not reachable before the night. Nobody buys who is not inside the venue
+   with the code in front of them.
+2. **The cross-browser loss scenario is therefore unreachable.** *Buy inside a
+   social app's in-app browser, reopen in the system browser* cannot happen: the
+   camera opens the system browser, so the purchase and the re-read live in the
+   same storage.
+3. **No staff surface shows orders or tokens.** `DrinkMenuManager.tsx` manages
+   the price list, not the orders. Writing *ask at the bar* would be a promise
+   the product does not keep, and rule 3 of this document forbids it.
+4. **The counter-side screen stays deferred.** It is not in this phase, and no
+   sentence here anticipates it.
+
+Together these narrow the case to one: **a private window, closed.** That is the
+case `RECEIPT_KEEP_TAB_OPEN` addresses before it happens, and the case the two
+`RECEIPT_*` refusals describe honestly once it has.
+
 **Two notes:**
 
 - **The sentences are inert unless the early return learns the third state.**
@@ -196,6 +245,14 @@ returns 200 regardless.
 | `CRON_REFUND_DELETE_SHORT` | 46-07 | `route.ts:161-168` | fewer rows were deleted than were asked for | **Fewer token rows were deleted than were asked for. The rows that remain are still in the table and are not counted as deleted.** |
 | `CRON_REFUND_REFUNDS_FAILED` | 46-07 | `route.ts:92` and `:128` accumulate it; reported at `:170-174` | one or more refunds could not be issued | **One or more refunds could not be issued. That is money that should have gone back and has not — each failure is logged on its own line and needs a refund by hand.** |
 
+> **`CRON_REFUND_REFUNDS_FAILED` accompanies a FAILED run, not a 200.** Settled
+> by the owner in this approval (Decision 1, answer **A**): when
+> `refundErrors > 0` the route returns a non-2xx and the run terminates as
+> failed, exactly as D-46-06 already decided for a refused cleanup delete. 46-07
+> implements it. The other three strings keep their existing dispositions —
+> `CRON_REFUND_OK` is a 200, and the two delete strings were already failed runs
+> under D-46-06.
+
 **Three notes:**
 
 - **The counts stay out of the sentences and travel as fields.** The route
@@ -231,8 +288,31 @@ forgotten — which is this phase's own defect, reproduced in its own paperwork.
 
 ## Two decisions inside this approval
 
-The one-pass approval is the only pass, so these two cannot be left to
-execution. Neither may be recorded as *to be decided later*.
+**Both answered by the owner on 2026-08-14, in the same pass as the list.** The
+questions and their options are kept below exactly as they were put, so the
+answers can be read against what was actually asked rather than against a later
+summary of it.
+
+> ### ANSWERED — Decision 1: **A. Yes, red.**
+>
+> With `refundErrors > 0` the cron run terminates as **failed** (non-2xx),
+> exactly as already decided for a failed cleanup delete (D-46-06). The owner's
+> recorded reason: it is the only path in this phase where money has to go back
+> and does not, and without error tracking a counter inside a 200 is a log line
+> — a place nobody looks. The phase that declares OBS-02 cannot break it there
+> of all places.
+
+> ### ANSWERED — Decision 2: **A. The sentences stand as written. No channel named.**
+>
+> Grounded on the four domain facts recorded in §2, above: QR-only access at the
+> bar, the cross-browser scenario unreachable, no staff surface showing orders,
+> and the counter-side screen deferred. The remaining case is a private window
+> that gets closed — addressed **before** it happens by the added
+> `RECEIPT_KEEP_TAB_OPEN`, and described honestly by the two `RECEIPT_*`
+> refusals once it has.
+
+The one-pass approval was the only pass, so these two could not be left to
+execution. Neither is recorded as *to be decided later*.
 
 ### Decision 1 — does a failed refund make the cron run go red?
 
@@ -291,12 +371,24 @@ approved with the promise it makes rather than after it.**
 
 ## Sign-off
 
-- [ ] The whole list read in one sitting (D-46-10a)
-- [ ] Decision 1 answered
-- [ ] Decision 2 answered
-- [ ] Approval recorded verbatim, and dated, in `46-01-SUMMARY.md`
+**APPROVED — 2026-08-14, by the project owner, in one pass over the whole list.**
 
-**Rounds of amendment so far:** 0 — this is the first presentation.
+- [x] The whole list read in one sitting (D-46-10a)
+- [x] Decision 1 answered — **A, red**
+- [x] Decision 2 answered — **A, no channel named**
+- [x] Approval recorded verbatim, and dated, in `46-01-SUMMARY.md`
 
-**Nothing on this list has been merged into any source file.**
-Plans 46-04, 46-05, 46-06 and 46-07 are held until it is approved.
+**Rounds of amendment:** 1 — the list was approved as presented, with **no
+correction to any sentence**, plus **one sentence added in the same pass**
+(`RECEIPT_KEEP_TAB_OPEN`, §2b). The addition was approved together with the
+list, not as a second round: no sentence already on the list was renegotiated,
+so the one-pass property holds.
+
+**Nothing on this list had been merged into any source file at the moment of
+approval** — `git diff --stat src/` was empty.
+
+**Plans 46-04, 46-05, 46-06 and 46-07 are released.**
+
+From here the list is the single source. A plan that wants a different sentence
+**amends this document and re-presents it whole** — it does not merge a variant
+and record the difference afterwards (T-46-03).
