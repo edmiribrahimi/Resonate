@@ -21,6 +21,7 @@ import PendingIntentHandler from "./PendingIntentHandler";
 import SecretVenueDialog from "./SecretVenueDialog";
 import ShareButton from "./ShareButton";
 import MediaGallerySection from "./MediaGallerySection";
+import { logMoneyPathFailure } from "@/lib/failure/money-path";
 import { formatTime } from "@/utils/formatTime";
 import { CalendarIcon, ClockIcon, MapPinIcon, LockClosedIcon, MusicalNoteIcon } from "@/components/ui/Icons";
 import type { UserRole, UserStatus, AccessType } from "@/types/database";
@@ -109,6 +110,24 @@ interface PartyWithTiers {
     quantity: number | null;
     sold: number;
     available: number | null;
+    /**
+     * Whether `sold` is a MEASUREMENT or a placeholder.
+     *
+     * `sold` and `available` keep their types byte-for-byte, so `TierSelection`
+     * — which is out of this plan's perimeter (D-46-11) — compiles with no prop
+     * change. The third state lives here instead, and it has to, because
+     * neither of the other two fields can carry it: to that component a `null`
+     * `available` means *no quantity limit*, which is a legitimate value it
+     * already renders correctly. Encoding *unknown* as `null` alone would
+     * therefore say *unlimited*, which is the same defect one layer down.
+     *
+     * A third state that only the type knows about is a third state nobody has,
+     * so this flag is what draws the sentence at the two control sites below.
+     * The same field is declared on the event-level tier list; the two shapes
+     * duplicate each other already, and a divergence between them would hide
+     * exactly here.
+     */
+    soldKnown: boolean;
     show_remaining?: boolean;
     starts_at?: string | null;
     expires_at?: string | null;
@@ -116,6 +135,17 @@ interface PartyWithTiers {
   userTicket: { id: string; tier_id: string | null } | null;
   userRsvp: { id: string } | null;
   spotsLeft: number | null;
+  /**
+   * Whether a `null` `spotsLeft` means *could not count* rather than *no
+   * capacity is set*.
+   *
+   * Both reach the render guard below as the same `null` and the guard stays as
+   * it is — suppressing the figure is the correct outcome in both cases. They
+   * are not the same fact, though: one is a night with no cap, the other is a
+   * night whose remaining places nobody could check, and only the second owes
+   * the visitor a sentence.
+   */
+  spotsUnknown: boolean;
 }
 
 /**
@@ -257,6 +287,92 @@ const WD_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Sa
 const WD_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MO_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MO_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/**
+ * ── This surface's own refusal vocabulary, and why it is one member long ─────
+ *
+ * The construction is `src/lib/failure/money-path.ts` §1: constants, a union
+ * built with `typeof` over those constants, then a `Record` total over the
+ * union. It is total on purpose — a category added here without its sentence is
+ * an `npm run build` error rather than a category that renders as nothing, and
+ * in a repository with no test runner that build is the only automatic gate
+ * there is.
+ *
+ * **The union is declared HERE and not in `money-path.ts`**, per §2 of that
+ * module: each surface owns its own vocabulary. A category read by an anonymous
+ * visitor standing in front of a purchase control and a category read by an
+ * operator in a cron dashboard have different readers, different remedies and
+ * different lifetimes; merging them yields a `Record` two thirds of which is
+ * unreachable padding, which is how a totality check stops meaning anything.
+ *
+ * One member, because this page has exactly one cause: **the count could not be
+ * read.** `money-path.ts` §4 — every union built for a failed read carries a
+ * member meaning *the question could not be answered*, and it is never merged
+ * with the *no*. Here there is no *no* to merge it with, by the owner's
+ * decision: this page does not refuse the buyer.
+ *
+ * THE SENTENCE IS TAKEN VERBATIM from the approved list,
+ * `.planning/phases/46-silent-failures-on-the-money-path/46-COPY.md` §3
+ * (approved 2026-08-14, one pass over the whole list, D-46-10a). It is not
+ * reworded here and it is not composed at run time: no tier name, no party
+ * title, no capacity figure, no database code enters it (T-46-20). A count
+ * nobody could read must not become a number on a public page by way of the
+ * message that says it could not be read.
+ *
+ * What the sentence deliberately does NOT say, recorded so a later reader does
+ * not "improve" it back:
+ *   * it is **not a refusal of the buyer**. The owner's standing decision is
+ *     that the control stays live and the server decides (46-FINDING-01,
+ *     46-VALIDATION). Its whole job is to stop a number the page could not read
+ *     from being presented as a fact;
+ *   * it does **not promise the purchase will succeed**. The real capacity
+ *     guard is `reserve_ticket` in the database, which locks the tier row
+ *     `FOR UPDATE`, counts and raises — and it runs AFTER payment. A sentence
+ *     reassuring about that window would be reassuring about precisely the
+ *     window D-46-07 leaves silent by decision. It says less, and what it says
+ *     is true.
+ */
+const PLACES_UNKNOWN = "places_unknown";
+
+type EventPageRefusal = typeof PLACES_UNKNOWN;
+
+const EVENT_PAGE_REFUSAL: Record<EventPageRefusal, string> = {
+  [PLACES_UNKNOWN]:
+    "How many places are left could not be checked just now, so no number is shown here. Buying is still open.",
+};
+
+/**
+ * One line for a count that did not come back, and the two causes stay apart.
+ *
+ * Written once rather than three times because the fourth copy is where the
+ * leak enters: `logMoneyPathFailure` takes a `SafeError`, and a whole PostgREST
+ * error satisfies that shape structurally — so *never log the object* has to be
+ * enforced at the call site, and there is now one call site instead of three.
+ * `details` is the field that matters: on a constraint violation PostgREST
+ * returns the entire rejected row, and a `tickets` or `profiles` row carries
+ * `membership_code`, which is the door credential
+ * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`).
+ *
+ * The two causes get two scopes and are not collapsed (`meta-gates.md`, zero
+ * silent failures): *the database refused* carries a code and will not fix
+ * itself; *the count simply was not there* carries none and is the transport
+ * case. `count === null` on a `head: true` read is not a legitimate zero — an
+ * exact count answers with a number — so it is treated as unreadable rather
+ * than as none sold.
+ *
+ * This is not observability on its own; the project has no error tracking, so
+ * the log reaches nobody. The observable effect is the sentence above, drawn
+ * beside the control.
+ */
+function logUnreadableCount(
+  scope: string,
+  error: { code?: string | null; message?: string | null } | null
+): void {
+  logMoneyPathFailure(
+    error ? `${scope}_refused` : `${scope}_absent`,
+    error ? { code: error.code, message: error.message } : null
+  );
+}
 
 function formatDateRange(dates: string[]): string {
   if (dates.length === 0) return "";
@@ -486,12 +602,36 @@ export default async function EventDetailPage({
 
         tiers = await Promise.all(
           (rawTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
-            const { count } = await serviceClient
+            // THE ERROR IS READ, and a count that did not come back is no
+            // longer written down as zero.
+            //
+            // This read is the one that decides whether a night looks open.
+            // Written `const { count } = …`, an RLS refusal, a changed policy
+            // or a transport failure produced `count === null`, the coalesce
+            // turned it into `0`, and `available` became the tier's full
+            // quantity: a sold-out night rendered as wide open, with a
+            // remaining figure that was not a measurement, beside the control
+            // that takes money.
+            //
+            // On failure `available` goes to `null` so no figure is printed —
+            // BUT `null` IS NOT ENOUGH ON ITS OWN, and that is the whole reason
+            // `soldKnown` exists. `TierSelection.tsx:124-125` reads
+            // `available !== null && available <= 0` as sold out and
+            // `:364-366` prints the remaining figure only when it is not null,
+            // so to that component a null `available` says *this tier has no
+            // quantity limit* — a legitimate value, quietly wrong here. The
+            // honest state travels in `soldKnown`, and the sentence drawn
+            // beside the control is what makes it visible to a person.
+            const { count, error: soldError } = await serviceClient
               .from("tickets")
               .select("*", { count: "exact", head: true })
               .eq("tier_id", tier.id);
-            const sold = count ?? 0;
-            return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null };
+            if (soldError || count === null) {
+              logUnreadableCount("event_detail.party_tier_sold_count", soldError);
+              return { ...tier, sold: 0, available: null, soldKnown: false };
+            }
+            const sold = count;
+            return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
           })
         );
       }
@@ -523,17 +663,48 @@ export default async function EventDetailPage({
       }
 
       // Calculate spots left
+      //
+      // `spotsUnknown` distinguishes the two roads to `null` below. The render
+      // guard is unchanged and still tests `spotsLeft !== null`, which is
+      // correct for both: a figure that is not a measurement is not printed.
+      // The flag exists because only ONE of the two owes a sentence.
       let spotsLeft: number | null = null;
+      let spotsUnknown = false;
       if (party.capacity) {
         if (party.access_type === "paid" && tiers.length > 0) {
-          const totalSold = tiers.reduce((sum, t) => sum + t.sold, 0);
-          spotsLeft = party.capacity - totalSold;
+          // A sum is only as trustworthy as its weakest term. If ANY tier's
+          // count came back unreadable, the total is not a measurement — and
+          // subtracting a partial sum from the capacity would print a figure
+          // that is too HIGH, on a night that may already be full.
+          if (tiers.some((t) => !t.soldKnown)) {
+            spotsLeft = null;
+            spotsUnknown = true;
+          } else {
+            const totalSold = tiers.reduce((sum, t) => sum + t.sold, 0);
+            spotsLeft = party.capacity - totalSold;
+          }
         } else if (party.access_type === "free_rsvp") {
-          const { count: rsvpCount } = await serviceClient
+          const { count: rsvpCount, error: rsvpError } = await serviceClient
             .from("rsvps")
             .select("*", { count: "exact", head: true })
             .eq("party_id", party.id);
-          spotsLeft = party.capacity - (rsvpCount || 0);
+          // The old coalesce is gone, and its second defect went with it: it
+          // was written with `||`, which also swallowed a genuine zero and
+          // recomputed it to the same value by luck rather than by reading. A
+          // count that did not arrive now suppresses the figure instead of
+          // reporting a night with every place still free.
+          //
+          // (The removed expression is not quoted here. A comment that spells
+          // it would satisfy the grep asserting its absence, which is the same
+          // correction the metadata paragraph at the top of this file already
+          // carries.)
+          if (rsvpError || rsvpCount === null) {
+            logUnreadableCount("event_detail.party_rsvp_count", rsvpError);
+            spotsLeft = null;
+            spotsUnknown = true;
+          } else {
+            spotsLeft = party.capacity - rsvpCount;
+          }
         }
       }
 
@@ -563,6 +734,7 @@ export default async function EventDetailPage({
         userTicket,
         userRsvp,
         spotsLeft,
+        spotsUnknown,
       };
     })
   );
@@ -623,7 +795,12 @@ export default async function EventDetailPage({
   }
 
   // Fetch event-level tiers (party_id IS NULL) -- only when multiple parties exist
-  let eventTiers: { id: string; name: string; price: number; quantity: number | null; sold: number; available: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }[] = [];
+  // `soldKnown` is declared here TOO, and the duplication is the point: this
+  // inline annotation and `PartyWithTiers["tiers"]` above already describe the
+  // same shape twice, so the two must move together. A third state added to one
+  // and not the other would compile, and the surface that kept the old shape
+  // would go on rendering a count nobody could read as a number.
+  let eventTiers: { id: string; name: string; price: number; quantity: number | null; sold: number; available: number | null; soldKnown: boolean; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }[] = [];
   if (parties.length > 1) {
     const { data: rawEventTiers } = await supabase
       .from("ticket_tiers")
@@ -634,12 +811,21 @@ export default async function EventDetailPage({
 
     eventTiers = await Promise.all(
       (rawEventTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
-        const { count } = await serviceClient
+        // Byte-identical to the per-party read above except for its scope, and
+        // it carries the same reasoning: the error is read, a count that did
+        // not arrive is not written down as zero, and `available` goes to
+        // `null` so no figure is printed while `soldKnown` carries the fact
+        // that nobody could look.
+        const { count, error: soldError } = await serviceClient
           .from("tickets")
           .select("*", { count: "exact", head: true })
           .eq("tier_id", tier.id);
-        const sold = count ?? 0;
-        return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null };
+        if (soldError || count === null) {
+          logUnreadableCount("event_detail.event_tier_sold_count", soldError);
+          return { ...tier, sold: 0, available: null, soldKnown: false };
+        }
+        const sold = count;
+        return { ...tier, sold, available: tier.quantity !== null ? tier.quantity - sold : null, soldKnown: true };
       })
     );
   }
@@ -969,6 +1155,61 @@ export default async function EventDetailPage({
                 </Link>
               </div>
             ) : isUpcoming && (!isAuthenticated || isApproved || status === "pending") ? (
+              <>
+                {/*
+                  ── The sentence, and THE CONTROL BELOW IT STAYS LIVE ────────
+
+                  Three things a later reader needs, and all three are
+                  decisions rather than oversights:
+
+                  1. **The control is still rendered, deliberately.** No
+                     condition removes it, nothing disables it and no prop of
+                     it changed. That is the owner's standing decision on this
+                     finding — the control stays live and the SERVER refuses
+                     (`46-FINDING-01.md`, `46-VALIDATION.md`). The real guard
+                     is `reserve_ticket` in the database, which locks the tier
+                     row `FOR UPDATE`, counts and raises `Tier sold out`; in
+                     plpgsql a failed read RAISES rather than coalescing, so
+                     that guard already fails closed. Refusing here on a
+                     transient read error would refuse a buyer the database
+                     would have accepted.
+                  2. **The sentence's job is not to refuse.** It exists to stop
+                     a number this page could not read from being presented as
+                     a fact. It replaces the figure; it does not replace the
+                     sale.
+                  3. **The residual stays, and it is accepted with its cost in
+                     writing.** A payment can complete for a seat that is not
+                     there — the last discount use, a double submit — and
+                     nobody is told, because `reserve_ticket` runs at webhook
+                     time, AFTER the money moved. That is D-46-07, the owner's
+                     call. Nothing here narrows it and this sentence must never
+                     be reworded to imply it does; the deferred
+                     seat-reservation phase is its fix, by making the window
+                     impossible instead of visible.
+                */}
+                {eventTiers.some((t) => !t.soldKnown) && (
+                  <div
+                    role="status"
+                    className="mb-4 rounded-2xl border border-sem-warn/30 bg-sem-warn/10 p-4"
+                  >
+                    <p className="text-sm text-sem-warn">
+                      {EVENT_PAGE_REFUSAL[PLACES_UNKNOWN]}
+                    </p>
+                  </div>
+                )}
+              {/*
+                The control's own lines KEEP THEIR ORIGINAL INDENTATION, one
+                level shallower than the fragment that now holds them, and that
+                is deliberate rather than sloppy. This is the file where a wrong
+                edit publishes an address, so its diff is read by a human
+                line-by-line before it ships. Re-indenting an untouched control
+                would show every prop of it as removed and re-added, and the one
+                property the reader most needs to confirm — that nothing about
+                the control that takes money changed — would be buried under
+                whitespace. Same class of correction as the metadata paragraph
+                at the top of this file: keep the mechanical check measuring the
+                property it means.
+              */}
               <TierSelection
                 partyId={null}
                 tiers={eventTiers}
@@ -976,6 +1217,7 @@ export default async function EventDetailPage({
                 isAuthenticated={isAuthenticated}
                 eventSlug={slug}
               />
+              </>
             ) : null}
           </AnimatedSection>
         )}
@@ -1238,6 +1480,61 @@ export default async function EventDetailPage({
                 party.tiers.length > 0 &&
                 (!isAuthenticated || isApproved || status === "pending") &&
                 (
+                  <>
+                    {/*
+                      ── The same sentence, and THIS CONTROL STAYS LIVE TOO ───
+
+                      The three notes at the event-level site above apply here
+                      unchanged, and they are the reason this is not an
+                      oversight: the control stays rendered by the owner's
+                      standing decision (`46-FINDING-01.md`,
+                      `46-VALIDATION.md`) because the authoritative guard is
+                      `reserve_ticket` in the database, which fails closed;
+                      the sentence exists to stop a number nobody could read
+                      from being presented as a fact, not to refuse the buyer;
+                      and the residual — a payment completing for a seat that
+                      is not there, with nobody told — is D-46-07, accepted
+                      with its cost in writing, whose fix is the deferred
+                      seat-reservation phase.
+
+                      ONE WORDING, BOTH SITES, taken verbatim from the approved
+                      list. Two wordings for one fact is how a register
+                      fragments (`community-membership.md`: the text is written
+                      once and used always).
+
+                      **THE TWO NULLS ARE NOT THE SAME NULL.** The *spots left*
+                      block above tests `spotsLeft !== null` and vanishes for
+                      both of them — which is right, since neither is a figure
+                      worth printing. Only one of them is a failure, though, so
+                      the condition here reads `spotsUnknown` and NOT
+                      `spotsLeft === null`: a night with no capacity set gets
+                      no sentence, because nothing went wrong on it. Making the
+                      two look alike would be this plan's own defect, one layer
+                      up from where it was fixed.
+
+                      Scope, stated rather than left to be noticed: this
+                      sentence is drawn at the PAID control only. It ends
+                      *"Buying is still open"*, which is not a true thing to
+                      say beside an RSVP button, and the approved list holds no
+                      second wording for a free night — a plan that wanted one
+                      would amend the list and re-present it whole (D-46-10a).
+                      On a free RSVP night whose count failed, the figure still
+                      disappears; what is missing is the explanation, on a path
+                      where no money moves.
+                    */}
+                    {(party.spotsUnknown || party.tiers.some((t) => !t.soldKnown)) && (
+                      <div
+                        role="status"
+                        className="mb-4 rounded-2xl border border-sem-warn/30 bg-sem-warn/10 p-4"
+                      >
+                        <p className="text-sm text-sem-warn">
+                          {EVENT_PAGE_REFUSAL[PLACES_UNKNOWN]}
+                        </p>
+                      </div>
+                    )}
+                  {/* Original indentation kept, for the reason given at the
+                      event-level site above: on this file the diff must show
+                      the money control untouched, not re-indented. */}
                   <TierSelection
                     partyId={party.id}
                     tiers={party.tiers}
@@ -1245,6 +1542,7 @@ export default async function EventDetailPage({
                     eventSlug={slug}
 
                   />
+                  </>
                 )}
 
               {/* Free RSVP party: RSVP button (upcoming only) */}
