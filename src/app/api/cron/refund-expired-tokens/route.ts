@@ -2,6 +2,28 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { refundTransaction, getCheckout } from "@/lib/sumup";
 import { menuCloseInstant } from "@/utils/datetime";
+import { logMoneyPathFailure, type SafeError } from "@/lib/failure/money-path";
+
+/**
+ * A caught value narrowed to the only two fields anything on this path may log.
+ *
+ * A `catch` binds `unknown`, and logging that value whole prints whatever the
+ * thrower attached — for a PostgREST error that includes `details`, which on a
+ * constraint violation is **the whole rejected row**. `SafeError` is
+ * the guard, and this function is the only way an unknown reaches it: `code` and
+ * `message` are copied when they are strings, and everything else is dropped
+ * rather than stringified.
+ */
+function toSafeError(err: unknown): SafeError {
+  if (typeof err !== "object" || err === null) {
+    return { code: null, message: typeof err === "string" ? err : null };
+  }
+  const { code, message } = err as { code?: unknown; message?: unknown };
+  return {
+    code: typeof code === "string" ? code : null,
+    message: typeof message === "string" ? message : null,
+  };
+}
 
 /**
  * Daily cron: refund expired unclaimed drink tokens and clean up old ones.
@@ -124,7 +146,12 @@ export async function GET(request: Request) {
 
       refundedCount += tokens.length;
     } catch (err) {
-      console.error(`Refund failed for order ${orderId}:`, err);
+      // The `orderId` stays in the scope string — it is the thing that made this
+      // line useful — but the caught value no longer travels whole.
+      logMoneyPathFailure(
+        `cron refund-expired-tokens refund order=${orderId}`,
+        toSafeError(err)
+      );
       refundErrors++;
     }
   }
@@ -158,18 +185,52 @@ export async function GET(request: Request) {
     })
     .map((t) => t.id);
 
+  // How many rows the cleanup **asked** to delete. Reported beside how many were
+  // actually deleted, so *asked 40, deleted 40* and *asked 40, deleted 0* are two
+  // different lines in a dashboard instead of the same one.
+  const deleteRequested = tokenIdsToDelete.length;
   let deletedCount = 0;
-  if (tokenIdsToDelete.length > 0) {
-    const { count } = await supabase
+  let deleteRefused = false;
+
+  if (deleteRequested > 0) {
+    // `{ count: "exact" }` is required, not decorative: without it `.delete()`
+    // returns `count === null` on the **success** path too, which is what made
+    // the old `?? tokenIdsToDelete.length` fallback fire essentially always and
+    // report the rows that remain as deleted.
+    const { count, error } = await supabase
       .from("drink_tokens")
-      .delete()
+      .delete({ count: "exact" })
       .in("id", tokenIdsToDelete);
-    deletedCount = count ?? tokenIdsToDelete.length;
+    if (error) {
+      logMoneyPathFailure("cron refund-expired-tokens cleanup delete", error);
+      deleteRefused = true;
+    }
+    // No coalesce to the intended length. A null count is not a measurement, so
+    // it is reported as zero deleted and the run goes red on the short branch.
+    deletedCount = count ?? 0;
   }
 
-  return NextResponse.json({
-    refunded: refundedCount,
-    refundErrors,
-    deleted: deletedCount,
-  });
+  // Money outranks cleanup, so a failed refund names the outcome even when the
+  // delete also failed. Nothing is hidden by the ordering: every count is in the
+  // body either way, and the delete's own failure has already been logged. The
+  // ordering decides which sentence leads, not which facts are reported.
+  const outcome =
+    refundErrors > 0
+      ? "cron_refund_refunds_failed"
+      : deleteRefused
+        ? "cron_refund_delete_refused"
+        : deletedCount < deleteRequested
+          ? "cron_refund_delete_short"
+          : "cron_refund_ok";
+
+  return NextResponse.json(
+    {
+      refunded: refundedCount,
+      refundErrors,
+      deleteRequested,
+      deleted: deletedCount,
+      outcome,
+    },
+    { status: outcome === "cron_refund_ok" ? 200 : 500 }
+  );
 }
