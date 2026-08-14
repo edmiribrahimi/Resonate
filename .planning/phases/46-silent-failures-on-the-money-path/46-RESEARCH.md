@@ -616,7 +616,28 @@ The roadmap asks for this to be deliberate rather than accidental.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED 2026-08-14, at discuss-phase)
+
+> Q1 and Q3 are answered below. **Q2 was carried into `46-CONTEXT.md` `<deferred>`** rather
+> than decided, exactly as this section recommended — the reasoning survives there.
+
+1. **RESOLVED — `D-46-10c`.** No staff-facing surface is built in this phase: the guest-facing
+   half ships alone, and the bar-side lookup is deferred. Grounds recorded in
+   `46-CONTEXT.md`. Criterion 1 therefore **does** mean *guest-only* here, and it is said out
+   loud rather than left to be discovered.
+2. **DEFERRED — see `46-CONTEXT.md` `<deferred>`.** Making `purchaseTicket`'s third parameter
+   required is moot for now: the caller that dropped the argument (`PendingIntentHandler.tsx`)
+   is out of perimeter under D-46-11. The idea is recorded so that whoever repairs
+   `DI-41.2-09` inherits the reasoning instead of rediscovering it.
+3. **RESOLVED — one shared module**, `src/lib/failure/money-path.ts`, per plan `46-02`. Note
+   the reason changed: the research argued for a shared module because `DI-41.2-01`'s claim
+   path needed the same vocabulary, and `DI-41.2-01` is now out of perimeter. The module is
+   still right, for a different reason — three surfaces in this phase need one construction —
+   and it deliberately carries the **construction**, not a single god-union.
+
+---
+
+### The questions as originally written
 
 1. **Is there a staff-facing surface where a failing token endpoint could show?** — Known: none polls it today. Unclear: whether the bartender's screen (`PartyDrinkMenu`, and the two declared-exempt overlays from D-41.2-06/07) is the right home. Recommendation: **O2, ask the owner**; if no, say so in the plan rather than letting criterion 1 quietly mean *guest-only*.
 2. **Does making `purchaseTicket`'s third parameter required buy more than it costs?** — Known: it is optional and that is why nothing failed. Unclear: whether a required parameter is worth the signature change with two callers. Recommendation: **pass the argument now; record the required-parameter idea as a deferred item**, so the reasoning survives.

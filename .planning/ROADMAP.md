@@ -497,6 +497,7 @@ Plans:
 **Plans:** 15/15 plans complete
 
 Plans:
+
 - [x] 37-01-PLAN.md — lo schema dell'atto: la tredicesima chiave, l'istante, la traccia append-only e lo scrittore atomico
 - [x] 37-02-PLAN.md — la lettura anonima degli indirizzi chiusa, e la funzione che concede per titolo
 - [x] 37-03-PLAN.md — [BLOCKING] le due migration applicate in produzione, i tipi allineati
@@ -536,6 +537,7 @@ Plans:
 **Plans:** 6/7 plans executed
 
 Plans:
+
 - [x] 38-01-PLAN.md — the realtime baseline captured before any migration file exists, the emit-path privileges measured, and P1–P7 written before they are run
 - [x] 38-02-PLAN.md — the migration written: the private fan-out helper with its EXECUTE revoked, four AFTER triggers, one SELECT policy on realtime.messages
 - [x] 38-03-PLAN.md — one reload entry point that defers behind a scan in progress, the freshness measurement, and the re-armed foreground-only safety reload
@@ -649,6 +651,7 @@ fifth-round gap-closure plans in 2 waves added 2026-08-13 after the fifth. The r
 conversion units are **not** covered by any of them; see the note below.
 
 Plans:
+
 - [x] 41-01-PLAN.md — the control token, the two layout variables, the pointer variant, pinch-zoom
 - [x] 41-02-PLAN.md — G6 breakpoints and G7 no-viewport-read, the two gates with no exception
 - [x] 41-03-PLAN.md — Button/Chip, and the navigation spine in two tiers with the door's wrapper
@@ -917,6 +920,7 @@ Plans:
 **Plans**: 20 plans in 9 waves (0-8)
 
 Plans:
+
 - [ ] 41.2-01-PLAN.md — wave 0: the dry run on a throwaway branch, the own-maximum reading, the check-F decision, the four silent catches recorded
 - [ ] 41.2-02-PLAN.md — wave 0: the two files no closure reaches, converted (D-41.2-03) so two ratchets can reach zero
 - [ ] 41.2-03-PLAN.md — wave 1: `/` and `/newsletter` — the navigation pair proved on the two cheapest public surfaces
@@ -1066,8 +1070,13 @@ Not preferences — each one has a failure mode behind it.
 **Plans:** 7 plans in 2 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 46-01-PLAN.md — the three requirements, and every sentence this phase ships, approved in one pass (blocking checkpoint)
 - [ ] 46-02-PLAN.md — the one refusal shape, and a comment on the accidental fallback that must survive
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 46-03-PLAN.md — the three permissive reads inside `purchaseTicket` say which failure they had (F-46-01, DI-TODO-A)
 - [ ] 46-04-PLAN.md — the organizer's menu-closing command gets two distinguishable outcomes (DI-41.2-06, -06b)
 - [ ] 46-05-PLAN.md — what a guest sees when the browser cannot hold their receipt (DI-41.2-02, -03, -04)

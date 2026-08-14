@@ -307,6 +307,13 @@ decomposition; the wording of the manual verification procedures; whether `DI-TO
   a person has.
 - **Two credentials at the door** — from D-46-12. Ticket from us, membership from an
   external service, on an unreliable network. Belongs to `checkin-offline.md`.
+- **Make `purchaseTicket`'s third parameter required** — `46-RESEARCH.md` §Open Questions Q2
+  and landmine L2. The parameter is optional, which is precisely why nothing failed when a
+  caller stopped passing it: `purchaseTicket(a, b)` typechecks. Removing the `?` would
+  surface that class of bug at build time, but it is a public signature with two callers, so
+  it is a deliberate change and not a drive-by. **Moot until D-46-11 resolves** — the caller
+  that dropped the argument is out of perimeter. Recorded here so whoever repairs
+  `DI-41.2-09` inherits the reasoning rather than rediscovering it.
 - **`REQUIREMENTS.md:252` stale traceability note** — one line, already corrected in prose by
   `41.2-VERIFICATION.md:554` but not in the table. Not this phase's requirement, but this
   phase is the next to open the file.
