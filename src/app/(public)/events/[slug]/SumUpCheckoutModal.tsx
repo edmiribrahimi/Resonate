@@ -1,7 +1,60 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+
 import { SumUpCardWidget } from "@/components/SumUpCardWidget";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+
+/**
+ * The panel a card is entered into — the platform's modal, around a mount point
+ * this file does not touch.
+ *
+ * ── Nothing about the payment moved, and that is the point of this plan ──────
+ *
+ * This file holds no server action, no route and no arithmetic. It owns four
+ * pieces of local state that describe **what is on screen**, and it reports what
+ * the provider's widget called back with. No status transition, no amount, no
+ * idempotency key and no webhook path is written, read or reshaped here.
+ *
+ * In particular the widget's props — the checkout identifier and the three
+ * callbacks — are passed exactly as before, and **the element the provider
+ * mounts into is not in this file at all**. Tidying a third-party mount point
+ * would be a behaviour change on the purchase path wearing a visual costume.
+ *
+ * The copy is byte-identical: both titles, both success sentences, the loading
+ * sentence, the failure fallback and the dismiss label are the ones that were
+ * here.
+ *
+ * ── Four phone-tier prefixes DELETED, not migrated ───────────────────────────
+ *
+ * The overlay wrote its own sheet-versus-window pair — bottom anchored on a
+ * phone, centred above the boundary, the sheet's bottom padding — plus a
+ * **second** height clamp for the wide case. The primitive owns all of it
+ * (`Dialog.tsx:278-280`), and its clamp is one unprefixed value, so the four
+ * prefixed classes are gone rather than moved to the tier this contract uses.
+ * Migrating them would have left a second author for a decision the primitive
+ * already makes.
+ *
+ * The body's own scroll is gone for the same reason: the primitive's body is
+ * the only scroller, and two scrollers is the same defect in another family.
+ *
+ * ── The failure is reported inside the panel, never by a toast ───────────────
+ *
+ * A native dialog paints in the top layer, above the toast container, so a
+ * refusal raised from in here would be raised invisibly — and this repository
+ * has no error tracking, which makes a message nobody sees a message that
+ * exists nowhere. It is the primitive's `status`, which sits **outside** the
+ * scroller and therefore cannot appear below the fold.
+ *
+ * ── Focus, and why no marker is declared ─────────────────────────────────────
+ *
+ * Nothing on this panel is destructive: its one answer is the provider's own
+ * form, and the only control this file draws is the dismissal. So no
+ * `data-initial-focus` is claimed and the primitive focuses the close control,
+ * first in the DOM and least destructive by construction. Before the
+ * conversion, the focus target was **nothing at all**.
+ */
 
 interface SumUpCheckoutModalProps {
   checkoutId: string;
@@ -47,83 +100,56 @@ export default function SumUpCheckoutModal({
   }, [status, onPaymentComplete]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-card p-6 pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))] sm:pb-6 sm:max-h-[90vh]">
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
-            {status === "success" ? "Payment Successful" : "Complete Payment"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-card-border transition-colors"
-            aria-label="Close"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Body */}
-        {status === "loading" && (
-          <p className="text-sm text-muted">Loading payment form...</p>
-        )}
-
-        {status === "success" && (
-          <div className="text-center py-4">
-            <p className="text-lg font-medium text-green-400">
-              Payment received!
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              Your ticket is being confirmed...
-            </p>
-          </div>
-        )}
-
-        {status === "error" && (
-          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-            <p className="text-sm text-red-400">
-              {errorMessage}
-            </p>
-          </div>
-        )}
-
-        {/* Card Widget: render when not in success state */}
-        {status !== "success" && (
-          <div className={status === "loading" ? "mt-4" : ""}>
-            <SumUpCardWidget
-              checkoutId={checkoutId}
-              onSuccess={handleSuccess}
-              onError={handleError}
-              onLoad={handleLoad}
-            />
-          </div>
-        )}
-
-        {/* Error: close button to dismiss */}
-        {status === "error" && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-3 w-full rounded-full bg-card-border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card-border/80"
-          >
+    <Dialog
+      open
+      onClose={onClose}
+      title={status === "success" ? "Payment Successful" : "Complete Payment"}
+      status={
+        status === "error" && errorMessage
+          ? { tone: "crit", message: errorMessage }
+          : null
+      }
+      actions={
+        status === "error" ? (
+          <Button variant="secondary" className="w-full" onClick={onClose}>
             Close
-          </button>
-        )}
-      </div>
-    </div>
+          </Button>
+        ) : undefined
+      }
+    >
+      {/* Body */}
+      {status === "loading" && (
+        <p className="text-sm text-ink-2">Loading payment form...</p>
+      )}
+
+      {status === "success" && (
+        <div className="text-center py-4">
+          <p className="text-lg font-medium text-sem-done">
+            Payment received!
+          </p>
+          <p className="mt-1 text-sm text-ink-2">
+            Your ticket is being confirmed...
+          </p>
+        </div>
+      )}
+
+      {/*
+        Card Widget: render when not in success state.
+
+        The condition, the props and the wrapper are the ones that were here.
+        The provider's script decides when it is ready and where it draws; this
+        file only decides whether the region exists.
+      */}
+      {status !== "success" && (
+        <div className={status === "loading" ? "mt-4" : ""}>
+          <SumUpCardWidget
+            checkoutId={checkoutId}
+            onSuccess={handleSuccess}
+            onError={handleError}
+            onLoad={handleLoad}
+          />
+        </div>
+      )}
+    </Dialog>
   );
 }
