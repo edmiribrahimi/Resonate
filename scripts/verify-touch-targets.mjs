@@ -101,6 +101,50 @@
  * the first is recorded at `ARRIVED_FUTURE_REDS` with how it was closed, rather
  * than deleted on the day it came true.
  *
+ * ── NINE AND TEN: TWO MECHANISMS, KEPT APART BECAUSE THEY ARE NOT ALIKE ─────
+ *
+ * On 2026-08-14 plan 41.2-19 declared the last three surfaces of phase 41.2 and
+ * this gate went red on **seven elements in four files**. The owner's decision,
+ * the same day: **two declared exemptions, and the two reasons kept separate.**
+ * Not one list of seven, and not a threshold moved.
+ *
+ * The separation is the decision, not a tidiness. Five of the seven are the gate
+ * failing to READ a box that is comfortably above the floor; two of them are the
+ * product deliberately placing a control BELOW the floor. A reader who cannot
+ * tell those apart has been told nothing, and the second is an **accessibility
+ * exception** that must stay visible enough to be revisited — so it is its own
+ * constant, its own docblock, and its own section of the report, printed loudly.
+ *
+ *   9   `UNREADABLE_BOX_ELEMENTS` — the box is there, this parser cannot see it.
+ *       Two full-screen serve areas whose height is a flex stretch, a drop zone
+ *       whose height is its own padding, a file input hidden by a display
+ *       utility, and a link whose height is its content's.
+ *  10   `BELOW_FLOOR_BY_DECISION_ELEMENTS` — two controls that really are under
+ *       44px, on purpose, because the floor would make them EASIER to hit and
+ *       the act they perform sends money backwards at a counter with a queue.
+ *
+ * **What was refused, and each refusal is worth as much as the entries:**
+ *
+ *   · **no source file was edited.** The waves that own those four files have
+ *     run; a reconciliation editing another wave's element is two authors on one
+ *     line, and for the two under 10 it would also defeat the argument that
+ *     granted their shell exemption in the first place;
+ *   · **exemption 7 was NOT widened to reach the file input.** It would have
+ *     been one character of a list — the attribute test made a list of ways to
+ *     be invisible — and it is exactly the tampering this file forbids. That
+ *     exemption is read at the element's own tag precisely because the four that
+ *     opened it are one shape; a fifth shape is a different claim and gets a
+ *     declared line, where a person can read it;
+ *   · **no threshold moved.** 44px is still 44px, at every tier, on every
+ *     device, and §6.3's shrink allow-list is still closed at one item.
+ *
+ * **The shadow nobody anticipated, recorded because it is the actual lesson.**
+ * D-41.2-06 and D-41.2-07 exempted the two bartender files' SHELLS from
+ * `verify-dialogs`, on a domain argument about the shell. Nothing exempted the
+ * same screens' CONTROLS from this gate, and no plan in that phase noticed that
+ * one gate's exemption casts a shadow on another's. Both lists below carry the
+ * cross-reference, so the next person who moves one finds the other.
+ *
  * ── EXEMPTION 2a IS A DECLARED LIST OF ELEMENTS, NOT A FILE-WIDE BLANKET ─────
  *
  * It used to read *any raw element in a primitive's file*, and its premise was
@@ -559,7 +603,14 @@ function fileImportMap(relPath) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * THE SIX EXEMPTIONS — every one a named constant, with its reason above it
+ * THE EXEMPTIONS — every one a named constant, with its reason above it
+ *
+ * Six closed before the first run; 7 and 8 added by a signed decision on
+ * 2026-08-14; 9 and 10 by a second one the same day. The count is deliberately
+ * not written into this heading any more: it was already stale at eight, and a
+ * number that has stopped describing the thing beside it is the defect this
+ * whole family of gates is written against (F-41.2-19-05, measured in a sibling
+ * gate's report). Each list states its own length where it is printed.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -1010,6 +1061,206 @@ export const CONSTANT_MINIMUM_ELEMENTS = [
 ];
 
 /**
+ * EXEMPTION 9 — the box exists, and this parser cannot read it.
+ *
+ * ── The distinction from every entry above, which is the whole of it ────────
+ *
+ * 2a forgives an element whose size lives in an INTERPOLATION; 8 forgives an
+ * element whose size lives in a NAMED CONSTANT. Both are still class strings the
+ * parser could read if it could follow one hop. **These five are not.** Their
+ * boxes are decided by the layout — a flex stretch, the element's own padding,
+ * its content under a block display — or, in one case, removed entirely by a
+ * display utility. **None of those is a height utility, and no amount of parsing
+ * a class attribute reaches any of them.** This file's opening box has said so
+ * since the day it was written: *"It cannot see a flex stretch … or a target
+ * padded by an ancestor."*
+ *
+ * So the direction matters and is stated: **these are the gate reddening on
+ * correct code**, which is §0 rule 3's own definition of how a gate gets
+ * switched off (D-41-19, and `verify-media-strip.mjs:51-62` records the same
+ * failure happening). Two of the five are the LARGEST tap targets in the
+ * product — a full screen each — and a gate that reddens the largest target in
+ * the product while claiming to defend small ones is a gate nobody keeps.
+ *
+ * ── The fifth entry is a different fact, and it is here on purpose ──────────
+ *
+ * `MediaUpload.tsx`'s file input has **no box at all**: it carries the display
+ * utility that removes it. That is exemption 7's fact — *not a target* — reached
+ * by a class instead of by an attribute, and **widening 7 to reach it was
+ * refused.** Seven is read at the element's own tag because the four sites that
+ * opened it are four instances of ONE shape; turning it into a list of ways to
+ * be invisible would make an attribute test into a shape test, and its abuse
+ * refusal (a hidden input carrying a height) would no longer close the route it
+ * was written to close. A fifth shape is a different claim, so it takes a
+ * declared line a person reads — this file's own prescription, applied where it
+ * points.
+ *
+ * ── Shape, the premise, and the three refusals ──────────────────────────────
+ *
+ * `[path, tag, fragment, token, reason]` — deliberately exemption 8's shape,
+ * with `token` in place of `constant`. `fragment` picks out exactly one element
+ * of that tag in that file; it is an attribute, never a line number, because a
+ * line number drifts on the first edit above it and a stale one reads exactly
+ * like a current one.
+ *
+ * `token` is the utility that actually decides the box, and it is what makes
+ * this an assertion rather than a wave-through. Three guards, each pointing away
+ * from a green:
+ *
+ *   · the fragment matching ZERO or TWO OR MORE elements REFUSES (exit 2) —
+ *     stale forgives nothing while looking guarded, ambiguous forgives an
+ *     element nobody named. 2a's refusals, one level down;
+ *   · the named token not being present on the matched element's own opening tag
+ *     REFUSES — the entry would forgive an element on the strength of a
+ *     construction it does not use, which is an exemption whose stated reason is
+ *     false about its target. Read with the same boundary guard the height
+ *     matcher uses, so `block` does not match inside a longer utility;
+ *   · **an entry whose element ALREADY declares a passing minimum REFUSES.** It
+ *     is not forgiving anything, and a reader would believe an element is
+ *     unmeasurable when the gate measures it perfectly well. Stale in the
+ *     opposite direction from the first refusal, and just as misleading.
+ *
+ * ── What this does NOT close ────────────────────────────────────────────────
+ *
+ * Nothing here measures a rendered box, and five more elements are now forgiven
+ * on a stated reason rather than measured — printed in full below, with the
+ * token each rests on. **H41-4, on a large touch screen, remains the only thing
+ * in this repository that proves anything renders at 44px**, and two of these
+ * five are exactly the elements it should be pointed at first: if the serve area
+ * is not the full screen its comment claims, this list is wrong and only a
+ * person with a device can say so.
+ *
+ * Cross-reference: `RedeemConfirmationModal.tsx` and `GuestTokenDisplay.tsx` are
+ * the two files D-41.2-06 and D-41.2-07 exempt from `verify-dialogs` for their
+ * SHELLS. That is a different gate and a different claim. Moving either decision
+ * means reading both.
+ */
+export const UNREADABLE_BOX_ELEMENTS = [
+  [
+    'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
+    'button',
+    'onClick={handleServe}',
+    'flex-1',
+    "the bartender's serve area, and the LARGEST tap target in the product: it is the whole screen above the Cancel row, so — the file's own comment — the bartender \"doesn't have to aim\". Its height is a flex stretch inside a full-screen flex column, which is a property of the parent's layout and appears in no height utility anywhere. Naming it too small is the single most wrong thing this gate could say",
+  ],
+  [
+    'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
+    'button',
+    'onClick={handleServe}',
+    'flex-1',
+    'the same serve area on the drinks menu, and the file says of itself that it is a fork of the modal above. Identical construction, identical stretch, and declared a second time rather than covered by one entry, because the boundary of an exemption in this file is the element and never the file',
+  ],
+  [
+    'src/components/media/MediaUpload.tsx',
+    'button',
+    'onDrop={handleDrop}',
+    'p-8',
+    "the drop zone. Its box is far above the floor and comes from padding on the element itself — two rows of text and an icon inside 32px of it on every side. It interpolates a module constant, so exemption 8 looks like the route and is NOT: that constant is the focus ring and declares no minimum, so 8's premise check would fail on it, correctly. The height is not in a constant either; it is in the padding",
+  ],
+  [
+    'src/components/media/MediaUpload.tsx',
+    'input',
+    'ref={fileInputRef}',
+    'hidden',
+    'the file input, which renders NO BOX AT ALL — the same fact exemption 7 reads, reached by a display utility instead of by the type attribute. Its visible target is the drop zone above it, kept a sibling rather than a child because a form control inside a button is not valid content (the file says so). Widening 7 to cover a class was refused: 7 is an attribute test whose abuse route is closed by a contradiction refusal, and making it a shape test would reopen it',
+  ],
+  [
+    'src/components/media/MyMediaSection.tsx',
+    'a',
+    'href={`/events/${group.eventSlug}`}',
+    'block',
+    "the event heading of one media group, wrapping two paragraphs — a title and a date. Display block, so its box is its content's two lines and its own bottom margin, and content height is not something a class-string parser can compute. Not exemption 4 either: its children are two paragraphs, so no marker claiming it defers to an interactive child would be true about it",
+  ],
+];
+
+/**
+ * EXEMPTION 10 — **AN ACCESSIBILITY EXCEPTION. THE PRODUCT PLACES THESE TWO
+ * CONTROLS BELOW THE 44px FLOOR ON PURPOSE.**
+ *
+ * ── Read this as what it is, not as another parser limit ────────────────────
+ *
+ * Every other entry in this file forgives an element the parser cannot MEASURE.
+ * **This one does not.** These two elements are measured perfectly well, they
+ * are under the floor, and they are under it **by decision**. RESP-03 says
+ * targets stay finger-sized wherever the input is a finger; **these two do not,
+ * and that sentence is the entry.** Anyone reading this list who comes away
+ * thinking "the gate cannot see them" has read it wrong.
+ *
+ * ── The decision, and the argument that produced it ─────────────────────────
+ *
+ * Both are the row that **reverts an active drink token** on a bartender's
+ * screen. Both files say so in their own words, and the words predate this
+ * phase: the row is *"kept narrow so the bartender's tap can't hit it by
+ * mistake"*, sitting under a serve area that *"takes the whole screen"*.
+ *
+ * **Making it 44px makes it easier to hit.** That is not a side effect of the
+ * floor, it is the floor's entire purpose — and on this one control the purpose
+ * is inverted, because the act is money going backwards at a counter, at two in
+ * the morning, with a queue in front. `checkin-offline.md`'s asymmetry decides
+ * it: the error that happens in front of people is the one to design against.
+ * §6.2 applies the same asymmetry to sizing and reaches the opposite default,
+ * *"a wrong answer costs a slightly-too-large button, never a too-small one"* —
+ * which is right for every control whose act is forward, and is precisely what
+ * fails here. **The gate and the domain want opposite things on this element**
+ * (F-41.2-19-01), and the owner decided for the domain, in writing, on
+ * 2026-08-14.
+ *
+ * **Two executors, in separate worktrees, with no contact, refused to convert
+ * these two screens for this reason** — and the second refused with a decision
+ * granting the first already in its context, re-deriving the argument from its
+ * own file instead of citing it (D-41.2-06, D-41.2-07). That is why there are
+ * two entries here and not one covering both: each rests on its own file's
+ * evidence, or an exemption becomes a technique for making a list empty.
+ *
+ * ── What is NOT claimed, because this is the entry most likely to be misused ─
+ *
+ *   · **This is not a general licence to write a small control.** It is two
+ *     named elements, on two bartender screens, performing one reversing act.
+ *     Anything else in those files is measured;
+ *   · **it is not a claim that the control is hard to reach.** It is centred,
+ *     directly below a full-screen target, with generous padding around the row
+ *     — small on the axis that matters and not hidden;
+ *   · **it does not tick RESP-03's criterion 5.** It makes it partly FALSE by
+ *     decision, and the honest record of that is this docblock plus the section
+ *     the report prints loudly on every run. An accessibility exception nobody
+ *     notices is an accessibility exception nobody revisits;
+ *   · **it is not permanent by default.** It stands until the owner moves it,
+ *     and the thing that would move it is evidence from the counter — a
+ *     bartender missing the control when they want it — which is the opposite
+ *     evidence from the one that granted it.
+ *
+ * ── Shape, and the two refusals ─────────────────────────────────────────────
+ *
+ * `[path, tag, fragment, act, reason]` — exemption 9's shape with `act` in place
+ * of `token`, because what this entry rests on is not a construction, it is the
+ * thing the control does. `fragment` resolves to exactly one element of that tag
+ * in that file, and zero or several REFUSES, as everywhere above.
+ *
+ * **The premise is asserted in the direction that catches the abuse.** An entry
+ * here whose element DECLARES the floor REFUSES (exit 2): the entry says the
+ * product deliberately went under, the element says it did not, one of the two
+ * statements is false and this parser cannot say which. That is the same call
+ * exemption 7 makes on a hidden input carrying a height, and it is what stops
+ * this list becoming a place to park an element and then quietly fix it.
+ */
+export const BELOW_FLOOR_BY_DECISION_ELEMENTS = [
+  [
+    'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
+    'button',
+    'onClick={handleCancel}',
+    'reverts an active drink token — money going backwards at the counter',
+    'kept narrow SO THAT A TAP CANNOT REACH IT BY MISTAKE, under a serve area that fills the screen. 44px on this element would make the reversing act easier to trigger than the file spent its geometry making it harder; the owner decided for the domain on 2026-08-14 and this line is that decision, below the floor and saying so',
+  ],
+  [
+    'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
+    'button',
+    'onClick={handleCancel}',
+    'reverts an active drink token on the drinks menu — the same act, the same counter',
+    "the same narrow row on the forked screen, and its own executor re-derived the argument from this file's own comment rather than inheriting the twin's decision. Declared separately for that reason: an exemption granted per file on that file's evidence is a decision, one granted by analogy is a habit",
+  ],
+];
+
+/**
  * The shapes this gate is known to red on, written down instead of pre-empted —
  * and what happened when the first of them actually arrived.
  *
@@ -1039,6 +1290,14 @@ export const ARRIVED_FUTURE_REDS = [
   [
     'an input of type hidden',
     'predicted here and left unpre-empted. Four arrived on 2026-08-14 with the ticketing forms; closed by exemption 7, a contract edit in §13 the owner authorised that day — not by widening anything',
+  ],
+  [
+    'a box decided by the layout rather than by a height utility',
+    "named in this file's opening box before its first run — *it cannot see a flex stretch … or a target padded by an ancestor* — and left unpre-empted. Five arrived on 2026-08-14 when phase 41.2 declared its last three surfaces: two flex stretches, exactly as written; one element padded by ITSELF rather than by an ancestor; one box removed by a display utility; one box that is its content's. Closed by exemption 9, element by element, with the construction each rests on asserted present at its own tag",
+  ],
+  [
+    'a control the product puts UNDER the floor on purpose',
+    'NOT predicted, and recorded as unpredicted rather than dressed as foreseen. Two arrived with the same declaration: the rows that revert a drink token, narrow so a tap cannot reach them by mistake. It is not a parser limit and no exemption above has this shape — it is an accessibility exception the owner decided on 2026-08-14, and exemption 10 exists to keep it visible instead of absorbed',
   ],
 ];
 
@@ -1410,7 +1669,7 @@ console.log(
 /* ── Exemption 2's premise, asserted before it forgives anything ────────────── */
 
 const failures = [];
-const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0 };
+const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0 };
 
 const PRIMITIVE_FILES = new Map();
 for (const [symbol, path, reason] of PRIMITIVE_COMPONENTS) {
@@ -1673,6 +1932,166 @@ for (const e of CONSTANT_ENTRIES) {
 }
 console.log('');
 
+/* ── Exemptions 9 and 10 — declared elements, resolved before the scan ─────── */
+
+/**
+ * One resolver for both new lists, because they resolve identically and two
+ * copies of a refusal drift apart. The label is passed in so the message names
+ * the exemption a reader is looking at, which is the only part that differs.
+ *
+ * Resolved against the file on disk rather than against the scan's scope: an
+ * entry is stale whether or not a converted closure happens to reach its file
+ * today, and finding that out only when a surface is declared is how a red
+ * arrives at the worst possible moment.
+ */
+function resolveDeclaredElement(label, path, tag, fragment) {
+  if (!existsSync(`${ROOT}/${path}`)) {
+    refuse(
+      `exemption ${label} declares an element in ${path}, which is not on disk. A stale\n` +
+        '       exemption silently removes a real element from the measured set — the one\n' +
+        '       failure direction that produces a green. Nothing was measured.'
+    );
+  }
+
+  const { found, unterminated } = scanElements(path);
+  if (unterminated.length > 0) {
+    refuse(
+      `${path} has ${unterminated.length} unterminated opening tag(s), so exemption ${label}'s\n` +
+        '       declared elements could not be resolved against it. Nothing was measured.'
+    );
+  }
+
+  const matches = found.filter((el) => el.name === tag && el.text.includes(fragment));
+
+  if (matches.length === 0) {
+    refuse(
+      `exemption ${label} declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        '       and NOTHING in that file matches it. The entry is stale: it forgives nothing\n' +
+        '       while looking like a guarded case, and the element it used to name is now\n' +
+        '       either gone or unforgiven without anybody saying so. Nothing was measured.'
+    );
+  }
+  if (matches.length > 1) {
+    refuse(
+      `exemption ${label} declares <${tag}> in ${path} by the fragment\n` +
+        `         ${fragment}\n` +
+        `       and ${matches.length} elements match it (lines ${matches.map((m) => m.line).join(', ')}).\n` +
+        '       An ambiguous entry forgives an element nobody named. Narrow the fragment.\n' +
+        '       Nothing was measured.'
+    );
+  }
+
+  return matches[0];
+}
+
+/**
+ * Is this utility written on this element, as a whole token?
+ *
+ * The boundary guard is the same one `HEIGHT_RE` carries and for the same
+ * reason: without it `block` matches inside a longer utility and the entry would
+ * assert a construction the element does not use. This phase has paid for a
+ * missing boundary three times (41-02, 41-07, 41-10).
+ */
+function tokenPresent(text, token) {
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`).test(text);
+}
+
+const UNREADABLE_ENTRIES = [];
+
+for (const [path, tag, fragment, token, reason] of UNREADABLE_BOX_ELEMENTS) {
+  const match = resolveDeclaredElement('9', path, tag, fragment);
+
+  /*
+   * The element must actually carry the construction this entry rests on.
+   * Without it the entry forgives an element on the strength of a box it does
+   * not have — an exemption whose stated reason is false about its target.
+   */
+  if (!tokenPresent(match.text, token)) {
+    refuse(
+      `exemption 9 forgives ${path}:${match.line} because its box comes from ${token},\n` +
+        `       and that element's opening tag does not carry ${token} at all. The entry's stated\n` +
+        '       reason is false about the element it names, which makes it a forgiveness with no\n' +
+        '       argument under it. Nothing was measured.'
+    );
+  }
+
+  /*
+   * And it must actually need forgiving. An element that declares the minimum
+   * on its own is measured correctly by this gate, so an entry claiming its box
+   * is unreadable is telling a reader something false in the other direction.
+   */
+  if (readHeights(match.text).verdict === 'pass') {
+    refuse(
+      `exemption 9 declares ${path}:${match.line} unreadable, and that element declares an\n` +
+        '       unprefixed minimum this parser reads perfectly well. The entry forgives nothing\n' +
+        '       and tells the next reader an element is unmeasurable when it is measured. Delete\n' +
+        '       the entry rather than keeping it as decoration. Nothing was measured.'
+    );
+  }
+
+  UNREADABLE_ENTRIES.push({ path, tag, fragment, token, reason, line: match.line, applied: 0 });
+}
+
+function unreadableEntry(relPath, el) {
+  return (
+    UNREADABLE_ENTRIES.find(
+      (e) => e.path === relPath && e.tag === el.name && el.text.includes(e.fragment)
+    ) ?? null
+  );
+}
+
+const BELOW_FLOOR_ENTRIES = [];
+
+for (const [path, tag, fragment, act, reason] of BELOW_FLOOR_BY_DECISION_ELEMENTS) {
+  const match = resolveDeclaredElement('10', path, tag, fragment);
+
+  /*
+   * The abuse this list invites is parking an element here and quietly raising
+   * it later, leaving an accessibility exception declared about a control that
+   * no longer has it. The entry says the product deliberately went under the
+   * floor; if the element declares the floor, one of the two is false and this
+   * parser cannot say which — so it says nothing was measured, which is
+   * exemption 7's call on a hidden input carrying a height.
+   */
+  if (readHeights(match.text).verdict === 'pass') {
+    refuse(
+      `exemption 10 declares ${path}:${match.line} deliberately BELOW the ${REQUIRED_PX}px floor, and\n` +
+        '       that element declares the floor. The entry and the element contradict each other:\n' +
+        '       either the decision no longer holds and this line should go, or the element was\n' +
+        '       changed without it. An accessibility exception declared about a control that no\n' +
+        '       longer has it is worse than none. Nothing was measured.'
+    );
+  }
+
+  BELOW_FLOOR_ENTRIES.push({ path, tag, fragment, act, reason, line: match.line, applied: 0 });
+}
+
+function belowFloorEntry(relPath, el) {
+  return (
+    BELOW_FLOOR_ENTRIES.find(
+      (e) => e.path === relPath && e.tag === el.name && el.text.includes(e.fragment)
+    ) ?? null
+  );
+}
+
+console.log(
+  `  exemption 9 — ${UNREADABLE_ENTRIES.length} element(s) whose box is decided outside any height utility:\n`
+);
+for (const e of UNREADABLE_ENTRIES) {
+  console.log(`    ${e.path}:${e.line}  <${e.tag}>   box from ${e.token}`);
+}
+console.log('');
+
+console.log(
+  `  exemption 10 — ${BELOW_FLOOR_ENTRIES.length} element(s) placed BELOW the floor by decision:\n`
+);
+for (const e of BELOW_FLOOR_ENTRIES) {
+  console.log(`    ${e.path}:${e.line}  <${e.tag}>   ${e.act}`);
+}
+console.log('');
+
 /* ── The scan ───────────────────────────────────────────────────────────────── */
 
 const perFile = [];
@@ -1687,7 +2106,7 @@ for (const rel of [...inScope].sort()) {
   const isPrimitiveFile = PRIMITIVE_FILES.has(rel);
   const importsDataTable = [...imports.values()].includes(SHRINK_REQUIRES_IMPORT);
 
-  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, skipped: 0 };
+  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0, skipped: 0 };
 
   for (const el of found) {
     // A component call site: exemption 2b or 6, and only when the import agrees.
@@ -1765,6 +2184,28 @@ for (const rel of [...inScope].sort()) {
       continue;
     }
 
+    // Exemption 9 — a declared element whose box is decided by the layout, by
+    // its own padding, by its content, or removed by a display utility. None of
+    // those is a class string this parser can resolve to pixels.
+    const unreadable = unreadableEntry(rel, el);
+    if (unreadable !== null) {
+      unreadable.applied += 1;
+      row.e9 += 1;
+      applied.e9 += 1;
+      continue;
+    }
+
+    // Exemption 10 — a declared element the product puts BELOW the floor on
+    // purpose. Not a parser limit: an accessibility exception, and the report
+    // says so where a reader cannot miss it.
+    const belowFloor = belowFloorEntry(rel, el);
+    if (belowFloor !== null) {
+      belowFloor.applied += 1;
+      row.e10 += 1;
+      applied.e10 += 1;
+      continue;
+    }
+
     // Measured.
     row.measured += 1;
     measuredTotal += 1;
@@ -1827,7 +2268,9 @@ console.log(
     'e5'.padStart(4) +
     'e6'.padStart(4) +
     'e7'.padStart(4) +
-    'e8'.padStart(4)
+    'e8'.padStart(4) +
+    'e9'.padStart(4) +
+    'e10'.padStart(5)
 );
 for (const row of perFile) {
   const name = row.path.length > 57 ? `…${row.path.slice(-56)}` : row.path;
@@ -1843,7 +2286,9 @@ for (const row of perFile) {
       String(row.e5).padStart(4) +
       String(row.e6).padStart(4) +
       String(row.e7).padStart(4) +
-      String(row.e8).padStart(4)
+      String(row.e8).padStart(4) +
+      String(row.e9).padStart(4) +
+      String(row.e10).padStart(5)
   );
 }
 console.log('');
@@ -1865,7 +2310,8 @@ for (const s of surfaces) {
     if (row === undefined) continue;
     found += row.found;
     measured += row.measured;
-    exempt += row.e2a + row.e2b + row.e3 + row.e4 + row.e5 + row.e6 + row.e7 + row.e8;
+    exempt +=
+      row.e2a + row.e2b + row.e3 + row.e4 + row.e5 + row.e6 + row.e7 + row.e8 + row.e9 + row.e10;
   }
   console.log(
     `    ${s.route.padEnd(26)} ${String(s.reached).padStart(3)} file(s) reached, ` +
@@ -1885,6 +2331,8 @@ console.log(`    5  a hidden input named by its label      ${applied.e5}`);
 console.log(`    6  a non-interactive badge                ${applied.e6}`);
 console.log(`    7  an input of type hidden — NOT a target ${applied.e7}`);
 console.log(`    8  a minimum living in a module constant   ${applied.e8}`);
+console.log(`    9  a box decided outside any height class ${applied.e9}`);
+console.log(`   10  BELOW the floor by decision            ${applied.e10}`);
 console.log('');
 
 /*
@@ -1941,12 +2389,94 @@ console.log(
     '    measures a rendered box. H41-4 remains the only proof that anything is 44px.\n'
 );
 
+/*
+ * Nine and ten are the second contract edit of 2026-08-14, and the report must
+ * make the reader able to tell them apart without reading the source — that
+ * separation IS the decision. Nine is a list of things this parser cannot read;
+ * ten is a list of things the product deliberately made small.
+ */
+console.log('  exemption 9 in full — the box is there, and this parser cannot read it:\n');
+for (const e of UNREADABLE_ENTRIES) {
+  console.log(
+    `    ${e.path}:${e.line}  <${e.tag}>  box from ${e.token}  applied ${e.applied}×` +
+      (e.applied === 0 ? '  — declared, reached by no converted closure today' : '')
+  );
+  console.log(`      ${e.reason}`);
+}
+console.log(
+  '\n    Every one of these is CORRECT CODE that this gate could not read. Two of them\n' +
+    '    are the largest tap targets in the product — a full screen each — and a gate\n' +
+    '    that reddens the largest target in the product is a gate that gets switched\n' +
+    '    off, after which it guards nothing while looking like it does (D-41-19).\n' +
+    '    Each entry names the construction its box comes from, and that construction is\n' +
+    '    asserted present on the element itself: an entry whose element does not carry\n' +
+    '    it REFUSES, and so does one whose element declares the minimum after all.\n'
+);
+
+/*
+ * Drawn rather than typed, so a count that changes cannot break the frame and
+ * the frame cannot quietly stop framing what it says. The width is measured in
+ * code points, because every rule in it is written with an em dash.
+ */
+const BANNER_WIDTH = 76;
+function banner(lines) {
+  const rule = '═'.repeat(BANNER_WIDTH);
+  const body = lines.map((line) => {
+    const text = `  ${line}`;
+    const pad = BANNER_WIDTH - [...text].length;
+    if (pad < 0) return `  ║${[...text].slice(0, BANNER_WIDTH).join('')}║`;
+    return `  ║${text}${' '.repeat(pad)}║`;
+  });
+  return [`  ╔${rule}╗`, ...body, `  ╚${rule}╝`].join('\n');
+}
+
+console.log(
+  `${banner([
+    'EXEMPTION 10 — AN ACCESSIBILITY EXCEPTION, NOT A PARSER LIMIT',
+    '',
+    `This product deliberately places ${BELOW_FLOOR_ENTRIES.length} control(s) BELOW the ${REQUIRED_PX}px floor.`,
+    'They are not unreadable. They are measured, they are under it, and',
+    'they are under it BY DECISION — RESP-03 says targets stay finger-sized',
+    'wherever a finger is the input, and on these the product says',
+    'otherwise, on purpose.',
+    '',
+    'The reason is the inversion: the floor exists to make a control EASIER',
+    'to hit, and each of these reverses a paid drink token at a counter, at',
+    'two in the morning, with a queue in front. Easier to hit IS the',
+    'failure this one guards against.',
+    '',
+    'Printed on every run, loudly, because an accessibility exception',
+    'nobody notices is an accessibility exception nobody revisits.',
+  ])}\n`
+);
+for (const e of BELOW_FLOOR_ENTRIES) {
+  console.log(
+    `    10  ${e.path}:${e.line}  <${e.tag}>  applied ${e.applied}×` +
+      (e.applied === 0 ? '  — declared, reached by no converted closure today' : '')
+  );
+  console.log(`        the act: ${e.act}`);
+  console.log(`        ${e.reason}`);
+}
+console.log(
+  '\n    What this does NOT say: that the control is hard to reach — it is centred,\n' +
+    '    directly under a full-screen target. And it does NOT tick RESP-03 criterion 5;\n' +
+    '    it makes part of it FALSE by decision, which is why it is written here rather\n' +
+    '    than absorbed into the list above. An entry here whose element declares the\n' +
+    '    floor REFUSES: the decision and the element would contradict each other, and\n' +
+    '    parking an element here to fix it quietly later is the abuse that closes.\n' +
+    '\n    It stands until the owner moves it. The evidence that would move it comes\n' +
+    '    from the counter — a bartender missing the control when they DO want it —\n' +
+    '    and that is the opposite evidence from the one that granted it.\n'
+);
+
 for (const [n, key, note] of [
   [3, 'e3', `its only possible site is a file importing ${SHRINK_REQUIRES_IMPORT}; the one shrink in this tree is written on a call site, which exemption 2b forgives first`],
   [4, 'e4', 'no wrapper in any converted closure has an interactive element as its only child'],
   [5, 'e5', "the checkbox in this tree is a VISIBLE box inside its label, so it is exemption 2, not 5"],
   [7, 'e7', 'no converted closure writes an input of type hidden today — the entry stays, because the four that opened it are a shape and not a census'],
   [8, 'e8', 'no declared call site is reached by a converted closure today'],
+  [9, 'e9', 'no declared element is reached by a converted closure today — which for a list written against seven observed reds means a surface left the manifest, and that is worth reading before it is dismissed'],
+  [10, 'e10', "the two bartender screens are reached by no converted closure today — and since this list is an accessibility exception rather than a parser limit, a zero here means the exception is no longer being applied and should be re-examined, not assumed dormant"],
 ]) {
   if (applied[key] === 0) {
     console.log(`    exemption ${n} applied ZERO times. ${note}.`);
@@ -2002,6 +2532,10 @@ if (failures.length > 0) {
 }
 
 console.log('  PASSED — every measured element declares an unprefixed minimum of at least');
-console.log(`  ${REQUIRED_PX}px, or matches one of the eight exemptions printed above.\n`);
-console.log('  This is NOT a statement that anything renders at 44px. H41-4 is.\n');
+console.log(`  ${REQUIRED_PX}px, or matches one of the ten exemptions printed above.\n`);
+console.log('  This is NOT a statement that anything renders at 44px. H41-4 is.');
+console.log(
+  `  And it is NOT a statement that every target is ${REQUIRED_PX}px: ${BELOW_FLOOR_ENTRIES.length} are deliberately under it,\n` +
+    '  under exemption 10, and that is a decision this green carries rather than hides.\n'
+);
 process.exit(0);
