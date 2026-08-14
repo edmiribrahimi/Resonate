@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phase 41.1 EXECUTED (25/25 plans, gates 16/16 green, 0 refused) — NOT verified: 77+ human rows outstanding, several blocking"
-last_updated: "2026-08-14T00:02:54.443Z"
-last_activity: 2026-08-13 -- Phase 41.1 planning complete
+stopped_at: "Phase 41.1 VERIFIED as human_needed — 5/5 criteria in their mechanical half, 0 gaps; six human observations owed, none of the five requirements closes here"
+last_updated: "2026-08-14T00:25:00.000Z"
+last_activity: 2026-08-14 -- Phase 41.1 verification written (human_needed)
 progress:
   total_phases: 17
   completed_phases: 13
@@ -276,7 +276,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Session Continuity
 
 **Last session:** 2026-08-14T00:02:54.440Z
-**Stopped at:** Phase 41.1 EXECUTED (25/25 plans, gates 16/16 green, 0 refused) — NOT verified: 77+ human rows outstanding, several blocking
+**Stopped at:** Phase 41.1 verification written — `41.1-VERIFICATION.md`, status `human_needed`, six human rows owed
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
