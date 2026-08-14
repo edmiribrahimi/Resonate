@@ -889,7 +889,22 @@ Plans:
 
 ### Phase 41.2: Public, Member and Money Surfaces
 
-**Goal**: The public and member surfaces convert, and the bar — where a mistake costs money and reveals an address on the same pages — is taken deliberately and on its own.
+**Goal**: The public and member surfaces convert; the bar is taken deliberately and on its own; and the one page where money and the address genuinely meet — the public event page — is taken on its own after it.
+
+> **The goal was corrected on 2026-08-14, and the correction is a measurement.** It
+> previously read *"the bar — where a mistake costs money and reveals an address on the
+> same pages"*. That is not true of the bar. `41.2-RESEARCH.md` §3.1 measured every file
+> of the bar's QR surface for a venue occurrence and found **zero** — its five `select`
+> calls take no venue column. The page that carries money **and** the venue block in one
+> file is `/events/[slug]`: 1 284 lines mounting the drinks section, the ticket purchase
+> path and the venue block together; the quieter second is `/tickets/[id]`.
+>
+> **This is not a wording fix, it changes the unit of work.** "Take the bar on its own" and
+> "take the money-plus-address page on its own" are two units, and the second is the larger
+> and the more dangerous. A plan built on the old sentence would have guarded the wrong
+> file. The original wording is kept here rather than deleted, because a premise that was
+> wrong is worth more visible than a premise that was silently replaced.
+
 **Depends on**: Phase 41.1
 **Requirements**: DS-07, DS-08, RESP-01, RESP-02, RESP-03 *(RESP-01 closes here, and only here)*
 **Success Criteria** (what must be TRUE):
