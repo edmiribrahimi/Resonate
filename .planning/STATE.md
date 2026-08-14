@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 46 executed; manual verification pass declined by the owner
-last_updated: "2026-08-14T20:55:40.888Z"
-last_activity: 2026-08-14 -- Phase 46 execution started
+stopped_at: Arretrato di cinque fasi deployato in produzione; prima richiesta fatta, nessun 500
+last_updated: "2026-08-14T21:40:00.000Z"
+last_activity: 2026-08-14 -- deploy dell'arretrato (619 commit) e prima richiesta
 progress:
   total_phases: 18
   completed_phases: 15
@@ -269,7 +269,51 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
   **La domanda sulla cache e' CHIUSA, e in anticipo sulla stanza buia.** Chiesto al proprietario l'11 agosto: la porta merita una regola di cache runtime piu' lunga di 24 ore? **No.** Nessun codice cambia; cambia lo stato del numero — 24 ore e' il tetto **scelto**, non il default ereditato. **Conseguenza accettata: il riscaldamento non e' un passo di migrazione, e' un costo di ogni serata**, e il gate `l'indirizzo che si scalda e' quello che si usera'` non scade con questa fase. Scritto in `.claude/rules/checkin-offline.md` (persona 1.11.1) cosi' si carica sulla porta invece di vivere in un documento di fase. **Cosa il no NON chiude:** il tetto di 32 voci LRU e' un'altra domanda — un documento della porta puo' essere sfrattato *dentro* la finestra, e in quale bucket competa resta `OQ2`, una lettura da fare in §0.5.
 
-- D7 — il middleware scrive ?redirect= e la pagina di login legge ?next=: la destinazione dopo il login si perde su ogni indirizzo protetto. Pre-esistente, non della fase 36
+- **[2026-08-14] L'ARRETRATO E' DEPLOYATO.** `origin/main` da `2029a10` (11 agosto) a
+  `5d5f1ff`: **619 commit, 177 file di prodotto, cinque fasi** — 38 (live attendance),
+  39 (l'indirizzo della porta), 40 (brand tokens), 41 + 41.1 + 41.2 (conversione
+  visiva), 46 (fallimenti silenziosi sul denaro). Le riparazioni del percorso del
+  denaro sono in produzione: fino a oggi produzione girava il codice che taceva.
+
+  **Le condizioni erano soddisfatte, e sono state misurate prima di premere, non
+  ricordate:** build verde; `verify:persona` 7/7; `docs/` e `.firecrawl/` ignorati e
+  zero file tracciati al loro interno; **ordine migration→deploy gia' corretto** — la
+  sola migration del diff, `live_attendance_channel`, era applicata in produzione
+  dall'11 agosto (versione `20260811111530`, letta dalla history, non da questo file),
+  quindi il codice non chiedeva nulla che lo schema non avesse.
+
+  **La finestra, letta dalla produzione:** 0 serate future pubblicate (l'ultima e'
+  l'8 maggio), 0 biglietti, 0 ordini bar, 0 scansioni alla porta, 0 acquisti pendenti.
+  Nessuno alla porta mentre si spediva.
+
+  **Il rischio del deploy e' CHIUSO.** L'assertion della mappa in
+  `src/lib/supabase/middleware.ts:197` e' un `throw` a module load: scatta alla prima
+  richiesta, non a `npm run build`, e una mappa sbagliata sarebbe stata **500 su ogni
+  rotta coperta dal middleware**, webhook SumUp e check-in compresi. La prima richiesta
+  e' stata fatta deliberatamente, su tredici rotte piu' due API: **nessun 500**.
+  Pubbliche 200; protette 307 al login; `/organizer` → 308 a `/admin/events` (il
+  rewrite dei vecchi indirizzi della fase 34 e' vivo); `/api/webhooks/sumup` 405 su GET;
+  `/api/cron/venue-reveal` 401 senza segreto.
+
+  **Marcatore usato, invece di contare i minuti:** `/door` rispondeva **404** prima del
+  deploy — l'indirizzo della fase 39 non era mai stato in produzione — e ha smesso di
+  esserlo dopo. E' quel cambiamento a datare l'atterraggio.
+
+  **Cosa il deploy NON chiude:** le 83 voci `human_needed` restano tutte aperte. Ed e'
+  cambiato il verso dell'urgenza della fase 39: **da oggi la porta in produzione e'
+  quella nuova, e `/door` non e' mai stato esercitato da nessuno.**
+
+- **D7 — MISURATO IN PRODUZIONE il 2026-08-14, non piu' solo dedotto.** Il middleware
+  scrive `?redirect=` e la pagina di login legge `?next=`: la destinazione dopo il
+  login si perde su ogni indirizzo protetto. Osservato dal vivo nella prima richiesta:
+  `/door` → `/login?redirect=%2Fdoor`, mentre `src/app/(auth)/login/page.tsx:64` legge
+  `next`. Il difetto e' **dichiarato nel codice** che lo produce
+  (`src/lib/supabase/middleware.ts:519`), quindi e' noto e non nuovo — pre-esistente,
+  non della fase 36. **Cio' che e' nuovo e' dove arriva:** `/door` e' fra gli indirizzi
+  che lo subiscono, quindi uno staff che apre la porta e deve autenticarsi **non torna
+  alla porta** dopo il login. Alle due di notte, davanti a una fila, con la rete che
+  non prende. Da guardare **prima** del door pass, perche' il door pass lo incontrera'
+  al primo passo e si fermera' li'.
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
 - ~~Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione~~ → **RISOLTO il 2026-08-11.** Seconda migration applicata e arretrato deployato come un atto solo, nell'ordine migration→deploy (l'inverso avrebbe fatto lanciare /events con PGRST202: pagine giu' invece che degradate). `venues_select_public` non esiste piu'; la strada pubblica e' `venue_for_parties`, che concede per serata. Misurato sul sito vero da anonimo senza cookie: 8 aghi dichiarati su 4 documenti reali → 0 occorrenze, mentre il nome del locale della serata NON segreta compare 4 volte negli stessi documenti
 
