@@ -249,7 +249,7 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | DS-06 | Phase 40 | Pending |
 | DS-10 | Phase 40 | Pending |
 | DS-07 | Phase 41 → 41.1 → 41.2 | Pending — layer in 41, adoption completes in 41.2 |
-| DS-08 | Phase 41 → 41.2 | Pending — primitive in 41; `RevealVenueDialog` adopts it last, in 41.2 |
+| DS-08 | Phase 41 → 41.2 | Pending — primitive in 41. **`RevealVenueDialog` adopted it in 41.1** (plan 41.1-20), not 41.2: this row said 41.2 and was wrong, corrected 2026-08-14 by the phase-41.2 verification. What 41.2 took last was `SecretVenueDialog`, the public-side one |
 | DS-09 | Phase 41 → 41.1 | Pending — primitive in 41; the five analytics tables and finance in 41.1 |
 | RESP-01 | Phase 41 → 41.1 → **41.2** | Pending — **says *every* surface, so it closes only in 41.2**, and by a written human pass; no script can close it |
 | RESP-02 | Phase 41 → 41.1 → 41.2 | Pending — the shell owns the maximum from 41; every surface inherits it as it converts |
