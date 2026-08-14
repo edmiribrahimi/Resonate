@@ -1508,10 +1508,24 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     // Check usage limits
     if (code.max_uses !== null) {
-      const { count } = await supabase
+      const { count, error: usageError } = await supabase
         .from("tickets")
         .select("*", { count: "exact", head: true })
         .eq("discount_code_id", code.id);
+      if (usageError) {
+        // COULD NOT COUNT. `count` is null, so `(count ?? 0) >= code.max_uses`
+        // is false and the usage limit OPENS. Said plainly because the code
+        // cannot say it on its own: this is an UNREAD count, not a code that
+        // has never been used, and the two are indistinguishable downstream.
+        //
+        // The direction is deliberate and permissive for the same reason as
+        // the two capacity reads — see the docblock over the chain-validation
+        // block above (D-46-05, D-46-08). `reserve_ticket` re-validates
+        // `max_uses` inside the transaction that reserves the seat, locking the
+        // discount code `FOR UPDATE`, so the limit that actually holds is the
+        // database's and it fails closed.
+        logPurchasePrecheckUnreadable(PRECHECK_DISCOUNT_USAGE_UNREADABLE, usageError);
+      }
       if ((count ?? 0) >= code.max_uses) throw new Error("Code usage limit reached");
     }
 
