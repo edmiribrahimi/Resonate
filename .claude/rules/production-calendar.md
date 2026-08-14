@@ -98,6 +98,31 @@ comunicato come *SunSet × re:sonate*. Da giugno a settembre il format si ferma.
 - Ragione di dominio: SunSet e' **tre date l'anno**, non un satellite ogni
   quattordici giorni. Un annuncio con piu' respiro e' coerente con la rarita'
 
+> ## `LiveCut` e `Podcast` sono due cose diverse, e una delle due non esiste ancora
+>
+> - **`LiveCut` — la registrazione dei mix delle NOSTRE serate.** E' un pezzo
+>   della pipeline: discende da una data, e **uno per dj** che ha suonato quella
+>   sera. E' cio' che sta in calendario oggi, su tutti e quattro i format.
+>
+> - **`Podcast` — mix INVIATI da dj che forse chiameremo a suonare.** Non
+>   discende da una serata, non ha progressivo di serie e **non e' ancora in
+>   produzione**: sara' introdotto piu' avanti. Finche' non esiste, non si
+>   pianifica, non si conta e non si disegna.
+>
+> **Perche' la distinzione non e' terminologica ma un gate.** Un podcast e' il
+> mix di qualcuno che **non e' in line-up** — un candidato. Pubblicarlo accanto
+> ai materiali di un format, con la stessa grafica e la stessa voce, dice a chi
+> guarda che quella persona suonera'. **Non e' un annuncio, ma viene letto come
+> tale**, ed e' la stessa regola che `venue-acquisition.md` applica a uno spazio
+> in trattativa: finche' non e' acquisito per iscritto, il nome non entra in
+> nessun materiale. Quando il formato nascera', dovra' dichiarare **per
+> costruzione** che ospita un mix e non annuncia una data — o il primo dj che
+> manda un mix e non viene chiamato avra' ragione a lamentarsene.
+>
+> **Gate operativo intanto:** una voce di calendario che dice `Podcast` oggi e'
+> un errore di nome o una cosa che non dovrebbe esserci. `LiveCut` e' l'unico
+> pezzo audio della pipeline attuale.
+>
 > **Il nome del pezzo e' `LiveCut`, non "Podcast".** Il calendario lo chiama
 > cosi' su tutte e 27 le occorrenze; questo modulo diceva "Podcast". Vince il
 > calendario (gate *il calendario batte il tracker*), e il nome usato dal

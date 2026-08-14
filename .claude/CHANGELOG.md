@@ -3,6 +3,34 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.15.0] - 2026-08-15
+
+### Added — `LiveCut` e `Podcast` sono due formati diversi, e uno non esiste ancora
+
+Chiarito dal proprietario. Il modulo li stava usando come sinonimi, che e' il
+modo in cui un formato non ancora nato finisce pianificato come se ci fosse.
+
+- **`LiveCut`** — registrazione dei mix delle **nostre** serate. Pezzo della
+  pipeline, discende da una data, uno per dj che ha suonato.
+- **`Podcast`** — mix **inviati da dj che forse chiameremo a suonare**. Non
+  discende da una serata, non ha progressivo, **non e' ancora in produzione**.
+
+### Il gate che ne discende, e la ragione per cui non e' solo terminologia
+
+Un podcast e' il mix di qualcuno che **non e' in line-up**: un candidato.
+Pubblicarlo con la grafica e la voce di un format dice a chi guarda che quella
+persona suonera'. Non e' un annuncio, ma **viene letto come tale** — la stessa
+regola che `venue-acquisition.md` applica a uno spazio in trattativa. Quando il
+formato nascera' dovra' dichiarare **per costruzione** che ospita un mix e non
+annuncia una data.
+
+Intanto vale il gate operativo: **una voce di calendario che dice `Podcast` oggi
+e' un errore di nome, o una cosa che non dovrebbe esserci.**
+
+### Scenario di carico
+
+Invariato: nessun `paths:` toccato. `verify:persona` 7/7.
+
 ## [1.14.0] - 2026-08-15
 
 ### Changed — la pipeline si esprime in GIORNI DELLA SETTIMANA, e le due versioni precedenti avevano scritto la conseguenza al posto della regola
