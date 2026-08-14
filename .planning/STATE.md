@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: "Phases 41 and 41.1 both VERIFIED as human_needed, 0 gaps — the five-round reintroduction guard is closed; what remains across both is human observation in the end-of-v1.5 sitting"
-last_updated: "2026-08-14T03:20:00.000Z"
-last_activity: 2026-08-14 -- Phase 41 re-verified at round 6 (gaps_found -> human_needed, 0 gaps)
+stopped_at: "Phase 41.2 PLANNED — 20 plans in 9 waves, plan-checker 0 blockers, 9 findings applied. Ready to execute."
+last_updated: "2026-08-14T05:40:00.000Z"
+last_activity: 2026-08-14 -- Phase 41.2 planned (research, context, validation, patterns, 20 plans, checker)
 progress:
   total_phases: 17
   completed_phases: 13
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 41 — shared-primitives-three-tier-layout
+**Current Focus:** Phase 41.2 — public-member-and-money-surfaces (planned, ready to execute)
 
 ## Current Position
 
@@ -276,7 +276,7 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Session Continuity
 
 **Last session:** 2026-08-14T00:02:54.440Z
-**Stopped at:** Phase 41 re-verified at round 6 — `gaps_found` (5 rounds) became `human_needed` with `gaps_remaining: []`. Closed by a LATER phase: 41.1-01's shared comment stripper. Phase 41.1 verified the same day, also `human_needed`. Thirteen human rows across the two, all in the end-of-v1.5 batch
+**Stopped at:** Phase 41.2 planned and checked — 20 plans in 9 waves. Upstream: Phases 41 and 41.1 both `human_needed` with 0 gaps (41's five-round reintroduction guard closed by 41.1-01's shared comment stripper). Thirteen human rows across the two, all in the end-of-v1.5 batch, and 41.2's RESP-01 pass will carry their union
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
