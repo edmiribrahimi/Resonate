@@ -147,6 +147,12 @@ any more.*
 - [ ] **PROD-01**: The production calendar lives in the product rather than outside it — an import, not a migration, and the material reaches the database without passing through the public repository
 - [ ] **PROD-02**: Production sections are visible **per section** to the staff entitled to them, because the sections do not carry the same risk
 
+### Observable Failure on the Money Path
+
+- [ ] **OBS-02**: On a path that carries money, a failure produces an effect the person affected can see — or, where only staff can act on it, an effect staff can see. No failure on these paths is discharged by a log line: there is no error tracking (**OBS-01**, deferred), so a log is a place nobody looks
+- [ ] **OBS-03**: A failed read is never rendered as a legitimate value. *We could not read your drinks* is distinguishable from *you have no drinks*, and *we could not count* from *none sold*
+- [ ] **OBS-04**: A refusal with distinguishable causes says which one, wherever the next step differs. The wording for each cause is written once and used always, and it travels as a **returned value, never as a thrown message** — Next redacts the message of an error thrown out of a Server Action in a production build (`src/lib/capabilities/server.ts:59-63`)
+
 ## Future Requirements
 
 Deferred, tracked, not in this roadmap.
@@ -249,20 +255,25 @@ Execution order is 33 → 43 → 35 → 34 → 36 → …, and it is held by `RO
 | DS-06 | Phase 40 | Pending |
 | DS-10 | Phase 40 | Pending |
 | DS-07 | Phase 41 → 41.1 → 41.2 | Pending — layer in 41, adoption completes in 41.2 |
-| DS-08 | Phase 41 → 41.2 | Pending — primitive in 41. **`RevealVenueDialog` adopted it in 41.1** (plan 41.1-20), not 41.2: this row said 41.2 and was wrong, corrected 2026-08-14 by the phase-41.2 verification. What 41.2 took last was `SecretVenueDialog`, the public-side one |
+| DS-08 | Phase 41 → 41.1 → 41.2 | Pending — primitive in 41. **`RevealVenueDialog` adopted it in 41.1** (plan 41.1-20), not 41.2: this row said 41.2 and was wrong, corrected 2026-08-14 by the phase-41.2 verification. What 41.2 took last was `SecretVenueDialog`, the public-side one |
 | DS-09 | Phase 41 → 41.1 | Pending — primitive in 41; the five analytics tables and finance in 41.1 |
 | RESP-01 | Phase 41 → 41.1 → **41.2** | Pending — **says *every* surface, so it closes only in 41.2**, and by a written human pass; no script can close it |
 | RESP-02 | Phase 41 → 41.1 → 41.2 | Pending — the shell owns the maximum from 41; every surface inherits it as it converts |
 | RESP-03 | Phase 41 → 41.1 → 41.2 | Pending — the size is fixed in 41; measured on a device, per converted surface |
 | RESP-04 | Phase 41 | Pending — **lands whole in 41**: the navigation has one mount point, so all 24 work pages get both tiers at once |
+| OBS-02 | Phase 46 | Pending — the sites whose repair is the appearance of an effect where none existed, named one by one because a row that says "the in-perimeter sites" reads as a coverage hole: `DI-41.2-02` (the drink-receipt custody write, swallowed whole), `DI-41.2-04` (the failed token fetch reporting `"unknown"`, and the poll bound that fires silently), `DI-41.2-06` (the menu-closing command whose refusal nothing shows), `DI-41.2-06b` (its only caller, which renders no outcome at all), `DI-TODO-B` (the refund cron reporting as deleted the rows that remain). The narrower perimeter is `46-CONTEXT.md` `<domain>` |
+| OBS-03 | Phase 46 | Pending — the failed reads rendered as legitimate values: `DI-41.2-03` (custody read returning `[]`), `DI-41.2-08` (a full night rendered as open beside the control that takes money), `F-46-01` (two permissive server reads in `purchaseTicket`), `DI-TODO-A` (the discount usage limit opening on a failed read), `DI-TODO-B` (the delete count coalesced to the intended length) |
+| OBS-04 | Phase 46 | Pending — `DI-41.2-06` and `DI-41.2-06b`: the menu-closing command, where *you may not do this* and *it did not save* must stay two facts (D-46-10b) and must cross the Server Action boundary as a returned value |
 | DS-04 | Phase 42 | Pending |
 | RESP-05 | Phase 42 | Pending |
 | PROD-01 | Phase 44 | Pending |
 | PROD-02 | Phase 45 | Pending |
 
-**Coverage:** 73 / 73 mapped. No orphans, no requirement assigned twice.
+**Coverage:** 76 / 76 mapped. No orphans, no requirement assigned twice.
 
 > The previous figure read *57 / 57*. It was already wrong when written — 62
-> requirements were defined at the time, and the table listed 62 rows. Corrected
-> here, with the nine new ones, to 71: a count is corrected when it was wrong at
-> the time it was written.
+> requirements were defined at the time, and the table listed 62 rows. Both the
+> figure above and this note are now set to **76**, counted by command over the
+> rows of the table rather than obtained by adding to the printed figure: a
+> count is corrected when it was wrong at the time it was written, and this note
+> had itself drifted two behind the line it explains.
