@@ -4,7 +4,7 @@ import { useId, useState, useMemo, useTransition } from "react";
 import type { DrinkItem } from "@/types/database";
 import GuestDrinkMenu from "./GuestDrinkMenu";
 import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuManager";
-import { updateMenuClosesAt } from "./actions";
+import { updateMenuClosesAt, type MenuCloseRefusal } from "./actions";
 import { menuCloseInstant } from "@/utils/datetime";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -34,20 +34,37 @@ import { Input } from "@/components/ui/Input";
  * The control gained a 44px floor, a real `htmlFor` binding and a programmatic
  * association for its fallback sentence. It sends what it sent.
  *
- * ── A failure this file does not report, recorded and NOT repaired ───────────
+ * ── The failure this file now REPORTS, and why it reports it twice ───────────
  *
- * Neither `handleSave` nor `handleClear` catches. The action throws on a refused
- * capability and on a failed write, and when it does the transition rejects, the
- * confirmation never appears, and **nothing at all is shown**. There is no error
- * tracking in this repository, so that failure reaches nobody: an organizer who
- * believes they closed the menu at midnight and did not is a bar still selling
- * tokens at two.
+ * Until plan 46-04 neither handler caught anything. The action threw on a
+ * refused capability and on a failed write, the transition rejected, the
+ * confirmation was never reached, and **nothing at all appeared** — an organizer
+ * who believed they had closed the menu at midnight and had not is a bar still
+ * selling tokens at two. That was recorded in `41.2-11-FINDINGS.md` and left
+ * alone, because repairing it meant deciding what a person is told when a
+ * money-adjacent write fails. `46-COPY.md` §1 decided it, and this is the half
+ * that draws it.
  *
- * It is recorded at its `file:line` in `41.2-11-FINDINGS.md` and left where it
- * is. Fixing it means designing what a person is told when a money-adjacent
- * write fails, which is new copy on a money path and is a decision of its own —
- * the same reason the four already-recorded silent failures on this path were
- * not repaired under a visual mandate.
+ * **Two causes, two sentences, and they are not allowed to merge (D-46-10b).**
+ * *This account may not set the closing time* sends the organizer to find
+ * someone who may; *saving failed* is theirs to try again. One catch for both
+ * would be the newsletter defect on a staff money surface, which is the shape
+ * this repository already has on record. A third — no session — and a fallback
+ * for a refusal that arrives with no category at all make four outcomes; every
+ * word of all four is approved copy, composed nowhere.
+ *
+ * **`onUpdate` and the confirmation are now conditional on success**, and that
+ * is not tidiness. With a refusal returned rather than thrown, the three lines
+ * that used to run unconditionally would run on failure too: the parent's party
+ * list would be updated to a value the database does not hold and the word
+ * *Saved* would appear over a save that did not happen. Converting the action
+ * without converting these handlers would have armed a new silent divergence.
+ *
+ * **The clear path shows what is stored, not what was asked for.** `setTime("")`
+ * used to run before the await, so a failed clear left the field reading empty
+ * while the stored closing time was unchanged — the screen and the database
+ * disagreeing, silently, about the moment a bar stops selling. It now runs on
+ * the success branch only.
  *
  * ── The already-converted work module is NOT opened ──────────────────────────
  *
@@ -131,6 +148,19 @@ function MenuCloseControl({
   const [time, setTime] = useState(currentValue);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  /**
+   * The category of the last refusal, kept apart from the sentence.
+   *
+   * It arrives as a returned value and never as the message of a thrown error,
+   * because Next redacts those in a production build
+   * (`src/lib/capabilities/server.ts:58-63`). Nothing in this control branches
+   * on it today — the sentence beside it is what an organizer reads — and it is
+   * held anyway, so the classification exists as a value here rather than
+   * having to be recovered from words later. `src/lib/door/outcome.ts:274-276`
+   * keeps its own statuses for the same stated reason.
+   */
+  const [refusal, setRefusal] = useState<MenuCloseRefusal | null>(null);
+  const [refusalSentence, setRefusalSentence] = useState<string | null>(null);
   // The primitive binds label to control by id and requires one. It is
   // generated rather than derived from the party, because the same party can be
   // rendered twice in a tree and two controls may not share an id.
@@ -141,22 +171,81 @@ function MenuCloseControl({
     ? `Falls back to end time (${party.end_time.slice(0, 5)})`
     : "No auto-close set";
 
+  /**
+   * The sentence for a refusal that arrived carrying no category at all —
+   * approved copy (`46-COPY.md` §1), and modelled on
+   * `src/components/events/EventForm.tsx:626-629`.
+   *
+   * Its next step differs from that model's on purpose: this is a money-adjacent
+   * value, so the organizer is sent to *check what the field says* rather than
+   * to *try again*. The save may or may not have landed, and telling somebody to
+   * retry a write whose outcome is unknown is how a closing time gets set twice
+   * or not at all.
+   */
+  const NO_REASON =
+    "The save was refused and no reason travelled back. Reload the page and check what the closing time says before trying again.";
+
+  /**
+   * The one place a refusal is recorded, so the two handlers cannot drift into
+   * two vocabularies. Category first, sentence second — the order at
+   * `EventForm.tsx:625-629`, and the reason is that the category is what a later
+   * reader can branch on, while the sentence is only what this render draws.
+   */
+  function refuse(category: MenuCloseRefusal | null, sentence: string | null) {
+    setRefusal(category);
+    setRefusalSentence(sentence ?? NO_REASON);
+  }
+
   function handleSave() {
+    setRefusal(null);
+    setRefusalSentence(null);
     startTransition(async () => {
-      await updateMenuClosesAt(party.id, time || null);
-      onUpdate(party.id, time || null);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      try {
+        const result = await updateMenuClosesAt(party.id, time || null);
+        if (!result.success) {
+          // Neither `onUpdate` nor `setSaved`: the parent's list must not learn
+          // a value the database refused, and *Saved* must not appear over a
+          // save that did not happen.
+          refuse(result.refusal ?? null, result.error ?? null);
+          return;
+        }
+        onUpdate(party.id, time || null);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch {
+        // The action returns its three named causes rather than throwing them,
+        // so reaching here means the call itself did not complete — a transport
+        // failure, with no category to carry. That is the same fact the
+        // no-category sentence states, and it gets the same words rather than a
+        // new sentence invented outside the approved list. Leaving it uncaught
+        // would put the silent failure back: an unhandled rejection inside a
+        // transition renders nothing.
+        refuse(null, null);
+      }
     });
   }
 
   function handleClear() {
-    setTime("");
+    setRefusal(null);
+    setRefusalSentence(null);
     startTransition(async () => {
-      await updateMenuClosesAt(party.id, null);
-      onUpdate(party.id, null);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      try {
+        const result = await updateMenuClosesAt(party.id, null);
+        if (!result.success) {
+          refuse(result.refusal ?? null, result.error ?? null);
+          return;
+        }
+        // `setTime("")` used to run BEFORE the await, which left a failed clear
+        // showing an empty field over an unchanged stored value. It runs here,
+        // on the branch where the database has actually accepted the clear, so
+        // the control shows what is stored on every path.
+        setTime("");
+        onUpdate(party.id, null);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch {
+        refuse(null, null);
+      }
     });
   }
 
@@ -214,6 +303,31 @@ function MenuCloseControl({
           </span>
         )}
       </div>
+
+      {/*
+        The refusal, in place and beside the control that produced it — not a
+        toast. The confirmation for the same act is already here, and a failure
+        that announces itself somewhere else than its success is a failure
+        somebody has to go looking for.
+
+        `role="alert"` is the contract rather than decoration: this region is the
+        only place a refused closing time is reported, and without the role it is
+        reported to nobody who is not looking straight at it. It is the shape of
+        `src/components/events/EventForm.tsx:1316-1323`, on the same kind of act.
+
+        The sentence is never generic. Four distinct causes reach this one region
+        — no session, a refused capability, a refused write, and a refusal with
+        no category at all — and each keeps its own approved words.
+      */}
+      {refusalSentence && (
+        <div
+          role="alert"
+          className="mt-3 rounded-2xl border border-sem-crit/30 bg-sem-crit/10 p-3"
+          data-refusal={refusal ?? "none"}
+        >
+          <p className="text-xs text-sem-crit">{refusalSentence}</p>
+        </div>
+      )}
     </Card>
   );
 }
