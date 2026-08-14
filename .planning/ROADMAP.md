@@ -1049,7 +1049,7 @@ Not preferences — each one has a failure mode behind it.
 **Goal**: A failure on a path that carries money produces an effect somebody can see. Today nine of them produce a confident, well-formatted, wrong statement instead — and this repository has **no error tracking**, so none of them reaches a human by itself.
 
 **Depends on**: nothing structural. **Runs BEFORE Phase 42** — the numbering is sequential because *a progressivo assigned is never renumbered*, and this roadmap already decouples number from order (33 → 43 → 35 → 34 → 36 → …).
-**Requirements**: TBD at planning — none of the existing DS/RESP requirements covers this.
+**Requirements**: OBS-02, OBS-03, OBS-04 — **created by this phase** in `.planning/REQUIREMENTS.md` under a new `### Observable Failure on the Money Path` heading (plan 46-01). `OBS-05` was proposed by the research and is **not** created: it covered `DI-41.2-09`, which left the perimeter with D-46-11.
 
 > **Why this phase exists and why it is not a bug list.** All nine were found by Phase 41.2 and are recorded, with `file:line` and consequence, in that phase's `deferred-items.md` **Group M**. Four came from research before any conversion; **five were found during execution and the research never saw them**. Every one was deliberately **recorded and not repaired**, because repairing them is *new copy on a money path* or *a payload change* — stop condition 2 — and a visual conversion is not where the product decides what someone is told when their money does something unexpected.
 >
@@ -1063,8 +1063,22 @@ Not preferences — each one has a failure mode behind it.
   4. **The monotone guards are untouched.** A payment reaching completion still corrects forward; nothing makes an amount that was taken look like it was not; no reveal becomes reachable earlier
   5. Each fix is proved by an **observable outcome**, not by a log line — and where the outcome can only be seen by a person, it goes in a written procedure with its `Result: pending`, because there is still no test runner
 
-**Plans**: TBD
+**Plans:** 7 plans in 2 waves
+
+Plans:
+- [ ] 46-01-PLAN.md — the three requirements, and every sentence this phase ships, approved in one pass (blocking checkpoint)
+- [ ] 46-02-PLAN.md — the one refusal shape, and a comment on the accidental fallback that must survive
+- [ ] 46-03-PLAN.md — the three permissive reads inside `purchaseTicket` say which failure they had (F-46-01, DI-TODO-A)
+- [ ] 46-04-PLAN.md — the organizer's menu-closing command gets two distinguishable outcomes (DI-41.2-06, -06b)
+- [ ] 46-05-PLAN.md — what a guest sees when the browser cannot hold their receipt (DI-41.2-02, -03, -04)
+- [ ] 46-06-PLAN.md — the public event page stops printing counts it could not read (DI-41.2-08) — Critical, owner in the loop
+- [ ] 46-07-PLAN.md — the refund cron tells the truth and terminates as failed (DI-TODO-B)
+
 **UI hint**: partial — several fixes are copy a person reads, which is a product decision before it is a visual one
+
+> **Two success criteria above are NOT met by this phase, and it is written here rather than discovered at verification.** Criterion 3 — the one that charges the wrong amount (`DI-41.2-09`) — and criterion 2's *"five RSVP refusals"* (`DI-41.2-20`) both live in code that D-46-11 put under review for deletion, together with `DI-41.2-01`, `-07`, `-09` … `-12` and `DEF-41.2-A`. The perimeter this phase was planned against is `46-CONTEXT.md` `<domain>`, which is narrower than the nine. If the members area survives that decision, those items return as their own phase.
+>
+> **And one risk is accepted rather than closed** (D-46-07): the window in which a guest pays and no ticket is issued stays silent. The fix is an architecture change — hold the seat before payment — and it is the deferred phase that runs immediately after this one.
 
 > **The nine, by identifier**, in `41.2-deferred-items.md` Group M: `DI-41.2-01` … `DI-41.2-04` (research), `DI-41.2-06` … `DI-41.2-09` (execution), `DEF-41.2-A` (the refund refusal). `DI-41.2-10` … `DI-41.2-12` are adjacent intent-handling cases found alongside them and should be scoped in or out deliberately, not by accident.
 

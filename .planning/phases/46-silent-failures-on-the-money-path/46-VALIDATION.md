@@ -1,7 +1,7 @@
 ---
 phase: 46
 slug: silent-failures-on-the-money-path
-status: draft
+status: planned
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-08-14
@@ -74,6 +74,50 @@ created by this phase.
 
 ---
 
+## Per-Task Proof Map
+
+Filled by the planner on 2026-08-14, once plan and task ids existed. Seven plans in two
+waves; every row below is an `<acceptance_criteria>` line in the plan it names, so this
+table is an index and not a second source. Where a row is **manual**, the named plan owes
+the written procedure with `Result: pending` in its SUMMARY.
+
+| Plan · Task | Req | Proof | Type |
+|---|---|---|---|
+| 46-01 · T1 | OBS-02/03/04 | `LC_ALL=C /usr/bin/grep -cE '\*\*OBS-0[234]\*\*'` → 3; `grep -c 'OBS-05'` → 0; `grep -cE '^\| OBS-0[234] \| Phase 46 \|'` → 3; no OBS row cites an out-of-perimeter identifier; the coverage figure equals a mechanically counted row count | derivation |
+| 46-01 · T2 | OBS-04 | `46-COPY.md` holds a row per category for 46-04/05/06/07, each with a constant name, an owning plan and a `file:` reference, plus the two open decisions | derivation |
+| 46-01 · T3 | OBS-04 | the owner approved the list in **one pass** and answered both decisions; recorded verbatim in the SUMMARY | **checkpoint, blocking** |
+| 46-02 · T1 | OBS-03/04 | `grep -c '^export '` on `src/lib/failure/money-path.ts` → 3; the `SafeError` type declares no `details`; `grep -c 'from "react"'` → 0 | derivation |
+| 46-02 · T2 | — | every added line in `GuestDrinkMenu.tsx`'s diff is a comment; `git diff --numstat` shows 0 deletions; `.then(() => localStorage.removeItem(key))` present verbatim | derivation |
+| 46-03 · T1 | OBS-03 | `grep -c 'const { data: allTiers } = await tierQuery;'` → 0; `grep -c 'const { data: soldCounts } = await supabase'` → 0; `grep -c 'This ticket tier is not available'` → 1; no added `console.error` in the purchase region | derivation |
+| 46-03 · T1 | OBS-03 | fault-inject the sold-count read, attempt a purchase, observe one safe log line **and no refusal** — the permissive direction is the decided behaviour (D-46-05) | **manual** |
+| 46-03 · T2 | OBS-03 | the usage-limit read destructures `error`; the five discount refusals and the minimum-price refusal are counted present; no `throw new Error` line is removed by the diff | derivation |
+| 46-04 · T1 | OBS-04 | `grep -c 'throw new Error'` inside `updateMenuClosesAt` → 0; `Record<MenuCloseRefusal, string>` present with three entries; `CAP.STAFF_MANAGE` still above `getServiceClient()`; `menu_closes_at: menuClosesAt \|\| null` byte-identical | derivation |
+| 46-04 · T2 | OBS-02/04 | `role="alert"` present; `useToast` absent; `onUpdate` and `setSaved` appear only inside the success branch; still two `updateMenuClosesAt(party.id` call sites; `npm run verify:dialogs` exits 0 | derivation |
+| 46-04 · T3 | OBS-04 | **asserted mutation**: a fourth union member added without its `Record` entry; the mutation confirmed applied by grep **before** the build is read; `npm run build` fails naming `MENU_CLOSE_ERROR`; reverted; build green | **asserted mutation** |
+| 46-04 · T3 | OBS-04 | two roles, induced write failure — two different sentences, neither confirming a save, the time field showing what is stored | **manual** |
+| 46-05 · T1 | OBS-03 | the custody read's `catch` no longer returns `[]`; `STORAGE_KEY_PREFIX` and the key construction byte-identical; all three call sites branch on the returned result | derivation |
+| 46-05 · T2 | OBS-02/03 | `grep -c 'orderStatus: "unknown"'` → 0; four union members and four `Record` entries; the bound sets state **before** `clearInterval`; the 3 s interval and the bound of ten unchanged; `hasOwnProperty.call` lookup present | derivation |
+| 46-05 · T3 | OBS-02/03 | the early return no longer fires on a custody failure or a terminal fetch state; `useToast` absent; `npm run verify:dialogs` exits 0 | derivation |
+| 46-05 · T3 | OBS-02/03 | guest, no account: induced storage fault and induced endpoint failure — *we could not read your drinks* distinguishable from *you have none*, and an effect at the poll's bound | **manual** |
+| 46-06 · T1 | OBS-03 | `count ?? 0` → 0; `rsvpCount \|\| 0` → 0; `soldKnown` present on both tier shapes; the four reveal derivations recorded **before** and **after** | derivation |
+| 46-06 · T2 | OBS-02/03 | `grep -c '<TierSelection'` → 2, with no prop removed by the diff; the approved sentence present verbatim; `role="status"` count increased; `grep -c generateMetadata` → 0; `grep -c 'dynamic = "force-dynamic"'` → 1 | derivation |
+| 46-06 · T3 | — | owner reads the four derivations and the whole diff, and validates that the control stays live | **checkpoint, blocking** |
+| 46-06 · T2 | OBS-03 | anonymous visitor, induced count failure: no remaining figure printed, the sentence appears, **the control is still there** — verify the refusal is reachable, not that the control disappears | **manual** |
+| 46-07 · T1 | OBS-02/03 | `count ?? tokenIdsToDelete.length` → 0; `delete({ count: "exact" })` present and destructuring `error`; the whole-object refund log gone; `menuCloseInstant` count unchanged; `refundedCount += tokens.length` still inside the loop | derivation |
+| 46-07 · T2 | OBS-02 | four union members, two total maps, one response function; `satisfies Record<` present; the four strings verbatim from `46-COPY.md` | derivation |
+| 46-07 · T2 | OBS-02 | force the delete to fail, invoke the cron, observe a truthful body **and a run marked failed**; then a succeeding run returning 200 | **manual** |
+
+**Sampling continuity check:** no three consecutive tasks are without a mechanical check —
+every task above carries at least one derivation row, and the four manual rows each sit
+beside a derivation on the same task.
+
+**Phase-wide derivations, re-run after every wave:** `git diff --stat supabase/migrations/`
+→ empty; `git diff --stat src/app/api/webhooks/` → empty;
+`git diff --stat package.json package-lock.json` → empty; `npm run build` exits 0;
+`npm run verify` **never run**.
+
+---
+
 ## Wave 0 Requirements
 
 **No test scaffolding is created.** There is no framework to scaffold into, and installing
@@ -83,9 +127,19 @@ What replaces Wave 0 here:
 
 - [ ] The **sentence list** (D-46-10a) drafted in full and approved by the owner in one
       pass, before any copy is merged. Every other copy-bearing task depends on it.
+      → **plan 46-01**, tasks 2 and 3; the checkpoint at T3 blocks 46-04, 46-05, 46-06
+      and 46-07.
 - [ ] The **refusal union and its total `Record`** established once, modelled on
       `src/lib/door/outcome.ts:295` (`DOOR_NIGHT_ERROR`) and `/api/media/finalize`. Every
       later conversion reuses it rather than inventing a second shape.
+      → **plan 46-02**, task 1: `src/lib/failure/money-path.ts`. Read *shape* as the
+      **construction** — constants, a union from `typeof`, a total `Record` — plus one
+      `SafeError` type and one safe log function. Each surface still declares its **own**
+      union in its own file, because a category on a bar screen and a category in a cron
+      report are not members of one vocabulary; the tree's own three precedents
+      (`outcome.ts`, `finalize/route.ts`, the nights half of `admin/events/actions.ts`)
+      are three unions and one construction. The module states that in its docblock so a
+      later reader does not build a god-union.
 
 ---
 
