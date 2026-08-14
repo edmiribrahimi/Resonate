@@ -1,5 +1,5 @@
 /**
- * The eight staff tabs — address, label, and the capability that opens the
+ * The six staff tabs — address, label, and the capability that opens the
  * address — declared once, for both staff menus.
  *
  * Before this module there were **three** hand-maintained menus, not the two
@@ -85,16 +85,18 @@ export interface StaffTab {
 }
 
 /**
- * The eight, in the order they are drawn.
+ * The six, in the order they are drawn. (Eight until 2026-08-14, when the
+ * owner removed Finance and Analytics — see the note where they stood.)
  *
- * The first four were the tabs an organizer already saw; the last three were the
- * ones carrying `roles: ["master"]`. That role filter is not translated — it is
+ * The first four were the tabs an organizer already saw; the master-only ones
+ * carried `roles: ["master"]`. That role filter is not translated — it is
  * **replaced** by the capability the middleware actually asks, which is
- * `admin.access` for all three. The two happen to select the same accounts today
+ * `admin.access`. (Three of those until 2026-08-14; Newsletter is the one left.)
+ * The two happen to select the same accounts today
  * (`master` alone holds `admin.access`), and that coincidence is not what makes
  * the entry correct: reading the same declaration as the server is.
  *
- * The eighth arrived with phase 36 and is the first entry here that asks neither
+ * The Formats entry arrived with phase 36 and is the only one here that asks neither
  * `organizer.access` nor `admin.access` — see the comment beside it.
  */
 const DECLARED = [
@@ -102,7 +104,7 @@ const DECLARED = [
   { href: "/admin/members", label: "Members", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/artists", label: "Artists", capability: CAP.ORGANIZER_ACCESS },
   { href: "/admin/venues", label: "Venues", capability: CAP.ORGANIZER_ACCESS },
-  // ── THE EIGHTH TAB, AND WHY IT COULD NOT LAND BEFORE ITS PAGE ──────────────
+  // ── THE FORMATS TAB, AND WHY IT COULD NOT LAND BEFORE ITS PAGE ────────────
   //
   // `StaffTab.href` is `Route` and NOT `string`, and that is the property that
   // makes this file's promise keepable: a menu cannot draw a link to an address
@@ -127,8 +129,22 @@ const DECLARED = [
   // organizer is neither drawn the tab nor let through to the page.
   { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
-  { href: "/admin/finance", label: "Finance", capability: CAP.ADMIN_ACCESS },
-  { href: "/admin/analytics", label: "Analytics", capability: CAP.ADMIN_ACCESS },
+  // ── Finance and Analytics were removed here, and their pages with them ──────
+  //
+  // Owner's decision, 2026-08-14: neither surface is wanted. They were deleted
+  // **whole** — tab, page files, and their rows in `CAPABILITY_ROUTES` — rather
+  // than dropped from this list alone. Removing only the tab would have left
+  // both addresses served and reachable by typing them, which is the shape
+  // `nextjs-architecture.md` names outright: the refusal comes from the map and
+  // the RLS, never from a menu that stops drawing a link.
+  //
+  // What survived the deletion, deliberately: `refundTransaction` lives in
+  // `src/lib/sumup.ts`, not in the deleted `finance/actions.ts`, so the two
+  // refund crons still run. What did NOT survive is the **manual** refund —
+  // `refundTransactionAction` and its dialog were reachable only from
+  // `/admin/finance`. A refund asked for by a customer is now done in SumUp's
+  // own dashboard. Written here because a money path that quietly stops
+  // existing is the silent failure phase 46 was spent removing.
 ] as const satisfies readonly StaffTab[];
 
 // ── The copy cannot drift. Checked once, on first import. ───────────────────
@@ -158,7 +174,7 @@ for (const tab of DECLARED) {
   }
 }
 
-/** The eight, verified against the map. */
+/** The six, verified against the map. */
 export const STAFF_TABS: readonly StaffTab[] = DECLARED;
 
 /**

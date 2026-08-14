@@ -45,8 +45,9 @@ function getAudienceId() {
  * extra query, not a memoised read. It is paid here on purpose: newsletter is a
  * low-traffic admin surface, and paying it once is what makes "one definition,
  * three callers" an observation rather than a claim. The money surface next
- * door (`admin/finance/actions.ts`) holds a byte-identical copy of this guard
- * and is deliberately NOT converted in this phase (D-13).
+ * door (`admin/finance/actions.ts`) used to hold a byte-identical copy of this
+ * guard, left unconverted on purpose in that phase (D-13); it was deleted with
+ * the Finance surface on 2026-08-14, so this guard now has no twin.
  *
  * A failure to resolve throws — it does not fall through to a refusal. See
  * `src/lib/capabilities/server.ts`: an empty capability set on failure would

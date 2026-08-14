@@ -257,11 +257,15 @@ export const CAPABILITY_ROUTES = {
    */
   [CAP.ADMIN_ACCESS]: {
     routes: [
-      "/admin/analytics",
-      "/admin/analytics/compare",
-      "/admin/analytics/members",
+      // Four addresses left this list on 2026-08-14 — `/admin/analytics`, its
+      // `compare` and `members` children, and `/admin/finance` — because the
+      // owner removed both surfaces. The rows go with the pages, in the same
+      // commit: an address bound here but served by nobody is a promise this
+      // map cannot keep, and `staff-tabs.ts` asserts against exactly that.
+      //
+      // `/admin/members/growth` stays. It is a members surface that happens to
+      // draw analytics components, not part of the Analytics section.
       "/admin/newsletter",
-      "/admin/finance",
       "/admin/members/growth",
     ],
   },

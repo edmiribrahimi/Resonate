@@ -192,10 +192,10 @@ export default function VenueRevealPanel({
   }, [load]);
 
   useEffect(() => {
-    // Declared here and called here, which is the shape
-    // `components/admin/TransactionList.tsx:344-372` already uses for a read on
-    // mount. The state lands in a callback after the await, never synchronously
-    // in the effect body.
+    // Declared here and called here. The state lands in a callback after the
+    // await, never synchronously in the effect body. (The precedent cited here
+    // was `components/admin/TransactionList.tsx`, deleted with the Finance
+    // surface on 2026-08-14 — the shape stands on its own.)
     const run = async () => {
       await load();
     };

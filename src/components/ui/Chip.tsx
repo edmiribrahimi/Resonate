@@ -48,10 +48,11 @@ import { FOCUS_RING } from "@/components/ui/Button";
  *
  * ── Which sites this replaces ────────────────────────────────────────────────
  *
- * The eight work-surface tabs on the phone strip (`StaffNav`, this plan), the
- * two filter rows on `/admin/analytics/compare` and `/admin/members/growth`
- * that are RESP-04's "filters", and the lineup `<Link>` above. Each converts
- * with its surface.
+ * The work-surface tabs on the phone strip (`StaffNav`, this plan), the filter
+ * row on `/admin/members/growth` that is RESP-04's "filters", and the lineup
+ * `<Link>` above. Each converts with its surface. (There were eight tabs and a
+ * second filter row on `/admin/analytics/compare`; that surface was deleted on
+ * 2026-08-14 and the tabs are six.)
  */
 
 const CHIP_BASE =

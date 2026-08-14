@@ -5,11 +5,13 @@ import { CAP } from "@/lib/capabilities/keys";
 //
 // Only Next.js ROUTE files enter `(work)`; `actions.ts` and the four
 // co-located client modules are not routes and stay at
-// `admin/newsletter/`, one group shallower than this file. The rule exists for
-// `finance/actions.ts`, which is imported from OUTSIDE its directory by
-// `src/components/admin/{RefundDialog,TransactionList}.tsx` — moving it would
-// have forced this plan to edit two components on the refund path that it does
-// not own. The newsletter modules have no external importer today and follow
+// `admin/newsletter/`, one group shallower than this file. The rule was
+// written for `finance/actions.ts`, which was imported from OUTSIDE its
+// directory by two refund components — moving it would have forced that plan
+// to edit files on the refund path it did not own. All three were deleted on
+// 2026-08-14 with the Finance surface, so the example no longer exists; the
+// rule outlives it. The newsletter modules have no external importer today and
+// follow
 // the rule anyway: a rule with an exception is a rule the next reader has to
 // re-measure. The one edit it costs is this, and it is inside a file this plan
 // owns — which is the point.

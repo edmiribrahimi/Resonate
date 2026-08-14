@@ -19,9 +19,10 @@ import type { UserRole, UserStatus } from "@/types/database";
  * door — and closing that would mean editing `admin/scanner/page.tsx` to drop
  * its own mount. This phase does not touch the door's page (STAFF-04 is Phase
  * 39, alone, because a redirect needs a network the door is designed not to
- * have). A route group does not affect the URL, so `(work)/analytics/page.tsx`
- * still serves `/admin/analytics` and `scanner/` stays outside the group,
- * byte-identical. It also pre-positions Phase 39: when the door leaves for its
+ * have). A route group does not affect the URL, so `(work)/newsletter/page.tsx`
+ * still serves `/admin/newsletter` and `scanner/` stays outside the group,
+ * byte-identical. (The example used to be `analytics`, deleted with `finance`
+ * on 2026-08-14; the point it illustrates is unchanged.) It also pre-positions Phase 39: when the door leaves for its
  * own address, it is already structurally separate.
  *
  * ── `getAccessContext()` is called exactly once here, and that is not a saving
