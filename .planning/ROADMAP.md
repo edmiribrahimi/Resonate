@@ -914,7 +914,30 @@ Plans:
   3. Every `REMAINING` list in every ratchet gate is empty, and the gates become the absolutes the UI-SPEC wrote them as
   4. **RESP-01 is finally true in its own words** — *every* surface is usable on phone, tablet and desktop — and is closed by the written human pass, since no script can close it
 
-**Plans**: TBD
+**Plans**: 20 plans in 9 waves (0-8)
+
+Plans:
+- [ ] 41.2-01-PLAN.md — wave 0: the dry run on a throwaway branch, the own-maximum reading, the check-F decision, the four silent catches recorded
+- [ ] 41.2-02-PLAN.md — wave 0: the two files no closure reaches, converted (D-41.2-03) so two ratchets can reach zero
+- [ ] 41.2-03-PLAN.md — wave 1: `/` and `/newsletter` — the navigation pair proved on the two cheapest public surfaces
+- [ ] 41.2-04-PLAN.md — wave 1: `/artists/[slug]` — the phase's first dialog conversion and its first own-maximum decision applied
+- [ ] 41.2-05-PLAN.md — wave 2: reconcile wave 1 — three surfaces declared, entries diffed against the tree, the human-row ledger opened
+- [ ] 41.2-06-PLAN.md — wave 3: `/events` — the public funnel, its stored-flag venue predicate and its declared render mode held
+- [ ] 41.2-07-PLAN.md — wave 3: `/attendance` and `/membership-card`, with the referral control converted once as spine
+- [ ] 41.2-08-PLAN.md — wave 3: `/tickets/[id]` — the second, ungated door onto the venue, and the wallet-pass exit enumerated
+- [ ] 41.2-09-PLAN.md — wave 4: reconcile wave 3 — four surfaces declared, both ratchets proved unmoved
+- [ ] 41.2-10-PLAN.md — wave 5: **KNOT 1** — the shared money core, converted once ahead of the three surfaces that reach it
+- [ ] 41.2-11-PLAN.md — wave 6: `/events/[slug]/menu` — the QR page, its placeholder, the organizer menu and the signed-in display
+- [ ] 41.2-12-PLAN.md — wave 6: the bar's guest money path — the token panel and the guest menu, with browser custody proved untouched
+- [ ] 41.2-13-PLAN.md — wave 6: `/dashboard` — the page, its placeholder and the token list
+- [ ] 41.2-14-PLAN.md — wave 6: the dashboard's satellites — the media section's disposition, the account and authentication controls
+- [ ] 41.2-15-PLAN.md — wave 7: **KNOT 2** — `/events/[slug]`, the page file alone, on a disjoint file set
+- [ ] 41.2-16-PLAN.md — wave 7: **KNOT 3** — `SecretVenueDialog`, the branch that renders the hint and never the address
+- [ ] 41.2-17-PLAN.md — wave 7: the event page's money satellites, with the validation multiset proved equal
+- [ ] 41.2-18-PLAN.md — wave 7: the event page's media, RSVP and share satellites, and its placeholder
+- [ ] 41.2-19-PLAN.md — wave 8: the last three declarations, both ratchets closed, each proved by an asserted mutation
+- [ ] 41.2-20-PLAN.md — wave 8: both pass documents of D-41.2-05, every Result `pending`
+
 **UI hint**: yes — inherits Phase 41's UI-SPEC; no new contract
 
 > **Why the bar is last, and why it is now alone here.** It is the surface where
