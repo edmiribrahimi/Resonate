@@ -140,8 +140,35 @@ const icons: Record<string, React.ReactNode> = {
  * line — `border-e border-line`, 1.29 : 1, decorative and correct as such,
  * because the column's *content* says where it is.
  */
+// ── Why the bar is pinned to its own compositing layer ──────────────────────
+//
+// Reported on an iPhone, 2026-08-14: the bar sometimes leaves the bottom of the
+// screen during and after scrolling. The declaration below is not the fault —
+// `fixed inset-x-0 bottom-0` is correct, and the static suspects were ruled out
+// by reading the tree: `AppNav` is mounted as a **sibling** of the page content
+// at every mount site, so the `active:scale-*` transforms on cards are not its
+// ancestors and cannot make it position against them; `<body>` carries no
+// transform or filter either.
+//
+// What is left is how the bar is PAINTED. `backdrop-blur-xl` makes iOS Safari
+// recompose this element against the pixels behind it on every scroll frame,
+// and during elastic (rubber-band) scrolling it composes against a surface that
+// is itself still moving — which is when a fixed bar visibly lags or lands in
+// the wrong place. `translate3d(0,0,0)` promotes the bar to a stable layer of
+// its own so the compositor moves it instead of repainting it.
+//
+// **This is a mitigation for the most likely cause, not a verified fix.** It
+// cannot be proved from here: the report is iOS Safari, this repository has no
+// test runner, and the behaviour does not reproduce in a desktop browser. It
+// has to be exercised on the phone that showed it. Two things to watch there,
+// because a transform and a backdrop-filter on the same element interact: that
+// the blur still reads as blur, and that the bar's ground has not gone flat.
+// If either changed, the next move is to drop the blur for an opaque ground —
+// which is a visual decision, not a bug fix, and belongs to whoever owns the
+// look.
 const NAV_PHONE =
   "fixed inset-x-0 bottom-0 z-50 border-t border-line bg-ground/80 backdrop-blur-xl " +
+  "[transform:translate3d(0,0,0)] [-webkit-backface-visibility:hidden] " +
   "pb-[env(safe-area-inset-bottom)]";
 
 const NAV_RESPONSIVE =
