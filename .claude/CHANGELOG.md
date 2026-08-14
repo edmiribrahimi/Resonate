@@ -3,6 +3,39 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.13.0] - 2026-08-15
+
+### Changed — le tre ancore della notte, rimisurate sul calendario invece che ricordate
+
+Secondo giro sullo stesso calendario, dopo che il proprietario ne ha spostato i
+pezzi. Tutte e tre le ancore di `RSNT` erano scritte male in questo modulo, e
+tutte e tre sono state **misurate**, non dedotte.
+
+- **Timetable: il giorno stesso**, non −1. Sei notti su sette; l'unica a −1 e'
+  `RSNT-003`, confermata dal proprietario come deroga.
+- **LiveCut: ancorati alla notte SUCCESSIVA**, a −4 / −3 / −2 — non «nei giorni
+  subito successivi» alla propria. Misurato su cinque notti consecutive.
+- **After movie: −1 dal listing dell'edizione seguente. Sei volte su sei.**
+
+### La misura che vale piu' delle tre correzioni
+
+Dalla propria serata l'after movie sembrava irregolare — −12, −12, −12, −18,
+−19. Dall'ancora vera e' **−1, sempre**. La variabilita' non era nel dato: era
+nel punto di osservazione. E' il gate *ancora, non conteggio* che si dimostra da
+solo, su dati reali, invece di essere enunciato.
+
+La stessa forma di dipendenza vale ora per i LiveCut della notte, con la
+conseguenza gia' visibile nel file: `RSNT-008` non ha ne' LiveCut ne' after
+movie, perche' `RSNT-009` non e' in calendario. **Non e' una dimenticanza: e' la
+regola che si comporta bene**, e un import che "riparasse" quel vuoto
+inventerebbe date per un'edizione che non esiste.
+
+### Scenario di carico
+
+Invariato rispetto a 1.12.0 — nessun `paths:` toccato, nessun glob aggiunto.
+`production-calendar.md` resta un modulo a consultazione manuale (controllo D).
+`verify:persona` 7/7.
+
 ## [1.12.0] - 2026-08-15
 
 ### Changed — il calendario vero corregge il modulo che lo descriveva

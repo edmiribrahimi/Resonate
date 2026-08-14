@@ -116,12 +116,30 @@ parte dello spazio**, che sta dentro i due giorni, non dopo.
 **Timetable e after movie non sono pezzi da satellite.** Sono della notte:
 aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 
-**Resonate:**
-- Timetable: **−1 giorno**
-- Podcast: nei giorni subito successivi, **uno per dj** — il podcast e' la
-  registrazione del dj set, quindi una serata con quattro dj produce quattro
-  puntate (di norma PT1→PT3)
-- After movie: **poco prima del listing dell'edizione seguente**
+**Resonate — tutte e tre le ancore rimisurate sul calendario il 2026-08-15:**
+- Timetable: **il giorno stesso della serata**. *(Diceva −1. Misurato: 6 notti su
+  7 lo pubblicano il giorno stesso; l'unica a −1 e' `RSNT-003`, che e' la deroga,
+  non la regola.)*
+- **LiveCut: ancorati alla notte SUCCESSIVA, a −4 / −3 / −2 giorni** — non alla
+  propria. *(Diceva «nei giorni subito successivi». Misurato su cinque notti
+  consecutive.)* Restano **uno per dj**, di norma PT1→PT3: il LiveCut e' la
+  registrazione del set, quindi la line-up decide quante puntate escono.
+- **After movie: il giorno PRIMA del listing dell'edizione seguente — `−1`,
+  misurato 6 volte su 6, senza eccezioni.**
+
+> **Perche' questa e' la dimostrazione del gate *ancora, non conteggio*.**
+> Misurato in giorni dalla propria serata, l'after movie sembra irregolare: −12,
+> −12, −12, −18, −19 rispetto alla notte dopo. Misurato dall'**ancora vera** —
+> il listing dell'edizione seguente — e' **−1 tutte e sei le volte**. La
+> variabilita' non era nel dato: era nel punto da cui lo si guardava. Chi
+> calcolasse l'after movie a giorni dalla serata sbaglierebbe di una settimana a
+> ogni spostamento del calendario.
+>
+> **E vale ora anche per i LiveCut della notte**, che hanno la stessa forma di
+> dipendenza. Conseguenza accettata e gia' visibile: se l'edizione successiva
+> non e' in calendario, **i LiveCut non sono calcolabili** — `RSNT-008` infatti
+> non ne ha, esattamente come non ha l'after movie. Non e' una dimenticanza: e'
+> la regola che si comporta bene.
 
 **Perlone** usa la pipeline leggera: listing e un solo podcast.
 
