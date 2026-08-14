@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { FOCUS_RING } from "@/components/ui/Button";
 
+/**
+ * A labelled disclosure — the account page's own, and the one the Management
+ * Tools list sits inside.
+ *
+ * It takes the shape `ui/DataTable.tsx:221-253` fixed for the disclosure plan
+ * 41.1-12 converted: the 44 px floor declared on the control rather than
+ * inherited from padding, the open state announced with `aria-expanded` rather
+ * than only drawn by a rotating caret, the imported focus expression, and the
+ * caret marked decorative so it is not read out beside the title.
+ *
+ * It differs from that one on the only axis that matters here: that control is
+ * icon-only and therefore needs a label prop, this one **is** its label — the
+ * title is visible text inside the control, so naming it again would announce
+ * it twice.
+ */
 interface CollapsibleSectionProps {
   title: string;
   defaultOpen?: boolean;
@@ -20,7 +36,8 @@ export default function CollapsibleSection({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between py-3"
+        aria-expanded={isOpen}
+        className={`flex min-h-11 w-full items-center justify-between py-3 ${FOCUS_RING}`}
       >
         <span className="text-sm font-semibold uppercase tracking-widest text-muted">
           {title}
@@ -31,6 +48,7 @@ export default function CollapsibleSection({
           viewBox="0 0 24 24"
           stroke="currentColor"
           strokeWidth={2}
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
