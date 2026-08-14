@@ -17,17 +17,21 @@ import SumUpCheckoutModal from "./SumUpCheckoutModal";
  * Two server actions are reachable from here and **both are called with the same
  * arguments, in the same order, as before**: the purchase takes the night, the
  * tier and the discount identifier; the validation takes the night and the typed
- * code. No status transition, no amount, no discount computation, no idempotency
- * key and no webhook path is written, read or reshaped by this file — it renders
- * controls and reports what an action returned or threw. Both action modules were
- * **read** so that a rendering change could be told from a payload change, and
- * neither was edited.
+ * code. No status transition, no amount, no idempotency key and no webhook path
+ * is written, read or reshaped by this file — it renders controls and reports
+ * what an action returned or threw. Both action modules were **read** so that a
+ * rendering change could be told from a payload change, and neither was edited.
  *
- * The rule this inherits is `ticketing-payments.md`'s: the price that counts is
- * the one the server computes. The arithmetic below decides what a guest is
- * *shown* while choosing; it decides nothing about what is charged, and a
- * conversion that made this file a second author of that number would be a
- * behaviour change wearing a visual costume.
+ * **One piece of arithmetic does live here, and pretending otherwise would be
+ * the more dangerous claim.** The reduced figure a guest sees beside the
+ * struck-through one is computed below, per tier. It is **byte-identical either
+ * side of this diff** — the two lines it appears on differ in the ink of the
+ * paragraph rendering it and in nothing else — and it is a *display*: the rule
+ * this file inherits from `ticketing-payments.md` is that the price which counts
+ * is the one the server computes at checkout, which is where the same discount
+ * is fetched, re-validated and applied. A conversion that made this file a
+ * second author of that number would be a behaviour change wearing a visual
+ * costume, and it did not happen.
  *
  * ── Every validation attribute was proved unchanged, not eyeballed ───────────
  *
