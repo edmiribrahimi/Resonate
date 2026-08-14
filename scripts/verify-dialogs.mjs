@@ -1261,12 +1261,42 @@ export const REMAINING = [
   // wave to the wave's reconciliation, and the entry was re-derived from the tree
   // before the line was removed rather than taken from the SUMMARY that reported
   // it — the gate's verdict and a second instrument agreed at zero.
-  [
-    'src/components/artists/EditArtistButton.tsx',
-    'public-member-money',
-    'a hand-rolled overlay editing an artist — on §8.3\'s closed lg list once it converts. CORRECTED (D-41.1-11): this entry used to name an admin surface, and NO WORK PAGE REACHES IT. Re-derived with grep -rln: its only importer is src/app/(public)/artists/[slug]/page.tsx:5, the PUBLIC artist page. A tag taken from the path prefix would have misfiled it, which is why tags here come from importers',
-    'only importer src/app/(public)/artists/[slug]/page.tsx:5',
-  ],
+  // PAID by plan 41.2-04 task 2 — `src/components/artists/EditArtistButton.tsx`
+  // was this phase's first dialog conversion, and it landed on the cheapest
+  // correct place for one: a surface carrying no money and no address. Its
+  // hand-rolled overlay, panel and heading are gone for the Dialog primitive at
+  // §8.3's closed lg size, so Escape, the focus trap, background inertness and
+  // the top layer come from the platform instead of from a copy.
+  //
+  // **Declared entries went 8 → 7 and the tag balance went
+  // `public-member-money` 8 → 7; the WORK GROUP was 0 before and is 0 after, and
+  // no entry was moved between groups to make any count come out right.** The
+  // MEASURED number did not move — `REMAINING = 5` before and after — because
+  // the file had already stopped carrying a shell in plan 41.2-04's own commit
+  // and this gate had been printing it STALE ever since: *"converted; remove
+  // this entry"*. That notice is what makes this a response rather than a tidy.
+  //
+  // Deleted by plan 41.2-05 (D-41.1-22), after re-deriving it from the tree with
+  // a **second instrument that does not use the gates' shared comment stripper**
+  // — a raw needle count over the un-stripped file for all three parts of the
+  // hand-rolled shell on one line, and for the native shell. Measured
+  // 2026-08-14: **0** and **0**, agreeing with the gate exactly. Every one of
+  // this list's eight entries was re-derived the same way before one line was
+  // removed, and not one raw count came out LOWER than the stripped count, which
+  // is the direction that would have stopped the deletion.
+  //
+  // TWO ENTRIES THAT ARE ALSO STALE STAY, AND THAT IS A DECISION.
+  // `RefundRequestButton.tsx` and `GuestLoginBanner.tsx` were converted by plan
+  // 41.2-02 and this gate prints both STALE. They are NOT deleted here, and the
+  // reason is not that deleting them would empty the list — it would not, and
+  // both remaining groups stay non-empty either way. The reason is that a
+  // deletion belongs in the same wave that writes the gate's CLOSURE DECISION,
+  // which is plan 41.2-19. Split across two waves a deletion is a tidy-up that
+  // happens to shrink a counter; kept beside `MIGRATION_CLOSED` it is an answer
+  // with its reasoning next to it. This repository has four recorded recurrences
+  // of a debt that went quiet because a counter fell for a reason nobody wrote
+  // down, and the defence is that a number only ever moves in the same commit as
+  // the sentence explaining why.
   [
     ROLE_DIALOG_OVERLAY,
     'public-member-money',

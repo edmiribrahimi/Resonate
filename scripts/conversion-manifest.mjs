@@ -671,6 +671,63 @@ export const CONVERTED = [
     "/admin/events/[id]/edit", "src/app/(admin)/admin/(work)/events/[id]/edit/page.tsx", "default",
     "plan 41.1-23 — the route file only; the form (41.1-18), its five satellites (41.1-19) and the reveal panel (41.1-20) were converted before it. NOT on §4's wide list and therefore default, which is not a fallback. THE CAUTION, because this is the one work page that reaches the venue reveal: the conditional deciding whether the panel is drawn at all, and all five props it is given, are byte-identical before and after — no query changed, no column added, no capability check touched, no action payload altered, the ownership guard and both refusal redirects are where they were, and a night's format, series and number pass through untouched. Not drawing the panel was never the guard and this conversion did not make it one.",
   ],
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * PHASE 41.2 WAVE 1 — the three cheapest public surfaces, converted by plans
+   * 41.2-03 and 41.2-04.
+   *
+   * Same construction as the wave-3, wave-5 and wave-9 blocks above and for the
+   * same reason: every reason below is the text the plan that did the work
+   * reported in its own SUMMARY, taken rather than re-composed, with the only
+   * editorial change being that a reason a SUMMARY printed across several lines
+   * is joined into the one string this list's shape requires. Two plans
+   * reported; this one writes (D-41.1-22).
+   *
+   * ── WHAT WAS DIFFED, AND AGAINST WHAT ──────────────────────────────────────
+   *
+   * These three entries were written after diffing the tree, never after
+   * reading either SUMMARY's counts. *A debt tracked by a proxy metric is closed
+   * by anything that moves the metric* (D-41.1-16), and this repository has four
+   * recorded recurrences of a number that fell for a reason nobody wrote down.
+   * So: each page file was confirmed on disk, each closure's directory was
+   * listed for a route-adjacent file (there is none beside any of the three —
+   * a measured zero, not an assumption), and the own-maximum count on each was
+   * re-derived with a raw grep that does not use the gates' shared comment
+   * stripper.
+   *
+   * ── ALL THREE ARE `default`, AND `focus` IS UNAVAILABLE RATHER THAN DEFERRED
+   *
+   * None of the three is on §4's closed wide list, so `default` is the answer
+   * and not a fallback. `focus` is not merely undesired on them: check E fails
+   * any surface declaring `focus` while mounting a navigation
+   * (`verify-conversion.mjs:3372`), and D-41.2-01 mounts the responsive form on
+   * all three. Deferring implies it could be picked up later; it cannot be
+   * picked up at all while the surface mounts a navigation.
+   *
+   * ── THE MEASURE ENTRY SHIPS IN THIS COMMIT, NOT THE NEXT ONE ───────────────
+   *
+   * `/artists/[slug]` is the phase's only DECLARE disposition, and its
+   * `TYPOGRAPHIC_MEASURES` line lands in the SAME commit as its entry here, per
+   * D-41-16. Split across two commits it fails both ways round: the declaration
+   * alone is a check-D red on a correct line, and the measure alone is a
+   * REFUSAL — *"no CONVERTED surface declares this page file"*. Wave 0's prose
+   * named plan 41.2-04 as the entry's author and that plan's own rule 1 named
+   * this one; the plan won, on D-41.1-22, and the disagreement is recorded in
+   * `41.2-04-FINDINGS.md` F-41.2-04-01 rather than resolved in silence.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [
+    "/", "src/app/page.tsx", "default",
+    "plan 41.2-03 — whole, and 'whole' here is ONE file: the landing route file itself. Everything its closure reaches beyond the primitives is spine already converted, and no loading, error or not-found file exists beside the route — listed, not assumed. NOT on §4's closed wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about; focus is UNAVAILABLE rather than deferred, because this surface now mounts the responsive navigation DIRECTLY and check E fails any focus surface that mounts one. The own-maximum wave 0 dispositioned DELETE is gone and the disposition was applied rather than decided here; the equal-width action column it was actually buying is re-established by a grid that sizes to its widest child — not by a second maximum, and not by a fixed width, which would overflow the gutter on a 360px phone and put a horizontal scrollbar on the product's first screen. THE COPY CAUTION: the surface gains exactly ONE heading and its accessible string is the wordmark image's existing alt text, so no copy was introduced — the title WRAPS the image rather than carrying the brand as text, because Typography.tsx:34-42 puts the display face on that element and forbids it on a format name, re:sonate among them. The two call-to-action pills stayed Links and did NOT become Chips: the chip's only filled form is its selected state, which is also what emits aria-current, and a landing call to action is not the current item among its siblings, so taking the fill would make that claim falsely to every assistive technology reading the page. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/newsletter", "src/app/(public)/newsletter/page.tsx", "default",
+    "plan 41.2-03 — whole, and 'whole' here is TWO files: the route file and the subscribe form it is the only importer of. No loading, error or not-found file exists beside the route. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred, for the same check-E reason as the landing surface. THE HEADING CAUTION, and it is the opposite of what the research expected: the PAGE FILE GAINED NO HEADING. Measured across the surface rather than the page file, the form already carries one in EACH of its two mutually exclusive branches, so a title on the page file would have given the surface two headings per render; the substitution was done in the form, in place, one per branch, because the invariant is what the browser gets and not the count in a file. THE FORM'S OWN ENTRY COLUMN IS RETAINED, and the reason is written into the component's docblock rather than left sitting in a blind spot: check D reads the page file only, and that is a LIMIT rather than a permission — the shell owns the page measure now, and a single-field subscribe form run across the whole of it is not a form. RECORDED AND NOT REPAIRED: the subscribe form still collapses a network fault, a missing key and an address already on the list into one sentence, and this repository has no error tracking, so that sentence is the whole of what anybody will learn; naming the causes decides what an API route may tell an anonymous caller about an address it already holds, which is a question about a list of people and belongs to a plan that owns that route. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/artists/[slug]", "src/app/(public)/artists/[slug]/page.tsx", "default",
+    "plan 41.2-04 — whole, and 'whole' here is TWO files: the route file and the edit dialog its only local import mounts. No loading, error or not-found file exists beside the route. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred — check E fails any focus surface that mounts a navigation and this one mounts the responsive form directly. THE READING MEASURE STAYS, and this is the phase's ONLY DECLARE disposition: the bio paragraph's width is a property of one block of text and not a container maximum taken back from the shell, so the line was left alone and TYPOGRAPHIC_MEASURES carries it — written in the SAME commit as this entry (D-41-16), because a declaration without the entry is a check-D red on a correct line and an entry without the declaration is a refusal. That line's class string is byte-identical to what it was and its indentation is two spaces deeper, a mechanical consequence of one more nesting level; the matcher reads neither whitespace nor line numbers. This is also the phase's FIRST DIALOG CONVERSION, and it landed on the cheapest correct place for one — a surface carrying no money and no address: the hand-rolled overlay, panel and heading are gone for the Dialog primitive at the size §8.3's closed list already named this file at, so Escape, the focus trap, background inertness and the top layer arrive from the platform. The confirming control sits on the PRIMARY rung and not the destructive one, because a filled red is reserved for an act that destroys and saving a bio destroys nothing; the initial-focus marker is on Cancel and on nothing else, so the key that arrives before anyone has read the panel is not the key that saves; the refusal reports in the primitive's status region outside the scroller and never through a toast. Nine raw controls that declared no height at all are on primitives carrying an unprefixed 44px minimum, and the six labels became a prop, which is what gives each control a binding it did not have. RECORDED AND NOT REPAIRED: the dialog's catch still collapses a capability refusal, a failed update and a request that never arrived into one sentence, and naming them needs the server action to return a result union instead of throwing, which this phase does not open. Copy and payload are identical multisets before and after. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
