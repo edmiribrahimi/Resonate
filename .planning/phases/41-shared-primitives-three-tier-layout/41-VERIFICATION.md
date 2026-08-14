@@ -1,286 +1,524 @@
 ---
 phase: 41-shared-primitives-three-tier-layout
-verified: 2026-08-13T18:00:00Z
-status: gaps_found
-score: 5/10 must-haves fully verified (the reintroduction guard now open a FIFTH consecutive round; the debt-goes-quiet defect back through a FOURTH distinct mechanism; 4 truths still pending human observation, unchanged since round 1)
+verified: 2026-08-14T03:10:00Z
+status: human_needed
+score: 5/10 must-haves fully verified — the same five as round 5, and the number is deliberately not inflated. What moved is the composition: FAILED truths 1 → 0. The reintroduction guard, open five consecutive rounds, is closed and proved by asserted mutation on the real files; the four Group B items are closed; what remains is entirely human observation, unchanged since round 1
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
   previous_score: 5/10
   gaps_closed:
-    - "The SINGLE-LINE closed JSX/block comment form of the liveLines() blind spot (41-GAP-REVIEW-4's CR-01/CR-02 as originally filed) — plan 41-29 replaced whole-line blanking with a span-consuming stripLeadingComments() that pairs each opener with its own closer and blanks only the comment span, applied identically in both scripts/verify-conversion.mjs and scripts/verify-dialogs.mjs. Independently re-derived by this verification: `stripLeadingComments()` at scripts/verify-conversion.mjs:537-558 correctly returns live trailing text for a comment that opens and closes on one line, confirmed by reading the code and by 41-29-SUMMARY.md's own byte-for-byte harness (BEFORE/AFTER hashes differ, M2/M3 mutations reproduce red on the pre-fix gate and stay red — this verification did not re-run that harness, accepting it on the file family's established proof-by-execution practice, per the task's scoped spot-check budget)."
-    - "The two false 'byte-for-byte the literal, comment or no comment' style docblock claims already retired in round 4 stay retired — not re-checked this round, out of scope for round 5's diff."
-    - "Check E's coverage boundary (Group C, non-structural half) — plan 41-30 added a WHAT A GREEN DOES NOT MEAN entry stating check E reads one file and asks the mount question of an import graph, that a climbed ancestor wrapper is never added to allScanned, and citing the CR-04 reproduction. Verified: `git diff --stat` for 41-30's commits shows only header prose and one printed sentence changed (33 insertions, 2 deletions in scripts/verify-conversion.mjs); neither frozen digest appears in the diff (grep for the three hashes returns 0); no executable identifier (allScanned, layoutClosure, NAV_MODULE_PATHS, navigationBySurface, refuse(, failures.push) appears in an added/removed line (grep returns 0)."
-  gaps_remaining:
-    - "THE SAME UNDERLYING TRUTH open since round 1 — 'check E prevents CR-01 from being silently reintroduced under any form the shell can legally take' — is open a FIFTH consecutive round. 41-29's stripLeadingComments() fix closed only the single-line closed-comment shape it was built to prove; the review that followed it (41-GAP-REVIEW-5.md) found the SAME liveLines() blind spot reopened through two forms neither plan touched. Independently reproduced by this verification on a disposable, throwaway pair of files under the session scratchpad — never inside the repository (`git status --porcelain` empty before and after) — by extracting stripLeadingComments()/liveLines() verbatim from scripts/verify-conversion.mjs:487-595 into a standalone script and running it against two constructed files: (1) a two-line JSX comment `{/* a lid\n    that wraps */} <div className=\"fixed inset-0 z-[60]\" />` — the terminating line came back blanked WHOLE (`\"\"`), the overlay div after `*/}` invisible, matching GAP-REVIEW-5's CR-01 exactly; (2) `{/* the scrim */ }` (a space before the closing brace — valid, compiling JSX) — `insideJsxComment` never clears because the code matches the exact token `*/}` with no whitespace tolerance (scripts/verify-conversion.mjs:488, :552, :583), so every line after it came back blanked to end-of-file, including a later `<div className=\"fixed inset-0 z-[60]\" />`, matching GAP-REVIEW-5's CR-02. Neither shape is new — GAP-REVIEW-5 additionally measured CR-02 live on the repository's own tree (one line inserted above the real shell at src/components/admin/RefundDialog.tsx:60, a REMAINING-listed file, restored after) and got exit 0 with a printed instruction to delete that entry as 'converted; remove this entry' — money-domain (ticketing-payments/RefundDialog) debt going invisible via the same lexer hole this verification independently confirmed."
-    - "The debt-goes-quiet defect (a debt/REMAINING counter falling because the gate stopped looking) has now returned through a FOURTH distinct mechanism. GAP-REVIEW-5's CR-02 names the first three explicitly — DEF-41-03, WR-02 (round 3/4), CR-03 (round 4, the un-guarded existence check) — and this round's space-before-brace blind spot is the fourth: a REMAINING entry that IS walked, IS opened, and comes back empty because the stripper went blind inside the file, not because of a fence, a never-measured Map, or a walk-membership gap. Not independently re-executed against the real repository file by this verification (GAP-REVIEW-5 already did, with restore confirmed); this verification's own sandbox reproduction (above) confirms the underlying mechanism, not the specific repository file mutation."
-    - "The new dialogs self-check (scripts/verify-dialogs.mjs:1247) feeds each probe through `stripLeadingComments(probe.line).text`, not through `liveLines`, and its own probes are single-line strings that cannot enter the multi-line state at all. Confirmed by direct reading: `measured: isOverlayLine(stripLeadingComments(probe.line).text) ? 'match' : 'no match'` at line 1247. The self-check is structurally incapable of catching either of the two forms above — it tests half the pipeline while the comment above it (per GAP-REVIEW-5, WR-01) describes it as testing the whole of it, the same sentence 41-29 used to describe the defect it was fixing, now true of the fix."
+    - "GROUP A, the truth open since round 1 — 'liveLines()'s comment-stripping heuristic blanks only what it should, so every check built on it sees the shell's and the tree's actual live code'. CLOSED BY: plan 41.1-01 (D-41.1-07/08/09), which replaced the ten private strippers with one module, scripts/lib/comments.mjs, imported by eleven gates (verify-conversion.mjs:421, verify-dialogs.mjs:283, plus nine more — measured with LC_ALL=C /usr/bin/grep, see the grep-trap section). RE-DERIVED HERE, not accepted: (1) both round-5 shapes handed verbatim to the shipped module return the live code — the terminating line of a two-line JSX comment comes back carrying everything after the closer, and a closer written with whitespace before the brace closes, because JSX_COMMENT_CLOSE_RE (comments.mjs:147) is a run-time-assembled regular expression with an optional-whitespace segment rather than the exact three-character token; (2) THE LOAD-BEARING TEST — CR-01's own reintroduction, the navigation clearance put back into PageShell's focus form, was hidden behind each of the two shapes in turn and check E saw it every time: exit 1, '✗ E the focus branch reads 1 navigation propert(y/ies) — this is CR-01', identical to the no-comment control; (3) check A likewise reddened on a palette utility hidden behind both shapes on a scanned file, while the DEF-41-02 control — the same utility QUOTED INSIDE a comment body — stayed green, so the fix did not buy visibility with a false red. Every mutation was asserted applied (sha256 differs, marker present) before its result was read, and asserted restored (sha256 equals the original, git diff empty). git status --porcelain identical before and after: two untracked planning directories, nothing else."
+    - "GROUP A / the debt-goes-quiet defect, which had returned through a FOURTH mechanism. CLOSED, and proved with a negative control rather than by reading a zero. Round 5's live site (src/components/admin/RefundDialog.tsx) no longer exists as a REMAINING entry — plan 41.1-17 converted it in wave 7 — so the equivalent money-domain entry was used: src/app/(public)/tickets/[id]/RefundRequestButton.tsx, a hand-rolled overlay on a refund request. With the round-5 shapes inserted above its shell, verify-dialogs measured 8 shells and REMAINING = 8, unmoved, no STALE entry, no 'converted; remove this entry' notice. THE COUNTER WAS THEN PROVED ABLE TO MOVE: with the shell genuinely removed from the same file, the same run measured 7, printed '! B 1 REMAINING entr(y/ies) are STALE — the file no longer carries a shell' and the conversion notice. An unmoved number beside a proven-movable counter is evidence; either alone is not."
+    - "GROUP A follow-on WR-01, the dialogs self-check. CLOSED BY plan 41.1-02. verify-dialogs.mjs:1687-1694 now maps every probe through liveLinesFrom(probe.line) — a LINE ARRAY through the real multi-line path — and a row matches when any of its live lines matches, which is how shellShapes decides a real file. Four of the fourteen probes are multi-line (:1023-1075): CR-01, its body-quoting control, CR-02, its body-quoting control. RE-DERIVED BY REGRESSING THE MODULE ITSELF, which is the only proof that matters here: undoing the CR-01 fix in scripts/lib/comments.mjs made verify-dialogs refuse with 'the overlay matcher disagrees with its own description on 2 of 14 fixed probe(s)', naming both multi-line rows by label, expected match / got no match; undoing the CR-02 fix made it refuse through the sibling branch, '2 of 14 matcher probe(s) open a comment that never closes'. verify-comment-stripper.mjs caught both, exit 1, with the merged column flipping to BLIND on exactly the regressed shape and on no other. Both regressions asserted applied (the original text asserted absent) and asserted restored."
+    - "GROUP B / DEF-41-07, all four items. Items 1 and 4 CLOSED BY plan 41.1-02: the existence question is hoisted to the top of neverOpenedReason() (verify-dialogs.mjs:1619) so all three branches are guarded by one test, and it is asked case-exactly through existsCaseExact() (:1455-1459), which takes the walk's case-exact Set as the authority and existsSync only as a second opinion confirmed by spelledExactly(). PROVED BY MUTATION on the house APFS volume: a REMAINING entry naming a path that does not exist → exit 1, '✗ B 1 REMAINING entr(y/ies) name a path that does not exist'; a REMAINING entry with a CASE typo on a real file (src/components/ui/dialog.tsx for Dialog.tsx), the exact case where existsSync answers yes on this filesystem → also exit 1, the same failure. Neither laundered into a refusal. Item 3 CLOSED BY plan 41.1-04: permitKey() (verify-conversion.mjs:2416) joins path, line number and digest, so a permitted site is a place and not only a string. Item 2 CLOSED BY plan 41.1-04: the unreachable GATE_CANNOT_READ_MARKER refusal and the exit-code sentence that advertised it are both gone, with the withdrawn sentence quoted in place beside the measurement that retired it (verify-conversion.mjs:327-340), the house shape for a claim withdrawn."
+    - "Truth 2's caveat. Round 5 counted truth 2 as verified 'with a noted caveat — the checking mechanism has a proven, still-open hole'. The caveat is gone: the mechanism was compared character-by-character against TypeScript 5.9.3's own parser over all 287 files the gates read, with zero divergence in either direction (see the shape hunt below)."
+  gaps_remaining: []
   regressions: []
-gaps:
-  # ── GROUP A — tractable and systemic, but the fix direction is an owner decision. ──
-  - group: A
-    group_label: "the comment-stripping heuristic has no last form — closing shape N reliably surfaces shape N+1"
-    truth: "liveLines()'s comment-stripping heuristic blanks only what it should, so every check built on it (verify-conversion.mjs checks A and E, verify-dialogs.mjs check B) sees the shell's and the tree's actual live code, under every form a JSX/block comment can legally take"
-    status: failed
-    reason: >
-      liveLines() (scripts/verify-conversion.mjs:568-595, a near-identical copy in
-      scripts/verify-dialogs.mjs) still blanks two ordinary, non-adversarial JSX comment
-      shapes whole: (1) the terminating line of a multi-line JSX comment — once
-      insideJsxComment is set, out.push('') runs unconditionally for that line even
-      though it may carry live code after the closer (verify-conversion.mjs:580-585); (2)
-      a validly-closed JSX comment written with whitespace before the brace, `{/* ... */
-      }` — JSX_COMMENT_CLOSE (:488) is the exact token '*/}' with no whitespace
-      tolerance, so stripLeadingComments() (:537-558) never recognises the closer,
-      returns unclosed: JSX_COMMENT_OPEN, and liveLines() blinds itself to end-of-file.
-      Both independently reproduced by THIS verification (see re_verification.gaps_remaining
-      above for the exact method and output) and by 41-GAP-REVIEW-5.md with additional
-      controls on the live tree (a two-line comment inserted above a probe overlay:
-      DIALOGS_OK, REMAINING unmoved; the same shape inserted into a converted surface:
-      CONVERSION_OK, no raw-utility hit; the space-before-brace shape inserted live above
-      src/components/admin/RefundDialog.tsx:60, restored after: exit 0, DIALOGS_OK, and a
-      printed instruction telling a reader to delete that REMAINING entry as
-      "converted; remove this entry" — RefundDialog.tsx is a hand-rolled overlay on a
-      refund path). Round 5 (41-29) closed the single-line closed-comment form; each of
-      the two rounds before it (round 4's frozen positional window then frozen file
-      digest, rounds 1-3's per-element/per-branch assertions) closed the form that had
-      just been demonstrated and the defect moved to the next form the same hand-rolled
-      lexer did not cover. THE DIAGNOSIS: liveLines()/stripLeadingComments() is a
-      hand-written lexer over a real grammar (JS/JSX comments), extended one shape per
-      round for five rounds running. A hand-rolled lexer over a real grammar has no
-      last form — the fifth round closing shape N reliably produces shape N+1, not
-      because the executor is careless (41-29's own mutation harness, byte-for-byte
-      restore-verified, is the most rigorous work this file family has produced) but
-      because enumerating comment shapes is the wrong unit of closure.
-    artifacts:
-      - path: "scripts/verify-conversion.mjs"
-        issue: "lines 580-585 (liveLines, insideJsxComment branch): blanks the multi-line JSX comment's terminating line whole, closer and all. Line 488 (JSX_COMMENT_CLOSE) and line 552 (indexOf lookup): exact-token match, no whitespace tolerance for `*/ }`. Lines 1923-1958 (NAV_PROPERTY_SITE_DIGESTS, SHELL_CODE_OUTSIDE_WINDOW_DIGEST) and check A both consume liveLines() output and inherit both holes."
-      - path: "scripts/verify-dialogs.mjs"
-        issue: "identical liveLines()/stripLeadingComments() copy carries the same two holes; check B (dialog-shell detection) is built on the same stripped source. Line 1247: the new matcher self-check calls stripLeadingComments() directly, not liveLines(), so it is structurally unable to exercise the multi-line state at all — it cannot catch either shape above even after they are fixed, unless rebuilt to feed real multi-line input through the real liveLines() path."
-    missing:
-      - "THIS IS A DIRECTION CHOICE, NOT A SIXTH LEXER PATCH. Two structurally different resolutions exist; record both, decide neither here. (a) Invert the stripper's failure direction, the way round 4 inverted the guard's: stop blanking comments preemptively and instead treat comment text as if it were code, scanning it for the same tokens. This produces FALSE REDS — a comment that merely NAMES a utility or an overlay's three parts gets flagged — which is the safe direction (a false red is investigated; a false green is invisible), and this file family already has a declared-exemption mechanism for exactly that case, plus GAP-REVIEW-5's own finding (41-29-SUMMARY.md, 'the self-chosen forms') that a comment naming three parts of an overlay is indistinguishable from a real one without one. Cost: every existing comment that happens to look like code must be declared once. (b) Stop hand-rolling the lexer; strip comments with a real parser/tokenizer instead of a line-oriented state machine. Cost: D-41-20 forbids adding new packages to this project, so (b) is only viable using whatever comment/tokenizer capability already ships with the toolchain already in package.json (e.g. Node's own tooling, or Babel/TypeScript's compiler surface if already a dependency) — not verified by this pass whether such a capability is already present and adequate; that check is itself the first step of option (b)."
-      - "Whichever direction is chosen, extend scripts/verify-dialogs.mjs's matcher self-check to feed real multi-line arrays through the actual liveLines() path (not stripLeadingComments() alone), so the self-check can structurally see a fix to either shape above, per WR-01."
-      - "Before calling this closed: re-run this verification's exact two sandbox mutations, GAP-REVIEW-5's live RefundDialog.tsx mutation, and 41-29-SUMMARY.md's M1-M5 mutation table, and confirm all refuse or fail."
-
-  # ── DECIDED AND DEFERRED — not blocking gaps this round; recorded so a sixth round doesn't rediscover them. ──
-  - group: B
-    group_label: "Group B — tractable and local, deferred by decision (DEF-41-07), not attempted in round 5"
-    truth: "verify-dialogs.mjs's existence guard against laundering a typo'd REMAINING entry into a suite-wide refusal covers every branch of neverOpenedReason(), not only the one round 4 touched — plus three related local warnings"
-    status: failed
-    reason: "Unchanged since 41-GAP-REVIEW-4.md. scripts/verify-dialogs.mjs:1017 guards only the walk-membership branch of neverOpenedReason() on existsSync; the NEVER_MEASURED_BY_B branch (:1025-1026) and the fence branch (:1027-1034) return a reason unconditionally. Plus: a refusal branch the exit-code header advertises as reachable that derivation shows cannot fire (WR-01, round 4 numbering); NAV_PROPERTY_SITE_DIGESTS keyed on line-text digest with no position, so a duplicate of an already-permitted line is permitted anywhere it is placed, including wrapping the focus form (WR-02); existsSync's case-insensitivity on the house macOS/APFS volume (CLAUDE.md Guardrail 6) giving a case-typo'd REMAINING entry a different verdict than on a case-sensitive filesystem (WR-03). Plan 41-30 explicitly declined to touch any of these four, registering them as DEF-41-07 with the stated reason: 'polishing refusals inside a mechanism whose limit is now known is work that looks like progress, and round 5 was deliberately held to two items.' This verification did not independently re-run any of the four this round; it accepts DEF-41-07's own per-item evidence trail (a mix of prior recorded runs and direct code reading) as sufficient given this pass's scoped spot-check budget."
-    artifacts:
-      - path: "scripts/verify-dialogs.mjs"
-        issue: "lines 1009-1036 (neverOpenedReason): guard at :1017 covers one of three branches. Line 1017: existsSync case-insensitive on APFS. Lines 1923-1934 equivalent in verify-conversion.mjs: digest keyed on text only, no position."
-    missing:
-      - "DEF-41-07's four items, unchanged: hoist the existence check to guard all three neverOpenedReason() branches; correct or remove the unreachable refusal branch; key a permitted site on path:lineNo plus digest, not text alone; cross-check case against `walked`'s case-exact Set before trusting existsSync."
-    deferred_by_decision: "DEF-41-07 (.planning/phases/41-shared-primitives-three-tier-layout/deferred-items.md), plan 41-30 Task 2"
-
+gaps: []
 deferred:
-  - truth: "a navigation clearance reaching one of the four focus routes is caught by SOME check in verify-conversion.mjs, regardless of which file introduces it (Group C's structural half)"
-    addressed_in: "Phase 41.1"
-    evidence: "41-30-SUMMARY.md D-41-30-02 and §4 DEF-41-08: 'the structural resolution is NOT taken: it edits access-gating and ticketing-payments primary paths and requires the owner's validation; routed to 41.1 as DEF-41-08' — 41.1 is where those surfaces (the auth group, payment callback) convert onto the shared layer anyway, per .planning/REQUIREMENTS.md:251-257's own Phase 41 → 41.1 → 41.2 routing for DS-07/RESP-01/RESP-02/RESP-03. This verification independently confirmed the declaration itself is accurate and non-executable (git diff for 41-30's commits: header prose and one printed sentence only, no frozen digest or scanned-set identifier touched)."
+  - truth: "RESP-01 — every surface usable on phone, tablet and desktop"
+    addressed_in: "Phase 41.2"
+    evidence: ".planning/REQUIREMENTS.md:254 — 'says *every* surface, so it closes only in 41.2, and by a written human pass; no script can close it'. Must NOT be closed here."
+  - truth: "DS-07 — adoption of the shared pattern completes across every surface"
+    addressed_in: "Phase 41.2"
+    evidence: ".planning/REQUIREMENTS.md:251 — 'layer in 41, adoption completes in 41.2'"
+  - truth: "DS-08 — RevealVenueDialog adopts the primitive last"
+    addressed_in: "Phase 41.2"
+    evidence: ".planning/REQUIREMENTS.md:252"
+  - truth: "DS-09 — the five analytics tables and finance read as cards"
+    addressed_in: "Phase 41.1 (executed) → 41.2"
+    evidence: ".planning/REQUIREMENTS.md:253"
+  - truth: "RESP-02 / RESP-03 — inherited by every surface as it converts; the touch size measured on a device"
+    addressed_in: "Phase 41.2"
+    evidence: ".planning/REQUIREMENTS.md:255-256"
+  - truth: "a navigation clearance reaching one of the four focus routes from an ordinary ancestor layout is caught by SOME check (Group C's structural half, DEF-41-08)"
+    addressed_in: "Phase 41.1 (executed) — the boundary is declared in the gate's own header and check E now reports the mount question over 28 surfaces, not 8"
+    evidence: "verify-conversion.mjs check E printed this run: 'the 2 file(s) declaring the column clearance at the md tier are EXACTLY the 2 file(s) mounting the responsive navigation form'. The declared limit — check E reads one file and asks the mount question of an import graph — remains in the header, unmoved."
+  - truth: "DEF-41-01 — Tailwind's source detection scans .planning/, compiling a dead rule out of prose into the shipped stylesheet"
+    addressed_in: "its own plan, deferred with a written reason"
+    evidence: ".planning/phases/41.1-work-surface-conversion/deferred-items.md DI-41.1-01"
+human_verification:
+  - test: "H41-1 — the eight surfaces this phase declares, at 390px / 768px / 1280px, on a device"
+    expected: "nothing clipped, nothing stretched, no horizontal scroll; the navigation column clears the content at 768px and up"
+    why_human: "every gate in this repository reads class strings and import clauses; none renders a pixel. 41-RELEASE-PASS.md §9 records H41-1 as approved by a blanket authorisation with NO itemised evidence and NOT ticked"
+  - test: "41-CR01-PASS.md rows 7–13 — /set-password and /payment/callback at three widths, and /register at 390px scrolled to its last field"
+    expected: "card centre within 4px of the viewport centre at 768 and 1440; symmetric space at 390; no navigation bar; no horizontal scroll; at 390 the form ends with a visible gap below its last element"
+    why_human: "rows 1–6 were measured headless on 2026-08-13 and that document says so in its own §1a; a headless browser is not a device. Rows 7–13 read `pending` and are unchanged by this round"
+  - test: "H41-2 — a converted dialog on a phone and on a laptop, including whether the page behind the open panel scrolls (assumption A2)"
+    expected: "sheet at 390px, window at 1280px, Escape closes, the background does not scroll"
+    why_human: "check B reads class strings and import clauses, never behaviour. 41-RELEASE-PASS.md §9 records H41-2d — A2 — as STILL OPEN, nothing reported"
+  - test: "H41-3 — the densest converted table on a phone"
+    expected: "cards at 390px, no sideways scroll, the columns that mattered still present"
+    why_human: "whether a seven-column table is comprehensible as a card is a judgement, not a class string"
+  - test: "H41-4 — the smallest interactive control on a LARGE TOUCH SCREEN, measured"
+    expected: "at least 44×44 CSS px in both axes as rendered, with the one declared exception"
+    why_human: "the gate estimates from a class string and cannot see a flex stretch, an icon height, an ancestor's padding, or a class built by concatenation — it says so in its own header. 41-RELEASE-PASS.md records this as `human_needed`: no large touch screen was ever stated available. It is the only thing in this repository that would prove anything is 44px"
+  - test: "H41-5 — a desktop with a mouse only: the row-action pills at their reduced height, and only those"
+    expected: "the pointer variant applies where D-41-07 says it does and nowhere else"
+    why_human: "no height was ever reported; the trade was accepted on paper"
+  - test: "H41-6a — eight tabs at 768px without scrolling the strip, and H41-6b — the door unchanged at both of its addresses"
+    expected: "eight tabs visible without scrolling; the door is the bottom bar at every width"
+    why_human: "RESP-04's observable half. No count was ever reported and neither door address was reported opened; §0.2's precondition — an account holding all three capabilities — was never stated met"
 ---
 
-# Phase 41: Shared Primitives & Three-Tier Layout Verification Report
+# Phase 41: Shared Primitives & Three-Tier Layout — Verification Report
 
 **Phase Goal:** The shared layer exists — one implementation per recurring pattern, three tiers, finger-sized targets — and is proven on its first eight whole surfaces. The remaining surfaces convert in 41.1 and 41.2 onto this layer, unchanged.
-**Verified:** 2026-08-13T18:00:00Z
-**Status:** gaps_found
-**Re-verification:** Yes — sixth pass, verifying round 5's gap-closure plans (41-29, 41-30) against 41-GAP-REVIEW-5.md. Rounds 1-4 history is preserved from the prior VERIFICATION.md and not re-derived here except where round 5 touches it directly.
+**Verified:** 2026-08-14T03:10:00Z
+**Status:** `human_needed`
+**Re-verification:** Yes — seventh pass, round 6. The first six rounds all closed as `gaps_found`; this is the first that does not.
 
-## The load-bearing count
+---
 
-**The reintroduction guard for CR-01 — "check E prevents the navigation clearance from
-coming back under any form the shell can legally take" — has now been declared closed
-and found open in FIVE consecutive rounds.** Round 1 (41-17): asserted on a constant,
-defect moved to the render site. Round 2 (41-20): asserted on the outer element, defect
-moved to the inner element. Round 3 (41-23): asserted on the branch as a region, defect
-moved to the branch's shape. Round 4 (41-26, then 41-27): asserted on the frozen shape,
-then on a frozen file digest; defect moved into what the digest is computed FROM (the
-comment stripper) and into a route the digest never covers (an ancestor layout). **Round
-5 (41-29): fixed the single-line form of the comment stripper's blind spot; defect moved
-to the multi-line form and to a validly-closed comment with whitespace before the
-brace — both independently reproduced by this verification (see below).**
+## The headline, and why the number did not move
 
-**Separately, the debt-goes-quiet defect — a REMAINING/debt counter falling because a
-gate stopped looking rather than because the debt was paid — has now returned through a
-FOURTH distinct mechanism.** DEF-41-03 (never-measured Map) → WR-02/round 3-4 (a fence
-match) → CR-03/round 4 (an unguarded walk-membership check) → **this round's
-space-before-brace comment blind spot, which GAP-REVIEW-5 measured live on
-`src/components/admin/RefundDialog.tsx:60` (a REMAINING-listed hand-rolled overlay on a
-refund path): exit 0, and a printed instruction telling a reader to delete that entry.**
+**Five rounds in a row this phase was `gaps_found` at 5/10, on the same truth.** The
+count of *fully verified* must-haves is **still 5/10**, and inflating it would be the
+same error as holding it down. What changed is the composition:
 
-Both counts are the phase's most load-bearing facts: the pattern is not "one more shape
-to teach the matcher." It is that a hand-rolled lexer over a real grammar (JS/JSX
-comments) has no last form, and the direction of the next patch needs to be an owner
-decision, not a sixth round of the same hunt.
+| | round 5 | round 6 |
+|---|---|---|
+| fully VERIFIED | 5 (1, 2, 8, 9, 10 — truth 2 with a caveat) | 5 (1, 2, 8, 9, 10 — **no caveat**) |
+| **FAILED** | **1** (truth 5) | **0** |
+| pending human observation | 4 | 5 |
+| open gaps in the frontmatter | 2 groups | **none** |
 
-## Independent reproduction (this verification, not taken on GAP-REVIEW-5's word)
+Truth 5 did not become verified. It moved out of FAILED and into the same class as
+truths 3, 4, 6 and 7: **its mechanical half is closed and proved; its behavioural half
+is an observation nobody has made.** That is the whole of the difference between
+`gaps_found` and `human_needed`, and it is a real difference: nothing mechanical is
+broken, and what remains is a person looking.
 
-Extracted `stripLeadingComments()`/`liveLines()` verbatim from
-`scripts/verify-conversion.mjs:487-595` into a standalone script under the session
-scratchpad, run against two throwaway files (never inside the repository —
-`git status --porcelain` empty before and after this entire verification pass, confirmed
-at the end):
+**Nothing in this round was fixed by this verification.** Every closure below was done
+by phase 41.1 and is re-derived here against the tree as it stands.
 
-1. **Two-line JSX comment.** `{/* a lid` / `    that wraps */} <div className="fixed
-   inset-0 z-[60]" />` — the terminating line is returned as `""`, the overlay div after
-   `*/}` invisible to any downstream check. Matches GAP-REVIEW-5 CR-01.
-2. **Space before the brace.** `{/* the scrim */ }` — `insideJsxComment` never clears
-   (the exact-token match on `'*'+'/}'` fails against `*/ }`), so every subsequent line —
-   including a later `<div className="fixed inset-0 z-[60]" />` — is blanked to
-   end-of-file. Matches GAP-REVIEW-5 CR-02.
+---
 
-Both reproduced with a plain extraction of the shipped functions — no adversarial
-construction, both shapes are ordinary, syntactically valid JSX.
+## The truth that was open five rounds, and how it was re-derived
 
-## CR-01 (the original phase-blocking gap) — closed in code, unchanged since round 1
+The truth: *"`liveLines()`'s comment-stripping heuristic blanks only what it should, so
+every check built on it sees the shell's and the tree's actual live code, under every
+form a JSX/block comment can legally take."*
 
-`grep -n "nav-inset" src/components/ui/PageShell.tsx` returns exactly two lines — 160
-(`ps-[var(--nav-inset-inline-start)]`) and 164
-(`pb-[calc(var(--nav-inset-block-end)+1rem)]`) — both inside the default/wide branch,
-neither inside the focus branch. This has not moved since round 1 and is not
-independently re-hashed this round (no code under `src/components/ui/PageShell.tsx` was
-touched by 41-29 or 41-30 — confirmed by `git diff --stat` for both plans' commits,
-which show only `scripts/*.mjs` and `.planning/` files).
+**What closed it:** plan `41.1-01` (D-41.1-07, D-41.1-08, D-41.1-09) — the ten private
+strippers became one module, `scripts/lib/comments.mjs`, landed in wave 0 *before* the
+first conversion plan of 41.1, because every `REMAINING` deletion in that phase is a
+claim these gates measure. Plan `41.1-02` rebuilt the dialogs self-check on it; plan
+`41.1-04` closed the two `verify-conversion.mjs` items.
 
-**Guarded against a realistic reintroduction: NO — this round's finding is that the
-guard's own comment-stripper, freshly repaired for one shape in this exact round, is
-open on two more.** See "The load-bearing count," above.
+**Round 5's diagnosis was that enumerating comment shapes is the wrong unit of closure.**
+That diagnosis is accepted here, so this round did not re-derive the truth by enumerating
+shapes. It did three things instead.
+
+### 1. The differential against a real parser — 287 files, zero divergence
+
+`D-41-20` forbids new packages; TypeScript 5.9.3 is **already** in `node_modules`. Its
+parser was used as ground truth: for every file the gates read, every comment range was
+collected through `ts.getLeadingCommentRanges` / `getTrailingCommentRanges` over the full
+token tree of a JSX-aware `SourceFile`, giving a per-character mask of *comment* against
+*code*. That mask was compared, character by character, with what the shipped module
+returns.
+
+```
+files compared against TypeScript 5.9.3 as ground truth : 287
+   (264 under src/, 23 under scripts/ — the walk the gates themselves use)
+BLIND     — files where CODE was blanked (unsafe direction)    : 0
+FALSE-RED — files where a LEADING COMMENT was kept as code     : 0
+unterminated comments reported anywhere in the tree            : 0
+parse diagnostics on any file                                  : 0
+```
+
+Two harness artefacts were identified and excluded, and both are worth naming because
+excluding them is a judgement, not a convenience:
+
+- **the braces of a JSX comment container.** TypeScript's comment range for a JSX comment
+  covers the block comment only; the enclosing `{` and `}` are code. The module blanks
+  them with the comment. They carry nothing, and blanking them is correct.
+- **trailing comments.** `comments.mjs:63-65` declares that it consumes *leading* comments
+  only and returns a comment opened after live code as it stands. Verified present in the
+  tree (`src/app/(admin)/admin/formats/ColorSwatchPicker.tsx:118-119` and others) and
+  excluded as declared behaviour, in the safe direction.
+
+**This is a stronger statement than any shape list.** It says the module and a real
+grammar agree exactly on this tree, rather than that N shapes were thought of.
+
+### 2. The load-bearing mutation — CR-01 put back, behind each round-5 shape
+
+The clearance was reinserted into `PageShell.tsx`'s focus form — the original
+phase-blocking regression — hidden behind each of the two shapes that were open in round 5.
+`src/components/ui/PageShell.tsx` restored after each, `sha256` equal, `git diff` empty.
+
+| mutation | `verify-conversion.mjs` | verdict |
+|---|---|---|
+| plain control — clearance in the focus form, no comment | exit **1**, `✗ E the focus branch reads 1 navigation propert(y/ies) — this is CR-01` | SEEN |
+| **CR-02 shape** — clearance behind a closer written with whitespace before the brace | exit **1**, same `✗ E` | **SEEN** |
+| **CR-01 shape** — clearance live on the terminating line of a two-line JSX comment | exit **1**, same `✗ E` | **SEEN** |
+
+Check A was tested the same way on a scanned file (`src/components/ui/Button.tsx`) with a
+palette utility as the needle:
+
+| mutation | result |
+|---|---|
+| plain control — the utility, no comment | exit **1**, `✗ A 28 raw palette utilit(y/ies) reachable from a converted surface` |
+| CR-02 shape hiding the utility | exit **1**, same failure, hit reported at the right line |
+| CR-01 shape hiding the utility | exit **1**, same failure |
+| **DEF-41-02 control** — the same utility QUOTED INSIDE a comment body | exit **0**, green | 
+
+The last row matters as much as the first three: the fix did not buy visibility by
+handing comments back as code.
+
+### 3. The debt counter — unmoved, beside a proof it can move
+
+Round 5 measured the defect live on `src/components/admin/RefundDialog.tsx`, a
+`REMAINING`-listed money-domain file, and got exit 0 with a printed instruction to delete
+the entry as *"converted; remove this entry"*. **That file is no longer on `REMAINING`** —
+plan `41.1-17` converted it in wave 7, and `41.1-24` deleted the entry after re-deriving
+the shell count with a needle count that does not use the shared stripper. So the
+equivalent entry was used: `src/app/(public)/tickets/[id]/RefundRequestButton.tsx`, a
+hand-rolled overlay on a refund request — money leaving.
+
+| mutation on that file | measured shells | `REMAINING` | STALE | conversion notice | exit |
+|---|---|---|---|---|---|
+| control, unmutated | 8 | 8 | none | no | 0 |
+| CR-02 shape above the shell | 8 | 8 | none | no | 0 |
+| CR-01 shape wrapping the shell line | 8 | 8 | none | no | 0 |
+| **negative control — the shell genuinely removed** | **7** | **7** | **`! B 1 REMAINING entr(y/ies) are STALE`** | **yes** | 0 |
+
+An unmoved number is a claim. An unmoved number beside a counter proved able to move on
+the same file in the same session is evidence. **CLAUDE.md constraint 4 is satisfied by
+the fourth row, not the second and third.**
+
+---
+
+## The shape hunt — pressing on the difference between the two wordings
+
+Phase 41's truth says *"under every form a JSX/block comment can legally take"*. Phase
+41.1's criteria are weaker. The difference was pressed with seventeen shapes handed
+verbatim to the shipped module — the two round-5 shapes plus fifteen constructed against
+its own declared limits. **Legality was not assumed: each candidate was parsed with
+TypeScript 5.9.3 as TSX and confirmed to produce zero diagnostics.**
+
+| # | shape | result |
+|---|---|---|
+| S4 | two-line JSX comment, live code after the closer on the terminating line | **live code returned** |
+| S5 | closer written with whitespace before the closing brace | **live code returned** |
+| N1 | closer alone on its own line, code on the next | live code returned |
+| N2 | CRLF endings around a multi-line comment | live code returned |
+| N3 | a string literal containing the block terminator | live code returned |
+| N4 | a string literal containing an opener, not at line start | live code returned |
+| N6 | a nested opener inside a comment body (JS comments do not nest) | live code returned |
+| N8 | a regex literal whose first characters form an opener | live code returned |
+| N9 | a `//` comment quoting an opener | live code returned |
+| N10 | terminating line indented with a tab, code after the closer | live code returned |
+| N11 | several spaces and a tab before the closing brace | live code returned |
+| N13 | a block comment inside a JSX opening tag, live code after | live code returned |
+| N14 | two closed comments on one line, then live code | live code returned |
+| N7 | the terminator split across a newline — genuinely NOT a closer in JS | correctly **reported unterminated** |
+| U1 | an opener that never closes | correctly **reported unterminated** |
+| **N5** | **a template literal whose content begins a line with an opener** | **blanks to EOF — but REPORTS unterminated** |
+| **N12** | **`{`, comment, then the closing brace on the LINE AFTER the terminator** | **blanks to EOF — but REPORTS unterminated** |
+
+### Shape N+1 exists, and its direction is inverted
+
+**N12 is a new finding, and it is legal JSX** — TypeScript parses it with zero
+diagnostics. `JSX_COMMENT_CLOSE_RE` (`comments.mjs:147`) matches the block terminator,
+optional whitespace and the closing brace *within one line*; when the brace is on the next
+line the state never clears. N5 is the module's own declared limit — an opener at line
+start inside a string — reached through a template literal.
+
+**But neither hides anything.** Both are *reported*, and every consumer refuses on the
+report. Measured on the real gate path, N12 inserted above a real shell:
+
+```
+FATAL: src/app/(public)/tickets/[id]/RefundRequestButton.tsx:51 opens a jsx comment that never closes.
+       The shared stripper (scripts/lib/comments.mjs) cannot say where that comment ends,
+       … NOTHING WAS MEASURED.
+exit 2
+```
+
+and on `verify-conversion.mjs` with the needle behind it: `FATAL:
+src/components/ui/Button.tsx:1 …`, exit **2**. Not exit 0 with a conversion notice.
+
+**Is the module's declared limit an honest boundary or the same hole with a sign on it?
+It is an honest boundary, on three measured grounds**, and the distinction is the finding:
+
+1. **The error direction is inverted from rounds 1–5.** Every previous shape produced a
+   silent green over hidden debt. These produce a refusal that says *nothing was
+   measured*. Round 5's own `missing` item (a) asked for exactly this inversion —
+   *"a false red is investigated; a false green is invisible"* — and named it the safe
+   direction. The phase got what its gap write-up asked for.
+2. **The residual is not ordinary code, and the closed shapes were.** A two-line comment
+   and a space before a brace are things anybody writes without noticing. An opener at
+   line start inside a template literal is not. N12 sits between the two and is the one
+   worth recording.
+3. **Measured on the tree: zero.** No file under `src/` or `scripts/` trips the
+   unterminated report, and the parser differential found zero divergence of any kind on
+   287 files. The module's own header claims *"zero of the 263 files under `src/`"*; the
+   walk is now 264 and the answer is still zero, re-measured here rather than read.
+
+**Recorded as a follow-up, not as a gap.** `comments.mjs`'s shape list (`:70-99`) names
+S1–S5, W3, W4 and U1 and does not name N12; the honest correction is one line in that
+list plus one row in `verify-comment-stripper.mjs`'s matrix, deciding whether N12 becomes
+a supported shape or a documented refusal. Left to a plan, because `DEF-41.1-24-01` and
+`meta-gates.md` both record what this repository does to a gate that reddens on correct
+code: somebody switches it off.
+
+---
+
+## The grep trap — assessed, and it is clean
+
+**The finding first: no round of this phase was affected.**
+
+The default `grep` in this environment is `ugrep` invoked with `-I`, and
+`scripts/verify-conversion.mjs` contains **three NUL bytes across lines 2412 and 2416**
+(counted with `node`, not with a shell, because NUL cannot be passed in `argv`). The
+consequence is real and silent:
+
+```
+scripts/verify-conversion.mjs   grep -c "import" → (nothing), exit 1
+                                LC_ALL=C /usr/bin/grep -c "import" → 89, exit 0
+scripts/verify-dialogs.mjs      both → 38
+```
+
+The bytes are deliberate and correct: `permitKey` (`verify-conversion.mjs:2416`) joins
+path, line number and digest with NUL precisely because none of the three can contain it —
+which is `DEF-41-07` item 3, the fix that made a permitted site a place rather than a
+string.
+
+**They cannot have contributed to the churn, and the timestamps settle it:**
+
+| | when |
+|---|---|
+| `41-GAP-REVIEW-5.md` committed (`359ff1f`) | 2026-08-13 **13:40:51** |
+| round-5 `41-VERIFICATION.md` committed (`b07de72`) | 2026-08-13 **13:46:11** |
+| the NUL bytes enter `verify-conversion.mjs` (`e1941ab`, plan 41.1-04) | 2026-08-13 **16:45:42** |
+
+Every byte-by-byte check of the git history of that file — 60 revisions walked — finds the
+NUL bytes in exactly one commit, three hours *after* the last phase-41 document was
+written. All five rounds read a file with no NUL bytes in it.
+
+The one round-5 claim of the shape a silent grep could explain —
+*"grep for the three hashes returns 0"*, in the round-5 frontmatter — was a grep over
+`git diff` **output**, not over the file, and was made three hours before the bytes
+existed. It stands.
+
+**One forward-looking note, because the hazard is now live.** Plan `41.1-04`'s own SUMMARY
+records its assertions as run *"all with `command grep`"* — the executor knew. That
+knowledge is in a summary, not in the file. **The gate that is invisible to the default
+search tool carries no notice saying so**, and the next reader who greps it for a class
+name, a token or a debt marker will get a clean-looking nothing. A one-line note beside
+`permitKey` would close it; it is not a phase-41 gap and is recorded here so the next
+round does not rediscover it.
+
+---
 
 ## Goal Achievement
 
 ### Observable Truths
 
 | # | Truth | Status | Evidence |
-|---|-------|--------|----------|
+|---|---|---|---|
 | 1 | One implementation per recurring pattern exists | ✓ VERIFIED (unchanged) | `src/components/ui/{Button,Chip,Input,Card,PageShell,Typography,Dialog,DataTable,Checkbox,Skeleton}.tsx` present, exported, wired |
-| 2 | Roadmap criterion 1 — no surface shows the pattern until whole-converted, checked mechanically | ✓ VERIFIED on the live tree today, ⚠️ the checking mechanism has a proven, now-narrower-but-still-open hole | `node scripts/verify-conversion.mjs` exit 0 (not re-run this pass on the unmodified tree; no product file changed since round 4's last confirmed run). Mechanism hole: see truth 5 |
-| 3 | Roadmap criterion 2 (DS-08) — dialog opens as sheet/window, closes with Escape | ? UNCERTAIN — mechanism verified, behaviour not observed (unchanged) | `Dialog.tsx:251` `showModal()`. Check B carries the same liveLines()-derived blind spot as check A |
+| 2 | Roadmap criterion 1 — no surface shows the pattern until whole-converted, checked mechanically | ✓ VERIFIED — **the caveat is gone** | `node scripts/verify-conversion.mjs` exit **0**, `CONVERSION_OK — all five checks passed over 28 declared surface(s), 157 file(s) scanned`, re-run this pass. The mechanism hole that carried the caveat for five rounds is closed and proved by mutation (above) |
+| 3 | Roadmap criterion 2 (DS-08) — dialog opens as sheet/window, closes with Escape | ? UNCERTAIN — mechanism verified, behaviour not observed (unchanged) | `Dialog.tsx:251` `showModal()`; check A measures the primitive's signature at its expected counts in 337 live lines. H41-2, A2 still open |
 | 4 | Roadmap criterion 3 (DS-09) — dense table reads as cards on phone | ? UNCERTAIN — mechanism verified, behaviour not observed (unchanged) | `DataTable.tsx:391` `md:hidden`. H41-3 unobserved |
-| 5 | Roadmap criterion 4 (RESP-01, RESP-02, RESP-04) — every converted surface workable phone/tablet/desktop | ✗ FAILED — the CODE regression stays closed; the GATE meant to prevent its silent recurrence has now failed a FIFTH independent closure attempt | Independently reproduced this round: multi-line JSX comment and space-before-brace comment both hide live code from checks A, B and E's digests (see reproduction above). Human observation (H41-1/`41-CR01-PASS.md`) remains partly owed — see truth 7 |
-| 6 | Roadmap criterion 5 (RESP-03) — touch targets finger-sized, large touch screens included | ? UNCERTAIN — class-string check only, no device ever used (unchanged) | H41-4 still `human_needed`, not ticked |
-| 7 | The goal's own claim — "proven on its first eight whole surfaces" | ✗ NOT MET as a fully human-observed fact, PARTIALLY MET as of this round | `41-CR01-PASS.md` rows 1-6 (of 13) now carry `measured, headless — offset 0px`, dated 2026-08-13 — the phase's first observed evidence, real, and NOT upgraded by this verification: a headless browser is not a device (no touch, no real font fallback, no thumb). Rows 7-13 still `pending`. RESP-03 stays unticked. H41-4 stays `human_needed` |
-| 8 | Exactly eight surfaces declared converted | ✓ VERIFIED (unchanged) | `CONVERTED.length === 8` |
-| 9 | One command runs every gate and reports refusal distinctly from failure | ✓ VERIFIED (unchanged) | `npm run verify` — per 41-30-SUMMARY.md's own run on its worktree: exit 2, 14 passed, 0 FAILED, 1 REFUSED (`verify:capabilities`, no `.env.local` in that worktree — correct behaviour, not a defect); not independently re-run by this verification pass |
-| 10 | The remaining ~26 conversion units are explicitly deferred to 41.1/41.2 | ✓ VERIFIED (unchanged) | `.planning/REQUIREMENTS.md:251-257` |
+| 5 | Roadmap criterion 4 (RESP-01, RESP-02, RESP-04) — every converted surface workable, and the guard against silent recurrence holds | **↑ was ✗ FAILED, now ? UNCERTAIN** — the guard is closed and proved; the observation is owed | CR-01 stays closed in code (`PageShell.tsx`: the two clearance sites are at `:160` and `:164`, both in the default/wide branch; the focus branch at `:151-157` has neither). **Its reintroduction is now SEEN under both round-5 comment shapes** — three mutations, `✗ E … this is CR-01`, exit 1 each. RESP-04's mechanical half: check E reports the two files declaring the column clearance are exactly the two mounting the responsive navigation form. RESP-01/02's behavioural half: H41-1, unobserved |
+| 6 | Roadmap criterion 5 (RESP-03) — touch targets finger-sized, large touch screens included | ? UNCERTAIN — class-string check only, no device ever used (unchanged) | `npm run verify:touch-targets` exit 0 this run (the nine reds `DEF-41.1-24-01` recorded were repaired by plan 41.1-25). H41-4 still `human_needed`, not ticked |
+| 7 | The goal's own claim — "proven on its first eight whole surfaces" | ✗ NOT MET as a human-observed fact, PARTIAL (unchanged) | `41-CR01-PASS.md` rows 1–6 of 13 carry `measured, headless — offset 0px`, dated 2026-08-13; rows 7–13 read `pending`. Not upgraded here: a headless browser is not a device, and that document says so in its own §1a |
+| 8 | The eight declared surfaces are declared converted | ✓ VERIFIED — and grown | `CONVERTED.length === 28`; the phase-41 eight — `/payment/callback`, `/login`, `/register`, `/set-password`, `/gallery`, `/admin/formats`, `/admin/members/register`, `/admin/members` — are all still present, with 20 added by phase 41.1. Growth is not a regression of this truth |
+| 9 | One command runs every gate and reports refusal distinctly from failure | ✓ VERIFIED — independently re-run this pass | `npm run verify` → exit **0**, `VERIFY_OK — 16 gate(s) passed`, 0 FAILED, 0 REFUSED, 1 not run (`verify:redirects`, needs a server), 17 accounted for |
+| 10 | The remaining conversion units are explicitly deferred to 41.1/41.2 | ✓ VERIFIED (unchanged) | `.planning/REQUIREMENTS.md:251-257` |
 
-**Score:** 5/10 truths cleanly VERIFIED (1, 2, 8, 9, 10 — truth 2 carries a noted caveat).
-1 truth (5) carries an independently-reproduced, still-open gap gap — now in its FIFTH
-round. 4 truths (3, 4, 6, 7) remain UNCERTAIN or NOT FULLY MET pending human observation;
-truth 7 improved partially this round (6 of 13 rows measured, headless) without closing.
+**Score: 5/10 fully verified (1, 2, 8, 9, 10). 0 FAILED. 5 pending human observation
+(3, 4, 5, 6, 7).**
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `src/components/ui/PageShell.tsx` | focus form reserves no navigation clearance | ✓ VERIFIED in code (unchanged since round 1) | `grep nav-inset` → lines 160, 164 only, both default/wide |
-| `scripts/verify-conversion.mjs` / `verify-dialogs.mjs` — `liveLines()`/`stripLeadingComments()` | blanks only a comment's own span, under every legal comment shape | ⚠️ PARTIALLY FIXED — single-line closed form fixed (41-29), multi-line and whitespace-before-brace forms open (independently reproduced this pass) | `verify-conversion.mjs:487-595`; identical copy in `verify-dialogs.mjs` |
-| `scripts/verify-dialogs.mjs` matcher self-check | exercises the real `liveLines()` path, including its multi-line state | ✗ FAILED — calls `stripLeadingComments()` on single-line probe strings only | `:1247` |
-| `scripts/verify-conversion.mjs` | check E's coverage boundary is declared where a reader of a green run sees it | ✓ VERIFIED — closed this round (41-30) | header WHAT A GREEN DOES NOT MEAN entry added; diff confirmed non-executable |
-| `scripts/verify-dialogs.mjs` | `neverOpenedReason()` existence guard covers all three branches | ✗ FAILED, unchanged (DEF-41-07, deferred by decision) | `:1017` guards one of three |
-| `.planning/phases/41-.../41-CR01-PASS.md` | pending procedure, 13 rows | ⚠️ PARTIAL — rows 1-6 measured (headless), rows 7-13 pending | re-read this round |
+| `src/components/ui/PageShell.tsx` | focus form reserves no navigation clearance | ✓ VERIFIED, unchanged since round 1 | clearance sites at `:160`, `:164`, both default/wide; focus branch `:151-157` carries neither |
+| `scripts/lib/comments.mjs` | **one** stripper, blanking only a comment's own span | ✓ VERIFIED — exists, substantive (311 lines), wired into eleven gates, and **agrees with TypeScript's parser on 287/287 files** | `:147` the run-time-assembled closer regex (CR-02); `:262-298` `liveLinesFrom`, the resume branch at `:276-284` (CR-01); `:189-193` the per-opener `searchFrom` (WR-04) |
+| `scripts/verify-conversion.mjs` | imports the shared stripper, carries no private copy | ✓ VERIFIED | `:421` the import; `:584-598` a cache-and-refuse wrapper only; `:532-559` the superseded paragraph kept in place with the measurement that retired it |
+| `scripts/verify-dialogs.mjs` | same, plus a self-check on the real multi-line path | ✓ VERIFIED | `:283` the import; `:399` the wrapper; `:1687-1694` the self-check through `liveLinesFrom` on line arrays; `:1023-1075` the four multi-line rows |
+| `scripts/verify-comment-stripper.mjs` | proves the module by asserted mutation, outside the repository | ✓ VERIFIED — run this pass, exit **0** | `:402` `mkdtempSync(tmpdir())`; `:413-424` each probe read back and asserted byte-equal **before** any result is read, refusing otherwise. Prints the merged column beside the four incumbent families so defect and repair read on one page |
+| `scripts/verify-dialogs.mjs` `neverOpenedReason()` | existence guard covers all three branches, asked case-exactly | ✓ VERIFIED — DEF-41-07 items 1 and 4 closed | `:1619` the single hoisted guard; `:1455-1459` `existsCaseExact`; both proved by mutation on the house APFS volume |
+| `scripts/verify-conversion.mjs` `permitKey` | a permitted site is a place, not only a string | ✓ VERIFIED — DEF-41-07 item 3 closed | `:2416`, joined on NUL |
+| `scripts/verify-conversion.mjs` exit-code header | no refusal advertised that cannot fire | ✓ VERIFIED — DEF-41-07 item 2 closed | `:327-340`, sentence and branch both deleted, the withdrawn clause quoted beside the measurement |
+| `.planning/phases/41-…/41-CR01-PASS.md` | 13 rows | ⚠️ PARTIAL, unchanged — rows 1–6 headless-measured, 7–13 `pending` | re-read this round |
+| `.planning/phases/41-…/41-RELEASE-PASS.md` | H41-1…H41-6 | ⚠️ PARTIAL, unchanged — blanket authorisation, no itemised evidence, H41-4 `human_needed` | `§9`, re-read this round |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| `PageShell.tsx` (multi-line JSX comment, terminating line) | check E's two digests / check A / check B | `liveLines()` | ✗ NOT WIRED — independently reproduced this round | terminating line blanked whole, closer and all |
-| `PageShell.tsx` (comment closed as `*/ }`, whitespace before brace) | same | `liveLines()`'s exact-token `JSX_COMMENT_CLOSE` match | ✗ NOT WIRED — independently reproduced this round | blinds to end-of-file |
-| a probe string | `verify-dialogs.mjs` matcher self-check | `stripLeadingComments()` only, not `liveLines()` | ✗ NOT WIRED — self-check cannot exercise the multi-line state | `:1247` |
-| check E boundary declaration | the printed report a reader of a green run sees | header prose + one console.log string | ✓ WIRED — closed this round | 41-30, verified non-executable diff |
+| a multi-line JSX comment's terminating line on `PageShell.tsx` | check E's frozen digests | `liveLinesFrom` | ✓ **WIRED** — was NOT WIRED for five rounds | clearance behind the shape → exit 1, `✗ E … this is CR-01` |
+| a comment closed as terminator-space-brace | checks A and E | `liveLinesFrom` | ✓ **WIRED** | same, and check A reddened on a palette needle behind the same shape |
+| a hand-rolled shell behind either shape | `verify-dialogs` check B and the `REMAINING` counter | `liveLinesFrom` | ✓ **WIRED** | counter held at 8 under both shapes; fell to 7 with the shell genuinely removed |
+| a probe row | the dialogs matcher self-check | `liveLinesFrom(probe.line)` on a **line array** | ✓ **WIRED** — was NOT WIRED | regressing the module made the self-check refuse, naming both multi-line rows |
+| a `REMAINING` entry with a bad or mis-cased path | a FAILURE, not a refusal | `existsCaseExact` before all three branches | ✓ **WIRED** | both mutations → exit 1 |
+| eleven gates | one stripper | `import { liveLinesFrom } from './lib/comments.mjs'` | ✓ WIRED | `verify-{conversion,dialogs,tables,tokens,touch-targets,breakpoints,media-strip,no-viewport-read,semantic-separation,sunset-gradient,comment-stripper}.mjs` |
+
+### Data-Flow Trace (Level 4)
+
+| Artifact | Data | Source | Real data flows | Status |
+|---|---|---|---|---|
+| `verify-conversion.mjs` check A/E | live lines of 157 scanned files | `liveLinesFrom` over the real file bytes | yes — 27 072 comment lines blanked, 0 characters of code blanked (parser differential) | ✓ FLOWING |
+| `verify-dialogs.mjs` check B | live lines of 257 opened files of 264 walked | same | yes — measured shells 8, moves to 7 when a shell is removed | ✓ FLOWING |
+| `verify-dialogs.mjs` self-check | 14 probe rows, 4 multi-line | `liveLinesFrom` on line arrays | yes — regressing the module flips the rows | ✓ FLOWING |
+| `verify-comment-stripper.mjs` matrix | 8 probe files | written to a temp dir outside the repo, read back, asserted byte-equal | yes — regressing the module flips exactly the regressed shape's cell to BLIND | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 
-| Behavior | Command | Result | Status |
+| Behaviour | Command | Result | Status |
 |---|---|---|---|
-| CR-01 closed in code, unchanged | `grep -n nav-inset src/components/ui/PageShell.tsx` | 2 hits, lines 160/164, default/wide branch only | ✓ PASS |
-| liveLines() blanks a multi-line JSX comment's terminating line whole | extracted `stripLeadingComments()`/`liveLines()` verbatim, ran against a throwaway 2-line-comment file under the session scratchpad | terminating line returned `""`; overlay after `*/}` invisible | ✗ FAIL — reproduces GAP-REVIEW-5 CR-01 |
-| liveLines() blinds to EOF on `{/* ... */ }` | same extraction, throwaway file with a space before the brace | every line after the comment returned `""`, including a later overlay div | ✗ FAIL — reproduces GAP-REVIEW-5 CR-02 |
-| dialogs matcher self-check exercises the real multi-line path | read `scripts/verify-dialogs.mjs:1247` directly | calls `stripLeadingComments(probe.line)`, not `liveLines`; probes are single-line strings | ✗ FAIL — reproduces GAP-REVIEW-5 WR-01 |
-| repository untouched by this verification | `git status --porcelain` | only the two pre-existing untracked `.planning/phases/44-*`/`45-*` directories | ✓ PASS |
+| the whole suite | `npm run verify` | exit 0 · `VERIFY_OK — 16 gate(s) passed` · 0 FAILED · 0 REFUSED · 1 needs a server | ✓ PASS |
+| the typecheck (the only product-wide gate that exists) | `npm run build` | exit 0 | ✓ PASS |
+| the stripper's own gate | `node scripts/verify-comment-stripper.mjs` | exit 0 · `COMMENT_STRIPPER_OK` · all eight shapes ok in the merged column · four incumbent families printed beside it, each still BLIND or FALSE-RED where it was | ✓ PASS |
+| CR-01 closed in code | read `src/components/ui/PageShell.tsx:151-164` | two clearance sites, both default/wide; focus branch has neither | ✓ PASS |
+| CR-01 SEEN if reintroduced, plain | mutate the focus form, run `verify-conversion.mjs` | exit 1 · `✗ E … this is CR-01` | ✓ PASS |
+| CR-01 SEEN behind the CR-02 shape | same, comment inserted | exit 1 · same `✗ E` | ✓ PASS |
+| CR-01 SEEN behind the CR-01 shape | same | exit 1 · same `✗ E` | ✓ PASS |
+| check A reddens behind both shapes | palette needle on `Button.tsx` | exit 1 each · `✗ A` | ✓ PASS |
+| check A does NOT redden on a comment body | the same needle quoted inside a comment | exit 0 | ✓ PASS (no false red) |
+| the `REMAINING` counter can move | remove a real shell | 8 → 7, STALE printed, conversion notice printed | ✓ PASS (negative control) |
+| the `REMAINING` counter does NOT move behind either shape | shapes inserted above a real shell | 8 → 8 both times | ✓ PASS |
+| the dialogs self-check sees a stripper regression | undo the CR-01 fix in `comments.mjs` | exit 2 · *"the overlay matcher disagrees with its own description on 2 of 14 fixed probe(s)"*, both multi-line rows named | ✓ PASS |
+| … and the other one | undo the CR-02 fix | exit 2 · *"2 of 14 matcher probe(s) open a comment that never closes"* | ✓ PASS |
+| a typo'd `REMAINING` path FAILS, not refuses | add a non-existent path | exit 1 · `✗ B … name a path that does not exist` | ✓ PASS |
+| a CASE-typo'd `REMAINING` path FAILS on APFS | add `ui/dialog.tsx` for `ui/Dialog.tsx` | exit 1 · same failure | ✓ PASS |
+| the stripper agrees with a real parser | 287-file character differential against TypeScript 5.9.3 | 0 BLIND, 0 FALSE-RED, 0 unterminated | ✓ PASS |
+| **`verify-conversion.mjs` notices a stripper regression on its own** | undo either fix, run it alone | **exit 0 both times** | ⚠️ **see Anti-Patterns** |
+| repository untouched | `git status --porcelain`, `git diff --stat`, per-file `git diff` | only the two pre-existing untracked `.planning/phases/44-*`/`45-*` directories; every mutated file `sha256`-identical to its pre-mutation copy | ✓ PASS |
+
+**Six repository files were mutated and restored** — `PageShell.tsx`, `Button.tsx`,
+`RefundRequestButton.tsx`, `(work)/layout.tsx`, `scripts/lib/comments.mjs`,
+`scripts/verify-dialogs.mjs`. Every mutation was asserted applied (`sha256` differs **and**
+the inserted marker present, or the replaced text asserted absent) before its result was
+read, and asserted restored (`sha256` equal to the pre-mutation copy, `git diff` empty).
+No Supabase read or write, no migration, no seeding, nothing sent anywhere.
 
 ### Probe Execution
 
-No `scripts/*/tests/probe-*.sh` files exist or are declared for plans 41-29/41-30.
-**Step 7c: SKIPPED (no probes declared or discovered)** — unchanged.
+`find scripts -path '*/tests/probe-*.sh'` → none. `scripts/probe-forged-identity.sh` exists
+but belongs to the identity work, is not declared by any phase-41 or 41.1 plan, and needs
+credentials. **SKIPPED — no probe declared or discovered for this phase.**
 
 ### Requirements Coverage
 
-| Requirement | Status | Evidence |
-|---|---|---|
-| DS-07 | PARTIAL, unchanged | `.planning/REQUIREMENTS.md:125,251` unchecked |
-| DS-08 | PARTIAL, unchanged | `:126,252` unchecked; A2 still open |
-| DS-09 | PARTIAL, unchanged | `:127,253` unchecked |
-| RESP-01 | PARTIAL — code regression stays closed; the guard against recurrence has failed a FIFTH closure attempt | `:132,254` unchecked, "closes only after 41.2" |
-| RESP-02 | PARTIAL, same disposition | `:133,255` unchecked |
-| RESP-03 | PARTIAL, human evidence still owed | `:134,256` unchecked; H41-4 `human_needed`, not ticked |
-| RESP-04 | PARTIAL, unobserved | `:135,257` unchecked |
+| Requirement | Source | Status | Evidence |
+|---|---|---|---|
+| DS-07 | Phase 41 → 41.1 → 41.2 | PARTIAL — layer complete, adoption continues | `.planning/REQUIREMENTS.md:125,251` unchecked. `CONVERTED.length === 28` of ~34 |
+| DS-08 | Phase 41 → 41.2 | PARTIAL — primitive verified, behaviour unobserved | `:126,252` unchecked; H41-2 and A2 open |
+| DS-09 | Phase 41 → 41.1 | PARTIAL — primitive verified, judgement unobserved | `:127,253` unchecked; H41-3 open |
+| RESP-01 | Phase 41 → 41.1 → **41.2** | PARTIAL — **must not close here.** The guard against silent recurrence is now closed and proved; *every surface* is 41.2's, by a written human pass | `:132,254` unchecked — *"says every surface, so it closes only in 41.2 … no script can close it"* |
+| RESP-02 | Phase 41 → 41.1 → 41.2 | PARTIAL — the shell owns the maximum; inheritance continues | `:133,255` unchecked |
+| RESP-03 | Phase 41 → 41.1 → 41.2 | PARTIAL — **human evidence still owed and never once produced** | `:134,256` unchecked; H41-4 `human_needed`, not ticked |
+| RESP-04 | Phase 41 — *"lands whole in 41"* | PARTIAL — mechanical half verified, observable half unobserved | `:135,257` unchecked. Check E: the two files declaring the column clearance are exactly the two mounting the responsive navigation form. H41-6a's count was never reported |
 
-All seven requirement IDs remain PARTIAL. No orphaned requirements.
+All seven remain PARTIAL. **No orphaned requirements** — every ID `.planning/REQUIREMENTS.md`
+maps to Phase 41 appears in this phase's plans, and no plan claims one that is not mapped.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |---|---|---|---|---|
-| `scripts/verify-conversion.mjs` | 580-585 | `liveLines()` blanks a multi-line JSX comment's terminating line whole, hiding live code after the closer | 🛑 Blocker | Group A. Independently reproduced by this verification |
-| `scripts/verify-conversion.mjs` | 488, 552 | `JSX_COMMENT_CLOSE` exact-token match has no whitespace tolerance; `{/* ... */ }` blinds the stripper to EOF | 🛑 Blocker | Group A. Independently reproduced by this verification; GAP-REVIEW-5 additionally reproduced live on `RefundDialog.tsx` |
-| `scripts/verify-dialogs.mjs` | (identical copy) | Same two defects, blinds check B | 🛑 Blocker | Group A, same root cause |
-| `scripts/verify-dialogs.mjs` | 1247 | Matcher self-check tests `stripLeadingComments()` alone, not `liveLines()`; structurally cannot catch either shape above | ⚠️ Warning | Group A follow-on (WR-01) |
-| `scripts/verify-dialogs.mjs` | 1017 vs 1025-1034 | `neverOpenedReason()` existence guard covers one of three branches | 🛑 Blocker, deferred by decision (DEF-41-07) | Group B, not attempted round 5 |
-| `scripts/verify-conversion.mjs` | 1923-1934 | Permitted-site digest keyed on line text only, no position | ⚠️ Warning, deferred (DEF-41-07) | Group B |
-| `scripts/verify-dialogs.mjs` | 1017 | `existsSync` case-insensitive on house macOS/APFS volume | ⚠️ Warning, deferred (DEF-41-07) | Group B |
+| `scripts/lib/comments.mjs` | 147 | `JSX_COMMENT_CLOSE_RE` matches the terminator, optional whitespace and the brace **within one line**; a legal JSX comment with the brace on the next line is reported unterminated and every consumer refuses | ⚠️ Warning — **new this round (N12)** | A false refusal, not a false green. Zero occurrences in the tree. The risk is the one `DEF-41.1-24-01` names: a gate that reddens on correct code is a gate somebody switches off |
+| `scripts/lib/comments.mjs` | 58-62 | declared limit — a line whose first characters are a block opener **inside a string** blanks more than it should | ⚠️ Warning, declared and honest | Reached only through a template literal starting a line with an opener; zero occurrences; and it now surfaces as a refusal rather than a silent blank. Assessed above as an honest boundary |
+| `scripts/verify-conversion.mjs` | 2412, 2416 | three NUL bytes make the file **invisible to `grep -I`**, silently, with no notice in the file | ⚠️ Warning — **new this round** | The bytes are correct (`permitKey`); the missing notice is the defect. Did NOT affect any of the five rounds — see the grep-trap section |
+| `scripts/verify-conversion.mjs` | — | has **no self-check of its own**: regressing the shared stripper left it at exit 0 both times, while `verify-dialogs` and `verify-comment-stripper` both caught it | ℹ️ Info | Not a hole in the suite — `npm run verify` runs all sixteen and would go red — but the largest gate is the one that would not notice alone |
+| `scripts/lib/comments.mjs` | 70-99 | the shape list names S1–S5, W3, W4, U1 and does not name N12 | ℹ️ Info | One line of prose plus one matrix row would close it |
 
-No new `TBD`/`FIXME`/`XXX` debt markers found in `scripts/verify-conversion.mjs` or
-`scripts/verify-dialogs.mjs` (grep re-run this round, both files).
+**No `TBD`, `FIXME` or `XXX` in any file this phase or its repairs touched** —
+`scripts/lib/comments.mjs`, `scripts/verify-comment-stripper.mjs`,
+`scripts/verify-conversion.mjs`, `scripts/verify-dialogs.mjs`,
+`src/components/ui/PageShell.tsx` all return 0 (`LC_ALL=C /usr/bin/grep -c -E`, the only
+form that reads the first of those files at all).
 
 ### Human Verification Required
 
-Unchanged in kind, improved in degree. `41-CR01-PASS.md` rows 1-6 (of 13) now carry
-`measured, headless — offset 0px`, dated 2026-08-13 — real evidence, not upgraded to a
-device pass by this report. H41-1 (eight surfaces at three widths — 6 of 12 CR-01 rows
-now headless-measured, the other 4 surfaces and rows 7-13 fully owed), H41-2 (dialog
-behaviour, A2 scroll lock still open), H41-3 (table-to-cards on phone), H41-4 (touch
-targets on a real device — the only proof anything renders at 44px), H41-5 (desktop
-mouse-only), H41-6 (eight tabs, door untouched). All remain `pending`/`human_needed`.
+**Unchanged since round 1 in kind, and this is now the whole of what is left.** Seven
+items, listed in the frontmatter. The two that decide requirements nothing else can:
 
-## Gaps Summary
+- **H41-4 — the smallest control on a large touch screen, measured.** `41-RELEASE-PASS.md`
+  records that no large touch screen was ever stated available. It is `human_needed`, not
+  ticked, and it is the **only** thing in this repository that would prove anything is
+  44px. RESP-03 cannot close without it.
+- **H41-2d / assumption A2 — whether the page behind an open dialog scrolls.** Open since
+  research, nothing reported.
 
-**One systemic, direction-choice gap (Group A); four small deferred-by-decision items
-(Group B, DEF-41-07); one structural item deferred to a named future phase (Group C,
-DEF-41-08, Phase 41.1).**
-
-**Group A.** `liveLines()`'s hand-rolled comment lexer has no last form. Round 5 closed
-the single-line closed-comment shape with a rigorous, byte-for-byte-verified fix; the
-review that followed it found the SAME helper open on two more ordinary JSX comment
-shapes — a multi-line comment's terminating line, and a validly-closed comment with
-whitespace before the brace, the second of which was reproduced live on a real
-REMAINING-listed refund-path file (`RefundDialog.tsx`) with a printed instruction to
-delete its debt entry. This verification independently reproduced both shapes on a
-disposable sandbox, never touching the repository. Two structurally different fix
-directions exist — invert the stripper to scan comments as code (false reds, safe
-direction, this file family already has a declared-exemption path) or replace the
-hand-rolled lexer with a real parser (blocked by D-41-20's no-new-packages rule unless
-an adequate tokenizer already ships with the toolchain) — and the choice belongs to the
-owner, not to a sixth patch of the same shape.
-
-**Group B (deferred by decision, DEF-41-07).** `neverOpenedReason()`'s existence guard
-covers one of three branches; a permitted-site digest keyed on text alone; a
-case-insensitive existence check on the house filesystem. Plan 41-30 explicitly declined
-these this round, and this verification did not re-run them.
-
-**Group C, structural half (deferred to Phase 41.1, DEF-41-08).** Check E is a scan over
-one file; a clearance reaching a focus route from an ordinary ancestor layout is
-invisible to every check. The non-structural half — declaring this limit in the gate's
-own header — was closed this round (41-30) and independently confirmed non-executable.
-The structural half touches `access-gating`/`ticketing-payments` primary paths and
-requires owner validation; it is routed to 41.1, where those surfaces convert anyway.
-
-**Human verification remains owed, improved in degree only.** 6 of `41-CR01-PASS.md`'s
-13 rows are now headless-measured — the phase's first observed evidence — and this
-report does not upgrade that to a device observation. RESP-03 stays unticked; H41-4
-stays `human_needed`.
+Plus `41-CR01-PASS.md` rows 7–13, and H41-1's itemised evidence — approved by a blanket
+authorisation with nothing itemised, and not upgraded by this report.
 
 ---
 
-_Verified: 2026-08-13T18:00:00Z_
-_Verifier: Claude (gsd-verifier)_
+## What a green does NOT mean
+
+Written here in the same discipline the gates use in their own headers, because a report
+that ends on sixteen ticks invites the reading it should prevent.
+
+1. **`npm run verify` exit 0 proves no behaviour whatsoever.** It runs no product code and
+   executes no test — **there is no test runner in this repository** (`CLAUDE.md`
+   Guardrail 1). It reads class strings and import clauses, renders nothing and measures
+   no pixel. The gates say this themselves; it is repeated because this report is the
+   document somebody will cite.
+2. **`status: human_needed` is not `passed`.** Five of ten truths rest on an observation
+   nobody has made. Nothing here says a surface is workable, that a dialog behaves as a
+   sheet, that a table is comprehensible as a card, or that any target is finger-sized.
+3. **The parser differential is about this tree, on this date.** 287 files, zero
+   divergence. It is not a proof that the module is correct on every input — N12 and N5
+   are two inputs on which it is not. It is a proof that on the code the gates actually
+   read, the module and a real grammar agree exactly.
+4. **The comment stripper's remaining divergence is loud, not silent — and "loud" is a
+   claim about the exit code, not about anybody hearing it.** This project has **no error
+   tracking** (`meta-gates.md`, measured 2026-08-05). An exit 2 in CI is observable; an
+   exit 2 nobody runs is not.
+5. **A closed guard is not a closed regression.** CR-01 stays closed in code and its
+   reintroduction is now seen. That says the gate would catch a *future* reintroduction of
+   *that* shape on *that* file. Check E still reads one file and asks the mount question
+   of an import graph; a clearance reaching a focus route from an ordinary ancestor layout
+   remains outside what it can see, as its own header says.
+6. **Phase 41.1's SUMMARYs were not taken on trust, and neither should this report be.**
+   Every closure above was re-derived by running a command or reading a line. Where a
+   claim was accepted on a scoped budget it is named: `41-29-SUMMARY.md`'s M1–M5 mutation
+   table was **not** re-run — it describes code that no longer exists, having been replaced
+   wholesale by the shared module, and the module's own gate supersedes it.
+7. **`REMAINING = 8` is not progress and is not safety.** It is eight hand-rolled overlays
+   still standing, every one of them on the public purchase, drinks or ticket path,
+   including the one that shows a venue.
+
+---
+
+## Gaps Summary
+
+**None.** For the first time in seven passes this phase carries no open mechanical gap.
+
+- **Group A** — the comment-stripping heuristic, open five consecutive rounds — is closed
+  by plan `41.1-01`, re-derived here three independent ways: a character-level differential
+  against TypeScript's parser over 287 files with zero divergence; CR-01's own
+  reintroduction seen by check E behind both round-5 shapes; and a debt counter that held
+  at 8 under both shapes while a negative control proved it can fall to 7.
+- **The debt-goes-quiet defect**, four mechanisms deep, has no fifth: the shape it would
+  need is reported, not swallowed.
+- **Group A follow-on WR-01** — the dialogs self-check — is closed by plan `41.1-02` and
+  proved by regressing the module and watching the self-check name both rows.
+- **Group B / DEF-41-07**, all four items, closed by plans `41.1-02` and `41.1-04`, two of
+  them proved by mutation on the house filesystem.
+- **Group C's structural half (DEF-41-08)** was routed to 41.1 and is recorded as deferred,
+  with its limit still declared in the gate's own header.
+
+**One new finding, recorded and not blocking:** shape N12 — a legal JSX comment whose
+closing brace sits on the line after the terminator — makes the shared stripper report an
+unterminated comment and every consumer refuse. **Its direction is inverted from all five
+previous rounds: a refusal that says nothing was measured, never a green over hidden debt.
+That inversion is what round 5's own gap write-up asked for.** Zero occurrences in the
+tree; the honest correction is one line in `comments.mjs`'s shape list and one row in the
+stripper gate's matrix.
+
+**What is actually left is a person.** Seven observations, unchanged since round 1, and
+`RESP-03` cannot close until somebody holds a large touch screen.
+
+---
+
+_Verified: 2026-08-14T03:10:00Z_
+_Verifier: Claude (gsd-verifier), round 6_
