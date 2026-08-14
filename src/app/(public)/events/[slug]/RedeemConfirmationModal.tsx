@@ -1,7 +1,76 @@
 "use client";
 
 import { useState, useEffect, useCallback, useTransition, useRef } from "react";
+
 import { redeemDrinkToken } from "@/app/(admin)/admin/events/actions";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+
+/**
+ * The drink-token redemption, in three screens — the guest's question, the
+ * bartender's serve, and the moment after it.
+ *
+ * ── The money path is untouched, and that is the point of this plan ──────────
+ *
+ * One server action is called from here, three times, and **all three calls
+ * carry the same two arguments in the same order as before**: the signed token
+ * and the verb. No status transition, no amount, no idempotency key and no
+ * webhook path is written, read or reshaped by this file — it renders controls
+ * and reports what the action threw. `redeemDrinkToken` was **read** so that a
+ * rendering change could be told from a payload change, and it was not edited.
+ *
+ * The copy is byte-identical: the title, the drink name, both button labels and
+ * every refusal sentence are the ones that were here.
+ *
+ * ── ONE of the three screens converted, and the other two DELIBERATELY NOT ───
+ *
+ * The plan for this file modelled it as a twin of
+ * `admin/events/[id]/tickets/RefundActions.tsx` with a single shell at the foot
+ * of the file. **Measured with the gate's own matcher, it carries three
+ * overlays, not one** — the guest's confirmation, and the two full-bleed screens
+ * the bartender uses. Only the first is converted.
+ *
+ * The other two are refused, and the reason is in this file's own words one
+ * screen below: the serve area *"takes the whole screen"* so a bartender
+ * *"doesn't have to aim"*, and the row that reverts the token is *"kept narrow
+ * so the bartender's tap can't hit it by mistake"*. Inside the primitive that
+ * row would become a full-width control in the actions region — directly under
+ * the thumb. Reverting an active token is money going backwards at a bar with a
+ * queue in front of it, so a conversion that makes it **easier** to hit is a
+ * behaviour change on the money path wearing a visual costume. `checkin-offline`
+ * asymmetry, on the other side of the counter.
+ *
+ * Their **inks** are converted, since a token substitution moves no geometry.
+ * Their **shells** are not. The dialog ratchet therefore still names this file,
+ * correctly: one hand-rolled overlay left here, and it is declared rather than
+ * hidden from the matcher.
+ *
+ * ── Focus: before, nothing. After, the close control ─────────────────────────
+ *
+ * The hand-rolled confirmation focused nothing on open, trapped nothing, and
+ * left the page behind it fully reachable. It is now the platform's modal, which
+ * supplies Escape, the trap and background inertness by specification.
+ *
+ * **No `data-initial-focus` marker is declared, and that is a decision rather
+ * than an omission.** The marker exists to name a control less destructive than
+ * the primitive's fallback — and here there is none: this panel holds exactly
+ * one affirmative answer and the close control, and the close control is both
+ * first in the DOM and the least destructive by construction
+ * (`Dialog.tsx:117-147`). Declaring a marker would have required **adding a
+ * Cancel control**, which is a new user-visible word on a money confirmation;
+ * the copy rule is the more restrictive of the two and it wins
+ * (`meta-gates.md`). Enter therefore lands on the close control and closes —
+ * it never confirms.
+ *
+ * ── The affirmative control keeps the accent fill, and is NOT destructive ────
+ *
+ * Activating a token moves it `purchased → active`, and the screen it opens
+ * carries an explicit path back to `purchased`. **The step is reversible by
+ * design** — that is what the bartender's Cancel row is for — so it is not the
+ * same class of control as a refund and does not take the critical rung. The
+ * destructive rung is for acts that destroy; this one claims a drink somebody
+ * already bought.
+ */
 
 interface RedeemConfirmationModalProps {
   drinkName: string;
@@ -94,10 +163,21 @@ export default function RedeemConfirmationModal({
     onClose();
   }, [onRedeemed, onClose]);
 
+  /**
+   * Every route out of the confirmation runs through here — the close control,
+   * Escape, and the platform's own close event — so none of them can leave a
+   * stale refusal behind. The caller unmounts this panel as well, but the rule
+   * holds here rather than depending on that.
+   */
+  const closeConfirm = useCallback(() => {
+    setError(null);
+    onClose();
+  }, [onClose]);
+
   if (phase === "served") {
     return (
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-ground/95 backdrop-blur-md"
         onClick={handleServedTap}
       >
         <div className="text-center">
@@ -107,7 +187,7 @@ export default function RedeemConfirmationModal({
           >
             SERVED
           </p>
-          <p className="mt-4 text-lg text-muted">{drinkName}</p>
+          <p className="mt-4 text-lg text-ink-2">{drinkName}</p>
         </div>
         <style>{`
           @keyframes servedScale {
@@ -122,7 +202,7 @@ export default function RedeemConfirmationModal({
   // Active screen — full-bleed tap target so the bartender doesn't have to aim
   if (phase === "active" || phase === "serving" || phase === "cancelling") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-ground/95 backdrop-blur-md">
         {/* Big tap-to-serve area: takes the whole screen above the Cancel row */}
         <button
           type="button"
@@ -133,16 +213,28 @@ export default function RedeemConfirmationModal({
           <p className="text-xs uppercase tracking-[0.3em] text-accent animate-pulse">
             {phase === "serving" ? "Serving..." : "Tap anywhere to serve"}
           </p>
-          <p className="mt-4 text-4xl sm:text-5xl font-bold text-foreground">
+          {/*
+            The step moves to the phase's own boundary and is not deleted: the
+            drink name is what a bartender reads at a glance in a dark room, and
+            one size for every width would have decided that by default. It was
+            written at a second breakpoint this contract does not use, which is
+            the only thing that changed.
+          */}
+          <p className="mt-4 text-4xl md:text-5xl font-bold text-ink">
             {drinkName}
           </p>
-          <p className="mt-2 text-sm text-muted">Active — awaiting service</p>
+          <p className="mt-2 text-sm text-ink-2">Active — awaiting service</p>
+          {/*
+            Announced rather than merely printed. It was a tinted box that said
+            nothing to anyone not looking at it, and there is no error tracking
+            behind it to notice either.
+          */}
           {error && (
-            <div className="mt-6 w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
+            <span role="alert" className="mt-6 text-sm text-sem-crit">
+              {error}
+            </span>
           )}
-          <p className="mt-12 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-white">
+          <p className="mt-12 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-ground">
             {phase === "serving" ? "Serving..." : "Mark as served"}
           </p>
         </button>
@@ -153,7 +245,7 @@ export default function RedeemConfirmationModal({
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="mx-auto block rounded-full border border-card-border bg-transparent px-6 py-2 text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mx-auto block rounded-full border border-control bg-transparent px-6 py-2 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {phase === "cancelling" ? "Cancelling..." : "Cancel"}
           </button>
@@ -164,36 +256,16 @@ export default function RedeemConfirmationModal({
 
   // Initial confirm (or activating)
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-card p-6 pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))] sm:pb-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Redeem Drink</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-card-border transition-colors"
-            aria-label="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <p className="mb-6 text-center text-xl font-semibold text-foreground">{drinkName}</p>
-
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-            <p className="text-sm text-red-400">{error}</p>
-          </div>
-        )}
-
-        <button
-          type="button"
+    <Dialog
+      open
+      onClose={closeConfirm}
+      title="Redeem Drink"
+      status={error ? { tone: "crit", message: error } : null}
+      actions={
+        <Button
+          className="w-full"
           onClick={handleActivate}
           disabled={isPending}
-          className="w-full rounded-full py-3 px-8 font-semibold text-white transition-all bg-accent active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {phase === "activating" ? (
             <span className="inline-flex items-center gap-2">
@@ -206,8 +278,10 @@ export default function RedeemConfirmationModal({
           ) : (
             "Confirm"
           )}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      <p className="text-center text-xl font-semibold text-ink">{drinkName}</p>
+    </Dialog>
   );
 }
