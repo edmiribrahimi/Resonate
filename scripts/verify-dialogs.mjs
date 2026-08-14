@@ -107,10 +107,13 @@
  *      those words rather than printing a tick — the confession shape
  *      `verify-tokens.mjs:818-822` already uses.
  *
- * ── THE TWO DECLARED EXCEPTIONS, WRITTEN BEFORE THE GATE (§0 rule 3) ────────
+ * ── THE DECLARATIONS: THREE EXEMPTIONS AND ONE NON-EXEMPTION (§0 rule 3) ────
  *
- * They are **not the same kind of thing**, and collapsing them would have hidden
- * a real debt behind a real exemption:
+ * They are **not the same kind of thing**, and collapsing them would hide a real
+ * debt behind a real exemption. Two were written before this gate existed; two
+ * arrived with plan 41.2-19 in wave 8, and the section is restated with today's
+ * membership because a paragraph describing a two-entry list above a four-entry
+ * one is exactly the drift this gate is written against.
  *
  *   1. `src/components/media/Lightbox.tsx` — **exempt from check B, for good.**
  *      A full-bleed media viewer at every tier, carrying a heavier scrim than a
@@ -121,13 +124,29 @@
  *      that only shrinks would guarantee the number never reaches zero, which
  *      makes the number lie.
  *
- *   2. `src/components/media/MyMediaSection.tsx` — **on `REMAINING`, and the
- *      reason the signature is not keyed on its attribute.** It carries the
- *      tree's **only** `role="dialog"` — one hit, measured — and it is a
- *      hand-rolled overlay rather than a `<dialog>`. A signature keyed on that
- *      attribute would find this one file and miss the other seventeen. §13
- *      names it for that reason; it is not an exemption from the debt, and
- *      §8.3's own list of the eleven overlays that go away includes it.
+ *   2. `src/components/media/MyMediaSection.tsx` — **NOT exempt, and the reason
+ *      the signature is not keyed on its attribute.** It carries the tree's
+ *      **only** `role="dialog"` — one hit, measured. A signature keyed on that
+ *      attribute would find this one file and miss every other copy in the tree.
+ *      **This paragraph used to end *"it is on `REMAINING`"*, and that stopped
+ *      being true in wave 6**: plan 41.2-14 took it off the debt by DELEGATION,
+ *      rendering entry 1 instead of declaring a shell, and plan 41.2-19 deleted
+ *      the entry. The superseded half is recorded rather than removed, in this
+ *      file's house shape.
+ *
+ *   3. `…/events/[slug]/RedeemConfirmationModal.tsx` — **two of three overlays
+ *      exempt, D-41.2-06, the owner's.** They are the screens a BARTENDER
+ *      operates on a guest's phone. Inside the primitive the row that reverts a
+ *      token becomes full-width under the thumb: money going backwards at a
+ *      counter, at two in the morning, with a queue in front.
+ *
+ *   4. `…/events/[slug]/menu/GuestTokenDisplay.tsx` — **two of three shells
+ *      exempt, D-41.2-07**, granted under 3's RULE and **not by analogy to it**.
+ *      Plan 41.2-12 had 3 in its context, declined to inherit it, and re-derived
+ *      the argument from this file's own comments — an argument that runs both
+ *      ways, the serve area losing the whole screen while Cancel gains the whole
+ *      width. *An exemption is granted per file, on that file's own argument, or
+ *      it becomes a technique for making a list empty.*
  *
  * ── COMMENT HYGIENE, WHICH IS LOAD-BEARING IN THIS GATE ABOVE ALL ───────────
  *
@@ -466,11 +485,62 @@ export const SIGNATURE = [
 export const FULL_BLEED_VIEWER = 'src/components/media/Lightbox.tsx';
 
 /**
- * Exception 2 — NOT exempt. It is on `REMAINING`, and it is the reason this
- * gate's signature is not keyed on `role="dialog"`. See the header.
+ * Exception 2 — NOT exempt, and NOT on `REMAINING` either, since plan 41.2-14.
+ * It is the reason this gate's signature is not keyed on `role="dialog"`.
+ *
+ * **The superseded claim, kept rather than deleted** (`PageShell.tsx:42-46`'s
+ * house shape): this constant's docblock read *"NOT exempt. It is on
+ * `REMAINING`"* until wave 8. The second half stopped being true when plan
+ * 41.2-14 took the file off the list **by DELEGATION** — it now renders the
+ * declared permanent exemption above instead of declaring a shell of its own —
+ * and the entry was deleted by plan 41.2-19 after the tree agreed.
+ *
+ * The first half is unchanged and is why the constant survives its entry: this
+ * is still the tree's only `role="dialog"`, and it is still the worked reason
+ * the signature is keyed on the SHELL. A rule whose only specimen has been
+ * deleted is a rule the next reader re-derives as a preference.
  */
 export const ROLE_DIALOG_OVERLAY = 'src/components/media/MyMediaSection.tsx';
 
+/**
+ * Exception 3 — the bartender's two screens on the public event page.
+ * **D-41.2-06, the owner's, 2026-08-14.** Implemented here by plan 41.2-19.
+ */
+export const BARTENDER_REDEEM_SCREENS =
+  'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx';
+
+/**
+ * Exception 4 — the bartender's two screens on the drinks menu.
+ * **D-41.2-07, granted under D-41.2-06's RULE and not by analogy to it.**
+ *
+ * The distinction is the whole point and it is why this is a separate constant
+ * with a separate reason: *an exemption is granted per file, on that file's own
+ * argument, or it becomes a technique for making a list empty.* Plan 41.2-12
+ * had D-41.2-06 in its context and **explicitly declined to inherit it**,
+ * measured this file, and produced the argument from this file's own comments.
+ * A refusal that declines an available precedent and re-derives the argument is
+ * worth more than one that cites it.
+ */
+export const BARTENDER_TOKEN_SCREENS =
+  'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx';
+
+/**
+ * The four declarations this gate prints on every run, before it counts.
+ *
+ * **Two of the four are exemptions, one is a non-exemption, and the fourth is
+ * an exemption too — and they are printed together on purpose.** A reader who
+ * meets only the exemptions cannot tell which decisions were taken and which
+ * were merely never taken. This gate already refuses to let *exempt* and
+ * *fenced* collapse into one word (`NEVER_MEASURED_BY_B` vs the Phase 42
+ * fence); the same discipline says a declared NON-exemption is worth printing.
+ *
+ * **AN EXEMPTION WITHOUT ITS REASON IS INDISTINGUISHABLE FROM A FILE NOBODY GOT
+ * TO** (D-41.2-06). So each reason travels with its entry, in the gate, and the
+ * two bartender entries carry **two arguments and not one argument cited
+ * twice** — because two executors, in separate worktrees, with no contact, hit
+ * the same shape on two different files and refused it independently, and the
+ * second declined the first's precedent while doing so.
+ */
 export const DECLARED_EXCEPTIONS = [
   [
     FULL_BLEED_VIEWER,
@@ -478,7 +548,15 @@ export const DECLARED_EXCEPTIONS = [
   ],
   [
     ROLE_DIALOG_OVERLAY,
-    'NOT exempt, and on REMAINING — it is the tree\'s ONLY role="dialog" (one hit, measured) and is a hand-rolled overlay rather than a <dialog>. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead',
+    'NOT exempt, and no longer on REMAINING either — it is the tree\'s ONLY role="dialog" (one hit, measured) and WAS a hand-rolled overlay. A signature keyed on that attribute would find this one file and miss every other copy in the tree, which is why the check is keyed on the shell instead; that reason is why this line survives its list entry. Plan 41.2-14 took it off the debt by DELEGATION rather than by a shell swap — it renders the exemption above — and plan 41.2-19 deleted the entry after the tree agreed at zero',
+  ],
+  [
+    BARTENDER_REDEEM_SCREENS,
+    'exempt from check B for TWO of its three overlays — D-41.2-06, the owner\'s. The guest\'s confirmation converted; the other two are the screens a BARTENDER operates, and they will never convert. The reason is the file\'s own, written before this phase: the serve area "takes the whole screen" so a bartender "doesn\'t have to aim", and the row that reverts the token is "kept narrow so the bartender\'s tap can\'t hit it by mistake". Inside the primitive that reverting row becomes a full-width control in the actions region, directly under the thumb — money going backwards at a counter, at two in the morning, with a queue in front and the guard LOOSENED instead of tightened. A file that will never convert is not a debt. NOT extended to any other file by analogy',
+  ],
+  [
+    BARTENDER_TOKEN_SCREENS,
+    'exempt from check B for TWO of its three shells — D-41.2-07, granted under D-41.2-06\'s RULE and on THIS file\'s own argument, which plan 41.2-12 re-derived after explicitly declining to inherit the twin\'s decision. The argument differs from the twin\'s and runs in BOTH directions: the serve area "takes the whole screen above the Cancel row", so inside the primitive it becomes a panel body at the panel\'s own width — the bartender HAS TO AIM — while the narrow Cancel becomes a full-width control in the actions region under the thumb. The guard would loosen on the reversible act and tighten on the irreversible one, which is the exact inverse of what this surface needs. Both shells were kept LEGIBLE to the matcher throughout, so REMAINING never fell for a reason nobody wrote down',
   ],
 ];
 
@@ -601,6 +679,38 @@ export const NEVER_MEASURED_BY_B = new Map([
       kind: 'exempt — measured and declared correct',
       reason:
         'a full-bleed media viewer, right to be a native shell and wrong to be a sheet; declared by §8.3 before this gate existed. A file that will never convert is not a debt',
+    },
+  ],
+  /*
+   * THE TWO BARTENDER FILES, ADDED BY PLAN 41.2-19 (D-41.2-06 and D-41.2-07).
+   *
+   * They enter HERE and not only in `DECLARED_EXCEPTIONS`, and the two lists are
+   * not interchangeable: this Map is what check B's loop reads, and the refusal
+   * above is keyed on it. A file declared an exception in the printed list but
+   * absent from this Map would be OPENED by check B, found to carry a shell, and
+   * reported as an UNDECLARED COPY — a red on a file a person measured and
+   * declared correct, which is §0 rule 3's own definition of how a gate gets
+   * switched off. WR-01 is the record of the two lists drifting the other way.
+   *
+   * **Each carries its OWN reason, not one reason cited twice.** An exemption
+   * without its reason is indistinguishable from a file nobody got to, and this
+   * gate's whole architecture keeps *exempt* (somebody measured it and declared
+   * it correct) apart from *fenced* (nobody measured it at all).
+   */
+  [
+    BARTENDER_REDEEM_SCREENS,
+    {
+      kind: 'exempt — measured and declared correct (D-41.2-06, the owner)',
+      reason:
+        "two of its three overlays are the BARTENDER's screens and will never convert: the serve area takes the whole screen so a bartender does not have to aim, and the row that reverts a token is kept narrow so a tap cannot hit it by mistake. Inside the primitive that row goes full-width under the thumb — money going backwards at a counter with a queue in front. A file that will never convert is not a debt",
+    },
+  ],
+  [
+    BARTENDER_TOKEN_SCREENS,
+    {
+      kind: 'exempt — measured and declared correct (D-41.2-07, under D-41.2-06\'s rule, on this file\'s own argument)',
+      reason:
+        'two of its three shells are the BARTENDER\'s screens, refused by plan 41.2-12 after it explicitly declined to inherit the twin\'s decision. This file\'s argument runs BOTH ways: the serve area becomes a panel body so the bartender has to aim, while the narrow Cancel goes full-width under the thumb — the guard loosening on the reversible act and tightening on the irreversible one',
     },
   ],
 ]);
@@ -1194,46 +1304,132 @@ function shellShapes(relPath) {
  * still name the wrong surface?* — and that grep is the only cheap check a later
  * reader has. The withdrawal is recorded; the strings are not, on purpose.
  */
+/**
+ * ── THE LIST IS EMPTY, AND THAT IS A DECISION RATHER THAN A DRIFT ────────────
+ *
+ * The emptiness guard below refuses an empty `REMAINING` and says why in its own
+ * sentence: *"the emptiness should be a DECISION written above the constant —
+ * not a list that quietly emptied itself while nobody was reading."* This is
+ * that decision, and the guard now reads it instead of refusing blind. The shape
+ * is `verify-tables.mjs:534-571`'s, **copied rather than invented**, because a
+ * gate in this tree has already made this transition once.
+ *
+ * **Written 2026-08-14 by plan 41.2-19, the phase's final reconciliation.** The
+ * last seven entries left in two movements, and the two are different acts:
+ *
+ *   - **FIVE were PAID and printed STALE.** `RefundRequestButton.tsx` and
+ *     `GuestLoginBanner.tsx` (plan 41.2-02, the two unreachable files D-41.2-03
+ *     ordered converted rather than deleted); `SumUpCheckoutModal.tsx` (plan
+ *     41.2-10, the shared money core); `SecretVenueDialog.tsx` (plan 41.2-16,
+ *     knot 3, the one whose conversion was Critical rather than visual);
+ *     `MyMediaSection.tsx` (plan 41.2-14, and it is the phase's one debt paid by
+ *     **DELEGATION** — it renders the declared permanent exemption instead of
+ *     re-shelling onto the primitive).
+ *   - **TWO were RECLASSIFIED, and that is not a deletion.**
+ *     `RedeemConfirmationModal.tsx` (D-41.2-06, the owner's) and
+ *     `GuestTokenDisplay.tsx` (D-41.2-07, granted under that rule on its own
+ *     file's argument) left this list for `DECLARED_EXCEPTIONS` and
+ *     `NEVER_MEASURED_BY_B` above, **each carrying its own reason**. They still
+ *     declare shells and the gate still knows it; what changed is that a person
+ *     measured them and declared them correct. The debt list is empty and what
+ *     remains is DECLARED CORRECT rather than forgotten — which is how criterion
+ *     3 closes honestly instead of by relaxation.
+ *
+ * **Every one of the seven was re-derived from the tree first**, with a second
+ * instrument that deliberately does NOT use the gates' shared comment stripper
+ * (D-41.1-22) — asking the gate what it thinks is not a check on the gate. That
+ * instrument reproduced a known non-zero on a positive fixture and a known zero
+ * on a negative one before it reported anything, and refuses with exit 2 if it
+ * cannot: wave 4 of this phase recorded a corroborating instrument that returned
+ * 0/0/0 on eight files, four of which the gates reported with 3, 1, 1 and 3
+ * overlays, and believing it would have authorised deleting **every** entry with
+ * a second instrument's agreement on each deletion. Raw counts measured
+ * 2026-08-14: **0** for all five paid entries (two of them 1, in a DOCBLOCK, at
+ * `SecretVenueDialog.tsx:97` and `MyMediaSection.tsx:41` — raw ABOVE stripped,
+ * which is the harmless direction) and **2** and **2** for the two reclassified,
+ * which is the number the gate reports and the reason they are not deletions.
+ * **No row's raw count came out LOWER than its stripped count**, which is the
+ * direction that would have stopped the deletion.
+ *
+ * **Why an empty list here does not become a number that lies.** Check B is a
+ * TREE-SIDE accounting, not a list-side one: it opens **every** walked file
+ * except the primitive, the four declarations above and the Phase 42 fence, and
+ * a file found carrying a shell that is on no list fails as an **UNDECLARED
+ * COPY** — never as a missing list entry. With the list empty the arithmetic is
+ * `measured shells = 1 primitive + 0 remaining + 3 exempt files + 0 fenced`, and
+ * a ninth hand-rolled shell written tomorrow reddens check B on its own path.
+ * The migration can therefore be closed without the gate losing its teeth, which
+ * is exactly the condition the guard was protecting.
+ *
+ * **What this does NOT say.** It does not say Escape closes anything, that a
+ * sheet rises from the bottom edge below 768px, or that the page behind a panel
+ * stops scrolling. Those are H41-2 — a person, at two widths — and they are
+ * still owed. `null` here means the migration is open; an object means it is
+ * closed, and the guard requires all three fields so a truthy placeholder cannot
+ * satisfy it.
+ */
+export const MIGRATION_CLOSED = {
+  date: '2026-08-14',
+  by: 'plan 41.2-19',
+  why:
+    'every hand-rolled dialog shell in the tree is either the primitive, or one of the ' +
+    'three files a person measured and declared correct with its reason on the line; ' +
+    'check B still opens every other walked file, so a ninth copy written tomorrow fails ' +
+    'as an undeclared copy rather than as a missing list entry',
+};
+
 export const REMAINING = [
-  // ── the eleven hand-rolled overlays. None of them handles Escape, none traps
-  // focus, none makes the document behind it inert — measured. Every dialog on
-  // the public purchase path is among them.
-  [
-    'src/app/(public)/tickets/[id]/RefundRequestButton.tsx',
-    'public-member-money',
-    'a hand-rolled overlay on the ticket surface — a refund request, which is money leaving',
-    'the /tickets/[id] surface',
-  ],
-  [
-    'src/app/(public)/events/[slug]/RedeemConfirmationModal.tsx',
-    'public-member-money',
-    'a hand-rolled SHEET overlay — one of the four the primitive takes its phone form from',
-    'the public event page',
-  ],
-  [
-    'src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx',
-    'public-member-money',
-    'a hand-rolled SHEET overlay on the purchase path — byte-identical sheet half to the one above',
-    'the public event page',
-  ],
-  [
-    'src/app/(public)/events/[slug]/SecretVenueDialog.tsx',
-    'public-member-money',
-    'a hand-rolled overlay that shows a venue — venue-secrecy primary, and the one on this list whose conversion is Critical rather than visual',
-    'the public event page',
-  ],
-  [
-    'src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx',
-    'public-member-money',
-    'a hand-rolled SHEET overlay on the drinks menu',
-    'the drinks menu surface',
-  ],
-  [
-    'src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx',
-    'public-member-money',
-    'a hand-rolled SHEET overlay holding a drink token at the bar',
-    'the drinks menu surface',
-  ],
+  // ── the eleven hand-rolled overlays. None of them handled Escape, none
+  // trapped focus, none made the document behind it inert — measured. Every
+  // dialog on the public purchase path was among them, and none is now.
+  //
+  // PAID by plan 41.2-02 — `src/app/(public)/tickets/[id]/RefundRequestButton.tsx`
+  // and `src/app/(public)/events/[slug]/menu/GuestLoginBanner.tsx`, the two files
+  // D-41.2-03 ordered CONVERTED rather than deleted or exempted. Neither is
+  // reached by any closure, so no surface conversion would ever have cleared
+  // them as a by-product and criterion 3 could not have closed without an
+  // explicit disposition. Exempting the banner would have been a lie — its
+  // import is commented out with a restore note — and deleting either would have
+  // answered a product question this phase does not own, on a public repository,
+  // irreversibly.
+  //
+  // PAID by plan 41.2-10 — `src/app/(public)/events/[slug]/SumUpCheckoutModal.tsx`,
+  // the shared money core, converted ONCE in wave 5 as spine precisely so that
+  // three surfaces in later waves would not all open the same file.
+  //
+  // PAID by plan 41.2-16 — `src/app/(public)/events/[slug]/SecretVenueDialog.tsx`,
+  // knot 3, and the one entry on this list whose conversion was CRITICAL rather
+  // than visual: it stands where a secret address does not. It reached the
+  // platform's modal without one conditional line changing, its three unlock
+  // branches still three and its deliberate two-bullet asymmetry intact.
+  //
+  // PAID by plan 41.2-14 — `src/components/media/MyMediaSection.tsx`, and this
+  // one is the phase's only debt paid by DELEGATION rather than by a shell swap:
+  // the tree's only role-marked overlay now renders the file already declared
+  // PERMANENTLY EXEMPT instead of declaring a shell of its own. That was decided
+  // in writing BEFORE the diff, which is why it is not an exemption granted by
+  // analogy — see `ROLE_DIALOG_OVERLAY` above, whose docblock keeps its own
+  // superseded sentence rather than deleting it.
+  //
+  // **The declared list went 7 → 0. The PRINTED `REMAINING` went 2 → 2, then
+  // 2 → 0 by RECLASSIFICATION, and the difference between those two movements is
+  // the whole substance of this commit.** This gate prints two numbers on
+  // purpose: the declared count is this constant's length, and `REMAINING` is
+  // the live count of files check B opened and found still carrying a shell. All
+  // five paid files stopped carrying one in their own plans' commits, so the
+  // live count had already fallen and the gate had been printing all five STALE
+  // — *"converted; remove this entry"* — ever since. That notice is what makes
+  // these five deletions a RESPONSE rather than a tidy.
+  //
+  // RECLASSIFIED by plan 41.2-19, and NOT deleted — the two bartender files,
+  // `RedeemConfirmationModal.tsx` (D-41.2-06) and `GuestTokenDisplay.tsx`
+  // (D-41.2-07). Both still declare shells; both were measured at **2** raw
+  // overlay lines apiece on 2026-08-14, agreeing with the gate exactly. They
+  // moved to `DECLARED_EXCEPTIONS` and `NEVER_MEASURED_BY_B` above, each with
+  // its own argument. Neither was rewritten into a form the gate cannot see:
+  // silencing a number without changing the thing is the fifth mechanism this
+  // phase recorded, and `REMAINING` stayed at its honest value through wave 7.
+  //
   // PAID by plan 41.1-17 — the two refund overlays,
   // `src/app/(admin)/admin/events/[id]/tickets/RefundActions.tsx` and
   // `src/components/admin/RefundDialog.tsx`, both converted as SPINE in wave 7
@@ -1296,13 +1492,9 @@ export const REMAINING = [
   // with its reasoning next to it. This repository has four recorded recurrences
   // of a debt that went quiet because a counter fell for a reason nobody wrote
   // down, and the defence is that a number only ever moves in the same commit as
-  // the sentence explaining why.
-  [
-    ROLE_DIALOG_OVERLAY,
-    'public-member-money',
-    'a hand-rolled overlay, and the tree\'s only role="dialog" — see the declared exceptions above: named by §13 as a warning about signature choice, not exempted from the debt. Re-derived: its only importer is src/app/(members)/dashboard/page.tsx:9, the member dashboard',
-    'only importer src/app/(members)/dashboard/page.tsx:9',
-  ],
+  // the sentence explaining why. **That commit is this one**, and both entries
+  // left in it: the two stale ones with the five, and the two live ones by
+  // reclassification, all beside the closure decision above.
 
   // ── the native shells this plan does not convert. Each already has the
   // platform behaviours; what each still has is its own copy of the shell.
@@ -1348,11 +1540,14 @@ export const REMAINING = [
  *   - `phase-42`             — the door. Behind this gate's fence today, so no
  *                              entry carries it; the value exists because the
  *                              fence's own arrival condition says an entry could.
- *   - `exempt`               — declared correct as what it is. `Lightbox.tsx` is
- *                              the tree's one exemption and it is deliberately
- *                              NOT on this list, so no entry carries this value
- *                              either: a file that will never convert is not a
- *                              debt, and a list that cannot reach zero lies.
+ *   - `exempt`               — declared correct as what it is. The tree's three
+ *                              exemptions are all deliberately NOT on this list,
+ *                              so no entry carries this value either: a file
+ *                              that will never convert is not a debt, and a list
+ *                              that cannot reach zero lies. *(This read "the
+ *                              tree's one exemption" until wave 8; D-41.2-06 and
+ *                              D-41.2-07 added the two bartender files, each on
+ *                              its own argument.)*
  *
  * **Two of the four are unused today, and that is written down rather than left
  * to be noticed.** An unused value is not dead vocabulary here: `phase-42` is
@@ -1499,11 +1694,26 @@ if (!existsCaseExact(PRIMITIVE_FILE)) {
 }
 
 if (REMAINING.length === 0) {
-  refuse(
-    'REMAINING is empty. If every copy really is gone, that is the end of this migration\n' +
-      '       and the emptiness should be a DECISION written above the constant — not a list\n' +
-      '       that quietly emptied itself while nobody was reading.'
-  );
+  const c = MIGRATION_CLOSED;
+  const complete =
+    c &&
+    typeof c === 'object' &&
+    typeof c.date === 'string' &&
+    c.date.length > 0 &&
+    typeof c.by === 'string' &&
+    c.by.length > 0 &&
+    typeof c.why === 'string' &&
+    c.why.length > 0;
+
+  if (!complete) {
+    refuse(
+      'REMAINING is empty. If every copy really is gone, that is the end of this migration\n' +
+        '       and the emptiness should be a DECISION written above the constant — not a list\n' +
+        '       that quietly emptied itself while nobody was reading.\n' +
+        '       Set MIGRATION_CLOSED to an object carrying a date, the plan that closed it, and\n' +
+        '       why. A truthy placeholder does not satisfy this: all three fields are required.'
+    );
+  }
 }
 
 /*
@@ -1793,7 +2003,13 @@ const signatureRows = SIGNATURE.map(([label, needle, expected]) => ({
  * counters' own docblock (WR-02).
  */
 
-console.log('  declared exceptions: 2\n');
+/*
+ * The count is DERIVED and not a literal, since plan 41.2-19 took it from two to
+ * four. A hard-coded 2 printed above a four-entry list is the smallest possible
+ * version of the defect this whole gate is written against: a number that stops
+ * describing the thing beside it, in the report a reader actually sees.
+ */
+console.log(`  declared exceptions and non-exceptions: ${DECLARED_EXCEPTIONS.length}\n`);
 for (const [path, reason] of DECLARED_EXCEPTIONS) {
   console.log(`      ${path}`);
   console.log(`         ${reason}\n`);

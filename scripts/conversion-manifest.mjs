@@ -239,6 +239,66 @@ export const PHASE_42_PATHS = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * NON_DECLARABLE — the page files that are not surfaces, and never will be
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Route files that exist, render nothing, and therefore cannot be declared.
+ *
+ * **WHY THIS CONSTANT EXISTS AT ALL, AND WHY IT ARRIVES NOW.** Until check F
+ * (`verify-conversion.mjs`) this list was FORTY LINES OF PROSE at the head of
+ * `CONVERTED` and nothing read it. `checkManifest()` refuses on an empty
+ * `CONVERTED` and on an entry naming a missing path — both **list-side**
+ * conditions — while **nothing anywhere counted the `page.tsx` files on disk and
+ * compared them to the list**. A forty-second page added next month was
+ * invisible and the phase stayed green: *"the manifest is a list nobody checks
+ * against reality"* (41.2-WAVE0-FINDINGS.md §8.1, which decided check F IN
+ * SCOPE and assigned it to plan 41.2-19).
+ *
+ * A census needs three buckets, not two, and the third has to be **readable by a
+ * gate**. So the argument that used to sit in prose above `CONVERTED` comes out
+ * of prose and into this constant, in the same commit as the check that reads
+ * it. Its substance is unchanged; what changed is that a machine can now hold it
+ * against the tree.
+ *
+ * **THIS IS NOT A THIRD EXEMPTION LIST, and the distinction is the one
+ * `verify-dialogs.mjs` already draws between exempt and fenced.**
+ *
+ *   - `PHASE_42_PATHS` is a **fence**: files nobody measured at all. Nothing
+ *     there says the markup behind them is right; it says this phase does not
+ *     open them, and the fence dissolves when Phase 42 runs.
+ *   - This list is a **category refusal**: the file was measured, and what the
+ *     measurement found is that there is nothing for a surface criterion to be
+ *     true or false about. It does not dissolve; an entry leaves it only by the
+ *     file ceasing to be what it is.
+ *
+ * **The one member today, and the arithmetic it closes.** Measured 2026-08-14:
+ * `find src/app -name "page.tsx"` returns **41** = **38** declared + **2**
+ * behind the Phase 42 fence + **1** here. The arithmetic closes exactly, with no
+ * residue and no judgement call, which is the condition under which a tree-side
+ * census is worth writing rather than a permanent source of noise.
+ *
+ * **What check F does NOT make true.** It closes ONE direction — a page that
+ * exists and is not accounted for. It does not close the other: a page declared
+ * with the wrong width, the wrong reason, or a reason describing work that was
+ * not done. Those stay what they have always been, a human's written claim the
+ * gates take on trust. Check F turns *the manifest is a list nobody checks
+ * against reality* into *the manifest is COMPLETE*, and completeness is not
+ * correctness.
+ *
+ * Shape: `[pageFile, reason]` — the same two-column shape `PHASE_42_PATHS` and
+ * `SPINE` already carry, and the reason travels WITH the entry for the reason
+ * every list in this file states: a list whose reasons live somewhere else is a
+ * list whose reasons stop being true unnoticed.
+ */
+export const NON_DECLARABLE = [
+  [
+    "src/app/(admin)/admin/(work)/page.tsx",
+    "/admin is an entrance, not a surface: 39 lines, zero className, no markup, ends in a redirect. It resolves the access context, refuses a visitor without organizer.access, and forwards. It can therefore NEVER import PageShell — there is nothing for a shell to wrap — and check D puts any declared surface whose page file does not import the shell into pagesWithoutShell, which is a FAILURE. Declaring it would put a correct file into a red, and a gate that reddens correct code is a gate somebody switches off (§0 rule 3, D-41-19's second failure mode; scripts/verify-media-strip.mjs:51-62 is this repository's own record of it happening). Criterion 1 reads 'every page that renders a surface'; a redirect renders nothing and shows nobody a half-converted screen, which is the thing that criterion protects a person from — so this is not an exemption carved out of the criterion's scope, it was never inside it. Settled BEFORE check D's first red run, which is why it is trusted: an exemption found on a red run is an exemption nobody trusts (D-41-16). If a future plan gives that route markup — a chooser, a landing board, anything a person looks at — it stops being a redirect, it becomes declarable, and this entry comes out in the SAME COMMIT as its CONVERTED entry",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
  * PRIMITIVES — one entry per EXPORTED SYMBOL, not one per file
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -396,46 +456,32 @@ export const PRIMITIVES = [
  * not a typo to correct quietly: one of the two is wrong, and which one is a
  * question for a person.
  *
- * ── `/admin` IS DELIBERATELY NOT DECLARED, AND THIS IS WHY ──────────────────
+ * ── `/admin` IS DELIBERATELY NOT DECLARED, AND THE ARGUMENT IS NOW A CONSTANT ─
  *
  * The work surface has **24 pages and 23 declarable surfaces**. The one that is
- * missing is `/admin` itself, at `src/app/(admin)/admin/(work)/page.tsx`, and it
- * is left out on purpose so that the next reader counts 24, finds 23, and reads
- * this paragraph instead of filing a defect.
+ * missing is `/admin` itself, at `src/app/(admin)/admin/(work)/page.tsx`. It is
+ * left out on purpose so that the next reader counts 24, finds 23, and reads a
+ * decision instead of filing a defect.
  *
- * That file is 39 lines, carries **zero `className`**, renders no markup, and
- * ends in a `redirect`. It is an entrance: it resolves the access context,
- * refuses a visitor without `organizer.access`, and forwards. **It therefore can
- * never import `PageShell`** — there is nothing for a shell to wrap — and check
- * D of `verify-conversion.mjs` puts any declared surface whose page file does
- * not import the shell into `pagesWithoutShell`, which is a FAILURE. Declaring
- * it would produce a red on a correct file, and a gate that reddens correct code
- * is a gate somebody switches off (§0 rule 3, D-41-19's second failure mode;
- * `scripts/verify-media-strip.mjs:51-62` is this repository's own record of it
- * happening).
- *
- * **Criterion 1 reads *every page that renders a surface*.** A redirect renders
- * nothing and shows nobody a half-converted screen, which is the thing the
- * criterion protects a person from. So `/admin` is not an exemption carved out
- * of the criterion's scope; it was never inside it.
- *
- * **This was settled BEFORE check D's first red run**, which is the whole point
- * of writing it here rather than discovering it: an exemption found on a red run
- * is an exemption nobody trusts, and the gate is what gets edited next (D-41-16).
+ * **Forty lines of that decision used to stand HERE, in prose, and nothing read
+ * them.** They are now `NON_DECLARABLE` above — same argument, same words,
+ * moved into a two-column constant so that a gate can hold it against the tree.
+ * The move happened in plan 41.2-19, in the same commit as check F, which is the
+ * tree-side census that gives the constant something to be true about. **A
+ * paragraph a reader may skip and a list a gate subtracts are not the same
+ * artefact**, and the difference is the whole of what 41.2-WAVE0-FINDINGS.md
+ * §8.1 identified: `checkManifest()` refuses on an empty list and on a missing
+ * path, both list-side, while nothing counted the pages on disk.
  *
  * The precedent for declining to make a claim rather than making a convenient
- * one is the `PRIMITIVES` note a few hundred lines above this — *"Rendered
- * primitives only"*, `conversion-manifest.mjs:206-214` at the time it was
- * written, where the shared focus-expression constant is left off the list
- * because it renders nothing and G1 check C's failure mode is a component nobody
- * mounted. Same shape, same reason: a list of claims is how a gate becomes a
- * rubber stamp.
+ * one is the `PRIMITIVES` note above — *"Rendered primitives only"* — where the
+ * shared focus-expression constant is left off the list because it renders
+ * nothing and G1 check C's failure mode is a component nobody mounted. Same
+ * shape, same reason: a list of claims is how a gate becomes a rubber stamp.
  *
  * **What this does NOT say.** It does not say `/admin` is converted, and it does
  * not say it is unconverted. It says this list is not where that question is
- * answered. If a future plan gives that route markup — a chooser, a landing
- * board, anything a person looks at — it stops being a redirect, it becomes
- * declarable, and this paragraph comes out in the same commit as its entry.
+ * answered.
  *
  * Shape: `[route, pageFile, width, reason]`.
  */
@@ -790,6 +836,56 @@ export const CONVERTED = [
     "/tickets/[id]", "src/app/(public)/tickets/[id]/page.tsx", "default",
     "plan 41.2-08 — whole, and 'whole' here is ONE file: the route file itself. The refund control that sits beside it in the same directory has NO importer anywhere in the tree, so no closure walk reaches it and this entry does not claim it. No loading, error or not-found file exists beside the route — listed, not assumed. NOT on §4's closed wide list and therefore default. THE NARROW FORM IS UNAVAILABLE HERE RATHER THAN DEFERRED, and the distinction is the point: this file wrote the narrow measure BY HAND, TWICE, which is the file asking to be narrow, and it cannot have it — check E reports every surface declaring the focus form while mounting a navigation as a failure, the gate's own summary states the invariant as focus if and only if none is mounted, and D-41.2-01 mounts one here. Deferring implies it could be picked up later; it cannot be picked up at all while this surface mounts a navigation, and the word is repeated here so the next reader does not re-propose the narrow form from the shape of the file. Both hand-written maxima were DELETED per wave 0's disposition — they go together or the control stops matching the card — and the three roads that would have preserved the old width were each refused in writing, the third of them named as using a stated limit as a permission. THE CAUTION, because this surface holds the same secret as the public event page under a DIFFERENT PREDICATE: the venue line, its assignment and its comment are byte-identical, indentation included, and the block was deliberately left two spaces shallower than its siblings rather than re-indented, because re-indenting would have cost that assertion its qualifier-free form and a guard with no undo deserves the stronger claim; the stored secrecy flag is still SELECTED and still READ NOWHERE — its two sites are the select and a type, no branch, ternary or comparison consults it — so the surface holds the flag and does not use it, and if it ever looks consulted the file has grown a predicate it does not have. The divergence from the public event page is deliberate, documented in the file, and NOT reconciled here: reconciling it would be a behaviour change on the one act in this product that cannot be undone, decided by a visual conversion. THE RENDER MODE IS A QUESTION AND NOT AN ANSWER: this route IS dynamic and does not SAY so — it is dynamic only because something in its tree reads a session — so it satisfies venue-secrecy.md by derivation, and the one-line declaration that would close the gap is an owner's decision recorded with its measurement rather than taken inside a conversion. The wallet control kept its plain anchor and therefore does not prefetch: the other candidate primitive renders a typed link, and a hover would have MINTED A PASS — a money-path behaviour change dressed as a styling choice, avoided in the choosing rather than discovered afterwards. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier clearance declared in the same commit, byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110, the declaring element wrapping the shell with the navigation as its sibling; width may change layout and never membership, and the same four props go in so no entry appears or disappears. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
   ],
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * PHASE 41.2 WAVES 5, 6 AND 7 — the bar, the member dashboard and the public
+   * event page, converted by plans 41.2-10 … 41.2-18 and declared here by
+   * 41.2-19, the phase's third and last gate editor (D-41.1-22).
+   *
+   * Same construction as every block above it: every reason below is the text
+   * the plan that did the work reported in its own SUMMARY, taken rather than
+   * re-composed, joined into the one string this list's shape requires. Eight
+   * plans reported; this one writes.
+   *
+   * ── WHAT WAS DIFFED, AND AGAINST WHAT ──────────────────────────────────────
+   *
+   * Against the TREE, never against the plans' own counts. `find src/app -name
+   * "page.tsx"` returned **41**; each of the three page files below was
+   * confirmed on disk case-exactly; each route directory was LISTED for a
+   * route-adjacent file rather than assumed — `/events/[slug]/menu`,
+   * `/dashboard` and `/events/[slug]` each have exactly one placeholder, three
+   * measured ones and no `error` or `not-found` anywhere.
+   *
+   * ── THE PAIRING WAS ALREADY 12/12 BEFORE THIS BLOCK EXISTED ────────────────
+   *
+   * Check E's pairing is computed from two tree-wide reads and never consults
+   * this list (F-41.2-05-01). It reached 12/12 in WAVE 7's own conversion
+   * commits and the reconciliation that writes these three entries could not
+   * have moved it. What these entries move is the declared-surface count
+   * (35 → 38), the width-against-§4 comparison, the route-table partition and
+   * the set of files checks A, B and D walk. Those are the figures to quote;
+   * the pairing is reported and never leaned on.
+   *
+   * ── ALL THREE ARE `default`, AND `focus` IS UNAVAILABLE ────────────────────
+   *
+   * None of the three is on §4's closed wide list, so `default` is the answer
+   * and not a fallback. `focus` is not deferred on any of them: check E fails
+   * any surface declaring it while mounting a navigation
+   * (`verify-conversion.mjs:3372`), and all three mount one.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [
+    "/events/[slug]/menu", "src/app/(public)/events/[slug]/menu/page.tsx", "default",
+    "plans 41.2-11 and 41.2-12 — whole, and 'whole' here is FOUR files across two plans plus a placeholder: the route file and the organizer-facing menu (41.2-11), the guest's token screen and the guest purchase path (41.2-12), and the route-adjacent placeholder beside them, six hand-rolled pulses gone. A FIFTH file in this directory, the guest login banner, was converted in wave 0 under D-41.2-03 and is DELIBERATELY STILL UNREACHABLE — its import is commented out with a restore note, so no closure walk arrives at it and this entry does not claim it. NOT on §4's closed wide list and therefore default, which is not a fallback; focus is UNAVAILABLE rather than deferred, because this surface mounts the responsive navigation and check E fails any focus surface that mounts one. THE NAVIGATION SENTENCE, and it is the phase's one CONDITIONAL pair: the mount is conditional on a boolean, so the tablet-tier clearance is declared under the SAME boolean — two halves of one predicate rather than two static lines, the utility token matching the specimen at src/app/(public)/gallery/page.tsx:110 by checksum while the line deliberately does not. The conditional bottom clearance was DELETED rather than preserved: the shell reserves exactly what the signed-in branch reserved and corrects the tablet tier the pair could not reach. THE PHASE'S LAST STANDING OWN-MAXIMUM occurrence was here, composed at run time inside a template literal, and it is gone; the two conditional paddings on that same line survived, because dropping the authenticated branch would put the menu's last row under the phone navigation bar. THE VENUE CAUTION, and it is the correction the roadmap carried: this surface reads NO LOCATION AT ALL — zero occurrences across its files and no venue column in any of its select calls, re-measured on the tree after every diff rather than inherited from the premise the phase was written on. The heading decision is RECORDED EITHER WAY: the surface stays headless as a declared exception, because the file already carried a written decision to omit the event title and date and there is no dominant line to promote. The closing-time payload is byte-identical, and the guest's browser custody is proved byte-identical on all four paths — key, write, read, poll — by its ABSENCE from the diff rather than by an assertion about it. THE REFUSAL THAT IS PART OF THIS SURFACE: the guest token screen holds THREE shells where the plan modelled one, and the two the bartender operates are refused and left legible to the gate — D-41.2-07, granted per file on this file's own argument and explicitly NOT inherited from its twin. RECORDED AND NOT REPAIRED: five silent catches on the guest money path, each at its own file:line. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/dashboard", "src/app/(members)/dashboard/page.tsx", "default",
+    "plans 41.2-13 and 41.2-14 — whole, and 'whole' here is THREE files across two plans plus a placeholder: the route file and the member's token list (41.2-13), the member's own media section (41.2-14), and the route-adjacent placeholder, eleven hand-rolled pulses gone. The referral control beside it was converted ONE WAVE EARLIER as spine by plan 41.2-07, and the four money-core files in WAVE 5 by plan 41.2-10, precisely so that three surfaces stayed three plans instead of collapsing into one; neither is claimed here. NOT on §4's closed wide list and therefore default — this was the phase's SECOND wide candidate and the form is DEFERRED rather than rejected, reversible in one word of the shell's call; focus is UNAVAILABLE rather than deferred, for the check-E reason every surface in this block carries. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier column clearance declared in the same commit, on a div wrapping the shell with the navigation as its sibling, the token byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110. THE MEDIA SECTION'S DISPOSITION IS STATED WITH ITS REASON, because it is the one place in this phase where a debt left a list by DELEGATION rather than by a shell swap: the tree's only hand-rolled role-marked overlay now delegates to the file already declared PERMANENTLY EXEMPT — the full-bleed media viewer — instead of being re-shelled onto the dialog primitive or granted an exemption of its own. That was decided in writing BEFORE the diff, and it is the reason D-41.2-06's warning against extending an exemption by analogy did not have to be exercised here. This is also the phase's heaviest raw-palette file, cleared against wave 0's own per-file number; the token grouping predicate is byte-identical; three tinted marks became neutral badges because the accent is not a state signal; and the disclosure toggle refused the button ladder — every rung is a pill and this is a full-width bar — so it stays a raw element, declares the 44px floor itself and IMPORTS the shared focus expression. One behaviour was ADDED AND DECLARED rather than discovered in a diff: the disclosure's expanded state, whose only previous channel was a rotating chevron. RECORDED AND NOT REPAIRED: a silent catch on a member's own money read, at its file:line. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+  [
+    "/events/[slug]", "src/app/(public)/events/[slug]/page.tsx", "default",
+    "plans 41.2-15 … 41.2-18 — whole, and 'whole' here is the route file (41.2-15, knot 2), the secret-venue hint dialog (41.2-16, knot 3), the three money satellites (41.2-17) and four more satellites plus the placeholder (41.2-18); the shared money core beneath it was converted in wave 5 as spine and is not claimed here. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred, because this surface mounts the responsive navigation. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier clearance declared in the same commit — the TWELFTH of twelve — the token byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110. THE CAUTION, and this one is the heaviest in the phase, because this is THE ONE PAGE IN THE PRODUCT WHERE MONEY AND A SECRET ADDRESS MEET. Every venue-critical property was counted AFTER the diff, not reasoned about: (1) the venue chain is still THREE BRANCHES AND AN ELSE-NULL, tests identical and in order, the guard byte-identical including indentation — the body was deliberately left two levels shallower than its new wrappers so that claim carries no whitespace qualifier; (2) the reveal test is still WRITTEN POSITIVELY and still carries the comment that explains why, because `undefined !== null` is TRUE and the negated form plus a dropped column opens every secret night silently; (3) the render mode is still DECLARED and not derived — one occurrence before, one after; (4) this route still exports NO social-preview metadata — zero occurrences before and after — and THE ABSENCE IS A DECISION (T-37-25), because a preview card carrying a secret address is a publication; (5) the night select's columns are unchanged as a MULTISET over comment-stripped source, 22 tokens and 21 distinct, corroborated by a raw second instrument agreeing in both states, with the qualified embed hint kept WHOLE as one token — unqualified it answers an ambiguity error and FAILS SILENTLY, rendering the page as though the night had no parties at all. THE COUNT '17' IS A DRIFTED FIGURE and is recorded rather than quietly satisfied (F-41.2-15-01): the plan and the context both said seventeen, the tree says 18 top-level items / 22 tokens / 21 distinct, and the MULTISET is the assertion while the number only describes it. The visibility function still has SEVEN ARMS AND TWO VERDICTS, still ANDed at the render site so the narrower always wins. Every satellite mount conditional and every prop is byte-identical, and NOT DRAWING A SATELLITE WAS NEVER THE GUARD — this conversion did not make it one. The hint dialog reached the platform's modal — Escape, focus trap, inert background — WITHOUT ONE CONDITIONAL LINE CHANGING, its three unlock branches still three and its deliberate two-bullet asymmetry still asymmetric; its two roads in became chips rather than buttons carrying an address, because the button ladder's link branch renders a bare anchor and would have lost client navigation, prefetching and the build-time address check silently. On the money satellites every validation attribute is proved unchanged as a SORTED MULTISET over comment-stripped source rather than by anybody reading a diff, and the purchase resumption's conditions are absent from the diff entirely. The upload surface still does not name the bucket it must never name; the tree's LAST use of the retired breakpoint tier was migrated by copying the analog's RULE rather than its literal string; and the share control's exit enumeration was rebuilt by reading the code, its payload proved byte-identical by checksum. RECORDED AND NOT REPAIRED: a seventh money-path failure — a reduction applied before signing up is carried INTO the stored intent and never carried OUT of it. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -863,6 +959,25 @@ export function checkManifest() {
           "       exact name — a missing file, or a case typo this repository's gates would\n" +
           "       resolve differently from the volume it is checked out on. Nothing was\n" +
           "       measured."
+      );
+    }
+  }
+
+  /*
+   * A stale NON_DECLARABLE entry REFUSES, for the reason every other list in
+   * this function refuses: a stale entry reads exactly like a live one. Check F
+   * subtracts this list from the tree's census, so an entry naming a file that
+   * is gone would silently make the arithmetic close on a page nobody accounted
+   * for — the one failure direction that prints a tick.
+   */
+  for (const [path] of NON_DECLARABLE) {
+    if (!existsCaseExact(path)) {
+      refusals.push(
+        `NON_DECLARABLE names ${path}, which is not on disk under that exact name.\n` +
+          "       This list is SUBTRACTED from check F's tree-side census, so a stale entry\n" +
+          "       does not merely sit there: it forgives a page that does not exist while some\n" +
+          "       page that does exist goes unaccounted for. If the route was deleted or moved,\n" +
+          "       its line leaves in the same commit. Nothing was measured."
       );
     }
   }

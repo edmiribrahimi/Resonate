@@ -48,7 +48,13 @@
  * stops passing by absence. See D-41.1-21 at the walk.
  *
  * This is **G1 (checks A, B, C) and G4 (checks D and E) in one script**, over one
- * manifest, with one walk. They are not split, and the reason is not economy:
+ * manifest, with one walk — plus **check F, added by plan 41.2-19, which is the
+ * only check here whose scope comes from the TREE rather than from the
+ * manifest**: every `page.tsx` under `src/app` must be declared, fenced, or on
+ * `NON_DECLARABLE`. Every other check asks *is what is written real*; F asks the
+ * opposite, *is what is real written*, and until it existed a forty-second page
+ * added next month was invisible to the whole suite. They are not split, and the
+ * reason is not economy:
  * two scripts reading the same manifest would resolve the same paths two ways,
  * and the day the two resolvers disagree is the day one of them is measuring a
  * file the other is not. `41-VALIDATION.md` lists them as separate gates
@@ -337,7 +343,7 @@
  * for it.)
  *
  * Exit codes:
- *   0  all five checks passed
+ *   0  all six checks passed
  *   1  at least one failed — each is printed with its file, its line and the
  *      exact thing found
  *   2  nothing was measured: the manifest is missing, unimportable, empty or
@@ -1418,12 +1424,15 @@ try {
   );
 }
 
-const { SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, checkManifest, convertedSpinePaths, existsCaseExact } =
-  manifest;
+const {
+  SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, NON_DECLARABLE,
+  checkManifest, convertedSpinePaths, existsCaseExact,
+} = manifest;
 
 for (const [name, value] of [
   ['SPINE', SPINE], ['PHASE_42_PATHS', PHASE_42_PATHS],
   ['PRIMITIVES', PRIMITIVES], ['CONVERTED', CONVERTED],
+  ['NON_DECLARABLE', NON_DECLARABLE],
 ]) {
   if (!Array.isArray(value)) {
     refuse(
@@ -3748,12 +3757,140 @@ if (!failures.includes('E')) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * check F — every `page.tsx` under `src/app` is ACCOUNTED FOR (the census)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The one check in this file whose scope comes from the TREE and not the list.
+ *
+ * **THE HOLE IT CLOSES, stated as 41.2-WAVE0-FINDINGS.md §8.1 stated it.**
+ * `checkManifest()` refuses on an empty `CONVERTED` and on an entry naming a
+ * missing path. Both are **list-side**: they ask whether what is written is
+ * real. **Nothing anywhere asked the opposite question** — whether what is real
+ * is written. A forty-second page added next month was invisible to every gate
+ * in this phase and the whole suite stayed green, because a criterion asserted
+ * over a set that cannot contain the counter-example is a claim and not a check.
+ *
+ * Every `page.tsx` under `src/app` must be exactly one of:
+ *
+ *   1. the `pageFile` of an entry in `CONVERTED`;
+ *   2. matched by a glob in `PHASE_42_PATHS` — a FENCE: nobody measured it, and
+ *      nothing here says the markup behind it is right;
+ *   3. named in `NON_DECLARABLE` — a CATEGORY REFUSAL: somebody measured it and
+ *      found nothing for a surface criterion to be true or false about.
+ *
+ * A page in none of the three is a **FAILURE** (exit 1), named at its path. The
+ * three buckets are printed separately on every run and are deliberately not
+ * collapsed into one number: collapsing *fenced* into *exempt* — in the code or,
+ * worse, in the report a reader actually sees — is how a scope boundary quietly
+ * turns into an approval (`verify-dialogs.mjs:612-628`, the same distinction).
+ *
+ * **The stale direction refuses rather than fails**, and it refuses inside
+ * `checkManifest()` above, before this check runs: a `NON_DECLARABLE` entry
+ * naming a file that is not on disk would forgive a page that does not exist
+ * while a page that does exist went unaccounted for.
+ *
+ * **This is the correction `verify-tables.mjs` check A already embodies**, and
+ * it is the reason that gate could close its migration without losing its teeth:
+ * a tree-side accounting fails an unaccounted FILE, not a missing LIST ENTRY.
+ *
+ * **UNMEASURED, not approved.** Check F closes ONE direction. It says nothing
+ * about a page declared with the wrong width, the wrong reason, or a reason
+ * describing work that was not done — those remain a human's written claim.
+ * Completeness is not correctness.
+ */
+
+const PAGE_BASENAME = 'page.tsx';
+
+function listPageFiles(absDir) {
+  const out = [];
+  const walk = (abs) => {
+    for (const entry of readdirSync(abs, { withFileTypes: true })) {
+      const child = `${abs}/${entry.name}`;
+      if (lstatSync(child).isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        walk(child);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (entry.name !== PAGE_BASENAME) continue;
+      out.push(toRelative(child));
+    }
+  };
+  walk(absDir);
+  return out.sort();
+}
+
+const treePages = listPageFiles(`${ROOT}/${APP_DIR_REL}`);
+const censusDeclaredPageFiles = new Set(CONVERTED.map(([, pageFile]) => pageFile));
+const nonDeclarablePaths = new Set(NON_DECLARABLE.map(([pageFile]) => pageFile));
+
+const censusDeclared = [];
+const censusFenced = [];
+const censusNonDeclarable = [];
+const censusUnaccounted = [];
+
+for (const rel of treePages) {
+  if (censusDeclaredPageFiles.has(rel)) {
+    censusDeclared.push(rel);
+    continue;
+  }
+  const behind = phase42Match(rel);
+  if (behind) {
+    censusFenced.push({ rel, glob: behind.glob });
+    continue;
+  }
+  if (nonDeclarablePaths.has(rel)) {
+    censusNonDeclarable.push(rel);
+    continue;
+  }
+  censusUnaccounted.push(rel);
+}
+
+console.log('  check F — the tree-side census: every page.tsx accounted for (criterion 1):\n');
+console.log(`      page.tsx files under ${APP_DIR_REL}      : ${treePages.length}`);
+console.log(`      declared in CONVERTED                : ${censusDeclared.length}`);
+console.log(`      behind the Phase 42 fence            : ${censusFenced.length}   (measured by nobody — a fence, not an exemption)`);
+console.log(`      on NON_DECLARABLE                    : ${censusNonDeclarable.length}   (measured, and not a surface)`);
+console.log(`      unaccounted for                      : ${censusUnaccounted.length}\n`);
+
+for (const { rel, glob } of censusFenced) {
+  console.log(`       ${rel}`);
+  console.log(`         fenced by  ${glob}`);
+}
+for (const rel of censusNonDeclarable) {
+  const reason = NON_DECLARABLE.find(([p]) => p === rel)?.[1] ?? '';
+  console.log(`       ${rel}`);
+  console.log(`         ${reason.slice(0, 96)}…`);
+}
+console.log('');
+
+if (censusUnaccounted.length > 0) {
+  failures.push('F');
+  console.log(`  ✗ F  ${censusUnaccounted.length} page.tsx file(s) exist and are accounted for NOWHERE:\n`);
+  for (const rel of censusUnaccounted) console.log(`       ${rel}`);
+  console.log(
+    '\n       A route file that renders a surface and is on no list is a surface no gate\n' +
+      '       walks: checks A, B and D never open it, and the phase reports green over a\n' +
+      '       screen nobody looked at. Put it on CONVERTED with the plan that converted it,\n' +
+      '       behind PHASE_42_PATHS if another phase owns it, or on NON_DECLARABLE with the\n' +
+      '       argument for why it is not a surface. All three are decisions somebody reads.\n'
+  );
+} else {
+  console.log(
+    `  ✓ F  all ${treePages.length} page.tsx file(s) under ${APP_DIR_REL} are accounted for —\n` +
+      `       ${censusDeclared.length} declared, ${censusFenced.length} fenced, ${censusNonDeclarable.length} non-declarable, and the three buckets are\n` +
+      '       printed apart because fenced and exempt are not the same fact\n'
+  );
+}
+
 /* ── verdict ──────────────────────────────────────────────────────────────── */
 
 console.log('');
 if (failures.length === 0) {
   console.log(
-    `  CONVERSION_OK — all five checks passed over ${surfaces.length} declared surface(s), ` +
+    `  CONVERSION_OK — all six checks passed over ${surfaces.length} declared surface(s), ` +
       `${allScanned.size} file(s) scanned.`
   );
   console.log(
