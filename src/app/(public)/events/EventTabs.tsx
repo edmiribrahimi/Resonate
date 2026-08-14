@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { StaggeredList, StaggeredItem } from "@/components/motion/StaggeredList";
+import { FOCUS_RING } from "@/components/ui/Button";
+import { Badge, Chip } from "@/components/ui/Chip";
 import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
 
@@ -171,17 +173,30 @@ function EventList({
                 : `Nothing announced for ${activeFormat.name}`}
             </p>
             {/*
-              Clears the format and keeps the tab. Deliberately NOT in the
-              interaction accent: that hue is reserved for the active tab, the
-              lineup pills, the venue link and the focus ring, and the format
-              axis never borrows it.
+              Clears the format and keeps the tab. It is a LINK and it is a
+              target, so it is a chip — the sentence at the top of `Chip.tsx`
+              decides it, and the primitive brings the 44px floor and the one
+              focus expression with it.
+
+              What it is deliberately NOT given is `selected`. That is the only
+              form the chip fills with the interaction accent, and it is also
+              what emits `aria-current`: this control is not the current item
+              among siblings and it has none. The hue stays reserved for the
+              active tab, the lineup pills, the venue link and the focus ring,
+              and the format axis never borrows it.
+
+              Two chips in a ternary rather than one chip with a ternary href,
+              for the reason `goToTab` states below: a bare `string` does not
+              compile under this project's typed routes, so every branch is its
+              own literal.
             */}
-            <Link
-              href={isPast ? "/events?tab=past" : "/events"}
-              className="mt-2 inline-block text-sm text-foreground underline underline-offset-4 transition-opacity active:opacity-80"
-            >
-              Show all events
-            </Link>
+            <div className="mt-2 flex justify-center">
+              {isPast ? (
+                <Chip href="/events?tab=past">Show all events</Chip>
+              ) : (
+                <Chip href="/events">Show all events</Chip>
+              )}
+            </div>
           </>
         ) : isPast ? (
           <p className="text-muted text-sm">No past events yet</p>
@@ -199,12 +214,41 @@ function EventList({
     <StaggeredList className="flex flex-col gap-4">
       {events.map((event) => (
         <StaggeredItem key={event.slug}>
-          <Link href={`/events/${event.slug}`}>
+          {/*
+            The LINK is the target and the DIV is the box, and they stay two
+            elements on purpose.
+
+            The link declares the floor — `min-h-11`, unconditional, a MINIMUM
+            on a box far taller than 44px — and the one focus expression,
+            imported and never re-spelled. G5 measures interactive elements that
+            declare no height at all, and this was one of them.
+
+            The div carries the card contract: the container radius, the line
+            token on the edge, the surface ground and the 24px padding. Those
+            are the four values `SkeletonCard` writes, so the placeholder
+            standing in front of this list occupies the box these rows take and
+            nothing moves when the data lands. The 20px padding it replaces is
+            not a step §3.1 names (`Skeleton.tsx:19-32` says so of the same
+            value).
+
+            The two grounds stay a ternary producing EXACTLY ONE background
+            utility. A second one appended after a base would be the WR-05 trap
+            named at `PageShell.tsx:109-114` — same property, same specificity,
+            so the emitted sheet's order would decide which wins. That is also
+            why this file does not hand the box to the `Card` primitive: the
+            past ground is an override of the one thing that primitive always
+            writes. The converted work surface reached the same conclusion and
+            wrote the contract out (`components/events/EventList.tsx:228-232`).
+          */}
+          <Link
+            href={`/events/${event.slug}`}
+            className={`block min-h-11 ${FOCUS_RING}`}
+          >
             <div
-              className={`rounded-2xl border border-card-border p-5 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+              className={`rounded-2xl border border-line p-6 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
                 isPast
-                  ? "bg-card/50 opacity-70 hover:opacity-100"
-                  : "bg-card"
+                  ? "bg-surface/50 opacity-70 hover:opacity-100"
+                  : "bg-surface"
               }`}
             >
               <p className="mb-1 text-sm text-muted">
@@ -251,10 +295,26 @@ function EventList({
               )}
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-base font-semibold">{event.title}</h3>
+                {/*
+                  A mark, not a target: it states what this night is and cannot
+                  be operated, so it is a badge and renders a span — the same
+                  call the converted work surface makes for the same word
+                  (`components/events/EventList.tsx:246-252`).
+
+                  The raw amber it replaces was NOT substituted for the amber
+                  semantic, and the reason is this surface in particular:
+                  `--sem-warn` IS the amber that identifies one of the four
+                  formats (`globals.css:161`), and eight lines above this
+                  element a format marker paints a catalogue colour on the same
+                  card. An amber mark here could not tell a reader "caution"
+                  from "this is a night of that format" by hue —
+                  `FormatMarker.tsx:120-128` states the same prohibition from
+                  the other side. The word is the channel, and it always was.
+                */}
                 {event.is_draft && (
-                  <span className="shrink-0 rounded-full bg-yellow-500/20 px-2.5 py-0.5 text-xs font-medium text-yellow-400">
+                  <Badge tone="neutral" className="shrink-0">
                     Draft
-                  </span>
+                  </Badge>
                 )}
               </div>
               {event.lineup.length > 0 && (
@@ -441,34 +501,63 @@ export default function EventTabs({
 
   return (
     <div>
-      {/* Tab Switcher */}
-      <div className="flex gap-6 px-6 mb-6 border-b border-card-border">
-        <button
+      {/*
+        The time axis, on the chip primitive. `Chip.tsx` names *a tab* among the
+        three things a chip is, and the precedent is `StaffNav.tsx:164-171`,
+        which renders the work surfaces' tabs exactly this way, `ariaCurrent`
+        included.
+
+        What the primitive brings that the two hand-written buttons did not:
+        the 44px floor unconditionally, the one focus expression, and
+        `aria-current` — so until this commit the current tab was announced by
+        colour alone, which `40-UI-SPEC.md` §10 forbids.
+
+        It also brings the accent as the SELECTED fill, and on this surface that
+        is the point rather than a side effect: the interaction accent is
+        reserved for the active tab, and it is BARRED from the format channel
+        one element below (`FormatFilterRow.tsx`'s docblock, and the reason it
+        does not adopt this primitive). Two chip rows that read differently is
+        the channel separation made visible; two that read the same would be the
+        failure.
+
+        The upper-casing goes with the buttons, and that is a gain rather than a
+        loss: `FormatMarker.tsx` exists because `text-transform` inherits and
+        the two tabs on this very page were the ancestor it names. There is one
+        fewer transform on the page now.
+
+        The baseline rule under the strip goes too — a bottom border beneath a
+        row of pills is a leftover of the language that was replaced, not a
+        separator anybody chose — and so does the gutter, which the shell owns.
+      */}
+      <div className="mb-6 flex gap-2">
+        <Chip
           onClick={() => switchTab("upcoming")}
-          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-all active:scale-95 active:opacity-80 ${
-            activeTab === "upcoming"
-              ? "text-accent border-b-2 border-accent"
-              : "text-muted"
-          }`}
+          selected={activeTab === "upcoming"}
+          ariaCurrent="page"
         >
           Upcoming
-        </button>
-        <button
+        </Chip>
+        <Chip
           onClick={() => switchTab("past")}
-          className={`pb-3 text-sm font-semibold uppercase tracking-widest transition-all active:scale-95 active:opacity-80 ${
-            activeTab === "past"
-              ? "text-accent border-b-2 border-accent"
-              : "text-muted"
-          }`}
+          selected={activeTab === "past"}
+          ariaCurrent="page"
         >
           Past
-        </button>
+        </Chip>
       </div>
 
-      {/* Two-panel swipeable content */}
+      {/* Two-panel swipeable content.
+
+          `-mx-6` bleeds the clipping box out to the shell's gutter — the same
+          shape `FormatFilterRow` uses one element above — and each panel keeps
+          its own gutter inside it. Two consequences, and both are the reason it
+          is written this way rather than by deleting the panels' padding: the
+          visible panel's content stays aligned with the title and the chips
+          above it, and the seam between the two panels keeps its 48px of space,
+          so a drag does not bring the next panel's text hard against this one's. */}
       <div
         ref={containerRef}
-        className="overflow-hidden"
+        className="-mx-6 overflow-hidden"
         style={{ touchAction: locked.current === "horizontal" ? "none" : "auto" }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

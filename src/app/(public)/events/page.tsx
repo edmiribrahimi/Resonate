@@ -1,5 +1,7 @@
-import MobileNav from "@/components/layout/MobileNav";
+import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle } from "@/components/ui/Typography";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
@@ -116,7 +118,10 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // Role, status and capabilities from the SESSION. Resolved here, OUTSIDE the
   // try/catch below, on purpose: a resolver failure must reach Next's error
   // boundary rather than be turned into an empty event list by that catch.
-  // `role` and `status` are presentation — they choose MobileNav's entries.
+  // `role` and `status` are presentation — they choose the navigation's
+  // entries. The navigation component changed in phase 41.2 and the four values
+  // it is given did not: width may change layout, never membership
+  // (`41-UI-SPEC.md` §0 rule 5). The server still decides which entries exist.
   const { capabilities, role, status, liveAssignmentCapabilities } =
     await getAccessContext();
 
@@ -524,48 +529,92 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   }
 
   return (
-    <div className="min-h-dvh pb-24">
-      <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Events</h1>
-        </header>
-      </AnimatedSection>
+    <>
+      {/*
+        The other half of the pairing check E of `scripts/verify-conversion.mjs`
+        asserts in BOTH directions: the files declaring the leading-edge column
+        clearance are exactly the files mounting the responsive navigation form.
+        The two halves land in one commit, because either alone is a red — and
+        the loud one is the missing declaration: content sliding UNDER a 224px
+        column from 768px up.
 
-      {/* Above the tab row and outside the swipeable container, because that
-          placement IS the semantics: the format filter applies to both halves
-          of the time axis, and the tab picks which half. Inside the swipe
-          container it would translate with the panels. */}
-      <AnimatedSection delay={0.05}>
-        <FormatFilterRow
-          formats={formatOptions}
-          activeFormat={activeFormat}
-          activeTab={activeTab}
-        />
-      </AnimatedSection>
+        The gate answers the navigation question twice and the two answers
+        disagreed on this file until this commit: its route table already
+        printed `/events` as *mounting*, because it reached the responsive form
+        THROUGH the phone-locked wrapper; its pairing asks `importsDirectly`
+        (`verify-conversion.mjs:2803-2809`) and counted the same file as NOT
+        mounting. Reading the first and concluding no declaration was owed is
+        exactly how the red ships.
 
-      {/* The two filtered arrays, the tab the address asked for, and the two
-          fields of the active format — its slug, so every tab href preserves
-          the other axis, and its name, so a filtered empty state can say which
-          format it is empty for. Nothing else crosses this boundary: no total,
-          no per-format tally, no "how many were hidden". A child cannot render
-          a number it was never given. */}
-      <AnimatedSection delay={0.1}>
-        <EventTabs
-          upcoming={upcoming}
-          past={past}
-          activeTab={activeTab}
-          activeFormat={
-            activeFormatOption
-              ? { slug: activeFormatOption.slug, name: activeFormatOption.name }
-              : null
-          }
-        />
-      </AnimatedSection>
+        It carries an arbitrary-property utility at the md tier setting the
+        inline-start navigation inset to fourteen rems, copied verbatim from
+        `src/app/(public)/gallery/page.tsx:110`, which is the line the gate
+        itself matched on its last green run. It is written whole in the class
+        list and is not spelled in this comment: Tailwind scans comments, cannot
+        tell a description from a use, and an abbreviated one emits a malformed
+        rule (DEF-41-01).
+      */}
+      <div className="md:[--nav-inset-inline-start:14rem]">
+        {/*
+          `default`, and that is an answer rather than a fallback (D-41.2-02).
+          This surface was the phase's one candidate for the wide form — §4's
+          criterion is a multi-column grid — and it was DEFERRED, not rejected:
+          the nights render as a single column of cards today, the change is one
+          word in this call, and revisiting it is a decision for after this
+          phase's numbers exist. Recorded so the next reader sees a deferral and
+          not an oversight.
+        */}
+        <PageShell width="default">
+          <AnimatedSection>
+            <header className="mb-6">
+              <PageTitle>Events</PageTitle>
+            </header>
+          </AnimatedSection>
 
-      {/* Presentation only. Cast at the page boundary because MobileNav is a
-          client component and cannot import the resolver; phase 34 (STAFF-03)
-          owns the nav vocabulary. */}
-      <MobileNav
+          {/* Above the tab row and outside the swipeable container, because that
+              placement IS the semantics: the format filter applies to both halves
+              of the time axis, and the tab picks which half. Inside the swipe
+              container it would translate with the panels. */}
+          <AnimatedSection delay={0.05}>
+            <FormatFilterRow
+              formats={formatOptions}
+              activeFormat={activeFormat}
+              activeTab={activeTab}
+            />
+          </AnimatedSection>
+
+          {/* The two filtered arrays, the tab the address asked for, and the two
+              fields of the active format — its slug, so every tab href preserves
+              the other axis, and its name, so a filtered empty state can say which
+              format it is empty for. Nothing else crosses this boundary: no total,
+              no per-format tally, no "how many were hidden". A child cannot render
+              a number it was never given. */}
+          <AnimatedSection delay={0.1}>
+            <EventTabs
+              upcoming={upcoming}
+              past={past}
+              activeTab={activeTab}
+              activeFormat={
+                activeFormatOption
+                  ? { slug: activeFormatOption.slug, name: activeFormatOption.name }
+                  : null
+              }
+            />
+          </AnimatedSection>
+        </PageShell>
+      </div>
+
+      {/* Presentation only, and a SIBLING of the declaring wrapper rather than a
+          child of it: inside, it would satisfy the textual pairing and pad the
+          column by its own clearance. The old page root is gone into the shell,
+          so the mount moved up a level into this fragment — the shape at
+          `src/app/(public)/gallery/page.tsx:88-133`.
+
+          Cast at the page boundary because the navigation is a client component
+          and cannot import the resolver; phase 34 (STAFF-03) owns the nav
+          vocabulary. The four props, their order and their expressions are
+          unchanged from the wrapper this replaces: NO CAPABILITY CHECK TOUCHED. */}
+      <AppNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
         capabilities={[...capabilities]}
@@ -573,6 +622,6 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
         }
       />
-    </div>
+    </>
   );
 }
