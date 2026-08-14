@@ -1024,12 +1024,31 @@ export const DECLARED_MAXIMA = ['max-w-5xl', 'max-w-7xl', 'max-w-sm'];
  * file's own: a failure says *the tree is wrong*, a refusal says *nothing was
  * measured*. A dead exemption measures nothing while looking supervised.
  *
- * ── IT IS EMPTY TODAY, AND THAT IS THE MEASURED STATE ───────────────────────
+ * ── IT WAS EMPTY, AND IT IS NOT ANY MORE — ONE ENTRY, 2026-08-14 ────────────
  *
- * Not a list nobody got round to filling. Measured on the tree by plan 41.1-11:
- * **zero of the eighteen declared page files carries any width at all**, because
- * both paragraphs that wanted one had it deleted before this mechanism existed.
- * An empty list forgives nothing, which is why an empty one is honest here and
+ * **The withdrawn sentence, kept visible rather than overwritten** (this file
+ * family's habit, `src/components/ui/PageShell.tsx:42-46`): *"IT IS EMPTY
+ * TODAY, AND THAT IS THE MEASURED STATE. Not a list nobody got round to
+ * filling. Measured on the tree by plan 41.1-11: zero of the eighteen declared
+ * page files carries any width at all, because both paragraphs that wanted one
+ * had it deleted before this mechanism existed."*
+ *
+ * That was true of eighteen declared page files and stopped being true at
+ * thirty-one. The first entry is the artist bio paragraph on
+ * `/artists/[slug]`, written by plan **41.2-05** in the SAME COMMIT as that
+ * surface's `CONVERTED` declaration, which is the only order that works: the
+ * declaration alone is a check-D red on a correct line, and the entry alone is
+ * a refusal — *"no CONVERTED surface declares this page file"*.
+ *
+ * **The disposition was taken in wave 0 and APPLIED here, not decided here.**
+ * `41.2-WAVE0-FINDINGS.md` §7.2 row 2 dispositioned that line DECLARE and §7.3
+ * spelled the three matched parts out with the measurements behind each. Two
+ * documents named two different authors for it; the plan won on D-41.1-22 —
+ * every gate edit in a wave belongs to that wave's reconciliation — and the
+ * disagreement is recorded in `41.2-04-FINDINGS.md` F-41.2-04-01 rather than
+ * settled in silence.
+ *
+ * An empty list forgave nothing, which is why an empty one was honest here and
  * would not be honest on a `REMAINING` list. `ORPHANS_DECLARED` a few hundred
  * lines below is this file's own precedent for the shape.
  *
@@ -1050,7 +1069,32 @@ export const DECLARED_MAXIMA = ['max-w-5xl', 'max-w-7xl', 'max-w-sm'];
  *
  * Shape: `[pageFile, maximum, fragment, reason]`.
  */
-export const TYPOGRAPHIC_MEASURES = [];
+export const TYPOGRAPHIC_MEASURES = [
+  /* The three parts, and why each is the value it is (41.2-WAVE0-FINDINGS §7.3):
+   *
+   *   - the page file is the MANIFEST's spelling, because the entry is compared
+   *     against `s.pageFile` read out of `CONVERTED` and not against a path off
+   *     the filesystem;
+   *   - the maximum is the exact token the width matcher captures — not a
+   *     substring and not an arbitrary-value equivalent;
+   *   - the fragment is `whitespace-pre-line`, which is SEMANTIC rather than
+   *     stylistic: it preserves the line breaks an artist typed into their own
+   *     bio, so no conversion pass has any reason to touch it. A fragment of a
+   *     spacing or alignment utility is exactly what a conversion rewrites.
+   *
+   * It can match neither zero times nor twice: the file carries one `max-w-lg`
+   * and one `whitespace-pre-line`, both on the same live line, and the only
+   * other occurrence of the fragment in the file is inside a JSX comment the
+   * shared stripper blanks. Re-read on the CONVERTED tree by plan 41.2-05
+   * before this line was written, rather than trusted from a line number in a
+   * document: the conversion moved that line, and its indentation with it. */
+  [
+    'src/app/(public)/artists/[slug]/page.tsx',
+    'max-w-lg',
+    'whitespace-pre-line',
+    "the artist bio is prose and reads at a measure; the shell's 1024px is a line length nobody finishes",
+  ],
+];
 
 /**
  * The two modules through which a navigation reaches a surface — check E2.
