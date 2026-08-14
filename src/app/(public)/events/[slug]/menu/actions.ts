@@ -7,6 +7,103 @@ import { CAP } from "@/lib/capabilities/keys";
 import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import { menuCloseInstant } from "@/utils/datetime";
+import { logMoneyPathFailure } from "@/lib/failure/money-path";
+
+/**
+ * Why the three causes below travel as a VALUE, and why they stay three.
+ *
+ * ── The value, not the message ───────────────────────────────────────────────
+ *
+ * Until plan 46-04 this action threw on all three, and **all three arrived
+ * identical in production**: Next redacts the message of an error thrown out of
+ * a Server Action in a production build, stated at the source in
+ * `src/lib/capabilities/server.ts:58-63`. Rewording a `throw` would therefore
+ * not have been a fix — a caller that branches on message text works in
+ * `next dev` and stops working where it counts. The category has to be a
+ * returned value or it does not survive the build that matters.
+ *
+ * ── Three, and not one ───────────────────────────────────────────────────────
+ *
+ * D-46-10b: *you may not do this* and *it did not save* are different facts to
+ * an organizer. The first sends them to find someone who may; the second is
+ * theirs to retry. Collapsing them into one catch would replace a silent failure
+ * with a collapsed one — the newsletter form is this repository's own recorded
+ * precedent for that shape, one message for a network fault, a missing key and
+ * an already-subscribed address alike (`.planning/codebase/CONCERNS.md`,
+ * `meta-gates.md`). *Nobody is signed in* is kept apart from both for the reason
+ * the original code already gave below: an anonymous caller would be refused by
+ * the capability test anyway, but "nobody is here" is not "this person may not".
+ *
+ * ── The `Record` is the trip-wire ────────────────────────────────────────────
+ *
+ * `MENU_CLOSE_ERROR` is total over `MenuCloseRefusal` (the construction of
+ * `src/lib/door/outcome.ts:278-302`, shared by `src/lib/failure/money-path.ts`).
+ * A fourth cause added without its sentence is an `npm run build` error, not a
+ * category that renders as nothing. In a repository with no test runner that
+ * build is the only automatic gate there is — proved by mutation in plan 46-04,
+ * task 3, and the proof is recorded in `46-04-SUMMARY.md`.
+ *
+ * The sentences are the approved ones and are not composed here: they come from
+ * `.planning/phases/46-silent-failures-on-the-money-path/46-COPY.md` §1, signed
+ * off in one pass on 2026-08-14. A plan that wants different words amends that
+ * list and re-presents it whole.
+ *
+ * ── Module-private, and the reason is measured rather than assumed ───────────
+ *
+ * The constants and the map are **not exported**, and the type is. The caller
+ * needs the category to branch on and the words to draw; it gets the words
+ * already resolved in `error`, so it never reads the map. That is the shape of
+ * the analog this conversion copies: `src/app/(admin)/admin/events/actions.ts`
+ * exports `NightRefusal` and `EventWriteResult` as types and keeps
+ * `nightRefusalSentence` private.
+ *
+ * Exporting the map was **probed, not assumed**, because this is a `"use server"`
+ * file and Next's documented contract for one is async-function exports only:
+ * with `export const MENU_CLOSE_ERROR`, `npm run build` on 2026-08-14 was green.
+ * So the build tolerates it here — and it stays private anyway, because an
+ * export nothing imports is an invitation for the next reader to pull it into
+ * the client component, which is the case the documented contract covers and
+ * this probe did not.
+ */
+const MENU_CLOSE_NOT_SIGNED_IN = "menu_close_not_signed_in";
+const MENU_CLOSE_NOT_PERMITTED = "menu_close_not_permitted";
+const MENU_CLOSE_WRITE_FAILED = "menu_close_write_failed";
+
+/** The three literals as a union, so the `Record` below can be total over them. */
+export type MenuCloseRefusal =
+  | typeof MENU_CLOSE_NOT_SIGNED_IN
+  | typeof MENU_CLOSE_NOT_PERMITTED
+  | typeof MENU_CLOSE_WRITE_FAILED;
+
+/**
+ * One sentence per cause, written once (46-COPY.md §1).
+ *
+ * The database `code` is appended to the third and to nothing else, in
+ * parentheses, exactly as `src/app/(admin)/admin/events/actions.ts:368` already
+ * does on the same kind of surface: a PostgREST code is a class of failure, not
+ * a row and not a person. It is appended where the result is built, so the
+ * sentences here stay byte-identical to the approved list.
+ */
+const MENU_CLOSE_ERROR: Record<MenuCloseRefusal, string> = {
+  [MENU_CLOSE_NOT_SIGNED_IN]:
+    "This session is no longer signed in, so the closing time was not changed. Sign in again and set it.",
+  [MENU_CLOSE_NOT_PERMITTED]:
+    "This account may not set the closing time for a night — an organizer has to do it. Nothing was changed.",
+  [MENU_CLOSE_WRITE_FAILED]:
+    "Saving the closing time failed. It is unchanged — the bar menu still closes when it did before. Try again.",
+};
+
+/**
+ * What the menu-closing command returns. `refusal` and `error` are present only
+ * when `success` is false — the shape of `EventWriteResult`
+ * (`src/app/(admin)/admin/events/actions.ts:276-282`), widened additively so the
+ * caller reads the category and the words without a second lookup.
+ */
+export type MenuCloseResult = {
+  success: boolean;
+  error?: string;
+  refusal?: MenuCloseRefusal;
+};
 
 /**
  * Update menu_closes_at for a party. Only master/organizer can do this.
@@ -35,20 +132,36 @@ import { menuCloseInstant } from "@/utils/datetime";
  * (`purchaseDrinksGuest` and `redeemDrinkTokenGuest` below). This change touches
  * *who may set it*, never the value written nor the `end_time` fallback nor the
  * grace window.
+ *
+ * **Plan 46-04 changed what this action RETURNS, never what it decides.** The
+ * predicate is still `CAP.STAFF_MANAGE`, it still runs before the service-client
+ * write for the reason two paragraphs up, and the value written is the same
+ * value. Only the three refusals stopped being thrown and started being carried
+ * — see the docblock above the union for why that distinction is load-bearing.
  */
 export async function updateMenuClosesAt(
   partyId: string,
   menuClosesAt: string | null
-): Promise<{ success: boolean }> {
+): Promise<MenuCloseResult> {
   const ctx = await getAccessContext();
 
   // Two causes, kept distinguishable (`meta-gates.md`, zero silent failures).
   // An anonymous caller resolves to the empty capability set and would be
   // refused below anyway, but "nobody is here" is not "this person may not".
-  if (!ctx.userId) throw new Error("Not authenticated");
+  if (!ctx.userId) {
+    return {
+      success: false,
+      refusal: MENU_CLOSE_NOT_SIGNED_IN,
+      error: MENU_CLOSE_ERROR[MENU_CLOSE_NOT_SIGNED_IN],
+    };
+  }
 
   if (!ctx.capabilities.has(CAP.STAFF_MANAGE)) {
-    throw new Error("forbidden.staff_manage_required");
+    return {
+      success: false,
+      refusal: MENU_CLOSE_NOT_PERMITTED,
+      error: MENU_CLOSE_ERROR[MENU_CLOSE_NOT_PERMITTED],
+    };
   }
 
   const serviceClient = getServiceClient();
@@ -57,7 +170,21 @@ export async function updateMenuClosesAt(
     .update({ menu_closes_at: menuClosesAt || null })
     .eq("id", partyId);
 
-  if (error) throw new Error("Failed to update menu closing time");
+  if (error) {
+    // Code and message only. `error.details` is never read here: on a
+    // constraint violation PostgREST returns the whole rejected row, and a log
+    // on this project reaches a screenshot (`money-path.ts`, `SafeError`).
+    logMoneyPathFailure(`event_parties.${MENU_CLOSE_WRITE_FAILED}`, {
+      code: error.code,
+      message: error.message,
+    });
+    return {
+      success: false,
+      refusal: MENU_CLOSE_WRITE_FAILED,
+      error: `${MENU_CLOSE_ERROR[MENU_CLOSE_WRITE_FAILED]} (${error.code ?? "no code"})`,
+    };
+  }
+
   return { success: true };
 }
 
