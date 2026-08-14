@@ -1044,5 +1044,29 @@ Not preferences — each one has a failure mode behind it.
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 46: Silent Failures on the Money Path
+
+**Goal**: A failure on a path that carries money produces an effect somebody can see. Today nine of them produce a confident, well-formatted, wrong statement instead — and this repository has **no error tracking**, so none of them reaches a human by itself.
+
+**Depends on**: nothing structural. **Runs BEFORE Phase 42** — the numbering is sequential because *a progressivo assigned is never renumbered*, and this roadmap already decouples number from order (33 → 43 → 35 → 34 → 36 → …).
+**Requirements**: TBD at planning — none of the existing DS/RESP requirements covers this.
+
+> **Why this phase exists and why it is not a bug list.** All nine were found by Phase 41.2 and are recorded, with `file:line` and consequence, in that phase's `deferred-items.md` **Group M**. Four came from research before any conversion; **five were found during execution and the research never saw them**. Every one was deliberately **recorded and not repaired**, because repairing them is *new copy on a money path* or *a payload change* — stop condition 2 — and a visual conversion is not where the product decides what someone is told when their money does something unexpected.
+>
+> **They are not nine catches that say the wrong thing.** Two have no handler at all; one coalesces a failed count to a legitimate value; one writes a value and never reads it. They are **four different ways to produce a confident, well-formatted, wrong statement** — which is worse than a blank screen, because a blank screen is distrusted.
+
+**Success Criteria** (what must be TRUE):
+
+  1. Every one of the nine has an **observable effect** — visible to the person affected, or to staff, or as a measurable consequence in the data. `meta-gates.md` is explicit that with no error tracking, *logging the error is not sufficient*: the log is a place nobody looks
+  2. A refusal that has **distinguishable causes says which one**, wherever the next step differs. The recorded cases include five RSVP refusals arriving as one opaque sentence, and a refund refusal whose third cause is the only one where the right advice is *wait*
+  3. **The one that charges the wrong amount is fixed first**: a discount applied before signing up is written into the saved purchase intent and never read back, so a returning guest **pays full price with no refusal and no trace**. It is the only one of the nine that takes money that was not owed
+  4. **The monotone guards are untouched.** A payment reaching completion still corrects forward; nothing makes an amount that was taken look like it was not; no reveal becomes reachable earlier
+  5. Each fix is proved by an **observable outcome**, not by a log line — and where the outcome can only be seen by a person, it goes in a written procedure with its `Result: pending`, because there is still no test runner
+
+**Plans**: TBD
+**UI hint**: partial — several fixes are copy a person reads, which is a product decision before it is a visual one
+
+> **The nine, by identifier**, in `41.2-deferred-items.md` Group M: `DI-41.2-01` … `DI-41.2-04` (research), `DI-41.2-06` … `DI-41.2-09` (execution), `DEF-41.2-A` (the refund refusal). `DI-41.2-10` … `DI-41.2-12` are adjacent intent-handling cases found alongside them and should be scoped in or out deliberately, not by accident.
+
 ---
-*Last updated: 2026-08-06 — Phase 43 added (role model and account creation); execution order set to 33 → 43 → 35 → 34 → 36 → …, with no phase renumbered*
+*Last updated: 2026-08-14 — Phase 46 added (silent failures on the money path), to run BEFORE Phase 42. Execution order stays decoupled from numbering: 33 → 43 → 35 → 34 → 36 → … → 41.2 → 46 → 42 → 44 → 45, with no phase renumbered*
