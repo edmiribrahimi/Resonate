@@ -1155,6 +1155,61 @@ export default async function EventDetailPage({
                 </Link>
               </div>
             ) : isUpcoming && (!isAuthenticated || isApproved || status === "pending") ? (
+              <>
+                {/*
+                  ── The sentence, and THE CONTROL BELOW IT STAYS LIVE ────────
+
+                  Three things a later reader needs, and all three are
+                  decisions rather than oversights:
+
+                  1. **The control is still rendered, deliberately.** No
+                     condition removes it, nothing disables it and no prop of
+                     it changed. That is the owner's standing decision on this
+                     finding — the control stays live and the SERVER refuses
+                     (`46-FINDING-01.md`, `46-VALIDATION.md`). The real guard
+                     is `reserve_ticket` in the database, which locks the tier
+                     row `FOR UPDATE`, counts and raises `Tier sold out`; in
+                     plpgsql a failed read RAISES rather than coalescing, so
+                     that guard already fails closed. Refusing here on a
+                     transient read error would refuse a buyer the database
+                     would have accepted.
+                  2. **The sentence's job is not to refuse.** It exists to stop
+                     a number this page could not read from being presented as
+                     a fact. It replaces the figure; it does not replace the
+                     sale.
+                  3. **The residual stays, and it is accepted with its cost in
+                     writing.** A payment can complete for a seat that is not
+                     there — the last discount use, a double submit — and
+                     nobody is told, because `reserve_ticket` runs at webhook
+                     time, AFTER the money moved. That is D-46-07, the owner's
+                     call. Nothing here narrows it and this sentence must never
+                     be reworded to imply it does; the deferred
+                     seat-reservation phase is its fix, by making the window
+                     impossible instead of visible.
+                */}
+                {eventTiers.some((t) => !t.soldKnown) && (
+                  <div
+                    role="status"
+                    className="mb-4 rounded-2xl border border-sem-warn/30 bg-sem-warn/10 p-4"
+                  >
+                    <p className="text-sm text-sem-warn">
+                      {EVENT_PAGE_REFUSAL[PLACES_UNKNOWN]}
+                    </p>
+                  </div>
+                )}
+              {/*
+                The control's own lines KEEP THEIR ORIGINAL INDENTATION, one
+                level shallower than the fragment that now holds them, and that
+                is deliberate rather than sloppy. This is the file where a wrong
+                edit publishes an address, so its diff is read by a human
+                line-by-line before it ships. Re-indenting an untouched control
+                would show every prop of it as removed and re-added, and the one
+                property the reader most needs to confirm — that nothing about
+                the control that takes money changed — would be buried under
+                whitespace. Same class of correction as the metadata paragraph
+                at the top of this file: keep the mechanical check measuring the
+                property it means.
+              */}
               <TierSelection
                 partyId={null}
                 tiers={eventTiers}
@@ -1162,6 +1217,7 @@ export default async function EventDetailPage({
                 isAuthenticated={isAuthenticated}
                 eventSlug={slug}
               />
+              </>
             ) : null}
           </AnimatedSection>
         )}
@@ -1424,6 +1480,61 @@ export default async function EventDetailPage({
                 party.tiers.length > 0 &&
                 (!isAuthenticated || isApproved || status === "pending") &&
                 (
+                  <>
+                    {/*
+                      ── The same sentence, and THIS CONTROL STAYS LIVE TOO ───
+
+                      The three notes at the event-level site above apply here
+                      unchanged, and they are the reason this is not an
+                      oversight: the control stays rendered by the owner's
+                      standing decision (`46-FINDING-01.md`,
+                      `46-VALIDATION.md`) because the authoritative guard is
+                      `reserve_ticket` in the database, which fails closed;
+                      the sentence exists to stop a number nobody could read
+                      from being presented as a fact, not to refuse the buyer;
+                      and the residual — a payment completing for a seat that
+                      is not there, with nobody told — is D-46-07, accepted
+                      with its cost in writing, whose fix is the deferred
+                      seat-reservation phase.
+
+                      ONE WORDING, BOTH SITES, taken verbatim from the approved
+                      list. Two wordings for one fact is how a register
+                      fragments (`community-membership.md`: the text is written
+                      once and used always).
+
+                      **THE TWO NULLS ARE NOT THE SAME NULL.** The *spots left*
+                      block above tests `spotsLeft !== null` and vanishes for
+                      both of them — which is right, since neither is a figure
+                      worth printing. Only one of them is a failure, though, so
+                      the condition here reads `spotsUnknown` and NOT
+                      `spotsLeft === null`: a night with no capacity set gets
+                      no sentence, because nothing went wrong on it. Making the
+                      two look alike would be this plan's own defect, one layer
+                      up from where it was fixed.
+
+                      Scope, stated rather than left to be noticed: this
+                      sentence is drawn at the PAID control only. It ends
+                      *"Buying is still open"*, which is not a true thing to
+                      say beside an RSVP button, and the approved list holds no
+                      second wording for a free night — a plan that wanted one
+                      would amend the list and re-present it whole (D-46-10a).
+                      On a free RSVP night whose count failed, the figure still
+                      disappears; what is missing is the explanation, on a path
+                      where no money moves.
+                    */}
+                    {(party.spotsUnknown || party.tiers.some((t) => !t.soldKnown)) && (
+                      <div
+                        role="status"
+                        className="mb-4 rounded-2xl border border-sem-warn/30 bg-sem-warn/10 p-4"
+                      >
+                        <p className="text-sm text-sem-warn">
+                          {EVENT_PAGE_REFUSAL[PLACES_UNKNOWN]}
+                        </p>
+                      </div>
+                    )}
+                  {/* Original indentation kept, for the reason given at the
+                      event-level site above: on this file the diff must show
+                      the money control untouched, not re-indented. */}
                   <TierSelection
                     partyId={party.id}
                     tiers={party.tiers}
@@ -1431,6 +1542,7 @@ export default async function EventDetailPage({
                     eventSlug={slug}
 
                   />
+                  </>
                 )}
 
               {/* Free RSVP party: RSVP button (upcoming only) */}
