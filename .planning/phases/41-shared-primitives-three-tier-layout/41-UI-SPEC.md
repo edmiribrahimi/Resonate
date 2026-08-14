@@ -1164,7 +1164,11 @@ target padded by an ancestor. **H41-4 is the only proof that anything is 44px**,
 and it needs a large touch screen — `41-RESEARCH.md` flags that one may not be
 available, in which case criterion 5 is recorded `human_needed` and not ticked.
 
-**Exemption list, closed today:**
+**Exemption list, closed today** — six written before the gate existed, then 7
+and 8 by an owner authorisation on 2026-08-14, then 9 and 10 by a second one the
+same day. Every addition was opened by a decision somebody signed, never by a
+red, and the count is stated where each list is printed rather than asserted
+here, so it cannot drift:
 
 1. **Phase 42, by path, with the reason in the script:**
    `src/app/(admin)/**/scanner/**`, `src/components/scanner/**`,
@@ -1231,6 +1235,68 @@ forgiven on a stated reason rather than measured, and G5 prints all of them with
 their constants, so a green still states what it took itself over. **H41-4, on a
 large touch screen, remains the only thing in this repository that proves
 anything renders at 44px**, it is still owed, and no green here ticks it.
+
+**Entries 9 and 10 were added later the same day, by a second authorisation, and
+they are TWO entries on purpose.** Phase 41.2 declared its last three surfaces
+and G5 went red on **seven elements in four files** (F-41.2-19-01). The seven are
+not one kind of thing, and the owner's decision was that they must not be written
+as if they were: five are the gate failing to READ a box that is comfortably
+above the floor, and **two are the product deliberately placing a control BELOW
+it.** One list of seven would have buried the second fact inside the first, and
+the second fact is an accessibility exception — the kind that has to stay
+visible to be revisited. **No threshold moved, no existing entry was widened, and
+no element under `src/` was edited to satisfy the parser.**
+
+9. **An element whose box is decided outside any height utility** — declared
+   **element by element** in G5's `UNREADABLE_BOX_ELEMENTS`, each entry naming
+   its file, its tag, a fragment resolving to exactly one element, **the
+   construction the box actually comes from**, and the reason. Five today: two
+   full-screen bartender serve areas whose height is a **flex stretch**, a drop
+   zone whose height is **its own padding**, a file input whose box is **removed
+   by a display utility**, and a link whose height is **its content's**. This is
+   the residual stated in G5's opening box before its first run — *it cannot see
+   a flex stretch … or a target padded by an ancestor* — arriving. **The elements
+   are correct; the reader is limited**, and two of them are the largest tap
+   targets in the product, which is what makes the red dangerous rather than
+   useful: a gate that reddens the largest target in the product is a gate that
+   gets switched off. Three guards, each pointing away from a green: a fragment
+   matching zero or several **refuses**; an element not carrying the named
+   construction **refuses** (its stated reason would be false about it); and an
+   element that declares the minimum after all **refuses**, because an entry
+   calling a measured element unreadable misleads in the other direction.
+   **Entry 7 was deliberately NOT widened to cover the file input.** It is an
+   attribute test whose abuse route is closed by a contradiction refusal; making
+   it a test of *ways to be invisible* would reopen exactly that route. A new
+   shape takes a declared line a person reads — G5's own prescription, applied
+   where it points.
+10. **A control the product places BELOW the floor by decision** — declared in
+    G5's `BELOW_FLOOR_BY_DECISION_ELEMENTS`, and **this one is not a parser
+    limit.** Two elements, both the row that **reverts an active drink token** on
+    a bartender's screen. They are measured, they are under 44px, and they are
+    under it on purpose: each file's own comment, predating this phase, says the
+    row is *"kept narrow so the bartender's tap can't hit it by mistake"*, under
+    a serve area that *"takes the whole screen"*. **The floor exists to make a
+    control easier to hit, and on this control easier is the failure** — the act
+    sends money backwards at a counter, at two in the morning, with a queue in
+    front, and `checkin-offline.md`'s asymmetry decides which error to design
+    against. §6.2 applies that same asymmetry to sizing and reaches the opposite
+    default (*a wrong answer costs a slightly-too-large button, never a
+    too-small one*), which is right everywhere the act is forward and is exactly
+    what inverts here. **Said plainly: this makes part of RESP-03 criterion 5
+    false by decision, and G5 prints it in a framed banner on every run** — an
+    accessibility exception nobody notices is an accessibility exception nobody
+    revisits. One refusal guards it: an entry here whose element **declares** the
+    floor exits 2, so the list cannot become a place to park an element and
+    quietly raise it later. It stands until the owner moves it, and the evidence
+    that would move it comes from the counter — a bartender missing the control
+    when they *do* want it.
+
+**The shadow, recorded because it is the transferable lesson.** D-41.2-06 and
+D-41.2-07 exempted those two bartender files' **shells** from G2, on an argument
+about the shell. Nothing exempted the same screens' **controls** from G5, and no
+plan noticed that one gate's exemption casts a shadow on another's until the
+declaration made it red. Both G5 lists carry the cross-reference, so the next
+person who moves one decision finds the other.
 
 **Before it is committed** (D-41-19): proven **red** by mutating one `min-h-11`
 to `min-h-8` in a converted file, with the mutation asserted to have landed
