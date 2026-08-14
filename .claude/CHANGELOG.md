@@ -3,6 +3,60 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.12.0] - 2026-08-15
+
+### Changed — il calendario vero corregge il modulo che lo descriveva
+
+Il proprietario ha consegnato il calendario di produzione aggiornato. Letto in
+`docs/` (ignorato, controllo F), ha smentito quattro affermazioni di
+`production-calendar.md`. Vale il gate del modulo stesso — *il calendario batte
+il tracker* — quindi il modulo e' la fonte corretta, non il calendario.
+
+- **La rotazione a tre non e' uno storico: e' un piano.** Il modulo diceva
+  *«non si e' mai interrotta in nove cicli completi, 27 date»*, al passato e
+  come fatto verificato. Misurato: **zero satelliti sono gia' andati in onda**,
+  le prime due date sono future, e l'unica serata trasmessa dell'intero
+  calendario e' `RSNT-002`. Era una **pianificazione scritta al passato** — il
+  *gate derivato non e' verificato* violato dal documento che lo enuncia. La
+  riga e' rovesciata con la sua ragione, non cancellata, e il gate rotazione
+  ora pretende che il conteggio si rilegga dal calendario a ogni citazione.
+- **SunSet esce dalla riga dei satelliti.** Il suo LiveCut a +2 era gia'
+  corretto nel modulo (`+4 giorni / +2 giorni`) — **un primo controllo
+  automatico lo aveva segnalato come scarto applicando +4 a tutti, ed era
+  sbagliato lo strumento, non il calendario.** Lo scarto vero e' il **listing**:
+  esce di martedi' ma 11 o 18 giorni prima, non 4. Registrato come *«molto piu'
+  in anticipo, non a giorno fisso»*, senza inventare un numero che i tre casi
+  non dichiarano.
+- **Il pezzo si chiama `LiveCut`, non "Podcast".** 27 occorrenze su 27 nel
+  calendario.
+- **MotionLab non ha alcuna data.** La cadenza «una ogni 6 settimane» era
+  un'intenzione: un format senza sede non ha cadenza, ha un'attesa. In
+  calendario la rotazione corre **a due**.
+
+### Fixed — un glob morto lasciato dalla cancellazione di una superficie
+
+`src/app/**/finance/**` non matcha piu' alcun file: la superficie Finance e'
+stata eliminata dal prodotto lo stesso giorno. Rimosso dal frontmatter di
+`ticketing-payments.md`, dall'indice in `CLAUDE.md` e dalla tabella di
+`meta-gates.md` — i tre devono dichiarare lo stesso insieme, e il controllo B
+li confronta.
+
+**Come e' passato inosservato, che e' la parte che conta.** `verify:persona` era
+stato eseguito **prima** della cancellazione, e `npm run build` dopo. Il build
+non sa nulla dei glob della persona, quindi il rosso e' rimasto invisibile fino
+alla modifica successiva. `ai-engineering.md` ha gia' il gate che lo copriva —
+*ogni volta che il prodotto sposta la logica, il routing della persona va
+rimisurato* — e non e' stato applicato perche' **cancellare** non era stato
+letto come **spostare**. Lo e'.
+
+### Scenario di carico
+
+`src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx` -> caricano
+`CLAUDE.md`, `meta-gates`, `ticketing-payments`, `nextjs-architecture`. Su una
+modifica che tocca un rimborso deve scattare il gate *il denaro non si fida di
+chi lo annuncia*. Caso peggiore rimisurato: `EventTabs.tsx`, 5 file, **11.318
+token** su 12.000 (era 11.339: il glob rimosso restituisce 21 token).
+
 ## [1.11.1] - 2026-08-11
 
 ### Changed — le 24 ore della cache della porta diventano una decisione, e il riscaldamento un costo permanente

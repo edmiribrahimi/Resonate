@@ -10,7 +10,6 @@ paths:
   - "src/app/**/drinks/**"
   - "src/app/(public)/events/**"
   - "src/app/**/sales/**"
-  - "src/app/**/finance/**"
   - "src/app/**/payment/**"
   - "src/app/**/guest-list/**"
 ---

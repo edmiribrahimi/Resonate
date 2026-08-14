@@ -54,7 +54,7 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/api/cron/**` (gli altri) | ticketing-payments | comms-analytics, time-and-scheduling |
 | `src/utils/formatTime.ts`, `vercel.json` | time-and-scheduling | ticketing-payments |
 | `src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**` | media-and-storage | venue-secrecy, access-gating |
-| `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/**/sales/**`, `src/app/**/finance/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` | ticketing-payments | access-gating, nextjs-architecture |
+| `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/**/sales/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` | ticketing-payments | access-gating, nextjs-architecture |
 | `src/app/(public)/events/**` | venue-secrecy | ticketing-payments, nextjs-architecture |
 | `src/lib/offline/**` | checkin-offline | supabase-data |
 | `src/app/api/tickets/checkin/**` | checkin-offline | ticketing-payments |
