@@ -1,5 +1,32 @@
 #!/usr/bin/env node
 /**
+ * ⚠ THIS FILE IS INVISIBLE TO `grep -I`, AND THE FAILURE IS SILENT. ⚠
+ *
+ * It contains two literal NUL bytes — the `permitKey` joiner, near the bottom,
+ * chosen deliberately because no path, no decimal line number and no hex digest
+ * can contain one, so no two triples can collide by concatenation. That is a
+ * sound choice and it is not being retracted here. Its side effect is not:
+ *
+ *   grep -c "import" scripts/verify-conversion.mjs        → (nothing, exit 1)
+ *   LC_ALL=C /usr/bin/grep -c "import" …                  → 89
+ *
+ * `grep -I` (skip binary) classifies this file as binary and skips it WITHOUT
+ * an error and WITHOUT a warning. Several search front-ends pass `-I` by
+ * default. **A zero-hit grep on this file means nothing, and it reads exactly
+ * like "the symbol is not present."**
+ *
+ * Use `LC_ALL=C /usr/bin/grep`, `rg --text`, or open the file.
+ *
+ * Why this notice exists rather than the knowledge living in a summary: this is
+ * the largest gate file in the repository and it carries the check-E logic that
+ * held `41-VERIFICATION.md` at `gaps_found` for five consecutive rounds. A gate
+ * whose source cannot be searched is a gate nobody can audit, and "the tool
+ * returned nothing" is the exact shape of silent failure this project has
+ * written itself not to accept (`meta-gates.md`). The bytes arrived on
+ * 2026-08-13 with plan 41.1-04; the executor knew, and wrote it in a SUMMARY,
+ * which is not where the next reader will be looking. Measured and recorded by
+ * the round-6 re-verification, 2026-08-14.
+ *
  * verify-conversion.mjs — a surface declared converted is checked by walking
  * what it actually reaches, not by trusting the claim.
  *
