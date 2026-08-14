@@ -3,6 +3,52 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.14.0] - 2026-08-15
+
+### Changed — la pipeline si esprime in GIORNI DELLA SETTIMANA, e le due versioni precedenti avevano scritto la conseguenza al posto della regola
+
+Un controllo automatico aveva segnalato `RSNT-003` come fuori regola su tre
+pezzi. Il proprietario ha risposto: *«questo accade perche' la notte dopo cade
+di venerdi'»*. **Misurato: aveva ragione, e non c'era alcuno scarto.**
+
+I LiveCut della notte escono **sempre** di martedi', mercoledi' e giovedi'. La
+notte cade **venerdi' o sabato** — gia' scritto nella tabella dei format — quindi
+lo stesso martedi' dista −4 da un sabato e −3 da un venerdi'. Un piano espresso
+in offset vede due regole dove ce n'e' una, e **segnala come errore una serata
+perfettamente in riga**.
+
+La tabella completa, misurata su tutte le famiglie:
+
+| | serata | listing | tonight | recap | LiveCut | after movie |
+|---|---|---|---|---|---|---|
+| RamaDub | gio | mar | gio | lun | lun | — |
+| SunSet | sab | mar | — | — | lun + mar | — |
+| Perlone | sab | mar | — | — | lun | — |
+| La notte | ven **o** sab | mar | — | — | mar mer gio | lun |
+
+**Cosa resta vero nella forma giusta:** l'after movie e' agganciato al listing
+dell'edizione seguente. Il `−1` misurato 6 su 6 in 1.13.0 e' la **conseguenza**
+(listing di martedi', after movie di lunedi'), non la definizione.
+
+### Sull'errore, perche' e' il punto
+
+1.12.0 e 1.13.0 hanno entrambe corretto il modulo **misurando**, e hanno
+entrambe scritto un offset dove la regola era un giorno della settimana. Una
+misura giusta espressa nella grandezza sbagliata resta sbagliata, e produce
+falsi allarmi a ogni spostamento del calendario — cioe' esattamente quando il
+piano serve di piu'. **La correzione non e' arrivata da una misura piu' fine: e'
+arrivata da chi conosce il dominio**, in una frase.
+
+### SunSet — due LiveCut, non uno
+
+Misurato 3 su 3: lunedi' **e** martedi'. Vale «uno per dj» come per la notte —
+SunSet ne ha due perche' i dj sono due. Il numero di puntate discende dalla
+line-up, non dal format.
+
+### Scenario di carico
+
+Invariato: nessun `paths:` toccato. `verify:persona` 7/7.
+
 ## [1.13.0] - 2026-08-15
 
 ### Changed — le tre ancore della notte, rimisurate sul calendario invece che ricordate

@@ -83,8 +83,12 @@ comunicato come *SunSet × re:sonate*. Da giugno a settembre il format si ferma.
   pretende di esserlo
 
 **SunSet ha la sua pipeline, e non e' quella dei satelliti:**
-- **LiveCut: il lunedi' dopo, +2 giorni** dal sabato — **conforme su 3 edizioni
-  su 3**
+- **LiveCut: DUE puntate, a +2 e +3** dal sabato — lunedi' e martedi' dopo.
+  Misurato su 3 edizioni su 3, il 2026-08-15. *(Questa riga diceva un solo
+  LiveCut a +2: era vero sul calendario di ieri, non su quello di oggi.)* Vale
+  anche qui **uno per dj**, la stessa regola della notte: SunSet ne ha due
+  perche' i dj sono due, e la notte ne ha tre. **Il numero di puntate discende
+  dalla line-up, non dal format** — cambiarla cambia il piano di pubblicazione
 - **Listing: molto piu' in anticipo di un satellite.** Esce **di martedi'**, ma
   **11 o 18 giorni prima**, non i 4 del martedi' immediatamente precedente.
   Misurato su tutte e tre le edizioni in calendario: −11, −18, −11
@@ -120,26 +124,45 @@ aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 - Timetable: **il giorno stesso della serata**. *(Diceva −1. Misurato: 6 notti su
   7 lo pubblicano il giorno stesso; l'unica a −1 e' `RSNT-003`, che e' la deroga,
   non la regola.)*
-- **LiveCut: ancorati alla notte SUCCESSIVA, a −4 / −3 / −2 giorni** — non alla
-  propria. *(Diceva «nei giorni subito successivi». Misurato su cinque notti
-  consecutive.)* Restano **uno per dj**, di norma PT1→PT3: il LiveCut e' la
-  registrazione del set, quindi la line-up decide quante puntate escono.
-- **After movie: il giorno PRIMA del listing dell'edizione seguente — `−1`,
-  misurato 6 volte su 6, senza eccezioni.**
+- **LiveCut: martedi', mercoledi' e giovedi' della settimana della notte
+  SUCCESSIVA** — non della propria. Restano **uno per dj**, di norma PT1→PT3: e'
+  la registrazione del set, quindi la line-up decide quante puntate escono.
+- **After movie: il lunedi' prima del listing dell'edizione seguente** — che,
+  essendo il listing di martedi', e' sempre il giorno prima.
 
-> **Perche' questa e' la dimostrazione del gate *ancora, non conteggio*.**
-> Misurato in giorni dalla propria serata, l'after movie sembra irregolare: −12,
-> −12, −12, −18, −19 rispetto alla notte dopo. Misurato dall'**ancora vera** —
-> il listing dell'edizione seguente — e' **−1 tutte e sei le volte**. La
-> variabilita' non era nel dato: era nel punto da cui lo si guardava. Chi
-> calcolasse l'after movie a giorni dalla serata sbaglierebbe di una settimana a
-> ogni spostamento del calendario.
+> ## La pipeline si esprime in GIORNI DELLA SETTIMANA, non in offset
 >
-> **E vale ora anche per i LiveCut della notte**, che hanno la stessa forma di
-> dipendenza. Conseguenza accettata e gia' visibile: se l'edizione successiva
-> non e' in calendario, **i LiveCut non sono calcolabili** — `RSNT-008` infatti
-> non ne ha, esattamente come non ha l'after movie. Non e' una dimenticanza: e'
-> la regola che si comporta bene.
+> **Questa e' la regola del progetto, e vale per tutti e quattro i format.**
+> Misurata sul calendario il 2026-08-15:
+>
+> | | serata | listing | tonight | recap | LiveCut | after movie |
+> |---|---|---|---|---|---|---|
+> | **RamaDub** | gio | mar | gio | lun | lun | — |
+> | **SunSet** | sab | mar | — | — | lun + mar | — |
+> | **Perlone** | sab | mar | — | — | lun | — |
+> | **La notte** | ven **o** sab | mar | — | — | mar mer gio | lun |
+>
+> **Perche' la distinzione non e' pedanteria.** La notte cade **venerdi' o
+> sabato** — e' gia' scritto nella tabella dei format — quindi lo stesso
+> martedi' dista **−4** da un sabato e **−3** da un venerdi'. Un piano espresso
+> in offset vede due regole dove ce n'e' una, e segnala come errore una serata
+> perfettamente in riga.
+>
+> **E' successo, ed e' registrato qui perche' non si ripeta.** Un controllo
+> automatico ha segnalato `RSNT-003` come fuori regola su tre pezzi; il
+> proprietario ha risposto *«questo accade perche' la notte dopo cade di
+> venerdi'»*, e la misura gli ha dato ragione: i LiveCut escono **sempre** di
+> martedi', mercoledi' e giovedi'. **Le due versioni precedenti di questo modulo
+> (1.12.0 e 1.13.0) avevano scritto la conseguenza al posto della regola** — e
+> una conseguenza scritta come regola produce falsi allarmi ogni volta che il
+> calendario si muove di un giorno.
+>
+> **Cosa resta vero, e nella forma giusta:** l'after movie e' agganciato al
+> **listing dell'edizione seguente**, non a un conteggio dalla serata. Essendo
+> il listing di martedi' e l'after movie di lunedi', il `−1` misurato 6 volte su
+> 6 e' la conseguenza, non la definizione. Se l'edizione successiva non e' in
+> calendario, **after movie e LiveCut non sono calcolabili** — `RSNT-008` non ne
+> ha, ed e' la regola che si comporta bene, non una dimenticanza.
 
 **Perlone** usa la pipeline leggera: listing e un solo podcast.
 
