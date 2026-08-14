@@ -3,8 +3,12 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
-import MobileNav from "@/components/layout/MobileNav";
+import AppNav from "@/components/layout/AppNav";
 import AnimatedSection from "@/components/motion/AnimatedSection";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Chip";
 import CopyReferralLink from "@/components/membership/CopyReferralLink";
 import MyMediaSection from "@/components/media/MyMediaSection";
 import LogoutButton from "@/components/auth/LogoutButton";
@@ -16,6 +20,53 @@ import { visibleStaffTabs } from "@/lib/routes/staff-tabs";
 import PostHogIdentify from "@/components/analytics/PostHogIdentify";
 import type { UserRole, UserStatus } from "@/types/database";
 
+/**
+ * The member dashboard — converted by plan 41.2-13.
+ *
+ * ── What changed, and the one thing that deliberately did not ────────────────
+ *
+ * The layout: the shell owns the maximum, the gutter and the navigation
+ * clearance; the title carries the display role; the page's own root, its
+ * header padding and its repeated inline gutter are gone. This is also the
+ * surface's move off the phone-locked navigation wrapper onto the responsive
+ * form, which is why the wrapper below the shell DECLARES the leading-edge
+ * column clearance — see the comment at the declaration itself.
+ *
+ * **Width is `default`, and `wide` was DEFERRED rather than rejected.** This
+ * was the second candidate considered for the wide form (D-41.2-02); the two
+ * §4 lists stayed closed for the phase and the reversal is one word in the
+ * shell's call below. A reader arriving later should see a deferral, not an
+ * absence of thought.
+ *
+ * ── Width may change layout, never membership ────────────────────────────────
+ *
+ * `41-UI-SPEC.md` §0 rule 5, and on a member's own dashboard it is the product
+ * rather than a formality: what a member can see here IS the community's
+ * promise made concrete. The navigation receives **the same four props, in the
+ * same order**, that the phone-locked wrapper received — the server still
+ * decides which entries exist and CSS still decides only how they sit. **No
+ * capability check is touched**: `getAccessContext()`, `visibleStaffTabs()`
+ * and the `isPendingOrRejected` predicate are byte-identical, and neither
+ * `capabilities` nor `status` is read by one more or one fewer expression than
+ * before.
+ *
+ * ── What this conversion did NOT open ────────────────────────────────────────
+ *
+ * The media section and the account and authentication controls belong to plan
+ * 41.2-14, which runs beside this one. **The referral control was converted
+ * earlier as spine, by plan 41.2-07 in wave 3**, precisely so `/membership-card`
+ * and this surface stayed two plans instead of being merged into one; and the
+ * four shared money-core files were converted by plan 41.2-10 in wave 5 for the
+ * same reason. None of the six is opened here.
+ *
+ * ── The five notices keep their sentences, and every one of them ─────────────
+ *
+ * The amber tints below became the declared warning semantic. **Not one word of
+ * any notice is rewritten**, no two collapse, and the flag that prints a raw
+ * server value still prints it verbatim. That was already this file's own rule
+ * — it is stated at length above each flag — and a visual conversion is not
+ * where a product decides what it tells somebody it has just refused.
+ */
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -284,309 +335,375 @@ export default async function DashboardPage({
   const isPendingOrRejected = status === "pending" || status === "rejected";
 
   return (
-    <div className="min-h-dvh pb-24">
-      <PostHogIdentify
-        userId={user.id}
-        email={userEmail}
-        role={role ?? "member"}
-      />
-      <AnimatedSection>
-        <header className="px-6 pt-12 pb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-muted">Hey,</p>
-              <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
-            </div>
-            <span className="mt-2 shrink-0 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent">
-              {roleLabel}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
-          {memberSince && (
-            <p className="text-xs text-muted/60">Member since {memberSince}</p>
-          )}
-        </header>
-      </AnimatedSection>
+    <>
+      {/*
+        This wrapper is the other half of the pairing check E of
+        scripts/verify-conversion.mjs asserts in both directions: the files
+        declaring the leading-edge column clearance are exactly the files
+        mounting the responsive navigation form. It wraps the SHELL, and the
+        navigation is its SIBLING below — putting the navigation inside would
+        still satisfy the textual pairing while padding the column by its own
+        clearance.
 
-      <AnimatedSection delay={0.1} className="flex flex-col gap-4 px-6">
-        {accessUnavailable && (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
-          >
-            <p className="text-sm font-semibold text-amber-200">
-              We couldn&apos;t check your permissions just now
-            </p>
-            <p className="mt-1 text-sm text-amber-100/80">
-              This is a temporary problem on our side, not a decision about your
-              account. Nothing has changed about what you have access to. Please
-              try again in a moment.
-            </p>
-          </div>
-        )}
+        It carries an arbitrary-property utility at the md tier setting
+        --nav-inset-inline-start to fourteen rems, which the shell below reads
+        with its own inline-start padding. Since D-41.1-01 the stylesheet's
+        ambient value is zero at every width, so without this line the content
+        would slide UNDER the 224 px column from 768 px up — the loud failure
+        direction, which is why the declaration and the mount land in one commit.
 
-        {accessContextStale && (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
-          >
-            <p className="text-sm font-semibold text-amber-200">
-              We couldn&apos;t check tonight&apos;s assignments
-            </p>
-            <p className="mt-1 text-sm text-amber-100/80">
-              You were sent here because this app could not read who is assigned
-              to work tonight — so it could not tell whether you are. That is a
-              configuration problem on our side, not a decision about your
-              account, and nothing about your access has changed. If you are due
-              to work a door or a night, tell whoever set that night up:
-              retrying will land you in the same place until it is fixed.
-            </p>
-          </div>
-        )}
-
-        {accessNotAssignedHere && (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
-          >
-            <p className="text-sm font-semibold text-amber-200">
-              You are assigned — but not to that
-            </p>
-            <p className="mt-1 text-sm text-amber-100/80">
-              Nothing is wrong with your account, and you do hold an assignment.
-              It just does not cover the page you asked for: assignments are
-              given one night and one job at a time, so working one night&apos;s
-              door does not open another night, or another job. If this one
-              should be yours, ask the organiser for that night to add it.
-            </p>
-          </div>
-        )}
-
-        {linkRefused && (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
-          >
-            <p className="text-sm font-semibold text-amber-200">
-              Your link worked — but it could not send you where it said
-            </p>
-            <p className="mt-1 text-sm text-amber-100/80">
-              You are signed in, and nothing is wrong with your account. The
-              page the link pointed at was not one we allow it to open, so you
-              were brought here instead. If you were opening an invitation in
-              order to set a password, ask whoever invited you to send it again
-              rather than reusing this one — a second copy of the same link will
-              land in the same place.
-            </p>
-          </div>
-        )}
-
-        {masterFlag && (
-          <div
-            role="status"
-            className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
-          >
-            <p className="text-sm font-semibold text-amber-200">
-              A check on the owner account did not complete at sign-in
-            </p>
-            <p className="mt-1 text-sm text-amber-100/80">
-              You are signed in and your own access is unaffected. This concerns
-              the account that holds the top-level role, and it is shown rather
-              than logged because nothing in this product would tell anybody
-              otherwise. If you are not that person, there is nothing for you to
-              do; if you are, this is worth looking at before the next night.
-            </p>
-            <p className="mt-2 break-words font-mono text-xs text-amber-100/60">
-              {masterFlag}
-            </p>
-          </div>
-        )}
-        {isPendingOrRejected ? (
-          <>
-            {/* Pending / Rejected state */}
-            <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-6">
-              <p className="text-lg font-semibold">
-                {status === "pending"
-                  ? "Your account is pending approval"
-                  : "Your account has been reviewed"}
-              </p>
-              <p className="mt-2 text-sm text-muted">
-                You can browse events while you wait. Once approved, you&apos;ll
-                have full access to membership features.
-              </p>
-            </div>
-
-            {/* Discover events link */}
-            <div className="rounded-2xl border border-card-border bg-card p-5">
-              <p className="mb-3 text-sm text-muted">
-                Explore what&apos;s coming up
-              </p>
-              <Link
-                href="/events"
-                className="inline-block text-sm font-medium text-accent hover:text-accent-hover"
-              >
-                Discover events →
-              </Link>
-            </div>
-
-            {/* Settings */}
-            <div>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">Settings</p>
-              <div className="flex flex-col gap-2">
-                <ChangeEmailButton />
-                <ResetPasswordButton />
-                <LogoutButton />
+        The utility is written whole in the class list and is not spelled here:
+        Tailwind scans comments, cannot tell a description from a use, and an
+        abbreviated one emits a malformed rule and a build warning (DEF-41-01).
+      */}
+      <div className="md:[--nav-inset-inline-start:14rem]">
+        <PageShell width="default">
+          <PostHogIdentify
+            userId={user.id}
+            email={userEmail}
+            role={role ?? "member"}
+          />
+          <AnimatedSection>
+            <header className="mb-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted">Hey,</p>
+                  <PageTitle>{fullName}</PageTitle>
+                </div>
+                {/*
+                  The role mark states something and cannot be operated, so it is a
+                  Badge and not a Chip — Chip.tsx's own sentence. It loses the
+                  accent fill deliberately: §5.1 reserves the accent for four things
+                  and names a state signal among the ones it is never for, and the
+                  word itself was always the channel that carried the meaning.
+                */}
+                <Badge className="mt-2 shrink-0">{roleLabel}</Badge>
               </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">My Stuff</p>
+              <p className="mt-1 text-sm text-muted truncate">{userEmail}</p>
+              {memberSince && (
+                <p className="text-xs text-muted/60">Member since {memberSince}</p>
+              )}
+            </header>
+          </AnimatedSection>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <Link href="/membership-card">
-                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-card to-accent/5 p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
-                  <span className="text-2xl">&#127915;</span>
-                  <p className="mt-2 text-sm font-semibold">Membership Card</p>
-                </div>
-              </Link>
-              <Link href="/attendance">
-                <div className="rounded-2xl border border-card-border bg-card p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
-                  <span className="text-2xl">&#128202;</span>
-                  <p className="mt-2 text-sm font-semibold">Event History</p>
-                </div>
-              </Link>
-            </div>
+          <AnimatedSection delay={0.1} className="flex flex-col gap-4">
+            {/*
+              The five notices below were raw amber tints; they are the declared
+              warning semantic now. The box, its radius and its padding are
+              unchanged, the alert role each already carried is unchanged, and not
+              one sentence is rewritten: this is the ink, and the words are a
+              decision somebody else already took.
+            */}
+            {accessUnavailable && (
+              <div
+                role="status"
+                className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-warn">
+                  We couldn&apos;t check your permissions just now
+                </p>
+                <p className="mt-1 text-sm text-ink-2">
+                  This is a temporary problem on our side, not a decision about your
+                  account. Nothing has changed about what you have access to. Please
+                  try again in a moment.
+                </p>
+              </div>
+            )}
 
-            {/* My Tickets — only for regular members */}
-            {isMemberRole && (
-            <div>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">My Tickets</p>
-              {sortedTickets.length === 0 ? (
-                <div className="rounded-2xl border border-card-border bg-card p-5">
-                  <p className="text-sm text-muted/60">No tickets yet</p>
+            {accessContextStale && (
+              <div
+                role="status"
+                className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-warn">
+                  We couldn&apos;t check tonight&apos;s assignments
+                </p>
+                <p className="mt-1 text-sm text-ink-2">
+                  You were sent here because this app could not read who is assigned
+                  to work tonight — so it could not tell whether you are. That is a
+                  configuration problem on our side, not a decision about your
+                  account, and nothing about your access has changed. If you are due
+                  to work a door or a night, tell whoever set that night up:
+                  retrying will land you in the same place until it is fixed.
+                </p>
+              </div>
+            )}
+
+            {accessNotAssignedHere && (
+              <div
+                role="status"
+                className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-warn">
+                  You are assigned — but not to that
+                </p>
+                <p className="mt-1 text-sm text-ink-2">
+                  Nothing is wrong with your account, and you do hold an assignment.
+                  It just does not cover the page you asked for: assignments are
+                  given one night and one job at a time, so working one night&apos;s
+                  door does not open another night, or another job. If this one
+                  should be yours, ask the organiser for that night to add it.
+                </p>
+              </div>
+            )}
+
+            {linkRefused && (
+              <div
+                role="status"
+                className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-warn">
+                  Your link worked — but it could not send you where it said
+                </p>
+                <p className="mt-1 text-sm text-ink-2">
+                  You are signed in, and nothing is wrong with your account. The
+                  page the link pointed at was not one we allow it to open, so you
+                  were brought here instead. If you were opening an invitation in
+                  order to set a password, ask whoever invited you to send it again
+                  rather than reusing this one — a second copy of the same link will
+                  land in the same place.
+                </p>
+              </div>
+            )}
+
+            {masterFlag && (
+              <div
+                role="status"
+                className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+              >
+                <p className="text-sm font-semibold text-sem-warn">
+                  A check on the owner account did not complete at sign-in
+                </p>
+                <p className="mt-1 text-sm text-ink-2">
+                  You are signed in and your own access is unaffected. This concerns
+                  the account that holds the top-level role, and it is shown rather
+                  than logged because nothing in this product would tell anybody
+                  otherwise. If you are not that person, there is nothing for you to
+                  do; if you are, this is worth looking at before the next night.
+                </p>
+                <p className="mt-2 break-words font-mono text-xs text-muted">
+                  {masterFlag}
+                </p>
+              </div>
+            )}
+            {isPendingOrRejected ? (
+              <>
+                {/*
+                  Pending / Rejected state.
+
+                  The gradient panel keeps its accent boundary and its own geometry
+                  rather than adopting the card primitive: the primitive fixes a
+                  line boundary and a flat surface, and this panel's accent edge is
+                  what tells a person waiting for approval that the sentence inside
+                  is about them. Only the legacy ground name moved.
+                */}
+                <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-surface to-accent/5 p-6">
+                  <p className="text-lg font-semibold">
+                    {status === "pending"
+                      ? "Your account is pending approval"
+                      : "Your account has been reviewed"}
+                  </p>
+                  <p className="mt-2 text-sm text-muted">
+                    You can browse events while you wait. Once approved, you&apos;ll
+                    have full access to membership features.
+                  </p>
+                </div>
+
+                {/* Discover events link */}
+                <Card>
+                  <p className="mb-3 text-sm text-muted">
+                    Explore what&apos;s coming up
+                  </p>
                   <Link
                     href="/events"
-                    className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent-hover"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
                   >
-                    Discover events &rarr;
+                    Discover events →
+                  </Link>
+                </Card>
+
+                {/* Settings */}
+                <div>
+                  <SectionHeading>Settings</SectionHeading>
+                  <div className="flex flex-col gap-2">
+                    <ChangeEmailButton />
+                    <ResetPasswordButton />
+                    <LogoutButton />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeading>My Stuff</SectionHeading>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/*
+                    The two tiles declare the 44px floor on the LINK, which is the
+                    element a finger lands on — §6.3, and the gate reads the element
+                    rather than the box drawn inside it. The tiles themselves keep
+                    their own density: the card primitive's 24px padding is emitted
+                    after a shorter value in the sheet and would win, which is the
+                    named-value ordering defect DrinkTokenCard.tsx:81-87 records.
+                  */}
+                  <Link href="/membership-card" className="block min-h-11">
+                    <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-surface to-accent/5 p-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
+                      <span className="text-2xl">&#127915;</span>
+                      <p className="mt-2 text-sm font-semibold">Membership Card</p>
+                    </div>
+                  </Link>
+                  <Link href="/attendance" className="block min-h-11">
+                    <Card className="px-4 py-4 transition-all hover:border-accent/50 active:scale-95 active:opacity-80 h-full">
+                      <span className="text-2xl">&#128202;</span>
+                      <p className="mt-2 text-sm font-semibold">Event History</p>
+                    </Card>
                   </Link>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {sortedTickets.map((ticket) => {
-                    const evt = Array.isArray(ticket.events)
-                      ? ticket.events[0]
-                      : ticket.events;
-                    const tier = Array.isArray(ticket.ticket_tiers)
-                      ? ticket.ticket_tiers[0]
-                      : ticket.ticket_tiers;
-                    const eventData = evt as {
-                      title: string;
-                      date: string;
-                      slug: string;
-                      cover_image: string | null;
-                    } | null;
-                    const tierData = tier as { name: string } | null;
-                    const isUpcoming = eventData
-                      ? eventData.date >= now
-                      : false;
 
-                    return (
-                      <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
-                        <div
-                          className={`rounded-2xl border border-card-border bg-card p-4 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
-                            !isUpcoming ? "opacity-60" : ""
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
-                              {eventData?.cover_image ? (
-                                <Image
-                                  src={eventData.cover_image}
-                                  alt={eventData.title ?? ""}
-                                  width={48}
-                                  height={48}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-foreground truncate">
-                                  {eventData?.title ?? "Event"}
-                                </p>
-                                {isUpcoming && (
-                                  <span className="shrink-0 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-medium text-green-400">
-                                    Upcoming
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {tierData?.name && (
-                                  <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-medium text-accent">
-                                    {tierData.name}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted">
-                                  {eventData
-                                    ? (() => {
-                                        const d = new Date(eventData.date + "T00:00:00");
-                                        const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                                        return `${d.getDate()} ${M[d.getMonth()]}`;
-                                      })()
-                                    : ""}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="shrink-0 text-muted">&#8250;</span>
-                          </div>
-                        </div>
+                {/* My Tickets — only for regular members */}
+                {isMemberRole && (
+                <div>
+                  <SectionHeading>My Tickets</SectionHeading>
+                  {sortedTickets.length === 0 ? (
+                    <Card>
+                      <p className="text-sm text-muted/60">No tickets yet</p>
+                      <Link
+                        href="/events"
+                        className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
+                      >
+                        Discover events &rarr;
                       </Link>
-                    );
-                  })}
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {sortedTickets.map((ticket) => {
+                        const evt = Array.isArray(ticket.events)
+                          ? ticket.events[0]
+                          : ticket.events;
+                        const tier = Array.isArray(ticket.ticket_tiers)
+                          ? ticket.ticket_tiers[0]
+                          : ticket.ticket_tiers;
+                        const eventData = evt as {
+                          title: string;
+                          date: string;
+                          slug: string;
+                          cover_image: string | null;
+                        } | null;
+                        const tierData = tier as { name: string } | null;
+                        const isUpcoming = eventData
+                          ? eventData.date >= now
+                          : false;
+
+                        return (
+                          <Link
+                            key={ticket.id}
+                            href={`/tickets/${ticket.id}`}
+                            className="block min-h-11"
+                          >
+                            <Card
+                              className={`px-4 py-4 transition-all hover:border-accent/50 active:scale-[0.98] active:opacity-80 ${
+                                !isUpcoming ? "opacity-60" : ""
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                                  {eventData?.cover_image ? (
+                                    <Image
+                                      src={eventData.cover_image}
+                                      alt={eventData.title ?? ""}
+                                      width={48}
+                                      height={48}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-full w-full bg-gradient-to-br from-accent/30 to-accent/10" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-ink truncate">
+                                      {eventData?.title ?? "Event"}
+                                    </p>
+                                    {/*
+                                      Two marks that state and cannot be operated,
+                                      so both are Badges. They lose a green and an
+                                      accent respectively: D-41.1-25 refuses a tone
+                                      per outcome, and each word already carried
+                                      the whole of its own meaning.
+                                    */}
+                                    {isUpcoming && (
+                                      <Badge className="shrink-0">Upcoming</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {tierData?.name && (
+                                      <Badge>{tierData.name}</Badge>
+                                    )}
+                                    <span className="text-xs text-muted">
+                                      {eventData
+                                        ? (() => {
+                                            const d = new Date(eventData.date + "T00:00:00");
+                                            const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                                            return `${d.getDate()} ${M[d.getMonth()]}`;
+                                          })()
+                                        : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="shrink-0 text-muted">&#8250;</span>
+                              </div>
+                            </Card>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            )}
-
-            {/* My Drinks — drink tokens with full redeem capability */}
-            {isMemberRole && drinkTokenGroups.length > 0 && (
-              <DashboardDrinkTokens groups={drinkTokenGroups} />
-            )}
-
-            {/* My Media — only show if user has uploads */}
-            {mediaGroups.length > 0 && <MyMediaSection groups={mediaGroups} />}
-
-            {/* Settings */}
-            <div>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">Settings</p>
-              <div className="flex flex-col gap-2">
-                {profile?.membership_code && (
-                  <CopyReferralLink membershipCode={profile.membership_code} />
                 )}
-                <ChangeEmailButton />
-                <ResetPasswordButton />
-                <LogoutButton />
-              </div>
-            </div>
 
-            {/* Management Tools — the surfaces this account's capabilities
-                open, and only those. The cast that stood here, narrowing `role`
-                to a two-member union, is deleted: a cast is how a new role value
-                gets laundered into an old union without anything saying so, and
-                Phase 43 recorded seventeen of them doing exactly that. */}
-            {canReachManagementTools && (
-              <ManagementSection capabilities={managementCapabilities} />
+                {/* My Drinks — drink tokens with full redeem capability */}
+                {isMemberRole && drinkTokenGroups.length > 0 && (
+                  <DashboardDrinkTokens groups={drinkTokenGroups} />
+                )}
+
+                {/* My Media — only show if user has uploads */}
+                {mediaGroups.length > 0 && <MyMediaSection groups={mediaGroups} />}
+
+                {/* Settings */}
+                <div>
+                  <SectionHeading>Settings</SectionHeading>
+                  <div className="flex flex-col gap-2">
+                    {profile?.membership_code && (
+                      <CopyReferralLink membershipCode={profile.membership_code} />
+                    )}
+                    <ChangeEmailButton />
+                    <ResetPasswordButton />
+                    <LogoutButton />
+                  </div>
+                </div>
+
+                {/* Management Tools — the surfaces this account's capabilities
+                    open, and only those. The cast that stood here, narrowing `role`
+                    to a two-member union, is deleted: a cast is how a new role value
+                    gets laundered into an old union without anything saying so, and
+                    Phase 43 recorded seventeen of them doing exactly that. */}
+                {canReachManagementTools && (
+                  <ManagementSection capabilities={managementCapabilities} />
+                )}
+              </>
             )}
-          </>
-        )}
-      </AnimatedSection>
+          </AnimatedSection>
+        </PageShell>
+      </div>
 
-      <MobileNav
+      {/*
+        The same four props, in the same order, that the phone-locked wrapper
+        received. Only the import specifier and the component name changed —
+        which is what "mounting" means to check E's pairing: importing AppNav
+        DIRECTLY, not reaching it through the wrapper. No capability check is
+        touched, so no navigation entry appears or disappears with the width.
+      */}
+      <AppNav
         role={role as UserRole | null}
         status={status as UserStatus | null}
         capabilities={[...capabilities]}
@@ -594,6 +711,6 @@ export default async function DashboardPage({
           liveAssignmentCapabilities ? [...liveAssignmentCapabilities] : null
         }
       />
-    </div>
+    </>
   );
 }
