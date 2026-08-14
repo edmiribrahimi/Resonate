@@ -270,6 +270,99 @@ interface TokenData {
   refunded_at?: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// What the token fetch and its poll can end in
+// ---------------------------------------------------------------------------
+
+/**
+ * Four states replace the one string `"unknown"`.
+ *
+ * `"unknown"` was returned both by a fetch that could not answer and — as far as
+ * every reader of it was concerned — by an order merely on its way, so the poll
+ * could not tell *not yet* from *never*, and neither could the guest. The
+ * *could-not-answer* members are kept apart from the *not-yet* one on purpose:
+ * `DOOR_NIGHT_UNRESOLVED` (`src/lib/door/outcome.ts:280`) is the template, and
+ * `/api/media/finalize/route.ts:229-234` states the reason in the other half of
+ * the tree — *the question could not be answered, and this is not a refusal of
+ * you*. Collapsing them tells somebody they were denied when in fact nobody
+ * looked.
+ *
+ * This is the surface's **own** union and it is not merged with the custody one
+ * above: a browser that cannot hold a receipt and a server that will not answer
+ * are different facts with different remedies, and one `Record` over both would
+ * be a totality check that had stopped meaning anything (`money-path.ts` §2).
+ */
+const TOKENS_ARRIVING = "TOKENS_ARRIVING";
+const TOKENS_UNREACHABLE = "TOKENS_UNREACHABLE";
+const TOKENS_REFUSED = "TOKENS_REFUSED";
+const TOKENS_GAVE_UP = "TOKENS_GAVE_UP";
+
+type GuestTokenFetchState =
+  | typeof TOKENS_ARRIVING
+  | typeof TOKENS_UNREACHABLE
+  | typeof TOKENS_REFUSED
+  | typeof TOKENS_GAVE_UP;
+
+/**
+ * The four approved sentences, verbatim from `46-COPY.md` §2.
+ *
+ * Three of them say *your payment is not affected*, and that is the register
+ * constraint rather than reassurance for its own sake: a request that failed
+ * says nothing about money that has already moved, and a sentence which let a
+ * guest infer otherwise would manufacture alarm about money that is safe. None
+ * carries an order id, a token id, a signed token, an HTTP status or a server
+ * message (T-46-15) — nothing from the response body is interpolated into any
+ * sentence here.
+ */
+const GUEST_TOKEN_FETCH_MESSAGE: Record<GuestTokenFetchState, string> = {
+  [TOKENS_ARRIVING]:
+    "Your drinks are still being confirmed — this usually takes a few seconds.",
+  [TOKENS_UNREACHABLE]:
+    "We could not reach the server to check your drinks. Your payment is not affected — check your connection and reload.",
+  [TOKENS_REFUSED]:
+    "The server could not answer for this order. Your payment is not affected — reload in a moment.",
+  [TOKENS_GAVE_UP]:
+    "Your drinks have not been confirmed yet and we have stopped checking. Your payment is not affected — reload this page to check again.",
+};
+
+/**
+ * The order statuses that let the poll stop, looked up without trusting the
+ * prototype chain.
+ *
+ * `orderStatus` arrives inside a JSON body this file does not own, so it is read
+ * with `Object.prototype.hasOwnProperty.call` before it indexes anything — the
+ * form `ScannerClient.tsx:271-273` uses for exactly the same reason. A payload
+ * answering `"constructor"` or `"toString"` would otherwise find an inherited
+ * property and be read as a terminal answer, which on this surface means the
+ * poll stops while the drinks are still coming (T-46-16).
+ *
+ * This is a lookup table, **not** the total `Record` construction: it is keyed by
+ * a string from outside, so it cannot be total over anything. The two totality
+ * maps in this file are the ones above.
+ *
+ * `completed` is the only member, and it is the same value the poll compared
+ * against before this change — the comparison is unchanged, its lookup is not.
+ */
+const ORDER_STATUS_TERMINAL: Record<string, true> = { completed: true };
+
+function orderIsComplete(orderStatus: string): boolean {
+  return Object.prototype.hasOwnProperty.call(
+    ORDER_STATUS_TERMINAL,
+    orderStatus
+  );
+}
+
+/**
+ * What one pass over the guest's orders came back with: the tokens, and the
+ * first state that was not an answer. `failure` is `null` when every order was
+ * answered — the empty token list is then the truthful *none yet*, and it says
+ * so by being `ok`-shaped rather than by being empty.
+ */
+type GuestTokenFetchResult = {
+  tokens: TokenData[];
+  failure: GuestTokenFetchState | null;
+};
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -628,26 +721,58 @@ export default function GuestTokenDisplay({
    */
   const [custodyFailure, setCustodyFailure] =
     useState<GuestCustodyFailure | null>(null);
+  /**
+   * Which fetch or poll state this surface is in, if any. `null` means nothing
+   * has failed and nothing is in flight.
+   */
+  const [fetchState, setFetchState] = useState<GuestTokenFetchState | null>(
+    null
+  );
   const pollCountRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /**
+   * What the most recent poll tick ended in, so the bound can say whether the
+   * poll ran out having never reached the server, having been refused, or having
+   * simply run out of turns. A ref rather than state: it is read at the bound,
+   * not rendered, and re-rendering the grid every three seconds to hold it would
+   * be motion on a surface somebody is holding up at a counter.
+   */
+  const pollFailureRef = useRef<GuestTokenFetchState | null>(null);
 
   const fetchTokensForOrders = useCallback(
-    async (orderIds: string[]): Promise<TokenData[]> => {
+    async (orderIds: string[]): Promise<GuestTokenFetchResult> => {
       const results = await Promise.all(
-        orderIds.map(async (oid) => {
+        orderIds.map(async (oid): Promise<GuestTokenFetchResult> => {
           try {
             const res = await fetch(`/api/drinks/tokens?order_id=${oid}`);
-            if (!res.ok) return { tokens: [], orderStatus: "unknown" };
-            return (await res.json()) as {
+            if (!res.ok) {
+              /*
+                Discard site 1. This returned an empty token list carrying the
+                ambiguous status, so a server that refused arrived at the caller
+                looking exactly like an order with no drinks on it.
+              */
+              logMoneyPathFailure("guest_tokens.fetch", {
+                code: String(res.status),
+                message: "the token endpoint refused this order",
+              });
+              return { tokens: [], failure: TOKENS_REFUSED };
+            }
+            const data = (await res.json()) as {
               tokens: TokenData[];
               orderStatus: string;
             };
-          } catch {
-            return { tokens: [] as TokenData[], orderStatus: "unknown" };
+            return { tokens: data.tokens, failure: null };
+          } catch (caught) {
+            // Discard site 2 — the request never reached the server.
+            logMoneyPathFailure("guest_tokens.fetch", toSafeError(caught));
+            return { tokens: [], failure: TOKENS_UNREACHABLE };
           }
         })
       );
-      return results.flatMap((r) => r.tokens);
+      return {
+        tokens: results.flatMap((r) => r.tokens),
+        failure: results.find((r) => r.failure !== null)?.failure ?? null,
+      };
     },
     []
   );
@@ -689,8 +814,9 @@ export default function GuestTokenDisplay({
       return;
     }
 
-    fetchTokensForOrders([...orderIds]).then((t) => {
-      setTokens(t);
+    fetchTokensForOrders([...orderIds]).then((result) => {
+      setTokens(result.tokens);
+      if (result.failure) setFetchState(result.failure);
       setLoading(false);
     });
   }, [eventId, initialOrderId, fetchTokensForOrders]);
@@ -712,38 +838,85 @@ export default function GuestTokenDisplay({
 
       // Start polling for the new order's tokens
       pollCountRef.current = 0;
+      pollFailureRef.current = null;
+      setFetchState(TOKENS_ARRIVING);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+
+      function stopPolling() {
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
+      }
 
       pollTimerRef.current = setInterval(async () => {
         pollCountRef.current += 1;
 
         try {
           const res = await fetch(`/api/drinks/tokens?order_id=${orderId}`);
-          if (!res.ok) return;
-          const data = (await res.json()) as {
-            tokens: TokenData[];
-            orderStatus: string;
-          };
-
-          if (data.tokens.length > 0) {
-            setTokens((prev) => {
-              const existingIds = new Set(prev.map((t) => t.id));
-              const newTokens = data.tokens.filter(
-                (t) => !existingIds.has(t.id)
-              );
-              return [...prev, ...newTokens];
+          if (!res.ok) {
+            /*
+              Discard site 3. This was `if (!res.ok) return;` — the tick ended
+              and left nothing behind, not even a record that it had failed. It
+              now records the cause so the bound below can name it, and falls
+              through to the bound instead of returning: the poll keeps running,
+              which is the behaviour that was correct, but it can now stop.
+            */
+            logMoneyPathFailure("guest_tokens.poll", {
+              code: String(res.status),
+              message: "the token endpoint refused this order",
             });
-          }
+            pollFailureRef.current = TOKENS_REFUSED;
+          } else {
+            const data = (await res.json()) as {
+              tokens: TokenData[];
+              orderStatus: string;
+            };
+            pollFailureRef.current = null;
 
-          // Stop polling when order is completed or max retries reached
-          if (data.orderStatus === "completed" || pollCountRef.current >= 10) {
-            if (pollTimerRef.current) {
-              clearInterval(pollTimerRef.current);
-              pollTimerRef.current = null;
+            if (data.tokens.length > 0) {
+              setTokens((prev) => {
+                const existingIds = new Set(prev.map((t) => t.id));
+                const newTokens = data.tokens.filter(
+                  (t) => !existingIds.has(t.id)
+                );
+                return [...prev, ...newTokens];
+              });
+            }
+
+            // Stop polling when the order is complete — the one good ending.
+            if (orderIsComplete(data.orderStatus)) {
+              setFetchState(null);
+              stopPolling();
+              return;
             }
           }
-        } catch {
-          // keep polling
+        } catch (caught) {
+          /*
+            Keep polling — that behaviour is correct and stays. What changes is
+            that the tick no longer forgets it failed: the bound reads this and
+            tells the guest the poll ran out having never reached the server,
+            rather than reporting a bound reached against a server that answered.
+          */
+          logMoneyPathFailure("guest_tokens.poll", toSafeError(caught));
+          pollFailureRef.current = TOKENS_UNREACHABLE;
+        }
+
+        /*
+          The bound, and it is the point of this change. It used to sit inside
+          the `try` **after** the two early exits, so a failing endpoint skipped
+          it on every tick and the poll ran forever; and when it was reached it
+          called `clearInterval` and nothing else — no state change, the same
+          spinner, no terminal message — which made it the commonest terminal
+          state on this surface and the one a guest could never see.
+
+          The state is set **before** the timer is cleared, and it carries what
+          the last tick ended in: refused, unreachable, or simply out of turns.
+          The bound of ten and the three-second period are unchanged.
+        */
+        if (pollCountRef.current >= 10) {
+          setFetchState(pollFailureRef.current ?? TOKENS_GAVE_UP);
+          stopPolling();
         }
       }, 3000);
     }
