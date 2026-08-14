@@ -7,8 +7,96 @@ import {
   useTransition,
   useRef,
 } from "react";
-import { redeemDrinkTokenGuest } from "./actions";
+
+import PressableCard from "@/components/motion/PressableCard";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Chip";
+import { Dialog } from "@/components/ui/Dialog";
+import { SectionHeading } from "@/components/ui/Typography";
 import { formatDateTimeNoYear } from "@/utils/formatTime";
+
+import { redeemDrinkTokenGuest } from "./actions";
+
+/**
+ * The drinks a guest bought without an account, and the panel they hold up at
+ * the bar to have one poured.
+ *
+ * ── A guest's proof of purchase lives in THEIR browser, and none of it moved ──
+ *
+ * For a person with no account, the entry under `resonate_drink_tokens_<event>`
+ * **is the receipt** — nothing else in this product knows the purchase happened
+ * on this device. So the key's construction, the write, the read and the poll
+ * are the lines this conversion had least reason to touch and the most reason to
+ * prove untouched: a changed key is a wiped wallet for every guest who already
+ * has one, with no error anywhere, in a repository that has **no error
+ * tracking**. All four are byte-identical, quoted before and after in this
+ * plan's SUMMARY.
+ *
+ * ── The three silent failures below are RECORDED, not repaired ───────────────
+ *
+ * The `catch` on the write swallows every cause. The `catch` on the read returns
+ * the empty list — which is also the legitimate answer for *this browser bought
+ * nothing*, so a storage failure and an empty wallet are indistinguishable to
+ * every caller and therefore to the guest. And a token fetch that cannot answer
+ * returns the same unknown status as one that is merely on its way, forever,
+ * every three seconds.
+ *
+ * Each carries an entry at `file:line` in this phase's `deferred-items.md`,
+ * written in wave 0, routed to a plan that owns what a buyer is told when a
+ * purchase fails. **Improving one here would be a behaviour change on the money
+ * path under a visual mandate.** The standing cost is stated rather than elided:
+ * with no error tracking, each of these reaches a human only when a guest tells
+ * somebody at the bar.
+ *
+ * ── ONE of the three screens converted, and the other two DELIBERATELY NOT ───
+ *
+ * The plan for this file modelled a single shell at the foot of it. Measured, it
+ * carries **three** overlays, exactly as its twin
+ * `../RedeemConfirmationModal.tsx` does — the guest's confirmation, and two
+ * full-bleed screens that are operated **by the bartender, on the guest's
+ * phone**. Only the first is converted.
+ *
+ * The other two are refused, and the reason is this file's own, one screen
+ * below: the serve area *"takes the whole screen above the Cancel row"*. Inside
+ * the primitive it becomes a `md`-width panel body — the bartender has to aim —
+ * and the narrow Cancel becomes a full-width control in the actions region,
+ * directly under the thumb. Reverting an active token at a counter with a queue
+ * in front of it is the guard being loosened, not tightened, which is the exact
+ * inverse of what a money conversion is allowed to do. D-41.2-06 took this
+ * decision for the twin; it is **not inherited** here — an exemption is granted
+ * per file or it becomes a way to make a list empty — so this file states its
+ * own argument and stays legible to the dialog gate rather than being rewritten
+ * into a shape the matcher cannot see.
+ *
+ * Their **inks** are converted, since a token substitution moves no geometry.
+ * Their **shells** are not.
+ *
+ * ── The two pulses are attention marks, not placeholders ─────────────────────
+ *
+ * Both say *this one is waiting at the bar* on live content. Neither carries the
+ * placeholder signature, and no gate reads them — measured. Swapping either for
+ * the line primitive would tell a guest their paid drink was still loading.
+ * Consistent with the same two sites on the other side of the fork.
+ *
+ * ── Focus: before, nothing. After, the close control ─────────────────────────
+ *
+ * No `data-initial-focus` marker is declared, and that is a decision. The
+ * confirmation holds exactly one affirmative answer and the close control, and
+ * the close control is first in the DOM and least destructive by construction
+ * (`Dialog.tsx:117-147`). Declaring a marker would have meant adding a Cancel
+ * control — a new user-visible word on a money confirmation. Enter therefore
+ * closes; it never confirms.
+ *
+ * ── The money path is untouched ──────────────────────────────────────────────
+ *
+ * One server action is called from here, three times, and all three calls carry
+ * the same two arguments in the same order as before: the signed token and the
+ * verb. No status transition, no amount, no idempotency key and no webhook path
+ * is written, read or reshaped by this file. The action module was **read** so
+ * that a rendering change could be told from a payload change, and it was not
+ * edited.
+ */
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -152,10 +240,21 @@ function GuestRedeemConfirmationModal({
     onClose();
   }, [onRedeemed, onClose]);
 
+  /**
+   * Every route out of the confirmation runs through here — the close control,
+   * Escape, and the platform's own close event — so none of them can leave a
+   * stale refusal behind. The caller unmounts this panel as well, but the rule
+   * holds here rather than depending on that.
+   */
+  const closeConfirm = useCallback(() => {
+    setError(null);
+    onClose();
+  }, [onClose]);
+
   if (phase === "served") {
     return (
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-ground/95 backdrop-blur-md"
         onClick={handleServedTap}
       >
         <div className="text-center">
@@ -165,7 +264,7 @@ function GuestRedeemConfirmationModal({
           >
             SERVED
           </p>
-          <p className="mt-4 text-lg text-muted">{drinkName}</p>
+          <p className="mt-4 text-lg text-ink-2">{drinkName}</p>
         </div>
         <style>{`
           @keyframes servedScale {
@@ -177,9 +276,10 @@ function GuestRedeemConfirmationModal({
     );
   }
 
+  // Active screen — full-bleed tap target so the bartender doesn't have to aim
   if (phase === "active" || phase === "serving" || phase === "cancelling") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-ground/95 backdrop-blur-md">
         {/* Big tap-to-serve area: takes the whole screen above the Cancel row */}
         <button
           type="button"
@@ -190,26 +290,40 @@ function GuestRedeemConfirmationModal({
           <p className="text-xs uppercase tracking-[0.3em] text-accent animate-pulse">
             {phase === "serving" ? "Serving..." : "Tap anywhere to serve"}
           </p>
-          <p className="mt-4 text-4xl sm:text-5xl font-bold text-foreground">
+          {/*
+            The step moves to the phase's own boundary and is not deleted: the
+            drink name is what a bartender reads at a glance in a dark room, and
+            one size for every width would have decided that by default. It was
+            written at a second breakpoint this contract does not use, which is
+            the only thing that changed — the same disposition the other half of
+            this fork took one wave earlier, deliberately matched.
+          */}
+          <p className="mt-4 text-4xl md:text-5xl font-bold text-ink">
             {drinkName}
           </p>
-          <p className="mt-2 text-sm text-muted">Active — awaiting service</p>
+          <p className="mt-2 text-sm text-ink-2">Active — awaiting service</p>
+          {/*
+            Announced rather than merely printed. It was a tinted box that said
+            nothing to anyone not looking at it, and there is no error tracking
+            behind it to notice either.
+          */}
           {error && (
-            <div className="mt-6 w-full max-w-sm rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
+            <span role="alert" className="mt-6 text-sm text-sem-crit">
+              {error}
+            </span>
           )}
-          <p className="mt-12 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-white">
+          <p className="mt-12 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-ground">
             {phase === "serving" ? "Serving..." : "Mark as served"}
           </p>
         </button>
 
+        {/* Cancel row, kept narrow so the bartender's tap can't hit it by mistake */}
         <div className="px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
           <button
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="mx-auto block rounded-full border border-card-border bg-transparent px-6 py-2 text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mx-auto block rounded-full border border-control bg-transparent px-6 py-2 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {phase === "cancelling" ? "Cancelling..." : "Cancel"}
           </button>
@@ -218,37 +332,18 @@ function GuestRedeemConfirmationModal({
     );
   }
 
+  // Initial confirm (or activating)
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-card p-6 pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))] sm:pb-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Redeem Drink</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-card-border transition-colors"
-            aria-label="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <p className="mb-6 text-center text-xl font-semibold text-foreground">{drinkName}</p>
-
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-            <p className="text-sm text-red-400">{error}</p>
-          </div>
-        )}
-
-        <button
-          type="button"
+    <Dialog
+      open
+      onClose={closeConfirm}
+      title="Redeem Drink"
+      status={error ? { tone: "crit", message: error } : null}
+      actions={
+        <Button
+          className="w-full"
           onClick={handleActivate}
           disabled={isPending}
-          className="w-full rounded-full py-3 px-8 font-semibold text-white transition-all bg-accent active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {phase === "activating" ? (
             <span className="inline-flex items-center gap-2">
@@ -261,9 +356,11 @@ function GuestRedeemConfirmationModal({
           ) : (
             "Confirm"
           )}
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      <p className="text-center text-xl font-semibold text-ink">{drinkName}</p>
+    </Dialog>
   );
 }
 
@@ -286,50 +383,58 @@ function GuestDrinkTokenCard({
 
   if (token.status === "redeemed") {
     return (
-      <div className="rounded-xl border border-card-border bg-card p-4 opacity-60">
+      /*
+        The padding is written on the two axes rather than as one value: the
+        shell's own `p-6` is emitted AFTER a shorter `p-4` in the sheet and would
+        win, which is the named-value ordering defect `Skeleton.tsx:60-81`
+        records. The density of a two-column grid of tokens on a phone is the
+        caller's, so it is spelled in a family the shell does not set.
+      */
+      <Card className="px-4 py-4 opacity-60">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-ink truncate">
               {token.drink_name}
             </p>
-            <p className="mt-0.5 text-xs text-muted">
+            <p className="mt-0.5 text-xs text-ink-2">
               {formatPrice(token.price)}
             </p>
           </div>
-          <span
-            className="shrink-0 text-green-400 text-lg"
-            aria-label="Redeemed"
-          >
-            &#10003;
-          </span>
+          {/*
+            The tick carried `aria-label="Redeemed"`, so a screen reader was
+            already being told the word. It is now the badge's own text: nothing
+            a screen reader hears changed, a sighted reader reads what a screen
+            reader was already given, and the raw hue goes — D-41.1-25 refuses a
+            tone per outcome. The other half of this fork made the same move on
+            the same component one wave earlier.
+          */}
+          <Badge className="shrink-0">Redeemed</Badge>
         </div>
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-xs text-ink-2">
           {token.redeemed_at
             ? `Redeemed at ${formatDateTimeNoYear(token.redeemed_at)}`
             : "Already redeemed"}
         </p>
-      </div>
+      </Card>
     );
   }
 
   if (token.status === "refunded") {
     return (
-      <div className="rounded-xl border border-card-border bg-card p-4 opacity-60">
+      <Card className="px-4 py-4 opacity-60">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-ink truncate">
               {token.drink_name}
             </p>
-            <p className="mt-0.5 text-xs text-muted">
+            <p className="mt-0.5 text-xs text-ink-2">
               {formatPrice(token.price)}
             </p>
           </div>
-          <span className="shrink-0 text-blue-400 text-xs font-medium" aria-label="Refunded">
-            Refunded
-          </span>
+          <Badge className="shrink-0">Refunded</Badge>
         </div>
-        <p className="mt-2 text-xs text-muted">Automatically refunded</p>
-      </div>
+        <p className="mt-2 text-xs text-ink-2">Automatically refunded</p>
+      </Card>
     );
   }
 
@@ -337,28 +442,25 @@ function GuestDrinkTokenCard({
 
   return (
     <>
-      <div
+      <PressableCard
         className={`rounded-xl border p-4 ${
           isActive
             ? "border-accent bg-accent/10 animate-pulse"
-            : "border-accent/30 bg-gradient-to-br from-card to-accent/5"
+            : "border-accent/30 bg-gradient-to-br from-surface to-accent/5"
         }`}
       >
-        <p className="text-sm font-medium text-foreground truncate">
+        <p className="text-sm font-medium text-ink truncate">
           {token.drink_name}
         </p>
         <p className="mt-0.5 text-sm text-accent font-semibold">
           {formatPrice(token.price)}
         </p>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="mt-3 w-full rounded-full bg-accent py-2.5 font-medium text-white transition-all active:scale-95 active:opacity-80"
-        >
+        <Button className="mt-3 w-full" onClick={() => setShowModal(true)}>
           {isActive ? "Active — tap to serve" : "Redeem"}
-        </button>
-      </div>
+        </Button>
+      </PressableCard>
 
+      {/* Mounted only while open — one panel, not one per card. */}
       {showModal && (
         <GuestRedeemConfirmationModal
           drinkName={token.drink_name}
@@ -534,12 +636,17 @@ export default function GuestTokenDisplay({
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-        Your Drinks
-      </h2>
+      <SectionHeading className="mb-3">Your Drinks</SectionHeading>
       {loading ? (
+        /*
+          The sentence stays, and the line primitive does not arrive here. A
+          skeleton grid needs a literal count, and on this surface the count is
+          the number of drinks somebody has already paid for — showing two grey
+          cards to a guest who bought five is a lie in the one direction this
+          path must never lie in. A sentence claims nothing about how many.
+        */
         <div className="text-center py-8">
-          <p className="text-sm text-muted">Loading your drinks...</p>
+          <p className="text-sm text-ink-2">Loading your drinks...</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">

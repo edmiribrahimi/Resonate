@@ -1,14 +1,67 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { purchaseDrinksGuest, claimGuestOrders } from "./actions";
+
+import { Button, IconButton } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SectionHeading } from "@/components/ui/Typography";
 import type { DrinkItem } from "@/types/database";
+
 import SumUpCheckoutModal from "../SumUpCheckoutModal";
+import { purchaseDrinksGuest, claimGuestOrders } from "./actions";
 // Pre-checkout login/signup prompt temporarily disabled — re-enable by
 // restoring `usePathname`/`useRouter`, the showWarning state, and
 // the <GuestWarningModal /> render with its handlers.
 // import { usePathname, useRouter } from "next/navigation";
 // import { GuestWarningModal } from "./GuestLoginBanner";
+
+/**
+ * The menu a person buys a drink from without an account.
+ *
+ * ── The double-sided minimum does not move ───────────────────────────────────
+ *
+ * The provider refuses a checkout below a floor, and this file refuses first so
+ * that a guest is never sent to a checkout that will reject them. Both sides are
+ * deliberate: `actions.ts` re-computes the total from the catalogue and applies
+ * the same floor server-side, because the price that counts is the one the
+ * server calculates. The comparison, its value and the sentence that accompanies
+ * it are byte-identical, and they are quoted before and after in this plan's
+ * SUMMARY — changing any of the three would be a behaviour change on the
+ * purchase path.
+ *
+ * ── The claim of a guest's paid orders is RECORDED, not repaired ─────────────
+ *
+ * When a guest who has already paid signs in, their orders are claimed onto the
+ * new account. Every failure of that claim — network, server, an order that no
+ * longer resolves — lands in one empty `catch`, and the enclosing `try` swallows
+ * a second class on top of it. A guest who paid, then signed in, silently keeps
+ * unclaimed orders: **nothing tells them and nothing tells us**, and this
+ * repository has no error tracking, so it reaches a human only when somebody
+ * says so at the bar.
+ *
+ * It carries an entry at `file:line` in this phase's `deferred-items.md`,
+ * written in wave 0, routed to a plan that owns what a buyer is told when a
+ * purchase fails. **Repairing it here would be a behaviour change on the money
+ * path under a visual mandate**, and a fix is not a wider `catch` — it is a
+ * decision about what a guest sees. Untouched, byte-identical, on purpose.
+ *
+ * ── No payload moves ─────────────────────────────────────────────────────────
+ *
+ * Two server actions are called from here and both carry the same arguments in
+ * the same order as before. No status transition, no amount, no idempotency key
+ * and no webhook path is written, read or reshaped by this file. `actions.ts`
+ * was **read** so a rendering change could be told from a payload change, and it
+ * was not edited.
+ *
+ * ── The disabled sign-in prompt stays disabled ───────────────────────────────
+ *
+ * The import of the disabled sign-in prompt and its render are both commented
+ * out in this file, and this conversion re-enables neither. Neither name is
+ * spelled in this paragraph on purpose: a docblock that writes the needle
+ * inflates the very census that exists to measure it, which is the defect
+ * `RefundRequestButton.tsx` recorded in wave 0 of this phase. A visual pass that
+ * switched a guest feature back on would have shipped a decision nobody took.
+ */
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("de-DE", {
@@ -176,26 +229,35 @@ export default function GuestDrinkMenu({
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted">
-        Drink list
-      </h2>
+      <SectionHeading className="mb-3">Drink list</SectionHeading>
 
+      {/*
+        Announced rather than merely tinted. It was a red-tinted box with no
+        role, which said nothing at all to a person not looking straight at it —
+        and the refusals that land here include the checkout minimum and
+        whatever the purchase action threw. The sentence is unchanged; only its
+        boundary and its ink are.
+      */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
+        <p role="alert" className="mb-3 text-sm text-sem-crit">
+          {error}
+        </p>
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         {drinks.map((drink) => {
           const qty = quantities[drink.id] ?? 0;
           return (
-            <div
-              key={drink.id}
-              className="flex flex-col rounded-xl border border-card-border bg-card p-4"
-            >
+            /*
+              The padding is written on the two axes rather than as one value:
+              the shell's own `p-6` is emitted AFTER a shorter `p-4` in the
+              sheet and would win, which is the named-value ordering defect
+              `Skeleton.tsx:60-81` records. The density of a two-column menu on
+              a phone is the caller's.
+            */
+            <Card key={drink.id} className="flex flex-col px-4 py-4">
               <div className="min-w-0 flex-1 text-center">
-                <p className="whitespace-pre-line text-base font-semibold text-foreground">
+                <p className="whitespace-pre-line text-base font-semibold text-ink">
                   {drink.name}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-accent">
@@ -203,31 +265,34 @@ export default function GuestDrinkMenu({
                 </p>
               </div>
 
-              {/* Quantity selector */}
+              {/*
+                Quantity selector. Both steppers were 32px squares; on the
+                shared icon rung they are 44×44, which is the floor a thumb
+                needs at a counter, in the dark, one-handed. The accessible
+                names are the ones that were here.
+              */}
               <div className="mt-3 flex items-center justify-center gap-2">
-                <button
-                  type="button"
+                <IconButton
+                  variant="secondary"
                   onClick={() => updateQuantity(drink.id, -1)}
                   disabled={qty <= 0}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-card-border text-foreground transition-colors hover:border-accent/50 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label={`Decrease ${drink.name}`}
                 >
                   -
-                </button>
-                <span className="w-6 text-center text-sm font-medium text-foreground tabular-nums">
+                </IconButton>
+                <span className="w-6 text-center text-sm font-medium text-ink tabular-nums">
                   {qty}
                 </span>
-                <button
-                  type="button"
+                <IconButton
+                  variant="secondary"
                   onClick={() => updateQuantity(drink.id, 1)}
                   disabled={qty >= 10}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-card-border text-foreground transition-colors hover:border-accent/50 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label={`Increase ${drink.name}`}
                 >
                   +
-                </button>
+                </IconButton>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -236,22 +301,17 @@ export default function GuestDrinkMenu({
       {totalItems > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted">
+            <span className="text-ink-2">
               {totalItems} {totalItems === 1 ? "item" : "items"}
             </span>
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-ink">
               {formatPrice(totalPrice)}
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOrder}
-            disabled={isPending}
-            className="w-full rounded-full bg-accent py-3 font-medium text-white transition-all hover:bg-accent-hover active:scale-95 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button className="w-full" onClick={handleOrder} disabled={isPending}>
             {isPending ? "Processing..." : "Order Drinks"}
-          </button>
+          </Button>
         </div>
       )}
 
