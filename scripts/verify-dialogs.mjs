@@ -134,19 +134,66 @@
  *      the entry. The superseded half is recorded rather than removed, in this
  *      file's house shape.
  *
- *   3. `…/events/[slug]/RedeemConfirmationModal.tsx` — **two of three overlays
+ *   3. `…/events/[slug]/RedeemConfirmationModal.tsx` — **two NAMED SHELLS
  *      exempt, D-41.2-06, the owner's.** They are the screens a BARTENDER
  *      operates on a guest's phone. Inside the primitive the row that reverts a
  *      token becomes full-width under the thumb: money going backwards at a
  *      counter, at two in the morning, with a queue in front.
  *
- *   4. `…/events/[slug]/menu/GuestTokenDisplay.tsx` — **two of three shells
+ *   4. `…/events/[slug]/menu/GuestTokenDisplay.tsx` — **two NAMED SHELLS
  *      exempt, D-41.2-07**, granted under 3's RULE and **not by analogy to it**.
  *      Plan 41.2-12 had 3 in its context, declined to inherit it, and re-derived
  *      the argument from this file's own comments — an argument that runs both
  *      ways, the serve area losing the whole screen while Cancel gains the whole
  *      width. *An exemption is granted per file, on that file's own argument, or
  *      it becomes a technique for making a list empty.*
+ *
+ *      **3 and 4 forgive FOUR SHELLS, not two files** — `EXEMPT_SHELLS` below,
+ *      one entry per shell, each naming the shell by an anchor this gate asserts
+ *      is present. Check B **opens both files and measures every shell in them**;
+ *      a shell that matches no declared anchor is an UNDECLARED COPY and fails.
+ *      That is the correction plan 41.2-22 made, and the paragraph below is why
+ *      it was needed.
+ *
+ * ── WHY 3 AND 4 STOPPED BEING KEYED ON THE FILE (41.2-22) ───────────────────
+ *
+ * **Until 41.2-22 both entries lived in `NEVER_MEASURED_BY_B`**, so check B
+ * `continue`d on the two paths before `shellShapes()` read a line of either.
+ * The exemption was therefore keyed on the FILE while its declared reason spoke
+ * about **two of that file's three overlays**: the gate forgave the file, not
+ * the two shells.
+ *
+ * **Measured, with the mutation asserted present before its result was read.**
+ * Unmodified: exit 0, `REMAINING = 0`. Exemptions neutralised: exit 1,
+ * `REMAINING = 2`, naming both files. **A third, new, hand-rolled overlay
+ * appended to `RedeemConfirmationModal.tsx`: still exit 0 — silently forgiven.**
+ * The same probe against the touch-target gate, whose exemptions on these very
+ * files are element-scoped, exits 1. Element-scoped catches the newcomer;
+ * file-scoped does not.
+ *
+ * **Nothing was mis-forgiven on the day it was found**, and that is not the
+ * argument. Each file carries exactly two hand-rolled shells plus one converted
+ * primitive right now. The argument is that the next shell written into either
+ * file arrives **pre-forgiven**, on the surface where a token is served and
+ * reverted at a counter at two in the morning — and that the sibling gate in
+ * this repository already carries the scar: **exemption 2a was rewritten from a
+ * per-file blanket to a per-element list** because, measured on the tree it came
+ * from, the blanket covered ten elements while the gate measured nine in total —
+ * *it forgave more than it measured* (`verify-touch-targets.mjs:148-166`).
+ *
+ * **The mechanism is copied from that gate, not invented here** (exemptions 9
+ * and 10, `verify-touch-targets.mjs:1063-1261`): an entry names one thing, by a
+ * fragment rather than by a line number, and a fragment that resolves to ZERO or
+ * to TWO OR MORE **refuses**. A declared list that cannot be resolved is a
+ * decoration, and a decoration that looks like a measurement is worse than none.
+ *
+ * **What was deliberately NOT touched:** exception 1, the full-bleed media
+ * viewer, stays keyed on its FILE. Its declared reason is a statement about the
+ * whole file — *a full-bleed media viewer at every tier* — so the reason and the
+ * mechanism already agree, and there is no gap between what it says and what it
+ * forgives. The defect closed here is the DISAGREEMENT between an
+ * element-shaped reason and a file-shaped mechanism, not the existence of a
+ * file-scoped exemption.
  *
  * ── COMMENT HYGIENE, WHICH IS LOAD-BEARING IN THIS GATE ABOVE ALL ───────────
  *
@@ -552,11 +599,113 @@ export const DECLARED_EXCEPTIONS = [
   ],
   [
     BARTENDER_REDEEM_SCREENS,
-    'exempt from check B for TWO of its three overlays — D-41.2-06, the owner\'s. The guest\'s confirmation converted; the other two are the screens a BARTENDER operates, and they will never convert. The reason is the file\'s own, written before this phase: the serve area "takes the whole screen" so a bartender "doesn\'t have to aim", and the row that reverts the token is "kept narrow so the bartender\'s tap can\'t hit it by mistake". Inside the primitive that reverting row becomes a full-width control in the actions region, directly under the thumb — money going backwards at a counter, at two in the morning, with a queue in front and the guard LOOSENED instead of tightened. A file that will never convert is not a debt. NOT extended to any other file by analogy',
+    'check B OPENS this file and measures every shell in it. TWO NAMED SHELLS are forgiven — D-41.2-06, the owner\'s — and any third one fails as an undeclared copy. The guest\'s confirmation converted; the other two are the screens a BARTENDER operates, and they will never convert. The reason is the file\'s own, written before this phase: the serve area "takes the whole screen" so a bartender "doesn\'t have to aim", and the row that reverts the token is "kept narrow so the bartender\'s tap can\'t hit it by mistake". Inside the primitive that reverting row becomes a full-width control in the actions region, directly under the thumb — money going backwards at a counter, at two in the morning, with a queue in front and the guard LOOSENED instead of tightened. A shell that will never convert is not a debt. NOT extended to any other file, and NOT to any other shell in this one: see EXEMPT_SHELLS for the two anchors, each asserted present on every run',
   ],
   [
     BARTENDER_TOKEN_SCREENS,
-    'exempt from check B for TWO of its three shells — D-41.2-07, granted under D-41.2-06\'s RULE and on THIS file\'s own argument, which plan 41.2-12 re-derived after explicitly declining to inherit the twin\'s decision. The argument differs from the twin\'s and runs in BOTH directions: the serve area "takes the whole screen above the Cancel row", so inside the primitive it becomes a panel body at the panel\'s own width — the bartender HAS TO AIM — while the narrow Cancel becomes a full-width control in the actions region under the thumb. The guard would loosen on the reversible act and tighten on the irreversible one, which is the exact inverse of what this surface needs. Both shells were kept LEGIBLE to the matcher throughout, so REMAINING never fell for a reason nobody wrote down',
+    'check B OPENS this file too, and forgives TWO NAMED SHELLS — D-41.2-07, granted under D-41.2-06\'s RULE and on THIS file\'s own argument, which plan 41.2-12 re-derived after explicitly declining to inherit the twin\'s decision. The argument differs from the twin\'s and runs in BOTH directions: the serve area "takes the whole screen above the Cancel row", so inside the primitive it becomes a panel body at the panel\'s own width — the bartender HAS TO AIM — while the narrow Cancel becomes a full-width control in the actions region under the thumb. The guard would loosen on the reversible act and tighten on the irreversible one, which is the exact inverse of what this surface needs. Both shells were kept LEGIBLE to the matcher throughout, so REMAINING never fell for a reason nobody wrote down — and since 41.2-22 the two are named ONE BY ONE, so a third shell written here arrives unforgiven',
+  ],
+];
+
+/**
+ * The two anchors, assembled rather than spelled (DEF-41-01, as everywhere here).
+ *
+ * **Why the anchor is a layout utility on these four shells, and not a handler
+ * name.** The sibling gate anchors on `onClick={handleServe}` because it resolves
+ * an ELEMENT — a whole opening tag, spanning lines. This gate resolves a LINE:
+ * `shellShapes()` reports the line the three overlay parts appear on, and on
+ * these four shells that line holds the class attribute and nothing else. What
+ * distinguishes the two shells inside one file is therefore exactly what this
+ * gate reads anyway — their cross-axis utilities — and an anchor a gate cannot
+ * read is not an anchor.
+ *
+ * **The pair is chosen to be MUTUALLY EXCLUSIVE, and the ambiguity refusal is
+ * what proves it on every run**: the acknowledgement centres its content, the
+ * serve screen stacks its two regions in a column, and neither line carries the
+ * other's utility. If one ever carries both, the entry resolves twice and the
+ * gate stops.
+ */
+const ACK_ANCHOR = 'justify-' + 'center';
+const SERVE_ANCHOR = 'flex-' + 'col';
+
+/**
+ * THE FOUR EXEMPT SHELLS — element-scoped, one entry per shell (41.2-22).
+ *
+ * Shape: `[path, anchor, shape, reason]`, deliberately `verify-touch-targets.mjs`
+ * exemption 9's shape (`[path, tag, fragment, token, reason]`) collapsed onto
+ * this gate's own unit of measurement. **That unit is a SHELL OCCURRENCE** —
+ * `shellShapes()` returns `{ line, shape, source }` — so the thing an entry names
+ * is one occurrence, and the thing it is named BY is a fragment of that
+ * occurrence's own live source line.
+ *
+ * **`anchor` is a fragment and never a line number**, which is the sibling
+ * gate's rule and its reason: a line number drifts on the first edit above it,
+ * and a stale one reads exactly like a current one.
+ *
+ * **The anchors are assembled at run time**, like every other needle in this
+ * file, for DEF-41-01's measured reason: Tailwind compiles class strings out of
+ * `scripts/`, so a complete utility written here as a literal would be a live
+ * candidate. They are matched with the SAME boundary guards `OVERLAY_PARTS`
+ * carries, so an anchor cannot fire inside a longer utility.
+ *
+ * ── THE THREE REFUSALS, and each of them points away from a green ────────────
+ *
+ *   · **an anchor matching ZERO shells REFUSES.** The entry forgives nothing
+ *     while looking guarded, and the shell it used to name is either gone or
+ *     unforgiven with nobody saying so. This is the property that makes the list
+ *     SELF-CHECKING rather than declarative;
+ *   · **an anchor matching TWO OR MORE shells REFUSES.** An ambiguous entry
+ *     forgives a shell nobody named — and this is also the door that closes the
+ *     cleverest way past this list: writing a new overlay whose class string is
+ *     identical to an exempt one does not inherit its forgiveness, it stops the
+ *     gate;
+ *   · **a resolved shell whose SHAPE is not the declared one REFUSES.** An entry
+ *     that says it forgives a hand-rolled overlay, resolving onto a native
+ *     `<dialog>`, is forgiving a shell the file swapped underneath it. That is
+ *     exemption 9's `token` assertion, asking this gate's own question.
+ *
+ * And two more, above all three: a path not on disk REFUSES, and a path check B
+ * never opens — fenced, in `NEVER_MEASURED_BY_B`, or outside the walk — REFUSES,
+ * because an entry forgiving a shell inside a file nobody reads is a forgiveness
+ * about a file this gate never opened. `neverOpenedReason()` is reused rather
+ * than re-derived: WR-01 is the record of what two lists saying the same thing
+ * cost here.
+ *
+ * ── WHY THERE ARE FOUR REASONS AND NOT TWO ──────────────────────────────────
+ *
+ * D-41.2-06 and D-41.2-07 were granted separately, on separate arguments, by two
+ * executors in separate worktrees with no contact — and the second declined the
+ * first's precedent while doing so. Collapsing them into one reason cited twice
+ * would erase the only thing that makes the pair evidence instead of a habit.
+ * Each SHELL then carries the half of its file's argument that is true about it:
+ * the serve screens carry the aim/no-aim direction, the acknowledgements carry
+ * the tap-anywhere one. **A reason that is true of a file and false of the shell
+ * it is printed beside is how an exemption stops being read.**
+ */
+export const EXEMPT_SHELLS = [
+  [
+    BARTENDER_REDEEM_SCREENS,
+    ACK_ANCHOR,
+    'hand-rolled overlay',
+    "the SERVED acknowledgement — a full-bleed screen the bartender dismisses by tapping ANYWHERE on it (the overlay itself carries the handler), sitting between two people at a counter for three seconds. Inside the primitive it becomes a panel with a close control, so a bartender who is already reaching for the next order has to aim at a target instead of at the screen. D-41.2-06, the owner's, 2026-08-14",
+  ],
+  [
+    BARTENDER_REDEEM_SCREENS,
+    SERVE_ANCHOR,
+    'hand-rolled overlay',
+    'the ACTIVE serve screen, and the shell D-41.2-06 is chiefly about. Its serve area "takes the whole screen" so a bartender "doesn\'t have to aim", and the row that reverts the token is "kept narrow so the bartender\'s tap can\'t hit it by mistake" — the file\'s own words, written before this phase. Inside the primitive that reverting row becomes a full-width control in the actions region, directly under the thumb: money going backwards at a counter, at two in the morning, with a queue in front, and the guard LOOSENED on the one act nobody wants easier. ONE-DIRECTIONAL — the loosening is what this file argues about',
+  ],
+  [
+    BARTENDER_TOKEN_SCREENS,
+    ACK_ANCHOR,
+    'hand-rolled overlay',
+    'the SERVED acknowledgement on the drinks menu. The file says of itself that it is a fork of the modal above, and this shell is declared a SECOND time rather than covered by one entry: the boundary of an exemption here is the shell, never the file, and never the fork either. Same construction, same dismissal-by-tapping-anywhere, its own line. D-41.2-07',
+  ],
+  [
+    BARTENDER_TOKEN_SCREENS,
+    SERVE_ANCHOR,
+    'hand-rolled overlay',
+    'the ACTIVE serve screen on the drinks menu, and the shell D-41.2-07 rests on. Its argument is NOT the twin\'s and plan 41.2-12 re-derived it from this file\'s own comments after explicitly declining to inherit D-41.2-06. It runs in BOTH directions: the serve area "takes the whole screen above the Cancel row", so inside the primitive it SHRINKS to a panel body at the panel\'s own width — the bartender HAS TO AIM — while the narrow Cancel GROWS to a full-width control under the thumb. The guard would loosen on the reversible act and tighten on the irreversible one, which is the exact inverse of what this surface needs. TWO-DIRECTIONAL, and that is the difference from the twin',
   ],
 ];
 
@@ -662,6 +811,16 @@ export const DECLARED_EXCEPTIONS = [
  * the docblock below keeps deliberately, so the refusal prints the reason **per
  * entry**.
  *
+ * **AND A FIFTH FACT ARRIVED WITH 41.2-22, which does NOT belong in this Map.**
+ * A file check B **opens and measures**, and inside which some SHELLS are
+ * forgiven by name: the two bartender files. They were entries here until
+ * 41.2-22 — which is exactly why the gate forgave the file rather than the two
+ * shells its reason described, and why a third overlay written into either
+ * arrived pre-forgiven. `EXEMPT_SHELLS` above carries them now, one shell at a
+ * time. **This Map is only for files nothing is read out of**, and the two lines
+ * that used to sit here are recorded in the header rather than deleted in
+ * silence.
+ *
  * Shape: `path -> { kind, reason }`.
  */
 export const NEVER_MEASURED_BY_B = new Map([
@@ -682,37 +841,31 @@ export const NEVER_MEASURED_BY_B = new Map([
     },
   ],
   /*
-   * THE TWO BARTENDER FILES, ADDED BY PLAN 41.2-19 (D-41.2-06 and D-41.2-07).
+   * THE TWO BARTENDER FILES USED TO BE HERE, AND THEIR ABSENCE IS THE 41.2-22
+   * CHANGE — recorded rather than left to be inferred from a diff nobody reads.
    *
-   * They enter HERE and not only in `DECLARED_EXCEPTIONS`, and the two lists are
-   * not interchangeable: this Map is what check B's loop reads, and the refusal
-   * above is keyed on it. A file declared an exception in the printed list but
-   * absent from this Map would be OPENED by check B, found to carry a shell, and
-   * reported as an UNDECLARED COPY — a red on a file a person measured and
+   * Plan 41.2-19 put them in this Map (D-41.2-06, D-41.2-07), which made check B
+   * `continue` on both paths before `shellShapes()` read a line of either. The
+   * two entries carried honest, element-shaped reasons — *"two of its three
+   * overlays"* — enforced by a file-shaped mechanism, and the gap between those
+   * two sentences is the whole defect: a THIRD hand-rolled overlay appended to
+   * either file kept the gate at exit 0. Measured, with the mutation asserted
+   * present first.
+   *
+   * The reasons did not move to a summary and they did not shrink. They went to
+   * `EXEMPT_SHELLS` above, split four ways, each naming ONE shell by an anchor
+   * this gate asserts is present on every run — and each file is now OPENED and
+   * MEASURED, which is the only way an undeclared copy inside it can fail.
+   *
+   * **What the old comment here said, and it is still true of the pair that
+   * remains:** a file declared an exception in the printed list but absent from
+   * the list the loop reads would be opened, found to carry a shell, and
+   * reported as an undeclared copy — a red on a file a person measured and
    * declared correct, which is §0 rule 3's own definition of how a gate gets
    * switched off. WR-01 is the record of the two lists drifting the other way.
-   *
-   * **Each carries its OWN reason, not one reason cited twice.** An exemption
-   * without its reason is indistinguishable from a file nobody got to, and this
-   * gate's whole architecture keeps *exempt* (somebody measured it and declared
-   * it correct) apart from *fenced* (nobody measured it at all).
+   * That obligation now falls on `EXEMPT_SHELLS`, and it is discharged by the
+   * same refusal machinery: an entry naming a path check B never opens refuses.
    */
-  [
-    BARTENDER_REDEEM_SCREENS,
-    {
-      kind: 'exempt — measured and declared correct (D-41.2-06, the owner)',
-      reason:
-        "two of its three overlays are the BARTENDER's screens and will never convert: the serve area takes the whole screen so a bartender does not have to aim, and the row that reverts a token is kept narrow so a tap cannot hit it by mistake. Inside the primitive that row goes full-width under the thumb — money going backwards at a counter with a queue in front. A file that will never convert is not a debt",
-    },
-  ],
-  [
-    BARTENDER_TOKEN_SCREENS,
-    {
-      kind: 'exempt — measured and declared correct (D-41.2-07, under D-41.2-06\'s rule, on this file\'s own argument)',
-      reason:
-        'two of its three shells are the BARTENDER\'s screens, refused by plan 41.2-12 after it explicitly declined to inherit the twin\'s decision. This file\'s argument runs BOTH ways: the serve area becomes a panel body so the bartender has to aim, while the narrow Cancel goes full-width under the thumb — the guard loosening on the reversible act and tightening on the irreversible one',
-    },
-  ],
 ]);
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1361,6 +1514,17 @@ function shellShapes(relPath) {
  * The migration can therefore be closed without the gate losing its teeth, which
  * is exactly the condition the guard was protecting.
  *
+ * **THAT PARAGRAPH WAS TRUE OF THE TREE AND FALSE OF TWO OF THE THREE FILES, AND
+ * 41.2-22 IS THE CORRECTION.** It says *"a ninth hand-rolled shell written
+ * tomorrow reddens check B on its own path"*, and the sentence is kept rather
+ * than rewritten because it states the right property — which the code delivered
+ * on every path EXCEPT the two the exemptions named. A ninth shell written into
+ * `RedeemConfirmationModal.tsx` or `GuestTokenDisplay.tsx` did not redden
+ * anything: check B skipped both files whole. Measured, exit 0. The count in the
+ * arithmetic — *3 exempt files* — is now **1 exempt file and 4 exempt shells**,
+ * and the property the paragraph claims is true on every path in the tree for
+ * the first time.
+ *
  * **What this does NOT say.** It does not say Escape closes anything, that a
  * sheet rises from the bottom edge below 768px, or that the page behind a panel
  * stops scrolling. Those are H41-2 — a person, at two widths — and they are
@@ -1372,10 +1536,13 @@ export const MIGRATION_CLOSED = {
   date: '2026-08-14',
   by: 'plan 41.2-19',
   why:
-    'every hand-rolled dialog shell in the tree is either the primitive, or one of the ' +
-    'three files a person measured and declared correct with its reason on the line; ' +
-    'check B still opens every other walked file, so a ninth copy written tomorrow fails ' +
-    'as an undeclared copy rather than as a missing list entry',
+    'every hand-rolled dialog shell in the tree is either the primitive, the one file a ' +
+    'person measured and declared correct as a whole, or one of the FOUR NAMED SHELLS ' +
+    'declared correct one by one with its reason on its own line; check B opens every ' +
+    'other walked file AND both bartender files, so a ninth copy written tomorrow fails ' +
+    'as an undeclared copy rather than as a missing list entry ' +
+    '(sentence corrected by plan 41.2-22: until then two of the three were forgiven by ' +
+    'FILE, and a ninth copy written into either of those two failed as nothing at all)',
 };
 
 export const REMAINING = [
@@ -1967,6 +2134,126 @@ if (probeDisagreements.length > 0) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * `EXEMPT_SHELLS` resolved against the tree, BEFORE check B counts anything
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Resolved HERE, and the position is load-bearing for two reasons.
+ *
+ * **Below the matcher self-check**, because resolving an anchor calls
+ * `shellShapes()`, which is the matcher: a matcher that disagrees with its own
+ * description would resolve these four entries against something other than this
+ * tree, and the resulting refusal would name the wrong thing.
+ *
+ * **Above check B's loop**, for the reason `PHASE_42_EXEMPT_PATHS` gives about
+ * its own overlap refusal: every number this gate prints is derived from what
+ * that loop collected, so a run whose forgiveness list cannot be resolved must
+ * not reach a tick, a STALE notice, or a count.
+ */
+function anchorRegExp(anchor) {
+  const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(LEFT_BOUNDARY + escaped + RIGHT_BOUNDARY);
+}
+
+const EXEMPT_SHELL_ENTRIES = [];
+
+for (const [path, anchor, shape, reason] of EXEMPT_SHELLS) {
+  if (!existsCaseExact(path)) {
+    refuse(
+      `EXEMPT_SHELLS names a shell in ${path}, which is not on disk.\n` +
+        '       A stale forgiveness silently removes a real shell from the measured set — the one\n' +
+        '       failure direction that produces a green. Asked case-exactly (DEF-41-07 item 4), so\n' +
+        '       the verdict for one typo is the same verdict on every filesystem. Nothing was measured.'
+    );
+  }
+
+  /*
+   * A forgiveness inside a file check B never opens forgives nothing, while
+   * looking exactly like a guarded case. `neverOpenedReason()` is REUSED rather
+   * than re-derived: WR-01 is this gate's own record of what it costs when two
+   * lists say what is skipped and only one of them is refused on.
+   */
+  const why = neverOpenedReason(path);
+  if (why !== null) {
+    refuse(
+      `EXEMPT_SHELLS names a shell in ${path}, and check B NEVER OPENS that file:\n\n         ${why}\n\n` +
+        '       An entry forgiving a shell inside a file nobody reads is a statement about a file\n' +
+        '       this gate never opened. Either the entry goes, or the thing that keeps check B out\n' +
+        '       of that file does — and which one is a decision for a person. Nothing was measured.'
+    );
+  }
+
+  const re = anchorRegExp(anchor);
+  const matches = shellShapes(path).filter((hit) => re.test(hit.source));
+
+  if (matches.length === 0) {
+    refuse(
+      `EXEMPT_SHELLS declares a shell in ${path} by the anchor\n` +
+        `         ${anchor}\n` +
+        '       and NO measured shell in that file carries it. The entry is stale: it forgives\n' +
+        '       nothing while looking like a guarded case, and the shell it used to name is now\n' +
+        '       either gone or unforgiven without anybody saying so. THIS is what makes the list\n' +
+        '       self-checking rather than merely declared. Nothing was measured.'
+    );
+  }
+  if (matches.length > 1) {
+    refuse(
+      `EXEMPT_SHELLS declares a shell in ${path} by the anchor\n` +
+        `         ${anchor}\n` +
+        `       and ${matches.length} measured shells carry it (lines ${matches.map((m) => m.line).join(', ')}).\n` +
+        '       An ambiguous entry forgives a shell nobody named — and this is also the door that\n' +
+        '       closes the cleverest route past this list: a NEW overlay written with the same\n' +
+        '       class string as an exempt one does not inherit its forgiveness, it stops the gate.\n' +
+        '       Narrow the anchor, or declare the new shell. Nothing was measured.'
+    );
+  }
+
+  const hit = matches[0];
+
+  /*
+   * The shape assertion — exemption 9's `token` guard asking this gate's own
+   * question. An entry that says it forgives a hand-rolled overlay, resolving
+   * onto a native <dialog>, is forgiving a shell the file swapped underneath it.
+   */
+  if (hit.shape !== shape) {
+    refuse(
+      `EXEMPT_SHELLS forgives a ${shape} at ${path}:${hit.line}, and the shell measured there\n` +
+        `       is a ${hit.shape}. The file swapped its shell technology under a declared entry, so\n` +
+        "       the entry's stated subject is false about the thing it names. Nothing was measured."
+    );
+  }
+
+  const already = EXEMPT_SHELL_ENTRIES.find((e) => e.path === path && e.line === hit.line);
+  if (already) {
+    refuse(
+      `two EXEMPT_SHELLS entries resolve to the SAME shell, ${path}:${hit.line}:\n` +
+        `         ${already.anchor}\n         ${anchor}\n` +
+        '       One of the two forgives nothing and is decoration — and a decoration that looks\n' +
+        '       like a measurement is worse than nothing. Nothing was measured.'
+    );
+  }
+
+  EXEMPT_SHELL_ENTRIES.push({
+    path,
+    anchor,
+    shape,
+    reason,
+    line: hit.line,
+    source: hit.source,
+    applied: 0,
+  });
+}
+
+/** The one place check B asks whether a measured shell is forgiven. */
+function exemptShellEntry(relPath, hit) {
+  return (
+    EXEMPT_SHELL_ENTRIES.find(
+      (e) => e.path === relPath && e.line === hit.line && e.shape === hit.shape
+    ) ?? null
+  );
+}
+
 const failures = [];
 
 console.log(`  files walked under src/       : ${files.length}`);
@@ -2065,12 +2352,26 @@ const fenced = new Map();
 /** Of the walked files, the ones `NEVER_MEASURED_BY_B` skipped — counted, not assumed. */
 const neverOpened = new Map();
 let opened = 0;
+/** Every shell the loop MEASURED, forgiven or not — the denominator (41.2-22). */
+let shellsFound = 0;
+/** Of those, the ones an `EXEMPT_SHELLS` entry named — counted, never assumed. */
+let shellsForgiven = 0;
+/** Files opened, carrying at least one shell, every one of which was forgiven. */
+const fullyForgivenFiles = new Map();
 
 /*
  * The two `continue`s below are driven by `NEVER_MEASURED_BY_B` and by the
  * fence, in that order — the same two lists, in the same order, that the
  * refusal above is keyed on. Hard-coded comparisons here were how the loop and
  * the refusal drifted apart in the first place (WR-01).
+ *
+ * **AND THERE IS NO THIRD `continue`, WHICH IS 41.2-22's WHOLE CHANGE.** The two
+ * bartender files used to take the first one — so the exemption was keyed on the
+ * FILE while its reason spoke about two of that file's three overlays, and a
+ * third overlay written into either arrived pre-forgiven. They are opened now,
+ * every shell in them is measured, and forgiveness is asked PER SHELL below. A
+ * shell that matches no declared anchor stays in `kept` and reaches the
+ * undeclared-copy failure like any other.
  */
 for (const file of files) {
   const skip = NEVER_MEASURED_BY_B.get(file);
@@ -2085,7 +2386,42 @@ for (const file of files) {
   }
   opened += 1;
   const found = shellShapes(file);
-  if (found.length > 0) measuredShells.set(file, found);
+  shellsFound += found.length;
+
+  const kept = [];
+  for (const hit of found) {
+    const entry = exemptShellEntry(file, hit);
+    if (entry) {
+      entry.applied += 1;
+      shellsForgiven += 1;
+      continue;
+    }
+    kept.push(hit);
+  }
+
+  if (kept.length > 0) measuredShells.set(file, kept);
+  else if (found.length > 0) fullyForgivenFiles.set(file, found.length);
+}
+
+/*
+ * The resolution above and the loop just now are TWO paths to the same shells,
+ * and this is the assertion that they agree. An entry resolved onto a real shell
+ * and then forgave nothing means the loop never reached that shell — which can
+ * only be a mechanism nobody wrote down, and is exactly the class WR-01 and CR-03
+ * record. By construction this cannot fire today; it is here because "cannot
+ * fire" is what the sentence CR-03 withdrew also said.
+ */
+const unappliedExemptShells = EXEMPT_SHELL_ENTRIES.filter((e) => e.applied === 0);
+
+if (unappliedExemptShells.length > 0) {
+  refuse(
+    `${unappliedExemptShells.length} EXEMPT_SHELLS entr(y/ies) resolved onto a real shell and then\n` +
+      '       forgave nothing, so the resolution and check B\'s loop disagree about the same file:\n\n       ' +
+      unappliedExemptShells
+        .map((e) => `${e.path}:${e.line}\n         anchor: ${e.anchor}`)
+        .join('\n\n       ') +
+      '\n\n       Two paths reached the same shell and only one of them found it. Nothing was measured.'
+  );
 }
 
 const undeclared = [];
@@ -2138,6 +2474,31 @@ console.log(
     '      If a hand-rolled dialog is written behind that fence, check B is silent about it.\n'
 );
 
+/*
+ * PRINTED IN FULL, because a green must state what it took itself over — the
+ * sibling gate's rule (`verify-touch-targets.mjs:75`), and the reason each entry
+ * carries its `applied` count: an exemption applied ZERO times is either stale
+ * or a shell that quietly left, and both are things a reader must be able to see
+ * without running a diff.
+ */
+console.log(
+  `  the declared shell exemptions — ${EXEMPT_SHELL_ENTRIES.length} SHELLS, named one by one, inside files\n` +
+    '  check B OPENS and MEASURES (41.2-22):\n'
+);
+for (const e of EXEMPT_SHELL_ENTRIES) {
+  console.log(`      ${e.path}:${e.line}  [${e.shape}]  anchor: ${e.anchor}  applied ${e.applied}×`);
+  console.log(`         ${e.reason}\n`);
+}
+console.log(
+  `      ${shellsForgiven} of the ${shellsFound} shell(s) check B measured are forgiven by one of those entries.\n` +
+    '      The boundary of these exemptions is the SHELL and never the file: both files are\n' +
+    '      opened, every shell in them is measured, and a shell matching no anchor above fails\n' +
+    '      as an UNDECLARED COPY. Until 41.2-22 the two files were skipped whole, so a third\n' +
+    '      hand-rolled overlay written into either arrived PRE-FORGIVEN and this gate stayed\n' +
+    '      green — measured, not supposed. An anchor matching zero shells REFUSES, and one\n' +
+    '      matching two or more REFUSES: that is what stops this list becoming a decoration.\n'
+);
+
 console.log('  check B — dialog shells declared OUTSIDE the primitive:\n');
 console.log(`      files walked under src/         : ${files.length}`);
 console.log(`      never opened by check B         : ${neverOpened.size + fenced.size}`);
@@ -2148,12 +2509,22 @@ for (const [path, skip] of NEVER_MEASURED_BY_B) {
 console.log(`         ${fenced.size}  fenced by path, NEVER MEASURED — a scope boundary, not an approval`);
 console.log('            (Phase 42 — see the fence above)');
 console.log(`      files check B opened            : ${opened}`);
-console.log(`      of those, carrying a shell      : ${measuredShells.size}`);
+console.log(`      shells measured in them         : ${shellsFound}`);
+console.log(`         ${shellsForgiven}  forgiven by a declared entry — see the list above`);
+console.log(`         ${shellsFound - shellsForgiven}  left standing`);
+console.log(`      files carrying only forgiven shells : ${fullyForgivenFiles.size}`);
+for (const [path, n] of fullyForgivenFiles) {
+  console.log(`            ${path}  (${n} shell(s), all named)`);
+}
+console.log(`      files still carrying a shell    : ${measuredShells.size}`);
 console.log(`      REMAINING entries declared      : ${REMAINING.length}`);
 console.log(
-  '\n      walked = never opened + opened, and opened = carrying a shell + clean. The two\n' +
-    '      never-opened rows are DIFFERENT FACTS: exempt means a person measured the file and\n' +
-    '      declared it correct; fenced means nobody measured it at all.\n'
+  '\n      walked = never opened + opened; shells measured = forgiven + left standing; and\n' +
+    '      opened = carrying only forgiven shells + still carrying a shell + clean. THREE\n' +
+    '      DIFFERENT FACTS, and the report refuses to collapse them: FENCED means nobody\n' +
+    '      measured the file at all; NEVER OPENED means a person measured the whole file and\n' +
+    '      declared it correct; FORGIVEN means the file WAS opened and measured, and a person\n' +
+    '      named these particular shells. Only the third leaves the rest of its file guarded.\n'
 );
 console.log(`      REMAINING = ${measuredShells.size}\n`);
 
@@ -2333,6 +2704,13 @@ if (failures.length === 0) {
   console.log(
     `  DIALOGS_OK — all three checks passed. REMAINING = ${measuredShells.size} file(s) still ` +
       'declare\n  a dialog shell of their own.'
+  );
+  console.log(
+    `\n  WHAT THIS GREEN TOOK ITSELF OVER: ${neverOpened.size} file(s) never opened, ${fenced.size} fenced by path,\n` +
+      `  and ${shellsForgiven} SHELL(S) forgiven by name inside ${fullyForgivenFiles.size} file(s) this run OPENED and\n` +
+      `  MEASURED — out of ${shellsFound} shell(s) measured in all. Those four shells are named, with the\n` +
+      '  anchor each was found by and the reason each was granted, in the list above. A green\n' +
+      '  that does not say what it forgave is a green nobody can audit.'
   );
   console.log(
     '\n  That number is the point of the green, not the tick. Read the header before treating\n' +
