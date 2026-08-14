@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Arretrato di cinque fasi deployato in produzione; prima richiesta fatta, nessun 500
-last_updated: "2026-08-14T21:40:00.000Z"
-last_activity: 2026-08-14 -- deploy dell'arretrato (619 commit) e prima richiesta
+stopped_at: Phase 44 context gathered
+last_updated: "2026-08-14T22:12:12.935Z"
+last_activity: 2026-08-14 -- Phase 46 execution started
 progress:
   total_phases: 18
   completed_phases: 15
@@ -314,13 +314,14 @@ Fixed by the project owner before planning — not re-opened at plan time:
   alla porta** dopo il login. Alle due di notte, davanti a una fila, con la rete che
   non prende. Da guardare **prima** del door pass, perche' il door pass lo incontrera'
   al primo passo e si fermera' li'.
+
 - D12 — 63 righe di produzione cancellate durante la verifica di fase 36 in sette tabelle (drink_orders 28, drink_tokens 16, drink_items 10, pending_purchases 6, tickets 1, ticket_tiers 1, guest_list_entries 1). Eventi e serate ripristinati byte-identici; queste no. PITR non attivo — decisione del proprietario.
 - ~~Fase 37: la lettura anonima degli indirizzi di sede resta APERTA in produzione~~ → **RISOLTO il 2026-08-11.** Seconda migration applicata e arretrato deployato come un atto solo, nell'ordine migration→deploy (l'inverso avrebbe fatto lanciare /events con PGRST202: pagine giu' invece che degradate). `venues_select_public` non esiste piu'; la strada pubblica e' `venue_for_parties`, che concede per serata. Misurato sul sito vero da anonimo senza cookie: 8 aghi dichiarati su 4 documenti reali → 0 occorrenze, mentre il nome del locale della serata NON segreta compare 4 volte negli stessi documenti
 
 ## Session Continuity
 
-**Last session:** 2026-08-14T20:55:40.885Z
-**Stopped at:** Phase 46 executed; manual verification pass declined by the owner
+**Last session:** 2026-08-14T22:12:12.931Z
+**Stopped at:** Phase 44 context gathered
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
