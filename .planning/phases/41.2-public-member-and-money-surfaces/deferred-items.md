@@ -225,3 +225,91 @@ exit. If an audit of the upstream entitlement is wanted, it is its own plan — 
 *Written 2026-08-14 by plan 41.2-01, wave 0. Every `file:line` was re-read against
 the tree in the same session; three of the four cited in `41.2-RESEARCH.md` §3.5
 had drifted. None of the five was modified.*
+
+---
+
+## Entries from plan 41.2-02, appended after an add/add merge conflict
+
+> **Both plans of wave 0 wrote this file, and only one of them declared it.** Plan
+> 41.2-01 listed `deferred-items.md` in its `files_modified`; plan 41.2-02 wrote to it
+> without declaring it, so the intra-wave overlap check could not see the collision and
+> both worktrees created the file independently. Git reported an add/add conflict at merge
+> and **nothing was lost** — both sides are kept below, in full, in the order they were
+> written.
+>
+> **This is the hazard, arriving one wave before the fix for it.** Plans 41.2-03 through
+> 41.2-18 now write to their own `41.2-NN-FINDINGS.md`, which each owns exclusively, and
+> plan 41.2-20 consolidates them here in wave 8 where nothing runs beside it. Wave 0 was
+> already dispatched when that change landed, so it kept the old shape and demonstrated
+> exactly why the change was needed.
+>
+> The merge was resolved by keeping **both** sides — an append-only findings document has
+> no losing side. Nothing was summarised, merged or re-worded.
+
+Findings raised during execution and **carried forward rather than fixed**. Each one names
+the file, the reason it is not this phase's, and what would have to be decided to close it.
+
+`.planning/` is public: roles, never people; no venue under negotiation, no unannounced
+date, no line-up, no contact.
+
+---
+
+## DEF-41.2-A — the refund request's refusal collapses every cause into one sentence
+
+**Raised by:** plan 41.2-02, task 2
+**File:** `src/app/(public)/tickets/[id]/RefundRequestButton.tsx` — the catch arm inside
+`handleSubmit`
+
+The catch reports whatever the action threw, or **one bare fallback sentence** when it
+carried no message. The action it calls — `requestRefund` in
+`src/app/(public)/tickets/refund-actions.ts:93-147` — can refuse for **three distinct
+reasons**, and all three arrive on screen indistinguishable from one another and from a
+network fault:
+
+| Refusal in the action | What the holder is told |
+|---|---|
+| not authenticated | the action's own message, or the bare fallback |
+| the ticket is not this person's, or does not exist | the same shape |
+| a request is already pending on this ticket | the same shape |
+
+The third is the one that matters most: it is the only one where the correct advice is
+*wait*, and it reads exactly like the two where the correct advice is *try again*.
+
+**Why it was not fixed here.** Rewording a money surface's refusal is a decision about what
+a ticket holder is told when a refund does not go through, and this plan converts
+presentation. It is the same disposition `RefundActions.tsx:75-80` already took on the staff
+side of the same act, and it is the same class of finding as the four silent catches on the
+money path that `41.2-CONTEXT.md`'s Phase Boundary records rather than repairs.
+
+**What makes it more than tidiness.** This repository has **no error tracking**
+(`meta-gates.md`): no production error reaches a person by itself. A refusal a holder cannot
+read is a refusal nobody ever reads, and the only observable effect is a person pressing the
+control again on a request that is already pending.
+
+**To close it:** a plan that owns the copy of the refund path, naming each cause in the
+holder's words, with the wording written once and used always
+(`community-membership.md`, gate *un rifiuto e' una comunicazione, non uno stato*).
+
+---
+
+## DEF-41.2-B — `next-redirect.ts:73` names this file's call sites by line, and the lines moved
+
+**Raised by:** plan 41.2-02, task 1
+**File:** `src/lib/routes/next-redirect.ts:73` — a comment on the allow-list entry for the
+drinks-menu path
+
+That comment documents which call sites produce the entry, **by line number**, in
+`GuestLoginBanner.tsx`. The conversion moved those lines. The **values** are byte-identical —
+the destination string, its encoding and its parameter name are unchanged, so the allow-list
+still admits exactly what it admitted — but the two line numbers in the comment no longer
+point at them.
+
+**Why it was not fixed here.** `next-redirect.ts` is not in this plan's declared file set,
+and this plan's own rule is that a converted-but-still-referenced fact is reconciled on the
+authority of the tree by a reconciliation plan, not on the authority of a conversion's claim.
+Editing an access-control module's prose from a visual conversion is the wrong plan opening
+the wrong file.
+
+**To close it:** the phase's reconciliation wave re-measures the two call sites and updates
+the comment — or replaces the line numbers with a description, which is what stops the drift
+recurring at every conversion.
