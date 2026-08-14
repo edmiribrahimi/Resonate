@@ -73,6 +73,25 @@ function formatPrice(price: number) {
 const STORAGE_KEY_PREFIX = "resonate_drink_tokens";
 const CART_STORAGE_KEY = "resonate_drink_cart";
 
+/**
+ * A byte-identical duplicate of the helper in `GuestTokenDisplay.tsx:107-120`,
+ * down to the `STORAGE_KEY_PREFIX` both build the key from. Compared line by
+ * line on 2026-08-14 rather than assumed.
+ *
+ * It is written down because the two copies are about to stop being the same
+ * thing: plan 46-05 changes the **contract** of the copy in
+ * `GuestTokenDisplay.tsx` — it returns a tagged result instead of `void`, so a
+ * write the browser refused stops looking like a write that happened. This copy
+ * keeps returning `void`, and is therefore exactly where a divergence between
+ * the two will hide.
+ *
+ * The risk is not tidiness. For a guest with no account the
+ * `resonate_drink_tokens_<event>` entry **is the receipt**: nothing server-side
+ * knows the purchase happened on this device. Two authors of one measurement,
+ * on the only record a person holds that they paid, is the failure mode to
+ * watch — so a change to either copy is a change to both in the same commit, or
+ * a decision written down beside them.
+ */
 function storeGuestOrder(eventId: string, orderId: string): void {
   try {
     const key = `${STORAGE_KEY_PREFIX}_${eventId}`;
@@ -116,6 +135,29 @@ export default function GuestDrinkMenu({
       if (!stored) return;
       const orderIds = JSON.parse(stored) as string[];
       if (orderIds.length === 0) return;
+      // ── The ordering below is DELIBERATE ────────────────────────────────
+      //
+      // `localStorage.removeItem(key)` sits **inside the `.then`**. On a failed
+      // claim it does not run, the key survives, and the guest keeps a route
+      // back to the drinks they already paid for.
+      // `.planning/phases/41.2-public-member-and-money-surfaces/deferred-items.md`
+      // (DI-41.2-01) calls it "the one mercy here, and it is accidental rather
+      // than designed." It is accidental no longer: it is recorded here so the
+      // next reader cannot mistake it for an oversight.
+      //
+      // Flattening this chain deletes that fallback in silence. An `await` with
+      // a `finally`, or hoisting `removeItem` out of the `.then`, removes the
+      // key on the failing branch too — and this repository has no error
+      // tracking (`.claude/rules/meta-gates.md`), so nobody would learn of it
+      // until a guest says so at the bar, holding a phone that shows nothing.
+      //
+      // The empty `.catch` is LEFT AS IT IS, deliberately and out of perimeter:
+      // `claimGuestOrders` claims a guest's orders after **login**, and login is
+      // under review (D-46-11, `46-CONTEXT.md`), so DI-41.2-01 is not this
+      // phase's to repair. Repairing it means deciding what a guest is shown, on
+      // a surface that may not survive that decision. An empty catch left with
+      // its reason written is a different thing from an empty catch nobody
+      // looked at.
       claimGuestOrders(orderIds)
         .then(() => localStorage.removeItem(key))
         .catch(() => {});
