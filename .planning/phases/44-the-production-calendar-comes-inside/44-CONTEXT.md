@@ -178,6 +178,26 @@ rather than a reading of any document:
   correct — **as its own commit, not inside this phase**, since a persona module
   change needs `verify:persona` and a changelog entry.
 
+- **D-44-25 [supersedes the anchor list in D-44-09 for the NIGHT]:** the night's
+  three anchors were re-measured on the calendar on 2026-08-15 and **all three
+  were wrong in the module**. Persona 1.13.0 corrects them; the phase must build
+  against these, not against the older prose:
+  - **Timetable: the night itself**, not −1 (6 of 7; `RSNT-003` is the override)
+  - **LiveCut: anchored to the NEXT night, at −4 / −3 / −2** — not to its own
+  - **After movie: −1 from the NEXT edition's listing. Six out of six.**
+
+  **The measurement that matters for how this phase computes anything:** from
+  its own night, the after movie looked irregular (−12, −12, −12, −18, −19).
+  From the true anchor it is **−1, always**. The variability was in the point of
+  observation, not in the data. Any proposal logic (D-44-09b part 3) must
+  compute from the anchor the rule names, never from a day-count off the night.
+
+  **Consequence already visible in the file, and it must not be "fixed":**
+  `RSNT-008` has neither LiveCut nor after movie, because `RSNT-009` is not in
+  the calendar. That is the rule behaving correctly. An import that filled that
+  gap would invent dates for an edition that does not exist — and D-44-12's
+  "says it is waiting" now covers the LiveCuts too, not only the after movie.
+
 - **D-44-21: the file uses TWO naming conventions, and the import must join
   across them.** A night is written in full with its progressivo
   (`Resonate 008`, `RamaDub x <venue> 001`); a piece is written by kind and
