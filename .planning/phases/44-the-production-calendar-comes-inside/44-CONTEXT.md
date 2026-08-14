@@ -178,6 +178,33 @@ rather than a reading of any document:
   correct — **as its own commit, not inside this phase**, since a persona module
   change needs `verify:persona` and a changelog entry.
 
+- **D-44-21: the file uses TWO naming conventions, and the import must join
+  across them.** A night is written in full with its progressivo
+  (`Resonate 008`, `RamaDub x <venue> 001`); a piece is written by kind and
+  **sigla** (`Listing - RMDB-BZ-001`, `LiveCut - RMDB-BZ-001`). Matching pieces
+  to nights by sigla alone finds no night at all — measured, not assumed: a
+  first pass keyed on sigla reported 13 nights as "missing", which was the
+  tool's fault. The import normalises both forms to one key.
+
+- **D-44-22: the piece is called `LiveCut`.** 27 occurrences out of 27. The
+  product must use the name production uses; `production-calendar.md` said
+  "Podcast" and was corrected (persona 1.12.0). A night carries **three**
+  LiveCuts — one per dj, exactly as the pipeline rule states, confirmed on six
+  nights.
+
+- **D-44-23: SunSet does not follow the satellites' pipeline.** Its LiveCut is
+  +2 from the Saturday (conforming, 3 of 3), but its **listing runs far ahead**
+  — Tuesday, 11 or 18 days before, never the canonical 4. The anticipation is
+  **not a fixed number**, so nothing may derive a SunSet listing date: it is
+  read from the file. Proposals (D-44-09b, part 3) must therefore be **withheld
+  for SunSet listings** rather than computed from a rule that does not exist.
+
+- **D-44-24: one real override already exists in the archive.** `RSNT-002`
+  carries its timetable on the night itself, while nights 003→008 all carry it
+  at −1. Confirmed by the owner as deliberate — *"that evening went like that"*.
+  It is the first live case of D-44-09b: a date written in the file wins, and
+  the import must not "repair" it.
+
 - **D-44-20: the import needs an explicit inclusion rule.** With nights, pieces
   and external commitments in one file — plus entries carrying no sigla at all —
   "import everything" is not a specification. What enters, as what kind, and
