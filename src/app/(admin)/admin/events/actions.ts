@@ -8,6 +8,7 @@ import { createCheckout } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 import { menuCloseInstant, DEFAULT_VENUE_REVEAL_HOURS } from "@/utils/datetime";
+import { logMoneyPathFailure, type SafeError } from "@/lib/failure/money-path";
 import {
   assertEventOwnership,
   assertStaffManage,
@@ -1210,6 +1211,51 @@ export async function unpublishEvent(eventId: string) {
 }
 
 /**
+ * The three ways a read inside `purchaseTicket` can fail to answer its question.
+ *
+ * These are NOT refusals. Every one of them leaves the purchase running — see
+ * the docblock over the capacity block below for why that direction is
+ * deliberate. What they buy is the distinction between *counted zero* and
+ * *could not count*, which the three reads used to collapse into one another.
+ *
+ * Constants → a union from `typeof` → a **total** `Record`, the construction
+ * stated in `src/lib/failure/money-path.ts` and already in the tree twice
+ * (`src/lib/door/outcome.ts:278-302`,
+ * `src/app/api/media/finalize/route.ts:236-254`). The `Record` is the point: a
+ * fourth category added later without its scope string is an `npm run build`
+ * error rather than a log line that silently names nothing.
+ */
+const PRECHECK_TIER_LIST_UNREADABLE = "tier_list_unreadable";
+const PRECHECK_SOLD_COUNT_UNREADABLE = "sold_count_unreadable";
+const PRECHECK_DISCOUNT_USAGE_UNREADABLE = "discount_usage_unreadable";
+
+type PurchasePrecheckUnreadable =
+  | typeof PRECHECK_TIER_LIST_UNREADABLE
+  | typeof PRECHECK_SOLD_COUNT_UNREADABLE
+  | typeof PRECHECK_DISCOUNT_USAGE_UNREADABLE;
+
+const PURCHASE_PRECHECK_SCOPE: Record<PurchasePrecheckUnreadable, string> = {
+  [PRECHECK_TIER_LIST_UNREADABLE]: "purchaseTicket.tier_list_unreadable",
+  [PRECHECK_SOLD_COUNT_UNREADABLE]: "purchaseTicket.sold_count_unreadable",
+  [PRECHECK_DISCOUNT_USAGE_UNREADABLE]: "purchaseTicket.discount_usage_unreadable",
+};
+
+/**
+ * One line per unreadable pre-check read: its scope, the error's `code` and the
+ * error's `message`. Never the error object and never `error.details` — on a
+ * violation PostgREST returns the whole rejected row, and a `tickets` or
+ * `profiles` row carries the door credential
+ * (`.planning/todos/pending/postgrest-details-leaks-the-row.md`). The
+ * `SafeError` parameter enforces that by type instead of by memory.
+ */
+function logPurchasePrecheckUnreadable(
+  category: PurchasePrecheckUnreadable,
+  error: SafeError | null
+): void {
+  logMoneyPathFailure(PURCHASE_PRECHECK_SCOPE[category], error);
+}
+
+/**
  * Initiate a ticket purchase via SumUp hosted checkout.
  * Only approved members can purchase tickets (TICK-07).
  * partyId can be null for event-level (master) tickets.
@@ -1255,7 +1301,39 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
   const eventId = tier.event_id;
 
-  // Chain-based validation: fetch all tiers for same event/party, ordered by price
+  // Chain-based validation: fetch all tiers for same event/party, ordered by price.
+  //
+  // ── This pre-check stays PERMISSIVE on a failed read, on purpose ────────────
+  //
+  // Both reads below now destructure their error, but neither one refuses when
+  // it cannot answer. That is a decision (D-46-05), not an oversight, and it is
+  // written here so the next reader does not "finish the job" by flipping it.
+  //
+  // WHY. The real capacity guard is not this block — it is `reserve_ticket`
+  // (`supabase/migrations/20260310100000_discount_codes.sql:90`), called by the
+  // SumUp webhook when the payment completes. It locks the tier row
+  // `FOR UPDATE`, counts the tickets already sold, raises `Tier sold out`, and
+  // validates a discount code's `max_uses` — all in one transaction. In plpgsql
+  // a failed read RAISES; it cannot coalesce to zero. So the authoritative
+  // guard already fails CLOSED, and this block is advisory: it exists to tell a
+  // buyer early, not to be the thing that holds. Where the application and the
+  // database disagree about capacity, the database is right.
+  //
+  // THE COUNTER-ARGUMENT, so it is not rediscovered. Refusing here on a
+  // transient read error would refuse a buyer the database would have accepted.
+  // `.claude/rules/checkin-offline.md` records the asymmetry that decided it:
+  // refusing a valid holder is worse than admitting a duplicate, because the
+  // first happens in front of people. Note that the sibling read 300 lines up
+  // (`:933-963`, the same table) DOES refuse — there the permissive direction
+  // deletes a night that has sold tickets. Same shape, opposite blast radius.
+  //
+  // THE RESIDUAL, stated rather than hidden. Because this pre-check is
+  // permissive and the real guard runs at webhook time — i.e. AFTER the money
+  // moves — a payment can complete for a seat that is not there. That is
+  // D-46-07: an accepted risk, taken by the owner with its cost in writing.
+  // Nothing in this file makes that window visible to anyone today; the
+  // deferred seat-reservation phase (hold the seat before payment) is its fix,
+  // not a message. Until then, money can be taken and nobody knows.
   const tierQuery = supabase
     .from("ticket_tiers")
     .select("id, price, quantity, starts_at, expires_at")
@@ -1268,21 +1346,42 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     tierQuery.is("party_id", null);
   }
 
-  const { data: allTiers } = await tierQuery;
+  const { data: allTiers, error: allTiersError } = await tierQuery;
 
-  if (allTiers && allTiers.length > 0) {
+  if (allTiersError) {
+    // COULD NOT COUNT. The tier list did not come back, so the whole block
+    // below — chain status, sold-out test, the refusal at the end — does not
+    // run. The purchase continues unchecked by the application and is checked
+    // by `reserve_ticket` instead. One arm of what used to be a single silent
+    // `if`, now named.
+    logPurchasePrecheckUnreadable(PRECHECK_TIER_LIST_UNREADABLE, allTiersError);
+  } else if (!allTiers || allTiers.length === 0) {
+    // COUNTED ZERO. The read succeeded and this event/party genuinely has no
+    // tier chain to validate. Nothing to do, and nothing has gone wrong.
+  } else {
     const now = new Date();
 
     // Compute sold count for each tier
     const tierIds = allTiers.map((t) => t.id);
-    const { data: soldCounts } = await supabase
+    const { data: soldCounts, error: soldCountsError } = await supabase
       .from("tickets")
       .select("tier_id")
       .in("tier_id", tierIds);
 
     const soldMap = new Map<string, number>();
-    for (const s of soldCounts ?? []) {
-      soldMap.set(s.tier_id, (soldMap.get(s.tier_id) ?? 0) + 1);
+    if (soldCountsError) {
+      // COULD NOT COUNT. `soldMap` stays empty, so `soldMap.get(t.id) ?? 0`
+      // below reads zero sold for EVERY tier and every tier computes as
+      // available — including a tier that is in fact sold out. This is an
+      // UNREAD count, not an empty one, and the difference is invisible from
+      // the map alone: that is precisely why it is said here. Direction
+      // unchanged on purpose (D-46-05, argued above).
+      logPurchasePrecheckUnreadable(PRECHECK_SOLD_COUNT_UNREADABLE, soldCountsError);
+    } else {
+      // COUNTED. A tier absent from this map has genuinely sold nothing.
+      for (const s of soldCounts ?? []) {
+        soldMap.set(s.tier_id, (soldMap.get(s.tier_id) ?? 0) + 1);
+      }
     }
 
     // Compute chain status
