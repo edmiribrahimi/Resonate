@@ -55,11 +55,38 @@
  * The copy is English, like every other user-facing string in this product
  * (measured: no Italian string exists anywhere under `src/`). A half-Italian
  * upload box inside an English application is a defect, not a translation.
+ *
+ * ── Converted by plan 41.2-18, and what the conversion did NOT touch ─────────
+ *
+ * The three steps above, their order, the seventeen categories, the two Server
+ * Actions and the key scheme are **byte-identical**. Nothing about when the
+ * publishing route is called, or with what body, moved. The one bucket this file
+ * may name is still the only one it names, and that is asserted by running
+ * `verify-media-strip`'s third check rather than by reasoning about a class
+ * string.
+ *
+ * **The preview grid's axis was MIGRATED, not deleted.** It was the last use in
+ * this tree of the retired small tier that no primitive absorbs. The analog is
+ * `MediaReviewGrid.tsx:154`, and what was copied is its *rule* — the small-tier
+ * rule moves onto the tablet tier and the tier above it stays put — rather than
+ * its literal string. That grid's base is one column because ITS incumbent base
+ * was one column; this one previews square thumbnails, so a one-column base
+ * would give every picked file a full-width square on a phone. The base is
+ * unchanged and the axis is off the retired tier.
+ *
+ * **The drop zone became a real control.** It was a clickable division holding a
+ * file input that is not displayed, so there was **no keyboard path to the file
+ * picker at all** — measured, zero. It is now a button, which brings the shared
+ * focus expression, a name the platform announces, and a boundary drawn with the
+ * control token rather than the decorative line one (`Card.tsx:20-33`: the
+ * question is not what it looks like, it is whether it can be operated).
  */
 
 import { useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { validateMediaUpload, registerMedia } from "@/app/(public)/events/[slug]/actions";
+import { Button, IconButton, FOCUS_RING } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
 
 // File validation constants
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -496,8 +523,11 @@ export default function MediaUpload({
   // send anywhere.
   if (uploadableParties.length === 0) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-        <p className="text-sm text-amber-300">
+      <div
+        role="alert"
+        className="rounded-2xl border border-sem-warn/40 bg-sem-warn/10 p-4"
+      >
+        <p className="text-sm text-sem-warn">
           Uploads are unavailable here right now: we could not work out which
           night a file would belong to. Reload the page, and tell an organizer if
           it keeps happening.
@@ -513,67 +543,70 @@ export default function MediaUpload({
           because a preselected night is a night chosen by inattention. */}
       {soleParty ? (
         <p className="text-sm text-muted">
-          Uploading to <span className="text-fg">{nightLabel(soleParty)}</span>
+          Uploading to <span className="text-ink">{nightLabel(soleParty)}</span>
         </p>
       ) : (
-        <div>
-          <label
-            htmlFor="media-upload-night"
-            className="mb-1 block text-sm text-muted"
-          >
-            Which night are these from?
-          </label>
-          <select
-            id="media-upload-night"
-            className="w-full rounded-lg border border-card-border bg-card px-3 py-2 text-sm text-fg"
-            value={selectedPartyId}
-            onChange={(e) => {
-              setSelectedPartyId(e.target.value);
-              setError(null);
-            }}
-            disabled={uploading}
-          >
-            <option value="">Select a night...</option>
-            {uploadableParties.map((party) => (
-              <option key={party.id} value={party.id}>
-                {nightLabel(party)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          id="media-upload-night"
+          label="Which night are these from?"
+          value={selectedPartyId}
+          onChange={(e) => {
+            setSelectedPartyId(e.target.value);
+            setError(null);
+          }}
+          disabled={uploading}
+        >
+          <option value="">Select a night...</option>
+          {uploadableParties.map((party) => (
+            <option key={party.id} value={party.id}>
+              {nightLabel(party)}
+            </option>
+          ))}
+        </Select>
       )}
 
-      {/* Drop zone */}
-      <div
-        className={`relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
-          dragOver
-            ? "border-accent bg-accent/5"
-            : "border-card-border hover:border-accent/50"
-        }`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragEnter={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-        }}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <svg className="mb-2 h-8 w-8 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 18h16" />
-        </svg>
-        <p className="text-sm text-muted">
-          Upload photos or videos
-        </p>
-        <p className="mt-1 text-xs text-muted/70">
-          Photos up to 50MB -- Videos up to 500MB
-        </p>
+      {/* Drop zone.
+
+          A button and no longer a clickable division: the file input below is
+          not displayed, so before this conversion the ONLY way to open the
+          picker was a pointer. The element carries the shared focus expression
+          and a boundary drawn with the control token, because it can be
+          operated — `Card.tsx:20-33`. The input stays a sibling rather than a
+          child: a form control inside a button is not valid content, and the
+          wrapper keeps the surrounding rhythm at exactly the slots it had. */}
+      <div>
+        <button
+          type="button"
+          className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${FOCUS_RING} ${
+            dragOver
+              ? "border-accent bg-accent/5"
+              : "border-control hover:border-accent/50"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+          }}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <svg aria-hidden="true" className="mb-2 h-8 w-8 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 18h16" />
+          </svg>
+          <span className="text-sm text-muted">
+            Upload photos or videos
+          </span>
+          <span className="mt-1 block text-xs text-muted/70">
+            Photos up to 50MB -- Videos up to 500MB
+          </span>
+        </button>
         <input
           ref={fileInputRef}
           type="file"
@@ -589,20 +622,28 @@ export default function MediaUpload({
         />
       </div>
 
-      {/* Error message */}
+      {/* Error message. An announced region in the critical semantic, carried
+          as ink over a tint rather than as a fill -- a semantic used as a FILL
+          takes the ground as its ink, and this is not one. */}
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div
+          role="alert"
+          className="rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm text-sem-crit">{error}</p>
         </div>
       )}
 
       {/* Per-file refusals: one line per file, each with its own cause.
           Deliberately NOT summarised into a single sentence -- see the header. */}
       {fileErrors.length > 0 && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+        <div
+          role="alert"
+          className="rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+        >
           <ul className="space-y-1">
             {fileErrors.map((failure, index) => (
-              <li key={`${failure.name}-${index}`} className="text-sm text-red-400">
+              <li key={`${failure.name}-${index}`} className="text-sm text-sem-crit">
                 <span className="font-medium">{failure.name}</span> --{" "}
                 {failure.message}
               </li>
@@ -613,19 +654,26 @@ export default function MediaUpload({
 
       {/* Success message */}
       {successMessage && (
-        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
-          <p className="text-sm text-green-400">{successMessage}</p>
+        <div
+          role="status"
+          className="rounded-2xl border border-sem-done/40 bg-sem-done/10 p-4"
+        >
+          <p className="text-sm text-sem-done">{successMessage}</p>
         </div>
       )}
 
       {/* Preview grid */}
       {files.length > 0 && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {/* The axis MIGRATED, not deleted -- see the header. The rule that
+              sat on the retired tier now sits on the tablet tier; the base is
+              untouched, because these are square thumbnails and a one-column
+              base would give every picked file a full-width square on a phone. */}
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
             {files.map((selectedFile, index) => {
               const status = uploadProgress.get(index);
               return (
-                <div key={index} className="relative rounded-lg bg-card overflow-hidden">
+                <div key={index} className="relative rounded-lg bg-surface overflow-hidden">
                   <div className="aspect-square">
                     {selectedFile.type === "photo" ? (
                       <img
@@ -634,53 +682,67 @@ export default function MediaUpload({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                        <svg className="h-10 w-10 text-white/80" viewBox="0 0 24 24" fill="currentColor">
+                      <div className="flex h-full w-full items-center justify-center bg-sunk">
+                        <svg aria-hidden="true" className="h-10 w-10 text-ink-2" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
                     )}
                   </div>
 
-                  {/* File info overlay at bottom */}
+                  {/* File info overlay at bottom.
+
+                      The ground under this ink is a photograph, so it cannot be
+                      a token: this is the one tolerated palette exception, a
+                      TRANSLUCENT achromatic scrim through the background prefix,
+                      and it is here for the reason `Lightbox.tsx:25-33` gives
+                      for its own. What changed is the ink above it, which was a
+                      raw achromatic and is now the ink tokens -- a dark scrim
+                      under a light ink is the readable direction. */}
                   <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-                    <p className="truncate text-xs text-white/80">{selectedFile.file.name}</p>
-                    <p className="text-xs text-white/50">{formatFileSize(selectedFile.file.size)}</p>
+                    <p className="truncate text-xs text-ink">{selectedFile.file.name}</p>
+                    <p className="text-xs text-ink-2">{formatFileSize(selectedFile.file.size)}</p>
                   </div>
 
                   {/* Status overlay */}
                   {status === "uploading" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
                     </div>
                   )}
                   {status === "done" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <svg className="h-8 w-8 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <svg aria-hidden="true" className="h-8 w-8 text-sem-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                   )}
                   {status === "error" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                      <svg className="h-8 w-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <svg aria-hidden="true" className="h-8 w-8 text-sem-crit" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path d="M18 6L6 18M6 6l12 12" />
                       </svg>
                     </div>
                   )}
 
-                  {/* Remove button (not during upload) */}
+                  {/* Remove button (not during upload).
+
+                      It was a 24px circle, which is not a target: the icon rung
+                      is 44x44 unconditionally. The accessible name it already
+                      carried is now required by the rung's own type rather than
+                      trusted, and the scrim under it is the same tolerated one
+                      the sibling section uses at `MyMediaSection.tsx:246`. */}
                   {!uploading && (
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 hover:bg-black/80 transition-colors"
+                    <IconButton
+                      variant="ghost"
+                      className="absolute top-1 right-1 bg-black/60 text-ink"
                       onClick={() => removeFile(index)}
                       aria-label={`Remove ${selectedFile.file.name}`}
                     >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path d="M18 6L6 18M6 6l12 12" />
                       </svg>
-                    </button>
+                    </IconButton>
                   )}
                 </div>
               );
@@ -692,15 +754,14 @@ export default function MediaUpload({
               why is the same silent failure in a nicer shape. */}
           {!uploading && (
             <>
-              <button
-                type="button"
-                className="w-full rounded-full bg-accent py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              <Button
+                className="w-full"
                 onClick={handleUpload}
                 disabled={files.length === 0 || !selectedParty}
               >
                 Upload {files.length} {files.length === 1 ? "file" : "files"}
                 {selectedParty ? ` to ${selectedParty.title}` : ""}
-              </button>
+              </Button>
               {!selectedParty && (
                 <p className="text-center text-xs text-muted">
                   Pick a night above to enable the upload.
