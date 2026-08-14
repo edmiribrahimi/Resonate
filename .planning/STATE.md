@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 46 executed and verified — human_needed, 6 manual procedures pending
-last_updated: "2026-08-14T20:45:49.937Z"
+stopped_at: Phase 46 executed; manual verification pass declined by the owner
+last_updated: "2026-08-14T20:55:40.888Z"
 last_activity: 2026-08-14 -- Phase 46 execution started
 progress:
   total_phases: 18
@@ -275,8 +275,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-14T20:45:49.933Z
-**Stopped at:** Phase 46 executed and verified — human_needed, 6 manual procedures pending
+**Last session:** 2026-08-14T20:55:40.885Z
+**Stopped at:** Phase 46 executed; manual verification pass declined by the owner
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
