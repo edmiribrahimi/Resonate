@@ -326,6 +326,27 @@ const GUEST_TOKEN_FETCH_MESSAGE: Record<GuestTokenFetchState, string> = {
 };
 
 /**
+ * The one sentence on this surface that is **not** a refusal, and deliberately
+ * not a member of either union above.
+ *
+ * A category means *something went wrong*. This means *nothing has, and here is
+ * how to keep it that way* — it is a warning that arrives **before** the failure
+ * it prevents, which is the opposite of every other sentence in this file.
+ * Folding it into a refusal union would make a `Record` total over a set that
+ * had stopped describing one thing, which is how a totality check quietly stops
+ * meaning anything.
+ *
+ * It earns its place from a measured fact rather than from caution: the drink
+ * menu is reachable **only by scanning a QR code at the bar**, so the buyer is
+ * inside the venue and the buy-here-reopen-there loss case cannot happen. What
+ * remains is a private window that gets closed, and until this sentence shipped
+ * nothing on the surface told a guest that. Approved together with the sentence
+ * list on 2026-08-14 (`46-COPY.md` §2b).
+ */
+const RECEIPT_KEEP_TAB_OPEN =
+  "Keep this tab open until your drinks are served — if you are browsing privately, closing it will lose them.";
+
+/**
  * The order statuses that let the poll stop, looked up without trusting the
  * prototype chain.
  *
@@ -960,14 +981,74 @@ export default function GuestTokenDisplay({
     (a, b) => statusOrder[a.status] - statusOrder[b.status]
   );
 
-  // Don't render anything if no tokens and not loading
-  if (!loading && tokens.length === 0) {
+  /*
+    Where the defect completed, and where it is closed.
+
+    Two entirely different situations reached this line and both drew nothing:
+    a browser that genuinely holds no orders, and a browser that could not be
+    read or a server that could not be asked. A guest whose receipt could not be
+    read must not be handed the screen of a guest who bought nothing — that is
+    the whole of `OBS-03` on this surface, and every category declared above is
+    inert until this predicate knows the difference.
+
+    So: still nothing when there is genuinely nothing, and the section with its
+    sentence whenever a custody failure or a fetch state is held.
+  */
+  const custodySentence = custodyFailure
+    ? GUEST_CUSTODY_MESSAGE[custodyFailure]
+    : null;
+  const fetchSentence = fetchState
+    ? GUEST_TOKEN_FETCH_MESSAGE[fetchState]
+    : null;
+  /*
+    Where both are present the custody one is drawn: it is the one that says the
+    device may not be able to show the receipt again, and the only one with a
+    consequence that outlives this page. A fetch state resolves on a reload; a
+    lost receipt does not.
+  */
+  const failureSentence = custodySentence ?? fetchSentence;
+
+  if (
+    !loading &&
+    tokens.length === 0 &&
+    custodyFailure === null &&
+    fetchState === null
+  ) {
     return null;
   }
+
+  /*
+    The banner is drawn on the healthy state, and it is suppressed while a
+    failure sentence is showing: `RECEIPT_STORE_FAILED` already ends with *keep
+    this page open until they are served*, and two versions of one instruction
+    is how a register starts to fray.
+
+    The predicate is the one the card itself uses — `token.status === "active"`,
+    the same comparison `GuestDrinkTokenCard` makes — so the notice appears
+    exactly when a guest is holding something at the counter.
+  */
+  const hasActiveToken = tokens.some((token) => token.status === "active");
 
   return (
     <div>
       <SectionHeading className="mb-3">Your Drinks</SectionHeading>
+      {/*
+        Announced, and drawn in place. A toast is forbidden here by build gate
+        rather than by preference: this file renders `Dialog`, and
+        `scripts/verify-dialogs.mjs` check C refuses any file that renders one
+        and reaches for the toast hook — a native dialog paints in the top
+        layer, so a toast under it would report invisibly, and this project has
+        no error tracking to notice on anybody's behalf. Same shape as the
+        announced region already inside this file's active-token screen.
+      */}
+      {failureSentence && (
+        <p role="alert" className="mb-3 text-sm text-sem-crit">
+          {failureSentence}
+        </p>
+      )}
+      {!failureSentence && hasActiveToken && (
+        <p className="mb-3 text-sm text-ink-2">{RECEIPT_KEEP_TAB_OPEN}</p>
+      )}
       {loading ? (
         /*
           The sentence stays, and the line primitive does not arrive here. A
