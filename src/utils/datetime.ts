@@ -144,6 +144,41 @@ export function zonedDateString(instant: Date): string {
   }).format(instant);
 }
 
+/**
+ * Today in Turin, as `YYYY-MM-DD`.
+ *
+ * ── Why this exists here and not at the one call site that wanted it ─────────
+ *
+ * `time-and-scheduling.md` is explicit that a new time boundary is added to
+ * **this** module rather than written on the spot — *"Se ne serve una nuova, si
+ * aggiunge li' — non si riscrive la conversione sul posto, che e' esattamente
+ * come sono nate le sei varianti precedenti."* Every caller before this one
+ * spelled `zonedDateString(new Date())` inline, and the production calendar
+ * surface may not: its files may construct no instant at all, because a
+ * conversion that crosses midnight moves a WEEKDAY, and the whole editorial
+ * pipeline is expressed in weekdays.
+ *
+ * ── Why not `current_date` in Postgres, which is the obvious alternative ─────
+ *
+ * Because it is the wrong day for two hours out of every twenty-four. The
+ * database session runs in UTC, so between 00:00 and 02:00 Turin time
+ * `current_date` still names yesterday — and the surfaces that ask *is this
+ * item late?* and *where does today fall in this list?* would answer for
+ * yesterday during exactly the hours a night is running. The database's own
+ * lateness predicate lives in a query written against this project's data and
+ * is documented as `due_date < current_date`; where that predicate is evaluated
+ * in TypeScript instead, it is evaluated against **this** value, which is the
+ * more correct of the two rather than merely the more convenient.
+ *
+ * The comparison a caller then makes is a string comparison between two
+ * `YYYY-MM-DD` values, which is ordered identically to the dates themselves —
+ * fixed width, most significant field first — so nothing downstream has to
+ * build an instant either.
+ */
+export function turinToday(): string {
+  return zonedDateString(new Date());
+}
+
 // ─── The venue reveal window ─────────────────────────────────────────────────
 //
 // Not an instant like the rest of this file, but a time rule all the same, and
