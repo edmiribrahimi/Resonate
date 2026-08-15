@@ -21,6 +21,25 @@ import type { CapabilityKey } from "@/lib/capabilities/keys";
 // caller, so they are defined once in `@/lib/membership/acts`, which imports
 // nothing, and are read from here.
 import type { MembershipAct, MembershipActorKind } from "@/lib/membership/acts";
+// The fourth import, same inverted direction and the same reason as the three
+// above. The production calendar's vocabularies are each shared by a SQL `CHECK`,
+// an importer and every TypeScript caller, so they are defined once in
+// `@/lib/production/ics/vocabulary`, which imports nothing precisely so this
+// direction is the only possible one, and are read from here. A second copy in
+// this file would be a second truth that nothing checks — and the two sets would
+// be compared by nobody, because a `CHECK` constraint is invisible to `tsc`.
+import type {
+  AnchorDirection,
+  AnchorKind,
+  CivilDate,
+  CivilTime,
+  EntryClass,
+  NamingConvention,
+  PieceDateOrigin,
+  PieceKind,
+  UnresolvedReason,
+  VenueStage,
+} from "@/lib/production/ics/vocabulary";
 
 // `staff` is the fourth role (phase 43, D-01), and the measured consequence of
 // adding it here is the opposite of what a reader expects: **this widening
@@ -156,6 +175,23 @@ export interface PartySeries {
    * proposed twice (`meta-gates.md`, monotone guard 3).
    */
   highest_assigned: number;
+  /**
+   * The venue word this series is written as in the production calendar, so a
+   * piece naming a series code can be joined to a night naming a venue word.
+   *
+   * The mapping is an **abbreviation, not a derivation**: nothing computes a
+   * two- or four-letter code from a venue word, so it has to be declared by
+   * somebody who knows both halves. Two satellite series legitimately share the
+   * progressivo 001 and are told apart only by this word — a join on format plus
+   * number alone was measured placing a listing *after* the night it announces.
+   *
+   * **The column is public; the values are not written into this repository.**
+   * They arrive at runtime, behind the row-level security of the production
+   * tables, because a venue word may name a space that has not been acquired in
+   * writing (`venue-acquisition.md`). Read back on 2026-08-15: the column exists
+   * and holds `null` on every one of the six series rows.
+   */
+  ics_alias: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -1065,4 +1101,495 @@ export interface AccessContext {
   user_id: string | null;
   role: UserRole | null;
   status: UserStatus | null;
+}
+
+// =============================================================================
+// The production calendar — six row types
+// =============================================================================
+//
+// ⚠ WHAT A GREEN `npm run build` DOES AND DOES NOT PROVE ABOUT THE SIX BELOW.
+//
+// **No Supabase client in this repository is parameterised with a `Database`
+// generic** — measured at four call sites. So `.select("…")` returns values the
+// compiler cannot relate to a column, and every consumer casts. A green build
+// therefore proves that the code reading these declarations type-checks
+// *against the declarations*; it proves nothing whatever about whether a column
+// is spelled the way the applied migration spells it.
+//
+// **That distinction is not theoretical here.** The build passed before plan
+// 44-07 ran, with none of this schema live at all: the types come from this
+// generated file and not from the database, so a green was available while the
+// six tables did not exist. Do not read a past green as evidence about the
+// database.
+//
+// **WHAT WAS ACTUALLY DONE INSTEAD, and it is a better check than the
+// neighbours in this file got.** Every name below was read out of
+// `20260815120000_production_calendar.sql` and
+// `20260815120100_production_calendar_access.sql` by hand, and then confirmed
+// against a catalogue read-back of the APPLIED production database on
+// 2026-08-15 — `information_schema.tables`, `pg_constraint`, `pg_policies`,
+// `pg_proc` and `pg_trigger`, quoted in `44-07-SUMMARY.md`. The neighbours above
+// were confirmed against a migration file only.
+//
+// The vocabularies are IMPORTED and never restated: see the fourth import at the
+// head of this file.
+
+/**
+ * The kinds of thing a night owes.
+ *
+ * ⚠ **This is the one vocabulary of this phase with no home in
+ * `@/lib/production/ics/vocabulary`, and the asymmetry is stated rather than
+ * left to be noticed.** The other seven describe what the calendar FILE
+ * contains, so they belong to the parser; a checklist kind describes what
+ * PRODUCTION owes, which the file knows nothing about. It is declared here, and
+ * its only other copy is the `production_checklist_item_kind_check` constraint
+ * in the applied migration — the same relationship every other literal union in
+ * this file has with its `CHECK`, and one `tsc` cannot see.
+ *
+ * The four production steps are separate members rather than one `step`, because
+ * they fail for different reasons and are chased by different people.
+ * `space_approval` in particular is not a courtesy: an exhibition space that
+ * must approve the material naming it is a stage of production with its own
+ * duration, and it sits INSIDE the two days before the listing rather than after
+ * them (`brand-visual-system.md`).
+ */
+export type ProductionChecklistKind =
+  | "piece"
+  | "venue_confirmed"
+  | "dj_confirmed"
+  | "photo_arrived"
+  | "space_approval";
+
+/**
+ * One entry of the owner's calendar that the import classified as a night of
+ * ours.
+ *
+ * ⚠ **It is not `EventParty`, and the separation is the point.** The file stays
+ * the source of truth, so a re-import that reached the announced night directly
+ * could move a date that already has tickets on sale. `linked_party_id` is the
+ * only bridge between the two, and it points at the night rather than reaching
+ * into it.
+ *
+ * The archive lives in here too, back to the file's earliest entry — so this
+ * table legitimately holds numbers far below `PartySeries.highest_assigned`, and
+ * nothing may compare the two. A watermark test would refuse the entire past.
+ */
+export interface ProductionPlan {
+  id: string;
+  /**
+   * The calendar entry's own `UID`, and the identity is the file's rather than
+   * ours. The alternatives were measured and rejected: a title changes when the
+   * owner renames a night, `(date, title)` changes twice over, and a content
+   * hash changes on every edit — which is the opposite of an identity.
+   */
+  source_uid: string;
+  /**
+   * Change detection, stored and not interpreted. A **decreasing** sequence for
+   * a known uid is an anomaly to report, never to accept silently — and the
+   * report is a `ProductionImportRun` row, because a log line is a place nobody
+   * looks.
+   */
+  source_sequence: number | null;
+  source_last_modified: string | null;
+  /**
+   * Taken verbatim from the file's `YYYYMMDD` prefix, never the product of a
+   * timezone conversion: the whole pipeline resolves WEEKDAYS, and a conversion
+   * that moves a 22:00 entry across midnight moves its weekday — which turns a
+   * conforming night into a reported error.
+   */
+  date: CivilDate;
+  /**
+   * A civil time and never an instant, for the same reason. The night runs 22:00
+   * to 06:00, so `end_time` is legitimately **smaller** than `start_time` and no
+   * constraint forbids it: `end_time > start_time` would refuse the project's
+   * principal format.
+   */
+  start_time: CivilTime | null;
+  end_time: CivilTime | null;
+  /**
+   * Resolved by the import against the catalogue. Null is a finding to report,
+   * not a row to refuse — refusing it would lose the day, which is the one thing
+   * the calendar is for.
+   */
+  format_id: string | null;
+  series_id: string | null;
+  /**
+   * The progressivo, **read from the file and never generated**.
+   *
+   * Nullable, and do not tighten it: a night that is the OPENING ACT of another
+   * night has no progressivo of its own, because a code and a number compose a
+   * sigla and an act has no sigla.
+   *
+   * Changing a number that is already set is refused in the database by the
+   * `production_plan_refuse_renumber` trigger — including erasing it, since a
+   * null counts as a different value. A progressivo is already on a poster:
+   * append, never renumber.
+   */
+  number: number | null;
+  /**
+   * ⚠ **INTERNAL, NEVER PUBLIC.** The venue word exactly as the calendar writes
+   * it, which may name a space under negotiation.
+   *
+   * No surface an unauthenticated visitor can reach may render it, and no
+   * diagnostic, log line, error message or `.planning/` document may echo it.
+   * The column is public — it is declared right here; the values arrive at
+   * runtime and stay behind the table's row-level security.
+   */
+  venue_word: string | null;
+  venue_id: string | null;
+  /**
+   * How far the space actually is. **Null means NOT RECORDED and is never read
+   * as `acquired`**: the calendar entry carries no stage, so the import must not
+   * infer one. An inferred *acquired* would arrive with the authority of a
+   * database column, and it is exactly the harm `venue-acquisition.md` names.
+   */
+  venue_stage: VenueStage | null;
+  /** The bridge to the announced night. Null is the normal state. */
+  linked_party_id: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  /**
+   * ⚠ **Disappearance is not deletion.** An entry present in a previous run and
+   * absent now may be a changed uid, a partial export, or simply the wrong file.
+   * The import stamps this and reports the count; deleting on absence would let
+   * one bad export wipe the archive.
+   */
+  absent_since: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One editorial piece — either one the file already carries, or one the pipeline
+ * says a format owes and the file does not carry yet.
+ *
+ * ⚠ **A row here is not a truth about the world; it is a row about a file.**
+ * `origin` says which of the two it is, and a date written in the file WINS
+ * always: nothing recomputes it.
+ *
+ * The audio piece is called `livecut` and the word *podcast* appears nowhere.
+ * The two are not synonyms — a LiveCut is the recording of OUR night, one per dj
+ * who played it; a Podcast is a mix sent in by somebody who is **not** in a
+ * line-up, and it does not exist yet.
+ */
+export interface ProductionPiece {
+  id: string;
+  /**
+   * Nullable, unlike a plan's: **a proposal has no uid**, because it does not
+   * exist in the file. Two nulls are distinct in Postgres, so the unique
+   * constraint does not collapse every proposal into one row — that is the
+   * correct reading and not a hole. Do not close it.
+   */
+  source_uid: string | null;
+  /**
+   * Nullable, and the reason is measured rather than defensive: **an orphan
+   * piece exists.** One after movie in the file announces a night that is not in
+   * the calendar at all. Refusing it would lose a real piece; attaching it to
+   * the wrong night would be worse. `series_code` and `number` are kept beside
+   * it so it joins later if that night is ever added.
+   */
+  plan_id: string | null;
+  /** What was WRITTEN. Text and not a key: an unresolvable code survives as evidence. */
+  series_code: string | null;
+  number: number | null;
+  kind: PieceKind;
+  /** `PT1`, `PT2` and their kin — a label the file carries, not a fact we decide. */
+  part_marker: string | null;
+  /** A date, or nothing — and if nothing, the reason is in `unresolved_reason`. */
+  date: CivilDate | null;
+  /**
+   * A proposed date must **never** read as settled: it is a date that does not
+   * exist in the owner's calendar. The surface draws the two differently, and a
+   * person acts on the difference.
+   */
+  origin: PieceDateOrigin;
+  /**
+   * ⚠ **Three reasons, and they must stay three.** Collapsing them into one
+   * *unknown* is the collapsed-`catch` this project has already paid for once: a
+   * reader who cannot tell *waiting for an edition* from *depends on the
+   * line-up* cannot act on either.
+   *
+   * The database makes the incoherent row unrepresentable rather than merely
+   * discouraged — `production_piece_date_xor_reason` requires exactly one of a
+   * date and a reason, and `production_piece_proposal_has_no_source` stops a
+   * proposal wearing the file's authority.
+   */
+  unresolved_reason: UnresolvedReason | null;
+  /**
+   * Computed at import, stored, and **never drawn**. It feeds the divergence
+   * report; it does not feed a pixel. Nullable, because *we could not work it
+   * out* is a third answer and must not arrive dressed as `false`.
+   */
+  conforms_to_rule: boolean | null;
+  /**
+   * Which of the file's two naming grammars this piece was written in. Kept
+   * because a join that fails is debugged by knowing which grammar it was
+   * reading — a first pass keyed on one form alone reported thirteen nights as
+   * missing, and the tool was wrong, not the calendar.
+   */
+  naming_convention: NamingConvention;
+  source_sequence: number | null;
+  source_last_modified: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  absent_since: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * A day that is taken by something which is **not** our production.
+ *
+ * ⚠ **This interface has no format field, no series field and no progressivo,
+ * and that absence is the deliverable.** Importing one of these as a night would
+ * hand it an identity it does not have, and those values do not stay in the
+ * database — they reach surfaces that name formats and print sigle. A rule
+ * saying *do not assign a format to a commitment* is a sentence somebody has to
+ * remember; a type with no such field is a guarantee, and it survives the caller
+ * who never read the sentence.
+ *
+ * **The corollary, for whoever builds the surface:** the component that draws a
+ * commitment must receive no such prop either. A guarantee that stops at the
+ * type is a guarantee with a hole above it.
+ */
+export interface ProductionCommitment {
+  id: string;
+  source_uid: string;
+  /**
+   * **One** day this commitment occupies, not *the* day: a recurring commitment
+   * expands into one row per occurrence, which is why the key is the pair
+   * `(source_uid, occurrence_date)`. A single-column key would collapse a season
+   * of occupied Thursdays into one row and leave every other Thursday looking
+   * free — which defeats this table's only purpose.
+   */
+  occurrence_date: CivilDate;
+  start_time: CivilTime | null;
+  end_time: CivilTime | null;
+  /** The entry's own title. It is not ours, and it is not public. */
+  title: string | null;
+  /**
+   * The recurrence rule, verbatim and uninterpreted, so a rule the import
+   * refuses to expand is still visible afterwards rather than lost: a refusal
+   * that erases its own input cannot be diagnosed.
+   */
+  recurrence_raw: string | null;
+  /** Which parent this occurrence came from. Null means the row is the entry itself. */
+  expanded_from: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  absent_since: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * What one run of the import actually did.
+ *
+ * ⚠ **This is not bookkeeping.** There is no error tracking in this repository —
+ * `package.json` carries no monitoring dependency — so no production failure
+ * reaches a human on its own. Under that constraint *the error is logged* is not
+ * a mitigation: a log is a place nobody looks. A row here, rendered at the foot
+ * of the calendar, is the OBSERVABLE EFFECT that distinguishes an import which
+ * quietly did half its job from one a person can see did half its job.
+ */
+export interface ProductionImportRun {
+  id: string;
+  started_at: string;
+  /**
+   * **Null means the run did not finish** — which is itself the observation, and
+   * it must not be back-filled with `started_at` to make a table look tidy.
+   */
+  finished_at: string | null;
+  /**
+   * Which file, without naming it. A byte size distinguishes *the owner sent a
+   * new export* from *the same file was imported twice*, and says nothing about
+   * any date, any space or anybody's name. A filename would have said more than
+   * it needed to.
+   */
+  file_byte_size: number | null;
+  entries_seen: number | null;
+  /** Counts by class. `jsonb` because the classes are a vocabulary that may gain a member. */
+  entries_by_class: Partial<Record<EntryClass, number>> | null;
+  /**
+   * Counted separately from the breakdown on purpose: this is the number a
+   * person is meant to look at, and a figure buried inside a blob is a figure
+   * nobody reads.
+   */
+  unclassified_count: number | null;
+  /**
+   * ⚠ **A divergence carries a uid and a reason code. Never a title, never a
+   * date, never a venue word.**
+   *
+   * These are read by whoever is debugging an import, which means they end up in
+   * a terminal, in a screenshot, and — the irreversible one — in a document
+   * under `.planning/`, which is tracked and public. A uid names nothing to
+   * anybody outside the file; a title names an unannounced date.
+   *
+   * The shape below is DECLARED HERE and is not enforced by the column: `jsonb`
+   * accepts anything. It is written narrow so that the prohibition is visible at
+   * the call site rather than only in a comment.
+   */
+  divergences: { source_uid: string; reason: string }[] | null;
+  unsupported_recurrences: { source_uid: string; reason: string }[] | null;
+  /**
+   * **A dry run is a real row.** The import can produce its plan without
+   * applying it, and that run is recorded as one — otherwise the only evidence
+   * that somebody checked before writing is their memory of having checked.
+   */
+  dry_run: boolean;
+}
+
+/**
+ * One thing that has to happen before a night can happen — the editorial pieces
+ * and the production steps both.
+ *
+ * ⚠ **The checklist covers what can make a date fail, not only what can be
+ * drawn.** A night with all four pieces designed and no signed space is not
+ * nearly ready; it is a night that does not exist. A checklist that tracked only
+ * artwork would report the first as green.
+ *
+ * ⚠ **A tick is writable, and that is not a contradiction of the calendar being
+ * read-only.** The calendar is read-only about DATES, because the file is the
+ * source and an edit here would be silently discarded by the next import. A tick
+ * is about neither the file nor a date: it is a person recording that something
+ * got done.
+ *
+ * ⚠ **And a tick is REVERSIBLE.** It is not a monotone guard, and the nearest
+ * precedents in this repository all are — `venue_reveal_sent`, a payment
+ * reaching `completed`, a series progressivo. None of their reasoning travels
+ * here: nothing has left the building because somebody ticked a box, so
+ * un-ticking one ticked by mistake costs a trace line and nothing else. Do not
+ * copy a one-way switch onto this type.
+ */
+export interface ProductionChecklistItem {
+  id: string;
+  /**
+   * ⚠ `ON DELETE CASCADE`, and it is the one cascade of this phase. A cascade is
+   * a write path nobody declared — it is declared here, and it is the reason a
+   * snapshot taken before touching `production_plan` must cover this table too.
+   */
+  plan_id: string;
+  kind: ProductionChecklistKind;
+  /**
+   * What this item is, in production's own words. Text and not a key: the
+   * checklist has to be able to say *LiveCut PT2* and *the photo for the dj*
+   * without either becoming a schema change.
+   */
+  label: string;
+  /** Nullable: an item can be owed without a date being computable. */
+  due_date: CivilDate | null;
+  sort_order: number;
+  /**
+   * ⚠ **Late is COMPUTED, never stored**, and the predicate lives in the query:
+   *
+   * ```
+   * ticked_at IS NULL AND due_date < current_date
+   * ```
+   *
+   * There is deliberately no stored lateness field of any name. A stored flag is
+   * only true at the moment it is written, and keeping it true would need a
+   * fifth nightly cron in a project whose four existing crons tell nobody when
+   * they fail — giving the checklist a way to be quietly wrong in the one
+   * direction that matters, showing a night as on time while it is late.
+   * Computed, the answer cannot rot: it is recomputed by the act of asking.
+   */
+  ticked_at: string | null;
+  /**
+   * Who ticked it. Both the id and the name, because a trace that says *ticked by
+   * ORG-0042* answers nobody's question.
+   *
+   * ⚠ The name is authorised **in the database** and stops there: it does not
+   * enter a PLAN, a SUMMARY, a VERIFICATION or anything else under `.planning/`,
+   * which is tracked and public. Artefacts name ROLES.
+   */
+  ticked_by: string | null;
+  ticked_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One obligation: *this format owes a piece of this kind, and it falls on this
+ * weekday relative to this anchor.*
+ *
+ * ⚠ **The storage form is (anchor kind, WEEKDAY, direction) and never a day
+ * offset**, and there is no offset field below of any name.
+ *
+ * The night falls Friday **or** Saturday, so the same Tuesday sits four days
+ * before a Saturday and three before a Friday. Code that stores offsets
+ * therefore sees two rules where there is one, and reports a perfectly correct
+ * night as an error. **That has already happened once**: a check written during
+ * this phase's discussion reported one night as out of rule on three pieces, the
+ * owner answered *the next night falls on a Friday*, and the re-measurement
+ * proved him right. A checker that cries wolf is a checker that gets switched
+ * off.
+ *
+ * The same lesson from the other side: measured from the night, an after movie
+ * looks irregular — spreads of nine, sixteen, eighty and a hundred and
+ * forty-three days. Measured from the anchor the rule actually names, it is
+ * minus one, always. The variability was in the point of observation.
+ *
+ * **Why a row and not a rule in code:** the pipeline changed twice inside one
+ * month. A rule in code makes the next such change a deploy; a row makes it an
+ * edit.
+ */
+export interface ProductionPipelineRule {
+  id: string;
+  format_id: string;
+  /**
+   * **Null means the format's default; set means this series overrides it**, and
+   * the more specific level wins.
+   *
+   * The two levels are not tidiness. The Nizza series is a series of the night's
+   * format and not a fifth format, but it runs the LIGHT pipeline: its listing
+   * IS derivable from the nearest preceding Tuesday where the night's is not,
+   * and its LiveCut is a single episode anchored to itself where the night's are
+   * anchored to the FOLLOWING edition. Two of its rules contradict the night's
+   * on the same `(format, piece kind)` pair, so a single level would have
+   * dropped them in silence — and the surface would then have read the night's
+   * rule for a Nizza date and reported a conforming series as diverging.
+   */
+  series_id: string | null;
+  piece_kind: PieceKind;
+  /** Which event the weekday is counted from. */
+  anchor_kind: AnchorKind;
+  /**
+   * ISO-8601, Monday = 1 … Sunday = 7. **Null means the anchor's own day**,
+   * whichever weekday that turns out to be — which is the only correct way to
+   * say it for a night that may be a Friday or a Saturday.
+   *
+   * A direction of `before` or `after` requires one: *the nearest preceding
+   * nothing* is not a rule, and the database refuses the combination.
+   */
+  anchor_weekday: number | null;
+  anchor_direction: AnchorDirection;
+  /**
+   * Whether a missing piece may be proposed at all.
+   *
+   * ⚠ **`false` is not *we have not worked it out yet*. It is a MEASURED
+   * REFUSAL**: for two of the sixteen seeded rules the anticipation is not a
+   * fixed number, so no rule exists to derive one from, and a proposal would be
+   * a date roughly a week and a half wrong drawn beside real ones. Withholding
+   * is the correct behaviour — and a night that suddenly has a complete set of
+   * pieces is the warning sign that somebody removed this.
+   */
+  derivable: boolean;
+  /**
+   * Whether the number of episodes is a property of the LINE-UP rather than of
+   * the format. Where it is true the surface says *depends on the line-up* and
+   * prints **no figure**: a count that could not be determined does not print
+   * one.
+   */
+  episodes_from_lineup: boolean;
+  /**
+   * How many episodes, where that is a property of the format. The number of
+   * episodes descends from the line-up — changing the line-up changes the plan
+   * of publication — so where a count is written it is the measured norm for a
+   * format whose line-up has been stable, and **this row** is where a change
+   * lands: a row, not a deploy.
+   */
+  episode_count: number | null;
+  /** Free text, carrying CRITERIA ONLY. No date, no space, no name. */
+  note: string | null;
+  created_at: string;
 }
