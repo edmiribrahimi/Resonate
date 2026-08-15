@@ -169,3 +169,45 @@ a missing script is a planning artefact rather than a defect in the tree.
 file, which nothing checks today — or the expectation is struck from whichever
 later plan inherited it. D1's manifest edit closes two of the three refusals; the
 third closes itself wherever the environment carries the two variables.
+
+**Update, 2026-08-15, plan 44-10.** The first half of this is now closed and the
+note is left here rather than deleted, because a stale deferred item is a silent
+falsehood: `verify:ics` **does** exist in `package.json`, plan 44-08 wrote it,
+and `verify-all.mjs` names it in `NEEDS_MATERIAL` with the reason it is not run.
+It was measured green — all eight checks — against the current material during
+plan 44-10. What this entry still describes correctly is the exit code of the
+aggregate in a worktree, which is unchanged.
+
+---
+
+## D6 — a dry run writes no `production_import_run` row, and the migration expects one
+
+**Found during:** plan 44-10, task 1.
+
+**The conflict, and it is between two documents this phase wrote itself.**
+`20260815120000_production_calendar.sql:608-611` says, in as many words, that **a
+dry run is a real row**: the import can produce its plan without applying it, and
+that run is recorded as one — *otherwise the only evidence that somebody checked
+before writing is their memory of having checked.* `44-10-PLAN.md` says a dry run
+**writes nothing**, and lists that among its must-haves.
+
+Both are reasonable and they cannot both hold.
+
+**How it was resolved, and the cost, stated rather than absorbed.**
+`meta-gates.md` settles a contradiction between two gates in favour of the more
+restrictive one, so the runner's dry run opens no transaction and inserts no row.
+The exact cost: **`production_import_run.dry_run` has no writer today**, so the
+table records applied runs only, and the audit trail of *somebody looked before
+writing* lives in a terminal instead of in a row. That is precisely the thing the
+column exists to stop being ephemeral.
+
+**Why it is not fixed here.** Reversing it is a one-line change and a decision,
+not a repair: it makes `--dry-run` a mode that writes, and the whole argument for
+the flag being the default is that it does not. That trade belongs to the owner.
+
+**The repair, when somebody takes it.** Either the runner inserts a row with
+`dry_run = true` at the point where it currently stops — the counts it would carry
+are already computed at that line — or the column is removed by a forward
+migration and the comment that promised it is corrected in the same commit. What
+must not happen is the third option: leaving a column whose comment describes a
+behaviour nothing performs.
