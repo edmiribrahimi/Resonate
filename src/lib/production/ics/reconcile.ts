@@ -113,12 +113,47 @@
  *
  * ── Pure by design ──────────────────────────────────────────────────────────
  *
- * Every import below is either a type or a pure function from this same
+ * Every import below is either a **type** or a pure function from this same
  * directory, so this module has no runtime dependency at all — no Supabase client,
  * no HTTP call, no React, and no clock. {@link reconcile} takes `now` as an
  * **argument**, which is why the same file against the same snapshot yields the
  * same plan on any machine, in any zone, at any hour, and why the plan of two
  * passes can be compared at all.
+ *
+ * One import reaches **outside** this directory — `@/types/database`, type-only —
+ * and it is the exception the section below exists to justify. It is erased by
+ * `tsc` and by Node's own type stripping, so purity is untouched; what it buys is
+ * the one thing this module could not previously have.
+ *
+ * ── ⚠ THE SNAPSHOT ROW TYPES ARE TIED TO THE COLUMNS, AND THIS IS WHY ───────
+ *
+ * The row shapes below used to be declared by hand, in full, with their own
+ * primitive types. **That let this module require a column that does not
+ * exist**, and it did: `ExistingPlanRow` and `PlanFields` both carried a
+ * `seriesCode` typed `string`, the caller read and wrote `production_plan
+ * .series_code`, and there is no such column — the plan row carries `series_id`,
+ * a reference into the catalogue, because a sigla has ONE owner and a spelling
+ * copied beside a key is a second one that drifts.
+ *
+ * PostgREST answered `42703`, the runner turned it into a refusal, and it
+ * refused on **every** invocation, with and without `--apply`. Nothing caught it
+ * for the reason the shape made inevitable: **the contract was written twice in
+ * TypeScript and never once against the database**, so `npm run build` had two
+ * agreeing declarations to compare and no column to compare them to.
+ *
+ * So each field below that IS a column takes its type FROM that column, through
+ * the four aliases beneath this docblock. A field naming a column that does not
+ * exist is now a `npm run build` error — which, in a repository with no test
+ * runner (`CLAUDE.md`, Guardrail 1), is the only automatic gate there is. That is
+ * the same inverted-import device `src/types/database.ts` already uses on
+ * `./vocabulary`, pointed the other way: the vocabularies travel up, the column
+ * types travel back down, and neither file holds a second copy of the other's.
+ *
+ * **Three fields are deliberately NOT tied, and each says so where it stands.**
+ * `ExistingPlanRow.seriesCode`, `PlanFields.seriesCode` and the two `planKey`s
+ * are values the CALLER resolves — a sigla out of the catalogue, a join key out
+ * of a sigla and a progressivo — and no column holds any of them. Typing them as
+ * columns is precisely the mistake this section records.
  *
  * ── What a green build does NOT prove ───────────────────────────────────────
  *
@@ -129,14 +164,13 @@
  */
 
 import { PIECE_KIND_LABELS } from "./vocabulary";
+import type { CivilDate, PieceKind, UnresolvedReason } from "./vocabulary";
 import type {
-  CivilDate,
-  CivilTime,
-  NamingConvention,
-  PieceDateOrigin,
-  PieceKind,
-  UnresolvedReason,
-} from "./vocabulary";
+  ProductionChecklistItem,
+  ProductionCommitment,
+  ProductionPiece,
+  ProductionPlan,
+} from "@/types/database";
 import { expandWeeklyRecurrence } from "./parse";
 import type { UnsupportedRecurrence } from "./parse";
 import { joinKey } from "./classify";
@@ -148,6 +182,23 @@ import type {
 } from "./classify";
 import { conformsToRule, proposePieceDate } from "./anchors";
 import type { AnchorContext, PipelineRule } from "./anchors";
+
+// ── The four column aliases ─────────────────────────────────────────────────
+//
+// One per table this module holds a snapshot of. They exist so that a field can
+// name its column and inherit its type in one place, and so that naming a column
+// that does not exist is a compile error rather than a `42703` at runtime — see
+// the docblock above for the defect that made them necessary.
+//
+// They are aliases and not `Pick`s because the row shapes here are camelCase and
+// the columns are snake_case. `Pick` would have imposed the database's spelling
+// on a module the whole product reads in the other one; this keeps the names and
+// takes the types, which is the half that was actually missing.
+
+type PlanColumn<K extends keyof ProductionPlan> = ProductionPlan[K];
+type PieceColumn<K extends keyof ProductionPiece> = ProductionPiece[K];
+type CommitmentColumn<K extends keyof ProductionCommitment> = ProductionCommitment[K];
+type ChecklistColumn<K extends keyof ProductionChecklistItem> = ProductionChecklistItem[K];
 
 // ── The vocabularies this module owns ───────────────────────────────────────
 
@@ -334,49 +385,71 @@ export interface ReconcileInput {
 
 /** A `production_plan` row as it stands. */
 export interface ExistingPlanRow {
-  id: string;
-  sourceUid: string;
+  id: PlanColumn<"id">;
+  sourceUid: PlanColumn<"source_uid">;
+  /**
+   * ⚠ **NOT A COLUMN, and believing it was one is the defect this file records.**
+   *
+   * The plan row stores `series_id`, a reference into `party_series`, because a
+   * sigla has one owner and a spelling kept beside a key is a second one that
+   * drifts. The **caller** resolves that reference into the sigla the file writes
+   * — it holds the catalogue; this module holds no connection and makes no join —
+   * and hands the result in here, where it is compared against what the file says
+   * and, when the two differ, becomes a `series_changed` divergence.
+   *
+   * `null` therefore means one of two things and both are findings the caller
+   * reports: the row has no series at all, or it points at one this run's
+   * catalogue could not resolve. It never silently means *the same series*.
+   */
   seriesCode: string | null;
-  number: number | null;
-  venueWord: string | null;
-  date: CivilDate;
-  startTime: CivilTime | null;
-  endTime: CivilTime | null;
-  sourceSequence: number | null;
-  sourceLastModified: string | null;
-  absentSince: string | null;
+  number: PlanColumn<"number">;
+  venueWord: PlanColumn<"venue_word">;
+  date: PlanColumn<"date">;
+  startTime: PlanColumn<"start_time">;
+  endTime: PlanColumn<"end_time">;
+  sourceSequence: PlanColumn<"source_sequence">;
+  sourceLastModified: PlanColumn<"source_last_modified">;
+  absentSince: PlanColumn<"absent_since">;
   /** Set once the night has been announced. Absence never costs such a row. */
-  linkedPartyId: string | null;
+  linkedPartyId: PlanColumn<"linked_party_id">;
 }
 
-/** A `production_piece` row as it stands. `sourceUid` is null for a proposal. */
+/**
+ * A `production_piece` row as it stands. `sourceUid` is null for a proposal.
+ *
+ * ⚠ `seriesCode` **is** a column here, and the asymmetry with the plan row above
+ * is deliberate rather than an oversight: a piece names a series code the file
+ * WROTE, and an unresolvable code has to survive as evidence instead of being
+ * dropped at the door. A plan row names a night that resolved, so it can carry
+ * the reference.
+ */
 export interface ExistingPieceRow {
-  id: string;
-  sourceUid: string | null;
-  seriesCode: string | null;
-  number: number | null;
-  kind: PieceKind;
-  partMarker: string | null;
-  date: CivilDate | null;
-  origin: PieceDateOrigin;
-  unresolvedReason: UnresolvedReason | null;
-  conformsToRule: boolean | null;
-  namingConvention: NamingConvention;
-  sourceSequence: number | null;
-  sourceLastModified: string | null;
-  absentSince: string | null;
+  id: PieceColumn<"id">;
+  sourceUid: PieceColumn<"source_uid">;
+  seriesCode: PieceColumn<"series_code">;
+  number: PieceColumn<"number">;
+  kind: PieceColumn<"kind">;
+  partMarker: PieceColumn<"part_marker">;
+  date: PieceColumn<"date">;
+  origin: PieceColumn<"origin">;
+  unresolvedReason: PieceColumn<"unresolved_reason">;
+  conformsToRule: PieceColumn<"conforms_to_rule">;
+  namingConvention: PieceColumn<"naming_convention">;
+  sourceSequence: PieceColumn<"source_sequence">;
+  sourceLastModified: PieceColumn<"source_last_modified">;
+  absentSince: PieceColumn<"absent_since">;
 }
 
 /** A `production_commitment` row as it stands. One row per occupied day. */
 export interface ExistingCommitmentRow {
-  id: string;
-  sourceUid: string;
-  occurrenceDate: CivilDate;
-  startTime: CivilTime | null;
-  endTime: CivilTime | null;
-  title: string | null;
-  recurrenceRaw: string | null;
-  absentSince: string | null;
+  id: CommitmentColumn<"id">;
+  sourceUid: CommitmentColumn<"source_uid">;
+  occurrenceDate: CommitmentColumn<"occurrence_date">;
+  startTime: CommitmentColumn<"start_time">;
+  endTime: CommitmentColumn<"end_time">;
+  title: CommitmentColumn<"title">;
+  recurrenceRaw: CommitmentColumn<"recurrence_raw">;
+  absentSince: CommitmentColumn<"absent_since">;
 }
 
 /**
@@ -387,12 +460,13 @@ export interface ExistingCommitmentRow {
  * caller already holds both sides.
  */
 export interface ExistingChecklistItemRow {
-  id: string;
+  id: ChecklistColumn<"id">;
+  /** ⚠ Not a column — the caller's join, as the docblock above says. */
   planKey: string;
-  kind: ChecklistKind;
-  label: string;
-  dueDate: CivilDate | null;
-  sortOrder: number;
+  kind: ChecklistColumn<"kind">;
+  label: ChecklistColumn<"label">;
+  dueDate: ChecklistColumn<"due_date">;
+  sortOrder: ChecklistColumn<"sort_order">;
 }
 
 /** Everything the database already holds, in one argument. */
@@ -407,15 +481,22 @@ export interface ExistingSnapshot {
 
 /** What a plan row says, whether it is being created or corrected. */
 export interface PlanFields {
+  /**
+   * ⚠ **NOT A COLUMN**, for {@link ExistingPlanRow.seriesCode}'s reason read the
+   * other way round: this is the sigla the FILE writes, and the caller maps it
+   * back through the catalogue to the `series_id` it actually stores. A caller
+   * that writes this string into a column is writing a second spelling of
+   * something the catalogue already owns.
+   */
   seriesCode: string;
-  number: number;
+  number: NonNullable<PlanColumn<"number">>;
   /** ⚠ Internal. It travels to `production_plan.venue_word` and nowhere else. */
-  venueWord: string | null;
-  date: CivilDate;
-  startTime: CivilTime;
-  endTime: CivilTime;
-  sourceSequence: number | null;
-  sourceLastModified: string | null;
+  venueWord: PlanColumn<"venue_word">;
+  date: PlanColumn<"date">;
+  startTime: NonNullable<PlanColumn<"start_time">>;
+  endTime: NonNullable<PlanColumn<"end_time">>;
+  sourceSequence: PlanColumn<"source_sequence">;
+  sourceLastModified: PlanColumn<"source_last_modified">;
 }
 
 /** A plan row the file has and the database does not. */
@@ -445,15 +526,20 @@ export interface PlanUpdate extends PlanFields {
 
 /** What a piece row says. */
 export interface PieceFields {
-  /** The night it belongs to, or null — **an orphan piece exists**, measured. */
+  /**
+   * The night it belongs to, or null — **an orphan piece exists**, measured.
+   *
+   * ⚠ Not a column: `production_piece.plan_id` is a uuid, and the caller turns
+   * this key into one after the plan rows have been written and read back.
+   */
   planKey: string | null;
-  seriesCode: string;
-  number: number;
-  kind: PieceKind;
-  partMarker: string | null;
-  date: CivilDate | null;
-  origin: PieceDateOrigin;
-  unresolvedReason: UnresolvedReason | null;
+  seriesCode: NonNullable<PieceColumn<"series_code">>;
+  number: NonNullable<PieceColumn<"number">>;
+  kind: PieceColumn<"kind">;
+  partMarker: PieceColumn<"part_marker">;
+  date: PieceColumn<"date">;
+  origin: PieceColumn<"origin">;
+  unresolvedReason: PieceColumn<"unresolved_reason">;
   /**
    * Computed for a written piece and **stored for the divergence report only**.
    *
@@ -461,10 +547,10 @@ export interface PieceFields {
    * of the rule, so asking whether it matches the rule is a tautology and not an
    * observation. ⚠ This value reaches no pixel (D-44-10).
    */
-  conformsToRule: boolean | null;
-  namingConvention: NamingConvention;
-  sourceSequence: number | null;
-  sourceLastModified: string | null;
+  conformsToRule: PieceColumn<"conforms_to_rule">;
+  namingConvention: PieceColumn<"naming_convention">;
+  sourceSequence: PieceColumn<"source_sequence">;
+  sourceLastModified: PieceColumn<"source_last_modified">;
 }
 
 /** A piece row to create. `sourceUid` is null exactly when it is a proposal. */
@@ -483,14 +569,20 @@ export interface PieceUpdate extends PieceFields {
 
 /** What one occupied day says. */
 export interface CommitmentFields {
-  occurrenceDate: CivilDate;
-  startTime: CivilTime;
-  endTime: CivilTime;
+  occurrenceDate: CommitmentColumn<"occurrence_date">;
+  startTime: NonNullable<CommitmentColumn<"start_time">>;
+  endTime: NonNullable<CommitmentColumn<"end_time">>;
   /** ⚠ Internal. It travels to `production_commitment.title` and nowhere else. */
-  title: string;
+  title: NonNullable<CommitmentColumn<"title">>;
   /** The recurrence rule verbatim, so a refusal keeps its own input visible. */
-  recurrenceRaw: string | null;
-  /** The parent entry's own day, or null when this row **is** the entry. */
+  recurrenceRaw: CommitmentColumn<"recurrence_raw">;
+  /**
+   * The parent entry's own day, or null when this row **is** the entry.
+   *
+   * ⚠ Not a column: `production_commitment.expanded_from` is a uuid, and the
+   * caller resolves this day into one after the inserts, through that table's own
+   * `(source_uid, occurrence_date)` key — never by matching a title.
+   */
   expandedFromDate: CivilDate | null;
 }
 

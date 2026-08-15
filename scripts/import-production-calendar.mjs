@@ -150,14 +150,25 @@
  *
  * ── EXIT CODES ──────────────────────────────────────────────────────────────
  *
- *   `0` the run completed · `1` the run FAILED partway, and what it had already
- *   written stays written and is reported · `2` REFUSED, and **nothing was
- *   written**.
+ *   `0` the run completed AND its own output audit came back clean · `1` the run
+ *   FAILED partway, and what it had already written stays written and is
+ *   reported — **or** it reached the end and the output audit found material in
+ *   its transcript · `2` REFUSED, and **nothing was written**.
  *
  *   A refusal is not a failure: it means the import did not happen. Every
  *   refusal names its category, because "something went wrong" with no name is
  *   the silent failure `meta-gates.md` forbids, and this product has no error
  *   tracking to catch it (`CLAUDE.md`, zero-silent-failures).
+ *
+ *   ⚠ A FAILED OUTPUT AUDIT NEVER EXITS `0`, and the last line printed says which
+ *   of the two endings this was: `IMPORT_DRY_RUN_OK` / `IMPORT_APPLIED_OK`, or
+ *   `IMPORT_DRY_RUN_WITH_LEAKED_OUTPUT` / `IMPORT_APPLIED_WITH_LEAKED_OUTPUT`.
+ *   It is `1` and not `2` on the applied path because `2` means nothing was
+ *   written, and on that path the writes have already happened: the material
+ *   leaked, the import did not fail. On a refusal or a partway failure the exit
+ *   is already non-zero and keeps its own category — the audit runs there too and
+ *   its verdict is printed, but it does not overwrite a code that already says
+ *   more.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -813,7 +824,7 @@ if (classified.unclassified.length > 0) {
 
 const planRows = await readAll(
   "production_plan",
-  "id, source_uid, series_code, number, venue_word, date, start_time, end_time, source_sequence, source_last_modified, absent_since, linked_party_id",
+  "id, source_uid, series_id, number, venue_word, date, start_time, end_time, source_sequence, source_last_modified, absent_since, linked_party_id",
   "plan table"
 );
 const pieceRows = await readAll(
@@ -832,10 +843,35 @@ const checklistRows = await readAll(
   "checklist table"
 );
 
-/** A plan row's join key, from the two halves the row already carries. */
+/* ────────────────────────────────────────────────────────────────────────────
+ * ⚠ A STORED NIGHT NAMES ITS SERIES BY REFERENCE, NOT BY SPELLING
+ *
+ * The night row carries `series_id` — a reference into the catalogue — and NOT a
+ * copy of the sigla. There is no such column, and its absence is a decision the
+ * migration makes in as many words: a sigla has ONE owner, and a spelling kept
+ * beside a key is a second owner that drifts the day somebody corrects one of
+ * them. The piece table is the deliberate exception, because a piece records the
+ * code the file WROTE and an unresolvable code has to survive as evidence.
+ *
+ * So the sigla is RESOLVED here, through the same map the classifier's aliases
+ * were built from, and the resolution has a third answer that is neither a code
+ * nor an absence: **a reference this run's catalogue cannot resolve.** It is
+ * counted and reported below rather than folded into "no key", because the two
+ * have different repairs — one is a night nobody gave a series, the other is a
+ * catalogue that moved under a row.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** The sigla a stored night is written as, or null when it cannot be resolved. */
+function siglaOf(row) {
+  if (row.series_id === null || row.series_id === undefined) return null;
+  return siglaBySeriesId.get(row.series_id) ?? null;
+}
+
+/** A stored night's join key, from the sigla resolved above and its progressivo. */
 function planKeyOf(row) {
-  if (row.series_code === null || row.number === null) return null;
-  return ics.joinKey(row.series_code, row.number);
+  const sigla = siglaOf(row);
+  if (sigla === null || row.number === null) return null;
+  return ics.joinKey(sigla, row.number);
 }
 
 const planKeyById = new Map();
@@ -844,11 +880,18 @@ for (const row of planRows) {
   if (key !== null) planKeyById.set(row.id, key);
 }
 
+// The two ways a stored night ends up without a key, kept apart on purpose.
+const planRowsWithoutSeries = planRows.filter((row) => row.series_id === null).length;
+const planRowsWithUnresolvedSeries = planRows.filter(
+  (row) => row.series_id !== null && siglaOf(row) === null
+).length;
+
 const existing = {
   plans: planRows.map((row) => ({
     id: row.id,
     sourceUid: row.source_uid,
-    seriesCode: row.series_code,
+    // Resolved, never read off a column. See the block above.
+    seriesCode: siglaOf(row),
     number: row.number,
     venueWord: row.venue_word,
     date: row.date,
@@ -905,10 +948,26 @@ say(
   `     plans ${planRows.length} · pieces ${pieceRows.length} · ` +
     `commitments ${commitmentRows.length} · checklist items ${checklistRows.length}`
 );
+if (planRowsWithoutSeries > 0) {
+  say(
+    `     ⚠ ${planRowsWithoutSeries} stored night(s) carry no series at all, so they ` +
+      "cannot be keyed and are not compared."
+  );
+}
+if (planRowsWithUnresolvedSeries > 0) {
+  // Its own count and its own sentence. This one is not a night nobody classified
+  // — it is a night whose series the catalogue no longer answers for, and the
+  // repair is in the catalogue rather than in the file.
+  say(
+    `     ⚠ ${planRowsWithUnresolvedSeries} stored night(s) name a series this run's ` +
+      "catalogue could not resolve. They are not compared, and their pieces and"
+  );
+  say("       checklist cannot be placed. That is a finding, not a tidy-up.");
+}
 if (checklistRowsWithoutKey > 0) {
   say(
-    `     ⚠ ${checklistRowsWithoutKey} checklist item(s) hang off a plan row with no ` +
-      "series code or no progressivo, so they cannot be keyed and are not compared."
+    `     ⚠ ${checklistRowsWithoutKey} checklist item(s) hang off a night with no ` +
+      "resolvable series or no progressivo, so they cannot be keyed and are not compared."
   );
 }
 
@@ -1095,11 +1154,15 @@ if (!options.apply) {
   say("     for this run — see the header for the conflict this resolves and its cost.");
   say("");
   say("     To write it: pass --apply, and read the counts above first.");
-  auditOwnOutput();
+  // ⚠ The audit ANSWERS, and the answer decides the exit code. A check whose
+  // failure leaves an OK token and an exit 0 behind it is not a check — and in a
+  // repository with no error tracking the exit code is the only thing anything
+  // downstream can read.
+  const clean = auditOwnOutput();
   say("");
-  say("  IMPORT_DRY_RUN_OK");
+  say(clean ? "  IMPORT_DRY_RUN_OK" : "  IMPORT_DRY_RUN_WITH_LEAKED_OUTPUT");
   say("");
-  process.exit(0);
+  process.exit(clean ? 0 : 1);
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1155,7 +1218,6 @@ if (plan.plansToInsert.length > 0) {
     const catalogue = catalogueFor(row.seriesCode);
     return {
       source_uid: row.sourceUid,
-      series_code: row.seriesCode,
       // Written HERE and only here: this is the number the file assigned, on a
       // row that does not yet exist. No update payload below carries this column.
       number: row.number,
@@ -1181,7 +1243,11 @@ if (plan.plansToInsert.length > 0) {
 
 for (const row of plan.plansToUpdate) {
   const payload = {
-    series_code: row.seriesCode,
+    // The REFERENCE, resolved from the sigla the file writes — never the sigla
+    // itself. A row only reaches this list when its sigla did NOT move, so this
+    // is the value already stored, except on the one row that had none: that one
+    // gets its series, which is a repair rather than a renumbering.
+    series_id: catalogueFor(row.seriesCode).seriesId,
     venue_word: row.venueWord,
     date: row.date,
     start_time: row.startTime,
@@ -1204,7 +1270,7 @@ for (const row of plan.plansToUpdate) {
 // the database actually handed back rather than at ones this process guessed.
 const appliedPlans = await readAll(
   "production_plan",
-  "id, series_code, number",
+  "id, series_id, number",
   "plan table"
 );
 const planIdByKey = new Map();
@@ -1413,12 +1479,16 @@ say(`  ${completedSteps} write step(s) completed. The import-run row is closed.`
 say("  Run again with --dry-run: the plan must be empty. If it is not, that is a");
 say("  finding, and re-running until it looks right is not an answer.");
 
-auditOwnOutput();
+// Same rule as the dry run's, with one difference that has to stay visible: the
+// writes above have ALREADY happened. So the exit code is 1 and never 2 — the
+// material leaked, the import did not fail — and the token says which of the two
+// this run was.
+const clean = auditOwnOutput();
 
 say("");
-say("  IMPORT_APPLIED_OK");
+say(clean ? "  IMPORT_APPLIED_OK" : "  IMPORT_APPLIED_WITH_LEAKED_OUTPUT");
 say("");
-process.exit(0);
+process.exit(clean ? 0 : 1);
 
 /* ────────────────────────────────────────────────────────────────────────────
  * The audit of this run's own output
@@ -1441,6 +1511,15 @@ process.exit(0);
  * the wrong default to loosen by copying.
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * @returns `true` when this run's transcript carries no material. **The caller
+ *   must branch on it.** It used to return nothing, print `✗ OUTPUT AUDIT
+ *   FAILED` and let both call sites walk straight into an OK token and `exit 0`
+ *   — so a run that leaked ended with the tail a person skims and the status a
+ *   wrapper reads both saying it was fine. A check whose failure changes nothing
+ *   observable is not a check, and this product has no error tracking to notice
+ *   on its behalf.
+ */
 function auditOwnOutput() {
   const publicTokens = [...Object.values(ics.PIECE_KIND_LABELS), ...siglaInFile];
 
@@ -1463,16 +1542,18 @@ function auditOwnOutput() {
       `  ✓ output audit: ${residual.size} residual title token(s), 0 of them in what this ` +
         "run printed · 0 four-digit years"
     );
-    return;
+    return true;
   }
 
   // The leaked tokens are NOT printed. Printing them to say they were printed is
-  // the whole failure, performed by the check that found it.
+  // the whole failure, performed by the check that found it. What IS printed is
+  // enough to act on: how many, of which of the two kinds, and out of how large a
+  // residual set — three numbers that name nothing.
   say("  ✗ OUTPUT AUDIT FAILED — this run's own output carries material.");
   if (leaked.length > 0) {
     say(
-      `    ${leaked.length} token(s) of a parsed title occur above. They are deliberately ` +
-        "not listed: printing them to report them would perform the leak."
+      `    ${leaked.length} of ${residual.size} residual title token(s) occur above. They are ` +
+        "deliberately not listed: printing them to report them would perform the leak."
     );
   }
   if (years.length > 0) {
@@ -1480,6 +1561,7 @@ function auditOwnOutput() {
     say("    this script may not say out loud.");
   }
   say("    DO NOT PASTE THIS RUN ANYWHERE. Reword the output; never widen the rule.");
+  return false;
 }
 
 function escapeForRegex(text) {
