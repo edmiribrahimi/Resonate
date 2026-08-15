@@ -150,7 +150,7 @@ type Binding =
        * what the allow-list exists to prevent.
        */
       assignmentOpenable?: true;
-      /** True when the key ALSO gates rows. Four of the thirteen do. */
+      /** True when the key ALSO gates rows. Four of the fourteen do. */
       alsoGatesTables?: true;
     }
   | {
@@ -160,11 +160,12 @@ type Binding =
     };
 
 /**
- * The thirteen keys, each accounted for.
+ * The fourteen keys, each accounted for.
  *
  * `as const satisfies` and not a type annotation, and the difference is the
  * whole second half of CAP-02: `satisfies` keeps the totality error (a
- * fourteenth key with no entry fails the build), while `as const` keeps each
+ * fifteenth key with no entry fails the build — it fired for the fourteenth,
+ * `production.read`, in plan 44-04), while `as const` keeps each
  * `routes` array a tuple of string LITERALS instead of widening it to
  * `RoutePattern[]`. Without `as const` the union of listed routes widens to
  * `string` and `_everyStaffRouteIsBound` becomes a decoration.
@@ -477,6 +478,47 @@ export const CAPABILITY_ROUTES = {
     scope: "table",
     reason:
       "Gates an act, not an address: the button sits on `/admin/events/[id]/edit`, already opened by `organizer.access`. The real guard is the server action in `src/app/(admin)/admin/events/[id]/reveal/actions.ts`, which re-asks this key inside itself, and `public.record_venue_reveal_act`, which is executable by `service_role` alone.",
+  },
+
+  /**
+   * The production calendar — phase 44, plan 04.
+   *
+   * ── THIS ENTRY IS TEMPORARY AND MOVES BRANCH IN PLAN 44-09 ──────────────────
+   *
+   * It sits on the second branch because, at this commit, the key gates **six
+   * tables and no address**: `/admin/calendar` does not exist on disk yet, and
+   * `StaffTab.href` is `Route`, so the address is not even in the generated
+   * union. `scope: "table"` is therefore the only TRUE declaration available —
+   * and this file's second branch demands a `reason` precisely so a temporary
+   * truth cannot be told silently.
+   *
+   * **Plan 44-09 moves it to `routes: ["/admin/calendar", "/admin/calendar/[id]"]`
+   * with `alsoGatesTables: true`.** That is not a tidy-up: it is the same branch
+   * change the `CATALOGUE_MANAGE` entry above records for `/admin/formats`, made
+   * for the same reason, when its page landed.
+   *
+   * ⚠ **If 44-09 forgets the move, `/admin/calendar` is unreachable FOR
+   * EVERYONE** — `resolveRoute` returns `null`, the middleware fails closed, and
+   * there is no build error and nothing in a log. That is the trap this file
+   * already records twice, at the `CATALOGUE_MANAGE` and `VENUE_REVEAL` entries.
+   * The reason string below names 44-09 so the next reader of THIS line meets
+   * the obligation rather than the symptom.
+   *
+   * ⚠ And `alsoGatesTables: true` is not optional on the moved entry: the key
+   * gates six tables, and omitting the flag produces no error at all — the
+   * *declaration that lies by omission* D-34-11 exists to prevent.
+   *
+   * **No ambiguity is introduced by the move**, checked rather than hoped:
+   * `/admin/calendar` is two literal segments, and every existing two-segment
+   * `/admin/*` pattern in this map is literal and distinct. `/admin/calendar/[id]`
+   * is three segments with a dynamic tail, the shape `/admin/venues/[slug]` and
+   * `/admin/events/[id]/review` already carry. The load-time throw at the foot
+   * of this file does not fire on either.
+   */
+  [CAP.PRODUCTION_READ]: {
+    scope: "table",
+    reason:
+      "Gates the six `production_*` tables and, as of this commit, no address — `/admin/calendar` is not on disk yet. Plan 44-09 moves this entry to the `routes:` branch with `alsoGatesTables: true` when the page lands; until then the RLS SELECT policies in `20260815120100_production_calendar_access.sql` are the whole boundary, and they are the boundary in either case.",
   },
 } as const satisfies Record<CapabilityKey, Binding>;
 
