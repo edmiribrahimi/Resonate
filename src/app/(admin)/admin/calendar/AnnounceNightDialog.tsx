@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import {
   announceNight,
   tickChecklistItem,
+  type CalendarFailure,
   type CalendarRefusal,
 } from "./actions";
 import {
@@ -238,6 +239,7 @@ type AnnounceRefusal =
   | "invalid_id"
   | "plan_not_found"
   | "already_announced"
+  | "already_announced_orphan_night"
   | "format_not_resolved"
   | "series_not_resolved"
   | "start_time_missing"
@@ -260,8 +262,14 @@ void _announceIsSubset;
  * pressing again is safe. §13.2's own sentence — *nothing was written and the
  * series number was not spent* — is true of every member here except
  * `link_failed`, which says the opposite because there the opposite is true.
+ *
+ * It takes the whole failure rather than the reason alone, because one member
+ * carries a value the sentence has to print: the night left unlinked by a lost
+ * race has the same title and the same date as the one that won, so the id is
+ * the only thing that names it.
  */
-function describeAnnounceRefusal(reason: CalendarRefusal): string {
+function describeAnnounceRefusal(failure: CalendarFailure): string {
+  const reason = failure.reason;
   switch (reason as AnnounceRefusal) {
     case "invalid_id":
       return "We could not announce this night. Nothing was written and the series number was not spent — this night could not be identified, so the database was never asked. Reload the page.";
@@ -269,6 +277,8 @@ function describeAnnounceRefusal(reason: CalendarRefusal): string {
       return "We could not announce this night. Nothing was written and the series number was not spent. The calendar no longer holds this night — reload the page.";
     case "already_announced":
       return "Nothing was written and no second number was spent. This night has already been announced, and announcing it again would spend another number that could never be released. Reload the page: it now says so.";
+    case "already_announced_orphan_night":
+      return `⚠ Two facts, and both are true. This night was announced by somebody else while this press was running, so the calendar row is already tied to their night — do NOT press again. And this press did create a night before losing: it is unpublished, it is tied to nothing, and no series number was spent on it because it carries no progressivo. It is on the events surface, under this night's name, and its id is ${failure.orphanPartyId ?? "not recorded"}. It is the one to remove.`;
     case "format_not_resolved":
       return "We could not announce this night. Nothing was written and the series number was not spent. The import could not resolve this entry's format, and a night cannot exist without one. Fix the entry in the calendar file and run the import again.";
     case "series_not_resolved":
@@ -337,7 +347,7 @@ export function AnnounceNightDialog({
       const result = await announceNight(planId);
 
       if (!result.ok) {
-        setRefusal(describeAnnounceRefusal(result.reason));
+        setRefusal(describeAnnounceRefusal(result));
         return;
       }
 

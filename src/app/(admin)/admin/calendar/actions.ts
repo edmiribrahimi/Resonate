@@ -208,8 +208,35 @@ export type CalendarRefusal =
    * number, and a spent number is never released (`meta-gates.md`, the third
    * one-way switch). Its own code, so the surface can say *this night already
    * exists* rather than *something failed*.
+   *
+   * This is the **fast** refusal, taken on the read before anything is created.
+   * It is not the guarantee — the guarantee is the predicate on the link's own
+   * write, and its refusal is the code below.
    */
   | "already_announced"
+  /**
+   * ⚠ **Another call announced this plan row first, and the night THIS call
+   * created is tied to nothing.**
+   *
+   * Two facts, and neither may be dropped for the other. Reporting only the
+   * first would say *this was already announced* and leave an unlinked night in
+   * the product for somebody to find months later; reporting only the second
+   * would send the operator to press again, on a row that is already announced.
+   *
+   * **No number was spent by this call.** Only a night carrying no progressivo
+   * can reach here: with a number, the second insert is refused upstream by
+   * `event_parties_format_series_number_unique` and comes back as
+   * `number_taken`, and `bump_series_watermark` raises the water level with
+   * `GREATEST(highest_assigned, NEW.number)`, which a null leaves untouched.
+   *
+   * The night is **not** removed by this act. Its container is unpublished, so
+   * nothing is publicly readable, and a silent deletion would hide the one
+   * thing the operator needs to know — that two calls ran. The id travels back
+   * so the night can be named, because the title alone cannot name it: a night
+   * without a progressivo is titled with the bare format name, which is exactly
+   * what the winning night is titled too.
+   */
+  | "already_announced_orphan_night"
   /** The import could not resolve the entry's format, so there is nothing to write. */
   | "format_not_resolved"
   /** The import could not resolve the entry's series. */
@@ -273,6 +300,15 @@ export interface CalendarFailure {
    * without answering *which place*.
    */
   readonly stage?: VenueStageValue;
+  /**
+   * Only on `already_announced_orphan_night`: the night this call created and
+   * could not link.
+   *
+   * A uuid, and nothing else — no title, no date, no venue word. It is the only
+   * handle that distinguishes this night from the one that won the race, which
+   * carries the same title and the same date.
+   */
+  readonly orphanPartyId?: string;
 }
 
 /** What a recorded tick answers. */
@@ -792,8 +828,8 @@ export async function announceNight(planId: string): Promise<AnnounceNightResult
   /*
     THE LINK (D-44-07). After this the plan row and the night stay tied, so a
     later divergence between the file and the product is SIGNALLED rather than
-    discovered — and so a second press is refused by `already_announced` instead
-    of spending a second number.
+    discovered — and so the link itself is what refuses a second announcement
+    rather than a number being spent to discover it.
 
     ⚠ A failure here is NOT `write_failed`. The night exists and the number is
     spent; only the tie is missing. Telling somebody otherwise would send them
@@ -820,10 +856,35 @@ export async function announceNight(planId: string): Promise<AnnounceNightResult
     action just created, whose `created_at` defaults to `now()` and which is
     reachable from here through `linked_party_id`.
   */
-  const { error: linkError } = await client
+  /*
+    ⚠ THE GUARD IS ON THIS WRITE, AND NOT ON THE READ THAT PRECEDED IT.
+
+    `.is("linked_party_id", null)` travels as a PREDICATE OF THE UPDATE. The
+    refusal at the top of this act — `already_announced` — is a fast path that
+    saves the work in the ordinary case; it is not what makes the act safe,
+    because nothing tied that read to this write. Two concurrent calls both saw
+    a null link, both created a night, and the second update overwrote the first
+    one's link — leaving a night that no calendar row points at and that no
+    screen mentions.
+
+    For a night that carries a progressivo the database already refused the
+    second insert: `event_parties_format_series_number_unique` fires and this
+    act returns `number_taken` above, before reaching here. The case this
+    predicate closes is the OTHER one, and it is the legitimate one — a night
+    that is the opening act of another carries NO number by design, and Postgres
+    holds two NULLs DISTINCT, so that constraint does not fire and both inserts
+    succeed. This predicate is the only thing that can tell the two calls apart.
+
+    `.select("id")` is what makes the predicate readable. Without it, a refused
+    update and a satisfied one give the same answer — no error, nothing returned
+    — which is the silent zero this phase refuses everywhere else.
+  */
+  const { data: linkedRows, error: linkError } = await client
     .from("production_plan")
     .update({ linked_party_id: createdParty.id })
-    .eq("id", plan.id);
+    .eq("id", plan.id)
+    .is("linked_party_id", null)
+    .select("id");
 
   if (linkError) {
     console.error(
@@ -831,6 +892,37 @@ export async function announceNight(planId: string): Promise<AnnounceNightResult
         `code=${linkError.code ?? "unknown"} message=${linkError.message}`
     );
     return { ok: false, reason: "link_failed" };
+  }
+
+  /*
+    NO ROW WAS TOUCHED, WHICH IS AN ANSWER AND NOT AN ABSENCE.
+
+    Somebody else linked this plan row between this call's read and this write.
+    Two things are true at once and the returned value says both: the plan row
+    IS announced, and the night this call created is tied to nothing.
+
+    It is NOT reported as success, and it is NOT reported as `already_announced`
+    — the first would hand back a night that the calendar does not point at, and
+    the second would say nothing was created when something was. Its own code,
+    for the reason every other refusal here has one.
+
+    The night is left where it is. Its container is unpublished, so nothing is
+    publicly readable; and removing it silently would erase the only trace that
+    two calls ran, which is the one fact the operator needs. That is a different
+    situation from the orphan CONTAINER above, which never held a night at all.
+  */
+  if (!linkedRows || linkedRows.length === 0) {
+    console.error(
+      `[calendar.announce_lost_link_race] plan=${planId} night=${createdParty.id}: ` +
+        "the plan row was linked by another call between this call's read and " +
+        "its write. The night this call created exists, is linked to nothing, " +
+        "and carries no progressivo — so no series number was spent."
+    );
+    return {
+      ok: false,
+      reason: "already_announced_orphan_night",
+      orphanPartyId: createdParty.id,
+    };
   }
 
   revalidatePath("/admin/calendar");
