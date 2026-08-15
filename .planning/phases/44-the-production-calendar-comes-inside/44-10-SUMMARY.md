@@ -265,5 +265,142 @@ The runner is ready and is waiting on two things only, both a person's: **the al
 - **44-12** remains the single bridge to the announced night, and this runner's inability to reach that table is what keeps the bridge meaningful.
 
 ---
+
+## Addendum — 2026-08-15: the runner could not run at all, and now it has
+
+`44-REVIEW.md` CR-01. Recorded here rather than only in the review, because this
+document's own verification table said *the tree builds* and *all eight checks*
+and neither of those could see it.
+
+### The defect
+
+`production_plan` has **no `series_code` column**. A stored night names its
+series **by reference** — `series_id` into `party_series` — because a sigla has
+one owner and a spelling kept beside a key is a second owner that drifts. The
+piece table is the deliberate exception: a piece records the code the file
+*wrote*, and an unresolvable code has to survive as evidence.
+
+The runner disagreed in five places — it selected the column, keyed its join on
+it, and carried it in the insert payload, the update payload and the read-back.
+PostgREST answers an unknown column `42703`; `readAll` turns any error into
+`refuse("catalogue_unreadable")` → `exit 2`. That happens at **stage 4, before
+the dry-run branch**, so `npm run import:calendar` refused on *every*
+invocation, with and without `--apply` — and refused under a category that
+points at the catalogue rather than at the schema.
+
+**Why nothing caught it.** This summary's task 3 records the real import as
+deliberately not run, and the executor had no credential in a worktree — so the
+only path that touches the database was never exercised. `verify:ics` drives the
+same reader with **no database in the loop**. And `npm run build` could not see
+it either: `ExistingPlanRow` and `PlanFields` declared `seriesCode` by hand
+instead of deriving it from `ProductionPlan`, so the contract was written twice
+in TypeScript and zero times against the database. `tsc` had two agreeing
+declarations and no column to compare them to.
+
+### The repair chosen, and the one rejected
+
+**(A) the runner resolves the sigla from `series_id`** — taken. The catalogue it
+already loads carries the mapping in both directions; the sigla is resolved on
+read and mapped back to the reference on write. One owner for a sigla, and no
+new schema.
+
+**(B) a fourth migration adding `series_code` to `production_plan`** — rejected,
+on two grounds. It would duplicate a spelling `party_series` already owns, which
+is the drift the reference exists to prevent; and the owner's production-write
+authorisation for this phase was spent on the two migrations, with a third
+already consumed once to close a security defect. A repair that needs a
+migration would have been a stop-and-report, not an edit.
+
+**The case the choice had to survive** — a night whose word resolves to nothing.
+It never reaches the table at all: the classifier records it as `unclassified`
+with `alias_unresolved` and it is counted out loud. So (A) loses no fact. What
+(A) *does* introduce is a third outcome on read — a row whose `series_id` the
+catalogue cannot resolve — and that is now **counted and reported in its own
+sentence**, separate from a row with no series at all, because the two have
+different repairs.
+
+Alongside it, **WR-04**: the anti-leak output audit printed `✗ OUTPUT AUDIT
+FAILED` and then let both call sites walk into an OK token and `exit 0`. It now
+answers, the callers branch, and a leaked run exits `1` with its own token —
+`IMPORT_DRY_RUN_WITH_LEAKED_OUTPUT` / `IMPORT_APPLIED_WITH_LEAKED_OUTPUT`. It
+stays `1` and never `2` on the applied path: `2` means nothing was written, and
+there the writes have already happened. The report says **how many of how many**
+and never **which** — printing the tokens to report them would perform the leak.
+
+And the structural half, so the next divergence is a build error rather than an
+`exit 2` nobody ran: every field of the four snapshot row types that **is** a
+column now takes its type from that column, through four aliases over the
+generated interfaces. The import is type-only, so the reader stays pure — `tsc`
+and Node's own type stripping both erase it. Three fields are deliberately *not*
+tied and each says so where it stands: the two resolved sigle and the two
+`planKey`s are the caller's joins, and no column holds any of them.
+
+### The dry run, performed for real — and the counts that prove it wrote nothing
+
+Run on the **main working tree**, because `.env.local` is gitignored and
+therefore absent from a worktree — which is precisely the window this defect
+survived in.
+
+| Table | before | after | after a second run |
+|---|---|---|---|
+| `production_plan` | 0 | 0 | 0 |
+| `production_piece` | 0 | 0 | 0 |
+| `production_commitment` | 0 | 0 | 0 |
+| `production_import_run` | 0 | 0 | 0 |
+| `production_checklist_item` | 0 | 0 | 0 |
+| `production_pipeline_rule` | 16 | 16 | 16 |
+
+**No `--apply` was passed and nothing was imported.** Loading the calendar's
+content into production remains the owner's act.
+
+What the dry run reported, in counts:
+
+| Figure | Value |
+|---|---|
+| entries · distinct UIDs · malformed lines | 92 · 92 · 0 |
+| unsupported recurrences · refused properties | 0 · 0 |
+| formats · series · **series carrying an `ics_alias`** · pipeline rules | 5 · 6 · **0** · 16 |
+| classes — nights · pieces · commitments · unclassified | 0 · 56 · 29 · 7 |
+| plan of writes — plans · pieces · commitments · checklist | 0 · 56 · 60 · 0 |
+| absences · divergences · announced-night rows · rows removed | 0 · 0 · **0** · **0** |
+| output audit | 27 residual title tokens, **0** printed · 0 four-digit years |
+| exit code | **0** |
+
+**The two numbers this document could not determine are now measured, and one of
+them is a gap.** *(1)* **Zero of the six series carry an `ics_alias`** — so every
+night falls out of the night grammar, which is why the run reports 0 nights, 29
+commitments and 7 unclassified where `verify:ics` reports 14 nights using its
+own declared map of already-public words. That is a configuration gap, not a
+property of the file, and the runner says so in as many words. *(2)* the six
+tables hold nothing but the sixteen seeded rules. **Until the aliases are set by
+hand, in the database, an `--apply` would import 56 pieces and 60 occupied days
+and not one night.** The run must read `0 entr(y/ies) carry a word no series
+claims` before anybody passes `--apply`.
+
+### Verification
+
+| Assertion | Command | Result |
+|---|---|---|
+| the tree builds | `npm run build` | exit **0** |
+| the reader still agrees with the file | `npm run verify:ics` | exit **0**, all eight checks |
+| the dry run reaches reconcile and reports a plan | `npm run import:calendar` | exit **0**, `IMPORT_DRY_RUN_OK` |
+| the dry run wrote nothing | the six row counts, read before and after | **unchanged** |
+| a failed output audit changes the exit code | the runner against a synthetic file whose title carries a word the run prints | exit **1**, `IMPORT_DRY_RUN_WITH_LEAKED_OUTPUT`, and the tokens are **not** listed |
+
+**What this green does not mean.** The write path is still unexecuted: no row
+has been written to any of the six tables, so nothing here says the insert and
+update payloads are correct — only that the read path, the classification, the
+reconciliation and the refusals now run against the real database. The synthetic
+file used for the audit test carries no material and was deleted; it lived
+outside the repository.
+
+*No calendar content appears above: no title, no date of any edition, no venue
+word, no line-up, no UID.*
+
+**Commit:** `8e8128d` — `scripts/import-production-calendar.mjs`,
+`src/lib/production/ics/reconcile.ts`
+
+---
 *Phase: 44-the-production-calendar-comes-inside*
 *Completed: 2026-08-15*
+*Addendum: 2026-08-15 — CR-01 and WR-04 of `44-REVIEW.md`*
