@@ -43,7 +43,8 @@ key-files:
     - scripts/verify-capabilities.mjs
 decisions:
   - "D-44-27 (owner, 2026-08-15): requires_approved = false on both grants of production.read"
-  - "EXECUTE on record_checklist_tick is granted to service_role alone, not authenticated"
+  - "EXECUTE on record_checklist_tick is granted to service_role alone, not authenticated — BUT the GRANT alone did not close the default: see the correction below"
+  - "CORRECTED 2026-08-15 by migration 20260815120200: this plan wrote the GRANT without the REVOKE, and Postgres grants EXECUTE to PUBLIC by default, so after applying, the measured ACL was {=X,anon,authenticated,service_role}. Every claim in this file about the function being unreachable without a session was false until that migration ran; it is true now, measured: {postgres,service_role}"
   - "record_checklist_tick does NOT ask production.read inside itself; the gate is the caller's"
   - "the renumber guard refuses erasing a number as well as changing it"
   - "the capability-routes entry lands on scope: \"table\" and plan 44-09 moves it"
