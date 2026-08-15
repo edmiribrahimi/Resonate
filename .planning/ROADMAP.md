@@ -1031,7 +1031,43 @@ Not preferences — each one has a failure mode behind it.
   4. The calendar is reachable only by someone the capability model admits, and the middleware, the page guard and the row-level policy ask the same question of the same definition
   5. Moving a night recomputes everything downstream of it, and a series progressivo is appended, never renumbered
 
-**Plans**: TBD
+**Plans**: 13 plans, in 7 waves
+
+Plans:
+**Wave 1**
+
+- [ ] 44-01-PLAN.md — The pure `.ics` reader: the literal source, RFC 5545 unfolding, and a nesting parser that constructs no `Date`
+- [ ] 44-02-PLAN.md — The structural migration: six tables, the `ics_alias` column, and the published pipeline stored as weekday and anchor — zero rows of production material
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 44-03-PLAN.md — The classifier and the anchor resolver: four classes, three grammars, and three refusals that stay three
+- [ ] 44-04-PLAN.md — The fourteenth capability key, six SELECT policies, the number-refusing trigger and the author-recording tick *(owner checkpoint: `requires_approved`)*
+- [ ] 44-05-PLAN.md — The presentation layer: the date renderer that cannot render a bare date, the stage badge that cannot disappear, the commitment row that cannot draw a format
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 44-06-PLAN.md — The reconciler: a plan of writes, returned and never applied, keyed on `UID`, generating no number
+- [ ] 44-07-PLAN.md — **[BLOCKING]** Apply both migrations through the Management API migrations endpoint, read back from the catalogues, prove nothing moved *(owner checkpoint: production write)*
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 44-08-PLAN.md — The golden-file check that makes the hand parser defensible, with a mutation proof per assertion
+- [ ] 44-09-PLAN.md — S1: the map entry, the chronological archive, and the last import's effect at its foot
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 44-10-PLAN.md — The local import runner, the dry run, the real import, and the second run that must change nothing *(owner checkpoint: the dry run)*
+- [ ] 44-11-PLAN.md — S2: one night, its pieces through the five-variant date renderer, and its checklist
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 44-12-PLAN.md — The two writes: the checklist tick, and the announcement that is the single bridge to `event_parties` *(owner checkpoints: the venue on an unacquired space, and the confirmation's wording)*
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 44-13-PLAN.md — The tab, the ten surface assertions as a command, and the four procedures no command in this repository can settle
+
 **UI hint**: yes
 
 ### Phase 45: Production Sections, Section by Section
