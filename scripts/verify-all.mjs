@@ -42,6 +42,21 @@
  *      gates is a green that lied by omission. It is in `NEEDS_SERVER`, and
  *      `NEEDS_SERVER` is printed on every single run, pass or fail.
  *
+ *   2b. **AND THE SAME ARGUMENT, ONE PRECONDITION OVER.** Phase 44 added a gate
+ *      whose missing precondition is not a server but a FILE: `verify:ics` reads
+ *      the production calendar out of `docs/`, which is gitignored, never
+ *      deployed and never cloned, so it exists on exactly one machine. On every
+ *      other machine that gate refuses — correctly — and this runner would report
+ *      a REFUSED it can do nothing about, on every single run, until somebody
+ *      stopped reading the word.
+ *
+ *      So it is declared in `NEEDS_MATERIAL` and not run here. **`NEEDS_MATERIAL`
+ *      is a third list rather than a second entry in `NEEDS_SERVER`** because the
+ *      reason printed beside a name is the whole value of naming it, and *needs a
+ *      running dev server* would be a false sentence about this one. Two gates
+ *      are not run here, for two different reasons, and a reader of a green is
+ *      told both.
+ *
  * ── WHAT A GREEN HERE DOES NOT MEAN ─────────────────────────────────────────
  *
  *   - **IT IS NOT A TEST RUN.** There is no test runner for the product
@@ -149,9 +164,10 @@
  * `knownNames`; and `missingRequired` guarantees every name in
  * `knownNames \ declared` is an OPTIONAL `OFFLINE` entry, which the plan loop
  * labels `unregistered` — a member of `ABSENT_STATES` — so it reaches
- * `absentOptional` and is accounted for. Every `NEEDS_SERVER` name is accounted
- * for by construction. Nothing on a correct tree becomes unaccounted, and the run
- * that returns the recorded baseline is the proof of it, not this paragraph.
+ * `absentOptional` and is accounted for. Every `NEEDS_SERVER` and every
+ * `NEEDS_MATERIAL` name is accounted for by construction. Nothing on a correct
+ * tree becomes unaccounted, and the run that returns the recorded baseline is the
+ * proof of it, not this paragraph.
  *
  * ── AND A REFUSAL DOES NOT OUTRANK A FAILURE, IN EITHER DIRECTION ──────────
  *
@@ -255,6 +271,26 @@ const NEEDS_SERVER = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * NEEDS_MATERIAL — declared, never run here, printed on every run
+ *
+ * The same shape and the same contract as `NEEDS_SERVER`, for the gate whose
+ * missing precondition is a file rather than a process. Adding a NAME to a list
+ * is not adding a RUNNER: nothing below spawns these, on purpose.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Shape: `[npmScriptName, reason]`. */
+const NEEDS_MATERIAL = [
+  [
+    "verify:ics",
+    "scripts/verify-ics-import.mjs reads the production calendar out of docs/, which " +
+      "is gitignored and therefore exists on the owner's machine and nowhere else. It " +
+      "refuses (exit 2) everywhere else, so running it here would print a REFUSED on " +
+      "every run of every other machine. Run it by hand where the material is: " +
+      "`npm run verify:ics`",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Reading package.json, which is the single source of every command
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -294,7 +330,8 @@ console.log(
 
 const offlineNames = OFFLINE.map(([name]) => name);
 const serverNames = NEEDS_SERVER.map(([name]) => name);
-const knownNames = new Set([...offlineNames, ...serverNames]);
+const materialNames = NEEDS_MATERIAL.map(([name]) => name);
+const knownNames = new Set([...offlineNames, ...serverNames, ...materialNames]);
 
 const undeclaredHere = declared.filter((name) => !knownNames.has(name));
 const missingFromPkg = [...knownNames].filter((name) => !declared.includes(name));
@@ -304,7 +341,8 @@ if (undeclaredHere.length > 0) {
     `package.json declares ${undeclaredHere.length} verify:* entr(y/ies) this runner does not\n` +
       `       know about: ${undeclaredHere.join(", ")}\n` +
       "       They were NOT run. A table that omits a registered gate while printing a tick is\n" +
-      "       a green that lied by omission — add each name to OFFLINE or to NEEDS_SERVER."
+      "       a green that lied by omission — add each name to OFFLINE, to NEEDS_SERVER or\n" +
+      "       to NEEDS_MATERIAL."
   );
 }
 
@@ -446,7 +484,7 @@ for (const r of results) {
 console.log("");
 console.log("  ── NOT RUN, and why ───────────────────────────────────────────────────");
 console.log("");
-for (const [name, reason] of NEEDS_SERVER) {
+for (const [name, reason] of [...NEEDS_SERVER, ...NEEDS_MATERIAL]) {
   console.log(`    ${name} — not run: ${reason}`);
 }
 for (const p of absentOptional) {
@@ -464,7 +502,12 @@ for (const p of absentRequired) {
 
 /* ── the count, reconciled out loud ───────────────────────────────────────── */
 
-const accounted = results.length + NEEDS_SERVER.length + absentOptional.length + absentRequired.length;
+const accounted =
+  results.length +
+  NEEDS_SERVER.length +
+  NEEDS_MATERIAL.length +
+  absentOptional.length +
+  absentRequired.length;
 console.log("");
 console.log("  ── the count ──────────────────────────────────────────────────────────");
 console.log("");
@@ -474,6 +517,7 @@ console.log(`      of which passed              ${String(passed.length).padStart
 console.log(`      of which FAILED              ${String(failed.length).padStart(3)}`);
 console.log(`      of which REFUSED             ${String(refused.length).padStart(3)}  — nothing was measured by these`);
 console.log(`    needs a server, not run        ${String(NEEDS_SERVER.length).padStart(3)}`);
+console.log(`    needs the material, not run    ${String(NEEDS_MATERIAL.length).padStart(3)}`);
 console.log(`    declared absent                ${String(absentOptional.length).padStart(3)}`);
 console.log(`    MISSING                        ${String(absentRequired.length).padStart(3)}`);
 console.log(`                                   ───`);
@@ -488,6 +532,7 @@ console.log(`    accounted for                  ${String(accounted).padStart(3)}
 const measuredOrExplained = new Set([
   ...results.map((r) => r.name),
   ...NEEDS_SERVER.map(([name]) => name),
+  ...NEEDS_MATERIAL.map(([name]) => name),
   ...absentOptional.map((p) => p.name),
   ...absentRequired.map((p) => p.name),
 ]);
