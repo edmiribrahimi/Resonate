@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/Chip";
+import { FOCUS_RING } from "@/components/ui/Button";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
 
 import { StageBadge } from "./StageBadge";
@@ -214,6 +216,35 @@ const REASON = "text-sm text-muted";
 /** Every element that carries a format name, a sigla or the brand. */
 const LITERAL = "normal-case";
 
+/**
+ * The in-text link, in the shape this product already writes it.
+ *
+ * Copied rather than invented: `admin/(work)/members/page.tsx:204` and
+ * `admin/(work)/events/[id]/drinks/page.tsx:123` carry the same string, and
+ * `MemberTable.tsx:1115` carries it on a button. Dotted underline, 4px offset,
+ * `hover:text-ink`, and the tree's one focus expression — no new token, no new
+ * class, and nothing about this that a reader has to learn.
+ *
+ * **`min-h-11` is deliberate and it makes the desktop rows taller.** 44px is a
+ * floor, not a target, and it is keyed off nothing: `DataTable` hands a column
+ * no way to tell which of its two trees it is rendering in, and the accessibility
+ * contract forbids keying a touch target off width (`44-UI-SPEC.md` §14 — the
+ * only permitted shrink is the primitive's own desktop row actions, an
+ * allow-list closed at one item). So the phone card gets its 44px and the table
+ * branch grows from 44px rows to 68px. That is the accepted cost, written here
+ * rather than discovered by whoever wonders why the table loosened.
+ *
+ * The title sits in a child rather than directly on the anchor because the card
+ * branch truncates its title (`DataTable.tsx:409-417`), and an atomic inline —
+ * which an `inline-flex` anchor is — takes a clip where the ellipsis used to be.
+ * A flex item that hides its overflow shrinks below its content, so the ellipsis
+ * comes back. The transform is declared on that child, which is the element that
+ * actually renders the literal.
+ */
+const ROW_LINK =
+  `inline-flex min-h-11 max-w-full items-center underline decoration-dotted ` +
+  `underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`;
+
 function nightTitle(row: CalendarNightRow): string {
   const head =
     row.venueWord === null
@@ -299,7 +330,28 @@ const columns: readonly DataColumn<CalendarRow>[] = [
     card: "title",
     cell: (row) => {
       if (row.kind === "night") {
-        return <span className={LITERAL}>{nightTitle(row)}</span>;
+        /*
+          THE ONLY DOOR TO THE NIGHT'S PAGE, AND IT WAS MISSING.
+
+          `/admin/calendar/[id]` had its route entry, its policies and its page
+          guard, and no way in: the staff tab registers the list alone, and this
+          column drew text. Both of the phase's writes — the tick and the
+          announcement — live on that page, so until this link existed they were
+          reachable only by typing a uuid into the address bar.
+
+          `Link`, never `Button` with an `href` (`44-UI-SPEC.md` §12): that
+          branch renders a bare anchor with an untyped address.
+
+          It renders on the night branch and on no other. A commitment is
+          somebody else's evening — there is no plan row behind it to open, and
+          `CalendarCommitmentRow` has no field that could address one. The
+          today marker is a marker.
+        */
+        return (
+          <Link href={`/admin/calendar/${row.id}`} className={ROW_LINK}>
+            <span className={`${LITERAL} truncate`}>{nightTitle(row)}</span>
+          </Link>
+        );
       }
       if (row.kind === "commitment") {
         return <span className={`${LITERAL} text-muted`}>{row.title}</span>;
