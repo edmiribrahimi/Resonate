@@ -613,4 +613,238 @@ CREATE TABLE IF NOT EXISTS public.production_import_run (
 
 ALTER TABLE public.production_import_run ENABLE ROW LEVEL SECURITY;
 
+-- =============================================================================
+-- 5. public.production_checklist_item — WHAT A NIGHT OWES
+-- =============================================================================
+--
+-- WHAT A ROW IS (D-44-14): one thing that has to happen before a night can
+-- happen. Not only the editorial pieces — also the production steps: the space
+-- confirmed in writing, the dj confirmed, the photo arrived, and, where the
+-- space is an exhibition space, ITS APPROVAL of the material that names it.
+--
+-- THE CHECKLIST COVERS WHAT CAN MAKE A DATE FAIL, NOT ONLY WHAT CAN BE DRAWN.
+-- A night with all four pieces designed and no signed space is not a night that
+-- is nearly ready; it is a night that does not exist. A checklist that only
+-- tracked artwork would report the first as green.
+--
+-- ⚠ A TICK IS WRITABLE, AND THAT IS NOT A CONTRADICTION OF D-44-02. The calendar
+-- is read-only about DATES, because the file is the source and an edit here
+-- would be silently discarded by the next import. A tick is about neither the
+-- file nor a date: it is a person recording that something got done. Applying
+-- *read-only* to it produces a checklist nobody can use.
+--
+-- The tick's write path — a `SECURITY DEFINER` function that records its author
+-- from an ARGUMENT rather than from `auth.uid()`, because every path arrives via
+-- the service client under which `auth.uid()` is null — is plan 44-04's, on the
+-- shape of `record_venue_reveal_act` (`20260810160000:384-426`).
+--
+-- AND A TICK IS REVERSIBLE. It is NOT a monotone guard, and the nearest
+-- precedents in this repository are all monotone — `venue_reveal_sent`, a
+-- payment reaching `completed`, a series progressivo. None of their reasoning
+-- travels here: nothing has left the building because somebody ticked a box, so
+-- un-ticking a box that was ticked by mistake costs an audit line and nothing
+-- else. Do not copy a one-way switch onto this table.
+
+CREATE TABLE IF NOT EXISTS public.production_checklist_item (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- `ON DELETE CASCADE`, and it is the one cascade in this file. A checklist
+  -- item is not a fact about the world; it is a fact about a plan row, and it
+  -- means nothing without it. The other references here are `NO ACTION` for the
+  -- opposite reason: they point at things that exist independently.
+  --
+  -- ⚠ A cascade is a write path nobody declared. It is declared here, and it is
+  -- the reason a snapshot taken before touching `production_plan` must cover
+  -- THIS table too (`ai-engineering.md`, gate *un'istantanea prima copre cio'
+  -- che si tocca*, whose recorded incident is exactly a cascade nobody had
+  -- enumerated).
+  plan_id uuid NOT NULL REFERENCES public.production_plan(id) ON DELETE CASCADE,
+
+  -- FIVE KINDS: the editorial pieces collapse into one — `piece` — and the four
+  -- production steps each get their own, because they fail for different reasons
+  -- and are chased by different people.
+  --
+  -- `space_approval` is not a courtesy step: an exhibition space that must
+  -- approve the material naming it is a stage of production with its own
+  -- duration, and it sits INSIDE the two days before the listing rather than
+  -- after them (`brand-visual-system.md`, gate *lo spazio approva cio' che lo
+  -- nomina*). Discovering it when the piece is finished is discovering it too
+  -- late.
+  kind text NOT NULL,
+
+  -- WHAT THIS ITEM IS, in production's own words. Text and not a foreign key:
+  -- the checklist has to be able to say *LiveCut PT2* and *the photo for the dj*
+  -- without either becoming a schema change.
+  label text NOT NULL,
+
+  -- WHEN IT IS DUE. Nullable, because an item can be owed without a date being
+  -- computable — the three unresolved reasons of section 2 reach here too.
+  due_date date,
+
+  sort_order integer NOT NULL DEFAULT 0,
+
+  -- ⚠ LATE IS COMPUTED, NEVER STORED.
+  --
+  -- The predicate is exactly this and lives in the query (D-44-15):
+  --
+  --     ticked_at IS NULL AND due_date < current_date
+  --
+  -- THERE IS DELIBERATELY NO STORED LATENESS COLUMN OF ANY NAME, and the reason
+  -- is the same one that governs the rest of this phase. A stored flag is only
+  -- true at the moment it is written; keeping it true needs something to run
+  -- every night.
+  -- This project has four crons that run every night AND NOBODY IS TOLD WHEN
+  -- THEY FAIL (`meta-gates.md`). A fifth would give the checklist a way to be
+  -- quietly wrong — showing a night as on time while it is late, which is the
+  -- one direction that matters, because the whole point of D-44-15 is that the
+  -- lateness is visible from the LIST, without opening the night.
+  --
+  -- Computed, the answer cannot rot: it is recomputed by the act of asking.
+  ticked_at timestamptz,
+
+  -- WHO TICKED IT. `SET NULL`: somebody who later leaves the project has not
+  -- un-performed their acts.
+  --
+  -- Both columns, and not just the id, for the reason
+  -- `20260810160000:228-245` gives about the act it records: a trace that says
+  -- *ticked by ORG-0042* answers nobody's question. The name is authorised IN
+  -- THE DATABASE and stops there — it does not enter a PLAN, a SUMMARY, a
+  -- VERIFICATION or anything else under `.planning/`, which is tracked and
+  -- public. Artefacts name ROLES.
+  ticked_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ticked_by_name text,
+
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT production_checklist_item_kind_check
+    CHECK (kind IN ('piece', 'venue_confirmed', 'dj_confirmed', 'photo_arrived', 'space_approval')),
+
+  -- A RE-IMPORT CANNOT DUPLICATE AN ITEM. The import regenerates the owed set on
+  -- every run, so without this the second run doubles every night's checklist —
+  -- and a doubled checklist is not a cosmetic defect: it doubles the count of
+  -- open items a person is asked to act on, which makes the number meaningless
+  -- in the direction that hides work rather than invents it.
+  CONSTRAINT production_checklist_item_plan_kind_label_unique UNIQUE (plan_id, kind, label)
+);
+
+-- THERE IS NO SEPARATE INDEX ON `plan_id`, AND THE ABSENCE IS A DECISION. The
+-- read this table serves is always *this night's checklist*, and the unique
+-- constraint above is backed by an index that LEADS WITH `plan_id`, so that read
+-- is already served. A second index would be write cost with no read benefit,
+-- and would leave the next reader working out which of the two the planner uses
+-- — the reasoning `20260810120000:957-969` writes down for the same situation.
+
+ALTER TABLE public.production_checklist_item ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- 6. party_series.ics_alias — THE COLUMN THAT MAKES THE JOIN POSSIBLE
+-- =============================================================================
+--
+-- THE PROBLEM, MEASURED RATHER THAN ANTICIPATED.
+--
+-- A PIECE names a SERIES CODE. A NIGHT names a FORMAT WORD and sometimes a
+-- VENUE WORD. Neither string contains the other's key, so there is no
+-- transformation from one to the other — and two facts make that more than an
+-- inconvenience:
+--
+--   1. TWO SATELLITE NIGHTS LEGITIMATELY SHARE THE PROGRESSIVO 001, under
+--      different series, distinguished ONLY by the venue word. A join keyed on
+--      format plus number alone was tried and measured: it placed one
+--      satellite's listing at a POSITIVE offset from its night — a piece
+--      published AFTER the night it announces. The join was wrong; the calendar
+--      was right. Any piece dated after the night it announces is that same
+--      defect wearing a new face.
+--   2. THE MAPPING IS AN ABBREVIATION, NOT A DERIVATION. Nothing computes a two-
+--      or four-letter code from a venue word. It has to be DECLARED by somebody
+--      who knows both halves.
+--
+-- ⚠ WHY IT IS A COLUMN AND NOT A TYPESCRIPT RECORD, WHICH IS THE OBVIOUS SHAPE.
+--
+-- Because the VALUES are venue words. A venue word for a space that has not been
+-- acquired in writing cannot be written into a public repository
+-- (`venue-acquisition.md`, gate *uno spazio non acquisito non si nomina*;
+-- D-44-04), and a record in `src/` is exactly that publication with an extra
+-- step. THE COLUMN IS PUBLIC — it is right here. THE VALUES ARRIVE AT RUNTIME,
+-- behind the row-level security of section 0, and this migration writes NONE of
+-- them: no statement below assigns this column a value, and a `grep` for a
+-- write against the series table is the assertion.
+--
+-- (The forbidden statement is not spelled out in this comment on purpose. A grep
+-- whose only match is the sentence forbidding the thing is a grep that gets
+-- ignored the third time it goes red — the discipline `formats/actions.ts:58-63`
+-- records, and it applies to a migration as much as to a server action.)
+--
+-- The alternative shape considered and not taken: resolving against
+-- `public.venues.name` and reading the series already attached to that venue.
+-- It works today and depends on venue naming staying stable, which is a thing
+-- nobody has promised. An explicit alias does not.
+--
+-- ── ⚠ THIS COLUMN LANDS ON A TABLE THAT ALREADY HAS A PUBLIC READ ARM ───────
+--
+-- `party_series` is NOT one of the six new tables. It has RLS since Phase 36 and
+-- TWO select policies, which are OR'd: `party_series_select_published`
+-- (`20260810120000:433-442`) and `party_series_select_catalogue_manage`. RLS is
+-- per ROW and never per column, so the first arm makes THIS COLUMN readable with
+-- the anonymous key on any series that has at least one published night.
+--
+-- `supabase-data.md`, gate *no dato sensibile in colonna pubblica*, requires
+-- that be answered before the column is added rather than after. The answer, in
+-- two parts:
+--
+--   * FOR A SERIES WITH A PUBLISHED NIGHT the alias adds NOTHING. That series'
+--     `name` is already readable through the same arm and already carries the
+--     venue word — `party_series.name` is the one string of Phase 36 that
+--     publishes, and its migration says so at `:196-199`. The alias is the same
+--     word in the calendar's spelling. This is `20260810120000:1006-1023`'s
+--     argument about `code`, unchanged.
+--   * FOR A SERIES WITH NO PUBLISHED NIGHT — which is every series of a space
+--     under negotiation, including the venue-named one MotionLab still does not
+--     have — the published arm returns NO ROW, so the column is unreachable
+--     without `catalogue.manage`. That is the case the gate is actually about,
+--     and it is closed.
+--
+-- WHAT WOULD BREAK IT: giving a series a public name that does NOT contain its
+-- venue while putting the venue in the alias. The row would then publish through
+-- a column instead of through its name. Nothing enforces that today; it is
+-- recorded here so that whoever considers it meets the reason first.
+
+ALTER TABLE public.party_series
+  ADD COLUMN IF NOT EXISTS ics_alias text;
+
+COMMENT ON COLUMN public.party_series.ics_alias IS
+  'The venue word this series is written as in the production calendar, so a piece naming a series '
+  'code can be joined to a night naming a venue word. The mapping is an ABBREVIATION, not a '
+  'derivation: it cannot be computed and must be declared. Two satellite series legitimately share '
+  'the progressivo 001 and are told apart only by this word — a join on format plus number alone '
+  'was measured placing a listing AFTER the night it announces. The COLUMN is public; the VALUES '
+  'arrive at runtime and are never written into a migration, a seed or a fixture.';
+
+-- UNIQUE, because two series claiming the same venue word re-create exactly the
+-- ambiguity this column exists to remove — and would do it silently, by making
+-- the join pick one.
+--
+-- The `DO` form, and NOT `DROP CONSTRAINT IF EXISTS` + `ADD`: measured at
+-- `20260809000000:200-226`, `IF EXISTS` suppresses *"it does not exist"*, not
+-- *"something depends on it"*, so a second run can fail `2BP01` with the
+-- transaction in rollback. There is no `ADD CONSTRAINT IF NOT EXISTS` in
+-- Postgres — hence the block.
+--
+-- NULLs are DISTINCT in a unique constraint, so every series that has no alias
+-- yet coexists with every other. Today that is all of them.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'party_series_ics_alias_unique'
+       AND conrelid = 'public.party_series'::regclass
+  ) THEN
+    ALTER TABLE public.party_series
+      ADD CONSTRAINT party_series_ics_alias_unique UNIQUE (ics_alias);
+  END IF;
+END;
+$$;
+
 COMMIT;
