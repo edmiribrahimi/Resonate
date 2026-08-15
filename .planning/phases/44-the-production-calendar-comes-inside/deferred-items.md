@@ -109,3 +109,63 @@ stale item is far short of that, but it is the same axis.
 audited, covering the plan row, the piece and the item together — and it is worth
 building only once somebody has decided what removal means for a row that a
 person may have ticked.
+
+---
+
+## D4 — `absent_since` is not drawn on S1, so a row that has left the file looks like one that is still in it
+
+**Found during:** plan 44-09, task 2 (the calendar page's read).
+
+**What happens.** `production_plan`, `production_piece` and
+`production_commitment` all carry `absent_since`: an entry present in a previous
+run and missing from the current one is **stamped, never deleted**, because
+deleting on absence would let one bad export wipe the archive. S1 reads the
+tables without filtering that column and draws every row the same way.
+
+**Why the page neither filters nor marks.** Both available answers are a decision
+this plan was not given. Filtering `absent_since IS NOT NULL` would **hide rows
+silently** — and if a future import bug stamped everything absent, the calendar
+would empty out and the page would say *the import ran and read no nights*, which
+is a plausible sentence covering a fault: exactly the shape OBS-03 refuses.
+Marking them needs a badge and a string, and `44-UI-SPEC.md` §8.3 declares four
+marks and this is not one of them; §13.4 lists every string the phase ships and
+this is not one either. Adding either without the contract being edited would be
+a surface deciding a question the contract owns.
+
+**What it costs while it stays.** A night whose entry has left the calendar file
+reads exactly like a night that is still in it. The direction is the safer of the
+two — the row is shown rather than hidden, so nothing disappears — but somebody
+reading the list to check the rotation may count an edition that is no longer
+planned.
+
+**The repair, when somebody takes it.** A fifth mark in §8.3 with its string in
+§13.4, decided by whoever owns the contract, and then one branch on the page.
+Not a filter: a row that has left the file is a finding, and a finding this phase
+draws rather than swallows everywhere else.
+
+---
+
+## D5 — the plan's verification names `verify:ics`, which is not a script in `package.json`
+
+**Found during:** plan 44-09, verification.
+
+**What happens.** `44-09-PLAN.md` §verification asks that `npm run verify` *"exits
+0 and names `verify:ics` among the gates it did not run."* `package.json` declares
+seventeen `verify:*` entries and **none of them is `verify:ics`**; the aggregate's
+NOT RUN section names one gate, `verify:redirects`, which needs a dev server.
+
+`npm run verify` also exits **2**, not 0, and the reason is D1 plus one more:
+three gates REFUSED before measuring — `verify:touch-targets` and
+`verify:conversion` on D1's stale manifest, and `verify:capabilities` because it
+needs `SUPABASE_ACCESS_TOKEN` and `NEXT_PUBLIC_SUPABASE_URL`, which a worktree
+does not carry. **Thirteen gates reached a verdict and none failed**, which is the
+narrower and true statement the aggregate's own footer insists on.
+
+**Why it is not this plan's.** No calendar file is named by any of the three, and
+a missing script is a planning artefact rather than a defect in the tree.
+
+**The repair, when somebody takes it.** Either the `verify:ics` gate gets written
+— it would presumably assert that no committed file parses or embeds the calendar
+file, which nothing checks today — or the expectation is struck from whichever
+later plan inherited it. D1's manifest edit closes two of the three refusals; the
+third closes itself wherever the environment carries the two variables.

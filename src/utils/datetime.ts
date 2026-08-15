@@ -144,6 +144,86 @@ export function zonedDateString(instant: Date): string {
   }).format(instant);
 }
 
+/**
+ * Today in Turin, as `YYYY-MM-DD`.
+ *
+ * ── Why this exists here and not at the one call site that wanted it ─────────
+ *
+ * `time-and-scheduling.md` is explicit that a new time boundary is added to
+ * **this** module rather than written on the spot — *"Se ne serve una nuova, si
+ * aggiunge li' — non si riscrive la conversione sul posto, che e' esattamente
+ * come sono nate le sei varianti precedenti."* Every caller before this one
+ * spelled `zonedDateString(new Date())` inline, and the production calendar
+ * surface may not: its files may construct no instant at all, because a
+ * conversion that crosses midnight moves a WEEKDAY, and the whole editorial
+ * pipeline is expressed in weekdays.
+ *
+ * ── Why not `current_date` in Postgres, which is the obvious alternative ─────
+ *
+ * Because it is the wrong day for two hours out of every twenty-four. The
+ * database session runs in UTC, so between 00:00 and 02:00 Turin time
+ * `current_date` still names yesterday — and the surfaces that ask *is this
+ * item late?* and *where does today fall in this list?* would answer for
+ * yesterday during exactly the hours a night is running. The database's own
+ * lateness predicate lives in a query written against this project's data and
+ * is documented as `due_date < current_date`; where that predicate is evaluated
+ * in TypeScript instead, it is evaluated against **this** value, which is the
+ * more correct of the two rather than merely the more convenient.
+ *
+ * The comparison a caller then makes is a string comparison between two
+ * `YYYY-MM-DD` values, which is ordered identically to the dates themselves —
+ * fixed width, most significant field first — so nothing downstream has to
+ * build an instant either.
+ */
+export function turinToday(): string {
+  return zonedDateString(new Date());
+}
+
+/**
+ * A stored instant read as a Turin wall clock: the civil day and the `HH:MM` on
+ * it, or `null` when the value is not an instant at all.
+ *
+ * ── The two halves, and why they come back together ─────────────────────────
+ *
+ * A `timestamptz` read back through PostgREST arrives as an ISO string in UTC.
+ * Slicing its first ten characters looks like the obvious way to get a date and
+ * is wrong for two hours out of every twenty-four: at 00:30 in Turin the UTC day
+ * is still yesterday's. Reading the `HH:MM` out of the same string is wrong for
+ * all twenty-four. Both halves have to be shifted, so both are returned by one
+ * call rather than by two that could be given different instants.
+ *
+ * The offset is taken at the instant itself, through `zoneOffsetMs`, so the
+ * answer is right on both sides of a DST boundary — and the boundary is always
+ * inside the season, since the production calendar runs August to July.
+ *
+ * ── Why the caller cannot do this ───────────────────────────────────────────
+ *
+ * The production calendar surface may construct no instant and call no locale
+ * formatter of its own: every date on it is civil, formatted from its own
+ * characters, because a conversion that crosses midnight moves a WEEKDAY and the
+ * editorial pipeline is expressed in weekdays. A surface that needs a real
+ * instant rendered asks for it here — which is the rule
+ * `time-and-scheduling.md` states, and the reason the six earlier variants of
+ * this conversion existed before that module was written.
+ *
+ * ⚠ The `null` is not decoration. A stored timestamp that will not parse is a
+ * fact worth drawing as *we could not read this*, never as an epoch date, and a
+ * caller that gets `null` is expected to say so rather than substitute a
+ * plausible-looking value.
+ */
+export function turinWallClock(
+  instantIso: string
+): { date: string; time: string } | null {
+  const instant = new Date(instantIso);
+  if (Number.isNaN(instant.getTime())) return null;
+
+  const shifted = new Date(instant.getTime() + zoneOffsetMs(instant));
+  const hours = String(shifted.getUTCHours()).padStart(2, "0");
+  const minutes = String(shifted.getUTCMinutes()).padStart(2, "0");
+
+  return { date: zonedDateString(instant), time: `${hours}:${minutes}` };
+}
+
 // ─── The venue reveal window ─────────────────────────────────────────────────
 //
 // Not an instant like the rest of this file, but a time rule all the same, and
