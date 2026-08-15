@@ -62,10 +62,19 @@
  * from the other: an offset sees two rules where there is one, and flags the
  * calendar rather than itself.
  *
- * So: no `new Date`, no `toISOString`, no `toLocaleDateString`, no
- * `Intl.DateTimeFormat`, no timezone library. {@link CivilDate} and
- * {@link CivilTime} are strings taken verbatim off the file, and they stay
- * strings all the way to the column.
+ * So: no date object is ever constructed here, none of the platform's date
+ * formatters or serialisers is called, and no timezone library is adopted.
+ * {@link CivilDate} and {@link CivilTime} are strings taken verbatim off the
+ * file, and they stay strings all the way to the column.
+ *
+ * **The four names one would reach for are deliberately not spelled anywhere in
+ * this directory**, and the rule is narrower than a taste: a literal that a
+ * mechanical check greps for is not written in prose, because a grep whose only
+ * match is the sentence forbidding the thing is a grep that gets ignored the
+ * third time it goes red (`src/app/(admin)/admin/formats/actions.ts:58-63`,
+ * about its own forbidden literal). `Date.now()` is spelled, because nothing
+ * greps for it and the purity sentence this directory inherits from
+ * `src/lib/door/classify.ts:37-41` names it.
  */
 
 /**
