@@ -618,7 +618,26 @@ if (haveMaterial) {
   /* ── C. the join, and its negative control ─────────────────────────────── */
 
   const withoutAliases = ics.classifyEntries(parsed.events, new Map());
-  const nightByKey = new Map(classified.nights.map((night) => [night.key, night]));
+
+  // Grouped, not overwritten. A `Map` built by `new Map(pairs)` keeps the LAST
+  // value for a repeated key, so two nights that collide would leave one of them
+  // silently gone — and a join that loses a night is the exact failure this check
+  // is looking for. It has to be counted, not absorbed.
+  const nightsByKey = new Map();
+  for (const night of classified.nights) {
+    if (!nightsByKey.has(night.key)) nightsByKey.set(night.key, []);
+    nightsByKey.get(night.key).push(night);
+  }
+  const collidingKeys = [...nightsByKey.values()].filter((list) => list.length > 1).length;
+
+  // The earliest night carrying the key, so the lookup is deterministic whatever
+  // order the file is in.
+  const nightByKey = new Map(
+    [...nightsByKey.entries()].map(([key, list]) => [
+      key,
+      [...list].sort((a, b) => (a.startDate < b.startDate ? -1 : 1))[0],
+    ])
+  );
   const orphans = classified.pieces.filter((piece) => !nightByKey.has(piece.key));
 
   // A listing and a Tonight ANNOUNCE the night. A recap, a LiveCut and an after
@@ -631,6 +650,13 @@ if (haveMaterial) {
   }).length;
 
   const cProblems = [];
+  if (collidingKeys !== 0) {
+    cProblems.push(
+      `${collidingKeys} join key(s) are carried by more than one night. Two satellites ` +
+        "legitimately share a progressivo and are told apart only by the word for the " +
+        "space, so a collision means the key has stopped carrying that word"
+    );
+  }
   if (withoutAliases.nights.length !== 0) {
     cProblems.push(
       `${withoutAliases.nights.length} night(s) resolved with an EMPTY alias map. The ` +
@@ -656,6 +682,7 @@ if (haveMaterial) {
     pass(
       "C",
       `0 nights resolve with an empty alias map (the negative control) · ` +
+        `0 join keys carried by two nights · ` +
         `0 announcing pieces dated after their night · ` +
         `${orphans.length} piece whose edition the file does not carry`
     );
@@ -1340,8 +1367,8 @@ function typescriptFiles(dir) {
     const { lines, unterminated } = liveLines(file);
     if (unterminated !== null) {
       hProblems.push(
-        "a file under src/lib/production/ics/ opens a comment that never closes, so " +
-          "this check could not read it"
+        "a file in the reader's own tree opens a comment that never closes, so this " +
+          "check could not read it"
       );
       continue;
     }
@@ -1356,15 +1383,19 @@ function typescriptFiles(dir) {
     directives += lines.filter((line) => DIRECTIVE.test(line)).length;
   }
 
+  // Neither message names the directory, for the reason the passing line does not
+  // and the header explains: its name is an ordinary word that occurs in an entry
+  // title, and a FAILING message that reintroduced it would drag check F down with
+  // it — one broken check reported as two.
   if (reachingLines !== 0) {
     hProblems.push(
-      `${reachingLines} live line(s) under src/lib/production/ics/ name the announced- ` +
-        "night table. The import moves a date; announcing is a separate, deliberate act"
+      `${reachingLines} live line(s) in the reader's own tree name the announced-night ` +
+        "table. The import moves a date; announcing a night is a separate, deliberate act"
     );
   }
   if (directives !== 0) {
     hProblems.push(
-      `${directives} file(s) under src/lib/production/ carry the server-action ` +
+      `${directives} file(s) in the reader's own tree carry the server-action ` +
         "directive, which publishes every export as an endpoint anybody can call " +
         "with a forged body"
     );
