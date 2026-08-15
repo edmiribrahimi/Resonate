@@ -7,10 +7,11 @@ import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { turinToday, turinWallClock } from "@/utils/datetime";
+import type { ChecklistItemView } from "@/app/(admin)/admin/calendar/ChecklistSection";
 import {
-  ChecklistSection,
-  type ChecklistItemView,
-} from "@/app/(admin)/admin/calendar/ChecklistSection";
+  AnnounceNightDialog,
+  CalendarNightChecklist,
+} from "@/app/(admin)/admin/calendar/AnnounceNightDialog";
 import {
   PiecesSection,
   type PieceRowView,
@@ -224,7 +225,7 @@ export default async function CalendarNightPage({
   const { data: planRow, error: planError } = await supabase
     .from("production_plan")
     .select(
-      `id, date, number, venue_word, venue_stage, format_id,
+      `id, date, number, venue_word, venue_stage, format_id, linked_party_id,
        formats ( name ),
        party_series ( name, code ),
        production_piece ( id, kind, part_marker, date, origin, unresolved_reason ),
@@ -342,6 +343,32 @@ export default async function CalendarNightPage({
           </span>
           <StageBadge stage={plan.venue_stage} />
         </div>
+
+        {/*
+          THE ONE CTA OF THIS PHASE (§13.0), and the only control on either
+          calendar surface that writes something the public may eventually see.
+
+          Everything it needs to state its consequence is already on this page,
+          so nothing extra is read for it: the stage the space has reached, the
+          items still open, and whether the calendar row is already tied to a
+          night. `openItems` travels as SENTENCES and never as a count —
+          `Venue not confirmed in writing` reads as a decision, a figure reads
+          as a formality (§11.2 part 3) — and `null` is carried through, because
+          a checklist that could not be read is not a checklist with nothing on
+          it.
+        */}
+        <div className="mt-4">
+          <AnnounceNightDialog
+            planId={plan.id}
+            venueStage={plan.venue_stage}
+            alreadyAnnounced={plan.linked_party_id !== null}
+            openItems={
+              items === null
+                ? null
+                : items.filter((item) => !item.ticked).map((item) => item.label)
+            }
+          />
+        </div>
       </header>
 
       {/*
@@ -362,11 +389,16 @@ export default async function CalendarNightPage({
         <Card>
           <SectionHeading>CHECKLIST</SectionHeading>
           {/*
-            No tick handler yet: the act that records one is plan 44-12's, and
-            the section says so in its own words rather than drawing an inert
-            box in silence. See its docblock.
+            The tick is wired. `CalendarNightChecklist` is `ChecklistSection`
+            with the act supplied — which removes the read-only notice and the
+            `disabled` attribute the section draws in its absence.
+
+            The wiring lives on the client side of the boundary because the
+            mapping between the act's reason codes and the section's two
+            sentences is a FUNCTION, and a function cannot travel from a server
+            component into a client component as a prop.
           */}
-          <ChecklistSection
+          <CalendarNightChecklist
             items={items}
             today={today}
             empty={owedIsKnown ? <NoProductionSteps /> : <StepsOwedUnknown />}
@@ -689,7 +721,19 @@ type ChecklistRow = Pick<
 
 type PlanRow = Pick<
   ProductionPlan,
-  "id" | "date" | "number" | "venue_word" | "venue_stage" | "format_id"
+  | "id"
+  | "date"
+  | "number"
+  | "venue_word"
+  | "venue_stage"
+  | "format_id"
+  /**
+   * The bridge to the announced night (D-44-06, D-44-07). Selected as a SCALAR
+   * and deliberately not embedded: it points at the night's own table, whose
+   * read arms are a different question with a different audience, and this page
+   * needs only the one fact *is this night already announced*.
+   */
+  | "linked_party_id"
 > & {
   /** One FK, `format_id`. Null where the import could not resolve the format. */
   formats: { name: string } | null;
