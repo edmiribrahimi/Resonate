@@ -123,6 +123,20 @@
  * `deferred-items.md` rather than left for somebody to discover from an empty
  * column.
  *
+ * ── ⚠ `import:calendar` IS NOT A `verify:*` ENTRY, AND MUST NEVER BECOME ONE ─
+ *
+ * `scripts/verify-all.mjs:319` collects the gates it runs by taking every
+ * `package.json` script whose name begins with the verification prefix, so a
+ * name outside that prefix is invisible to the aggregate — which is exactly the
+ * property wanted here. **This script writes.** A gate is something a person
+ * runs to find out whether the tree is sound; a writer is something a person
+ * runs having decided to change production. Putting a writer in an aggregate
+ * that a build, a hook or a habit invokes is how a decision becomes an accident,
+ * and the aggregate would then be unable to claim what its own header claims.
+ *
+ * That is also why this script's name is not written into that file at all: a
+ * name mentioned in a list is one edit away from being a name in the list.
+ *
  * ── ARGUMENTS ───────────────────────────────────────────────────────────────
  *
  *   `--dry-run`         print the plan and write nothing. **THE DEFAULT.**

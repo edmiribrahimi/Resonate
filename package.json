@@ -26,6 +26,7 @@
     "verify:comment-stripper": "node scripts/verify-comment-stripper.mjs",
     "verify:ics": "node scripts/verify-ics-import.mjs",
     "verify": "node scripts/verify-all.mjs",
+    "import:calendar": "node scripts/import-production-calendar.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
