@@ -489,3 +489,132 @@ None new. The plan's register was applied:
 | `npm run build` exits 0 | run | exit 0 |
 | `npm run verify:routes` exits 0 | run | exit 0 |
 | nothing was executed against production | no client was constructed outside a build | confirmed — `.env.local` is absent in this worktree |
+
+---
+
+## Post-review corrections — WR-01 and WR-02
+
+Two findings of `44-REVIEW.md` were fixed after this plan closed. They are
+recorded here, on the plan that wrote the code, rather than in a document of
+their own: a correction filed away from what it corrects is a correction the
+next reader does not meet.
+
+### WR-01 — the double-announcement guard now sits on the WRITE
+
+**Commit:** `d7cd2a5` · **Files:** `actions.ts`, `AnnounceNightDialog.tsx`
+
+**What was wrong.** `announceNight` read `linked_party_id`, refused if it was
+set, and wrote it several round trips later. Nothing tied the two: two
+concurrent calls both read null. For a night carrying a progressivo the
+database caught the collision —
+`event_parties_format_series_number_unique` fires, the act returns
+`number_taken` and the orphan container is removed — but for a night with **no**
+progressivo, which is the legitimate case of a night that is the opening act of
+another, Postgres holds two NULLs **distinct**. The constraint does not fire,
+both inserts succeed, and the second update silently overwrote the first link.
+What was left was a night no calendar row pointed at, that nobody knew to
+remove, and that no screen mentioned.
+
+**What was done.** The predicate travels on the update:
+
+```ts
+.update({ linked_party_id: createdParty.id })
+.eq("id", plan.id)
+.is("linked_party_id", null)
+.select("id")
+```
+
+`.select("id")` is not decoration: without it a refused update and a satisfied
+one give the same answer — no error, nothing returned — which is the silent zero
+this phase refuses everywhere else.
+
+**Zero rows touched has its own code, and it says two things at once.**
+`already_announced_orphan_night`. Reporting only the first fact would say *this
+was already announced* and leave an unlinked night in the product; reporting only
+the second would send the operator to press again on a row that is already
+announced. Both are true and both are said.
+
+**Three things the correction deliberately did not do:**
+
+1. **It does not delete the night it could not link.** The container is
+   unpublished, so nothing is publicly readable, and a silent deletion would
+   erase the only trace that two calls ran. That is a different situation from
+   the orphan *container* the act already removes by primary key, which never
+   held a night at all.
+2. **It does not claim a number was spent.** Only a night without a progressivo
+   can reach this branch, and `bump_series_watermark` raises the level with
+   `GREATEST(highest_assigned, NEW.number)`, which a null leaves untouched. The
+   refusal says so, because whether a number was spent is what decides whether
+   pressing again is safe.
+3. **It adds no migration.** The review offers a partial unique index on
+   `production_plan (linked_party_id)` as a database-side complement. It closes a
+   *different* hole — two plan rows pointing at one night — and the described
+   race is closed at the write. A forward migration for it remains available and
+   is not debt this correction created.
+
+The failure value gained `orphanPartyId`, and the dialog prints it: the night
+that won the race and the night that lost carry the **same title and the same
+date**, so the id is the only thing that distinguishes them on the events
+surface.
+
+**The read-time `already_announced` refusal stays.** It is the fast path that
+saves the work in the ordinary case. It was never the guarantee, and the file now
+says which of the two is which.
+
+### WR-02 — the night's page has a door
+
+**Commit:** `21c3a50` · **File:** `CalendarList.tsx`
+
+`/admin/calendar/[id]` had its route entry, its RLS policies and its page guard,
+and no way in. The list drew text, the staff tab registers `/admin/calendar`
+alone, and `DataTable` exposes `selection`, `expansion` and `actions` and no
+row-href. Both of this phase's writes live on that page, so until now they were
+reachable only by typing a uuid into the address bar.
+
+The Night column carries a `Link` **on the night branch and on no other** — an
+external commitment has no plan row to open, and `CalendarCommitmentRow` has no
+field that could address one; the today marker is a marker.
+
+**Nothing was invented for it.** `Link`, never `Button` with an `href`
+(§12). The class string is the one this product already writes for an in-text
+link — `admin/(work)/members/page.tsx:204`, `MemberTable.tsx:1115`: dotted
+underline, 4px offset, `hover:text-ink`, and the tree's single focus expression.
+No new token, no new primitive, no new file under `src/components/ui/`.
+
+**One accepted cost, stated rather than discovered.** `min-h-11` is keyed off
+nothing: a `DataColumn` is given no way to tell which of `DataTable`'s two trees
+it is rendering in, and §14 forbids keying a touch target off width. So the phone
+card gets its 44px and the desktop rows grow from 44px to 68px. The alternative —
+an `md:` prefix — is precisely what the contract names.
+
+The title sits in a child of the anchor because the card branch truncates its
+title: an `inline-flex` anchor is an atomic inline and would take a clip where
+the ellipsis was. A flex item that hides its overflow shrinks below its content,
+so the ellipsis comes back, and the transform is declared on that child — the
+element that actually renders the literal, which is what U8 checks.
+
+### Gates run on the correction
+
+| Gate | Result |
+|---|---|
+| `npm run build` | exit 0 — the only warning is Next's pre-existing workspace-root inference, a property of the worktree layout |
+| `npm run verify:calendar-surface` | `CALENDAR_SURFACE_OK` — 10/10, U8 included |
+| `npm run verify:routes` | PASS — both checks |
+| `npm run verify` (aggregate) | 14 passed, **0 failed**, 3 refused |
+
+The three refusals are the ones already recorded: `verify:capabilities` needs
+Supabase credentials, and `.env.local` is deliberately absent from this
+worktree; `verify:touch-targets` and `verify:conversion` refuse before measuring
+on **D1**'s stale manifest, which names four `/admin/analytics` and
+`/admin/finance` pages removed in an earlier milestone. None of the three names a
+calendar file, and none is new. **A refusal is not a pass:** the touch-target
+class string added by WR-02 was therefore *not* measured by a gate, and rests on
+the reading above.
+
+**No test runner exists for the product.** Neither fix is verified by a test, and
+neither claims to be. WR-01's race is not reproducible by hand on one machine —
+what is checked is the predicate, the read-back and the refusal's copy, at
+`actions.ts:859-926`, the refusal code at `actions.ts:220-239`, its carried id at
+`actions.ts:298-312`, and the sentence a person reads at
+`AnnounceNightDialog.tsx:280-281`. WR-02 is checked by opening `/admin/calendar`
+and pressing a night's name — the row link is at `CalendarList.tsx:330-352`.
