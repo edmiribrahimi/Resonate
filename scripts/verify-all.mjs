@@ -249,6 +249,14 @@ const OFFLINE = [
       "matrix before believing any REMAINING count printed above",
   ],
   [
+    "verify:calendar-surface", false,
+    "Phase 44 — the ten assertions of 44-UI-SPEC.md §15. It belongs in this list and " +
+      "NOT in NEEDS_MATERIAL beside verify:ics, and the difference is the whole reason " +
+      "that third list exists: this gate reads tracked source under src/ and needs no " +
+      "docs/ and no server, so it runs on every machine. String assertions only — a " +
+      "green here says nothing about whether a proposed date reads as settled",
+  ],
+  [
     "verify:touch-targets", true,
     "Phase 41 — G5. Plan 41-11 was permitted to end by deleting this gate " +
       "rather than shipping one that reddened on correct code. It did not: the " +

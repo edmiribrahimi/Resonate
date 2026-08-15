@@ -25,6 +25,7 @@
     "verify:touch-targets": "node scripts/verify-touch-targets.mjs",
     "verify:comment-stripper": "node scripts/verify-comment-stripper.mjs",
     "verify:ics": "node scripts/verify-ics-import.mjs",
+    "verify:calendar-surface": "node scripts/verify-calendar-surface.mjs",
     "verify": "node scripts/verify-all.mjs",
     "import:calendar": "node scripts/import-production-calendar.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",

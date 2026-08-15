@@ -799,12 +799,30 @@ export async function announceNight(planId: string): Promise<AnnounceNightResult
     spent; only the tie is missing. Telling somebody otherwise would send them
     to press again.
   */
+  /*
+    ⚠ THE PAYLOAD IS THE LINK AND NOTHING ELSE, and the missing field is
+    deliberate. This update used to carry a `updated_at` built here from the
+    platform clock, which check U3 of `44-UI-SPEC.md` §15 forbids on this
+    surface with an exemption list that reads `none` — written before any of
+    this code existed, which is the only order in which an exemption list means
+    anything. `scripts/verify-calendar-surface.mjs` found it on its first run.
+
+    It was resolved by changing the code rather than by widening the gate. U3's
+    rationale is about a CIVIL date, and an instant cannot move a weekday, so
+    the temptation was to call this an exception and write one in. The reason
+    not to is that the exception would have to be spelled as a file-and-line
+    allow-list — no string check can tell an instant from a civil date — and an
+    allow-list rots while the sentence beside it keeps claiming the rule holds.
+
+    NOTHING IS LOST WITH IT. No product code reads `production_plan.updated_at`
+    (the import script maintains its own on the rows it touches), and the
+    instant this write happened is recorded where it belongs: on the night this
+    action just created, whose `created_at` defaults to `now()` and which is
+    reachable from here through `linked_party_id`.
+  */
   const { error: linkError } = await client
     .from("production_plan")
-    .update({
-      linked_party_id: createdParty.id,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ linked_party_id: createdParty.id })
     .eq("id", plan.id);
 
   if (linkError) {

@@ -1,5 +1,5 @@
 /**
- * The six staff tabs — address, label, and the capability that opens the
+ * The seven staff tabs — address, label, and the capability that opens the
  * address — declared once, for both staff menus.
  *
  * Before this module there were **three** hand-maintained menus, not the two
@@ -85,8 +85,9 @@ export interface StaffTab {
 }
 
 /**
- * The six, in the order they are drawn. (Eight until 2026-08-14, when the
- * owner removed Finance and Analytics — see the note where they stood.)
+ * The seven, in the order they are drawn. (Eight until 2026-08-14, when the
+ * owner removed Finance and Analytics — see the note where they stood; six
+ * until phase 44, when Calendar landed after its pages did.)
  *
  * The first four were the tabs an organizer already saw; the master-only ones
  * carried `roles: ["master"]`. That role filter is not translated — it is
@@ -128,6 +129,28 @@ const DECLARED = [
   // what the map binds to this address, and it `requires_approved`, so a pending
   // organizer is neither drawn the tab nor let through to the page.
   { href: "/admin/formats", label: "Formats", capability: CAP.CATALOGUE_MANAGE },
+  // ── THE CALENDAR TAB, AND WHY HIDING IT PROTECTS NOTHING ──────────────────
+  //
+  // Same landing rule as Formats above, and for the same reason: the pages
+  // exist on disk (phase 44, plan 09) at `(work)/calendar/page.tsx` and
+  // `(work)/calendar/[id]/page.tsx`, so both static addresses are in the
+  // generated union and this entry compiles without either rejected
+  // workaround. Neither was used here and neither becomes acceptable because
+  // a second tab now wants it.
+  //
+  // **Hiding this tab protects nothing**, and it needs saying here more than
+  // on any other entry above. What this surface holds IS the secret — dates
+  // not yet announced and spaces still under negotiation — so a reader who
+  // never sees the link is not thereby refused the rows. Three things refuse a
+  // door-assigned staff account, and none of them is the absence of a link:
+  // the middleware entry for `production.read`, the page's own guard, and the
+  // six RLS policies in `20260815120100_production_calendar_access.sql`. A
+  // surface whose whole content is a secret is exactly where somebody would be
+  // tempted to believe the menu is doing the work, so: it is not.
+  //
+  // `production.read`, and it ignores status (D-44-27) — unlike
+  // `catalogue.manage` on the line above, which `requires_approved`.
+  { href: "/admin/calendar", label: "Calendar", capability: CAP.PRODUCTION_READ },
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
   // ── Finance and Analytics were removed here, and their pages with them ──────
   //
@@ -174,7 +197,7 @@ for (const tab of DECLARED) {
   }
 }
 
-/** The six, verified against the map. */
+/** The seven, verified against the map. */
 export const STAFF_TABS: readonly StaffTab[] = DECLARED;
 
 /**
