@@ -1047,8 +1047,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 44-06-PLAN.md — The reconciler: a plan of writes, returned and never applied, keyed on `UID`, generating no number
-- [ ] 44-07-PLAN.md — **[BLOCKING]** Apply both migrations through the Management API migrations endpoint, read back from the catalogues, prove nothing moved *(owner checkpoint: production write)*
+- [x] 44-06-PLAN.md — The reconciler: a plan of writes, returned and never applied, keyed on `UID`, generating no number
+- [x] 44-07-PLAN.md — **[BLOCKING]** Apply both migrations through the Management API migrations endpoint, read back from the catalogues, prove nothing moved *(owner checkpoint: production write)*
 
 **Wave 4** *(blocked on Wave 3)*
 
