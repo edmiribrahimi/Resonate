@@ -1062,7 +1062,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 44-12-PLAN.md — The two writes: the checklist tick, and the announcement that is the single bridge to `event_parties` *(owner checkpoints: the venue on an unacquired space, and the confirmation's wording)*
+- [x] 44-12-PLAN.md — The two writes: the checklist tick, and the announcement that is the single bridge to `event_parties` *(owner checkpoints: the venue on an unacquired space, and the confirmation's wording)*
 
 **Wave 7** *(blocked on Wave 6)*
 
