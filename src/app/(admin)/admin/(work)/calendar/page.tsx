@@ -14,6 +14,10 @@ import {
   type PieceTally,
 } from "@/app/(admin)/admin/calendar/CalendarList";
 import { formatProgressivo } from "@/app/(admin)/admin/calendar/dates";
+import {
+  ImportRunSummary,
+  type ImportRun,
+} from "@/app/(admin)/admin/calendar/ImportRunSummary";
 
 import type {
   ProductionChecklistItem,
@@ -226,6 +230,21 @@ export default async function AdminCalendarPage() {
           rows={rows}
           empty={lastRun === null ? <NeverImported /> : <NoNights />}
         />
+
+        {/*
+          S3, at the FOOT of the list and never behind a click.
+
+          This repository has no error tracking at all, so a failed or partial
+          import reaches nobody on its own — and an import summary behind a
+          second click is a log with a nicer font, seen only by whoever already
+          suspected something. It renders on every visit, whether or not
+          anything went wrong.
+
+          `null` draws nothing: *the import has never run* is the empty state
+          above and not a block of zeros, because a block of zeros says the
+          import ran and found nothing.
+        */}
+        <ImportRunSummary run={toImportRun(lastRun)} />
       </div>
     </PageShell>
   );
@@ -502,6 +521,35 @@ function toNightRow(
  * sentence, so an all-day commitment reads as a time nobody can state instead of
  * as `00:00 → 00:00`, which would be a claim.
  */
+/**
+ * The run row, in the shape the import block draws it.
+ *
+ * ⚠ **Every count crosses as `number | null`, and the `null` is carried rather
+ * than smoothed.** `?? 0` anywhere in this function would turn *we could not
+ * read this figure* into *this figure is zero* — the more reassuring of the two,
+ * and the one OBS-03 exists to forbid. The block prints a sentence for `null`;
+ * it can only do that if this function refuses to invent a number.
+ *
+ * ⚠ **The findings cross as uid and reason only.** `divergences` and
+ * `unsupported_recurrences` are `jsonb`, so the column accepts anything; the
+ * declared shape in `src/types/database.ts` and `ImportFinding` here are both
+ * narrow so that the prohibition is visible where the value is passed rather than
+ * only in a comment. Nothing in the pair names a date, a space or a person.
+ */
+function toImportRun(row: ProductionImportRun | null): ImportRun | null {
+  if (row === null) return null;
+  return {
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    entriesSeen: row.entries_seen,
+    entriesByClass: row.entries_by_class,
+    unclassifiedCount: row.unclassified_count,
+    divergences: row.divergences,
+    unsupportedRecurrences: row.unsupported_recurrences,
+    dryRun: row.dry_run,
+  };
+}
+
 function toCommitmentRow(row: CommitmentRow): CalendarCommitmentRow {
   return {
     kind: "commitment",

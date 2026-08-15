@@ -179,6 +179,51 @@ export function turinToday(): string {
   return zonedDateString(new Date());
 }
 
+/**
+ * A stored instant read as a Turin wall clock: the civil day and the `HH:MM` on
+ * it, or `null` when the value is not an instant at all.
+ *
+ * ── The two halves, and why they come back together ─────────────────────────
+ *
+ * A `timestamptz` read back through PostgREST arrives as an ISO string in UTC.
+ * Slicing its first ten characters looks like the obvious way to get a date and
+ * is wrong for two hours out of every twenty-four: at 00:30 in Turin the UTC day
+ * is still yesterday's. Reading the `HH:MM` out of the same string is wrong for
+ * all twenty-four. Both halves have to be shifted, so both are returned by one
+ * call rather than by two that could be given different instants.
+ *
+ * The offset is taken at the instant itself, through `zoneOffsetMs`, so the
+ * answer is right on both sides of a DST boundary — and the boundary is always
+ * inside the season, since the production calendar runs August to July.
+ *
+ * ── Why the caller cannot do this ───────────────────────────────────────────
+ *
+ * The production calendar surface may construct no instant and call no locale
+ * formatter of its own: every date on it is civil, formatted from its own
+ * characters, because a conversion that crosses midnight moves a WEEKDAY and the
+ * editorial pipeline is expressed in weekdays. A surface that needs a real
+ * instant rendered asks for it here — which is the rule
+ * `time-and-scheduling.md` states, and the reason the six earlier variants of
+ * this conversion existed before that module was written.
+ *
+ * ⚠ The `null` is not decoration. A stored timestamp that will not parse is a
+ * fact worth drawing as *we could not read this*, never as an epoch date, and a
+ * caller that gets `null` is expected to say so rather than substitute a
+ * plausible-looking value.
+ */
+export function turinWallClock(
+  instantIso: string
+): { date: string; time: string } | null {
+  const instant = new Date(instantIso);
+  if (Number.isNaN(instant.getTime())) return null;
+
+  const shifted = new Date(instant.getTime() + zoneOffsetMs(instant));
+  const hours = String(shifted.getUTCHours()).padStart(2, "0");
+  const minutes = String(shifted.getUTCMinutes()).padStart(2, "0");
+
+  return { date: zonedDateString(instant), time: `${hours}:${minutes}` };
+}
+
 // ─── The venue reveal window ─────────────────────────────────────────────────
 //
 // Not an instant like the rest of this file, but a time rule all the same, and
