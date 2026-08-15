@@ -1,5 +1,5 @@
 /**
- * The thirteen capability keys, named once.
+ * The fourteen capability keys, named once.
  *
  * This module is the source. It imports nothing — not even
  * `@/types/database`, which imports *from here* — for the same reason
@@ -28,7 +28,7 @@
  *
  * The check that closes the gap is `scripts/verify-capabilities.mjs`, added by
  * plan `32-10`: it reads `private.capabilities` and asserts that the set below
- * and the catalogue are the same thirteen strings. Until it runs, the guarantee
+ * and the catalogue are the same fourteen strings. Until it runs, the guarantee
  * here is a convention, not a mechanism.
  *
  * **Editing this file means editing the migration in the same commit** — the
@@ -37,7 +37,7 @@
  *
  * ── Named by the question, not by the predicate ──────────────────────────────
  *
- * Three of these thirteen resolve to the same predicate today — `STAFF_MANAGE`,
+ * Three of these fourteen resolve to the same predicate today — `STAFF_MANAGE`,
  * `ORGANIZER_ACCESS` and `DOOR_OPERATE` are all "role ∈ {master, organizer},
  * status ignored". They are deliberately three keys and not one, because they
  * are three different questions. A later phase that grants one night's door
@@ -106,14 +106,66 @@
  * It gates an ACT, not an address: the button lives on `/admin/events/[id]/edit`,
  * which `ORGANIZER_ACCESS` already opens, so its entry in
  * `src/lib/routes/capability-routes.ts` is on the `scope: "table"` branch.
+ *
+ * ── The fourteenth, added by plan 44-04 ──────────────────────────────────────
+ *
+ * `PRODUCTION_READ` is the naming rule applied a fifth time. It answers *may
+ * this subject read the production calendar* — the six `production_*` tables
+ * whose rows are unannounced dates, spaces under negotiation and the shape of an
+ * internal plan. Four existing keys were weighed and each is wrong in a
+ * DIFFERENT DIRECTION, which is what makes a fourteenth worth minting:
+ *
+ *   - On `ORGANIZER_ACCESS` (`organizer.access`) the question is *may they reach
+ *     the organizer area*
+ *     — a routing question about the account. Reusing it makes the calendar
+ *     reachable by every organizer PERMANENTLY and leaves **Phase 45 nothing to
+ *     take away** when entitlement becomes per-section (PROD-02). Un-widening
+ *     later is the direction `meta-gates.md` permits only with an explicit,
+ *     documented authorisation — so the reuse would not be a shortcut, it would
+ *     be a decision nobody took, taken irreversibly.
+ *   - On `CATALOGUE_MANAGE` (`catalogue.manage`) the shape would be right and
+ *     the question wrong:
+ *     *may they create an artist or a venue* is not *may they read what is
+ *     planned*, and merging them ties calendar reach to a catalogue grant. The
+ *     day somebody wants a catalogue editor who may not read the calendar, there
+ *     is no key to take away.
+ *   - On `ADMIN_ACCESS` (`admin.access`) it would be master-only. D-44-17 wants
+ *     the organizer as
+ *     well, so this one is wrong in the OPPOSITE direction from the first three:
+ *     too narrow rather than too wide.
+ *   - On `STAFF_MANAGE` (`staff.manage`) it would inherit
+ *     `requires_approved = false`. That flag
+ *     is `false` for the DOOR's reason — a pending organizer must not be refused
+ *     in front of a queue — and **nobody is standing in a queue in front of a
+ *     production calendar**. This key ALSO carries `false`, and the coincidence
+ *     is the trap: it arrives here from D-44-27 and from nothing else, so the
+ *     day the door's reason is revisited this key must not move with it. It is
+ *     the argument this file already makes, in writing, for `VENUE_REVEAL`.
+ *
+ * `staff` holds neither grant, and the refusal is asserted rather than assumed:
+ * `scripts/verify-capabilities.mjs` side 5 declares the pair. A member of staff
+ * rostered to a night's door enters to let people in — not to read unannounced
+ * dates and open negotiations, which do not expire with the night the way an
+ * assignment does.
+ *
+ * ── Its route entry is on the `scope: "table"` branch TODAY, and moves ───────
+ *
+ * The key gates six tables and, from plan 44-09, one address. This plan lands
+ * only the tables, so `src/lib/routes/capability-routes.ts` binds it as
+ * `scope: "table"` — the honest declaration for a key that opens no page yet.
+ * **Plan 44-09 moves it to the `routes:` branch with `alsoGatesTables: true`**,
+ * exactly as the `CATALOGUE_MANAGE` entry changed branch when its page landed.
+ * If that move is forgotten, `/admin/calendar` is unreachable FOR EVERYONE with
+ * no build error and nothing in a log — the trap that file records twice.
  */
 
 /**
- * The thirteen keys. Spelled exactly as the rows of `private.capabilities`
+ * The fourteen keys. Spelled exactly as the rows of `private.capabilities`
  * (`supabase/migrations/20260807000000_capability_model.sql` section 7,
  * `20260808002000_membership_register.sql` section 1 for the ninth,
  * `20260809001000_assignment_resolver.sql` section 1 for the tenth to twelfth,
- * and `20260810160000_manual_venue_reveal.sql` section 1 for the thirteenth).
+ * `20260810160000_manual_venue_reveal.sql` section 1 for the thirteenth, and
+ * `20260815120100_production_calendar_access.sql` section 1 for the fourteenth).
  */
 export const CAP = {
   /** P1 — the 34 policies gating on `is_admin_or_organizer()`. Status ignored. */
@@ -150,6 +202,11 @@ export const CAP = {
   PARTY_MANAGE: "party.manage",
   /** Reveal a night's secret venue by hand. Role AND approved. */
   VENUE_REVEAL: "venue.reveal",
+  /**
+   * Read the production calendar. Role alone, status IGNORED — D-44-27, and not
+   * `staff.manage`'s door reason. Not `organizer.access`: that is the area.
+   */
+  PRODUCTION_READ: "production.read",
 } as const;
 
 export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
@@ -158,15 +215,21 @@ export type CapabilityKey = (typeof CAP)[keyof typeof CAP];
  * One sentence per key, for the humans who read a permission decision.
  *
  * Typed as a **total** `Record` over the union on purpose, exactly as
- * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a fourteenth key to
+ * `DOOR_OUTCOME_KINDS` is in `@/lib/door/outcome`: adding a fifteenth key to
  * `CAP` without a description here is a `npm run build` error, and removing a
  * key leaves an unreachable entry that is also an error. It is the one part of
  * this file's contract the compiler can hold — and it held it when the ninth key
- * landed, again when the tenth, eleventh and twelfth did, and again for the
- * thirteenth, which in a repository with no test runner is worth saying rather
- * than assuming.
+ * landed, again when the tenth, eleventh and twelfth did, again for the
+ * thirteenth, and again for the fourteenth, which in a repository with no test
+ * runner is worth saying rather than assuming.
  *
- * It cannot hold the other part — that these strings match the thirteen rows in
+ * **The compiler holds a SECOND part, and it is worth naming here because plan
+ * 44-04 met it.** `CAPABILITY_ROUTES` in `src/lib/routes/capability-routes.ts`
+ * is `as const satisfies Record<CapabilityKey, Binding>`, so a key added here
+ * with no entry there is also a build error. The two records are the compiler's
+ * whole half of this file's contract, and a new key pays both in one commit.
+ *
+ * It cannot hold the other part — that these strings match the fourteen rows in
  * `private.capabilities`. That is `scripts/verify-capabilities.mjs`'s job, and
  * that check needs a live database: it is RED between the commit that adds a key
  * here and the deploy that applies the migration adding the row.
@@ -196,4 +259,6 @@ export const CAP_DESCRIPTIONS: Record<CapabilityKey, string> = {
     "Manage one night's operational surfaces: that night's review, its door register, its guest list. Scoped to a single date, which is why it is not organizer.access.",
   "venue.reveal":
     "Reveal a night's secret venue by hand, before the automatic window, and send the address to everyone entitled to it. Requires an APPROVED staff role on both grants (D-37-14) because the act is irreversible — staff.manage ignores status ON PURPOSE, so a pending organizer is not refused in front of a queue, and that reason does not exist here.",
+  "production.read":
+    "Read the production calendar: the six production tables, whose rows are unannounced dates, spaces under negotiation and the shape of an internal plan. requires_approved is FALSE on both grants (D-44-27, the owner) because organizer accounts are created inside the app by an admin or an organizer and nobody signs up any more, so pending is about to stop varying and gating on a value that no longer varies is debt rather than safety. That is a BET on the signup path staying closed: reopen a path that can create a pending organizer and this flag is reconsidered in the same commit. It is NOT staff.manage ignoring status for the door reason — nobody is standing in a queue in front of a calendar.",
 };
