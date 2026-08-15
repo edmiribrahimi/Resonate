@@ -1057,8 +1057,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 44-10-PLAN.md — The local import runner, the dry run, the real import, and the second run that must change nothing *(owner checkpoint: the dry run)*
-- [ ] 44-11-PLAN.md — S2: one night, its pieces through the five-variant date renderer, and its checklist
+- [x] 44-10-PLAN.md — The local import runner, the dry run, the real import, and the second run that must change nothing *(owner checkpoint: the dry run)*
+- [x] 44-11-PLAN.md — S2: one night, its pieces through the five-variant date renderer, and its checklist
 
 **Wave 6** *(blocked on Wave 5)*
 
