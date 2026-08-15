@@ -17,10 +17,10 @@
 -- 5. public.production_checklist_item — what a night owes, editorial pieces AND
 --    production steps (D-44-14), with lateness COMPUTED and never stored
 --    (D-44-15)
--- 6. public.production_pipeline_rule and its seeded rows — which pieces a format
---    owes, stored as (anchor kind, WEEKDAY, direction) and never as a day offset
--- 7. party_series.ics_alias — the one column that makes the join between a
+-- 6. party_series.ics_alias — the one column that makes the join between a
 --    piece's sigla and a night's venue word possible at all
+-- 7. public.production_pipeline_rule and its seeded rows — which pieces a format
+--    owes, stored as (anchor kind, WEEKDAY, direction) and never as a day offset
 -- 8. RLS enabled on all six new tables, WITH NO POLICY AT ALL — see section 0
 --
 -- Eight changes, ONE transaction, and the halves are bad in the usual ways: the
@@ -46,7 +46,7 @@
 --     migration, never an edit to this one (`supabase-data.md`, gate *migration
 --     in avanti*);
 --   * `IF NOT EXISTS` on every index and on every `ADD COLUMN`;
---   * `ON CONFLICT ... DO NOTHING` on every seeded row of section 6, inferred on
+--   * `ON CONFLICT ... DO NOTHING` on every seeded row of section 7, inferred on
 --     the unique index that governs that row's level;
 --   * a `DO` block that creates the one added constraint only if `pg_constraint`
 --     does not already hold it — and NOT `DROP CONSTRAINT IF EXISTS` + `ADD`,
@@ -55,7 +55,7 @@
 --     second run fails `2BP01` with the transaction in rollback;
 --   * the seeds resolve a format and a series BY THEIR PUBLIC CODE, through a
 --     subselect, and never by a hard-coded uuid. A code that has no row inserts
---     NOTHING — section 6 says so out loud rather than leaving a silent zero for
+--     NOTHING — section 7 says so out loud rather than leaving a silent zero for
 --     somebody to discover.
 --
 -- THIS FILE IS WRITTEN HERE AND APPLIED ELSEWHERE. Plan 44-07 applies it through
@@ -82,8 +82,8 @@
 -- for one is the assertion.
 --
 -- ONE SEEDED SET DOES EXIST, and naming it is how this paragraph stays honest:
--- section 6 seeds the PIPELINE RULES — which piece kinds each format owes, and
--- on which weekday. Those are not material. Every one of them is already
+-- section 7 seeds SIXTEEN PIPELINE RULES — which piece kinds each format owes,
+-- and on which weekday. Those are not material. Every one of them is already
 -- published, in full, in `.claude/rules/production-calendar.md`'s weekday table,
 -- and the four venue stages of section 1 are already published in
 -- `.claude/rules/venue-acquisition.md`. It is the distinction that module draws
@@ -846,5 +846,301 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- =============================================================================
+-- 7. public.production_pipeline_rule — WHICH PIECES A FORMAT OWES
+-- =============================================================================
+--
+-- WHAT A ROW IS: one obligation. *This format owes a piece of this kind, and it
+-- falls on this weekday relative to this anchor.* Sixteen of them are seeded
+-- below, and every one is already published in
+-- `.claude/rules/production-calendar.md`'s weekday table.
+--
+-- ⚠ WHY THIS IS A ROW AND NOT A RULE IN CODE. The pipeline CHANGED TWICE inside
+-- one month: the night's three anchors were re-measured and all three were wrong
+-- in the module, and SunSet's LiveCut went from one episode to two. A rule in
+-- code makes the next such change a DEPLOY. A row makes it an edit, which is
+-- what a thing that moves twice a month has to be.
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- ⚠ THE STORAGE FORM IS (ANCHOR KIND, WEEKDAY, DIRECTION) AND NEVER A DAY OFFSET
+-- ═════════════════════════════════════════════════════════════════════════════
+--
+-- THE NIGHT FALLS FRIDAY *OR* SATURDAY. So the same Tuesday sits FOUR days
+-- before a Saturday and THREE before a Friday. A planner that stores offsets
+-- therefore sees TWO RULES WHERE THERE IS ONE, and reports a perfectly correct
+-- night as an error.
+--
+-- THIS HAS ALREADY HAPPENED, ONCE, AND IT IS WRITTEN HERE SO IT DOES NOT HAPPEN
+-- AGAIN. A check written during this phase's own discussion reported one night
+-- as out of rule on THREE pieces. The owner answered it in one sentence — *the
+-- next night falls on a Friday* — and the re-measurement proved him right: the
+-- LiveCuts come out on a Tuesday, a Wednesday and a Thursday, always. TWO
+-- EARLIER PASSES HAD MEASURED CORRECTLY AND STILL WRITTEN THE CONSEQUENCE
+-- INSTEAD OF THE RULE (D-44-25). A consequence written as a rule produces a
+-- false alarm every time the calendar moves by one day, and a checker that cries
+-- wolf is a checker that gets switched off.
+--
+-- The same lesson from the other side: measured FROM THE NIGHT, an after movie
+-- looks irregular — spreads of nine, sixteen, eighty and a hundred and
+-- forty-three days. Measured from the anchor the rule actually names, it is
+-- MINUS ONE, always. The variability was in the point of observation, not in the
+-- data.
+--
+-- There is no `offset` column below, of any name, and a `grep` for one is the
+-- assertion.
+--
+-- ── HOW THE THREE COLUMNS RESOLVE, which is the contract the anchor module
+--    implements ─────────────────────────────────────────────────────────────
+--
+--   `anchor_kind`  WHICH EVENT the weekday is counted from:
+--       `self`                 — this night;
+--       `next_edition`         — the next edition of the same series;
+--       `next_edition_listing` — the next edition's own listing.
+--
+--   `anchor_weekday`  ISO-8601, MONDAY = 1 … SUNDAY = 7. NULL means *the
+--       anchor's own day, whichever weekday that turns out to be* — which is the
+--       only correct way to say it for a night that may be a Friday or a
+--       Saturday.
+--
+--   `anchor_direction`  WHICH occurrence of that weekday:
+--       `on`     — the anchor's own day when the weekday is NULL; otherwise that
+--                  weekday INSIDE the anchor's own ISO week;
+--       `before` — the nearest PRECEDING occurrence of that weekday;
+--       `after`  — the nearest FOLLOWING occurrence of that weekday.
+--
+--   `episode_count`  the FIRST episode falls on `anchor_weekday`; any further
+--       episodes fall on the following days. Two episodes anchored to a Monday
+--       are the Monday and the Tuesday.
+--
+-- ── ⚠ A COLUMN THE PLAN DID NOT ASK FOR, AND WHY IT IS HERE ─────────────────
+--
+-- `series_id` is nullable and was ADDED during execution, because without it the
+-- project's own published pipeline is NOT REPRESENTABLE.
+--
+-- THE MEASUREMENT: the Nizza series is a SERIES of the night's format, not a
+-- fifth format — `production-calendar.md` says so in as many words, and Phase
+-- 36's migration seeds it as a series under `RSNT`. But it runs the LIGHT
+-- pipeline: its listing IS derivable from the nearest preceding Tuesday, where
+-- the night's is not; and its LiveCut is a single episode anchored to ITSELF,
+-- where the night's are anchored to the FOLLOWING edition. Two of its four rules
+-- therefore contradict the night's on the same `(format, piece kind)` pair.
+--
+-- With a key of `(format_id, piece_kind)` alone and `DO NOTHING`, seeding both
+-- would have DROPPED THE NIZZA ROWS IN SILENCE — and the surface would then have
+-- read the night's rule for a Nizza date, waited for an edition that does not
+-- apply, and reported a conforming series as diverging. That is the silent
+-- failure `meta-gates.md` names, arriving through the very mechanism chosen for
+-- idempotence.
+--
+-- SO THERE ARE TWO LEVELS, AND THE MORE SPECIFIC ONE WINS: a rule with a
+-- `series_id` is that series' own; a rule with none is the format's default.
+-- Two partial unique indexes keep each level honest on its own terms — the
+-- partial-unique device this repository already uses at
+-- `20260810120000:176-185`, for the same kind of reason.
+
+CREATE TABLE IF NOT EXISTS public.production_pipeline_rule (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- `ON DELETE CASCADE`: a rule about a format that no longer exists is not a
+  -- rule about anything. Nothing depends on it downstream except a checklist
+  -- that is regenerated on every import.
+  format_id uuid NOT NULL REFERENCES public.formats(id) ON DELETE CASCADE,
+
+  -- NULL means THE FORMAT'S DEFAULT. Set means this series overrides it.
+  series_id uuid REFERENCES public.party_series(id) ON DELETE CASCADE,
+
+  -- The same six kinds as `production_piece`, mirrored member for member in
+  -- `src/lib/production/ics/vocabulary.ts` (`PIECE_KINDS`). Editing either set
+  -- means editing both, in the same commit.
+  piece_kind text NOT NULL,
+
+  anchor_kind text NOT NULL,
+  anchor_weekday integer,
+  anchor_direction text NOT NULL,
+
+  -- WHETHER A MISSING PIECE MAY BE PROPOSED AT ALL (D-44-09b part 3).
+  --
+  -- `false` is not *"we have not worked it out yet"*. It is a MEASURED REFUSAL:
+  -- for two of the sixteen rules below the anticipation is not a fixed number,
+  -- so no rule exists to derive one from, and a proposal would be a date roughly
+  -- a week and a half wrong drawn beside real ones. Withholding is the correct
+  -- behaviour, and a night that suddenly has a complete set of pieces is the
+  -- warning sign that somebody removed it.
+  derivable boolean NOT NULL DEFAULT true,
+
+  -- WHETHER THE NUMBER OF EPISODES IS A PROPERTY OF THE LINE-UP RATHER THAN OF
+  -- THE FORMAT (D-44-13). Where it is true the surface says *depends on the
+  -- line-up* and prints NO FIGURE — a count that could not be determined does
+  -- not print one (OBS-03).
+  episodes_from_lineup boolean NOT NULL DEFAULT false,
+
+  -- HOW MANY EPISODES, where that is a property of the format.
+  --
+  -- `production-calendar.md`'s gate *un podcast per dj* holds everywhere: the
+  -- number of episodes descends from the line-up, and changing the line-up
+  -- changes the plan of publication. Where a count is written below it is the
+  -- MEASURED NORM for a format whose line-up has been stable, and THIS ROW is
+  -- where a change lands — a row, not a deploy.
+  episode_count integer,
+
+  -- Free text, and it carries CRITERIA ONLY. No date, no space, no name.
+  note text,
+
+  created_at timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT production_pipeline_rule_kind_check
+    CHECK (piece_kind IN ('listing', 'tonight', 'recap', 'livecut', 'timetable', 'after_movie')),
+
+  CONSTRAINT production_pipeline_rule_anchor_kind_check
+    CHECK (anchor_kind IN ('self', 'next_edition', 'next_edition_listing')),
+
+  CONSTRAINT production_pipeline_rule_direction_check
+    CHECK (anchor_direction IN ('on', 'before', 'after')),
+
+  -- ISO-8601, Monday = 1. NULL is legal and means the anchor's own day.
+  CONSTRAINT production_pipeline_rule_weekday_check
+    CHECK (anchor_weekday IS NULL OR anchor_weekday BETWEEN 1 AND 7),
+
+  -- *The nearest preceding NOTHING* is not a rule. A direction of `before` or
+  -- `after` needs a weekday to count occurrences of; only `on` can stand without
+  -- one. This makes the incoherent row unrepresentable rather than merely
+  -- unlikely.
+  CONSTRAINT production_pipeline_rule_weekday_required_check
+    CHECK (anchor_direction = 'on' OR anchor_weekday IS NOT NULL),
+
+  CONSTRAINT production_pipeline_rule_episode_count_positive
+    CHECK (episode_count IS NULL OR episode_count > 0)
+);
+
+-- A SERIES-LEVEL RULE CANNOT NAME A SERIES OF ANOTHER FORMAT. The composite key
+-- it points at — `party_series_id_format_unique` — exists in production for
+-- exactly this purpose and its own comment says *do not remove as tidying*
+-- (`20260810120000:279-283`).
+--
+-- `MATCH SIMPLE` is the default and is what makes this work alongside a nullable
+-- `series_id`: with any referenced column NULL the constraint is satisfied, so a
+-- format-level rule passes without a series, and a series-level one is checked
+-- in full. Same device as `event_parties_series_format_fk`.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'production_pipeline_rule_series_format_fk'
+       AND conrelid = 'public.production_pipeline_rule'::regclass
+  ) THEN
+    ALTER TABLE public.production_pipeline_rule
+      ADD CONSTRAINT production_pipeline_rule_series_format_fk
+      FOREIGN KEY (series_id, format_id)
+      REFERENCES public.party_series (id, format_id);
+  END IF;
+END;
+$$;
+
+-- ONE DEFAULT PER (FORMAT, KIND), and one override per (SERIES, KIND). Two
+-- partial indexes and not one plain constraint, because a plain
+-- `UNIQUE (format_id, series_id, piece_kind)` would treat two NULL series as
+-- DISTINCT and let the format-level defaults duplicate on every re-run — which
+-- would break the idempotence these indexes exist to provide.
+
+CREATE UNIQUE INDEX IF NOT EXISTS production_pipeline_rule_format_kind_unique
+  ON public.production_pipeline_rule (format_id, piece_kind)
+  WHERE series_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS production_pipeline_rule_series_kind_unique
+  ON public.production_pipeline_rule (series_id, piece_kind)
+  WHERE series_id IS NOT NULL;
+
+ALTER TABLE public.production_pipeline_rule ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------------------------------------
+-- 7a. The format-level rules
+-- -----------------------------------------------------------------------------
+--
+-- EVERY ROW BELOW IS ALREADY PUBLISHED, in `production-calendar.md`'s weekday
+-- table. Nothing here is a new publication, and nothing here says WHEN a night
+-- happens, WHERE it happens or WHO plays.
+--
+-- THE FORMAT IS RESOLVED BY ITS PUBLIC CODE, through a join, and never by a
+-- hard-coded uuid: a uuid in a migration is a value copied from one database
+-- into a file, and it is wrong the first time somebody rebuilds from the
+-- baseline container.
+--
+-- ⚠ AND IF A CODE HAS NO ROW, THE JOIN INSERTS NOTHING. That is the correct
+-- behaviour — a rule for a format that does not exist is not a rule — but it is
+-- also a SILENT ZERO, so it is named here rather than discovered: after this
+-- migration is applied, sixteen rules are expected. A smaller number means a
+-- format code below is not in `public.formats`, and the thing to look at is the
+-- catalogue, not this file.
+
+INSERT INTO public.production_pipeline_rule
+  (format_id, piece_kind, anchor_kind, anchor_weekday, anchor_direction,
+   derivable, episodes_from_lineup, episode_count, note)
+SELECT f.id, v.piece_kind, v.anchor_kind, v.anchor_weekday, v.anchor_direction,
+       v.derivable, v.episodes_from_lineup, v.episode_count, v.note
+  FROM (VALUES
+    -- ── The satellite ────────────────────────────────────────────────────────
+    -- Four pieces, not two. A satellite's editorial plan is listing, tonight,
+    -- recap and LiveCut: delivering two of four is not being late on a detail,
+    -- it is skipping the piece that catches whoever decides the evening in the
+    -- afternoon, and the recap that feeds the highlight.
+    ('RMDB',  'listing',     'self', 2::integer,   'before', true,  false, NULL::integer, NULL::text),
+    ('RMDB',  'tonight',     'self', NULL,         'on',     true,  false, NULL,          NULL),
+    ('RMDB',  'recap',       'self', 1,            'after',  true,  false, NULL,          NULL),
+    ('RMDB',  'livecut',     'self', 1,            'after',  true,  false, 1,             NULL),
+
+    -- ── MotionLab: the same four, and one thing that is NOT decided ──────────
+    -- The rows exist so that the day this format has a date, the checklist knows
+    -- what it owes. It has NONE today — zero entries in the calendar, because
+    -- the space is not acquired. A format without a space does not have a
+    -- cadence; it has a wait.
+    ('MTNLB', 'listing',     'self', 2,            'before', true,  false, NULL,          'The weekday of the night itself is a SEGNAPOSTO and is NOT decided. Every material that states this format''s day is provisional and must be marked so. This rule anchors the piece to the night, so it stays correct whatever that day turns out to be.'),
+    ('MTNLB', 'tonight',     'self', NULL,         'on',     true,  false, NULL,          NULL),
+    ('MTNLB', 'recap',       'self', 1,            'after',  true,  false, NULL,          NULL),
+    ('MTNLB', 'livecut',     'self', 1,            'after',  true,  false, 1,             'This format also owes a step the others do not: the exhibition space must APPROVE the material that names it, and that approval sits inside the two days before the listing, not after them. It is a checklist kind, not a piece.'),
+
+    -- ── SunSet ───────────────────────────────────────────────────────────────
+    -- Two episodes, on the Monday and the Tuesday after. Measured on three
+    -- editions out of three.
+    ('SNST',  'livecut',     'self', 1,            'after',  true,  false, 2,             'Two episodes because there are two djs, measured on three editions of three. The count descends from the line-up, so a line-up of a different size makes THIS ROW the thing to change.'),
+    ('SNST',  'listing',     'self', 2,            'before', false, false, NULL,          'NOT DERIVABLE, and this is a measurement rather than a gap. The listing is a Tuesday, but eleven or eighteen days ahead — never the nearest preceding one. The anticipation is not a fixed number, so nothing may derive it: it is read from the file. A proposal here would be a date a week and a half wrong drawn beside real ones.'),
+
+    -- ── The night ────────────────────────────────────────────────────────────
+    ('RSNT',  'timetable',   'self', NULL,         'on',     true,  false, NULL,          'The night''s own day. Measured seven times out of seven, with no exception — which corrects an older reading of minus one that had generalised a single derogation into a rule.'),
+    ('RSNT',  'livecut',     'next_edition', 2,    'on',     true,  true,  NULL,          'Tuesday, Wednesday and Thursday of the ISO week containing the NEXT edition — not its own. Anchored, never counted: expressed as an offset from the night, the same three days look like two different rules because the night falls on a Friday or a Saturday. The number of episodes is the line-up''s, not the format''s: three is the norm and one archived edition carries two.'),
+    ('RSNT',  'after_movie', 'next_edition_listing', 1, 'before', true, false, NULL,       'The Monday before the NEXT edition''s listing. Anchored to that listing and never to a day count: moving the following edition moves this piece. Measured from its own night it looks irregular; measured from its anchor it is minus one, always. When the next edition is not in the calendar, this piece has NO date and the reason is that it is waiting for that edition — which is the rule behaving correctly, not an omission to be filled in.'),
+    ('RSNT',  'listing',     'self', 2,            'before', false, false, NULL,          'NOT DERIVABLE, on the same measurement as SunSet''s and for the same reason. All of these listings fall on a Tuesday, but one to two and a half weeks ahead, with three distinct anticipations across six editions. Only the satellite and the Nizza series sit on the nearest preceding Tuesday and may be proposed.')
+  ) AS v(format_code, piece_kind, anchor_kind, anchor_weekday, anchor_direction,
+         derivable, episodes_from_lineup, episode_count, note)
+  JOIN public.formats f ON f.code = v.format_code
+ON CONFLICT (format_id, piece_kind) WHERE series_id IS NULL DO NOTHING;
+
+-- -----------------------------------------------------------------------------
+-- 7b. The series-level rules — the light pipeline of the Nizza series
+-- -----------------------------------------------------------------------------
+--
+-- It is a SERIES of the night's format and not a fifth format. Confusing the two
+-- means inventing an identity that does not exist — and sooner or later drawing
+-- it a palette. But it runs its own, lighter pipeline, and both of the rows
+-- below CONTRADICT the format-level rules seeded above. That contradiction is
+-- the whole reason `series_id` exists on this table.
+--
+-- Both the format code and the series code are already published.
+
+INSERT INTO public.production_pipeline_rule
+  (format_id, series_id, piece_kind, anchor_kind, anchor_weekday, anchor_direction,
+   derivable, episodes_from_lineup, episode_count, note)
+SELECT f.id, s.id, v.piece_kind, v.anchor_kind, v.anchor_weekday, v.anchor_direction,
+       v.derivable, v.episodes_from_lineup, v.episode_count, v.note
+  FROM (VALUES
+    ('RSNT', 'PRLN', 'listing', 'self', 2::integer, 'before', true, false, NULL::integer, 'The light pipeline: unlike the night''s, THIS listing does sit on the nearest preceding Tuesday and may be proposed. Measured two of two.'),
+    ('RSNT', 'PRLN', 'livecut', 'self', 1,          'after',  true, false, 1,             'One episode, anchored to ITS OWN night — where the night''s LiveCuts are anchored to the following edition. Measured two of two.')
+  ) AS v(format_code, series_code, piece_kind, anchor_kind, anchor_weekday, anchor_direction,
+         derivable, episodes_from_lineup, episode_count, note)
+  JOIN public.formats f ON f.code = v.format_code
+  JOIN public.party_series s ON s.format_id = f.id AND s.code = v.series_code
+ON CONFLICT (series_id, piece_kind) WHERE series_id IS NOT NULL DO NOTHING;
 
 COMMIT;
