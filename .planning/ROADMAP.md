@@ -1052,8 +1052,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 44-08-PLAN.md — The golden-file check that makes the hand parser defensible, with a mutation proof per assertion
-- [ ] 44-09-PLAN.md — S1: the map entry, the chronological archive, and the last import's effect at its foot
+- [x] 44-08-PLAN.md — The golden-file check that makes the hand parser defensible, with a mutation proof per assertion
+- [x] 44-09-PLAN.md — S1: the map entry, the chronological archive, and the last import's effect at its foot
 
 **Wave 5** *(blocked on Wave 4)*
 
