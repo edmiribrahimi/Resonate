@@ -581,20 +581,39 @@ function transformCarriers(file) {
   return names;
 }
 
-/** The opening tag enclosing the child expression at `at`, or `null`. */
+/**
+ * The opening tag whose content holds the literal at `at`, or `null`.
+ *
+ * The mutation round is why this reads the way it does. A first version asked
+ * that the text between the tag's `>` and the literal be whitespace and an
+ * opening brace, which is true of `{nightTitle(row)}` and false of both
+ * `{row.sigla}` — where the literal is `.sigla`, mid-expression — and of the
+ * brand written as an element's own text. Two shapes on this surface were
+ * therefore never checked, and the U8 mutation went green. That is the
+ * blindness direction `ai-engineering.md` calls the worse one, because it
+ * certifies a dead check as a working one.
+ *
+ * What it asks instead: no tag OPENS between the element and the literal. That
+ * is what makes the literal this element's content rather than a descendant's,
+ * and it holds for an expression child and for a text child alike.
+ */
+const OPENING_TAG = /^<[A-Za-z][A-Za-z0-9.]*(\s[^<>]*)?\/?>$/;
+
 function enclosingTag(file, at) {
   const from = Math.max(0, at - 400);
   const before = file.joined.slice(from, at);
-  // Between the tag's `>` and the literal there may be only whitespace and the
-  // opening brace of the expression: that is what makes this a DIRECT child and
-  // keeps a declaration elsewhere in the file from being read as one.
-  const gap = /^[\s{]*$/;
   const close = before.lastIndexOf(">");
   if (close === -1) return null;
-  if (!gap.test(before.slice(close + 1))) return null;
+  if (before.slice(close + 1).includes("<")) return null;
   const open = before.lastIndexOf("<", close);
   if (open === -1) return null;
-  return { text: before.slice(open, close + 1), index: from + open };
+  const tag = before.slice(open, close + 1);
+  // A closing tag means the literal is a sibling of an element that has already
+  // closed, and its parent's opening tag is further back than this window
+  // reads. Skipped rather than guessed at — a guess here would redden correct
+  // code, which is the failure direction that gets a gate deleted.
+  if (!OPENING_TAG.test(tag)) return null;
+  return { text: tag, index: from + open };
 }
 
 function u8() {
