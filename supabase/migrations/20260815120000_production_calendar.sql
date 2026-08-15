@@ -1,0 +1,616 @@
+-- The production calendar comes inside — the file whose deliverable is a SHAPE
+-- WITH NOTHING IN IT
+-- Phase 44, Plan 02: PROD-01
+--
+-- Changes:
+-- 1. public.production_plan — one row per night the calendar holds, carrying the
+--    space's ACQUISITION STAGE beside it and a nullable link to the announced
+--    night (D-44-05, D-44-06, D-44-07)
+-- 2. public.production_piece — one row per editorial piece, WRITTEN or
+--    PROPOSED, with two CHECKs that make a proposal pretending to come from the
+--    file unrepresentable (D-44-09b)
+-- 3. public.production_commitment — the third kind of entry: a day taken by
+--    something that is not our production (D-44-18). It is defined by what it
+--    HAS NOT GOT as much as by what it has
+-- 4. public.production_import_run — the OBSERVABLE EFFECT of an import, in a
+--    repository with no error tracking at all
+-- 5. public.production_checklist_item — what a night owes, editorial pieces AND
+--    production steps (D-44-14), with lateness COMPUTED and never stored
+--    (D-44-15)
+-- 6. public.production_pipeline_rule and its seeded rows — which pieces a format
+--    owes, stored as (anchor kind, WEEKDAY, direction) and never as a day offset
+-- 7. party_series.ics_alias — the one column that makes the join between a
+--    piece's sigla and a night's venue word possible at all
+-- 8. RLS enabled on all six new tables, WITH NO POLICY AT ALL — see section 0
+--
+-- Eight changes, ONE transaction, and the halves are bad in the usual ways: the
+-- pieces without the plan are foreign keys against a relation that does not
+-- exist (`42P01`, and the whole queue behind it unapplied); the pipeline rules
+-- without their table are `INSERT`s into nothing; and the tables without section
+-- 0's `ENABLE ROW LEVEL SECURITY` are six relations any holder of the anonymous
+-- key can `select=*` — one of which carries a VENUE WORD for a space that may be
+-- under negotiation. That last one is not a tidiness argument. It is the reason
+-- this file cannot be split at the `ENABLE`.
+--
+-- THE SHAPE IS COPIED FROM `20260810120000_formats_and_series.sql`, header
+-- included: a numbered change list, why one transaction, a declared idempotence
+-- list, and the publication paragraph. What is NOT copied is that file's seeded
+-- catalogue — see the publication paragraph below.
+--
+-- IDEMPOTENCE, DECLARED. This queue is applied one row at a time, by hand, and
+-- re-applying a file out of doubt is the natural reaction to a doubt. So:
+--
+--   * `CREATE TABLE IF NOT EXISTS`, with every constraint declared INSIDE the
+--     table and NAMED, so a collision arrives as a name a caller can branch on
+--     instead of an anonymous `23505`. A CHANGED constraint set is a NEW
+--     migration, never an edit to this one (`supabase-data.md`, gate *migration
+--     in avanti*);
+--   * `IF NOT EXISTS` on every index and on every `ADD COLUMN`;
+--   * `ON CONFLICT ... DO NOTHING` on every seeded row of section 6, inferred on
+--     the unique index that governs that row's level;
+--   * a `DO` block that creates the one added constraint only if `pg_constraint`
+--     does not already hold it — and NOT `DROP CONSTRAINT IF EXISTS` + `ADD`,
+--     for the reason measured at `20260809000000:200-226`: `IF EXISTS`
+--     suppresses *"it does not exist"*, not *"something depends on it"*, so the
+--     second run fails `2BP01` with the transaction in rollback;
+--   * the seeds resolve a format and a series BY THEIR PUBLIC CODE, through a
+--     subselect, and never by a hard-coded uuid. A code that has no row inserts
+--     NOTHING — section 6 says so out loud rather than leaving a silent zero for
+--     somebody to discover.
+--
+-- THIS FILE IS WRITTEN HERE AND APPLIED ELSEWHERE. Plan 44-07 applies it through
+-- `POST https://api.supabase.com/v1/projects/{ref}/database/migrations` — the
+-- MIGRATIONS endpoint and not `/database/query`, so the project's migration
+-- history stays truthful. There is no `supabase` CLI on the machine that wrote
+-- it, so `supabase db push` is not a step anybody can run here. NOTHING in this
+-- file has been executed by the plan that wrote it, and no `grep` over it proves
+-- the SQL is valid: validity is what the apply step's response and its read-back
+-- establish.
+--
+-- ── AND THIS FILE IS A PUBLICATION, WHICH IS THE POINT OF IT ─────────────────
+--
+-- `supabase/migrations/` is tracked and `github.com/edmiribrahimi/Resonate` is
+-- PUBLIC. A commit here is irreversible: a file pushed to a public repository
+-- survives in forks, in mirrors and in the history after any removal.
+--
+-- SO THIS MIGRATION SEEDS ZERO ROWS OF PRODUCTION MATERIAL. Not one date, not
+-- one venue word, not one line-up, not one name of the collective whose
+-- commitments section 3 holds. Every date, every venue word and every line-up
+-- arrives AT RUNTIME, through the import, from a file that lives in `docs/` and
+-- is gitignored (D-44-04). There is no `INSERT` into `production_plan`, into
+-- `production_piece` or into `production_commitment` anywhere below, and a `grep`
+-- for one is the assertion.
+--
+-- ONE SEEDED SET DOES EXIST, and naming it is how this paragraph stays honest:
+-- section 6 seeds the PIPELINE RULES — which piece kinds each format owes, and
+-- on which weekday. Those are not material. Every one of them is already
+-- published, in full, in `.claude/rules/production-calendar.md`'s weekday table,
+-- and the four venue stages of section 1 are already published in
+-- `.claude/rules/venue-acquisition.md`. It is the distinction that module draws
+-- in its own opening line: **the criteria live in the repository, the candidates
+-- never do**. A pipeline rule is a criterion — it says what a satellite owes,
+-- not which satellite, where, or when.
+--
+-- The same test read the other way: nothing seeded below tells a reader WHEN a
+-- night happens, WHERE it happens, or WHO plays. It tells them that a listing
+-- goes out on a Tuesday, which has been on a public rules page for months.
+--
+-- ── WHAT THIS FILE DELIBERATELY DOES NOT DO ─────────────────────────────────
+--
+-- It grants NOBODY a read. Section 0 enables row-level security on all six
+-- tables and stops there; the capability key, the `SELECT` arms, the checklist's
+-- author-recording write function and the `BEFORE UPDATE` trigger that refuses a
+-- change to a stored `number` are plan 44-04's, in their own migration.
+--
+-- The split is not a preference: a policy naming a capability key that does not
+-- exist yet, or a column that does not exist yet, is refused by Postgres with
+-- the transaction in rollback — the ordering `20260810120000:289-299` records
+-- having measured the hard way.
+--
+-- AND IT DOES NOT RE-IMPLEMENT THE NUMBERING GUARD. `bump_series_watermark`
+-- (`20260810120000:590-614`) already raises `party_series.highest_assigned` with
+-- `GREATEST` and never lowers it. It fires on `event_parties`, which nothing in
+-- this phase's import ever writes. There is no counter here, no `max()+1` and no
+-- second watermark: a plan row's `number` is READ FROM THE FILE, never generated.
+
+BEGIN;
+
+-- =============================================================================
+-- 0. ROW-LEVEL SECURITY — ENABLED HERE, GRANTED NOWHERE
+-- =============================================================================
+--
+-- Every `ENABLE ROW LEVEL SECURITY` below sits directly under the table it
+-- closes, so that a table ARRIVES CLOSED and is opened later by a deliberate
+-- act. The reverse order — create now, close in the next migration — has a
+-- window in it, and the window is one `select=*` wide.
+--
+-- WITH RLS ENABLED AND NO POLICY, NO SESSION READS ANYTHING. Not anonymous, not
+-- authenticated, not a master's. `service_role` bypasses policies, which is how
+-- the import writes and is the only path that does. This is the same posture
+-- three tables in this repository already take on their WRITES on purpose
+-- (`20260805120000_door_scan_events.sql:158-163`,
+-- `20260808002000_membership_register.sql:337-343`,
+-- `20260809000000_party_assignments.sql`), applied here to reads as well because
+-- there is not yet a key to name.
+--
+-- ⚠ THIS IS A DEVIATION FROM THIS PLAN'S OWN BOUNDARY, AND IT IS THE
+-- RESTRICTIVE DIRECTION. Plan 44-02 was written to be STRUCTURE ONLY, with all
+-- access in plan 44-04. `supabase-data.md`'s gate *tabella nuova = policy nuova*
+-- says a table holding non-public data is not created without RLS in the SAME
+-- migration, and `meta-gates.md` resolves a conflict between two gates in favour
+-- of the MORE RESTRICTIVE one. Enabling without granting satisfies both: it
+-- takes nothing away from 44-04, which will `ENABLE` again (a no-op) and then
+-- add its `SELECT` arms.
+--
+-- WHAT THIS DOES NOT CLAIM. `service_role` is not a boundary; it is the absence
+-- of one. What decides WHO may run an import or read this calendar is the
+-- capability check in front of it, and that check is 44-04's work. Saying so
+-- here is not the same as enforcing it here, and conflating the two is how a
+-- feature ends up protected by the middleware alone (`CLAUDE.md`, operating
+-- principle 2).
+
+-- =============================================================================
+-- 1. public.production_plan — one row per NIGHT IN THE CALENDAR
+-- =============================================================================
+--
+-- WHAT A ROW IS: one entry of the owner's calendar that the import classified as
+-- a night of ours. It is NOT `public.event_parties`, and the separation is
+-- D-44-06's whole reason: the file stays the source of truth (D-44-01), so a
+-- re-import that reached the night directly could move a date that already has
+-- tickets on sale. The announcement is an explicit act that bridges the two, and
+-- `linked_party_id` below is the bridge's only trace here.
+--
+-- THE ARCHIVE IS IN HERE TOO (D-44-08), back to the file's earliest entry. The
+-- table therefore holds numbers far below the current watermark, which is why
+-- nothing here compares a `number` to `party_series.highest_assigned`: a
+-- watermark comparison would refuse the entire past.
+
+CREATE TABLE IF NOT EXISTS public.production_plan (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- THE IDENTITY, AND IT IS THE FILE'S OWN. The calendar entry's `UID`. Unique
+  -- across every entry measured, and maintained across edits by the application
+  -- that writes the file — which is what an identity needs and what the
+  -- alternatives do not have:
+  --
+  --   the title       changes when the owner renames a night;
+  --   (date, title)   both change;
+  --   a content hash  changes on EVERY edit, which is the opposite of identity.
+  --
+  -- The import writes `ON CONFLICT (source_uid) DO UPDATE`, so running it twice
+  -- is a no-op BY CONSTRUCTION rather than by care (D-44-03).
+  source_uid text NOT NULL,
+
+  -- CHANGE DETECTION, both halves of it, stored and not interpreted here.
+  -- A DECREASING sequence for a known uid is an anomaly to REPORT, never to
+  -- accept silently — and the report is a row in `production_import_run`
+  -- (section 4), because a log line is a place nobody looks.
+  source_sequence integer,
+  source_last_modified timestamptz,
+
+  -- THE CIVIL DATE, taken verbatim from the file's `YYYYMMDD` prefix. Never the
+  -- product of a timezone conversion: the whole pipeline resolves WEEKDAYS
+  -- (section 6), and a conversion that moves a 22:00 entry across midnight moves
+  -- its weekday, which turns a conforming night into a reported error (D-44-25).
+  date date NOT NULL,
+
+  -- `time` and not `timestamptz`, for the same reason. The night runs 22:00 to
+  -- 06:00, so `end_time` is legitimately SMALLER than `start_time` and no CHECK
+  -- forbids it — a constraint saying `end_time > start_time` would refuse the
+  -- project's principal format.
+  start_time time,
+  end_time time,
+
+  -- WHAT THE NIGHT IS, resolved by the import against the catalogue that has
+  -- been in production since Phase 36. Nullable: an entry whose format the
+  -- import could not resolve is a finding to report, not a row to refuse — and
+  -- refusing it would lose the day, which is the one thing the calendar is for.
+  -- `ON DELETE RESTRICT` is deliberately NOT used: this table is downstream of
+  -- the catalogue, and no plan row may block a catalogue correction.
+  format_id uuid REFERENCES public.formats(id),
+  series_id uuid REFERENCES public.party_series(id),
+
+  -- THE PROGRESSIVO, READ FROM THE FILE AND NEVER GENERATED.
+  --
+  -- NULLABLE, and the precedent is recorded: a night that is the OPENING ACT of
+  -- another night has no progressivo of its own, because the code and the number
+  -- COMPOSE a sigla and an act has no sigla. `20260810120000:807-842` carries
+  -- the full reasoning and the production row it protects. Do not tighten this
+  -- to NOT NULL.
+  --
+  -- There is no unique constraint on (series_id, number) here, and that is also
+  -- deliberate: this table is a MIRROR of a file, not a register. Two rows
+  -- disagreeing about a number is a DIVERGENCE TO REPORT (D-44-07), and a
+  -- constraint would turn a report into a failed import that shows nothing.
+  number integer,
+
+  -- ⚠ INTERNAL, NEVER PUBLIC. The venue word exactly as the calendar writes it.
+  --
+  -- It is a COLUMN and not a string in a tracked file precisely because it may
+  -- name a space that is under negotiation, and `venue-acquisition.md`'s gate
+  -- *uno spazio non acquisito non si nomina* makes writing such a name into a
+  -- public repository an act that cannot be undone. The column is public; the
+  -- values arrive at runtime and stay behind section 0.
+  --
+  -- No surface that an unauthenticated visitor can reach may render it, and no
+  -- diagnostic, log line, error message or `.planning/` document may echo it.
+  venue_word text,
+
+  -- The resolved venue, where one resolves. Nullable, and its absence is normal
+  -- rather than exceptional: a space in the calendar is frequently a space
+  -- nobody has called yet.
+  venue_id uuid REFERENCES public.venues(id),
+
+  -- HOW FAR THE SPACE ACTUALLY IS (D-44-05). Four stages, and they are four
+  -- different things: mapped is a desk exercise, verified is a checked fact,
+  -- contacted is a conversation, acquired means IN WRITING.
+  --
+  -- NULL MEANS NOT RECORDED, AND IT IS NEVER READ AS `acquired`. The calendar
+  -- entry carries no stage, so the import must NOT infer one — an inferred
+  -- *acquired* is exactly the harm `venue-acquisition.md` names, and it would
+  -- arrive with the authority of a database column. A stage is filled by hand,
+  -- or by Phase 45's scouting section.
+  venue_stage text,
+
+  -- THE BRIDGE TO THE ANNOUNCED NIGHT (D-44-06, D-44-07). Nullable, and null is
+  -- the normal state: most plan rows are dates nobody has announced.
+  --
+  -- Nothing in this file writes `public.event_parties`. This column points at
+  -- it; it does not reach into it.
+  linked_party_id uuid REFERENCES public.event_parties(id),
+
+  -- PRESENCE OVER TIME, and DISAPPEARANCE IS NOT DELETION.
+  --
+  -- An entry present in a previous run and absent now may be a changed uid, a
+  -- partial export, or simply the wrong file. Deleting on absence would let one
+  -- bad export wipe the archive — and could orphan a night that already has
+  -- tickets on sale, which is the harm D-44-06 exists to prevent. So the import
+  -- stamps `absent_since` and REPORTS the count. Deletion is a separate,
+  -- deliberate act that this phase does not build.
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  absent_since timestamptz,
+
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+
+  -- THE IDEMPOTENCE KEY. Named, so `ON CONFLICT ON CONSTRAINT` and a caller's
+  -- error branch can both name the same thing.
+  CONSTRAINT production_plan_source_uid_unique UNIQUE (source_uid),
+
+  -- The vocabulary is `venue-acquisition.md`'s, member for member, and it is
+  -- mirrored in TypeScript at `src/lib/production/ics/vocabulary.ts`
+  -- (`VENUE_STAGES`). Editing either set means editing both, in the same commit:
+  -- the build sees the TypeScript side, this CHECK sees the SQL side, and they
+  -- agree only because they were written once and copied.
+  CONSTRAINT production_plan_venue_stage_check
+    CHECK (venue_stage IS NULL OR venue_stage IN ('mapped', 'verified', 'contacted', 'acquired'))
+);
+
+-- The calendar is read BY DATE, always — a range for the list, a day for the
+-- collision check against a taken day.
+CREATE INDEX IF NOT EXISTS idx_production_plan_date
+  ON public.production_plan (date);
+
+-- The rotation is checked by walking a series in order (D-44-08). This is the
+-- index that makes *"the editions of this series, in sequence"* cheap, and it is
+-- the read that turns a remembered claim about a rotation into one somebody can
+-- settle by looking.
+CREATE INDEX IF NOT EXISTS idx_production_plan_series_number
+  ON public.production_plan (series_id, number);
+
+-- There is NO uniqueness on `date`, and the absence is a decision: the tramonto
+-- and the night are two entries on one day, communicated as a pair. A constraint
+-- here would refuse the pairing the format is built on.
+ALTER TABLE public.production_plan ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- 2. public.production_piece — one row per PIECE, WRITTEN OR PROPOSED
+-- =============================================================================
+--
+-- WHAT A ROW IS: one editorial piece — a listing, a tonight, a recap, a LiveCut,
+-- a timetable, an after movie. Either one the file already carries, or one the
+-- pipeline says a format OWES and the file does not carry yet.
+--
+-- THE PIECE IS CALLED `livecut`, AND THE WORD `podcast` APPEARS NOWHERE.
+-- Production calls it a LiveCut on every occurrence, and the product uses the
+-- word production uses (D-44-22). The two are not synonyms: a LiveCut is the
+-- recording of OUR night, one per dj who played it; a Podcast is a mix sent in
+-- by somebody who is NOT in a line-up, it does not descend from a date, and it
+-- DOES NOT EXIST YET. Adding it to this vocabulary would let a surface draw a
+-- candidate's name in a format's own voice, which reads as an announcement
+-- whether or not it is one.
+--
+-- A ROW HERE IS NOT A TRUTH ABOUT THE WORLD; IT IS A ROW ABOUT A FILE. `origin`
+-- says which of the two it is, and that column is the whole of D-44-09b: a date
+-- written in the file WINS, always, and nothing recomputes it.
+
+CREATE TABLE IF NOT EXISTS public.production_piece (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- NULLABLE, unlike the plan's. A PROPOSAL HAS NO UID, because it does not
+  -- exist in the file. In Postgres two NULLs are DISTINCT, so the unique
+  -- constraint below does not collapse every proposal into one row — that is the
+  -- correct reading and not a hole, and the constraint's own comment repeats it
+  -- so the next reader does not close it.
+  source_uid text,
+
+  -- THE NIGHT THIS PIECE BELONGS TO — NULLABLE, and the reason is measured
+  -- rather than defensive: AN ORPHAN PIECE EXISTS. One after movie in the file
+  -- announces a night that is not in the calendar at all. Refusing it would lose
+  -- a real piece; attaching it to the wrong night would be worse.
+  --
+  -- So it is kept unattached, and `series_code` + `number` below are kept beside
+  -- it so it JOINS LATER if that night is ever added.
+  plan_id uuid REFERENCES public.production_plan(id),
+
+  -- THE PIECE'S OWN COORDINATES, as the file writes them: the series code half
+  -- of a sigla, and the progressivo. Text and not a foreign key, deliberately —
+  -- this is what was WRITTEN, and an unresolvable code must survive as evidence
+  -- instead of being dropped at the door.
+  series_code text,
+  number integer,
+
+  -- Vocabulary mirrored member for member in `vocabulary.ts` (`PIECE_KINDS`).
+  kind text NOT NULL,
+
+  -- `PT1`, `PT2`, `PT3` and their kin — free text, because it is a label the
+  -- file carries and not a fact the product decides. A night's LiveCuts are
+  -- numbered by the line-up, not by this table.
+  part_marker text,
+
+  -- THE DATE, OR NOTHING — and if nothing, the reason is in the next column.
+  -- Never a timezone conversion, for section 1's reason.
+  date date,
+
+  -- WHERE THE DATE CAME FROM. `file` or `proposed`. Mirrored in `vocabulary.ts`
+  -- (`PIECE_DATE_ORIGINS`).
+  --
+  -- A proposed date is drawn differently and must NEVER read as settled: it is a
+  -- date that does not exist in the owner's calendar, and the cost of showing it
+  -- was read and accepted when D-44-09b part 3 was taken.
+  origin text NOT NULL,
+
+  -- WHY THERE IS NO DATE — and THERE ARE THREE REASONS, WHICH MUST STAY THREE.
+  --
+  --   `awaiting_next_edition` — the anchor edition is not in the calendar. The
+  --      surface names it and shows no date (D-44-12). It covers the LiveCuts as
+  --      well as the after movie;
+  --   `depends_on_lineup` — how many LiveCuts a night owes is not knowable until
+  --      the line-up is (D-44-13). Measured: one archived edition carries two
+  --      rather than three, so three is NOT a constant;
+  --   `not_derivable` — a night's listing and a SunSet's listing. The
+  --      anticipation is a Tuesday one to two and a half weeks out and is NOT a
+  --      fixed number, so nothing may derive it (D-44-23, extended to the night
+  --      by measurement).
+  --
+  -- Collapsing them into one *"unknown"* is the collapsed-`catch` this project
+  -- has already paid for once (`meta-gates.md`, the newsletter precedent): a
+  -- reader who cannot tell *waiting for an edition* from *depends on the
+  -- line-up* cannot act on either.
+  unresolved_reason text,
+
+  -- COMPUTED AT IMPORT, STORED, AND NEVER DRAWN. It feeds the divergence report
+  -- (D-44-07); it does not feed a pixel (D-44-10 — the owner rejected the label,
+  -- not the durability). Nullable, because *"we could not work it out"* is a
+  -- third answer and must not arrive dressed as `false`.
+  conforms_to_rule boolean,
+
+  -- Which of the file's two naming conventions this piece was written in
+  -- (D-44-21). Mirrored in `vocabulary.ts` (`NAMING_CONVENTIONS`). Kept because a
+  -- join that fails is debugged by knowing which grammar it was reading — a
+  -- first pass keyed on one form alone reported thirteen nights as missing, and
+  -- the tool was wrong, not the calendar.
+  naming_convention text NOT NULL,
+
+  source_sequence integer,
+  source_last_modified timestamptz,
+
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  absent_since timestamptz,
+
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT production_piece_source_uid_unique UNIQUE (source_uid),
+
+  CONSTRAINT production_piece_kind_check
+    CHECK (kind IN ('listing', 'tonight', 'recap', 'livecut', 'timetable', 'after_movie')),
+
+  CONSTRAINT production_piece_origin_check
+    CHECK (origin IN ('file', 'proposed')),
+
+  CONSTRAINT production_piece_unresolved_check
+    CHECK (
+      unresolved_reason IS NULL
+      OR unresolved_reason IN ('awaiting_next_edition', 'depends_on_lineup', 'not_derivable')
+    ),
+
+  CONSTRAINT production_piece_naming_check
+    CHECK (naming_convention IN ('canonical', 'legacy')),
+
+  -- ── THE TWO THAT EARN THEIR PLACE ─────────────────────────────────────────
+  --
+  -- EXACTLY ONE of a date and a reason. A piece with neither is a row that says
+  -- nothing; a piece with both is a row that says two things and lets the
+  -- surface pick. `<>` on two booleans is XOR, and it is the shortest way to
+  -- write *"one or the other, never both, never neither"*.
+  CONSTRAINT production_piece_date_xor_reason
+    CHECK ((date IS NULL) <> (unresolved_reason IS NULL)),
+
+  -- A PROPOSAL CANNOT PRETEND TO COME FROM THE FILE. Together with the XOR
+  -- above, this makes the dangerous row — a computed date wearing the file's
+  -- authority — UNREPRESENTABLE rather than merely discouraged. That is the
+  -- difference between a rule and a guarantee, and it matters here because the
+  -- product draws these two states differently and a person acts on the
+  -- difference.
+  CONSTRAINT production_piece_proposal_has_no_source
+    CHECK (origin <> 'proposed' OR source_uid IS NULL)
+);
+
+COMMENT ON CONSTRAINT production_piece_source_uid_unique ON public.production_piece IS
+  'The idempotence key for a piece the file carries. NULLABLE ON PURPOSE: a proposal has no uid '
+  'because it does not exist in the file, and in Postgres two NULLs are DISTINCT, so many '
+  'proposals coexist. That is the correct reading, not a hole. See production_piece_proposal_has_no_source.';
+
+-- The read that builds a night's checklist: every piece of this plan row.
+CREATE INDEX IF NOT EXISTS idx_production_piece_plan
+  ON public.production_piece (plan_id);
+
+-- The read that lets an ORPHAN piece find its night on a later import, once that
+-- night is added. Without it the orphan is a row nobody can rejoin.
+CREATE INDEX IF NOT EXISTS idx_production_piece_series_number
+  ON public.production_piece (series_code, number);
+
+ALTER TABLE public.production_piece ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- 3. public.production_commitment — A DAY THAT IS TAKEN, AND NOTHING MORE
+-- =============================================================================
+--
+-- WHAT A ROW IS (D-44-18): an entry in the owner's calendar that belongs to
+-- something which is NOT our production, and which occupies a day. It is in the
+-- calendar for one reason — so that nobody schedules a night against it.
+--
+-- ⚠ THE TABLE BELOW HAS NO FORMAT COLUMN, NO SERIES COLUMN AND NO PROGRESSIVO,
+-- AND THAT ABSENCE IS THE DELIVERABLE.
+--
+-- Importing one of these as a night would hand it an identity it does not have,
+-- and those two values do not stay in the database: they reach surfaces that
+-- NAME FORMATS and print sigle. A rule saying *"do not assign a format to a
+-- commitment"* is a sentence somebody has to remember. A table with no such
+-- column is a guarantee, and it survives the caller who never read the sentence.
+-- It is the same device the piece table uses two sections up, and the same one
+-- `20260810120000:452-461` uses on its missing write policies.
+--
+-- The corollary, for whoever builds the surface: the row component that draws a
+-- commitment must receive NO such prop either. A guarantee that stops at the
+-- database is a guarantee with a hole above it.
+--
+-- THE COLLECTIVE'S NAME IS NOT WRITTEN ANYWHERE IN THIS FILE. It is somebody
+-- else's name, it is not ours to publish, and this repository is public. The
+-- import reads it from the file at runtime; nothing here knows it.
+
+CREATE TABLE IF NOT EXISTS public.production_commitment (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  source_uid text NOT NULL,
+
+  -- ONE DAY THIS COMMITMENT OCCUPIES. Not *the* day: a recurring commitment
+  -- expands into one row per occurrence, which is why the key below is a PAIR.
+  occurrence_date date NOT NULL,
+
+  start_time time,
+  end_time time,
+
+  -- The entry's own title, as written. It is not ours, and it is not public: it
+  -- lives behind section 0 with everything else here.
+  title text,
+
+  -- THE RECURRENCE RULE, VERBATIM AND UNINTERPRETED. Stored so that a rule the
+  -- import refuses to expand is still VISIBLE afterwards rather than lost — a
+  -- refusal that erases its own input cannot be diagnosed.
+  --
+  -- Exactly one weekly recurrence exists today, and that is precisely when
+  -- writing the refusal is cheap. A recurrence that is recognised but not
+  -- expanded is a day the calendar shows as FREE while it is taken, which
+  -- defeats this table's only purpose.
+  recurrence_raw text,
+
+  -- WHICH PARENT THIS OCCURRENCE CAME FROM. Self-referential and nullable: null
+  -- means the row is the entry itself.
+  expanded_from uuid REFERENCES public.production_commitment(id),
+
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  absent_since timestamptz,
+
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+
+  -- THE KEY IS A PAIR, AND THE PAIR IS NOT DECORATION. One uid covers many days
+  -- once a recurrence is expanded, so the uid alone is no longer unique across
+  -- occupied days — and a single-column key would silently collapse a season of
+  -- occupied Thursdays into one row, leaving every other Thursday looking free.
+  CONSTRAINT production_commitment_uid_occurrence_unique UNIQUE (source_uid, occurrence_date)
+);
+
+-- The only read this table serves: *is this day taken?*
+CREATE INDEX IF NOT EXISTS idx_production_commitment_date
+  ON public.production_commitment (occurrence_date);
+
+ALTER TABLE public.production_commitment ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- 4. public.production_import_run — THE OBSERVABLE EFFECT
+-- =============================================================================
+--
+-- WHAT A ROW IS: what one run of the import actually did.
+--
+-- THIS TABLE IS NOT BOOKKEEPING. It is this phase's answer to `meta-gates.md`:
+-- there is NO ERROR TRACKING in this repository — `package.json` carries no
+-- monitoring dependency — so no production failure reaches a human on its own.
+-- Four crons already run at night and nobody is told when they fail. Under that
+-- constraint, *"the error is logged"* is not a mitigation: a log is a place
+-- nobody looks. A failure that counts needs an OBSERVABLE EFFECT.
+--
+-- A row here, rendered at the foot of the calendar — *last import: N entries, K
+-- unclassified, one divergence* — is that effect. It is the difference between
+-- an import that quietly did half its job and one a person can see did half its
+-- job.
+--
+-- AND THE FINDINGS STAY THREE, NEVER ONE. Unclassified entries, unsupported
+-- recurrences and divergent numbers are three different problems with three
+-- different answers; a single `problems` count is the newsletter defect wearing
+-- a jsonb hat.
+
+CREATE TABLE IF NOT EXISTS public.production_import_run (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  started_at timestamptz NOT NULL DEFAULT now(),
+
+  -- NULL means THE RUN DID NOT FINISH — which is itself the observation, and it
+  -- must not be back-filled with `started_at` to make a table look tidy.
+  finished_at timestamptz,
+
+  -- WHICH FILE, WITHOUT NAMING IT. A byte size distinguishes *the owner sent a
+  -- new export* from *the same file was imported twice*, and it says nothing
+  -- about any date, any space or anybody's name. A filename would have said
+  -- more than it needed to.
+  file_byte_size integer,
+
+  entries_seen integer,
+
+  -- COUNTS BY CLASS — night, piece, commitment, unclassified. jsonb because the
+  -- classes are a vocabulary that may gain a member, and a column per class
+  -- would make that a migration.
+  entries_by_class jsonb,
+
+  -- COUNTED SEPARATELY FROM THE BREAKDOWN ABOVE, on purpose: this is the number
+  -- a person is meant to look at, and a figure buried inside a jsonb blob is a
+  -- figure nobody reads.
+  unclassified_count integer,
+
+  -- ⚠ A DIVERGENCE CARRIES A UID AND A REASON CODE. NEVER A TITLE, NEVER A DATE,
+  -- NEVER A VENUE WORD.
+  --
+  -- These two columns are read by whoever is debugging an import, which means
+  -- they end up in a terminal, in a screenshot, and — the irreversible one — in
+  -- a document under `.planning/`, which is tracked and public. A uid names
+  -- nothing to anybody outside the file. A title names an unannounced date.
+  --
+  -- The same discipline is already written into
+  -- `20260810160000_manual_venue_reveal.sql:353-358` for its exception messages.
+  divergences jsonb,
+  unsupported_recurrences jsonb,
+
+  -- A DRY RUN IS A REAL ROW. The import can produce its plan without applying
+  -- it, and that run is recorded as one — otherwise the only evidence that
+  -- somebody checked before writing is their memory of having checked.
+  dry_run boolean NOT NULL DEFAULT false
+);
+
+ALTER TABLE public.production_import_run ENABLE ROW LEVEL SECURITY;
+
+COMMIT;
