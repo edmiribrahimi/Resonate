@@ -1212,7 +1212,11 @@ broken; the same miss in the other direction certifies a dead check as live.
 
 ## Open Questions
 
-1. **A cancelled night** *(deferred in CONTEXT, unresolved here)*
+> **Status after planning (2026-08-15).** Three of the four were carried into the schema by
+> plan `44-02` and are marked **(RESOLVED)** below, with where. The first is **still open**
+> and is the owner's — it is a numbering decision, and numbering is a monotone guard.
+
+1. **A cancelled night** *(deferred in CONTEXT — STILL OPEN, owner's call)*
    - Known: the file is the source, so a cancellation is an entry the owner deletes or
      renames. §Idempotence already refuses to delete on absence.
    - Unclear: whether a cancelled night keeps its progressivo. The monotone guard says a
@@ -1222,7 +1226,7 @@ broken; the same miss in the other direction certifies a dead check as live.
      build a cancellation concept this phase. Ask the owner whether a cancelled
      progressivo is retired or reused — it is a numbering decision, which is his.
 
-2. **Two formats on the same day** *(deferred in CONTEXT)*
+2. **Two formats on the same day** *(deferred in CONTEXT — **RESOLVED** in `44-02`: `production_plan` carries no uniqueness on `date`, so the pairing the format is built on is not refused)*
    - Known: it already happens by design — the tramonto and the night are two entries on
      one day, communicated as a pair.
    - Unclear: whether the surface should group them.
@@ -1230,14 +1234,14 @@ broken; the same miss in the other direction certifies a dead check as live.
      uniqueness on `date`). Leave grouping to presentation; do not add a constraint that
      would refuse the pairing the format is built on.
 
-3. **Which piece kinds a format OWES** (D-44-09b part 2)
+3. **Which piece kinds a format OWES** (D-44-09b part 2) — **RESOLVED** in `44-02`: a row, in `production_pipeline_rule`, holding `(anchor_kind, weekday, direction)` and never an offset
    - Known: `production-calendar.md` states the pipeline per format, and the file's two
      planned satellite dates carry all four pieces.
    - Unclear: whether the *owed* set is a rule in code or a row in `formats`.
    - Recommendation: a row. It changes with the pipeline, and the pipeline has changed
      twice this month. A rule in code makes the next change a deploy.
 
-4. **The venue stage's source** (D-44-05)
+4. **The venue stage's source** (D-44-05) — **RESOLVED** in `44-02`: a nullable column defaulting to *unknown*, never inferred from the file
    - Known: the four stages are public vocabulary; the calendar entry does not carry a
      stage.
    - Unclear: where a stage is authored, since the scouting material is Phase 45's.
