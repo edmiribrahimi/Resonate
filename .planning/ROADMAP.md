@@ -1041,9 +1041,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 44-03-PLAN.md — The classifier and the anchor resolver: four classes, three grammars, and three refusals that stay three
-- [ ] 44-04-PLAN.md — The fourteenth capability key, six SELECT policies, the number-refusing trigger and the author-recording tick *(owner checkpoint: `requires_approved`)*
-- [ ] 44-05-PLAN.md — The presentation layer: the date renderer that cannot render a bare date, the stage badge that cannot disappear, the commitment row that cannot draw a format
+- [x] 44-03-PLAN.md — The classifier and the anchor resolver: four classes, three grammars, and three refusals that stay three
+- [x] 44-04-PLAN.md — The fourteenth capability key, six SELECT policies, the number-refusing trigger and the author-recording tick *(owner checkpoint: `requires_approved`)*
+- [x] 44-05-PLAN.md — The presentation layer: the date renderer that cannot render a bare date, the stage badge that cannot disappear, the commitment row that cannot draw a format
 
 **Wave 3** *(blocked on Wave 2)*
 
