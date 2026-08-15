@@ -1036,8 +1036,8 @@ Not preferences — each one has a failure mode behind it.
 Plans:
 **Wave 1**
 
-- [ ] 44-01-PLAN.md — The pure `.ics` reader: the literal source, RFC 5545 unfolding, and a nesting parser that constructs no `Date`
-- [ ] 44-02-PLAN.md — The structural migration: six tables, the `ics_alias` column, and the published pipeline stored as weekday and anchor — zero rows of production material
+- [x] 44-01-PLAN.md — The pure `.ics` reader: the literal source, RFC 5545 unfolding, and a nesting parser that constructs no `Date`
+- [x] 44-02-PLAN.md — The structural migration: six tables, the `ics_alias` column, and the published pipeline stored as weekday and anchor — zero rows of production material
 
 **Wave 2** *(blocked on Wave 1)*
 
