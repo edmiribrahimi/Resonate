@@ -96,4 +96,90 @@ entrambi i posti.
 
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piano 05.*
+## DEF-45-04 — **i tre campi di evidenza dell'archivio non hanno una colonna**,
+## e sono 357 valori
+
+**Trovata durante:** 45-10, Task 1, leggendo la sorgente.
+**Stato:** in scope come misura, fuori scope come riparazione — chiuderla e' una
+migration, e questa fase ne ha una sola ancora aperta, che e' il ritiro (45-09).
+
+Tre campi della sorgente portano **la ragione di un attributo** invece del suo
+valore: la descrizione dello spazio esterno (75 record), quella della vita
+musicale del locale (184) e quella del suo carattere (98). Sono l'evidenza dietro
+quattro dei dieci attributi, e `public.production_space_attribute` **non ha una
+colonna per una nota**: porta chiave, valore, provenienza e la data di una
+risposta, e nient'altro.
+
+Il seed li **rifiuta e li conta** — `evidence_field_has_no_column`, 357 — invece
+di fonderli nella nota dello spazio. Fonderli avrebbe unito tre affermazioni
+diverse in una stringa sola, di cui nessuno avrebbe piu' potuto dire da quale
+campo veniva quale meta'.
+
+**Perche' conta:** il prodotto mostrera' un attributo `limitato` senza poter dire
+**perche'**, e *derivato non e' verificato* pretende esattamente che chi legge
+possa distinguere un'ipotesi da un dato. Una nota per attributo e' la forma in
+cui quella distinzione diventa leggibile.
+
+**Chi la possiede:** la fase che decide se l'evidenza per attributo e' una
+colonna. La riparazione **non** e' un secondo import nella colonna sbagliata: il
+materiale resta nell'archivio locale, quindi recuperarlo dopo e' un import in
+piu', non una ricerca da rifare.
+
+---
+
+## DEF-45-05 — **35 note dell'archivio portano un contatto**, e la colonna che le
+## avrebbe ospitate dice di non portarne
+
+**Trovata durante:** 45-10, Task 1, misurando la sorgente prima di scriverla.
+**Stato:** contenuta dal seed, non risolta.
+
+`45-CONTEXT.md` registra la sorgente come priva di *contact field, phone, email*.
+E' vero dei **campi** ed e' falso della **prosa**: misurato il 2026-08-17, 15
+record portano un indirizzo di posta dentro la nota libera e 20 portano un numero
+di cellulare italiano; quattro nominano una persona a cui chiedere.
+
+Il commento della colonna di destinazione dichiara a cosa serve — *criteri e
+osservazione soltanto, nessun contatto, nessuna persona, nessun prezzo* — quindi
+scrivere quelle note verbatim avrebbe rotto un contratto dichiarato della colonna
+e messo il numero di telefono di una persona fisica in una tabella di produzione,
+per una finalita' che nessuno ha dichiarato. `legal-compliance.md`, *ogni dato in
+piu' ha una ragione dichiarata o non si raccoglie*.
+
+**Cosa ha fatto il seed:** ha **trattenuto il campo intero** su quei 35 record —
+contati come `note_withheld_contact` — e ha scritto lo spazio comunque. Non ha
+mascherato: una redazione che fallisce in silenzio e' peggio di un rifiuto
+contato.
+
+**Chi la possiede:** chi decide **se i contatti entrano nel prodotto**. Sono due
+domande diverse e vanno tenute separate: (1) le 35 note vanno ripulite a mano e
+riscritte, oppure (2) esiste una colonna per un contatto, con finalita' e
+conservazione dichiarate — che e' una decisione di `legal-compliance.md`, non un
+dettaglio di schema. **Nel frattempo il materiale non e' perso:** vive
+nell'archivio locale, gitignored.
+
+---
+
+## DEF-45-06 — `45-CONTEXT.md` afferma due volte che la capienza numerica e' nulla
+## su tutti i 184 record. Ne portano un numero **38**
+
+**Trovata durante:** 45-10, Task 3 (rilettura dal catalogo). Gia' misurata dal
+piano 45-01 contro lo stesso archivio.
+**Stato:** correzione documentale, non un difetto di prodotto.
+
+La revisione di D-45-11 e la tabella `<code_context>` dicono entrambe *numeric is
+null on all 184*. La misura dice **38 su 184**, e le 38 sono entrate nella
+colonna: il catalogo legge `with_capacity 38` dopo il seed.
+
+**Perche' conta:** la frase, presa per buona, avrebbe portato a **non importare
+il campo**, e la seconda delle quattro domande — *quanta gente ci sta davvero* —
+sarebbe rimasta senza risposta su 38 spazi che l'avevano gia'. Un documento
+derivato non verificato contro la sorgente corrente e' il *Gate documentazione
+datata*, e questa e' la sua forma piu' costosa: un'affermazione che sembra
+autorizzare un'omissione.
+
+**Chi la possiede:** chi mantiene `45-CONTEXT.md`. La correzione e' una riga, e
+va fatta contro l'archivio, non contro questa nota.
+
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05 e 10.*
