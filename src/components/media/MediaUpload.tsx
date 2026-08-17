@@ -88,14 +88,29 @@ import { validateMediaUpload, registerMedia } from "@/app/(public)/events/[slug]
 import { Button, IconButton, FOCUS_RING } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 
-// File validation constants
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/*
+  File validation constants.
+
+  ⚠ The photo half is IMPORTED since plan 45-17, and the import is the point: the
+  archive's uploader needs the same two facts, `strip-metadata.ts` is
+  `server-only` and cannot be read from a browser bundle, and a second uploader
+  typing `50 * 1024 * 1024` again would be a ceiling that drifts silently. The
+  video half stays here because it belongs to this path alone — the archive
+  accepts no video, since nothing in this product can strip one.
+*/
+import {
+  MAX_PHOTO_BYTES,
+  PHOTO_ACCEPT_STRING,
+  PHOTO_MIME_TYPES,
+  formatBytes as formatFileSize,
+} from "@/lib/media/upload-limits";
+
+const ALLOWED_PHOTO_TYPES: readonly string[] = PHOTO_MIME_TYPES;
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime"];
-const ALL_ALLOWED_TYPES = [...ALLOWED_PHOTO_TYPES, ...ALLOWED_VIDEO_TYPES];
-const MAX_PHOTO_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_PHOTO_SIZE = MAX_PHOTO_BYTES;
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 
-const ACCEPT_STRING = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
+const ACCEPT_STRING = `${PHOTO_ACCEPT_STRING},${ALLOWED_VIDEO_TYPES.join(",")}`;
 
 /**
  * Where the bytes land FIRST, and the only bucket this component may name.
@@ -206,11 +221,12 @@ function nightLabel(party: UploadableParty): string {
   return `${party.title} -- ${formatNightDate(party.date)}`;
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+/*
+  `formatFileSize` was four lines here and is now imported under that name from
+  `@/lib/media/upload-limits` — byte-for-byte the same arithmetic, in one place,
+  because the archive's uploader needed it too and a third copy of a formatter is
+  a third place a unit can quietly change.
+*/
 
 function getFileExtension(file: File): string {
   const name = file.name;
