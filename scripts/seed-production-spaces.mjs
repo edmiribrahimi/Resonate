@@ -827,27 +827,51 @@ function describe(error) {
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Reading what is already there — so a plan means something on a second run
+ *
+ * ⚠ EVERY READ BELOW IS PAGED, AND THAT IS A BUG THIS FILE ALREADY HAD.
+ *
+ * PostgREST caps a response at a configured number of rows and returns the cap
+ * **without an error** — a short page is indistinguishable from a small table
+ * unless the caller counts. The first version of this file read the qualities in
+ * one call, got the cap back, and reported on a re-run that it had 1000 of them
+ * already and 840 still to write. It had 1840, measured from the catalogue.
+ *
+ * Nothing was written wrongly by that: the write offers every planned row and
+ * lets the unique constraint decide, so the rows were right while the REPORT was
+ * false. That is the worse half. The report is the evidence for re-runnability,
+ * and a truncated read makes a tool say it is about to do work it has already
+ * done — which is exactly the sentence somebody would act on.
+ *
+ * `verify-conversion.mjs` records the same shape from the other direction: a
+ * silent truncation is worse than a loud failure, because nothing about it looks
+ * wrong. So the loop below asks for a slice, and stops only when a slice comes
+ * back shorter than it asked for.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const formatIdByCode = new Map();
-{
-  const { data, error } = await db.from("formats").select("id, code");
-  if (error) refuse("catalogue_unreadable", `a catalogue could not be read — ${describe(error)}`);
-  for (const row of data ?? []) formatIdByCode.set(row.code, row.id);
+const PAGE = 1000;
+
+async function readEvery(table, columns) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from(table).select(columns).range(from, from + PAGE - 1);
+    if (error) refuse("target_unreadable", `a target could not be read — ${describe(error)}`);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE) return rows;
+  }
 }
 
+const formatIdByCode = new Map();
+for (const row of await readEvery("formats", "id, code")) formatIdByCode.set(row.code, row.id);
+
 const existingKeys = new Map();
-{
-  const { data, error } = await db.from("production_space").select("id, source_key");
-  if (error) refuse("target_unreadable", `a target could not be read — ${describe(error)}`);
-  for (const row of data ?? []) if (row.source_key) existingKeys.set(row.source_key, row.id);
+for (const row of await readEvery("production_space", "id, source_key")) {
+  if (row.source_key) existingKeys.set(row.source_key, row.id);
 }
 
 const existingAttributePairs = new Set();
-{
-  const { data, error } = await db.from("production_space_attribute").select("space_id, attribute");
-  if (error) refuse("target_unreadable", `a target could not be read — ${describe(error)}`);
-  for (const row of data ?? []) existingAttributePairs.add(`${row.space_id}|${row.attribute}`);
+for (const row of await readEvery("production_space_attribute", "space_id, attribute")) {
+  existingAttributePairs.add(`${row.space_id}|${row.attribute}`);
 }
 
 for (const row of planned) {
@@ -955,11 +979,12 @@ for (let i = 0; i < rowsToInsert.length; i += CHUNK) {
 // The identifiers are re-read rather than taken from the write's own response:
 // the response is the writer's report, and a row that was already there returns
 // nothing at all under `DO NOTHING`.
+// Paged for the reason the read section above records: a short page and a small
+// table look identical, and a truncated re-read here would silently drop the
+// qualities of every place past the cap.
 const idByKey = new Map();
-{
-  const { data, error } = await db.from("production_space").select("id, source_key");
-  if (error) failPartway("identifier_reread", describe(error), completedSteps);
-  for (const row of data ?? []) if (row.source_key) idByKey.set(row.source_key, row.id);
+for (const row of await readEvery("production_space", "id, source_key")) {
+  if (row.source_key) idByKey.set(row.source_key, row.id);
 }
 
 const attributeRows = [];
