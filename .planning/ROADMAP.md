@@ -1082,7 +1082,54 @@ Plans:
   3. A section whose content is not yet written **declares the emptiness** instead of filling it, and no surface implies a decision the owner has not taken
   4. Every section's read path is proven refused by a session that lacks its capability, exercised with a real role rather than a service key
 
-**Plans**: TBD
+**Plans**: 18 plans, in 9 waves
+
+Plans:
+**Wave 1**
+
+- [ ] 45-01-PLAN.md — The vocabularies, the two structural migrations and the five row types
+- [ ] 45-02-PLAN.md — The instrument that authenticates as a real role, and its first authorised run
+- [ ] 45-03-PLAN.md — The naming decision, and the key split as two migrations around one deploy
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 45-04-PLAN.md — The read arms for the five new tables, and the private archive bucket
+- [ ] 45-05-PLAN.md — The declarations: four keys, four bindings, the calendar moved off the old string
+- [ ] 45-06-PLAN.md — The two source gates, the reachability census, and 45-PROCEDURES.md
+- [ ] 45-07-PLAN.md — Scores computed never stored, the shared stage badge, the two cells
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 45-08-PLAN.md — **[BLOCKING]** Apply the five additive migrations, read back from the catalogues, leave the old key granted
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 45-09-PLAN.md — **[BLOCKING]** Retire `production.read` once the deploy is live
+- [ ] 45-10-PLAN.md — The seed: the desk archive at stage `mapped`, re-runnable, under its own authorisation
+- [ ] 45-11-PLAN.md — The location surfaces, and the binding that moves with them
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 45-12-PLAN.md — The manifesto and visual surfaces, the three states, and the palette read at runtime
+- [ ] 45-13-PLAN.md — The location writes: the gate first, the refusals named, two fields in every log
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 45-14-PLAN.md — The promotion act: the one crossing into `venues`, and the confirmation that says so
+- [ ] 45-15-PLAN.md — The manifesto and visual writes, and the form that takes no state decision
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 45-16-PLAN.md — The export: two documents, declared tables, and a closure walk that proves the rest unreachable
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 45-17-PLAN.md — The dj photo archive, on the upload path that already strips
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 45-18-PLAN.md — The four tabs, the full sweep, and the four things only a person can see
+
 **UI hint**: yes
 
 ### Phase 46: Silent Failures on the Money Path
