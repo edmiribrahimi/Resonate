@@ -1104,7 +1104,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 45-09-PLAN.md — **[BLOCKING]** Retire `production.read` once the deploy is live
+- [x] 45-09-PLAN.md — **[BLOCKING]** Retire `production.read` once the deploy is live
 - [x] 45-10-PLAN.md — The seed: the desk archive at stage `mapped`, re-runnable, under its own authorisation
 - [x] 45-11-PLAN.md — The location surfaces, and the binding that moves with them
 
