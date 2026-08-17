@@ -1,12 +1,12 @@
 ---
 phase: 45-production-sections-section-by-section
 written: 2026-08-17
-status: all pending
+status: all four pending, and all four DECLARED NOT RUN on 2026-08-18 by the owner. `pending` is the literal state of every Result below and it is deliberate — not `skipped`, not `n/a`: these are declared DEBT, not closed work, and they must stay visible to whoever reads this register next
 closes: PROD-02 criterion 1, criterion 2, criterion 3, and the half of D-45-16 that no assertion can hold
 carries: the four rows of 45-VALIDATION.md § Manual-Only Verifications, in the researcher's own reasons
 accounts: two — a hand-made account holding exactly ONE section key, in a throwaway environment; and an account holding all four keys through the master role. Roles, never names
-authorisation: four, and they are four ACTS, not one permission. A1 (plan 45-02) is spent. A2 was granted and spent on 2026-08-17 by plan 45-08, and it did NOT extend to the retirement of plan 45-09 — which asked again and received A2b, granted and spent on 2026-08-18. A3 (plan 45-10) was granted and spent on 2026-08-17. All four are spent; none of them is this document's to spend — the procedures below write nothing
-phase_closes: not before every Result below carries an observation
+authorisation: four, and they are four ACTS, not one permission. A1 (plan 45-02) is spent. A2 was granted and spent on 2026-08-17 by plan 45-08, and it did NOT extend to the retirement of plan 45-09 — which asked again and received A2b, granted and spent on 2026-08-18. A3 (plan 45-10) was granted and spent on 2026-08-17. All four are spent. A FIFTH — A4, a fourth mint of the refusal instrument, asked for by plan 45-18 — was **NOT TAKEN, by the owner's decision of 2026-08-18**, and that is a decision and not a missing permission. None of them is this document's to spend: the procedures below write nothing
+phase_closes: the rule written on 2026-08-17 was "not before every Result below carries an observation". **It was NOT met, and it is recorded unchanged rather than rewritten**, so that the exception reads as an exception. The owner closed phase 45 on 2026-08-18 with all four Results still `pending`, each declared not run with its reason — which makes the phase closed and the criteria NOT closed. `45-VERIFICATION.md` must say *deferred*, and must say that deferred is not verified
 ---
 
 # Phase 45 — The Procedures
@@ -85,30 +85,45 @@ because A3's seed gave the location section rows to discriminate on:
 and the exit code stayed `2` for the eight tables that are still empty. Both
 minted sessions were revoked globally and each revocation was re-read as `false`.
 
-### A fourth mint was asked for by plan 45-18, and NOT taken — 2026-08-18
+### A4 — a fourth mint, ASKED FOR by plan 45-18 and NOT TAKEN — decided 2026-08-18
+
+**This is an act NOT TAKEN by the owner's decision of 2026-08-18. It is not an
+act postponed for want of a permission**, and the difference is not wording: a
+missing permission is an obstacle that would go away if somebody said yes, while
+a decision is a judgement somebody made and can be held to. Recording the second
+where the first is true would be inaccurate in the direction that flatters the
+executor.
 
 Plan 45-18 instructs its executor to run the refusal instrument *«a third time,
-under an authorisation for this sitting»*. **No such act exists**, and the
-executor did not create one. Recorded here rather than only in that plan's
-summary, because a ledger that shows three spent acts and no trace of a fourth
-that was contemplated reads as if nobody thought about it.
+under an authorisation for this sitting»*. The executor did not create one, and
+put the question to the owner. **The owner chose not to spend it**, in these
+terms: the pair was measured the day before under A2b, after the retirement, and
+**nothing has moved since that could change it** — a fourth run would repeat a
+measurement that is standing still, at the price of **disconnecting two real
+identities everywhere** (the instrument revokes globally, which is what makes it
+safe and also what makes it costly to a person who was signed in).
 
-Three reasons, and the third is the one that decides it:
+**The measurement that covers the criterion, with its date and the plan that
+bought it:** the run of **2026-08-18, under A2b, by plan 45-09** —
+`production_pipeline_rule` at **16 / 0 / 0** for the third consecutive
+measurement, `production_space` at **184 / 0 / 0**, `production_space_attribute`
+at **1840 / 0 / 0**. Both sessions minted there were revoked globally and each
+revocation was re-read as `false`. That transcript, and not a run of 45-18, is
+the evidence behind success criterion 4.
 
-1. **A1, A2, A2b and A3 are all spent.** An authorisation covers what was
-   described when it was asked for and nothing more, and none of the four
-   describes a run on 2026-08-18 by this plan.
-2. **The instrument has no dry authorisation flag.** `npm run verify:refusal`
-   mints two sessions on real people's identities as soon as it starts; the only
-   form that contacts nothing is `--help`, which is what was run (exit 0,
-   contract printed, nothing minted).
-3. **The third measurement the plan asks for had already been made**, on
-   2026-08-18 under A2b, and **nothing has moved since that could change it**:
-   no migration, no seed, no policy edit, and the one commit this plan makes is
-   to a navigation module no row-level policy reads. A fourth mint would buy no
-   measurement — which is the situation `ai-engineering.md` already records a
-   positive precedent for, an agent refusing to re-seed because the cycle was
-   closed and there was no further measure to collect.
+**What plan 45-18 measured instead, and it is the structural half:**
+`pg_policies` was read on production, `read_only`, and returned **16 SELECT
+policies** across the eleven production tables asking **four distinct keys**,
+each section's tables asking that section's own — plus the register's brand-wide
+arm, which is the single policy naming all four. That is criterion 1's structural
+half and it is not criterion 4: a catalogue read proves a policy EXISTS and never
+that it REFUSES.
+
+**A note for whoever reads this ledger next.** A fifth measurement becomes worth
+buying the moment one of these moves: a migration touching any `SELECT` policy on
+a production table, a change to `ROLE_GRANTS`, or the first rows written into the
+two authored sections' tables — which are still empty, so the instrument still
+refuses on them honestly rather than passing.
 
 **What was measured in that sitting instead, and it is the structural half:**
 `pg_policies` was read on production, `read_only`, and returned **16 SELECT
@@ -197,6 +212,46 @@ one** section key.
 
 Result: pending
 
+> **DECLARED NOT RUN — 2026-08-18, by the owner. `pending` is the literal state
+> and it stays.**
+>
+> **Why no agent could run it.** The procedure needs a subject holding exactly
+> **one** section key. **D-45-03** grants all four keys to master *and* organizer,
+> so **no such subject exists in production**; **D-45-23** forbids manufacturing
+> one there, because granting a key to a role in production is an access change
+> and not a test row — a criterion made green by altering the thing it measures is
+> worse than an open criterion. The only lawful subject lives in a **throwaway
+> environment**, and standing one up is an act nobody in this phase was asked to
+> perform.
+>
+> **What the person who runs it must observe** — enough to execute without
+> re-reading the phase:
+>
+> 1. **Which database you are pointed at**, read back from the project reference
+>    and written down before anything else. Not assumed.
+> 2. **That the other three keys are ABSENT, not present-and-false.** Under this
+>    capability model a refusal is the **absence of a row**; a row saying `false`
+>    would GRANT. Read `private.role_capabilities` and record the row count.
+> 3. **For each of the four addresses, whether it rendered or refused** — typed
+>    into the address bar, never clicked, because a link that was never drawn is
+>    not a refusal.
+> 4. **Where each refusal came from** — the middleware redirect, the page guard,
+>    or the row-level policy. Distinguish them by what you see: the middleware and
+>    the guard both land you on `/dashboard`, so the way to tell them apart is to
+>    read which one fired first (the guard cannot run if the middleware already
+>    redirected). **The criterion rests on the third.**
+> 5. **The row counts read with that session's OWN access token** — not the
+>    service key, not the anon key alone. Counts only, never a row. Expected: rows
+>    for the manifesto's table, nothing for the other three.
+> 6. **The same five observations as an account holding all four keys**, which is
+>    the positive control. Without it a zero cannot be told from an empty table.
+> 7. **One table: four addresses × three levels × two accounts. A blank cell is
+>    not a pass.**
+>
+> And the sentence the result must carry, unsoftened: what this closes is *a
+> viewer holding one section was refused the others **there**, in a throwaway
+> environment, never in production.*
+
 ---
 
 ## P2 — The stage is visible wherever a space is named
@@ -239,6 +294,39 @@ phase's documents.
 
 Result: pending
 
+> **DECLARED NOT RUN — 2026-08-18, by the owner. `pending` is the literal state
+> and it stays.**
+>
+> **Why no agent could run it.** The measurement is **a person's first reading of
+> a screen**, and it is only valid from **a reader who has read none of this
+> phase's documents**. An agent that has just read the four stages will find the
+> badge because it is looking for it, and an observation from that reader is
+> worthless by construction. There is no assertion that substitutes: check A of
+> `verify:section-surface` proves `StageBadge` is in the same tree as the name and
+> says of itself that it stops there.
+>
+> **What the person who runs it must observe:**
+>
+> 1. **That rows at all four stages are on screen at once**, confirmed before the
+>    reader arrives — otherwise the question has no discriminating answer.
+> 2. **The reader's answer, verbatim**, to *«which of these could we hold a night
+>    in tomorrow?»* — asked with nothing explained first, nothing pointed at.
+>    **Including hesitation, and including any question asked back: a question
+>    asked back is data.**
+> 3. **The same, on one space's detail page** — the list and the detail draw the
+>    stage differently, and one may carry it while the other does not.
+> 4. **Which channel the reader says they actually used**, asked only after
+>    explaining the four stages: the badge, its wording, its position, or none of
+>    them.
+> 5. **Which surface they were looking at when they answered.**
+>
+> **A wrong answer is the finding, not a failure of the reader.** Do not explain
+> and re-ask until the answer is right: doing so destroys the only measurement
+> this procedure can make. And the stake is domain, not cosmetics — a ranking read
+> as an availability puts a date in the calendar with nowhere to happen, and a
+> name presented as a venue is a negotiation made public, which does not come
+> back.
+
 ---
 
 ## P3 — The void reads as declared, not as broken
@@ -271,6 +359,36 @@ has to LOOK like an answer.
     the one no automated check distinguishes at all.
 
 Result: pending
+
+> **DECLARED NOT RUN — 2026-08-18, by the owner. `pending` is the literal state
+> and it stays.**
+>
+> **Why no agent could run it.** *Declared* and *broken* are **the same bytes to a
+> grep** — check C proves every `not_decided` branch names `missing` and
+> `decision_owner`, and says of itself that it cannot tell one from the other on a
+> screen. The whole difference is a judgement, and it needs a reader who has read
+> none of this phase, for the same reason as P2.
+>
+> **What the person who runs it must observe:**
+>
+> 1. **That all three states exist and are open in turn** — written, coordinates
+>    declared, not decided — confirmed before starting.
+> 2. **The reader's answer, verbatim**, to *«is anything on this screen wrong or
+>    missing?»* asked on the **not-decided** one. **Expected: they do not call it
+>    broken, failed, empty or late.** If they read it as an error, that is a
+>    finding against the surface and not against the reader.
+> 3. **Whether they can say, from the screen alone, WHAT is missing and WHOSE call
+>    it is** — and the words they used.
+> 4. **The same question on the *coordinates declared* one.** This is the state
+>    most likely to be mistaken for a half-finished *written*, and **no automated
+>    check distinguishes it at all.**
+>
+> Why the distinction is load-bearing rather than tidy: `sound-manifesto.md` —
+> *non-scritto e' una risposta, inventato non lo e'*. Two formats have no written
+> manifesto and one has no palette. **If those panels read as broken, somebody
+> fills them**, and a brand written by whoever was passing is exactly what the
+> gate exists to prevent. *Not yet decided* is the correct answer, and it has to
+> LOOK like an answer.
 
 ---
 
@@ -316,6 +434,41 @@ of this phase.
 
 Result: pending
 
+> **DECLARED NOT RUN — 2026-08-18, by the owner. `pending` is the literal state
+> and it stays.**
+>
+> **Why no agent could run it.** Its central observation is **a size in pixels,
+> measured on a screen** — and **no assertion in this repository can see size.**
+> Check D of `verify:section-surface` says so of itself and calls itself weak: a
+> swatch at four pixels and one at two hundred are **the same source line**, and
+> size is exactly what turns an identification colour into a palette. Reading a
+> number out of a class name is not the measurement; it is the thing the
+> measurement exists to go around.
+>
+> **What the person who runs it must observe:**
+>
+> 1. **The reader's answer, verbatim**, to *«which of these do we know, and which
+>    has nobody asked yet?»* — on a space carrying several attributes at *to
+>    verify*, **alongside** at least one answered and one genuinely absent.
+> 2. **Whether *not asked* and *absent* were distinguished at all.** If they were
+>    not, that is the finding, and it is a finding about the surface: the data
+>    already carries the distinction per attribute, so the screen lost it.
+> 3. **On the visual section, on the format that has NO palette:** whether the
+>    panel reads as *no palette yet* rather than as a palette.
+> 4. **The size, in pixels, at which the identification colour is drawn** —
+>    measured on the screen, not read out of a class name. **This number is the
+>    observation; everything else in this step is context for it.**
+> 5. **The reader's answer, verbatim**, to *«what are this format's colours?»*
+>    **Expected: they say the format does not have any yet.** If they name the
+>    identification colour, the swatch is doing the exact thing the decision was
+>    taken to prevent.
+>
+> Domain stake on the first half: `venue-acquisition.md` calls the four questions
+> the thing a phone call closes, and the last of them — until what hour one may
+> play — screens out the most candidates. **A screen that renders *not asked* as
+> blank reports ignorance as a negative, and a negative is what stops somebody
+> calling.**
+
 ---
 
 ## Closing block
@@ -338,6 +491,30 @@ Result: pending
   phase's VERIFICATION.md must say *deferred*, and must say that deferred is not
   verified. The `[x]` on a roadmap box is a claim about evidence, and the
   evidence for these four is the `Result:` lines above.
+
+### How this document ends, on 2026-08-18
+
+**All four Results read `pending`, all four are declared NOT RUN, and the phase
+was closed anyway — by the owner, knowingly.** That is written here rather than
+inferred from a silence, because the two ways a phase can end with four pending
+procedures look identical from the outside and are opposite in kind: one is a
+decision, the other is a document nobody finished reading.
+
+Three consequences, and none of them softens:
+
+1. **The phase is closed. The criteria are not.** Criterion 1 has its structural
+   half (the four keys, read from `pg_policies`) and **not** its refusal half;
+   criteria 2 and 3, and the half of D-45-16 no assertion can hold, have
+   **nothing** — no automated check in this repository was ever able to reach
+   them, which is why these four exist at all.
+2. **`pending`, and deliberately not `skipped` or `n/a`.** Those two words close
+   a line; `pending` leaves it open. This is **declared debt**, and it is meant to
+   still be legible to somebody opening this file months from now who was not in
+   the room.
+3. **Each procedure above now carries what its executor must observe**, written
+   so it can be performed by another person without re-reading the phase. That
+   was the point of declaring them rather than deleting them: **an unrun
+   procedure that nobody can pick up is the same as no procedure.**
 
 *Phase 45 — written on the date in the frontmatter. Contains no space, no
 unannounced date, no line-up and no personal name. `re:sonate` is written with a
