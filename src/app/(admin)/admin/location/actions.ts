@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { CAP } from "@/lib/capabilities/keys";
+import { CAP, type CapabilityKey } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
+import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
+import { slugify } from "@/utils/slugify";
 
 import {
   ANSWERS_SOURCE,
@@ -61,6 +63,16 @@ import {
  * gives: every export of a `"use server"` module is an endpoint, and a helper is
  * not one.
  *
+ * ── The one act that is not confined to this section ────────────────────────
+ *
+ * `promoteSpace` at the foot of this file crosses a space into
+ * `public.venues` — the list a night's venue is chosen from, and the head of the
+ * one public road to an address. It is the only export here that writes a table
+ * outside the section, the only one that asks a second capability key, and the
+ * only one whose effect is not undone by another act on this surface. Its own
+ * docblock carries the whole argument, including what it does **not** touch and
+ * the evidence rather than the assertion.
+ *
  * ── Why the SERVICE client, with the proof that no untrusted input reaches it ─
  *
  * `20260817120300_production_sections_access.sql` gives `production_space` and
@@ -69,6 +81,16 @@ import {
  * authenticated, a master's — is refused a write on them through PostgREST. The
  * service client is therefore not a preference: it is the only client that can
  * write here.
+ *
+ * ⚠ **That sentence is about THESE TWO TABLES, and `public.venues` is not one of
+ * them.** It has write arms — `venues_insert_organizer` asks
+ * `catalogue.manage` — so the promotion's insert goes through the COOKIE client
+ * instead, and the row-level policy is a second, independent refusal on the one
+ * write in this file that puts a street address into a table a night can be
+ * built on. The precedent is `venues/actions.ts:123-128`, which chose the same
+ * client for the same reason and wrote down what the other choice would cost:
+ * with the service client the gate would be the ONLY thing refusing an
+ * unentitled caller on a path that writes a venue address.
  *
  * `access-gating.md` requires a new service-client use to be justified in
  * writing and to prove that no untrusted input reaches it. Every identifier
@@ -164,10 +186,19 @@ import {
  * compiler sees it: **more than one `await assertLocationSection(` in one export
  * is the defect.**
  *
+ * It also hands back **the whole resolved set**, and that is not a convenience:
+ * `promoteSpace` has to ask a SECOND key, and asking it means either reusing
+ * this set or paying a second full round trip for a question the first one
+ * already answered. Six of the eight exports destructure `userId` alone and are
+ * unaffected.
+ *
  * @throws `forbidden.production_location_manage_required` — the answer is no.
  * @throws `capabilities.identity_missing` — the payload carried no caller id.
  */
-async function assertLocationSection(): Promise<{ userId: string }> {
+async function assertLocationSection(): Promise<{
+  userId: string;
+  capabilities: ReadonlySet<CapabilityKey>;
+}> {
   const { capabilities, userId } = await getAccessContext();
 
   if (!capabilities.has(CAP.PRODUCTION_LOCATION_MANAGE)) {
@@ -184,7 +215,7 @@ async function assertLocationSection(): Promise<{ userId: string }> {
     throw new Error("capabilities.identity_missing");
   }
 
-  return { userId };
+  return { userId, capabilities };
 }
 
 /** The same shape as `formats/actions.ts:111-113`. */
@@ -386,6 +417,221 @@ export type LocationWriteResult =
   | LocationFailure;
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * The crossing's own refusals — its own union, and the reason it is not
+ * folded into the section's
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The causes `promoteSpace` shares with the seven acts above.
+ *
+ * Written out member by member rather than derived with a utility type, because
+ * a derivation SILENTLY YIELDS `never` for a member that stopped existing while
+ * this literal list turns the assertion below red. Same shape, and the same
+ * reason, as `AnnounceNightDialog.tsx:238-255`.
+ */
+type PromotionSharesWithSection =
+  | "invalid_id"
+  | "space_not_found"
+  | "space_exited"
+  | "read_failed"
+  | "write_failed";
+
+/** Turns red the day a member above stops existing in the union it copies. */
+type _PromotionSharesExist = PromotionSharesWithSection extends LocationRefusal
+  ? true
+  : never;
+const _promotionSharesExist: _PromotionSharesExist = true;
+void _promotionSharesExist;
+
+/**
+ * Every way the one crossing can be refused.
+ *
+ * ⚠ **It is a SEPARATE union and not ten more members of `LocationRefusal`, and
+ * that is a decision with a reason.** `SpaceForm.tsx:124` maps `LocationRefusal`
+ * with a **total** `Record`, deliberately: a cause added to an act that form
+ * calls, without a sentence there, is a build error rather than a message
+ * written for something else. Widening the union would have demanded ten
+ * sentences from a form that can produce none of them — sentences nobody could
+ * ever read, in the one place whose guarantee is that every sentence is
+ * reachable. That would have paid for this act by degrading another surface's
+ * mechanism into decoration.
+ *
+ * So the guarantee is kept and scoped instead: `PromoteSpaceDialog` maps THIS
+ * union totally, the assertion above keeps the shared five honest, and a cause
+ * added here without a sentence there is still a build error.
+ */
+export type PromotionRefusal =
+  | PromotionSharesWithSection
+  /**
+   * The caller may work the location section and may **not** create a venue.
+   *
+   * ⚠ **Two doors, and this is the second one.** Working the location section
+   * and creating a place a night can be built on are two different questions,
+   * so `promoteSpace` asks two different keys — `keys.ts:38-45`'s naming rule
+   * applied to a bridge exactly as it applies to a surface.
+   *
+   * **It is a RETURNED value while the section key is a throw, and the asymmetry
+   * is the point rather than an oversight.** Next redacts the message of an
+   * error thrown out of a Server Action in a production build, so two throws
+   * would reach the reader as the same blank and the person refused could not
+   * tell which door was shut — which is exactly what T-45-04 asks this act to
+   * make legible. A throw and a named value ARE distinguishable: the surface
+   * reports the first as *you may not work this section* and the second as *you
+   * may work it and may not create a venue*.
+   */
+  | "catalogue_manage_required"
+  /**
+   * The space is already crossed into the venue list. Nothing was created.
+   *
+   * ⚠ **A second press must not mint a second venue**, and the link on the
+   * scouting row is what makes that true — which is why it is written LAST, for
+   * the same reason `linked_party_id` is. This check is the fast path that saves
+   * the work in the ordinary case; it is not what makes the act safe, because
+   * nothing ties this read to the write that follows it. The predicate on the
+   * link write is what closes the race.
+   *
+   * Separate from `promotion_raced` below: here nothing was created, there
+   * something was and had to be taken back.
+   */
+  | "already_promoted"
+  /**
+   * The space has not reached `acquired`, so it does not cross.
+   *
+   * `venue-acquisition.md`, gate *una classifica non è una disponibilità*: a
+   * score measures how suitable a space WOULD be, never whether it would host
+   * us — and **acquired means in writing**, not *they said yes on the phone*.
+   * Crossing from any earlier stage puts a desk exercise in the picker a night's
+   * venue is chosen from.
+   *
+   * The stage travels back with the refusal so the sentence can name it. It
+   * names **no space**: four declared words identify nothing.
+   */
+  | "not_acquired"
+  /**
+   * The stage says `acquired` and the line saying where the agreement is does
+   * not exist.
+   *
+   * Belt and braces against `production_space_acquired_needs_evidence`, which
+   * should already make this row impossible. It is kept because the constraint
+   * is the BOUNDARY and this is the SENTENCE — and because a row that reached
+   * this state anyway would be the one row on which the crossing must not
+   * proceed. Distinct from `not_acquired`: there the stage is honest and too
+   * low, here the stage claims something the row cannot support.
+   */
+  | "no_agreement_evidence"
+  /**
+   * A venue already carries this name.
+   *
+   * ⚠ **Refused and never suffixed**, which is the opposite of what the slug
+   * does two lines down, and the difference is the whole of it: a slug is an
+   * address and may take a suffix, a NAME is what goes on a poster and in a
+   * caption. `brand-visual-system.md` — a venue is written the way the venue
+   * writes it — so *Somewhere 2* is not a fallback, it is a second place that
+   * does not exist.
+   *
+   * The likely meaning is also different from a slug collision: a venue of that
+   * name already being in the catalogue usually means this space is already
+   * over there, arrived by another route. That is a thing a person resolves, not
+   * a thing this act retries.
+   */
+  | "venue_name_taken"
+  /**
+   * The slug and its suffixed form are both taken.
+   *
+   * The suffix already absorbs the ordinary collision, so reaching this means
+   * two calls landed inside the same millisecond or the catalogue holds the
+   * suffixed form too. Its own code because the answer is *press again*, which
+   * is true of no other refusal on this act.
+   */
+  | "slug_taken"
+  /**
+   * The row-level policy on `public.venues` refused the insert.
+   *
+   * ⚠ **This is the second refusal doing its job, and it means the two sides
+   * disagree**: the gate read `catalogue.manage` as held and the policy asking
+   * the same predicate read it as not held. It is not a database fault and it is
+   * not a bad argument — it is a permission answer, and folding it into
+   * `write_failed` would send somebody to look at a table when the thing to look
+   * at is an account.
+   */
+  | "venue_policy_refused"
+  /**
+   * The venue was created, the link back could not be written, and **the venue
+   * was removed by its primary key**. Nothing crossed. Pressing again is safe.
+   *
+   * Separate from `write_failed`, which means nothing was created at all, and
+   * separate from `promotion_orphan_venue`, which means the removal did not
+   * work. The three answer the only question that matters here — what exists
+   * now — with three different answers.
+   */
+  | "promotion_link_failed"
+  /**
+   * Another call crossed this space between this call's read and its write, so
+   * this call's venue was removed by its primary key. Nothing of this press
+   * survives; the space IS promoted, by somebody else's press.
+   *
+   * Its own code rather than `already_promoted`: that one says nothing was
+   * created, and here something was created and taken back. Reporting the second
+   * as the first would hide a write that happened.
+   */
+  | "promotion_raced"
+  /**
+   * ⚠ **A venue row exists in the catalogue and this act could not remove it.**
+   * Do not press again.
+   *
+   * The removal is by primary key on an id this call captured at creation, so it
+   * can only fail for a reason worth reading — and the most likely one is
+   * informative: `production_space.promoted_venue_id` references
+   * `public.venues(id)` with **no `ON DELETE` action**, so the database REFUSES
+   * to remove a venue a space points at. A refused cleanup therefore often means
+   * the link landed after all and the response never came back. The surface says
+   * both readings and tells the person to reload before doing anything.
+   */
+  | "promotion_orphan_venue"
+;
+
+/** What a refused crossing answers. */
+export interface PromotionFailure {
+  readonly ok: false;
+  readonly reason: PromotionRefusal;
+  /**
+   * Only on `not_acquired`: how far the space actually is.
+   *
+   * One of four declared words. It names **no space** and carries no address —
+   * the whole point is to answer *which stage* without answering *which place*.
+   */
+  readonly stage?: VenueStage;
+  /**
+   * Only on `promotion_orphan_venue`: the venue row this call created and could
+   * not remove.
+   *
+   * A uuid and nothing else — no name, no slug, no address. It is the only
+   * handle that distinguishes this row from every other venue, and an identifier
+   * names nothing to anybody not already entitled to look it up.
+   */
+  readonly venueId?: string;
+}
+
+/** What a completed crossing answers. */
+export type PromoteSpaceResult =
+  | {
+      readonly ok: true;
+      /** The venue this act created. An identifier, and nothing else. */
+      readonly venueId: string;
+      /**
+       * Whether a street address crossed with it.
+       *
+       * ⚠ **The confirmation says which of the two happened**, and it has to:
+       * the act is asked for on the promise that *the address crosses*, and on a
+       * space whose record holds none, saying it did would be a lie told by the
+       * one panel in this phase whose job is to describe an irreversible thing
+       * accurately. `false` is not a failure — it is a record with no address.
+       */
+      readonly addressCarried: boolean;
+    }
+  | PromotionFailure;
+
+/* ────────────────────────────────────────────────────────────────────────────
  * The shape checks, each performed BEFORE anything is asked of the database
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -431,6 +677,19 @@ function carriesContact(value: string | null): boolean {
   if (value === null) return false;
   return EMAIL_SHAPE.test(value) || ITALIAN_MOBILE_SHAPE.test(value);
 }
+
+/** Postgres's unique violation. Same literal as `formats/actions.ts:109`. */
+const UNIQUE_VIOLATION = "23505";
+
+/**
+ * Postgres's *insufficient privilege*, which is what a row-level policy answers
+ * with through PostgREST.
+ *
+ * Named so the promotion can tell a permission answer from a database fault. A
+ * gate and a policy asking the same predicate and disagreeing is a thing
+ * somebody has to be told about, not a `write_failed`.
+ */
+const INSUFFICIENT_PRIVILEGE = "42501";
 
 /** `HH:MM` on a 24-hour clock, which is the shape the surface can draw. */
 const CIVIL_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -1172,4 +1431,399 @@ export async function exitSpace(
   revalidateSection();
 
   return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * WRITE EIGHT — THE ONE CROSSING THAT EXISTS
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Cross an acquired space into `public.venues`, deliberately and once.
+ *
+ * ── Why a crossing exists at all, instead of one list ───────────────────────
+ *
+ * D-45-10 keeps the scouted list out of `public.venues` because a scouted row
+ * inside `venues` sits in the picker a night's venue is chosen from, and ONE
+ * wrong selection puts a space still under negotiation on a night — from where
+ * `public.venue_for_parties` serves its name and its address to the public. A
+ * negotiation made public is a negotiation closed badly, and it does not
+ * un-publish. With two lists that selection is not discouraged: it is ABSENT.
+ *
+ * This act is where the crossing is made on purpose instead, which is why every
+ * refusal below is written as a sentence rather than left to a constraint.
+ *
+ * ── WHAT THIS ACT DOES TO THE REVEAL PATH, PROVEN AND NOT ASSERTED ──────────
+ *
+ * `venue-secrecy.md`'s monotone guard: an intervention may only make a reveal
+ * HARDER to trigger, never easier, earlier or automatic. Four facts, each read
+ * out of the code rather than remembered:
+ *
+ *   1. **The reveal columns are not on the table this act writes.**
+ *      `venue_secret`, `venue_reveal_on_purchase`, `venue_reveal_hours` and
+ *      `venue_revealed_at` are columns of `public.event_parties`;
+ *      `venue_reveal_sent` is a column of `public.tickets` and of
+ *      `public.rsvps`. `public.venues` carries none of them
+ *      (`20260226200000_venues.sql:2-15`). This act writes `public.venues` and
+ *      `public.production_space`, so it could not set a reveal flag if it tried.
+ *   2. **The public road needs a night, and this act creates none.**
+ *      `public.venue_for_parties` walks `event_parties → events → venues`
+ *      joining `v.id = ep.venue_id`
+ *      (`20260810161000_venues_read_narrowed.sql:371-397`). A venue no night
+ *      points at is unreachable through it at any argument. This act creates no
+ *      event and no night and sets no `venue_id`.
+ *   3. **The scheduled reveal needs a night too.** The cron reads
+ *      `event_parties` where `venue_secret = true` and embeds `venues` through
+ *      the same `venue_id` (`api/cron/venue-reveal/route.ts:110-115`), and
+ *      `revealPartyVenue` collects recipients by `party_id` and `event_id`. A
+ *      venue with no night is swept by neither.
+ *   4. **`anon` cannot read `public.venues` at all.** The unconditional read was
+ *      dropped and `venues_select_staff` asks `staff.manage`
+ *      (`20260810161000_venues_read_narrowed.sql:238-242`), so the row this act
+ *      writes is readable by the same audience that was already reading the
+ *      space it came from.
+ *
+ * So the address crosses into a table where it is visible to staff, and the road
+ * from there to a member or to the public still requires a separate, later,
+ * deliberate act: somebody picking this venue for a night. **That road exists on
+ * purpose and this act is its entrance — it is not the road.**
+ *
+ * ── The address DOES cross, and that is a decision with a reason ────────────
+ *
+ * D-45-21 consequence 4 names this the one crossing where a scouted address
+ * becomes subject to the reveal machinery, and it crosses rather than being left
+ * behind: a venue with no address is a venue somebody fills in by hand from a
+ * message, which moves the same address through a channel nobody controls. The
+ * confirmation says so in the same breath as it asks — and on a record with no
+ * address it says THAT instead, because a panel describing an irreversible act
+ * may not describe one that did not happen.
+ *
+ * ── What this act must NOT touch, written so it is recognised if proposed ────
+ *
+ * It creates **no event, no night and no reveal**. It does not write
+ * `venue_reveal_on_purchase`, it does not clear `venue_reveal_sent`, and it does
+ * not shorten a window. A promotion is a catalogue act; announcing a night is a
+ * different act, in a different section, and it already exists — and it refuses
+ * a space that is not acquired for the same reason this one does.
+ *
+ * ── It is effectively one-way, and the confirmation is sized to that ────────
+ *
+ * There is no un-promote export here and there will not be one on this surface:
+ * removing a venue is `master.manage`, it happens in the catalogue where the
+ * crossing lands, and `production_space_promotion_needs_acquired` plus the
+ * foreign key hold the two sides together meanwhile. So the confirmation names
+ * the space — inverting the calendar dialog's deliberate silence — because here
+ * the name and the address are exactly what is leaving, and a confirmation that
+ * hid them would be asking consent for something it did not describe.
+ *
+ * ── Two clients, and the split is the argument ──────────────────────────────
+ *
+ * The insert goes through the COOKIE client, so `venues_insert_organizer` is a
+ * second and independent refusal on the write that moves an address
+ * (`venues/actions.ts:123-128`, same choice, same reason). The link back and the
+ * cleanup go through the SERVICE client, because `production_space` has no write
+ * arm at all and because removing a venue is `master.manage` — a cleanup an
+ * organizer could not perform would be a cleanup that never runs, and an orphan
+ * venue in the picker is the exact row this whole design exists to prevent. The
+ * cost is stated rather than hidden: that delete bypasses row-level security,
+ * and it is bounded to ONE id this call captured at creation.
+ *
+ * Every log line here carries identifiers, a code and a message. No name, no
+ * address, and **no slug — a slug is a name with the spaces taken out.**
+ */
+export async function promoteSpace(
+  spaceId: string
+): Promise<PromoteSpaceResult> {
+  /*
+    GATE ONE — asked FIRST, and once. It throws, as it does in the other seven
+    exports, and the surface reads a throw as *you may not work this section*.
+  */
+  const { userId, capabilities } = await assertLocationSection();
+
+  /*
+    GATE TWO — a DIFFERENT question, and therefore a different key.
+
+    *May this subject work the location section* is not *may this subject create
+    a venue*. Returned rather than thrown so the two doors stay distinguishable
+    after a production build redacts thrown messages: see the refusal's own note.
+  */
+  if (!capabilities.has(CAP.CATALOGUE_MANAGE)) {
+    return { ok: false, reason: "catalogue_manage_required" };
+  }
+
+  if (typeof spaceId !== "string" || !UUID_PATTERN.test(spaceId)) {
+    return { ok: false, reason: "invalid_id" };
+  }
+
+  // Both clients AFTER both gates, never before.
+  const service = getServiceClient();
+  const cookieBound = await createClient();
+
+  /*
+    THE ONE READ, AND IT IS NOT `loadSpace`.
+
+    `loadSpace` deliberately reads neither the name nor the address, because a
+    guard has no use for either and a value never loaded cannot reach a log. This
+    act is the one place in the module where both ARE the subject: they are what
+    crosses. So it reads them here, in one query, and they travel into exactly
+    one insert and into nothing else — no log line, no thrown message, no
+    returned value.
+  */
+  const { data: spaceRow, error: readError } = await service
+    .from("production_space")
+    .select(
+      "id, name, address, stage, agreement_evidence, exited_at, promoted_venue_id"
+    )
+    .eq("id", spaceId)
+    .maybeSingle();
+
+  if (readError) {
+    console.error(
+      `[location.promote_read_failed] space=${spaceId} venue=none code=${readError.code ?? "unknown"} message=${readError.message}`
+    );
+    return { ok: false, reason: "read_failed" };
+  }
+
+  if (spaceRow === null) {
+    return { ok: false, reason: "space_not_found" };
+  }
+
+  const space = spaceRow as unknown as {
+    id: string;
+    name: string;
+    address: string | null;
+    stage: VenueStage;
+    agreement_evidence: string | null;
+    exited_at: string | null;
+    promoted_venue_id: string | null;
+  };
+
+  /*
+    THE IDEMPOTENCE CHECK, DECIDED BEFORE ANYTHING ELSE ABOUT THIS ROW.
+
+    A second press must not mint a second venue. The link written last is what
+    makes that true; this is the fast path, and the predicate on the link write
+    is the guarantee.
+  */
+  if (space.promoted_venue_id !== null) {
+    return { ok: false, reason: "already_promoted" };
+  }
+
+  // A space that left the race does not cross. The exit is a record of a
+  // decision, and this act would be the loudest possible way of editing it.
+  if (space.exited_at !== null) {
+    return { ok: false, reason: "space_exited" };
+  }
+
+  // *Una classifica non è una disponibilità.* The stage travels back so the
+  // sentence can name it; it names no space.
+  if (space.stage !== "acquired") {
+    return { ok: false, reason: "not_acquired", stage: space.stage };
+  }
+
+  /*
+    BELT AND BRACES AGAINST THE CHECK.
+
+    `production_space_acquired_needs_evidence` should make this row impossible,
+    and `btrim` there is why this trim is here. It is kept because the constraint
+    is the boundary and the code is the sentence — and because a row that reached
+    this state anyway is precisely the row that must not cross.
+  */
+  if ((space.agreement_evidence ?? "").trim() === "") {
+    return { ok: false, reason: "no_agreement_evidence" };
+  }
+
+  /*
+    THE NAME, REFUSED ON COLLISION AND NEVER SUFFIXED.
+
+    `venues_name_unique` would refuse it anyway; asking first is what turns a
+    constraint code into a sentence. A suffix is right for an address and wrong
+    for a name: *Somewhere 2* is not a fallback, it is a second place that does
+    not exist, and the name is what goes on a poster.
+
+    `.eq` and not a case-insensitive match: the constraint is case-sensitive, so
+    a looser pre-check would refuse pairs the database would have accepted — and
+    a pre-check stricter than its own constraint is a rule nobody wrote down.
+  */
+  const { data: nameTaken, error: nameError } = await cookieBound
+    .from("venues")
+    .select("id")
+    .eq("name", space.name)
+    .maybeSingle();
+
+  if (nameError) {
+    console.error(
+      `[location.promote_precheck_failed] space=${spaceId} venue=none code=${nameError.code ?? "unknown"} message=${nameError.message}`
+    );
+    return { ok: false, reason: "read_failed" };
+  }
+
+  if (nameTaken) {
+    return { ok: false, reason: "venue_name_taken" };
+  }
+
+  /*
+    THE SLUG — DERIVED ONCE, AT CREATION, AND NEVER REWRITTEN.
+
+    `/venues/<slug>` is an address somebody may send to somebody else, so
+    overwriting one breaks a link that already exists in a message. A collision
+    takes a suffix; the same shape `createVenue` and `announceNight` both use.
+  */
+  const base = slugify(space.name);
+  let slug = base.length > 0 ? base : `venue-${Date.now().toString(36)}`;
+
+  const { data: slugTaken, error: slugError } = await cookieBound
+    .from("venues")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (slugError) {
+    console.error(
+      `[location.promote_precheck_failed] space=${spaceId} venue=none code=${slugError.code ?? "unknown"} message=${slugError.message}`
+    );
+    return { ok: false, reason: "read_failed" };
+  }
+
+  if (slugTaken) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  /*
+    THE VENUE.
+
+    WHAT IT CARRIES: the name, the slug, the address, and who pressed.
+
+    WHAT IT DELIBERATELY DOES NOT CARRY, listed so an addition has to argue with
+    this paragraph rather than slip past it:
+
+      · the scouting's prose — it is CRITERIA AND OBSERVATION about a candidate,
+        written to decide whether to call. A venue's public-facing copy is about
+        a place that agreed to host us. Copying the first into the second turns
+        an assessment into something somebody writes from;
+      · a maps link — nothing in the section holds one, and deriving one from an
+        address would manufacture a second, sharper form of the address that
+        nobody entered;
+      · a photo, an Instagram address, a website — the section holds none of
+        them, and a profile filled with blanks it never had is a profile that
+        looks complete;
+      · every scouting column — the stage, the score inputs, the attributes, the
+        four answers, the exit. They are how we decided, not what the place is,
+        and `public.venues` is read by surfaces that have no business with either.
+
+    Through the COOKIE client, so the row-level policy refuses independently of
+    the gate above.
+  */
+  const { data: createdVenue, error: venueError } = await cookieBound
+    .from("venues")
+    .insert({
+      name: space.name,
+      slug,
+      address: space.address,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  if (venueError || !createdVenue) {
+    console.error(
+      `[location.promote_write_failed] space=${spaceId} venue=none code=${venueError?.code ?? "unknown"} message=${venueError?.message ?? "no row returned"}`
+    );
+
+    // A permission answer and a database fault send a reader to two different
+    // places, so they are two codes and never one.
+    if (venueError?.code === INSUFFICIENT_PRIVILEGE) {
+      return { ok: false, reason: "venue_policy_refused" };
+    }
+    if (venueError?.code === UNIQUE_VIOLATION) {
+      return { ok: false, reason: "slug_taken" };
+    }
+    return { ok: false, reason: "write_failed" };
+  }
+
+  const venueId = (createdVenue as unknown as { id: string }).id;
+
+  /*
+    THE LINK, WRITTEN LAST — and it is what makes a second press idempotent.
+
+    ⚠ THE GUARD IS ON THIS WRITE AND NOT ON THE READ ABOVE.
+    `.is("promoted_venue_id", null)` travels as a PREDICATE OF THE UPDATE. The
+    fast path at the top saves work in the ordinary case and guarantees nothing,
+    because nothing tied that read to this write: two concurrent calls would both
+    have seen a null link, both created a venue, and the second would have
+    overwritten the first one's link — leaving a venue in the picker that no
+    space points at, which is the one row this design exists to prevent.
+
+    `.select("id")` is what makes the predicate readable. Without it a refused
+    update and a satisfied one answer identically — no error, nothing returned —
+    which is the silent zero this section refuses everywhere.
+
+    The stage is NOT re-asserted as a predicate: the promotion constraint refuses
+    the write if the stage moved between the read and here, and the constraint is
+    the boundary. A predicate would answer that race as *somebody else promoted
+    it*, which would be the wrong sentence.
+  */
+  const { data: linkedRows, error: linkError } = await service
+    .from("production_space")
+    .update({
+      promoted_venue_id: venueId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", spaceId)
+    .is("promoted_venue_id", null)
+    .select("id");
+
+  const raced = !linkError && (!linkedRows || linkedRows.length === 0);
+
+  if (linkError || raced) {
+    if (linkError) {
+      console.error(
+        `[location.promote_link_failed] space=${spaceId} venue=${venueId} code=${linkError.code ?? "unknown"} message=${linkError.message}`
+      );
+    } else {
+      console.error(
+        `[location.promote_raced] space=${spaceId} venue=${venueId} code=none ` +
+          "message=the space was crossed by another call between this call's " +
+          "read and its write, so this call's venue is tied to nothing"
+      );
+    }
+
+    /*
+      THE CLEANUP — BY PRIMARY KEY, ON THE ID THIS CALL JUST CAPTURED.
+
+      Never by a selector over a list. This repository lost 63 production rows in
+      seven tables to the other shape and has no point-in-time recovery
+      (`ai-engineering.md`, gate *una rimozione si fa per chiave*): a selector too
+      wide removes MORE than it meant to, while a primary key that is wrong finds
+      nothing. Only one of those two ways of failing is compatible with an act
+      that promises the catalogue is left as it was found.
+
+      It cannot cut a tie either: `production_space.promoted_venue_id` references
+      this table with **no `ON DELETE` action**, so if the link did land after all
+      the database REFUSES this delete rather than quietly nulling the link — and
+      that refusal is reported, not swallowed.
+    */
+    const { error: cleanupError } = await service
+      .from("venues")
+      .delete()
+      .eq("id", venueId);
+
+    if (cleanupError) {
+      console.error(
+        `[location.promote_orphan_venue] space=${spaceId} venue=${venueId} code=${cleanupError.code ?? "unknown"} message=${cleanupError.message}`
+      );
+      return { ok: false, reason: "promotion_orphan_venue", venueId };
+    }
+
+    return {
+      ok: false,
+      reason: raced ? "promotion_raced" : "promotion_link_failed",
+    };
+  }
+
+  revalidateSection();
+  // The catalogue now holds a row it did not hold a moment ago, and the surface
+  // that lists venues has to say so.
+  revalidatePath("/admin/venues");
+
+  return { ok: true, venueId, addressCarried: space.address !== null };
 }
