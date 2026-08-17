@@ -1087,9 +1087,9 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 45-01-PLAN.md — The vocabularies, the two structural migrations and the five row types
-- [ ] 45-02-PLAN.md — The instrument that authenticates as a real role, and its first authorised run
-- [ ] 45-03-PLAN.md — The naming decision, and the key split as two migrations around one deploy
+- [x] 45-01-PLAN.md — The vocabularies, the two structural migrations and the five row types
+- [x] 45-02-PLAN.md — The instrument that authenticates as a real role, and its first authorised run
+- [x] 45-03-PLAN.md — The naming decision, and the key split as two migrations around one deploy
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
