@@ -96,4 +96,69 @@ entrambi i posti.
 
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piano 05.*
+## DEF-45-04 — il gate 45-06 e i renderer 45-07 **non si chiamano allo stesso
+## modo**, e il check B fallira' il giorno in cui la 45-12 completa lo scope
+
+**Trovata durante:** 45-11, Task 2.
+**Stato:** pre-esistente a questo piano. Nessun file di 45-11 la produce, e
+nessun file di 45-11 puo' ripararla senza riscrivere le consegne di un altro
+piano.
+
+`scripts/verify-section-surface.mjs` (piano 45-06) dichiara **per nome** i file
+che possono rendere ciascun valore, e la sua stessa intestazione dice che il
+rapporto va letto in quella direzione: *«The surfaces satisfy this list; the list
+does not describe them.»*
+
+Il piano 45-07 ha creato due dei tre renderer con nomi diversi:
+
+| Il gate pretende | Sul disco (45-07) | Compagno preteso | C'e'? |
+|---|---|---|---|
+| `SpaceScore.tsx` | `ScoreCell.tsx` | `ScoreProvenance` | no |
+| `SpaceAttribute.tsx` | `AttributeCell.tsx` | `AttributeAsked` | no |
+| `SectionVoid.tsx` | — (e' della 45-12) | `missing`, `decision_owner` | non ancora |
+
+**Misurato, non dedotto.** Creando temporaneamente le quattro directory mancanti
+dello scope e rilanciando il gate, l'esito e':
+
+```
+✓ A   the stage stands beside the name, in one renderer
+✗ B   → SpaceScore.tsx is not in scope … → SpaceAttribute.tsx is not in scope
+✗ C   → SectionVoid.tsx is not in scope
+✓ D   a format colour is never drawn as a palette
+✓ E   a diagnostic carries a code and a message
+SECTION_SURFACE_FAIL — 2 check(s) failed: B, C (3 occurrence(s))
+```
+
+Le directory di prova sono state rimosse subito: non sono state committate.
+
+**Perche' non e' riparata qui.** Rinominare i due file di 45-07 e introdurvi due
+identificatori che oggi non esistono e' riscrivere la consegna di un piano
+gia' chiuso, e il piano 45-11 li nomina esplicitamente come i renderer da usare.
+E' un conflitto fra due contratti gia' committati, e va deciso — non risolto in
+silenzio dentro l'esecuzione di un terzo.
+
+**Quando diventa visibile:** oggi il gate esce **2 (REFUSED)** perche' quattro
+delle sette directory dello scope non esistono, e un rifiuto e' un rifiuto per
+tutte le sette. Il giorno in cui il piano 45-12 crea manifesto e visual, il gate
+comincia a misurare e il check B diventa **rosso**, su un albero in cui i due
+renderer esistono e fanno esattamente il loro lavoro.
+
+**Chi la possiede:** il piano che completa lo scope (45-12), che e' il primo a
+vederla rossa. Due strade, e vanno pesate:
+
+1. **Rinominare i renderer** in `SpaceScore.tsx` / `SpaceAttribute.tsx` e
+   introdurre i due compagni — allinea l'albero al gate, ma tocca file di 45-07
+   e ogni importatore.
+2. **Correggere il gate** — cambiare `SCORE_RENDERER`, `ATTRIBUTE_RENDERER` e i
+   due compagni ai nomi reali. Costa un diff, ma il gate e' stato scritto prima
+   delle superfici proprio per vincolarle, e cambiarlo dopo per farlo passare e'
+   la mossa che lo trasforma in un timbro.
+
+**Nota sul check A:** e' verde perche' 45-11 ha creato `SpaceName.tsx` con il
+nome che il gate pretende. Se il nome dello spazio fosse stato reso dentro
+`SpaceList.tsx` — la lettura letterale del criterio d'accettazione del piano —
+il check A sarebbe **rosso** insieme a B e C.
+
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piano 11.*

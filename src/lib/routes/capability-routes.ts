@@ -151,19 +151,29 @@ type Binding =
        */
       assignmentOpenable?: true;
       /**
-       * True when the key ALSO gates rows. **Six of the seventeen do**,
+       * True when the key ALSO gates rows. **Seven of the seventeen do**,
        * RE-COUNTED by reading this file on 2026-08-17 rather than by adding to
        * the number that was printed here.
        *
        * The denominator moved and the numerator did not, which is exactly the
        * case a reader would get wrong by arithmetic: phase 45 splits
-       * `production.read` into four section keys, and only ONE of the four —
-       * `production.calendar.manage` — carries the flag, because only that one
-       * has row-level policies today (the six `SELECT` arms of
-       * `20260817120000_production_section_keys.sql` §3). The other three gate
-       * rows that do not exist yet, so writing the flag on them would be a
-       * declaration ahead of its facts, which is the same lie in the opposite
-       * direction.
+       * `production.read` into four section keys, and TWO of the four carry the
+       * flag — `production.calendar.manage` (the six `SELECT` arms of
+       * `20260817120000_production_section_keys.sql` §3) and
+       * `production.location.manage` (the three arms of
+       * `20260817120300_production_sections_access.sql`, applied to production
+       * by plan 45-08).
+       *
+       * ⚠ **The other two gate rows as well, and they still do not carry the
+       * flag — because the field does not exist on the branch they are on.**
+       * `production.manifesto.manage` and `production.visual.manage` have had
+       * row-level policies since plan 45-08 applied them; what they do not have
+       * is a page, so they sit on the `scope: "table"` branch, where the only
+       * declaration available is the `reason` line. The flag arrives with the
+       * move to this branch in plan 45-12, in that plan's commit. *(This
+       * paragraph said their tables did not exist yet. That was true when it was
+       * written and stopped being true on 2026-08-17, and a stale reason left
+       * standing is how a reader concludes the entry beside it was checked.)*
        *
        * This line said *four* until 2026-08-15, and had said it since plan 34-01
        * while two more entries acquired the flag — `catalogue.manage` in phase
@@ -617,37 +627,138 @@ export const CAPABILITY_ROUTES = {
     alsoGatesTables: true,
   },
 
-  /* ──────────────────────────────────────────────────────────────────────────
-   * The three sections whose pages are not on disk yet — phase 45, plan 05.
+  /**
+   * The production LOCATION section — phase 45, plan 05 wrote the key; **plan
+   * 45-11 moved it to this branch, in the same commit as its page.**
    *
-   * ⚠ THE TRAP, WRITTEN INTO EACH OF THE THREE RATHER THAN ONCE ABOVE THEM.
+   * ── The question this key answers ────────────────────────────────────────────
+   *
+   * *May this subject see the scouted spaces?* — 184 places somebody wrote down,
+   * each with a stage, ten graded attributes, four answers only a telephone
+   * closes, and **a street address**. Those rows are the material
+   * `venue-acquisition.md` refuses to let into this repository at all: criteria
+   * in the repo, candidates never. A key of their own, and no fold into a
+   * broader one.
+   *
+   * ── Why the move happens in the SAME COMMIT as the page ─────────────────────
+   *
+   * This entry sat on the `scope: "table"` branch from plan 45-05 until now,
+   * which was the only TRUE declaration available while the key gated rows and
+   * no address. The moment `page.tsx` landed, that declaration became the trap
+   * the three sibling entries still carry in words: **a page bound to a
+   * table-only key is unreachable for EVERYONE.** `resolveRoute` returns `null`,
+   * every caller must treat `null` as a refusal, and the middleware fails
+   * closed — with **no build error and nothing in a log.** This project has no
+   * error tracking at all, so a section down for everybody is a section nobody
+   * learns is down except by opening it.
+   *
+   * The asymmetry decides the order and is the reason this is not a tidy-up
+   * afterwards: a page on disk with no entry here is a build error, loud and
+   * immediate; an entry whose page is not on disk is silent. So the loud
+   * failure is the one allowed to exist for zero commits.
+   *
+   * ── `alsoGatesTables` is carried, and it is NOT optional here ───────────────
+   *
+   * The key does gate rows: the three `SELECT` arms of
+   * `20260817120300_production_sections_access.sql` — on `production_space`,
+   * `production_space_attribute` and `production_open_question` — applied to
+   * production by plan 45-08. The flag is optional on this branch, so omitting
+   * it would have produced no error at all, just a declaration that lies by
+   * omission. That is the lie D-34-11 exists to prevent.
+   *
+   * ── Two patterns, ONE entry ─────────────────────────────────────────────────
+   *
+   * The dynamic sister address needs its own pattern exactly as `/admin/venues`
+   * and `/admin/venues/[slug]` do — a `Route` pattern is matched segment by
+   * segment and never as a prefix, so `/admin/location` opens `/admin/location`
+   * and nothing below it. A second entry, or a second key, would be a **second
+   * predicate**: the thing this module exists to have exactly one of.
+   *
+   * **The ambiguity check, DERIVED and not assumed.** This commit adds the first
+   * two patterns since plan 44-09, taking `COMPILED_PATTERNS` from twenty-six to
+   * twenty-eight, so the derivation is real rather than inherited:
+   *
+   *   · `/admin/location` is two literal segments. The other two-segment
+   *     `/admin/*` patterns — `/admin/scanner`, `/admin/newsletter`,
+   *     `/admin/artists`, `/admin/venues`, `/admin/members`, `/admin/events`,
+   *     `/admin/formats`, `/admin/calendar` — are all literal and all differ in
+   *     their second segment. No tie.
+   *   · `/admin/location/[id]` is three segments with one dynamic tail. The
+   *     other three-segment patterns with one dynamic segment are
+   *     `/admin/venues/[slug]` and `/admin/calendar/[id]`, whose second segments
+   *     are different literals; `/admin/members/growth`,
+   *     `/admin/members/register` and `/admin/events/new` carry zero dynamic
+   *     segments, so the loop's `dynamicCount` guard skips them before it
+   *     compares literals. No tie.
+   *
+   * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
+   * the foot of this file runs at **module load inside a middleware bundle**, not
+   * at `npm run build` — so a tie is not a broken page, it is a 500 on every
+   * route the middleware covers, the payments webhook and the door's scan path
+   * included. The deploy rule stands: ship on a day without a night, and make
+   * the first request yourself.
+   *
+   * ── The page arrived with this entry. The TAB does NOT follow here. ─────────
+   *
+   * `staff-tabs.ts` gains no `Location` entry in this commit — that is plan
+   * 45-18. The order is forced rather than chosen: `StaffTab.href` is `Route`,
+   * and a static address enters the generated union only once a `page.tsx`
+   * serves it, so page first and tab second is the sequence `/admin/formats` and
+   * `/admin/calendar` both walked. Until the tab lands, the list is reachable by
+   * address and from nothing else.
+   *
+   * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
+   *
+   * This entry decides where a **redirect** happens. It stops somebody arriving
+   * on `/admin/location`; it stops nobody reading a `production_space` row. The
+   * boundary is the three `SELECT` policies — which is precisely why both pages
+   * read with the cookie-bound client rather than the service one: a read that
+   * bypasses the policy proves nothing about the policy, and on this section
+   * what it would serve is a name under negotiation and a street address.
+   */
+  [CAP.PRODUCTION_LOCATION_MANAGE]: {
+    routes: ["/admin/location", "/admin/location/[id]"],
+    alsoGatesTables: true,
+  },
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * The two sections whose pages are not on disk yet — phase 45, plan 05.
+   *
+   * ⚠ THE TRAP, WRITTEN INTO EACH OF THE TWO RATHER THAN ONCE ABOVE THEM.
    * A page bound to a `scope: "table"` key is unreachable **for EVERYONE**:
    * `resolveRoute` returns `null`, every caller must treat `null` as a refusal,
    * and the middleware fails closed. There is **no build error** and **nothing in
    * a log** — and this repository has no error tracking at all, so a surface that
    * is down for everyone is a surface nobody learns is down except by opening it.
-   * The asymmetry `capability-routes.ts` records twice decides the order: a page
-   * on disk with no entry here is a build error; an entry whose page is not on
-   * disk is SILENT.
+   * The asymmetry `capability-routes.ts` records three times decides the order: a
+   * page on disk with no entry here is a build error; an entry whose page is not
+   * on disk is SILENT.
    *
-   * So each of the three names **which plan moves it**, and the obligation is
+   * So each of the two names **which plan moves it**, and the obligation is
    * discharged there rather than remembered here:
    *
-   *   · `production.location.manage`  → plan 45-11 creates `/admin/location`
-   *                                     (and `/admin/location/[id]`) and moves
-   *                                     this entry to the `routes:` branch.
    *   · `production.manifesto.manage` → plan 45-12 creates `/admin/manifesto`.
    *   · `production.visual.manage`    → plan 45-12 creates `/admin/visual`.
    *
-   * None of the three carries `alsoGatesTables`, and that is a measured absence
-   * rather than an omission: their tables do not exist yet. The flag is added by
-   * the plan that adds the policies, in that plan's commit, for the reason
-   * D-34-11 gives — a declaration ahead of its facts is the same lie as a
-   * declaration behind them.
+   * ⚠ **This list said three until plan 45-11, and the third line is REMOVED
+   * rather than left standing with a tick beside it.** `production.location.manage`
+   * moved to the `routes:` branch above, in the same commit as its two pages, and
+   * a warning about work already done is how the next reader learns to skim the
+   * warnings.
+   *
+   * **Their tables exist and their policies are live.** Plan 45-08 applied
+   * `20260817120200_production_sections.sql` and its access migration to
+   * production on 2026-08-17, so both keys gate rows today. What they do not
+   * carry is `alsoGatesTables` — not as a measured absence but because the field
+   * does not exist on this branch. The flag arrives with the move, in plan
+   * 45-12's commit. *(This paragraph said their tables did not exist yet, which
+   * was true when it was written and stopped being true on the day the
+   * migrations landed.)*
    *
    * `scope: "table"` is the only TRUE declaration available for a key that opens
-   * no page, and it is the same position `catalogue.manage` and the calendar key
-   * both occupied before their pages landed. Both moves are recorded above.
+   * no page, and it is the same position `catalogue.manage`, the calendar key and
+   * the location key all occupied before their pages landed. All three moves are
+   * recorded above.
    * ────────────────────────────────────────────────────────────────────────── */
 
   [CAP.PRODUCTION_MANIFESTO_MANAGE]: {
@@ -660,12 +771,6 @@ export const CAPABILITY_ROUTES = {
     scope: "table",
     reason:
       "Opens no address YET: `/admin/visual` is not on disk, and plan 45-12 creates it and moves this entry to the `routes:` branch. Until then this key opens nothing for anybody — a page bound to a table-only key is unreachable for everyone, with no build error and nothing in a log.",
-  },
-
-  [CAP.PRODUCTION_LOCATION_MANAGE]: {
-    scope: "table",
-    reason:
-      "Opens no address YET: `/admin/location` and `/admin/location/[id]` are not on disk, and plan 45-11 creates them and moves this entry to the `routes:` branch. Until then this key opens nothing for anybody — a page bound to a table-only key is unreachable for everyone, with no build error and nothing in a log. This is the section whose rows carry a street address, so the direction of the failure matters: table-only refuses everybody, which is the safe direction to be wrong in.",
   },
 } as const satisfies Record<CapabilityKey, Binding>;
 
