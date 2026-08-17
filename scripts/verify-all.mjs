@@ -282,6 +282,26 @@ const OFFLINE = [
       "green here says nothing about whether a proposed date reads as settled",
   ],
   [
+    "verify:section-surface", false,
+    "Phase 45 — the mechanical half of success criteria 2 and 3, plus D-45-18's log " +
+      "shape, over the three production sections' seven directories. It is genuinely " +
+      "offline: it reads tracked source and needs no server, no docs/ and no credential. " +
+      "Until those directories exist it REFUSES (exit 2) and names each one that is " +
+      "missing — which is the honest state before the sections are built, and is not a " +
+      "pass. String assertions only: a green says a badge is in the tree, never that a " +
+      "person can read it as a stage",
+  ],
+  [
+    "verify:section-export", false,
+    "Phase 45 — D-45-17's and D-45-21's structural proof. It belongs in this list even " +
+      "though HALF of it needs credentials, and that is the same honest state " +
+      "verify:capabilities already carries here: without SUPABASE_ACCESS_TOKEN its " +
+      "reachability census REFUSES (exit 2) and nothing about reachability was measured. " +
+      "The other half — the import-closure walk from the two export modules — is offline " +
+      "and runs everywhere. It reports its two refusals BY CAUSE, because a missing entry " +
+      "file and a missing credential send a reader to look in different places",
+  ],
+  [
     "verify:touch-targets", true,
     "Phase 41 — G5. Plan 41-11 was permitted to end by deleting this gate " +
       "rather than shipping one that reddened on correct code. It did not: the " +
