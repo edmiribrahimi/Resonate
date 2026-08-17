@@ -121,6 +121,21 @@ inside the product instead of inside the repository.
      because a score was high would be the *ranking-is-not-availability* error
      encoded into data.
 
+  **[RESOLVED 2026-08-17 — the source the researcher could not find.]** The
+  research pass reported that the normalised records were gone: `.firecrawl/`
+  holds raw crawl artefacts, and the working directory that held the structured
+  array no longer exists. Both true. **The records survive in the owner's
+  production artifact**, and were recovered from it and written to
+  `docs/scouting-2026-08-17.json` on 2026-08-17 — **184 records, 27 fields,
+  gitignored (`.gitignore:67`), confirmed invisible to git before anything else
+  happened**. That file is the seeding script's input. The route back to the
+  source, if it is ever needed again, is a fetch of the artifact URL followed by
+  a bracket-matched extraction of its data array — not a crawler.
+
+  **The seeding script therefore reads exactly one local file** and needs no
+  network. Its shape is known in advance, which means the plan can specify the
+  field mapping instead of discovering it at execution time.
+
 - **D-45-08:** The visual section holds **the rules and the material together**
   — the capitolato (palette, typography, grid-safe zone, publication order,
   what is fixed and what is variable) beside the produced pieces, including the
@@ -170,6 +185,28 @@ inside the product instead of inside the repository.
   2. **Derived and field-verified are distinguishable on screen**, not only in
      the data. A score computed from a public listing is a hypothesis; one
      checked on site for that format is a datum.
+
+  **[REVISED 2026-08-17 after measuring the real source — this supersedes the
+  storage shape implied above, not the decision.]** The archive was recovered
+  and its 184 records inspected. Two findings change how this is built:
+
+  - **A score is COMPUTED, never stored.** There is no score field in the
+    source and there must not be one in the database. What the records carry is
+    **attributes** — outdoor/sunset, music-already-at-home, rig, console,
+    capacity band, exclusivity, evening licence, late hours, and others — and a
+    score per format is derived from them with that format's declared weights.
+    A hand-written score detaches from its attributes at the first edit; the
+    archive already avoided that and the product must too.
+  - **"To verify" is already encoded PER ATTRIBUTE, not per record.** Five
+    attributes take the literal value `verifica` where the answer has not been
+    asked. That is finer than the per-record derived/verified flag this decision
+    originally implied, and it is the form to build: the four phone questions
+    map onto existing attributes, and an unanswered one is visibly unanswered.
+
+  Also measured: **numeric capacity is null on all 184** — only a size band
+  exists. *"How many people actually fit"* therefore has no answer for any space
+  today, and the surface must show it missing rather than inferring it from the
+  band.
 
 - **D-45-12:** Moving a space to **`acquired` requires a mandatory line saying
   where the agreement is** — a mail of such a date, a signed contract, an
@@ -229,6 +266,54 @@ inside the product instead of inside the repository.
   path reads the section's own tables and nothing else, and a plan proves it by
   showing what it cannot reach. `venue-secrecy.md` calls the capitolato an exit
   route; this is that exit route, built once and built tight.
+
+### Answered after the research pass — 2026-08-17
+
+These four came back from the researcher as open questions and were settled by
+the owner the same day. They are **not** discretionary: three touch access or
+venue secrecy.
+
+- **D-45-20:** The three new section keys carry **`requires_approved = false`**,
+  like `production.read`. Owner: accounts are created inside the app, nobody
+  signs up, so `pending` is about to stop varying and gating on a value that
+  does not vary is debt rather than safety. **This inherits the bet already
+  written into `20260815120100_production_calendar_access.sql`:** if a path that
+  can create a `pending` organizer is ever reopened, this flag is reconsidered
+  **in the same commit**. Carry that sentence into the new migration's prose —
+  a bet that is not written down is an assumption.
+
+- **D-45-21 [raises the location section to Critical]:** **A scouting record
+  carries a street address.** Confirmed by the owner and then measured in the
+  source: field `z`, populated on all 184 records, 124 of which match a
+  street/corso/piazza pattern and 81 carry a house number.
+
+  **Four consequences planning must build, not assume:**
+  1. The scouting table has **no foreign key, no view and no function** that can
+     surface a row through `venue_for_parties` — the only public road to an
+     address. D-45-10's separate list is what makes this structural; a plan must
+     **demonstrate** the absence, not assert it.
+  2. **The location section has no export.** D-45-17 covers the manifesto and
+     the capitolato only. Location is the one section whose content must not
+     leave the perimeter, and the export path must not be able to reach it.
+  3. **D-45-18 is promoted from hygiene to Critical.** What a whole-error log
+     line can now leak is the address of a space under negotiation, into logs
+     nobody watches because there is no error tracking.
+  4. The promotion act (D-45-10) is where the address crosses into `venues` and
+     becomes subject to the reveal guard. It is the only crossing that exists.
+
+- **D-45-22:** The `regime` field — present on all 184 source records, values
+  `libera` / `privata` / `verifica` — **stays out of the product.** *(Owner's
+  choice over importing it, and over importing it as a blocker on promotion.)*
+  The cost is stated and reversible: the field survives in the local export, so
+  recovering it later is a second import rather than new research. The
+  neighbourhood constraint is absent from the source and stays out either way.
+
+- **D-45-23 (not a decision — an authorisation consumed):** No hand-made `staff`
+  account is needed. Two `member` accounts already exist and the production
+  grants go only to `master` and `organizer`, so **criterion 4's refusal can be
+  proven with accounts that already exist**. Criterion 1 remains unprovable by
+  observation under D-45-03, and **no plan may fabricate a role grant in
+  production to make it provable.**
 
 ### Claude's Discretion
 
@@ -346,9 +431,16 @@ it is applied. Taken under that delegation, and announced during the discussion:
 - `src/app/globals.css` — the brand tokens the visual section reads (D-45-09)
 
 ### The material — read locally, never committed
-- `.firecrawl/` — the scouting research, gitignored and held there by check F of
-  `npm run verify:persona`. **Read by the seeding script of D-45-07 only.**
-  Nothing from it is written into any tracked file
+- `docs/scouting-2026-08-17.json` — **the seeding input for D-45-07.** 184
+  records, 27 fields, recovered from the owner's production artifact on
+  2026-08-17. Gitignored via `.gitignore:67` and verified invisible to git.
+  **Read it when implementing the import; write nothing from it into any
+  tracked file, this document included.** Its field shape is recorded in
+  `<code_context>` below — that is structure, and structure is publishable;
+  its rows are candidates, and candidates are not
+- `.firecrawl/` — 452 raw crawl artefacts, the material the archive was built
+  *from*. **Not** the seeding input: these are downloaded web pages, not
+  records. Gitignored and held there by check F of `npm run verify:persona`
 
 </canonical_refs>
 
@@ -394,6 +486,32 @@ it is applied. Taken under that delegation, and announced during the discussion:
 - **`npm run verify:persona` must stay green** if any `.claude/rules/**` file is
   touched. It is not expected that this phase touches one; if it does, the
   changelog entry and the version bump go in the same commit.
+
+### The scouting source's shape — measured 2026-08-17, structure only
+
+184 records, 27 fields. Recorded here so the plan can specify a field mapping
+rather than discover one. **Field names and value shapes only — no row of this
+data appears in this repository.**
+
+| Group | Fields | Shape |
+|---|---|---|
+| Identity | name, short description, **address**, category, source | free text; category is an 11-value enum (club, live club, bar/cocktail, brewery, restaurant, wine bar, institution, gallery, project space, hybrid, historic house) |
+| Format fit | home format | 4-value enum, one per format |
+| Attributes | outdoor/sunset, artistic frame, aperitivo vocation, exclusivity | 4-value scale: `top` / `buono` / `limitato` / `no` |
+| To-verify attributes | evening licence, events, music already at home, audio, console, partnership | 3–4 value enums **whose lowest value is literally `verifica`** — the unanswered marker |
+| Capacity | size band; numeric capacity | band is a 4-value enum; **numeric is null on all 184** |
+| Flags | already used, in use, natural-wine guide | 0/1 |
+| Legal | regime | `libera` / `privata` / `verifica` — **excluded from the product by D-45-22** |
+| Prose | three note fields | free text, longest 664 chars |
+
+**Absent from the source, and each absence is informative:** no stage field
+(everything enters at `mapped` — nobody has been called); no score field (scores
+are computed from attributes, per the revision to D-45-11); no contact field, no
+phone, no email.
+
+**The address is one field.** Whatever the plan does to protect it, it protects
+one column — which is what makes the structural guarantee of D-45-21 provable
+rather than argued.
 
 ### Integration Points
 - The three sections join the work surface under `(admin)`, route files in
