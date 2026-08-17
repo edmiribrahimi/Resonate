@@ -1619,7 +1619,32 @@ Extracted as directives, because a plan is checked against them:
 
 ---
 
-## Open Questions
+## Open Questions — ALL RESOLVED 2026-08-17
+
+> **Read this heading before the list below.** Every one of the seven was settled
+> after this document was written, and the resolutions live in `45-CONTEXT.md`,
+> which is **newer than this file and wins wherever the two disagree**. The
+> questions and recommendations are kept — a resolved question whose reasoning is
+> deleted reads as though it was never asked — but **none of them is open**, and
+> two were resolved *against* the recommendation recorded here.
+>
+> | # | Question | Resolution |
+> |---|---|---|
+> | 1 | `requires_approved` on the three new keys | **D-45-20** — `false` on all three, with the bet restated in the migration prose. As recommended |
+> | 2 | Write policies, option A or B | **Option A**, taken deliberately and declared in plan `45-04` task 1. As recommended |
+> | 3 | Where the scouting export comes from | **D-45-07** — `docs/scouting-2026-08-17.json`, 184 records, gitignore verified before it was read. The archive was recovered from the owner's production artifact, not from `.firecrawl/` |
+> | 4 | Whether a `staff` account is created | **D-45-23** — no. Two `member` accounts already exist and hold no production key, so the refusal is provable with what exists |
+> | 5 | Does a scouting row carry an address | **D-45-21 + D-45-24** — yes, and it **enters the product** in a column of its own. ⚠️ **Resolved AGAINST the recommendation below**, which proposed the seed write no address. The owner was shown that option explicitly and did not take it; the structural guarantees of D-45-21 carry the risk instead |
+> | 6 | The dj photo archive's bucket | Resolved in plan `45-04` task 2 — a **third private bucket**, neither the public one nor quarantine |
+> | 7 | Does `verify:refusal` become a gate for later phases | Explicitly deferred; the section list stays a declared constant so a later phase adds a row, not a script |
+>
+> **One assumption in the log above was measured FALSE after this document was
+> written: A4.** The export carries no pre-computed scores — there is no score
+> field at all. Scores are **computed from attributes** and must never be stored.
+> See the revision inside D-45-11, and plan `45-07`, which deletes the score table
+> this document had designed.
+
+
 
 1. **`requires_approved` on the three new keys.**
    - **Known:** the calendar's `false` is D-44-27's, and the migration writes down that
