@@ -1093,10 +1093,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 45-04-PLAN.md — The read arms for the five new tables, and the private archive bucket
-- [ ] 45-05-PLAN.md — The declarations: four keys, four bindings, the calendar moved off the old string
-- [ ] 45-06-PLAN.md — The two source gates, the reachability census, and 45-PROCEDURES.md
-- [ ] 45-07-PLAN.md — Scores computed never stored, the shared stage badge, the two cells
+- [x] 45-04-PLAN.md — The read arms for the five new tables, and the private archive bucket
+- [x] 45-05-PLAN.md — The declarations: four keys, four bindings, the calendar moved off the old string
+- [x] 45-06-PLAN.md — The two source gates, the reachability census, and 45-PROCEDURES.md
+- [x] 45-07-PLAN.md — Scores computed never stored, the shared stage badge, the two cells
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
