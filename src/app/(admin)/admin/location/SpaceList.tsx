@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/Chip";
+import { FOCUS_RING } from "@/components/ui/Button";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
 
 import { SpaceName } from "@/app/(admin)/admin/location/SpaceName";
@@ -169,6 +171,18 @@ const REASON = "text-sm text-muted";
 const FIGURE_FACE = "font-mono text-sm font-semibold normal-case text-ink";
 
 /**
+ * The in-text link, in the shape this product already writes it.
+ *
+ * Copied rather than invented: `CalendarList.tsx:244-246` carries the same
+ * string, and it carries it for the reasons written there — `min-h-11` is the
+ * 44px floor the accessibility contract sets, and the name sits in a child so
+ * the card branch keeps its ellipsis instead of taking a clip.
+ */
+const ROW_LINK =
+  `inline-flex min-h-11 max-w-full items-center underline decoration-dotted ` +
+  `underline-offset-4 transition-colors hover:text-ink ${FOCUS_RING}`;
+
+/**
  * The four questions and the ten attributes are not on this list, so a space's
  * capacity is drawn as a figure or as the sentence that says nobody measured it.
  *
@@ -243,26 +257,28 @@ const columns: readonly DataColumn<SpaceRow>[] = [
     card: "title",
     cell: (row) => (
       /*
-        THE ONLY DOOR TO A SPACE'S PAGE — and it cannot be opened yet.
+        THE ONLY DOOR TO A SPACE'S PAGE.
 
-        `/admin/location/[id]` is bound in `capability-routes.ts` as of this
-        commit, and its `page.tsx` lands in the next one. Until then this cell
-        draws the name as text rather than as a link, and the reason is
-        `next build` refusing the shortcut rather than a decision: `typedRoutes`
-        puts a dynamic address into the generated `Route` union only once a page
-        serves it, so a `Link` written here today is a compile error and not a
-        broken link at run time. That refusal is the assertion working — the tree
-        has no way to point at an address that does not exist.
+        No tab registers this section — that is plan 45-18 — so without this
+        link the detail would be reachable only by typing a uuid into the
+        address bar. That is the defect the calendar surface had to repair after
+        the fact, and it is repaired here in the commit that created the
+        destination.
 
-        The door matters because there is no other way in: no tab registers this
-        section (plan 45-18), so without a link on this list the detail would be
-        reachable only by typing a uuid into the address bar. That is the defect
-        the calendar surface had to repair after the fact, and it is repaired
-        here in the commit that creates the destination.
+        ⚠ **It could not be written one commit earlier**, and the reason is the
+        assertion working rather than an oversight: `typedRoutes` puts a dynamic
+        address into the generated `Route` union only once a `page.tsx` serves
+        it, so this `Link` was a COMPILE ERROR while `[id]/page.tsx` was not on
+        disk. The tree has no way to point at an address that does not exist.
+
+        `Link`, never `Button` with an `href` (`44-UI-SPEC.md` §12): that branch
+        renders a bare anchor with an untyped address.
       */
-      <span className="truncate">
-        <SpaceName name={row.name} stage={row.stage} />
-      </span>
+      <Link href={`/admin/location/${row.id}`} className={ROW_LINK}>
+        <span className="truncate">
+          <SpaceName name={row.name} stage={row.stage} />
+        </span>
+      </Link>
     ),
   },
   {
