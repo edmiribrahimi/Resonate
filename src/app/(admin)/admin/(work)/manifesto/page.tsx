@@ -7,8 +7,17 @@ import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { OpenQuestionNotice } from "@/app/(admin)/admin/manifesto/OpenQuestionNotice";
+import { OpenQuestionForm } from "@/app/(admin)/admin/manifesto/OpenQuestionForm";
+import { SectionForm } from "@/app/(admin)/admin/manifesto/SectionForm";
 import { SectionStateBadge } from "@/app/(admin)/admin/manifesto/SectionStateBadge";
 import { SectionVoid } from "@/app/(admin)/admin/manifesto/SectionVoid";
+import type { FormatChoice } from "@/app/(admin)/admin/manifesto/refusals";
+
+import {
+  closeQuestion,
+  openQuestion,
+  saveSection,
+} from "@/app/(admin)/admin/manifesto/actions";
 
 import type {
   ProductionOpenQuestion,
@@ -55,10 +64,18 @@ import type {
  * ── This section is EMPTY today, and that is the state it ships in ──────────
  *
  * The tables were applied to production on 2026-08-17 (plan 45-08) and hold no
- * rows: **writing them is plan 45-15**, and this page has no write path of its
- * own — no form, no action, no control. So the ordinary first render is the
- * empty state, and the empty state says which emptiness it is rather than
- * looking like a body of rules that came back short.
+ * rows. So the ordinary first render is the empty state, and the empty state
+ * says which emptiness it is rather than looking like a body of rules that came
+ * back short.
+ *
+ * ⚠ **This paragraph said the page has no write path, and that is no longer
+ * true.** It is reversed here rather than edited away, because a decision
+ * reversed without its reason reads as an oversight — the rule
+ * `(work)/location/[id]/page.tsx` already applies to its own docblock. Plan
+ * 45-15 mounts the section form and the register's form below, each calling
+ * **this** section's module, which asks **this** section's key. What has NOT
+ * changed is everything the absence was protecting: no state is chosen for the
+ * author, no text is supplied, and no row is invented to fill the wait.
  *
  * ⚠ **And it invents nothing to fill the wait.** There is no sample section, no
  * placeholder manifesto and no example of what one would say. `sound-manifesto.md`
@@ -102,7 +119,15 @@ export default async function AdminManifestoPage() {
   const supabase = await createClient();
 
   /*
-    TWO READS, AND EVERY EMBED CHECKED AGAINST ITS FOREIGN KEYS.
+    THREE READS, AND EVERY EMBED CHECKED AGAINST ITS FOREIGN KEYS.
+
+    ⚠ It was two until plan 45-15. The third is the CATALOGUE OF FORMATS, and it
+    exists because the form below has to offer *which format this rule belongs
+    to* — a choice whose correct answer is often **none**, since the spelling,
+    the grid-safe square and the order of publication are not properties of one
+    format. It is entitled independently of this section's key:
+    `formats_select_listed` is `USING (listed = true)`, unconditional, so nothing
+    here depends on the reader also holding the catalogue's key.
 
     An embed through a table that has MORE THAN ONE relationship to the embedded
     table is answered by PostgREST with `HTTP 300 PGRST201`, and the failure is
@@ -168,6 +193,36 @@ export default async function AdminManifestoPage() {
     .order("opened_at", { ascending: true });
 
   /*
+    THE CATALOGUE, FOR THE ONE SELECT THE FORM DRAWS.
+
+    `retired_at IS NULL` removes the fallback format, which exists only to hold
+    rows nobody classified and is unlisted by construction; `sort_order` is the
+    catalogue's own sequence, so the formats appear here in the order every other
+    surface shows them.
+
+    ⚠ `color` is deliberately NOT selected. Every format carries an
+    identification colour — the column is `NOT NULL` — including the one that has
+    no palette of its own, and a colour drawn on a surface about authored rules
+    would be a palette nobody decided. A value that is never loaded cannot be
+    drawn by accident.
+
+    A failure here does not take the page down: the rules are the thing somebody
+    came for. It is logged with its two fields and the form says, in its own
+    words, that a rule can then only be recorded as belonging to the whole brand.
+  */
+  const { data: formatRows, error: formatError } = await supabase
+    .from("formats")
+    .select("id, name")
+    .is("retired_at", null)
+    .order("sort_order", { ascending: true });
+
+  if (formatError) {
+    console.error(
+      `[manifesto.formats_read_failed] code=${formatError.code} message=${formatError.message}`
+    );
+  }
+
+  /*
     THREE OUTCOMES, NEVER TWO (OBS-03).
 
     Rows returned; zero rows; and THE READ ITSELF FAILED. The third gets its own
@@ -225,6 +280,16 @@ export default async function AdminManifestoPage() {
   */
   const sections = (sectionRows ?? []) as unknown as SectionSelectRow[];
   const questions = (questionRows ?? []) as unknown as QuestionSelectRow[];
+
+  /*
+    `null` and not `[]` when the catalogue could not be read, and the difference
+    is drawn: an empty list would say *there are no formats*, which is false, and
+    the form would offer an empty select instead of saying what it cannot do.
+  */
+  const formats: FormatChoice[] | null =
+    formatError || formatRows === null
+      ? null
+      : (formatRows as unknown as FormatChoice[]);
 
   /*
     Which question belongs beside which section, and what is left over.
@@ -299,10 +364,66 @@ export default async function AdminManifestoPage() {
                   ))}
                 </div>
               ) : null}
+
+              {/*
+                The correction sits under the rule it corrects, so the state on
+                the screen and the state in the control are read together — and
+                the control still chooses nothing.
+              */}
+              <div className="mt-4">
+                <SectionForm
+                  save={saveSection}
+                  formats={formats}
+                  record={{
+                    id: row.id,
+                    title: row.title,
+                    format_id: row.format_id,
+                    state: row.state,
+                    body: row.body,
+                    missing: row.missing,
+                    decision_owner: row.decision_owner,
+                  }}
+                  noun="rule"
+                />
+              </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/*
+        ── THE AUTHORING HALF ────────────────────────────────────────────────
+
+        Both acts below come from THIS section's module, which asks THIS
+        section's key. The sibling section's module is not imported here and
+        cannot be: the two are separate files for that reason, because every
+        export of a `"use server"` module is a public endpoint.
+      */}
+      <section className="pt-8 space-y-4">
+        <SectionHeading>Writing the manifesto</SectionHeading>
+
+        <p className="max-w-3xl text-sm text-muted">
+          Three states, and the form chooses none of them for you. Recording a
+          rule as <em>not decided</em> — naming what is missing and the role that
+          closes it — is an answer here, not the absence of one.
+        </p>
+
+        <SectionForm
+          save={saveSection}
+          formats={formats}
+          record={null}
+          noun="rule"
+        />
+
+        <OpenQuestionForm
+          open={openQuestion}
+          close={closeQuestion}
+          formats={formats}
+          questions={questions}
+          section="manifesto"
+          sectionLabel="The sound manifesto"
+        />
+      </section>
     </PageShell>
   );
 }
@@ -431,10 +552,15 @@ function ManifestoReadFailed({ what, reload }: { what: string; reload: string })
 /**
  * The empty state — which is the state this section ships in.
  *
- * The tables were applied to production on 2026-08-17 and hold no rows. The
- * second sentence is not decoration: without it a missing editor reads as an
- * unfinished feature, and the sentence says the writing is a later plan rather
- * than a control somebody forgot.
+ * The tables were applied to production on 2026-08-17 and hold no rows.
+ *
+ * ⚠ **The second sentence used to say the writing was a later step. It is not
+ * any more**, and the copy is corrected rather than left standing: a sentence
+ * that tells somebody a control does not exist, on a page where it does, is the
+ * same defect as a docblock that lies. What it says instead is the part that
+ * still matters — that nothing is drawn here in the meantime, because a
+ * placeholder manifesto that reached a brief would be the brand for whoever read
+ * it.
  */
 function NothingWrittenYet() {
   return (
@@ -443,9 +569,9 @@ function NothingWrittenYet() {
         No section has been recorded yet
       </p>
       <p className="mt-1 text-sm text-muted">
-        This page reads; it does not write. Recording the manifesto — including
-        the sections that will say they are undecided — is a later step, and
-        nothing is drawn here in the meantime.
+        Nothing is invented to fill the wait — no sample rule, no placeholder
+        manifesto. The form below records the first one, in whichever of the
+        three states you say it is in.
       </p>
     </div>
   );
