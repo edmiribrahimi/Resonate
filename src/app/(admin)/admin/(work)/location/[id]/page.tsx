@@ -14,6 +14,7 @@ import { ScoreCell } from "@/app/(admin)/admin/location/ScoreCell";
 import { AttributeCell } from "@/app/(admin)/admin/location/AttributeCell";
 import { SpaceForm } from "@/app/(admin)/admin/location/SpaceForm";
 import { StageChangeDialog } from "@/app/(admin)/admin/location/StageChangeDialog";
+import { PromoteSpaceDialog } from "@/app/(admin)/admin/location/PromoteSpaceDialog";
 
 import {
   computeFormatScore,
@@ -82,6 +83,19 @@ import type { ReactNode } from "react";
  * must never be filled by anything but a telephone call is still unreachable by
  * inference — its control offers two words and no third, and no act in
  * `location/actions.ts` derives it from anything. See the hours section below.
+ *
+ * ── And since 45-14 one act on this page writes OUTSIDE the section ──────────
+ *
+ * `PromoteSpaceDialog` crosses a space into `public.venues`. Stated here rather
+ * than left in the header of the file it lives in, because it is the one thing
+ * about this page that the rest of the docblock would otherwise contradict: two
+ * paragraphs down, *the name and the address do not leave this render* is about
+ * THIS RENDER and remains exactly true — neither reaches a log, a message or a
+ * title. The crossing is a different sentence: it moves both into another table,
+ * on purpose, behind two capability keys, a stage that means *in writing*, and a
+ * confirmation that names what leaves. It creates no night and arms no reveal;
+ * `promoteSpace`'s own docblock carries the evidence for that rather than the
+ * claim.
  *
  * The read cards come first and the authoring comes after them, deliberately: a
  * form field shows what is stored, and what is stored is not the same statement
@@ -208,12 +222,18 @@ export default async function LocationSpacePage({
     this file has no way to verify — which fails in exactly the same silent way
     an ambiguous embed does.
 
-    `promoted_venue_id` is deliberately NOT embedded, and it never will be from
-    this section: it points at `public.venues`, the list a night's venue is
-    chosen from and the head of the one public road to an address. This table has
-    no edge into that road, and a join written for convenience would be the
-    first one. `created_by` is not embedded either — who typed a row is not a
-    fact this surface states.
+    ⚠ `promoted_venue_id` IS SELECTED AND IS STILL NOT EMBEDDED, and the two are
+    different things rather than a softened rule. Plan 45-14 put a crossing on
+    this page, and a surface that offers an act has to know whether the act has
+    already happened — so the COLUMN is read, as one nullable identifier, and it
+    is used for exactly one decision: whether to draw the trigger or the sentence
+    that says the crossing is made. **No embed, no join and no second query**:
+    the column points at `public.venues`, the list a night's venue is chosen from
+    and the head of the one public road to an address, and a join written for
+    convenience would be this table's first edge into that road. Nothing on this
+    page renders the venue's name, its slug or its address, and nothing reads
+    them. `created_by` is not embedded either — who typed a row is not a fact
+    this surface states.
 
     `.maybeSingle()` and not `.single()`: see the docblock's third outcome.
   */
@@ -224,6 +244,7 @@ export default async function LocationSpacePage({
        size_band, real_capacity, rig, guest_dj_allowed, closing_time,
        published_hours, extended_hours_stance, answers_source,
        agreement_evidence, exited_at, exit_reason, already_used, in_use, note,
+       promoted_venue_id,
        formats ( name ),
        production_space_attribute ( attribute, value, provenance )`
     )
@@ -338,9 +359,43 @@ export default async function LocationSpacePage({
           in the heading above, in the one renderer allowed to draw it, with the
           stage beside it.
         */}
+        {/*
+          THE CROSSING STANDS BESIDE THE STAGE CHANGE, AND THAT IS DELIBERATE.
+
+          They are the two acts on this page whose effect is read outside this
+          section, and the second one is only reachable through the first: a
+          space crosses from `acquired` and from no other stage. Putting them
+          together is what makes that sequence legible instead of a rule
+          somebody discovers by being refused.
+
+          ⚠ **HIDING THE TRIGGER PROTECTS NOTHING**, and it is written here so
+          nobody mistakes this arrangement for a control. What this surface holds
+          IS the secret — the name of a space under negotiation and a street
+          address — and the three things that refuse an unentitled subject are
+          the middleware entry, this page's own guard above, and the row-level
+          policies. The absence of a button is none of them, and a person who can
+          read this page could call the act directly with a forged body. The gate
+          inside `promoteSpace` is what refuses them, and it asks two keys.
+
+          It is drawn for every space still in the race, not only for the
+          acquired ones, and that is the read of *visible where it can be
+          pressed* this surface takes: the panel's whole job on a space that is
+          not acquired is to say WHY it will not cross, and a trigger hidden on
+          those spaces would make that sentence unreachable. The confirming
+          control inside is inert there, with the stage named above it.
+        */}
         {exited === null ? (
-          <div className="pt-4">
+          <div className="flex flex-wrap items-center gap-3 pt-4">
             <StageChangeDialog spaceId={record.id} currentStage={record.stage} />
+            <PromoteSpaceDialog
+              spaceId={record.id}
+              name={record.name}
+              stage={record.stage}
+              /* WHETHER there is an address, never the address. The panel says
+                 whether one crosses; it does not need the street to say that. */
+              hasAddress={record.address !== null}
+              alreadyPromoted={record.promoted_venue_id !== null}
+            />
           </div>
         ) : null}
       </header>
@@ -1048,6 +1103,7 @@ type SpaceSelectRow = Pick<
   | "already_used"
   | "in_use"
   | "note"
+  | "promoted_venue_id"
 > & {
   /** One FK, `home_format_id`. Null is ordinary: no format claimed the space. */
   formats: { name: string } | null;
