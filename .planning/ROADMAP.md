@@ -1120,7 +1120,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 45-16-PLAN.md — The export: two documents, declared tables, and a closure walk that proves the rest unreachable
+- [x] 45-16-PLAN.md — The export: two documents, declared tables, and a closure walk that proves the rest unreachable
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
