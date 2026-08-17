@@ -6,8 +6,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Chip";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { DataTable, type DataColumn } from "@/components/ui/DataTable";
+import { StageBadge } from "@/components/production/StageBadge";
 
-import { StageBadge } from "./StageBadge";
 import {
   formatCivilDate,
   formatCivilTimeRange,

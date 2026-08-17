@@ -16,7 +16,7 @@ import {
   PiecesSection,
   type PieceRowView,
 } from "@/app/(admin)/admin/calendar/PiecesSection";
-import { StageBadge } from "@/app/(admin)/admin/calendar/StageBadge";
+import { StageBadge } from "@/components/production/StageBadge";
 import type { PieceDateState } from "@/app/(admin)/admin/calendar/PieceDate";
 import {
   formatCivilDate,
