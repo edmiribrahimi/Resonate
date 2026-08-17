@@ -12,6 +12,8 @@ import { turinWallClock } from "@/utils/datetime";
 import { SpaceName } from "@/app/(admin)/admin/location/SpaceName";
 import { ScoreCell } from "@/app/(admin)/admin/location/ScoreCell";
 import { AttributeCell } from "@/app/(admin)/admin/location/AttributeCell";
+import { SpaceForm } from "@/app/(admin)/admin/location/SpaceForm";
+import { StageChangeDialog } from "@/app/(admin)/admin/location/StageChangeDialog";
 
 import {
   computeFormatScore,
@@ -71,12 +73,20 @@ import type { ReactNode } from "react";
  * shape of a feature protected by a redirect alone. On this page that mistake
  * would serve a street address.
  *
- * ── This page READS. There is no way to write anything from it. ─────────────
+ * ── This page reads FIRST, and then authors. Plan 45-13 added the second half. ─
  *
- * No field, no control, no server action, no submit. The writing surface is plan
- * 45-13, and the absence here is a decision rather than an unfinished feature —
- * which matters most on the one column that must never be filled by anything but
- * a telephone call. See the hours section below.
+ * Until 45-13 this docblock said there was no way to write anything from here,
+ * and that the absence was a decision. **The absence is gone and the decision it
+ * protected is not**: the writing surface below is `SpaceForm` and
+ * `StageChangeDialog`, both of them one directory over, and the one column that
+ * must never be filled by anything but a telephone call is still unreachable by
+ * inference — its control offers two words and no third, and no act in
+ * `location/actions.ts` derives it from anything. See the hours section below.
+ *
+ * The read cards come first and the authoring comes after them, deliberately: a
+ * form field shows what is stored, and what is stored is not the same statement
+ * as what the record SAYS — the unanswered questions, the sentence per absence
+ * and the four suitabilities have no representation inside an input.
  *
  * ── Three outcomes, never two ───────────────────────────────────────────────
  *
@@ -318,6 +328,21 @@ export default async function LocationSpacePage({
         <PageTitle className="normal-case">
           <SpaceName name={record.name} stage={record.stage} />
         </PageTitle>
+
+        {/*
+          THE STAGE CHANGE SITS BESIDE THE STAGE, AND NOT AT THE FOOT OF A FORM.
+
+          It is the one act on this section that decides whether the space may be
+          named outside this surface, and the panel it opens carries the rule and
+          the evidence field together. It draws no name of its own: the name is
+          in the heading above, in the one renderer allowed to draw it, with the
+          stage beside it.
+        */}
+        {exited === null ? (
+          <div className="pt-4">
+            <StageChangeDialog spaceId={record.id} currentStage={record.stage} />
+          </div>
+        ) : null}
       </header>
 
       <div className="space-y-8">
@@ -611,6 +636,42 @@ export default async function LocationSpacePage({
             </Field>
           </div>
         </Card>
+
+        {/*
+          THE AUTHORING HALF — plan 45-13, behind the same guard as everything
+          above it, which is the page guard and, underneath it, the policy.
+
+          The record is composed here rather than handed over as a row: a form
+          has no use for the columns it cannot write, and a value that never
+          crosses the boundary is a value that cannot be drawn by accident. The
+          address does cross, because it is a field on this form; it goes to the
+          database and to nothing else.
+        */}
+        <SpaceForm
+          record={{
+            id: record.id,
+            name: record.name,
+            address: record.address,
+            category: record.category,
+            source: record.source,
+            shortDescription: record.short_description,
+            note: record.note,
+            sizeBand: record.size_band,
+            publishedHours: record.published_hours,
+            rig: record.rig,
+            realCapacity: record.real_capacity,
+            guestDjAllowed: record.guest_dj_allowed,
+            closingTime: record.closing_time,
+            answersSource: record.answers_source,
+            extendedHoursStance: record.extended_hours_stance,
+            exited: exited !== null,
+            attributes: attributes.map((one) => ({
+              attribute: one.attribute,
+              value: one.value,
+              provenance: one.provenance,
+            })),
+          }}
+        />
       </div>
     </PageShell>
   );

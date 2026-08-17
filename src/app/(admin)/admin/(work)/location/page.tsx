@@ -9,6 +9,7 @@ import {
   SpaceList,
   type SpaceRow,
 } from "@/app/(admin)/admin/location/SpaceList";
+import { NewSpaceForm } from "@/app/(admin)/admin/location/SpaceForm";
 
 import { VENUE_STAGES } from "@/lib/production/sections/vocabulary";
 import type { ProductionSpace } from "@/types/database";
@@ -186,6 +187,27 @@ export default async function AdminLocationPage() {
       </header>
 
       <SpaceList rows={rows} empty={<NeverSeeded />} />
+
+      {/*
+        THE ONE WRITE ON THIS SURFACE, AND IT IS NOT AN UPLOAD.
+
+        Plan 45-13 gives `createSpace` a place to be reached from. Without one it
+        would be an endpoint nobody can reach through the product and anybody can
+        reach with a forged body, which is strictly worse than not having it.
+
+        ⚠ It does not contradict the empty state above. Typing one space by hand
+        is not importing the archive: the scouting stays a local file and the
+        import stays a local script, and nothing here accepts a document. The
+        idempotence key of the import is left null on a hand-typed row for
+        exactly that reason — the column's own comment says so.
+
+        And it carries NO stage control. A new row lands at the lowest stage by
+        the column's default, which is the only kind of default that is safe
+        here: it can never manufacture progress.
+      */}
+      <div className="pt-8">
+        <NewSpaceForm />
+      </div>
     </PageShell>
   );
 }
