@@ -7,9 +7,13 @@ import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 import { OpenQuestionNotice } from "@/app/(admin)/admin/manifesto/OpenQuestionNotice";
+import { SectionForm } from "@/app/(admin)/admin/manifesto/SectionForm";
 import { SectionStateBadge } from "@/app/(admin)/admin/manifesto/SectionStateBadge";
 import { SectionVoid } from "@/app/(admin)/admin/manifesto/SectionVoid";
+import type { FormatChoice } from "@/app/(admin)/admin/manifesto/refusals";
 import { PaletteSwatches } from "@/app/(admin)/admin/visual/PaletteSwatches";
+
+import { saveSection } from "@/app/(admin)/admin/visual/actions";
 
 import { readBrandPalette } from "@/lib/production/sections/tokens";
 import { VISUAL_ASSET_KIND_LABELS } from "@/lib/production/sections/vocabulary";
@@ -105,7 +109,20 @@ export default async function AdminVisualPage() {
   const supabase = await createClient();
 
   /*
-    THREE READS, AND EVERY EMBED CHECKED AGAINST ITS FOREIGN KEYS.
+    FOUR READS, AND EVERY EMBED CHECKED AGAINST ITS FOREIGN KEYS.
+
+    ⚠ It was three until plan 45-15, and the paragraph below said there was no
+    fourth. **The fourth is the CATALOGUE OF FORMATS** — needed by the form this
+    page now mounts, to offer *which format this clause belongs to*, whose
+    correct answer is often none. It is entitled independently of this section's
+    key (`formats_select_listed` is `USING (listed = true)`, unconditional), and
+    `color` is deliberately not selected: every format carries an identification
+    colour, and one drawn on the page whose subject IS the palette would be a
+    palette nobody decided.
+
+    **The prohibition the old paragraph carried is unchanged and is restated
+    below**: still no `venues`, no `event_parties`, no `production_space`. The
+    catalogue is not a venue table, and reversing a count is not relaxing a rule.
 
     An embed through a table with MORE THAN ONE relationship to the embedded
     table is answered by PostgREST with `HTTP 300 PGRST201`, and the failure is
@@ -124,9 +141,9 @@ export default async function AdminVisualPage() {
     embedded: who uploaded a photograph is a different question with a different
     audience.
 
-    ⚠ AND THERE IS NO FOURTH READ. No `venues`, no `event_parties`, no
-    `production_space` — see the docblock. The capitolato leaves the perimeter,
-    so what it can name is what will leave.
+    ⚠ AND THERE IS NO VENUE READ, IN ANY OF THE FOUR. No `venues`, no
+    `event_parties`, no `production_space` — see the docblock. The capitolato
+    leaves the perimeter, so what it can name is what will leave.
   */
   const { data: sectionRows, error: sectionError } = await supabase
     .from("production_section")
@@ -175,6 +192,31 @@ export default async function AdminVisualPage() {
     .order("taken_on", { ascending: false, nullsFirst: false });
 
   /*
+    THE CATALOGUE, FOR THE ONE SELECT THE FORM DRAWS.
+
+    `retired_at IS NULL` removes the fallback format, which exists only to hold
+    rows nobody classified; `sort_order` is the catalogue's own sequence. `color`
+    is not selected — see the paragraph above.
+
+    A failure here does not take the page down: the capitolato is the thing
+    somebody came for, and a document with one control degraded is still that
+    document. It is logged with its two fields, and the form says in its own
+    words that a clause can then only be recorded as belonging to the whole
+    brand.
+  */
+  const { data: formatRows, error: formatError } = await supabase
+    .from("formats")
+    .select("id, name")
+    .is("retired_at", null)
+    .order("sort_order", { ascending: true });
+
+  if (formatError) {
+    console.error(
+      `[visual.formats_read_failed] code=${formatError.code} message=${formatError.message}`
+    );
+  }
+
+  /*
     THREE OUTCOMES PER READ, NEVER TWO (OBS-03), AND THE THREE READS FAIL
     SEPARATELY.
 
@@ -218,6 +260,16 @@ export default async function AdminVisualPage() {
   const sections = (sectionRows ?? []) as unknown as SectionSelectRow[];
   const questions = (questionRows ?? []) as unknown as QuestionSelectRow[];
   const assets = (assetRows ?? []) as unknown as AssetSelectRow[];
+
+  /*
+    `null` and not `[]` when the catalogue could not be read, and the difference
+    is drawn: an empty list would say *there are no formats*, which is false, and
+    the form would offer an empty select instead of saying what it cannot do.
+  */
+  const formats: FormatChoice[] | null =
+    formatError || formatRows === null
+      ? null
+      : (formatRows as unknown as FormatChoice[]);
 
   /*
     The palette is read from the token file, not from the database and not from a
@@ -293,10 +345,56 @@ export default async function AdminVisualPage() {
                     ))}
                   </div>
                 ) : null}
+
+                {/*
+                  The correction sits under the clause it corrects, so the state
+                  on the screen and the state in the control are read together —
+                  and the control still chooses nothing.
+                */}
+                <div className="mt-4">
+                  <SectionForm
+                    save={saveSection}
+                    formats={formats}
+                    record={{
+                      id: row.id,
+                      title: row.title,
+                      format_id: row.format_id,
+                      state: row.state,
+                      body: row.body,
+                      missing: row.missing,
+                      decision_owner: row.decision_owner,
+                    }}
+                    noun="clause"
+                  />
+                </div>
               </Card>
             ))}
           </div>
         )}
+
+        {/*
+          ── THE AUTHORING HALF ──────────────────────────────────────────────
+
+          The act comes from THIS section's module, which asks THIS section's
+          key. The manifesto's module is not imported here and cannot be: the two
+          are separate files for that reason, because every export of a
+          `"use server"` module is a public endpoint.
+
+          ⚠ **The register is read on this page and written from the other.** A
+          brand-wide question appears here because it belongs to no single body
+          of rules; a question about this section's own clauses is opened where
+          its key is asked. Nothing on this page can open or close one, and the
+          reason it is written down is that the absence of a control looks like
+          an oversight from here.
+        */}
+        <div className="mt-4">
+          <SectionForm
+            save={saveSection}
+            formats={formats}
+            record={null}
+            noun="clause"
+          />
+        </div>
 
         {/*
           The palette sits INSIDE the capitolato, because that is what it is: one
@@ -497,10 +595,15 @@ function VisualReadFailed({ what }: { what: string }) {
 /**
  * The empty state — which is the state this section ships in.
  *
- * The tables were applied to production on 2026-08-17 and hold no rows. The
- * second sentence is not decoration: without it a missing editor reads as an
- * unfinished feature, and somebody builds the control instead of writing the
- * document.
+ * The tables were applied to production on 2026-08-17 and hold no rows.
+ *
+ * ⚠ **The second sentence used to say the writing was a later step. It is not
+ * any more**, and the copy is corrected rather than left standing: a sentence
+ * telling somebody a control does not exist, on a page where it does, is the
+ * same defect as a docblock that lies. What it says instead is the half that
+ * still holds — nothing is drawn here in the meantime, because a placeholder
+ * clause handed to an external designer would be the capitolato for whoever
+ * read it.
  */
 function NothingWrittenYet() {
   return (
@@ -509,9 +612,10 @@ function NothingWrittenYet() {
         No clause has been recorded yet
       </p>
       <p className="mt-1 text-sm text-muted">
-        This page reads; it does not write. Recording the capitolato — including
-        the clauses that will say they are undecided — is a later step, and
-        nothing is drawn here in the meantime.
+        Nothing is invented to fill the wait — no sample clause, no placeholder
+        rule, no palette borrowed from the one format that has one. The form
+        below records the first clause, in whichever of the three states you say
+        it is in.
       </p>
     </div>
   );
