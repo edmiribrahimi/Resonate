@@ -271,6 +271,48 @@ e non *cosa deve essere vero*.
 
 ---
 
+## DEF-45-08 — il registro si **legge** su quattro sezioni e si **scrive** da una
+
+**Trovata durante:** piano 45-15, Task 1.
+**Stato:** aperta. **Non e' un difetto di 45-15**: e' il perimetro che il piano
+dichiara, e la voce esiste perche' l'assenza di un controllo si legge come una
+dimenticanza dalla pagina che non ce l'ha.
+
+`production_open_question` ha **cinque archi `SELECT`** — manifesto, visual,
+location, calendar, e quello brand-wide per le righe senza sezione. Le quattro
+superfici lo leggono; il piano 45-15 gli da' **un solo percorso di scrittura**,
+nel modulo del manifesto, dietro la chiave del manifesto.
+
+**Conseguenza, misurabile:** una domanda che riguarda **solo** il capitolato
+visivo — *un format senza palette eredita quella del tramonto o resta neutro* —
+oggi si legge sulla pagina visual e non si puo' aprire da li'. Chi tiene solo la
+chiave del visual non ha modo di metterla nel registro.
+
+**Perche' non e' stata riparata qui.** Il piano 45-15 assegna il registro al
+modulo del manifesto e monta il suo form sulla sola pagina del manifesto. Dare al
+modulo visual i propri `openQuestion` / `closeQuestion` e' **due endpoint
+pubblici in piu'** e un allargamento di perimetro che il piano non chiede: va
+deciso, non aggiunto dentro l'esecuzione di un terzo.
+
+**Cosa 45-15 ha fatto invece, e va tenuto:** il modulo del manifesto **rifiuta**
+(`section_not_ours`) di aprire o chiudere una voce filata sotto una sezione che
+la sua chiave non legge. Senza quel controllo, chi tiene la chiave del manifesto
+avrebbe potuto piantare un avviso sulla pagina della location — una scrittura
+invisibile a chi la fa, che e' un fallimento silenzioso con sopra un messaggio di
+successo. La chiave scrive **solo** cio' che puo' rileggere.
+
+**Chi la possiede:** chi decide se ogni sezione tiene il proprio arco di
+scrittura sul registro. Due strade:
+
+1. **Un modulo di registro per chiave** — simmetrico e coerente con D-45-06, al
+   prezzo di due export in piu' per sezione.
+2. **Dichiarare che il registro si scrive da una sola sezione** — piu' stretto,
+   ma allora la pagina visual deve **dirlo** invece di lasciar credere che il
+   controllo manchi. (45-15 ha gia' scritto quella frase nella pagina, cosi' che
+   la strada 2 sia percorribile senza altro lavoro.)
+
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10 e 11.*
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10, 11 e 15.*
