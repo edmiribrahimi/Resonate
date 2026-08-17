@@ -54,4 +54,46 @@ invece di riscoprirlo a ogni onda.
 
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02.*
+## DEF-45-03 — **nessuno confronta le descrizioni delle capability**, e tre
+## documenti dicono il contrario
+
+**Trovata durante:** 45-05, Task 1.
+**Stato:** pre-esistente. Non introdotta da questo piano, ma resa piu' costosa da
+esso — le stringhe da tenere allineate passano da una a quattro.
+
+`src/lib/capabilities/keys.ts` (`:29-36`), la migration
+`20260817120000_production_section_keys.sql` (`:97-102`) e il piano 45-05
+affermano tutti e tre la stessa cosa: *«the only thing that compares them is
+`scripts/verify-capabilities.mjs`, which needs a live database»*.
+
+**Misurato:** `grep -n "description" scripts/verify-capabilities.mjs` restituisce
+**una sola riga**, ed e' un commento su `master.manage`. Il gate legge le
+`key` di `private.capabilities` e non tocca mai la colonna `description`. Quindi
+**nessun controllo, in nessun ambiente, con o senza credenziali, confronta il
+testo delle descrizioni.** La byte-identita' fra `CAP_DESCRIPTIONS` e la
+migration e' oggi una convenzione documentale al 100%, non un meccanismo
+parziale come i tre file lasciano credere.
+
+**Perche' conta, ed e' il pattern che `ai-engineering.md` chiama *Gate
+hallucination con un passaggio in piu'***: un documento derivato afferma una
+copertura che non esiste, e il lettore successivo eredita l'affermazione senza
+ereditarne la responsabilita'. E' peggio dell'assenza di controllo: chi legge
+quelle righe smette di rileggere le stringhe a mano, perche' crede che qualcuno
+lo faccia per lui.
+
+**Chi la possiede:** la fase che decide se il confronto va scritto. Due strade,
+e vanno pesate, non scelte qui:
+
+1. **Aggiungere un lato al gate** — confrontare `description` per chiave. Costa
+   poco e chiude il buco, ma allunga un check che ha gia' bisogno di un database.
+2. **Correggere le tre frasi** — dichiarare che la byte-identita' non e'
+   verificata da nulla. Costa niente e rende onesta la documentazione, ma lascia
+   quattro stringhe lunghe a divergere in silenzio.
+
+La riparazione **non** e' allentare la regola della byte-identita': e' l'unico
+motivo per cui una decisione di permesso si spiega con la stessa frase in
+entrambi i posti.
+
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piano 05.*
