@@ -313,6 +313,52 @@ scrittura sul registro. Due strade:
 
 ---
 
+## DEF-45-09 — **un documento esce dal perimetro e niente registra che sia
+## uscito**
+
+**Trovata durante:** piano 45-16, Task 2.
+**Stato:** aperta. **Non e' un difetto di 45-16**: e' il perimetro del piano, e
+la voce esiste perche' l'assenza si nota solo confrontando questo atto con tutti
+gli altri atti privilegiati della fase.
+
+Il piano 45-16 costruisce i due soli documenti che **lasciano il perimetro** — il
+manifesto va a chi entra in console, il capitolato al grafico esterno. Il braccio
+che li produce chiede la chiave della propria sezione e poi **non scrive niente
+da nessuna parte**: nessuna riga, nessuna colonna, nessun `console.log` che
+sopravviva alla richiesta. Se domani si scoprisse che un documento e' finito dove
+non doveva, **non esiste modo di sapere chi lo abbia prodotto ne' quando**.
+
+**Perche' l'asimmetria conta.** `community-membership.md` chiede che le
+operazioni privilegiate portino **chi** e **quando** — *«il percorso piu'
+semplice per far entrare qualcuno e' anche quello che va reso visibile»* — e i
+moduli di scrittura di 45-15 lo fanno: ogni riga porta `updated_by`. Qui la
+produzione di un documento che esce e' l'atto **meno** tracciato dei tre, e
+dovrebbe essere il piu'.
+
+**Perche' non e' stata riparata qui.** Tre ragioni, tutte fuori da questo piano:
+
+1. **Non c'e' una tabella.** Registrarlo vuol dire una migration nuova, che e'
+   una modifica strutturale — Rule 4, non Rule 2.
+2. **Non c'e' autorizzazione a scrivere in produzione** (D12), e le tre tabelle
+   di sezione sono vuote.
+3. **Un log non basterebbe.** Non esiste error tracking in questo progetto: una
+   riga di log e' un posto dove nessuno guarda, quindi un registro delle uscite
+   che vivesse solo li' sarebbe una tracciabilita' dichiarata e non esistente —
+   peggio dell'assenza, che almeno e' onesta.
+
+**Cosa 45-16 ha fatto invece, e va tenuto:** i due bracci **dichiarano
+l'assenza** nel proprio docblock, accanto al punto in cui qualcuno aggiungerebbe
+un identity check. Un controllo d'identita' che non protegge nessuna colonna
+sarebbe una cerimonia che lascia credere che qualcosa venga registrato: e' stato
+omesso di proposito e la ragione e' scritta li'.
+
+**Chi la possiede:** chi decide se la produzione di un documento che esce e' un
+atto da registrare. Se lo e', serve una tabella con **chi** e **quando** — e
+**mai il contenuto prodotto**, che porta prosa d'autore ed e' esattamente cio'
+che non deve moltiplicarsi.
+
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10, 11 e 15.*
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10, 11, 15 e 16.*

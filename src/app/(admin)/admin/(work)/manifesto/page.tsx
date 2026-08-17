@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { ExportPanel } from "@/app/(admin)/admin/manifesto/ExportPanel";
 import { OpenQuestionNotice } from "@/app/(admin)/admin/manifesto/OpenQuestionNotice";
 import { OpenQuestionForm } from "@/app/(admin)/admin/manifesto/OpenQuestionForm";
 import { SectionForm } from "@/app/(admin)/admin/manifesto/SectionForm";
@@ -18,6 +19,7 @@ import {
   openQuestion,
   saveSection,
 } from "@/app/(admin)/admin/manifesto/actions";
+import { exportSoundManifesto } from "@/app/(admin)/admin/manifesto/export-actions";
 
 import type {
   ProductionOpenQuestion,
@@ -422,6 +424,30 @@ export default async function AdminManifestoPage() {
           questions={questions}
           section="manifesto"
           sectionLabel="The sound manifesto"
+        />
+      </section>
+
+      {/*
+        ── THE HALF THAT LEAVES ──────────────────────────────────────────────
+
+        The act comes from THIS section's own arm, which asks THIS section's key
+        — a separate file from the write acts above and from the sibling
+        section's arm, because every export of a `"use server"` module is a
+        public endpoint.
+
+        ⚠ **The panel is drawn even while nothing has been recorded**, and that
+        is deliberate. Producing the document today yields a manifesto that says,
+        for every format, that nothing has been written — which is the true
+        answer and a useful one to hand to somebody, rather than an empty page
+        that looks like a failure. Hiding the control until a row exists would
+        also hide the sentence beside it, which is the one thing on this surface
+        that is about what happens after the file leaves.
+      */}
+      <section className="pt-8">
+        <ExportPanel
+          produce={exportSoundManifesto}
+          documentName="the sound manifesto"
+          handedTo="whoever goes to the console"
         />
       </section>
     </PageShell>
