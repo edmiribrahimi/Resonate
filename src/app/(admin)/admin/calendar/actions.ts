@@ -105,21 +105,39 @@ import type { ProductionPlan } from "@/types/database";
  * compiler sees it: **more than one `await assert…(` in one export is the
  * defect.**
  *
- * @throws `forbidden.production_read_required` — the answer is no.
+ * ── Renamed by plan 45-05, and the name is the whole reason ─────────────────
+ *
+ * This helper was `assertProductionRead` and asked `production.read`. Phase 45
+ * splits that key into four section keys (D-45-04) and the calendar takes its
+ * own, so the helper takes the key's name with it: **a helper called
+ * `assertProductionRead` that asks `production.calendar.manage` is a name that
+ * will be believed over the code it sits on**, by every reader who greps for the
+ * gate instead of opening it. The thrown category moves for the same reason —
+ * a refusal that names a retired key sends whoever reads it to the wrong row.
+ *
+ * ⚠ Nothing about WHO is refused changed. The same two roles hold the calendar
+ * before and after (D-45-04 constraint 3 forbids the grants from narrowing or
+ * widening), and until plan 45-08 applies
+ * `20260817120000_production_section_keys.sql` the database still holds
+ * `production.read` — which the additive migration deliberately leaves in place,
+ * so no entitled caller is refused at any instant of the sequence.
+ *
+ * @throws `forbidden.production_calendar_manage_required` — the answer is no.
  * @throws `capabilities.identity_missing` — the payload carried no `user_id`.
  */
-async function assertProductionRead(): Promise<{ userId: string }> {
+async function assertProductionCalendarManage(): Promise<{ userId: string }> {
   const { capabilities, userId } = await getAccessContext();
 
-  if (!capabilities.has(CAP.PRODUCTION_READ)) {
-    throw new Error("forbidden.production_read_required");
+  if (!capabilities.has(CAP.PRODUCTION_CALENDAR_MANAGE)) {
+    throw new Error("forbidden.production_calendar_manage_required");
   }
 
   if (!userId) {
     console.error(
-      "[capabilities.identity_missing] a caller holds production.read but " +
-        "my_access_context() returned no user_id. This is NOT a refusal on " +
-        "the merits — the migration adding user_id has not been applied."
+      "[capabilities.identity_missing] a caller holds " +
+        "production.calendar.manage but my_access_context() returned no " +
+        "user_id. This is NOT a refusal on the merits — the migration adding " +
+        "user_id has not been applied."
     );
     throw new Error("capabilities.identity_missing");
   }
@@ -368,9 +386,9 @@ async function resolveActorName(
 
   if (!name) {
     console.error(
-      "[calendar.actor_name_missing] a caller holds production.read and " +
-        "their profile carries no full name. The tick was NOT recorded: an " +
-        "unattributed tick is not a degraded tick."
+      "[calendar.actor_name_missing] a caller holds " +
+        "production.calendar.manage and their profile carries no full name. " +
+        "The tick was NOT recorded: an unattributed tick is not a degraded tick."
     );
     return { ok: false, reason: "actor_name_missing" };
   }
@@ -423,7 +441,7 @@ export async function tickChecklistItem(
   ticked: boolean
 ): Promise<ChecklistTickResult> {
   // Asked FIRST, and once. The client is constructed after it, never before.
-  const { userId } = await assertProductionRead();
+  const { userId } = await assertProductionCalendarManage();
 
   if (typeof itemId !== "string" || !UUID_PATTERN.test(itemId)) {
     return { ok: false, reason: "invalid_id" };
@@ -597,7 +615,7 @@ async function countOpenItems(
  */
 export async function announceNight(planId: string): Promise<AnnounceNightResult> {
   // Asked FIRST, and once. The client is constructed after it, never before.
-  const { userId } = await assertProductionRead();
+  const { userId } = await assertProductionCalendarManage();
 
   if (typeof planId !== "string" || !UUID_PATTERN.test(planId)) {
     return { ok: false, reason: "invalid_id" };

@@ -143,14 +143,37 @@ const DECLARED = [
   // not yet announced and spaces still under negotiation — so a reader who
   // never sees the link is not thereby refused the rows. Three things refuse a
   // door-assigned staff account, and none of them is the absence of a link:
-  // the middleware entry for `production.read`, the page's own guard, and the
-  // six RLS policies in `20260815120100_production_calendar_access.sql`. A
-  // surface whose whole content is a secret is exactly where somebody would be
-  // tempted to believe the menu is doing the work, so: it is not.
+  // the middleware entry for `production.calendar.manage`, the page's own
+  // guard, and the six RLS policies rewritten onto that key by
+  // `20260817120000_production_section_keys.sql` §3. A surface whose whole
+  // content is a secret is exactly where somebody would be tempted to believe
+  // the menu is doing the work, so: it is not.
   //
-  // `production.read`, and it ignores status (D-44-27) — unlike
+  // ── Re-keyed by plan 45-05, and NO TAB IS ADDED HERE ──────────────────────
+  //
+  // The capability moved from `production.read` to the calendar's own section
+  // key. One line, and the loop below is what makes it safe: it asks
+  // `resolveRoute` what the map says about this same address and throws at
+  // module load if the two disagree, so a tab left on the retired key would
+  // fail `next build` by name rather than draw a link nobody can follow.
+  //
+  // The three sibling sections get **no tab in this commit**, and the reason is
+  // the rule stated at the Formats entry above rather than a scheduling
+  // preference: `StaffTab.href` is `Route`, a static address enters the
+  // generated union only once a `page.tsx` serves it, and neither
+  // `/admin/manifesto`, `/admin/visual` nor `/admin/location` is on disk. The
+  // two workarounds are rejected in writing above and STAY rejected — they do
+  // not become acceptable because three tabs now want them instead of one.
+  // Plan 45-18 adds the three tabs, after their pages exist.
+  //
+  // `production.calendar.manage`, and it ignores status (D-44-27, carried
+  // unchanged through the split by D-45-04 constraint 3) — unlike
   // `catalogue.manage` on the line above, which `requires_approved`.
-  { href: "/admin/calendar", label: "Calendar", capability: CAP.PRODUCTION_READ },
+  {
+    href: "/admin/calendar",
+    label: "Calendar",
+    capability: CAP.PRODUCTION_CALENDAR_MANAGE,
+  },
   { href: "/admin/newsletter", label: "Newsletter", capability: CAP.ADMIN_ACCESS },
   // ── Finance and Analytics were removed here, and their pages with them ──────
   //

@@ -151,12 +151,23 @@ type Binding =
        */
       assignmentOpenable?: true;
       /**
-       * True when the key ALSO gates rows. **Six of the fourteen do**, counted
-       * on 2026-08-15 rather than remembered.
+       * True when the key ALSO gates rows. **Six of the seventeen do**,
+       * RE-COUNTED by reading this file on 2026-08-17 rather than by adding to
+       * the number that was printed here.
        *
-       * This line said *four* until that date, and had said it since plan 34-01
+       * The denominator moved and the numerator did not, which is exactly the
+       * case a reader would get wrong by arithmetic: phase 45 splits
+       * `production.read` into four section keys, and only ONE of the four —
+       * `production.calendar.manage` — carries the flag, because only that one
+       * has row-level policies today (the six `SELECT` arms of
+       * `20260817120000_production_section_keys.sql` §3). The other three gate
+       * rows that do not exist yet, so writing the flag on them would be a
+       * declaration ahead of its facts, which is the same lie in the opposite
+       * direction.
+       *
+       * This line said *four* until 2026-08-15, and had said it since plan 34-01
        * while two more entries acquired the flag — `catalogue.manage` in phase
-       * 36 and `production.read` in phase 44. A count in a comment is a claim
+       * 36 and the production key in phase 44. A count in a comment is a claim
        * nothing checks, and the flag is optional on this branch, so the one
        * mistake it invites is the one D-34-11 names: leaving it off and
        * producing no error at all. The number is corrected here rather than
@@ -172,12 +183,12 @@ type Binding =
     };
 
 /**
- * The fourteen keys, each accounted for.
+ * The seventeen keys, each accounted for.
  *
  * `as const satisfies` and not a type annotation, and the difference is the
- * whole second half of CAP-02: `satisfies` keeps the totality error (a
- * fifteenth key with no entry fails the build — it fired for the fourteenth,
- * `production.read`, in plan 44-04), while `as const` keeps each
+ * whole second half of CAP-02: `satisfies` keeps the totality error (an
+ * eighteenth key with no entry fails the build — it fired four times at once in
+ * plan 45-05, for the four section keys), while `as const` keeps each
  * `routes` array a tuple of string LITERALS instead of widening it to
  * `RoutePattern[]`. Without `as const` the union of listed routes widens to
  * `string` and `_everyStaffRouteIsBound` becomes a decoration.
@@ -493,8 +504,8 @@ export const CAPABILITY_ROUTES = {
   },
 
   /**
-   * The production calendar — phase 44, plan 04, moved to this branch by plan
-   * 44-09.
+   * The production CALENDAR section — phase 44, plan 04; moved to this branch by
+   * plan 44-09; **re-keyed by plan 45-05**, which is the only change here.
    *
    * ── The question this key answers ────────────────────────────────────────────
    *
@@ -505,42 +516,42 @@ export const CAPABILITY_ROUTES = {
    * the shape of an internal plan, which is why they have a key of their own and
    * not a fold into a broader one.
    *
-   * ── Why it is not `organizer.access`, and the reason is Phase 45 ─────────────
+   * ── The key was renamed and NOTHING ELSE MOVED, which is the point ──────────
    *
-   * Every account that reaches the calendar today also holds `organizer.access`,
-   * so binding these two addresses there would have compiled, worked, and cost
-   * nothing this week. It is refused because **a capability that nobody can be
-   * refused is a capability that cannot be taken away**: Phase 45 exists to give
-   * the production section a narrower audience than the whole of `/admin`, and a
-   * separation invented at that point is a migration plus an audit of every
-   * surface that inherited the wider key. Declared separately now, it is one row
-   * in `private.role_capabilities`. This is the same argument the
-   * `CATALOGUE_MANAGE` entry above makes for `/admin/formats`, arrived at from
-   * the other direction.
+   * This entry asked `production.read` until this commit. PROD-02 makes
+   * entitlement per SECTION, so the one key becomes four (D-45-04) and the
+   * calendar takes its own. **The routes are the same two, the flag is the same
+   * flag, and the reach of every role is identical before and after** — D-45-04
+   * constraint 3 forbids the grants from narrowing OR widening, so this is a
+   * rename with a declared reach and not a permission change wearing one.
    *
-   * ── THIS ENTRY CHANGED BRANCH, and the branch is the whole change ────────────
+   * A reader auditing *who could reach the calendar before, and who can reach it
+   * after* gets the same answer twice, and that is checkable rather than
+   * asserted: `scripts/verify-capabilities.mjs` declares both grants and both
+   * refusals for this key, against a live catalogue.
    *
-   * Plan 44-04 had to land the key here early, because the object below is
-   * `as const satisfies Record<CapabilityKey, Binding>` and a key in `CAP` with
-   * no entry is a build error. At that commit `scope: "table"` was the only TRUE
-   * declaration available: the key gated six tables and no address, because
-   * `/admin/calendar` was not on disk. **Plan 44-09 creates the page, so the
-   * entry moves** — exactly the move the `CATALOGUE_MANAGE` entry above records
-   * for `/admin/formats`, for the same reason.
+   * ⚠ **And it is a rename in the CODE only.** The database still holds
+   * `production.read` and none of the four, until plan 45-08 applies
+   * `20260817120000_production_section_keys.sql`. That migration is ADDITIVE —
+   * it leaves `production.read` and its two grants exactly where they are — so
+   * there is no instant at which an entitled master is refused. The retirement
+   * waits for the deploy and lands in plan 45-09.
    *
-   * The obligation that used to be written here is **discharged**, and the text
-   * is removed rather than left standing: a warning about work already done is
-   * how the next reader learns to skim the warnings. What it warned about is
-   * kept, in one line, because it is still the trap: a page bound to a
-   * `scope: "table"` key is unreachable **for everyone**, with no build error and
-   * nothing in a log, since `resolveRoute` returns `null` and the middleware
-   * fails closed.
+   * ── The branch: it stays where 44-09 put it ─────────────────────────────────
+   *
+   * `routes:`, because the two pages ARE on disk. The trap that used to be
+   * written here is still the trap and is now written on the three SIBLING
+   * entries below, where it applies: a page bound to a `scope: "table"` key is
+   * unreachable **for everyone**, with no build error and nothing in a log, since
+   * `resolveRoute` returns `null` and the middleware fails closed.
    *
    * `alsoGatesTables: true` is carried across and is **not** optional here. The
    * key does gate rows — the six `SELECT` policies of
-   * `20260815120100_production_calendar_access.sql` — and the flag is optional on
-   * this branch, so omitting it would have produced no error at all, just a
-   * declaration that lies by omission. That is the lie D-34-11 exists to prevent.
+   * `20260817120000_production_section_keys.sql` §3, which the additive migration
+   * rewrites onto this key — and the flag is optional on this branch, so omitting
+   * it would have produced no error at all, just a declaration that lies by
+   * omission. That is the lie D-34-11 exists to prevent, and carrying the flag
+   * across is the difference between a rename and a quiet loss of a fact.
    *
    * ── Two patterns, ONE entry ─────────────────────────────────────────────────
    *
@@ -550,32 +561,42 @@ export const CAPABILITY_ROUTES = {
    * and nothing below it. A second entry, or a second key, would be a **second
    * predicate**: the thing this whole module exists to have exactly one of.
    *
-   * **The ambiguity check, re-read rather than inherited.** `/admin/calendar` is
-   * two literal segments; the other two-segment `/admin/*` patterns —
-   * `/admin/scanner`, `/admin/newsletter`, `/admin/artists`, `/admin/venues`,
-   * `/admin/members`, `/admin/events`, `/admin/formats` — are all literal and all
-   * differ in their second segment. `/admin/calendar/[id]` is three segments with
-   * one dynamic tail; the other three-segment patterns are
-   * `/admin/venues/[slug]` (one dynamic, and its second segment is a different
-   * literal) and `/admin/members/register`, `/admin/members/growth`,
-   * `/admin/events/new` (zero dynamic, so the loop's `dynamicCount` guard skips
-   * them before it compares literals). No tie, on either.
+   * **The ambiguity check, RE-DERIVED and not inherited — and the derivation is
+   * short because the input did not change.** This commit adds **zero patterns**:
+   * the calendar's two travel across unedited, and the three keys below are on
+   * the branch that declares none. `COMPILED_PATTERNS` is therefore the same
+   * twenty-six it was, and `node scripts/verify-routes.mjs --print-patterns` is
+   * byte-for-byte identical before and after — measured, not assumed. A tie
+   * cannot be introduced by a set that did not grow.
+   *
+   * The per-pattern derivation still holds and is kept, because the next plan to
+   * add an address here will need it: `/admin/calendar` is two literal segments,
+   * and the other two-segment `/admin/*` patterns — `/admin/scanner`,
+   * `/admin/newsletter`, `/admin/artists`, `/admin/venues`, `/admin/members`,
+   * `/admin/events`, `/admin/formats` — are all literal and all differ in their
+   * second segment. `/admin/calendar/[id]` is three segments with one dynamic
+   * tail; the other three-segment patterns are `/admin/venues/[slug]` (one
+   * dynamic, and its second segment is a different literal) and
+   * `/admin/members/register`, `/admin/members/growth`, `/admin/events/new`
+   * (zero dynamic, so the loop's `dynamicCount` guard skips them before it
+   * compares literals). No tie, on either.
    *
    * ⚠ That check is worth the paragraph because of WHEN it fires. The throw at
    * the foot of this file runs at **module load inside a middleware bundle**, not
    * at `npm run build` — so a tie is not a broken page, it is a 500 on every
    * route the middleware covers, the payments webhook and the door's scan path
    * included. Which is why the deploy rule stands: ship on a day without a night,
-   * and make the first request yourself.
+   * and make the first request yourself. Plan 45-08 carries it.
    *
-   * ── The page arrives with this entry. The TAB does not. ─────────────────────
+   * ── The page arrived with this entry. The TAB followed. ─────────────────────
    *
-   * `staff-tabs.ts` gains its `Calendar` entry in plan 44-13, not here, and the
-   * order is forced rather than chosen: `StaffTab.href` is `Route`, and a static
-   * address enters the generated union only once a `page.tsx` serves it. Page
-   * first, tab second — the sequence `/admin/formats` already walked. A map entry
-   * whose page is not on disk is a plan not yet run; a TAB whose page is not on
-   * disk is refused by name at build time.
+   * `staff-tabs.ts` gained its `Calendar` entry in plan 44-13, and this commit
+   * only re-keys it. The order was forced rather than chosen: `StaffTab.href` is
+   * `Route`, and a static address enters the generated union only once a
+   * `page.tsx` serves it. Page first, tab second — the sequence `/admin/formats`
+   * already walked, and the sequence the three keys below still have to walk. A
+   * map entry whose page is not on disk is a plan not yet run; a TAB whose page
+   * is not on disk is refused by name at build time.
    *
    * ── The middleware is UX. The RLS is the boundary. ──────────────────────────
    *
@@ -591,9 +612,60 @@ export const CAPABILITY_ROUTES = {
    * promote this file to a security control, and nothing here should be read as
    * saying it does.
    */
-  [CAP.PRODUCTION_READ]: {
+  [CAP.PRODUCTION_CALENDAR_MANAGE]: {
     routes: ["/admin/calendar", "/admin/calendar/[id]"],
     alsoGatesTables: true,
+  },
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * The three sections whose pages are not on disk yet — phase 45, plan 05.
+   *
+   * ⚠ THE TRAP, WRITTEN INTO EACH OF THE THREE RATHER THAN ONCE ABOVE THEM.
+   * A page bound to a `scope: "table"` key is unreachable **for EVERYONE**:
+   * `resolveRoute` returns `null`, every caller must treat `null` as a refusal,
+   * and the middleware fails closed. There is **no build error** and **nothing in
+   * a log** — and this repository has no error tracking at all, so a surface that
+   * is down for everyone is a surface nobody learns is down except by opening it.
+   * The asymmetry `capability-routes.ts` records twice decides the order: a page
+   * on disk with no entry here is a build error; an entry whose page is not on
+   * disk is SILENT.
+   *
+   * So each of the three names **which plan moves it**, and the obligation is
+   * discharged there rather than remembered here:
+   *
+   *   · `production.location.manage`  → plan 45-11 creates `/admin/location`
+   *                                     (and `/admin/location/[id]`) and moves
+   *                                     this entry to the `routes:` branch.
+   *   · `production.manifesto.manage` → plan 45-12 creates `/admin/manifesto`.
+   *   · `production.visual.manage`    → plan 45-12 creates `/admin/visual`.
+   *
+   * None of the three carries `alsoGatesTables`, and that is a measured absence
+   * rather than an omission: their tables do not exist yet. The flag is added by
+   * the plan that adds the policies, in that plan's commit, for the reason
+   * D-34-11 gives — a declaration ahead of its facts is the same lie as a
+   * declaration behind them.
+   *
+   * `scope: "table"` is the only TRUE declaration available for a key that opens
+   * no page, and it is the same position `catalogue.manage` and the calendar key
+   * both occupied before their pages landed. Both moves are recorded above.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [CAP.PRODUCTION_MANIFESTO_MANAGE]: {
+    scope: "table",
+    reason:
+      "Opens no address YET: `/admin/manifesto` is not on disk, and plan 45-12 creates it and moves this entry to the `routes:` branch. Until then this key opens nothing for anybody — a page bound to a table-only key is unreachable for everyone, with no build error and nothing in a log.",
+  },
+
+  [CAP.PRODUCTION_VISUAL_MANAGE]: {
+    scope: "table",
+    reason:
+      "Opens no address YET: `/admin/visual` is not on disk, and plan 45-12 creates it and moves this entry to the `routes:` branch. Until then this key opens nothing for anybody — a page bound to a table-only key is unreachable for everyone, with no build error and nothing in a log.",
+  },
+
+  [CAP.PRODUCTION_LOCATION_MANAGE]: {
+    scope: "table",
+    reason:
+      "Opens no address YET: `/admin/location` and `/admin/location/[id]` are not on disk, and plan 45-11 creates them and moves this entry to the `routes:` branch. Until then this key opens nothing for anybody — a page bound to a table-only key is unreachable for everyone, with no build error and nothing in a log. This is the section whose rows carry a street address, so the direction of the failure matters: table-only refuses everybody, which is the safe direction to be wrong in.",
   },
 } as const satisfies Record<CapabilityKey, Binding>;
 

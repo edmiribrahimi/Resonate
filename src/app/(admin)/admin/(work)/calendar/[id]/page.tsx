@@ -38,11 +38,21 @@ import type {
  *
  * `admin` in the URL is an address, not an authorisation
  * (`nextjs-architecture.md`, gate *il gruppo non autorizza*). What decides is the
- * row `"/admin/calendar/[id]"` under `CAP.PRODUCTION_READ` in
+ * row `"/admin/calendar/[id]"` under `CAP.PRODUCTION_CALENDAR_MANAGE` in
  * `src/lib/routes/capability-routes.ts`, sitting in **one entry** beside its list
  * `"/admin/calendar"` — read by the middleware, by the guard below and by the
  * staff tab, so the three cannot disagree (D-34-09/D-34-10). Plan 44-09 wrote
- * that entry; **this plan adds no second entry and no second key.**
+ * that entry; **no plan since has added a second entry or a second key.**
+ *
+ * ── The key was renamed by plan 45-05, and the reach did not move ────────────
+ *
+ * This guard asked `production.read` until that commit. PROD-02 makes
+ * entitlement per SECTION, so the one key became four (D-45-04) and the calendar
+ * took its own. The same two roles reach this page before and after — D-45-04
+ * constraint 3 forbids the grants from narrowing or widening — and the database
+ * still holds `production.read` until plan 45-08 applies the additive migration,
+ * which leaves the old key and its grants in place precisely so that nobody is
+ * refused at any instant of the sequence.
  *
  * ⚠ `next build` would NOT have caught a missing row for this address. The
  * backward assertion `_everyStaffRouteIsBound` reads the GENERATED route union,
@@ -56,8 +66,8 @@ import type {
  *
  * The map decides where a **redirect** happens: it stops somebody arriving here.
  * It stops nobody reading a `production_plan` row. The boundary is the six
- * `SELECT` policies of `20260815120100_production_calendar_access.sql`, each
- * asking `private.has_capability('production.read')`.
+ * `SELECT` policies rewritten by `20260817120000_production_section_keys.sql`
+ * §3, each asking `private.has_capability('production.calendar.manage')`.
  *
  * **Which is why every read below goes through the cookie-bound client**, and why
  * this file constructs no service client. A read that bypasses the policy proves
@@ -181,7 +191,7 @@ export default async function CalendarNightPage({
   // redirect alone.
   const { capabilities } = await getAccessContext();
 
-  if (!capabilities.has(CAP.PRODUCTION_READ)) {
+  if (!capabilities.has(CAP.PRODUCTION_CALENDAR_MANAGE)) {
     redirect("/dashboard");
   }
 
