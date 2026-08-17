@@ -308,6 +308,42 @@ venue secrecy.
   recovering it later is a second import rather than new research. The
   neighbourhood constraint is absent from the source and stays out either way.
 
+- **D-45-24 [settles the address, and adds two columns]:** The address **enters
+  the product**, in a column of its own. *(Owner's choice over keeping only name
+  and neighbourhood with the street left in the local file, and over letting the
+  address arrive only at `acquired`.)* The researcher's narrower recommendation —
+  *"an address the product does not hold is an address the product cannot leak"* —
+  was put to the owner explicitly and not taken; the structural guarantees of
+  D-45-21 are therefore what carries the risk, and a plan must **demonstrate**
+  them rather than assert them.
+
+  **Two columns are added on the owner's request, and neither exists in the
+  source:**
+  1. **The hours the venue actually keeps.** A published fact. Absent from all
+     184 records — measured: no field, and only 26 notes even brush a time
+     expression under a deliberately permissive pattern.
+  2. **Whether they will discuss extended hours.** Absent, and **absent by
+     nature**: this is not published anywhere because it is not a fact, it is the
+     answer to a phone call. It is `venue-acquisition.md`'s fourth question —
+     *until what hour can you play* — which that module names as the one that
+     screens out the most candidates.
+
+  **Both are born `not asked`, in the shape the data already uses.** The five
+  existing to-verify attributes carry the literal value `verifica`; these two
+  join that family rather than inventing a second convention. **No crawl, no
+  inference and no default may ever fill column 2** — a derived value there is
+  precisely the *derived is not verified* failure, committed in the one column
+  built to prevent it.
+
+  **Measured context for why this matters:** the closest existing attribute,
+  evening viability, is `verifica` on **100 of 184 spaces**. More than half the
+  archive does not yet know whether an evening is possible at all. A surface that
+  renders that as blank would report ignorance as a negative.
+
+  **Deferred, not folded in:** researching the published opening hours for the
+  archive is real work and worth doing, but it does not gate this phase — the
+  column exists either way. See `<deferred>`.
+
 - **D-45-23 (not a decision — an authorisation consumed):** No hand-made `staff`
   account is needed. Two `member` accounts already exist and the production
   grants go only to `master` and `organizer`, so **criterion 4's refusal can be
@@ -564,6 +600,14 @@ rather than argued.
   `human_needed` items in phases 34, 35, 37–41.2, 43, 44 and 46** — plausible,
   out of scope, and **must not be claimed** by this phase's verification. If it
   turns out to help, that is a separate audit with its own evidence.
+- **Researching the published opening hours of the scouted archive** — the owner
+  offered a research pass while settling D-45-24. It is worth doing and it is
+  **not part of this phase**: the column exists whether or not it is populated,
+  so the work does not decide anything this phase builds. It is also only half a
+  job — the second new column, *will they discuss extended hours*, cannot be
+  researched at all and must stay `not asked` until somebody phones. Run it as
+  scouting work, against the local export, with the results going back into
+  `docs/` on the D-44-04 ritual — never into `.planning/`.
 - **A per-person section grant** — rejected in favour of role grants (D-45-02).
   The case that would reopen it is concrete: an external collaborator who should
   hold one section and nothing else.
