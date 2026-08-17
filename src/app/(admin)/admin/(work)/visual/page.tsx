@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import { ExportPanel } from "@/app/(admin)/admin/manifesto/ExportPanel";
 import { OpenQuestionNotice } from "@/app/(admin)/admin/manifesto/OpenQuestionNotice";
 import { SectionForm } from "@/app/(admin)/admin/manifesto/SectionForm";
 import { SectionStateBadge } from "@/app/(admin)/admin/manifesto/SectionStateBadge";
@@ -14,6 +15,7 @@ import type { FormatChoice } from "@/app/(admin)/admin/manifesto/refusals";
 import { PaletteSwatches } from "@/app/(admin)/admin/visual/PaletteSwatches";
 
 import { saveSection } from "@/app/(admin)/admin/visual/actions";
+import { exportVisualCapitolato } from "@/app/(admin)/admin/visual/export-actions";
 
 import { readBrandPalette } from "@/lib/production/sections/tokens";
 import { VISUAL_ASSET_KIND_LABELS } from "@/lib/production/sections/vocabulary";
@@ -409,9 +411,30 @@ export default async function AdminVisualPage() {
         </Card>
       </section>
 
-      <section>
+      <section className="pb-6">
         <SectionHeading>The archive</SectionHeading>
         <AssetList assets={assets} />
+      </section>
+
+      {/*
+        ── THE HALF THAT LEAVES ──────────────────────────────────────────────
+
+        The act comes from THIS section's own arm, which asks THIS section's key
+        — a separate file from the write act above and from the sibling
+        section's arm, because every export of a `"use server"` module is a
+        public endpoint.
+
+        ⚠ **The archive is NOT part of what leaves.** The panel below produces
+        the capitolato: the rules and the palette. An artist's photograph is
+        material, not brief, and the serialiser does not read the asset table at
+        all — which is why nothing here has to remember to leave it out.
+      */}
+      <section>
+        <ExportPanel
+          produce={exportVisualCapitolato}
+          documentName="the capitolato"
+          handedTo="the external designer"
+        />
       </section>
     </PageShell>
   );
