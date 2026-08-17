@@ -161,20 +161,41 @@ const ARCHIVE_REASON_TEXT: Record<string, string> = {
  * `VisualAssetRefusal` without a sentence here is an `npm run build` error —
  * which is the only part of this contract a compiler can hold in a repository
  * with no test runner.
+ *
+ * ⚠⚠ **EVERY ONE OF THESE FIRES AFTER THE BYTES ARE IN THE ARCHIVE, and each
+ * sentence has to say so.** Step 3 of `submit` is the only caller, and it runs
+ * only once the finalize arm has answered `ok` — which means the picture has
+ * been stripped, written into `visual-archive` and its holding copy removed. A
+ * refusal here therefore leaves an OBJECT WITH NO ROW.
+ *
+ * These sentences used to open with *«Nothing was recorded»*. That is true of the
+ * row and false of the world, and it is read as *nothing happened* by the person
+ * in front of it — who then does the one thing that makes it worse, which is
+ * upload the picture again. It is the newsletter defect recorded in
+ * `.planning/codebase/CONCERNS.md` in its other form: not an error swallowed, an
+ * error DESCRIBED WRONG, with a persistent effect behind it.
+ *
+ * The reason it matters more than a wording: an object no row names is reachable
+ * by nothing in this product. `production_visual_asset` is only ever inserted
+ * into and selected from, the archive bucket has no sweep, and *removal stays
+ * possible* is a capacity of the service role rather than a function anybody
+ * holding this section's key can reach. So an orphan is a photograph of a
+ * recognisable person that cannot be taken out of the product — and telling
+ * somebody is the whole of the remedy, which is why every sentence ends there.
  */
 const RECORD_REASON_TEXT: Record<VisualAssetRefusal, string> = {
   invalid_kind:
-    "Nothing was recorded. Say whether this is a photograph of an artist or a produced piece. There is no default: guessing files a press photo where finished artwork goes, and neither is found again by whoever needs it.",
+    "The picture is IN THE ARCHIVE and no entry was written for it, so nothing on this page can find it again -- tell somebody, and do not upload it a second time. The cause: nobody said whether this is a photograph of an artist or a produced piece, and there is no default. This form is meant to refuse before sending in that case, so reaching this sentence is itself worth reporting.",
   object_key_missing:
-    "Nothing was recorded. The picture reached the archive but the app lost track of where -- reload the page before uploading it again, and tell somebody if it happens twice.",
+    "The picture MAY be in the archive and no entry was written for it: the app lost track of where it was put, so this page cannot tell you which of the two states you are in. Reload before uploading it again, and tell somebody if it happens twice.",
   artist_name_missing:
-    "Nothing was recorded. A photograph of an artist needs the artist's name: the archive is looked up BY NAME on the Monday before a Tuesday listing, and a picture nobody can look up is stored rather than archived.",
+    "The picture is IN THE ARCHIVE and no entry was written for it, so nothing on this page can find it again -- tell somebody, and do not upload it a second time. The cause: a photograph of an artist needs the artist's name, because the archive is looked up BY NAME on the Monday before a Tuesday listing. This form is meant to refuse before sending in that case, so reaching this sentence is itself worth reporting.",
   invalid_format_id:
-    "Nothing was recorded. The format could not be identified. A photograph may belong to no format at all -- it belongs to the artist -- but it cannot belong to one this page cannot name.",
+    "The picture is IN THE ARCHIVE and no entry was written for it, so nothing on this page can find it again -- tell somebody, and do not upload it a second time. The cause: the format could not be identified. A photograph may belong to no format at all -- it belongs to the artist -- but it cannot belong to one this page cannot name.",
   invalid_taken_on:
-    "Nothing was recorded. That is not a calendar date. Leaving it empty is fine and common: an archive built from press photos often does not know when they were taken, and a guessed date is worse than none.",
+    "The picture is IN THE ARCHIVE and no entry was written for it, so nothing on this page can find it again -- tell somebody, and do not upload it a second time. The cause: that is not a calendar date. Leaving it empty is fine and common -- an archive built from press photos often does not know when they were taken, and a guessed date is worse than none.",
   write_failed:
-    "Nothing was recorded. The picture is in the archive but its entry was not written, so it will not appear in the list. Tell somebody rather than uploading it again.",
+    "The picture is IN THE ARCHIVE and its entry was not written, so it will not appear in the list and nothing on this page can find it again. Tell somebody rather than uploading it again: a second upload files a second copy that nothing names either.",
 };
 
 /** What the picker has accepted, before anything is sent. */
@@ -194,6 +215,57 @@ interface ArchiveUploadProps {
     format_id: string;
     taken_on: string;
   }) => Promise<VisualAssetResult>;
+}
+
+/**
+ * What is still missing before a single byte may leave the device, as the
+ * sentence to show — or `null` when nothing is.
+ *
+ * ── WHY A GUARD EXISTS HERE AT ALL ──────────────────────────────────────────
+ *
+ * The sequence in `submit` deposits, strips and writes into the archive BEFORE
+ * the row is validated, and the holding copy is removed on the way. So a refusal
+ * at step 3 does not undo step 2: it leaves an object in a private bucket that no
+ * row names, no surface enumerates and no sweep collects. Two of the six causes
+ * were reachable by simply not answering *What is it?* — which made *forgetting a
+ * field* and *creating an object nobody can ever remove* the same gesture.
+ *
+ * ── AND WHY IT IS SHAPED LIKE THIS ONE AND NOT INVENTED ─────────────────────
+ *
+ * `OpenQuestionForm.tsx` already does exactly this: an `incomplete` computed from
+ * the required fields, handed to its own submit control's `disabled`. That form
+ * also records the limit of the technique, and it holds here unchanged — **this
+ * takes nothing outside this card out of service.** It is one control refusing to
+ * send an incomplete thing, not a surface blocking work: a block that fires under
+ * deadline is a block somebody routes around.
+ *
+ * ── IT RETURNS THE SENTENCE, NOT A BOOLEAN ──────────────────────────────────
+ *
+ * A disabled button with no sentence beside it is a surface that says no without
+ * saying what for, and this product has no error tracking: the sentence on the
+ * screen is the whole of the observable effect. One cause, one sentence — the
+ * same rule the two maps above keep.
+ *
+ * ⚠ The date and the format are NOT checked here. Both come from controls that
+ * can only produce a valid value or an empty one, so a check would be a second
+ * copy of `validateVisualAsset`'s rules living in a component and drifting from
+ * it. They remain reachable by a tampered page, and the sentences for them now
+ * say what exists when they fire.
+ */
+function whatIsMissing(
+  picked: PickedPhoto | null,
+  kind: VisualAssetKind | "",
+  artistName: string
+): string | null {
+  if (picked === null) return "Choose a picture to enable this.";
+
+  if (kind === "")
+    return "Say what it is before this can be filed. There is no default: guessing files a press photo where finished artwork goes, and neither is found again by whoever needs it.";
+
+  if (kind === "dj_photo" && artistName.trim() === "")
+    return "A photograph of an artist needs the artist's name before it is filed. The archive is looked up BY NAME on the Monday before a Tuesday listing, and a picture nobody can look up is stored rather than archived.";
+
+  return null;
 }
 
 /** The extension for a key, from the name if it has one and from the type if not. */
@@ -222,6 +294,12 @@ export function ArchiveUpload({ formats, record }: ArchiveUploadProps) {
   const [takenOn, setTakenOn] = useState("");
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+
+  const artistRequired = kind === "dj_photo";
+
+  /** The one guard, read by the button and asked again inside `submit`. */
+  const missing = whatIsMissing(picked, kind, artistName);
+  const incomplete = missing !== null;
 
   const choose = useCallback((files: FileList | null) => {
     setOutcome(null);
@@ -262,6 +340,22 @@ export function ArchiveUpload({ formats, record }: ArchiveUploadProps) {
 
   const submit = async () => {
     if (picked === null || busy) return;
+
+    /*
+      The same guard the button reads, asked again — because `disabled` is a
+      property of a rendered control and not a boundary. It survives no reload,
+      no devtools and no stale render, and what is on the other side of it here
+      is not a rejected form: it is an object written into a private bucket that
+      nothing in this product can name again.
+
+      It answers with the sentence rather than returning quietly. A control that
+      does nothing when pressed is the silent failure this file's header refuses
+      twice over.
+    */
+    if (missing !== null) {
+      setOutcome({ tone: "crit", message: missing });
+      return;
+    }
 
     setBusy(true);
     setOutcome(null);
@@ -426,8 +520,6 @@ export function ArchiveUpload({ formats, record }: ArchiveUploadProps) {
     router.refresh();
   };
 
-  const artistRequired = kind === "dj_photo";
-
   return (
     <Card>
       <h3 className="text-base font-semibold text-ink">Add to the archive</h3>
@@ -551,14 +643,17 @@ export function ArchiveUpload({ formats, record }: ArchiveUploadProps) {
           and it would be the wrong one.
         </p>
 
-        <Button className="w-full" onClick={submit} disabled={picked === null || busy}>
+        <Button className="w-full" onClick={submit} disabled={incomplete || busy}>
           {busy ? "Filing..." : "File it"}
         </Button>
-        {picked === null ? (
-          <p className={`text-center ${SENTENCE}`}>
-            Choose a picture to enable this.
-          </p>
-        ) : null}
+        {/* The sentence beside the inert control, and it names WHICH answer is
+            missing. A control disabled without one is a surface saying no
+            without saying what for -- and here the thing on the far side of the
+            press is irreversible, so the person deserves to know before they
+            press rather than after. */}
+        {missing === null ? null : (
+          <p className={`text-center ${SENTENCE}`}>{missing}</p>
+        )}
       </div>
 
       <OutcomeLine outcome={outcome} />
