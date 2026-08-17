@@ -165,16 +165,33 @@ function selfCheck() {
 /**
  * `{ section, tables[] }`, one entry per production section.
  *
- * Today it holds one section: the calendar, with the six `production_*` tables
- * whose SELECT policies `20260815120100_production_calendar_access.sql` created.
- * The three authored sections of Phase 45 join it as three more entries **when
- * their tables exist** — not before. A table named here that the database does
- * not carry is a REFUSAL for its row: not a pass, and not a failure.
+ * It held one section — the calendar, with the six `production_*` tables whose
+ * SELECT policies `20260815120100_production_calendar_access.sql` created. The
+ * condition written here for the others joining was **when their tables exist**,
+ * not before, and that condition was met on 2026-08-17: plan 45-08 applied
+ * `20260817120100_production_location.sql` and
+ * `20260817120200_production_sections.sql` (the five tables) and
+ * `20260817120300_production_sections_access.sql` (their arms), read back from
+ * `pg_class` and `pg_policies`. The four entries below are that row-not-a-script
+ * change. A table named here that the database does not carry is a REFUSAL for
+ * its row: not a pass, and not a failure.
  *
- * Five of the six carry zero rows today; `production_pipeline_rule` carries the
- * sixteen rows saying which pieces a format owes. That is why five rows of this
- * run are expected to refuse and one is expected to discriminate — and why the
- * expectation is written here rather than discovered by somebody reading a red.
+ * ⚠ WHAT THIS RUN CAN AND CANNOT SAY, AND THE TWO ARE DIFFERENT SENTENCES.
+ * `production_pipeline_rule` carries the sixteen rows saying which pieces a
+ * format owes, and it is the ONE row of this instrument that discriminates. The
+ * other five calendar tables and ALL FIVE NEW ONES carry zero rows, so the
+ * entitled answer and the unentitled answer are byte-identical there and the
+ * honest report is REFUSED — not measured. Seeding early to turn those into
+ * passes is not available: the seed is authorisation A3 and plan 45-10.
+ *
+ * ⚠ AND ONE TABLE IS NOT ONE ARM. `production_section` carries BOTH authored
+ * sections, distinguished by its `section` column and armed twice, by column;
+ * `production_open_question` spans all four sections and carries FIVE arms — one
+ * per section plus the brand-wide one for the null. Ten arms over five tables,
+ * read back from `pg_policies` on 2026-08-17. This instrument counts TABLES, so
+ * its row count is not the arm count, and neither number stands in for *a viewer
+ * holding one section is refused the others* — which under D-45-03 has no subject
+ * in production and is closed by procedure P1 in a throwaway environment.
  */
 const SECTION_TARGETS = [
   {
@@ -188,6 +205,26 @@ const SECTION_TARGETS = [
       "production_import_run",
       "production_pipeline_rule",
     ],
+  },
+  {
+    section: "location",
+    note: "the narrowest-audience section in intent (D-45-24): every row is a space nobody has phoned, and one column is a street address. Two tables, one arm each, both asking production.location.manage",
+    tables: ["production_space", "production_space_attribute"],
+  },
+  {
+    section: "manifesto and visual",
+    note: "ONE table holding BOTH authored sections, distinguished by its section column and armed TWICE — production.manifesto.manage on the manifesto rows, production.visual.manage on the visual ones. The two arms are disjoint on that column, so their OR admits each row to the holder of that row's key and to nobody else",
+    tables: ["production_section"],
+  },
+  {
+    section: "visual",
+    note: "the produced pieces and the photograph archive a listing is pulled from. One arm, asking production.visual.manage. The BYTES those rows point at are a separate question with a separate answer — the private bucket of 20260817120400_visual_archive_bucket.sql",
+    tables: ["production_visual_asset"],
+  },
+  {
+    section: "the register, which spans all four",
+    note: "FIVE arms on one table: one per section, each asking that section's own key, plus the brand-wide arm written with IS NULL because section = 'x' on a null column is NULL and would have made the register's most general entries invisible to everybody with no error anywhere",
+    tables: ["production_open_question"],
   },
 ];
 
@@ -579,11 +616,22 @@ console.log(
     "\n" +
     "    What CAN be proven, and it is a different sentence, is that **the policies ask\n" +
     "    different keys** — read from `pg_policies`, through the Management API, which is\n" +
-    "    a catalogue read and not a session. Today that sentence is not yet true either:\n" +
-    "    all six calendar policies ask ONE key, because the split of D-45-04 has not been\n" +
-    "    applied. It becomes measurable after that migration, and this instrument is\n" +
-    "    built before the split precisely so the split has a baseline to be compared\n" +
-    "    against."
+    "    a catalogue read and not a session. That sentence became TRUE on 2026-08-17, when\n" +
+    "    plan 45-08 applied the split: the six calendar arms ask production.calendar.manage\n" +
+    "    and the ten arms on the five new tables ask four different section keys, all read\n" +
+    "    back from pg_policies and recorded in 45-08-SUMMARY.md.\n" +
+    "\n" +
+    "    ⚠ AND IT IS STILL NOT CRITERION 1. *Four policies name four different keys* is a\n" +
+    "    STRUCTURAL fact about the catalogue; *a viewer holding one section is refused the\n" +
+    "    others* is a fact about a subject, and the paragraph above says there is no such\n" +
+    "    subject in production to ask. Do not let the first stand in for the second: that\n" +
+    "    substitution is what procedure P1 exists to refuse, in a throwaway environment.\n" +
+    "\n" +
+    "    (This paragraph was corrected AFTER the authorised run of 2026-08-17 and the\n" +
+    "    instrument was deliberately NOT re-run to observe the new text: a second run is a\n" +
+    "    second session minted on a real person's identity, which is a second act and needs\n" +
+    "    a second authorisation. The transcript that authorisation bought is the one in\n" +
+    "    45-08-SUMMARY.md, and it carries the old wording — which is the honest record.)"
 );
 console.log("");
 
