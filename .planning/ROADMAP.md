@@ -1124,7 +1124,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 45-17-PLAN.md — The dj photo archive, on the upload path that already strips
+- [x] 45-17-PLAN.md — The dj photo archive, on the upload path that already strips
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
