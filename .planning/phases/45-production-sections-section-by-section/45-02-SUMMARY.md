@@ -2,7 +2,7 @@
 phase: 45-production-sections-section-by-section
 plan: 02
 subsystem: verification-instruments
-status: paused-at-checkpoint
+status: complete
 tags: [rls, capability-model, refusal-evidence, read-only, auth-session, verify-gates]
 requires:
   - "@supabase/supabase-js ^2.97.0 (gia' dipendenza)"
@@ -33,10 +33,13 @@ decisions:
   - "SECTION_TARGETS parte con le sei tabelle del calendario e cresce di RIGHE, non di script"
   - "NEEDS_AUTHORISATION e' una quarta lista, non una quarta voce: un permesso non e' una precondizione"
   - "Il client del piano anonimo non scambia mai un token — verifyOtp assegna la sessione al client che lo chiama"
+  - "Autorizzazione a coniare due sessioni: chiesta, concessa e SPESA il 2026-08-17 — ora esaurita"
 metrics:
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   completed: 2026-08-17
+  authorised_runs_spent: 1
+  run_exit_code: 2
 ---
 
 # Fase 45 Piano 02: lo strumento che entra come un ruolo vero — Summary
@@ -45,9 +48,9 @@ Il primo strumento di questo repository che si autentica come un ruolo reale, co
 l'asserzione costruita come una **coppia** perche' su una tabella vuota la
 risposta di chi ha la chiave e quella di chi non ce l'ha sono identiche.
 
-**Stato: fermo al checkpoint del Task 3.** Nessuna sessione e' stata coniata,
-nessuna chiamata all'auth API e' partita, e l'autorizzazione del proprietario non
-e' stata chiesta ne' spesa.
+**La coppia ha tenuto sull'unica tabella che oggi porta righe**, e le altre cinque
+hanno rifiutato invece di riportare un verde su un confronto che non poteva
+discriminare. Exit `2`, che e' l'esito corretto.
 
 ---
 
@@ -146,10 +149,12 @@ che il proprietario ha autorizzato quella seduta.
 | `grep -c "verify:refusal" package.json` | **1** |
 | `npm run build` | **exit 0**, due volte (dopo Task 1 e dopo Task 2) |
 | `npm run verify` | nomina `verify:refusal` con la sua ragione, **non lo esegue**, e il conteggio riconcilia **20 dichiarate / 20 rendicontate**. **Esce 2, non 0** — vedi la deviazione qui sotto |
+| il run autorizzato | **exit 2**, come atteso. Coppia tenuta su `production_pipeline_rule` (`16 / 0 / 0`), cinque righe RIFIUTATE, entrambe le revoche verificate `false`. Transcript verbatim piu' sotto |
 
 **Cosa un verde NON significa.** Un exit 0 da `--help` non misura nulla su una
-policy: dichiara un contratto. E l'unica prova che le sei policy *rifiutino* e'
-il run del Task 3, che non e' avvenuto.
+policy: dichiara un contratto. E il `2` del run non e' un fallimento — e' la misura
+che si rifiuta di mentire su cinque tabelle vuote, mentre sulla sesta dice qualcosa
+che nessuno strumento di questo repository aveva mai potuto dire.
 
 ---
 
@@ -193,7 +198,9 @@ semplificazione che qualcuno rimuoverebbe.
 
 ---
 
-## Il checkpoint — Task 3, non iniziato
+## Task 3 — l'autorizzazione, e il run che l'ha spesa
+
+### L'atto
 
 Il Task 3 e' `checkpoint:human-action`, `gate="blocking"`, e chiede **il permesso
 di coniare una sessione sull'identita' di una persona reale**. Questo progetto
@@ -202,15 +209,158 @@ spesi** (`ai-engineering.md`, *gate l'autorizzazione a scrivere in produzione e'
 un atto*; il precedente registrato e' P6 della fase 38, dove l'executor si e'
 fermato prima ancora dello snapshot).
 
-**Autorizzazione: NON CHIESTA, NON CONCESSA, NON SPESA.** Nessuna chiamata
-all'auth API e' partita da questo piano. Il ramo `--help` e' l'unico che ha girato
-e non contatta nulla.
+| | |
+|---|---|
+| **Chiesta** | 2026-08-17, con i quattro punti misurati posti al proprietario prima della risposta |
+| **Risposta del proprietario** | «Autorizzato, un run adesso» |
+| **Data dell'atto** | 2026-08-17 |
+| **Ambito concesso** | `scripts/verify-refusal.mjs`, questa seduta, **un solo run**. Due sessioni coniate via magic-link — indirizzo master e un indirizzo member. **Sola lettura**: conteggi con `head: true`, nessun verbo di scrittura. Global signout finale su entrambe come prova di revoca, con il proprietario avvisato che i due indirizzi vengono disconnessi ovunque e dovranno rientrare |
+| **Non autorizzato** | riseminare, ripetere il run, fabbricare un soggetto di prova (D-45-23 lo vieta), qualunque scrittura |
+| **Stato** | **SPESA. Un run eseguito, esito registrato qui. L'autorizzazione e' esaurita e non copre un secondo run.** |
 
-Quando l'autorizzazione arrivera', va registrata qui con la sua data e il suo
-ambito esatto — **questo strumento, questa seduta** — e solo dopo si esegue
-`npm run verify:refusal` **una volta**. Il transcript va riportato verbatim. Non
-si ri-esegue per «ottenere un verde»: un 2 da una tabella vuota e' la misura che
-si rifiuta di mentire.
+**Nessuna riga e' stata toccata.** Ogni chiamata del run e' un conteggio
+`head: true`, che non restituisce righe e non ne scrive. L'obbligo della rimozione
+per chiave primaria non si applica perche' non e' stata creata alcuna riga: non
+c'e' nessun ID da catturare e nessun contatore di controllo da chiedere a una
+seconda fonte. Se lo strumento avesse scritto, non sarebbe partito — il self-check
+sulla propria sorgente gira prima di tutto il resto.
+
+### Come e' stato invocato, e perche' non e' stato `npm run verify:refusal` nudo
+
+```
+node --env-file=/Users/etiesse/Resonate/.env.local scripts/verify-refusal.mjs
+```
+
+Un worktree non ha `.env.local`: il file e' gitignored e vive nel checkout
+principale. Lo strumento legge le credenziali da `${ROOT}/.env.local` **quando c'e'**
+e altrimenti dall'ambiente — la stessa scelta, e la stessa ragione, di
+`rls-baseline.mjs:190-204`: *rifiutare in un worktree sarebbe rifiutare per la
+ragione sbagliata*. `--env-file` popola l'ambiente prima che lo script parta, e lo
+script prende il ramo che gia' documentava. **E' lo stesso comando che
+`package.json` registra, con l'ambiente fornito da un'altra porta** — non una
+variante dello strumento.
+
+### Il transcript, verbatim
+
+```
+verify-refusal — what the production policies do to a signed-in subject
+               holding none of their keys.
+
+  0 = the pair held  ·  1 = FAILED  ·  2 = REFUSED, and nothing was measured.
+  A refusal is not a failure, and a 2 on an empty table is the honest outcome.
+
+  ── the declared targets ───────────────────────────────────────────────
+
+    section: calendar
+      the fourth section (D-45-04). Six tables, one SELECT policy each, every qual asking the same key today
+      · production_plan
+      · production_piece
+      · production_commitment
+      · production_checklist_item
+      · production_import_run
+      · production_pipeline_rule
+
+  ── the four disciplines ───────────────────────────────────────────────
+
+    1. read-only by construction, checked against this file's own source before anything else runs
+    2. the assertion is a PAIR per table; a silent positive control REFUSES (exit 2) and never passes
+    3. every minted session is revoked globally, and the revocation is re-read rather than assumed
+    4. no token, no email and no row is printed — roles, table names, counts and outcomes only
+
+  ── the subjects ───────────────────────────────────────────────────────
+
+    master      the positive control — holds the key
+    member      the refusal — a real auth.uid(), a real profile, no grant
+    anonymous   the floor — the anon key and no session at all
+
+  ── minting ────────────────────────────────────────────────────────────
+
+    master      session minted
+    member      one member profile resolved
+    member      session minted
+    anonymous   no session — the anon key alone
+
+
+  ══ VERDICT: REFUSED — 5 of 6 rows measured NOTHING. ══
+     This is not a pass and it is not a defect to repair: on a table holding zero
+     rows the entitled answer and the unentitled answer are identical, so the pair
+     cannot discriminate and the honest report is that the measurement did not
+     happen. Re-running it will not change that. Importing the calendar will.
+
+  ── the pair, per table ────────────────────────────────────────────────
+
+    table                         master  member   anon  outcome
+    production_plan                    0       0      0  REFUSED — the positive control is silent, so the measurement did not happen
+      section: calendar
+    production_piece                   0       0      0  REFUSED — the positive control is silent, so the measurement did not happen
+      section: calendar
+    production_commitment              0       0      0  REFUSED — the positive control is silent, so the measurement did not happen
+      section: calendar
+    production_checklist_item          0       0      0  REFUSED — the positive control is silent, so the measurement did not happen
+      section: calendar
+    production_import_run              0       0      0  REFUSED — the positive control is silent, so the measurement did not happen
+      section: calendar
+    production_pipeline_rule          16       0      0  pair held — entitled reads, unentitled reads nothing
+      section: calendar
+
+  ── the count ──────────────────────────────────────────────────────────
+
+    rows declared                    6
+    rows where the pair held         1
+    rows REFUSED — not measured      5
+
+  ── revocation, re-read rather than assumed ────────────────────────────
+
+    master     signed out globally · token still resolves to a user: false
+    member     signed out globally · token still resolves to a user: false
+
+  ── what this instrument CANNOT close ──────────────────────────────────
+
+    Success criterion 1 — *a viewer holding one section is refused the others*.
+    Under D-45-03 all three new section keys go to master AND organizer, and the
+    calendar key goes to the same two roles. **No subject exists in production for
+    whom that refusal happens**, and D-45-23 forbids fabricating one. This run
+    therefore says nothing about criterion 1, and a reader must not let its exit
+    code stand in for one.
+
+    What CAN be proven, and it is a different sentence, is that **the policies ask
+    different keys** — read from `pg_policies`, through the Management API, which is
+    a catalogue read and not a session. Today that sentence is not yet true either:
+    all six calendar policies ask ONE key, because the split of D-45-04 has not been
+    applied. It becomes measurable after that migration, and this instrument is
+    built before the split precisely so the split has a baseline to be compared
+    against.
+```
+
+**Exit code: `2`, riportato com'e' caduto.** Era l'atteso, ed e' l'esito corretto.
+Lo strumento non e' stato toccato per farlo tornare un altro numero, e il run non
+e' stato ripetuto.
+
+### Cosa dice questo transcript, riga per riga
+
+- **`production_pipeline_rule` — la coppia ha tenuto.** Master `16`, member `0`,
+  anonimo `0`. E' **la prima prova di rifiuto che questo progetto abbia mai
+  avuto**: un soggetto firmato, con un `auth.uid()` vero e una riga di profilo
+  vera, che chiede la stessa identica query di chi ha la chiave e riceve zero
+  righe. Non un `42501` — un `200` con niente dentro, che e' precisamente la forma
+  per cui la coppia esiste.
+- **Le altre cinque — RIFIUTATE, non misurate.** Il controllo positivo e' muto
+  perche' quelle tabelle portano zero righe: l'import del calendario non e' mai
+  stato eseguito contro produzione. Su una tabella vuota la risposta di chi ha la
+  chiave e quella di chi non ce l'ha sono identiche, quindi la coppia non puo'
+  discriminare e l'unica cosa onesta e' dire che la misura non e' avvenuta. **Non
+  e' un difetto da riparare, e ri-eseguirlo non lo cambia.**
+- **Entrambe le revoche sono verificate, non assunte.** `token still resolves to a
+  user: false` su tutte e due le sessioni. Nessun token e' sopravvissuto al run.
+- **Nessun indirizzo, nessun token, nessuna riga compaiono nel transcript.** Il
+  member e' *one member profile resolved*, e i valori sono conteggi. Questo
+  documento e' tracciato e questo repository e' **pubblico**: era una condizione
+  del progetto dello strumento, non una cortesia di chi lo ha eseguito.
+- **Il conteggio `16` conferma dall'interno una misura fatta dall'esterno.** La
+  ricerca aveva letto `production_pipeline_rule = 16` righe attraverso la
+  Management API, con una connessione che **bypassa la RLS**. Questo run lo
+  rilegge attraverso una sessione che la RLS la attraversa. Le due strade danno lo
+  stesso numero, ed e' la prima volta che succede in questo repository.
 
 ---
 
@@ -235,6 +385,32 @@ contro cui essere confrontato.
 Fuori scope e **da non rivendicare**: se questo strumento ritiri qualcuno degli
 88 `human_needed` aperti nelle fasi precedenti.
 
+### Una frase del piano che ho trovato NON ancora vera
+
+Il piano, nell'azione del Task 1, prescrive il paragrafo di chiusura in questi
+termini — riportati qui **testualmente e non ammorbiditi**:
+
+> *"What it can prove is that **the policies ask different keys** — read from
+> `pg_policies` — which is a different sentence and must be written as such."*
+
+**Oggi quella frase non e' vera, e il piano la da' per gia' disponibile.** Le sei
+policy del calendario chiedono **una sola** chiave — `production.read` — perche' lo
+split di D-45-04 non e' stato applicato. Non ci sono chiavi diverse da leggere in
+`pg_policies`: c'e' una chiave, sei volte. Lo strumento quindi non prova nemmeno
+la meta' macchina del criterio 1, e prima di questa nota il piano lasciava credere
+che la provasse.
+
+La frase diventa vera dopo la migration additiva di D-45-04, e questo strumento e'
+costruito **prima** dello split esattamente perche' lo split abbia una baseline
+contro cui essere confrontato — cosa che oggi ha: la coppia su
+`production_pipeline_rule`, `16 / 0 / 0`, misurata il 2026-08-17. **Chi applichera'
+lo split deve riottenere quella coppia, con la nuova chiave, sugli stessi due
+ruoli. Se cambia, e' cambiata la portata dell'accesso e non il nome di una
+chiave.**
+
+La correzione e' scritta anche dentro lo strumento, nel paragrafo che stampa a
+ogni run, cosi' che non viva solo in un documento di pianificazione.
+
 ---
 
 ## Bandiere di sicurezza
@@ -247,6 +423,24 @@ non tocca `venues`, non tocca `parties`, e le sue letture sono conteggi con
 
 ---
 
+## Cosa resta aperto per chi viene dopo
+
+1. **Cinque righe su sei non sono ancora misurabili.** Lo diventano quando
+   l'import del calendario gira contro produzione. Fino ad allora `verify:refusal`
+   uscira' `2`, ed e' corretto che lo faccia.
+2. **La baseline da confrontare dopo lo split di D-45-04** e' la coppia
+   `production_pipeline_rule = 16 / 0 / 0`, del 2026-08-17. Chi applica lo split
+   rilancia lo strumento **con una nuova autorizzazione** — questa e' esaurita — e
+   la coppia deve tornare identica.
+3. **`SECTION_TARGETS` cresce di righe, non di script.** Le tabelle delle tre
+   sezioni autorizzate di questa fase entrano come una entry ciascuna, **quando
+   esistono**. Una tabella nominata prima che esista rifiuta la propria riga: non
+   e' un pass e non e' un fallimento.
+4. **Il paragrafo di chiusura dello strumento va riscritto dopo lo split**, quando
+   la frase sulle chiavi diverse diventera' vera. Finche' non lo e', resta com'e'.
+
+---
+
 ## Self-Check: PASSED
 
 - `scripts/verify-refusal.mjs` — presente
@@ -255,3 +449,8 @@ non tocca `venues`, non tocca `parties`, e le sue letture sono conteggi con
 - `.planning/phases/45-production-sections-section-by-section/deferred-items.md` — presente
 - commit `4db99e9` — presente
 - commit `f8f7e3d` — presente
+- commit `fb0c2ac` — presente (summary parziale, al checkpoint)
+- autorizzazione — chiesta, concessa e **spesa** il 2026-08-17; un solo run eseguito
+- entrambe le sessioni coniate — **revocate globalmente e riletta la revoca**:
+  `token still resolves to a user: false` per master e per member
+- righe scritte in produzione — **zero**. Ogni chiamata del run e' un conteggio
