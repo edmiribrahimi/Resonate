@@ -57,6 +57,28 @@
  *      are not run here, for two different reasons, and a reader of a green is
  *      told both.
  *
+ *   2c. **AND THE SAME ARGUMENT AGAIN, ONE STEP FURTHER OUT: A PERMISSION IS NOT
+ *      A PRECONDITION.** Phase 45 added the first gate in this repository that
+ *      **authenticates as a real role**: `verify:refusal` mints a session on a
+ *      real person's identity, reads counts under it, then revokes it globally
+ *      and re-reads the revocation. Every other gate here reads files or a
+ *      catalogue.
+ *
+ *      It is declared in **`NEEDS_AUTHORISATION`**, and that is a FOURTH list for
+ *      exactly the reason the third one exists: the reason printed beside a name
+ *      is the whole value of naming it, and neither *needs a running dev server*
+ *      nor *needs material in `docs/`* is a true sentence about this one. A
+ *      server can be started and a file can be placed — both are preconditions a
+ *      script could in principle satisfy for itself. **An authorisation cannot
+ *      be.** `ai-engineering.md`'s *gate l'autorizzazione a scrivere in
+ *      produzione e' un atto* says it is spent once, covers exactly what was
+ *      described when it was asked for, and is recorded. Filing that under
+ *      "missing precondition" would be filing a decision under an environment
+ *      variable.
+ *
+ *      Three gates are not run here now, for three different reasons, and a
+ *      reader of a green is told all three.
+ *
  * ── WHAT A GREEN HERE DOES NOT MEAN ─────────────────────────────────────────
  *
  *   - **IT IS NOT A TEST RUN.** There is no test runner for the product
@@ -164,8 +186,11 @@
  * `knownNames`; and `missingRequired` guarantees every name in
  * `knownNames \ declared` is an OPTIONAL `OFFLINE` entry, which the plan loop
  * labels `unregistered` — a member of `ABSENT_STATES` — so it reaches
- * `absentOptional` and is accounted for. Every `NEEDS_SERVER` and every
- * `NEEDS_MATERIAL` name is accounted for by construction. Nothing on a correct
+ * `absentOptional` and is accounted for. Every `NEEDS_SERVER`, every
+ * `NEEDS_MATERIAL` and every `NEEDS_AUTHORISATION` name is accounted for by
+ * construction — each list is added to `knownNames` and to
+ * `measuredOrExplained` in the same commit that declares it, and a list added to
+ * one and not the other refuses here rather than going quiet. Nothing on a correct
  * tree becomes unaccounted, and the run that returns the recorded baseline is the
  * proof of it, not this paragraph.
  *
@@ -299,6 +324,35 @@ const NEEDS_MATERIAL = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * NEEDS_AUTHORISATION — declared, never run here, printed on every run
+ *
+ * The same shape and the same contract as `NEEDS_SERVER` and `NEEDS_MATERIAL`,
+ * for the gate whose missing precondition is neither a process nor a file but a
+ * PERMISSION. Adding a NAME to a list is not adding a RUNNER: nothing below
+ * spawns these, on purpose — and here that contract is load-bearing rather than
+ * conventional. A runner that spawned this one would be minting a session on a
+ * real person's identity because somebody typed `npm run verify`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Shape: `[npmScriptName, reason]`. */
+const NEEDS_AUTHORISATION = [
+  [
+    "verify:refusal",
+    "scripts/verify-refusal.mjs SIGNS IN AS A REAL ROLE. It mints a session on a real " +
+      "person's identity through the auth API, so running it is an ACT and needs the " +
+      "owner's dated authorisation for that sitting — not an environment variable this " +
+      "runner could check. What the run costs, stated so the permission is asked for " +
+      "something described: it is READ-ONLY (it refuses to start if its own source " +
+      "carries a write verb), every call it makes is a count, it revokes each session " +
+      "globally at the end and RE-READS the revocation, and it prints no token, no email " +
+      "and no row. Invoke it by name, once, after the authorisation: " +
+      "`npm run verify:refusal`. Its exit 2 on a table holding no rows is the honest " +
+      "state — the positive control was silent, so the measurement did not happen — and " +
+      "it is not a pass and not a defect to repair",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Reading package.json, which is the single source of every command
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -339,7 +393,13 @@ console.log(
 const offlineNames = OFFLINE.map(([name]) => name);
 const serverNames = NEEDS_SERVER.map(([name]) => name);
 const materialNames = NEEDS_MATERIAL.map(([name]) => name);
-const knownNames = new Set([...offlineNames, ...serverNames, ...materialNames]);
+const authorisationNames = NEEDS_AUTHORISATION.map(([name]) => name);
+const knownNames = new Set([
+  ...offlineNames,
+  ...serverNames,
+  ...materialNames,
+  ...authorisationNames,
+]);
 
 const undeclaredHere = declared.filter((name) => !knownNames.has(name));
 const missingFromPkg = [...knownNames].filter((name) => !declared.includes(name));
@@ -349,8 +409,8 @@ if (undeclaredHere.length > 0) {
     `package.json declares ${undeclaredHere.length} verify:* entr(y/ies) this runner does not\n` +
       `       know about: ${undeclaredHere.join(", ")}\n` +
       "       They were NOT run. A table that omits a registered gate while printing a tick is\n" +
-      "       a green that lied by omission — add each name to OFFLINE, to NEEDS_SERVER or\n" +
-      "       to NEEDS_MATERIAL."
+      "       a green that lied by omission — add each name to OFFLINE, to NEEDS_SERVER, to\n" +
+      "       NEEDS_MATERIAL or to NEEDS_AUTHORISATION."
   );
 }
 
@@ -492,7 +552,7 @@ for (const r of results) {
 console.log("");
 console.log("  ── NOT RUN, and why ───────────────────────────────────────────────────");
 console.log("");
-for (const [name, reason] of [...NEEDS_SERVER, ...NEEDS_MATERIAL]) {
+for (const [name, reason] of [...NEEDS_SERVER, ...NEEDS_MATERIAL, ...NEEDS_AUTHORISATION]) {
   console.log(`    ${name} — not run: ${reason}`);
 }
 for (const p of absentOptional) {
@@ -514,6 +574,7 @@ const accounted =
   results.length +
   NEEDS_SERVER.length +
   NEEDS_MATERIAL.length +
+  NEEDS_AUTHORISATION.length +
   absentOptional.length +
   absentRequired.length;
 console.log("");
@@ -526,6 +587,7 @@ console.log(`      of which FAILED              ${String(failed.length).padStart
 console.log(`      of which REFUSED             ${String(refused.length).padStart(3)}  — nothing was measured by these`);
 console.log(`    needs a server, not run        ${String(NEEDS_SERVER.length).padStart(3)}`);
 console.log(`    needs the material, not run    ${String(NEEDS_MATERIAL.length).padStart(3)}`);
+console.log(`    needs an authorisation, not run${String(NEEDS_AUTHORISATION.length).padStart(3)}`);
 console.log(`    declared absent                ${String(absentOptional.length).padStart(3)}`);
 console.log(`    MISSING                        ${String(absentRequired.length).padStart(3)}`);
 console.log(`                                   ───`);
@@ -541,6 +603,7 @@ const measuredOrExplained = new Set([
   ...results.map((r) => r.name),
   ...NEEDS_SERVER.map(([name]) => name),
   ...NEEDS_MATERIAL.map(([name]) => name),
+  ...NEEDS_AUTHORISATION.map(([name]) => name),
   ...absentOptional.map((p) => p.name),
   ...absentRequired.map((p) => p.name),
 ]);
