@@ -77,6 +77,17 @@ findings:
   info: 3
   total: 13
 status: issues_found
+resolved:
+  - id: CR-01
+    commit: 94cb395
+    resolved_at: 2026-08-18
+  - id: CR-02
+    commit: a00b8f3
+    resolved_at: 2026-08-18
+open:
+  critical: 0
+  warning: 8
+  info: 3
 ---
 
 # Fase 45: Code Review Report
@@ -110,7 +121,11 @@ promozione e' per chiave primaria su un id catturato alla creazione
 non annunciata in nessun file tracciato.
 
 **Cosa non regge.** Due difetti bloccanti, entrambi su percorsi dove il progetto
-ha gia' dichiarato per iscritto la regola che il codice viola:
+ha gia' dichiarato per iscritto la regola che il codice viola. **Entrambi chiusi il
+2026-08-18** — CR-01 in `94cb395`, CR-02 in `a00b8f3`; i due reperti restano scritti
+al presente perche' descrivono il codice al momento della revisione, e ognuno porta
+in testa la nota di chiusura. Le otto WARNING e le tre INFO restano **aperte** e non
+sono state toccate:
 
 1. **L'archivio scrive i byte prima di validare la riga.** Chi dimentica di dire
    *che cosa e'* fila comunque una fotografia nel bucket privato, la copia di
@@ -138,7 +153,35 @@ Non ripetute qui: DEF-45-01/02/03/09/10/11, gia' registrate in
 
 ## Critical Issues
 
+> **Stato al 2026-08-18: entrambe le CRITICAL sono chiuse.** Le otto WARNING e le
+> tre INFO restano aperte e non sono state toccate: allargare il diff avrebbe reso
+> piu' difficile verificare i due fix che contano. Restano registrate qui come
+> sono.
+
 ### CR-01: l'archivio fila i byte prima di validare la riga, e l'oggetto orfano non e' piu' raggiungibile da nessuna superficie
+
+**RISOLTO — commit `94cb395`, 2026-08-18.**
+
+Tre parti, nessuna delle quali tocca il flusso di upload, il bucket o lo sweep:
+`whatIsMissing()` calcola la guardia nella stessa forma che `OpenQuestionForm.tsx`
+gia' usa (`incomplete` → `disabled`); la stessa guardia e' ripetuta dentro
+`submit()`, perche' `disabled` e' una proprieta' di un controllo renderizzato e
+non un confine, e risponde con la frase invece di tornare in silenzio; e le sei
+frasi di `RECORD_REASON_TEXT` non aprono piu' con *«Nothing was recorded»* — ognuna
+di esse scatta DOPO che i byte sono nell'archivio, e ora lo dicono.
+
+**Cosa NON e' chiuso, detto qui e non lasciato dedurre.** `invalid_format_id` e
+`invalid_taken_on` restano raggiungibili da una pagina manomessa, e in quel caso
+l'oggetto esiste ancora senza riga. La guardia non e' un confine di sicurezza: il
+confine sarebbe validare prima di scrivere i byte, oppure un percorso di rimozione
+per il bucket — che e' IN-02, ancora aperta. Le frasi ora descrivono quello stato
+invece di negarlo.
+
+Verificato: `npm run build` 0 · `verify:section-surface` 0 · `eslint` 0. Nessun
+test runner esiste per il prodotto: la prova osservabile resta la procedura scritta
+sotto, da eseguire a mano.
+
+Il reperto originale, invariato:
 
 **File:** `src/app/(admin)/admin/visual/ArchiveUpload.tsx:554`, `:263-427`, `:165-178`
 
@@ -227,6 +270,53 @@ confrontando il conteggio con `select count(*) from production_visual_asset`.
 ---
 
 ### CR-02: i due documenti che escono dal perimetro presentano come regola del brand una regola di un format ritirato
+
+**RISOLTO — commit `a00b8f3`, 2026-08-18.**
+
+`brandWide` e' ora definito in **positivo** — `format_id === null`, e nulla altro —
+in entrambi i serialiser, e `scopeOf()` fa la stessa cosa per `renderQuestions`:
+`the whole brand` si dice per una ragione sola. Il catalogo si legge **intero**
+(`retired_at` selezionato, filtro rimosso dalla query) e si divide in due: `named`
+per nominare, `listed` per i titoli e l'ordine.
+
+**Le cause erano tre, non due.** Oltre a *nessun format* e *format ritirato* c'e'
+la lettura sotto RLS: `formats_select_listed` restituisce i `listed`, il resto
+richiede `catalogue.manage`, che questi due arm non chiedono — quindi un format
+non listed e' invisibile al modulo. Definire `brandWide` in positivo chiude tutte
+e tre per costruzione, invece che con una condizione da tenere completa.
+
+**La decisione presa, dichiarata perche' e' una decisione.** Una regola di format
+ritirato **non esce**. L'alternativa suggerita qui sotto — un titolo proprio
+marcato *retired* — e' stata pesata e rifiutata: un titolo e' `## Nome · CODE`,
+cioe' la **sigla**, e `production-calendar.md` lo dice come gate (*una sigla
+ritirata non si cita, nemmeno per spiegare la storia*), con il verso opposto in
+`brand-visual-system.md` (*ogni materiale porta la sigla come e' oggi*).
+Stamparla in un documento che va a chi produce materiale scambierebbe
+un'attribuzione sbagliata con un invito a produrre per un format ritirato.
+
+Presa la seconda strada che questo stesso reperto autorizzava: **esclusa
+esplicitamente e contata, mai riclassificata.** `renderWithheld` conta le regole
+trattenute dentro il documento, con due frasi distinte — *ritirato* e *non nella
+risposta del catalogo* mandano chi legge da due persone diverse — e **i conteggi
+non nominano nessun format, nessuna sigla e nessun titolo di regola**, perche' un
+titolo puo' portarsi dentro il nome. E' la stessa posizione che `capitolato.ts`
+prende gia' per la palette (D-45-09).
+
+**Le domande aperte restano nel documento**, con uno scope che dice la verita'
+senza nominare il format. L'asimmetria e' voluta: una regola dice cosa fare, una
+domanda aperta dice cosa non decidere — togliere un avviso e' peggio che togliere
+un'istruzione, ed e' la ragione per cui un registro che non risponde fa rifiutare
+l'intero documento.
+
+Il perimetro non e' stato allargato: nessuna tabella in piu', nessun campo in piu'
+nell'allow-list. `retired_at` e' un timestamp, non porta ne' indirizzo ne' data non
+annunciata, e nulla lo stampa.
+
+Verificato: `npm run build` 0 · `verify:section-export` 0 (censimento eseguito,
+credenziali presenti) · `verify:section-surface` 0 · `eslint` 0. La verifica
+osservabile scritta sotto resta da eseguire a mano.
+
+Il reperto originale, invariato:
 
 **File:** `src/lib/production/export/manifesto.ts:283-289` e `:387-393`;
 `src/lib/production/export/capitolato.ts:245-251` e `:405-412`
