@@ -40,8 +40,9 @@ key-files:
 key-decisions:
   - "D-45-18-01 — le quattro sezioni sono adiacenti nel menu, e la ragione e' scritta: un menu si legge come un raggruppamento che lo si sia voluto o no"
   - "D-45-18-02 — il paragrafo dei rifiuti e' ri-derivato per sezione e non copiato: location = un indirizzo, manifesto = autorialita', visual = un documento che esce piu' un quarto rifiuto su storage.objects"
-  - "D-45-18-03 — la quarta coniazione dello strumento di rifiuto NON e' stata presa: nessun atto copre questa seduta e la misura era gia' stata comprata sotto A2b senza che nulla si sia mosso"
-  - "D-45-18-04 — i quattro Result di 45-PROCEDURES.md restano `pending`: scriverli io sarebbe stato inventarli, e il piano stesso dice che un Result che ripete l'attesa della procedura non e' un'osservazione"
+  - "D-45-18-03 — la quarta coniazione dello strumento di rifiuto NON e' stata presa, **per decisione del proprietario del 2026-08-18**: non un rinvio per mancanza di permesso. La misura era gia' stata comprata sotto A2b e nulla si e' mosso da allora"
+  - "D-45-18-04 — i quattro Result di 45-PROCEDURES.md restano `pending`, **dichiarati non eseguiti dal proprietario il 2026-08-18**: non `skipped`, non `n/a`. Sono debito dichiarato, e accanto a ognuno sta cosa deve osservare chi lo eseguira'"
+  - "D-45-18-05 — la fase si chiude con quattro procedure pendenti: **fase chiusa, criteri no**, e la distinzione va portata nel VERIFICATION.md invece di essere dedotta da un silenzio"
 
 patterns-established:
   - "Pattern: un'autorizzazione non presa si registra, non si tace — un registro con tre atti spesi e nessuna traccia del quarto contemplato sembra un registro di chi non ci ha pensato"
@@ -50,19 +51,19 @@ patterns-established:
 requirements-completed: []
 
 duration: 2h 08min
-completed: 2026-08-17
+completed: 2026-08-18
 ---
 
 # Fase 45 Piano 18: Le quattro sezioni entrano nella navigazione — Summary
 
-**Le quattro sezioni di produzione diventano raggiungibili dal menu, ognuna dietro la propria chiave verificata contro la mappa al module load; ogni gate automatico del repository e' verde tranne i due che rifiutano per una causa pre-esistente; e le quattro procedure manuali restano `pending` perche' nessuna di esse e' eseguibile da un agente.**
+**Le quattro sezioni di produzione diventano raggiungibili dal menu, ognuna dietro la propria chiave verificata contro la mappa al module load; ogni gate automatico del repository e' verde tranne i due che rifiutano per una causa pre-esistente; e le quattro procedure manuali restano `pending`, dichiarate non eseguite dal proprietario — debito visibile, non lavoro chiuso.**
 
 ## Performance
 
-- **Duration:** 2h 08min
+- **Duration:** 2h 20min, checkpoint incluso
 - **Started:** 2026-08-17T20:14Z
-- **Completed:** 2026-08-17T22:22Z
-- **Tasks:** 2 / 3 completi — il terzo e' un checkpoint del proprietario
+- **Completed:** 2026-08-17T22:34Z — che in ora locale e' il **2026-08-18**, la data con cui il proprietario ha risolto il checkpoint
+- **Tasks:** 3 / 3 — il terzo chiuso dalla decisione del proprietario, non da un'esecuzione
 - **Files modified:** 2
 
 ---
@@ -260,32 +261,49 @@ quel rifiuto accada**, e D-45-23 vieta di fabbricarne uno: concedere una chiave 
 un ruolo in produzione e' un cambio d'accesso, non una riga di prova, e
 misurerebbe il sistema dopo aver alterato cio' che si misura. **Nessun piano di
 questa fase ne ha fabbricato uno.** Quella e' la procedura P1, in un ambiente
-usa-e-getta, ed e' il Task 3 — che non e' stato eseguito.
+usa-e-getta, ed e' il Task 3 — dichiarato non eseguito dal proprietario.
 
-### La quarta coniazione, chiesta dal piano e NON presa
+### A4 — la quarta coniazione, chiesta dal piano e NON presa PER DECISIONE
 
 Il piano dice: *«sotto un'autorizzazione per questa seduta … esegui
-`npm run verify:refusal` una terza volta»*. **Non l'ho eseguito, e non ho creato
-l'autorizzazione.** Tre ragioni, e la terza decide:
+`npm run verify:refusal` una terza volta»*. **Non l'ho eseguito e non ho creato
+l'autorizzazione: ho portato la domanda al proprietario, che il 2026-08-18 ha
+scelto di non spenderla.**
+
+**E' un atto non preso per decisione, non un atto rimandato per mancanza di
+permesso.** La distinzione non e' lessicale: un permesso mancante e' un ostacolo
+che sparirebbe se qualcuno dicesse di si', una decisione e' un giudizio che
+qualcuno ha preso e di cui risponde. Registrare il secondo dove vale il primo
+sarebbe impreciso nella direzione che fa comodo a chi esegue.
+
+Le ragioni del proprietario, e sono le stesse tre che avevo misurato:
 
 1. **A1, A2, A2b e A3 sono tutte spese.** Un'autorizzazione copre cio' che e'
-   stato descritto quando e' stata chiesta e nient'altro; nessuna delle quattro
-   descrive un run di questo piano.
+   stato descritto quando e' stata chiesta e nient'altro.
 2. **Lo strumento non ha una forma autorizzabile a secco.** `npm run
    verify:refusal` conia **due sessioni su identita' di persone reali** appena
    parte. L'unica forma che non contatta nulla e' `--help`, ed e' quella che ho
    eseguito (exit 0, contratto stampato, niente coniato).
-3. **La misura era gia' stata comprata, e da allora non si e' mosso nulla che
-   possa cambiarla:** nessuna migration, nessun seed, nessuna modifica a una
-   policy, e l'unico commit di codice di questo piano tocca un modulo di
-   navigazione che **nessuna policy legge**. Una quarta coniazione non avrebbe
-   comprato **nessuna misura in piu'** — che e' esattamente il precedente
-   positivo che `ai-engineering.md` registra: un agente che si e' rifiutato di
-   riseminare perche' il ciclo era chiuso.
+3. **La misura era gia' stata comprata il giorno prima e da allora non si e'
+   mosso nulla che possa cambiarla:** nessuna migration, nessun seed, nessuna
+   modifica a una policy, e l'unico commit di codice di questo piano tocca un
+   modulo di navigazione che **nessuna policy legge**. Un quarto run ripeterebbe
+   una misura ferma **al prezzo di disconnettere ovunque due identita' reali** —
+   la revoca globale e' cio' che rende sicuro lo strumento ed e' anche cio' che
+   lo rende costoso a chi era connesso.
 
-L'atto non preso e' **registrato in `45-PROCEDURES.md`** accanto ai quattro
-spesi, con la sua data. Un registro che mostra tre atti spesi e nessuna traccia
-del quarto contemplato si legge come il registro di chi non ci ha pensato.
+**La misura che copre il criterio, con la sua data e il piano che l'ha comprata:
+il run del 2026-08-18, sotto A2b, del piano 45-09** — `production_pipeline_rule`
+`16/0/0` alla terza misura consecutiva, `production_space` `184/0/0`,
+`production_space_attribute` `1840/0/0`, entrambe le sessioni revocate
+globalmente e ogni revoca riletta.
+
+L'atto non preso e' **registrato in `45-PROCEDURES.md` come A4**, accanto ai
+quattro spesi, con la sua data e con l'indicazione di **quando varra' la pena
+comprarne un quinto**: una migration che tocchi un arco `SELECT`, un cambio a
+`ROLE_GRANTS`, o le prime righe scritte nelle due tabelle delle sezioni
+d'autore — che oggi sono vuote, ed e' il motivo per cui lo strumento su quelle
+rifiuta onestamente invece di passare.
 
 **Conseguenza sul criterio d'accettazione, detta e non aggirata:** il criterio
 *«lo strumento asserisce almeno una coppia reale su una tabella di sezione»* e'
@@ -307,57 +325,88 @@ nessuna strada esiste. Non prova nulla su chi possa percorrerne una.
 
 ---
 
-## Task 3 — Le quattro procedure — NON ESEGUITO, ed e' un checkpoint
+## Task 3 — Le quattro procedure — DICHIARATE NON ESEGUITE dal proprietario
 
-**I quattro `Result:` di `45-PROCEDURES.md` restano `pending`, e li ho lasciati
-tali di proposito.**
+**Checkpoint risolto il 2026-08-18. I quattro `Result:` di `45-PROCEDURES.md`
+restano la parola `pending` — non `skipped`, non `n/a` — e la scelta e' del
+proprietario: sono debito dichiarato, non lavoro chiuso, e devono restare
+visibili a chi legge il registro dopo.** `skipped` e `n/a` chiudono una riga;
+`pending` la lascia aperta, ed e' l'unica delle tre che dice la verita' su cosa
+si sa e cosa no.
 
 Nessuna delle quattro e' eseguibile da un agente, e ognuna per una ragione
-diversa e scritta nel documento stesso:
+diversa — ora scritta accanto alla procedura, nel documento, insieme a **cosa
+deve osservare chi la eseguira'**:
 
-| Proc. | Cosa chiude | Perche' non l'ho eseguita |
+| Proc. | Cosa chiude | Perche' nessun agente poteva eseguirla |
 |---|---|---|
-| **P1** | criterio 1 | serve un **ambiente usa-e-getta** con un account fatto a mano che tiene **una sola** chiave. Non esiste, non l'ho creato, e crearne uno in produzione e' vietato da D-45-23 |
-| **P2** | criterio 2 | serve **un lettore che non abbia letto questa fase** e una domanda posta senza spiegare nulla prima. Un'osservazione presa da chi conosce i quattro stadi vale zero, e il documento lo dice |
-| **P3** | criterio 3 | serve un occhio su tre schermi: *dichiarato* e *rotto* sono **gli stessi byte** per un grep, e tutta la differenza e' come si legge il pannello |
-| **P4** | la meta' di D-45-16 | serve una **misura in pixel presa sullo schermo**, non letta da un nome di classe. E' l'unica ragione per cui quella meta' della procedura esiste |
+| **P1** | criterio 1 | serve un **ambiente usa-e-getta** con un account che tiene **una sola** chiave. D-45-03 non lascia un soggetto in produzione, D-45-23 vieta di fabbricarne uno li' |
+| **P2** | criterio 2 | serve **un lettore che non abbia letto questa fase**, e una domanda posta senza spiegare nulla prima. Un'osservazione presa da chi gia' conosce i quattro stadi vale zero per costruzione |
+| **P3** | criterio 3 | *dichiarato* e *rotto* sono **gli stessi byte** per un grep: tutta la differenza e' come si legge il pannello, e serve un occhio vergine su tre schermi |
+| **P4** | la meta' di D-45-16 | serve una **misura in pixel presa sullo schermo**, non letta da un nome di classe. **Nessuna asserzione di questo repository vede una dimensione**, ed e' l'unica ragione per cui quella meta' esiste |
 
-**Il documento e' esplicito sul perche' inventarle sarebbe peggio che non
-averle:** *«un `Result` che ripete l'attesa della procedura non e'
-un'osservazione»*, e questo repository ha un precedente registrato di un SUMMARY
-che dichiarava un build verde su un runner mai partito. Un `Result` scritto dal
+**Perche' inventarle sarebbe stato peggio che non averle**, e il documento lo
+dice per primo: *«un `Result` che ripete l'attesa della procedura non e'
+un'osservazione»*. Questo repository ha un precedente registrato di un SUMMARY
+che dichiarava un build verde su un runner mai partito; un `Result` scritto dal
 codice invece che dallo schermo e' quello stesso errore con un vestito migliore.
 
-**Cosa ho fatto invece, nel documento:**
+**Cosa e' stato scritto nel documento, dopo la risposta del proprietario:**
 
+- **Ogni procedura porta ora il suo blocco «DECLARED NOT RUN — 2026-08-18»**, con
+  la ragione per cui nessun agente poteva eseguirla **e l'elenco di cosa deve
+  osservare chi la eseguira'** — scritto per essere eseguibile da un'altra
+  persona **senza rileggere la fase**. Era il punto del dichiararle invece di
+  cancellarle: una procedura non eseguita che nessuno puo' raccogliere equivale a
+  nessuna procedura.
 - **A1 porta ora la sua data** — chiesta, concessa e spesa il 2026-08-17 — come
-  A2, A2b e A3 gia' facevano. Era l'unica delle quattro righe senza; il criterio
-  d'accettazione la chiedeva e non e' un giudizio umano, e' un fatto.
-- **Registrato l'atto non preso**, con la sua data e le sue tre ragioni.
-- **Nient'altro.** I quattro `Result` non sono stati toccati.
+  A2, A2b e A3 gia' facevano.
+- **A4 e' registrato come atto non preso per decisione**, con la misura di A2b
+  citata come quella che copre il criterio, e con l'indicazione di quando varra'
+  la pena comprarne un quinto.
+- **Il `phase_closes` originale non e' stato riscritto.** Diceva *«non prima che
+  ogni Result porti un'osservazione»*, quella regola **non e' stata
+  rispettata**, e resta scritta com'era con accanto la decisione che la deroga —
+  cosi' che l'eccezione si legga come un'eccezione e non come la regola nuova.
+- **Il closing block dice come finisce il documento:** **fase chiusa, criteri
+  no.**
 
-**Il grep di segretezza:** zero occorrenze di `Via |Corso |Piazza `. Le 11
+**Il grep di segretezza:** zero occorrenze di `Via |Corso |Piazza `. Le
 occorrenze del pattern completo sono **tutte date di atti d'autorizzazione** —
-il registro ne porta una per riga, che e' la sua funzione — e il criterio ne
-ammetteva l'eccezione per il frontmatter. Nessun nome di spazio, nessuna data non
-annunciata, nessuna line-up.
+il registro ne porta una per riga, che e' la sua funzione. Nessun nome di spazio,
+nessuna data non annunciata, nessuna line-up.
 
 ---
 
 ## Deviazioni dal piano
 
-### 1. [Rule 4 — decisione, portata al proprietario] La quarta coniazione non presa
+### 1. [Rule 4 — decisione portata al proprietario, e da lui presa] A4 non coniata
 
 - **Trovata in:** Task 2.
 - **Questione:** il piano ordina un run di `verify:refusal` *«sotto
   un'autorizzazione per questa seduta»*, e nessuna autorizzazione per questa
-  seduta esiste. L'agente non puo' concedersela da solo: `ai-engineering.md` dice
-  che l'autorizzazione e' **un atto**, non un permesso.
-- **Decisione:** non coniare. Eseguita la forma a secco (`--help`, exit 0,
-  niente contattato) e misurata al suo posto la meta' strutturale da
-  `pg_policies` in `read_only`.
-- **Registrata in:** `45-PROCEDURES.md`, sezione delle autorizzazioni.
-- **Commit:** `6c21f41`.
+  seduta esisteva. L'agente non puo' concedersela da solo: `ai-engineering.md`
+  dice che l'autorizzazione e' **un atto**, non un permesso.
+- **Portata al proprietario, che il 2026-08-18 ha deciso di NON spenderla.**
+  Quindi la voce corretta e' *atto non preso per decisione*, non *rimandato per
+  mancanza di permesso*.
+- **Fatto invece:** forma a secco (`--help`, exit 0, niente contattato) e la
+  meta' strutturale misurata da `pg_policies` in `read_only`.
+- **Registrata in:** `45-PROCEDURES.md`, come **A4** nella sezione delle
+  autorizzazioni.
+- **Commit:** `6c21f41`, poi `47d616a` per la riformulazione dopo la risposta.
+
+### 1b. [Task 3 — chiuso da una decisione, non da un'esecuzione] Le quattro procedure
+
+- **Questione:** il Task 3 e' un checkpoint bloccante e nessuna delle quattro
+  procedure e' eseguibile da un agente.
+- **Decisione del proprietario, 2026-08-18:** dichiararle **non eseguite**,
+  lasciando `Result: pending` come parola letterale e scrivendo accanto a ognuna
+  cosa deve osservare chi la eseguira'.
+- **Conseguenza portata avanti, non assorbita:** la fase si chiude con quattro
+  criteri **non chiusi**. Il `45-VERIFICATION.md` deve dire *differita* e deve
+  dire che differita **non e' verificata**.
+- **Commit:** `47d616a`.
 
 ### 2. [pre-esistente, non riparata] `npm run verify` esce 2
 
@@ -413,6 +462,8 @@ Il build passa, diciassette gate su diciassette che hanno misurato sono verdi, e
   risultato **le domande sono aperte**.
 - L'unico strumento che non scavalca la RLS e' `verify:refusal`, e **anche lui
   non arriva al criterio 1**, perche' D-45-03 non gli ha lasciato un soggetto.
+  La sua misura del criterio 4 e' reale ed e' del **2026-08-18, piano 45-09,
+  sotto A2b** — non di questa seduta, che non ha coniato nulla.
 
 La formulazione onesta di cio' che P1 chiudera' e': *un visitatore che teneva una
 sezione e' stato rifiutato dalle altre **li'** — in un ambiente usa-e-getta, mai
@@ -440,16 +491,38 @@ tipi, e sono tenute separate:
    quali policy esistono e non cosa facciano a un soggetto.
 
 Cio' che manca e' il quarto tipo, ed e' l'unico che chiude i criteri 1, 2 e 3:
-**una persona davanti a uno schermo.** E' il Task 3.
+**una persona davanti a uno schermo.** E' il Task 3, ed e' **debito dichiarato**
+— quattro procedure `pending`, ognuna con scritto accanto cosa osservare, che
+aspettano chi le raccoglie.
+
+---
+
+## Come si chiude questo piano
+
+**Fase chiusa. Criteri no.** Le due frasi vanno insieme, e nessuna delle due
+copre l'altra:
+
+- Il codice e' completo e verificato per quanto un repository senza test runner
+  puo' verificare: quattro tab, quattro chiavi, un gate provato per mutazione,
+  diciassette gate verdi e due che rifiutano per una causa che non e' di questa
+  fase.
+- I criteri 1, 2 e 3 e la meta' di D-45-16 **restano aperti**, perche' le quattro
+  procedure che soli li chiudono sono state **dichiarate non eseguite** dal
+  proprietario il 2026-08-18.
+
+Il piano non lascia nulla di implicito su questo: `45-PROCEDURES.md` porta la
+regola originale che non e' stata rispettata, la decisione che la deroga, e per
+ogni procedura cosa deve osservare chi la eseguira'.
 
 ---
 
 ## Self-Check: PASSED
 
 - `src/lib/routes/staff-tabs.ts` — presente, modificato, 4 voci di produzione con 4 chiavi distinte
-- `.planning/phases/45-production-sections-section-by-section/45-PROCEDURES.md` — presente, modificato
+- `.planning/phases/45-production-sections-section-by-section/45-PROCEDURES.md` — presente, modificato, 4 `Result: pending` intatti e 4 blocchi «non eseguita» accanto
 - commit `247d14d` — presente
 - commit `6c21f41` — presente
+- commit `47d616a` — presente
 
 *Fase 45, piano 18. Nessun nome di spazio, nessuna data non annunciata, nessuna
 line-up, nessun nome di persona. `re:sonate` si scrive con la e normale.*
