@@ -53,7 +53,7 @@ them into one line would be asking for a permission instead.
 
 | | What it authorises | Whose plan | State |
 |---|---|---|---|
-| **A1** | **Minting a session on a real person's identity** through the auth API, read-only, with a verified global revocation at the end — so that a refusal can be measured with a real role rather than a service key | plan 45-02 | **SPENT.** One run, one sitting; the transcript, the exit code and the date are recorded in `45-02-SUMMARY.md`. A second sitting is a second authorisation |
+| **A1** | **Minting a session on a real person's identity** through the auth API, read-only, with a verified global revocation at the end — so that a refusal can be measured with a real role rather than a service key | plan 45-02 | **ASKED AND GRANTED 2026-08-17**, with the four measured points put to the owner before the answer. **SPENT the same day, by plan 45-02**: one run, one sitting, both minted sessions revoked globally and each revocation re-read. The transcript and the exit code are in `45-02-SUMMARY.md`. A second sitting is a second authorisation |
 | **A2** | **Applying a migration to production** — the additive key split, and then the retirement of the key it replaces, in that order and after a deploy | plans 45-08 and 45-09 | **ASKED AND GRANTED 2026-08-17**, in the owner's words *«Autorizzato: migration + rilettura»*. **SPENT the same day, by plan 45-08.** What it covered: the FIVE migrations `20260817120000`, `120100`, `120200`, `120300`, `120400`, applied ONCE each through `POST /v1/projects/{ref}/database/migrations`, **plus** the one re-run of `verify:refusal`, which mints its own session. What it did NOT cover, and each needs its own act asked by its own plan: the retirement migration `20260817120500_production_read_retire.sql` (plan 45-09), the seed (A3, plan 45-10), any second application, any further re-run, and any write of a data row. The five assigned versions and the recorded read-back are in `45-08-SUMMARY.md` |
 | **A2b** | **Retiring the key the split replaced** — applying `20260817120500_production_read_retire.sql`, and one re-run of the refusal instrument to re-measure the pair afterwards | plan 45-09 | **ASKED AND GRANTED 2026-08-18**, in the owner's words *«Autorizzato: ritiro + rilettura»*. **SPENT the same day, by plan 45-09.** What it covered: applying that ONE file, ONCE, through `POST /v1/projects/{ref}/database/migrations` — never `/database/query`, never `PUT` — **plus** one re-run of `verify:refusal`, which mints two sessions of its own. What it did NOT cover, and each would need its own act: any second application, any further re-run, any write of a data row, and any deletion beyond the three `DELETE`s the file already contains. The assigned version `20260817220627`, both snapshots and the catalogue read-back are in `45-09-SUMMARY.md`. **A2b is SPENT** |
 | **A3** | **Seeding the scouting archive** into the location section, once, all rows at the mapped stage | plan 45-10 | **ASKED AND GRANTED 2026-08-17**, in the owner's words *«Autorizzato, un run con `--apply`»*. **SPENT the same day, by plan 45-10.** What it covered: **ONE** run of `scripts/seed-production-spaces.mjs` **with `--apply`**, writing rows into `public.production_space` and `public.production_space_attribute` and into no other table — every row arriving at the lowest acquisition stage because the script does not write that column at all, and every attribute arriving `derived` because nobody has been called. What it did NOT cover, and each needs its own act: **a second `--apply` run**, any removal under any flag, any write to a table outside the location section, and the retirement migration (plan 45-09). The pre-snapshot, the transcript and the catalogue read-back are in `45-10-SUMMARY.md` |
@@ -84,6 +84,39 @@ because A3's seed gave the location section rows to discriminate on:
 `1840 / 0 / 0`. Pairs held went from one to three, refusals from ten to eight,
 and the exit code stayed `2` for the eight tables that are still empty. Both
 minted sessions were revoked globally and each revocation was re-read as `false`.
+
+### A fourth mint was asked for by plan 45-18, and NOT taken — 2026-08-18
+
+Plan 45-18 instructs its executor to run the refusal instrument *«a third time,
+under an authorisation for this sitting»*. **No such act exists**, and the
+executor did not create one. Recorded here rather than only in that plan's
+summary, because a ledger that shows three spent acts and no trace of a fourth
+that was contemplated reads as if nobody thought about it.
+
+Three reasons, and the third is the one that decides it:
+
+1. **A1, A2, A2b and A3 are all spent.** An authorisation covers what was
+   described when it was asked for and nothing more, and none of the four
+   describes a run on 2026-08-18 by this plan.
+2. **The instrument has no dry authorisation flag.** `npm run verify:refusal`
+   mints two sessions on real people's identities as soon as it starts; the only
+   form that contacts nothing is `--help`, which is what was run (exit 0,
+   contract printed, nothing minted).
+3. **The third measurement the plan asks for had already been made**, on
+   2026-08-18 under A2b, and **nothing has moved since that could change it**:
+   no migration, no seed, no policy edit, and the one commit this plan makes is
+   to a navigation module no row-level policy reads. A fourth mint would buy no
+   measurement — which is the situation `ai-engineering.md` already records a
+   positive precedent for, an agent refusing to re-seed because the cycle was
+   closed and there was no further measure to collect.
+
+**What was measured in that sitting instead, and it is the structural half:**
+`pg_policies` was read on production, `read_only`, and returned **16 SELECT
+policies** across the eleven production tables asking **four distinct keys**,
+each section's tables asking that section's own — plus the register's brand-wide
+arm, which is the single policy naming all four. That is criterion 1's structural
+half and it is not criterion 4: a catalogue read proves a policy EXISTS and never
+that it REFUSES.
 
 **Why that run is also the control count, and not only a re-measurement.** D12
 requires that the confirmation of a removal be asked of **a source other than the
