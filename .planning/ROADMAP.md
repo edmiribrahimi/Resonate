@@ -1115,8 +1115,8 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 45-14-PLAN.md — The promotion act: the one crossing into `venues`, and the confirmation that says so
-- [ ] 45-15-PLAN.md — The manifesto and visual writes, and the form that takes no state decision
+- [x] 45-14-PLAN.md — The promotion act: the one crossing into `venues`, and the confirmation that says so
+- [x] 45-15-PLAN.md — The manifesto and visual writes, and the form that takes no state decision
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
