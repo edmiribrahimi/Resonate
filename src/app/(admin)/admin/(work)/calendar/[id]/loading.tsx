@@ -9,7 +9,10 @@ import { SkeletonCard, SkeletonLine } from "@/components/ui/Skeleton";
  * The page it stands in for renders **an unannounced date and the word for a
  * space that may be under negotiation**, and it is gated: what a session may
  * read is decided by the row-level policies, and the page redirects anybody
- * without `production.read` before it renders at all.
+ * without `production.calendar.manage` before it renders at all. (That key was
+ * `production.read` until plan 45-05 split it into four section keys, D-45-04.
+ * The name here is a description of the gate, not the gate: what refuses is the
+ * page's own guard and the six policies, and this file has neither.)
  *
  * So this placeholder **must not leak a count or a name**. The two cards below
  * are a **literal**, read from nothing: no query runs before this file renders,

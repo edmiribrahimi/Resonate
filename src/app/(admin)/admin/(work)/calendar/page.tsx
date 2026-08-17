@@ -39,17 +39,28 @@ import type {
  *
  * `admin` in the URL is an address, not an authorisation
  * (`nextjs-architecture.md`, gate *il gruppo non autorizza*). What decides is the
- * row `"/admin/calendar"` under `CAP.PRODUCTION_READ` in
+ * row `"/admin/calendar"` under `CAP.PRODUCTION_CALENDAR_MANAGE` in
  * `src/lib/routes/capability-routes.ts`, next to its dynamic sister
  * `"/admin/calendar/[id]"` — **one entry**, read by the middleware, by the guard
  * below and by the staff tab, so the three cannot disagree (D-34-09/D-34-10).
  *
- * That entry sat on the map's `scope: "table"` branch from plan 44-04 until this
- * plan, because until this file existed the key gated six tables and no address.
+ * ── The key was renamed by plan 45-05, and the reach did not move ────────────
+ *
+ * This guard asked `production.read` until that commit. PROD-02 makes
+ * entitlement per SECTION, so the one key became four (D-45-04) and the calendar
+ * took its own. **The same two roles reach this page before and after** —
+ * D-45-04 constraint 3 forbids the grants from narrowing or widening — and the
+ * database still holds `production.read` until plan 45-08 applies the additive
+ * migration, which deliberately leaves the old key and its grants in place so
+ * that nobody is refused at any instant of the sequence.
+ *
+ * That entry sat on the map's `scope: "table"` branch from plan 44-04 until plan
+ * 44-09, because until this file existed the key gated six tables and no address.
  * A page bound to a table-only key is unreachable **for everyone** —
  * `resolveRoute` returns `null` and the middleware fails closed — with no build
  * error and nothing in a log, which is why the move landed in the same plan as
- * the page rather than in a tidy-up afterwards.
+ * the page rather than in a tidy-up afterwards. The three sibling section keys
+ * are on that branch **now**, each naming the plan that moves it.
  *
  * ⚠ `next build` would NOT have caught a missing row for the sister address. The
  * backward assertion `_everyStaffRouteIsBound` reads the GENERATED route union,
@@ -61,8 +72,8 @@ import type {
  *
  * The map decides where a **redirect** happens: it stops somebody arriving here.
  * It stops nobody reading a `production_plan` row. The boundary is the six
- * `SELECT` policies of `20260815120100_production_calendar_access.sql`, each
- * asking `private.has_capability('production.read')`.
+ * `SELECT` policies rewritten by `20260817120000_production_section_keys.sql`
+ * §3, each asking `private.has_capability('production.calendar.manage')`.
  *
  * **Which is why every read below goes through the cookie-bound client**, and why
  * this file constructs no service client. A read that bypasses the policy proves
@@ -108,7 +119,7 @@ export default async function AdminCalendarPage() {
   // redirect alone.
   const { capabilities } = await getAccessContext();
 
-  if (!capabilities.has(CAP.PRODUCTION_READ)) {
+  if (!capabilities.has(CAP.PRODUCTION_CALENDAR_MANAGE)) {
     redirect("/dashboard");
   }
 
