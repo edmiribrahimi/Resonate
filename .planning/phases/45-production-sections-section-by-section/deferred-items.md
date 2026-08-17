@@ -247,6 +247,28 @@ nome che il gate pretende. Se il nome dello spazio fosse stato reso dentro
 `SpaceList.tsx` — la lettura letterale del criterio d'accettazione del piano —
 il check A sarebbe **rosso** insieme a B e C.
 
+### CHIUSA il 2026-08-17 dal piano 45-12, per la strada 2
+
+Decisione dell'orchestratore: **si corregge il gate, non si rinominano i
+renderer di 45-07**. Cambiano solo gli **indirizzi**; l'invariante resta
+identica — una cella di punteggio rende la provenienza del numero, una cella di
+attributo rende se la domanda e' stata fatta — e i compagni sono ora gli
+identificatori che quei due file portano davvero (`score.provenance` /
+`ATTRIBUTE_PROVENANCE_LABELS`, `not_asked` / `ATTRIBUTE_VALUE_LABELS`), scelti
+perche' cancellarli rompe la regola invece di rinominarla.
+
+`SectionVoid.tsx` e' stato creato dal piano 45-12, come previsto.
+
+Il commit del gate (`e5bbdef`) **precede** quello che completa lo scope
+(`7fc2bf2`), cosi' che in nessun commit `verify:section-surface` sia rosso su un
+albero corretto. Provato per mutazione: il check B e' stato visto fallire su due
+mutazioni verificate applicate e poi ripristinate. Esito finale: **exit 0**,
+sette directory su sette, A B C D E verdi.
+
+Il costo e' dichiarato nel file stesso: un gate corretto a posteriori e' a un
+passo dal diventare un timbro, e la difesa e' che il diff cambia *dove guardare*
+e non *cosa deve essere vero*.
+
 ---
 
 ---

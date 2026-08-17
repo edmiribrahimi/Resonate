@@ -169,20 +169,81 @@ const STAGE_BADGE = "StageBadge";
 /** The ways a space's name reaches a component. */
 const NAME_TOKENS = ["space.name", "spaceName", "space_name"];
 
-/** Check B — the only component that may render a computed per-format score. */
-const SCORE_RENDERER = "SpaceScore.tsx";
+/* ── DEF-45-07: THE ADDRESS MOVED, THE RULE DID NOT ──────────────────────────
+ *
+ * The four names below were written in plan 45-06, **before** the surfaces
+ * existed, precisely so that the surfaces would have to satisfy them. Plan 45-07
+ * then delivered the two renderers under different names, and plan 45-11 named
+ * ITS files as the ones to import. Two already-committed contracts disagreed:
+ *
+ *   this gate asked for   ·  what is on disk   ·  companion asked for
+ *   SpaceScore.tsx           ScoreCell.tsx        ScoreProvenance
+ *   SpaceAttribute.tsx       AttributeCell.tsx    AttributeAsked
+ *
+ * The conflict was recorded as DEF-45-07 and left for the plan that completes
+ * this gate's scope — 45-12, which is the first plan to see it measured, because
+ * a missing directory refuses for all seven and hides the disagreement.
+ *
+ * ── What was changed, and what deliberately was NOT ─────────────────────────
+ *
+ * **Only the addresses.** The invariant is byte-for-byte the one plan 45-06
+ * wrote: a score cell must render the PROVENANCE of the figure beside it, and an
+ * attribute cell must render WHETHER THE QUESTION WAS EVER ASKED. Neither is
+ * relaxed, neither is made optional, and the single-renderer rule and its token
+ * lists are untouched.
+ *
+ * The companions are now the identifiers those two files actually carry, chosen
+ * because deleting either would break the rule rather than merely rename it:
+ * `ScoreCell.tsx` draws the provenance by looking it up in the label map, and
+ * `AttributeCell.tsx` branches on the unasked value to draw a sentence instead
+ * of a blank. Remove those and the check goes red, which is the whole job.
+ *
+ * ── Why the gate moved and not the components ──────────────────────────────
+ *
+ * Renaming two shipped files and inventing two identifiers that do not exist
+ * would be rewriting a closed plan's delivery, and 45-11 imports those files by
+ * name. Against that: **a gate bound to a file that does not exist is
+ * indistinguishable from an absent gate**, with the aggravation that it looks
+ * guarded. This phase has the receipt already — 45-06's own mutation run found
+ * check C red on `vocabulary.ts`, correct code, and recorded that a red on a
+ * correct tree is how a gate gets switched off, taking the true reds with it.
+ *
+ * The honest cost, stated: a gate edited after the fact to match the tree is one
+ * edit away from becoming a rubber stamp. The defence is that this edit changes
+ * *where to look* and not *what must be true* — and that the difference is
+ * legible in this diff, which is why it is written here rather than in a commit
+ * message alone.
+ * ─────────────────────────────────────────────────────────────────────────── */
 
-/** What it must render beside the score. */
-const SCORE_PROVENANCE = "ScoreProvenance";
+/** Check B — the only component that may render a computed per-format score. */
+const SCORE_RENDERER = "ScoreCell.tsx";
+
+/**
+ * What it must render beside the score.
+ *
+ * Two identifiers, both load-bearing: the value's own provenance field, and the
+ * map that turns it into the word a reader sees. A figure drawn without either
+ * is a hypothesis presented as a datum, which `venue-acquisition.md` forbids by
+ * name — *derivato non è verificato*.
+ */
+const SCORE_PROVENANCE = ["score.provenance", "ATTRIBUTE_PROVENANCE_LABELS"];
 
 /** The ways a computed score reaches a component. */
 const SCORE_TOKENS = ["space.score", "spaceScore", "scoreForFormat", "formatScore"];
 
 /** Check B — the only component that may render one attribute's value. */
-const ATTRIBUTE_RENDERER = "SpaceAttribute.tsx";
+const ATTRIBUTE_RENDERER = "AttributeCell.tsx";
 
-/** The marker that says whether the question behind the value was ever asked. */
-const ATTRIBUTE_MARKER = "AttributeAsked";
+/**
+ * The marker that says whether the question behind the value was ever asked.
+ *
+ * The unasked value and the map that gives it a sentence rather than a dash. A
+ * blank cell and an unasked question are the same pixel unless something draws
+ * the difference, and on the evening-viability attribute the question is
+ * unanswered on 100 of 184 spaces — so a cell that lost this branch would be
+ * reporting ignorance as a negative on most of the list.
+ */
+const ATTRIBUTE_MARKER = ["not_asked", "ATTRIBUTE_VALUE_LABELS"];
 
 /** The ways an attribute's value reaches a component. */
 const ATTRIBUTE_TOKENS = ["attribute.value", "attributeValue", "attribute_value"];
@@ -492,20 +553,22 @@ function checkB() {
   return {
     id: "B",
     title: "the provenance stands beside the value, in one renderer each",
-    note: `${SCORE_RENDERER} names ${SCORE_PROVENANCE}; ${ATTRIBUTE_RENDERER} names ${ATTRIBUTE_MARKER}`,
+    note:
+      `${SCORE_RENDERER} names ${SCORE_PROVENANCE.join(" and ")}; ` +
+      `${ATTRIBUTE_RENDERER} names ${ATTRIBUTE_MARKER.join(" and ")}`,
     limit:
       "it proves the marker is rendered, never that the distinction is legible. The same " +
       "half-measure as check A, and the same procedure closes it",
     failures: [
       ...singleRenderer({
         rendererFile: SCORE_RENDERER,
-        companions: [SCORE_PROVENANCE],
+        companions: SCORE_PROVENANCE,
         tokens: SCORE_TOKENS,
         what: "a computed per-format score",
       }),
       ...singleRenderer({
         rendererFile: ATTRIBUTE_RENDERER,
-        companions: [ATTRIBUTE_MARKER],
+        companions: ATTRIBUTE_MARKER,
         tokens: ATTRIBUTE_TOKENS,
         what: "an attribute's value",
       }),

@@ -33,6 +33,25 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   typedRoutes: true,
   turbopack: {},
+  // The visual section publishes the capitolato's palette, and D-45-09 says it
+  // READS those values from the token file instead of restating them — six
+  // colours written twice are six colours that diverge, and
+  // `verify:semantic-separation` check B forbids the second copy outright.
+  //
+  // So `src/lib/production/sections/tokens.ts` opens `src/app/globals.css` at
+  // run time. A stylesheet is an input to the build, not an output of it, so
+  // nothing would otherwise put it beside the server bundle: file tracing
+  // follows imports, and this is a `readFileSync` of a path assembled from
+  // `process.cwd()`. Naming it here is what makes the read succeed in
+  // production rather than in development only.
+  //
+  // If this line is ever removed the failure is DECLARED — the reader returns
+  // `token_file_unreadable` and the page prints it — because a palette that
+  // silently came back empty would be a void nobody declared, on the one page
+  // whose subject is that a void must declare itself.
+  outputFileTracingIncludes: {
+    "/admin/visual": ["./src/app/globals.css"],
+  },
   images: {
     remotePatterns: [
       {
