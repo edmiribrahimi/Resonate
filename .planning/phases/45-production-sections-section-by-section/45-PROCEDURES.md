@@ -5,7 +5,7 @@ status: all pending
 closes: PROD-02 criterion 1, criterion 2, criterion 3, and the half of D-45-16 that no assertion can hold
 carries: the four rows of 45-VALIDATION.md § Manual-Only Verifications, in the researcher's own reasons
 accounts: two — a hand-made account holding exactly ONE section key, in a throwaway environment; and an account holding all four keys through the master role. Roles, never names
-authorisation: three, and they are three ACTS, not one permission. A1 (plan 45-02) is already spent. A2 (plans 45-08 and 45-09) and A3 (plan 45-10) are not this document's to spend — the procedures below write nothing
+authorisation: three, and they are three ACTS, not one permission. A1 (plan 45-02) is spent. A2 was granted and spent on 2026-08-17 by plan 45-08, and it did NOT extend to the retirement of plan 45-09, which asks again. A3 (plan 45-10) is unasked. None of them is this document's to spend — the procedures below write nothing
 phase_closes: not before every Result below carries an observation
 ---
 
@@ -54,7 +54,7 @@ them into one line would be asking for a permission instead.
 | | What it authorises | Whose plan | State |
 |---|---|---|---|
 | **A1** | **Minting a session on a real person's identity** through the auth API, read-only, with a verified global revocation at the end — so that a refusal can be measured with a real role rather than a service key | plan 45-02 | **SPENT.** One run, one sitting; the transcript, the exit code and the date are recorded in `45-02-SUMMARY.md`. A second sitting is a second authorisation |
-| **A2** | **Applying a migration to production** — the additive key split, and then the retirement of the key it replaces, in that order and after a deploy | plans 45-08 and 45-09 | not asked for here, and not this document's to spend |
+| **A2** | **Applying a migration to production** — the additive key split, and then the retirement of the key it replaces, in that order and after a deploy | plans 45-08 and 45-09 | **ASKED AND GRANTED 2026-08-17**, in the owner's words *«Autorizzato: migration + rilettura»*. **SPENT the same day, by plan 45-08.** What it covered: the FIVE migrations `20260817120000`, `120100`, `120200`, `120300`, `120400`, applied ONCE each through `POST /v1/projects/{ref}/database/migrations`, **plus** the one re-run of `verify:refusal`, which mints its own session. What it did NOT cover, and each needs its own act asked by its own plan: the retirement migration `20260817120500_production_read_retire.sql` (plan 45-09), the seed (A3, plan 45-10), any second application, any further re-run, and any write of a data row. The five assigned versions and the recorded read-back are in `45-08-SUMMARY.md` |
 | **A3** | **Seeding the scouting archive** into the location section, once, all rows at the mapped stage | plan 45-10 | not asked for here, and not this document's to spend |
 
 **A1 is already spent by the time anybody reads this**, and what it bought is a
@@ -63,6 +63,16 @@ calendar table that carries rows, and refused honestly on the five that do not.
 Whoever runs A2 re-runs that instrument **under a new authorisation** and must
 get the same pair back with the new key. If the pair changes, the reach of the
 access changed and not the name of a key.
+
+**That comparison has now been made, on 2026-08-17, and the pair did not move.**
+`production_pipeline_rule` read `16 / 0 / 0` before the split and `16 / 0 / 0`
+after it, with the six arms asking a different key at the second reading. Both
+minted sessions were revoked globally and each revocation was re-read as
+`false`. Constraint 3 of D-45-04 — *the split changes the name of a key and not
+who can read* — is therefore held by a measurement and not only by a diff. The
+run's exit code fell at `2`, which is the honest outcome and not a defect: ten
+of the eleven declared tables carry zero rows, and on an empty table the
+entitled answer and the unentitled answer are the same bytes.
 
 ---
 
