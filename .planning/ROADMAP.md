@@ -1110,8 +1110,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 45-12-PLAN.md — The manifesto and visual surfaces, the three states, and the palette read at runtime
-- [ ] 45-13-PLAN.md — The location writes: the gate first, the refusals named, two fields in every log
+- [x] 45-12-PLAN.md — The manifesto and visual surfaces, the three states, and the palette read at runtime
+- [x] 45-13-PLAN.md — The location writes: the gate first, the refusals named, two fields in every log
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
