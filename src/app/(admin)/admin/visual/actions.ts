@@ -6,12 +6,22 @@ import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { getServiceClient } from "@/lib/supabase/service";
 
+import { createClient } from "@/lib/supabase/server";
+
 import {
   UUID_PATTERN,
   validateSectionDraft,
   type SectionDraft,
   type SectionWriteResult,
 } from "@/lib/production/sections/write-contract";
+import {
+  ARCHIVE_SIGNATURE_SECONDS,
+  areUuids,
+  validateVisualAsset,
+  type ArchiveSignatureResult,
+  type VisualAssetDraft,
+  type VisualAssetResult,
+} from "@/lib/production/sections/visual-archive";
 import type { SectionKind } from "@/lib/production/sections/vocabulary";
 
 /**
@@ -288,4 +298,206 @@ async function loadSection(
   }
 
   return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE ARCHIVE — the material half, and it is the half that has a deadline
+ *
+ * The capitolato above says how a piece is produced. What follows records what a
+ * piece is produced FROM, and the two live on one surface because separating
+ * them is what produces a rule nobody applies and a photograph nobody finds.
+ *
+ * ⚠ WHY THE ARCHIVE IS NOT A CONVENIENCE. The listing goes out two days before
+ * the night, so THAT NIGHT'S PHOTOGRAPH CANNOT EXIST YET. At an artist's first
+ * date there is only their press photo; from the second, the piece is pulled
+ * from an archive somebody has been building every Thursday. An archive nobody
+ * fills is a format that stays dependent on whatever arrives on the Monday for
+ * the Tuesday — which is the dependency this table was created to end.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Record one archive row: a photograph of an artist, or a produced piece.
+ *
+ * ⚠ **The bytes never come through here.** This act takes a stored object KEY
+ * and nothing else about the object — no form payload, no binary, no stream.
+ * That is forced rather than chosen: a Vercel Function refuses a body over
+ * 4.5 MB and this product accepts photographs up to 50 MB, so the browser
+ * deposits into the private quarantine bucket and
+ * `POST /api/media/finalize-archive` strips the metadata and writes the result
+ * into the private archive bucket. The reasoning and its source are in the
+ * header of `src/app/api/media/finalize/route.ts`.
+ *
+ * ⚠ **This act does not check that the object exists.** The arm that wrote it
+ * answered with the key it stored, and the caller passes that answer. A row
+ * recorded for an object nobody wrote would count something that is not there —
+ * which is why the uploader records only on the arm's `ok`, and why
+ * `object_key_missing` is a named refusal rather than an empty string reaching
+ * a `NOT NULL` column.
+ *
+ * ⚠ **The spelling of a name is verified at the source, and nothing here can do
+ * it.** A misspelling is irrecoverable once it reaches a published piece and it
+ * is a discourtesy to whoever is playing. The check below can only refuse an
+ * ABSENT name on the kind that needs one; the surface says the rest in words.
+ */
+export async function recordVisualAsset(
+  draft: VisualAssetDraft
+): Promise<VisualAssetResult> {
+  // Asked FIRST, and once. The client is constructed after it, never before.
+  const { userId } = await assertVisualSection();
+
+  const checked = validateVisualAsset(draft);
+  if (!checked.ok) return checked;
+
+  // The service client, for the reason the header gives: with row level
+  // security enabled and no write arm on this table, every session is refused a
+  // write through PostgREST. Every value below has passed a shape check, nothing
+  // is concatenated into a query, and every value travels as a parameter.
+  const { error } = await getServiceClient()
+    .from("production_visual_asset")
+    .insert({
+      kind: checked.value.kind,
+      object_key: checked.value.object_key,
+      artist_name: checked.value.artist_name,
+      format_id: checked.value.format_id,
+      taken_on: checked.value.taken_on,
+      created_by: userId,
+    });
+
+  if (error) {
+    // `code` and `message`, never the error object and never PostgREST's third
+    // field — which carries THE WHOLE REJECTED ROW, and a rejected row here
+    // carries an artist's name and a storage key. The field's name is
+    // deliberately not spelled anywhere in this module.
+    console.error(
+      `[visual.asset_write_failed] section=archive code=${error.code ?? "unknown"} message=${error.message}`
+    );
+    return { ok: false, reason: "write_failed" };
+  }
+
+  revalidateSection();
+  return { ok: true };
+}
+
+/**
+ * Mint a short-lived address for each of the archive rows named.
+ *
+ * ── WHY A SIGNATURE AND NOT A URL ───────────────────────────────────────────
+ *
+ * The archive bucket is **private**, has no anonymous read arm and has no client
+ * write arm at all (`20260817120400_visual_archive_bucket.sql`, sections 3 and
+ * 4). An archive photograph is **not published**: it is held so that a listing
+ * can be produced from it later, and a photograph of somebody who has agreed to
+ * play on a date nobody has communicated is material in exactly the sense a
+ * space under negotiation is. So a thumbnail on this surface exists **because
+ * the server signed for it**, briefly — the same door as the rest of the
+ * section rather than a second one.
+ *
+ * The repair this design exists to make unnecessary is named in that migration
+ * so it is recognised when somebody proposes it in good faith: *"the thumbnails
+ * do not load — add a public read arm on the bucket."* That would make the whole
+ * archive readable by URL, with no session, to anybody holding a key.
+ *
+ * ── THE COOKIE-BOUND CLIENT, DELIBERATELY ───────────────────────────────────
+ *
+ * Both the row read and the signature go through the caller's own session, not
+ * the service role. The bucket's one read arm asks
+ * `private.has_capability('production.visual.manage')`, so a session without the
+ * key cannot mint an address even if this code were reached — the guard above is
+ * the message, the policy is the boundary, and routing this through the service
+ * role would have removed the boundary and left only the message.
+ *
+ * ── ONE CALL FOR THE WHOLE LIST, AND WHY ────────────────────────────────────
+ *
+ * The plan asked for one signature per asset. It is one call over a list
+ * instead: the archive is filled every Thursday, so it grows without bound, and
+ * a per-row act would be one gate round trip **and** one query **and** one
+ * signing request per photograph on every render of the page. Each row still
+ * gets its own address with its own expiry — what is shared is the question
+ * *may this session see the archive*, which is one question however many rows
+ * are on the screen.
+ *
+ * ⚠ **The storage key never leaves this function.** The answer is keyed by the
+ * ROW's identifier, so the surface can render a thumbnail without ever holding a
+ * pointer it could log, copy or link.
+ */
+export async function signVisualAssets(
+  assetIds: readonly unknown[]
+): Promise<ArchiveSignatureResult> {
+  await assertVisualSection();
+
+  if (!areUuids(assetIds)) {
+    // Refused whole rather than quietly narrowed: a page that silently dropped
+    // one thumbnail would look like an archive with a hole in it, and nobody
+    // would know which row was missing or why.
+    console.error(
+      "[visual.asset_sign_failed] section=archive code=invalid_id " +
+        "message=a caller named something that is not a row identifier"
+    );
+    return { ok: false, reason: "read_failed" };
+  }
+
+  if (assetIds.length === 0) {
+    return { ok: true, urls: {} };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("production_visual_asset")
+    .select("id, object_key")
+    .in("id", assetIds);
+
+  if (error) {
+    console.error(
+      `[visual.asset_read_failed] section=archive code=${error.code ?? "unknown"} message=${error.message}`
+    );
+    return { ok: false, reason: "read_failed" };
+  }
+
+  const rows = (data ?? []) as unknown as { id: string; object_key: string }[];
+
+  if (rows.length === 0) {
+    return { ok: true, urls: {} };
+  }
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from("visual-archive")
+    .createSignedUrls(
+      rows.map((row) => row.object_key),
+      ARCHIVE_SIGNATURE_SECONDS
+    );
+
+  if (signError || signed === null) {
+    // Its own cause, kept apart from a failed read: here the rows ARE on the
+    // screen with their kind, their artist and their date, and only the picture
+    // is missing. Telling somebody the archive could not be read would be false
+    // and would send them to reload a page that is already showing them what it
+    // holds.
+    console.error(
+      `[visual.asset_sign_failed] section=archive code=${signError?.name ?? "unknown"} ` +
+        "message=storage would not sign the archive addresses"
+    );
+    return { ok: false, reason: "sign_failed" };
+  }
+
+  /*
+    Back to row identifiers, in the order the signatures came in.
+
+    `createSignedUrls` answers positionally and carries the path it signed; the
+    keys are matched by POSITION rather than by comparing paths, because
+    comparing would mean holding both lists of pointers side by side for the
+    length of a loop, and the point of this function is that a pointer stops
+    here. A signature that failed individually arrives with a null address and is
+    simply absent from the map — the surface draws that row without a picture and
+    says so, which is the honest shape of a partial answer.
+  */
+  const urls: Record<string, string> = {};
+  signed.forEach((entry, index) => {
+    const row = rows[index];
+    if (row === undefined) return;
+    if (typeof entry.signedUrl !== "string" || entry.signedUrl === "") return;
+    urls[row.id] = entry.signedUrl;
+  });
+
+  return { ok: true, urls };
 }

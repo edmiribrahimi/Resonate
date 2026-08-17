@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { getPartyAccessContext } from "@/lib/capabilities/server";
+import { getAccessContext, getPartyAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
 
 /**
@@ -70,6 +70,26 @@ import { CAP } from "@/lib/capabilities/keys";
  *     function, so no caller can ask the question without naming the night. It
  *     is the other half of the rule plan 35-18 wrote into the database: there no
  *     new row may omit the night, here no question may.
+ *
+ * ── A SECOND QUESTION LIVES HERE FROM PLAN 45-17, AND IT IS A SECOND ────────
+ * ── FUNCTION RATHER THAN A WIDENED ONE ─────────────────────────────────────
+ *
+ * The dj photograph archive has **no night**, and that is not an omission in its
+ * model: it is the entire reason the archive exists. The listing goes out two
+ * days before the night, so THAT NIGHT'S PHOTOGRAPH CANNOT EXIST YET — at an
+ * artist's first date there is only their press photo, and from the second the
+ * piece is pulled from an archive somebody has been building
+ * (`brand-visual-system.md`, gate *l'archivio precede il listing*). A photograph
+ * filed on a Thursday is filed for a listing nobody has scheduled.
+ *
+ * So `mayUploadToVisualSection` below takes **no party**, and
+ * `mayUploadToParty` above was **not widened to accept a nullable one**. The
+ * paragraph immediately above this one is the argument, and it is the argument a
+ * planner would be tempted to overrule with one `?`: a nullable night makes *may
+ * this person upload* answerable **without naming what they are uploading to**,
+ * and the two callers of that answer would be a per-night gallery and a
+ * per-brand archive sharing one verdict. Two questions, two functions, and
+ * neither signature can be mistaken for the other's.
  */
 
 /** The night named is not a night of the event named. Not a permission verdict. */
@@ -80,6 +100,18 @@ export const MEDIA_NIGHT_REQUIRED = "media.night_required";
 
 /** The three arms all answered no. This one IS a permission verdict. */
 export const MEDIA_UPLOAD_FORBIDDEN = "forbidden.media_upload_required";
+
+/**
+ * The visual section's key was not held. A permission verdict, and a **different
+ * one** from the per-night refusal above.
+ *
+ * Spelled exactly as `visual/actions.ts` spells its own refusal, so that a
+ * person refused by the archive upload and a person refused by the capitolato
+ * write read the same words about the same key. Two spellings of one refusal are
+ * two things to fix when the key is renamed, and only one would be found.
+ */
+export const MEDIA_VISUAL_UPLOAD_FORBIDDEN =
+  "forbidden.production_visual_manage_required";
 
 /**
  * May the current session upload media to `partyId`, a night of `eventId`?
@@ -268,4 +300,50 @@ export async function mayUploadToParty(
     .maybeSingle();
 
   return Boolean(attendance);
+}
+
+/**
+ * May the current session file a photograph in the visual section's archive?
+ *
+ * **It names no night, and it cannot be given one.** See the paragraph in the
+ * header: the archive precedes the listing, which precedes the night, so a
+ * signature that accepted a party would be asking a question the archive has no
+ * answer to — and would invite a caller to pass `null`.
+ *
+ * ── ONE ARM, AND IT IS THE SECTION'S OWN KEY ────────────────────────────────
+ *
+ * `production.visual.manage` and nothing else. Not `staff.manage`, which opens
+ * every night's gallery and says nothing about who owns the brand's material;
+ * not `admin.access`, which is the master alone. D-45-06 makes the key that
+ * READS a section the key that WRITES it, and filing a photograph in the
+ * archive is a write to that section — so the archive upload and the capitolato
+ * write are refused and admitted together, by construction rather than by
+ * two checks that agree today.
+ *
+ * ── WHAT THIS DOES **NOT** DECIDE, and the reader must find it here ─────────
+ *
+ * Widening WHO may file does not widen WHAT IS STRIPPED. The archive raises the
+ * stakes rather than lowering them: an archive photograph is **kept for
+ * months** and is drawn on for a listing, so an un-stripped file there is a
+ * reveal path that stays open long after the upload is forgotten. The strip is
+ * `src/lib/media/finalize.ts`'s, on the one path both destinations share, and
+ * *a file that has not been stripped is reachable by nobody* is a property of
+ * that module and of the destination bucket's policies — never of this
+ * predicate.
+ *
+ * ── The identity backstop, and why it is a refusal rather than a throw ──────
+ *
+ * `getAccessContext` resolves the caller from the cookie-bound session. With no
+ * identity there is no capability set worth asking, and the route above this one
+ * has already refused an anonymous caller with its own category by the time
+ * execution reaches here.
+ */
+export async function mayUploadToVisualSection(): Promise<boolean> {
+  const ctx = await getAccessContext();
+
+  if (!ctx.userId) {
+    return false;
+  }
+
+  return ctx.capabilities.has(CAP.PRODUCTION_VISUAL_MANAGE);
 }

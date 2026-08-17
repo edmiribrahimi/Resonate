@@ -8,12 +8,19 @@ import {
   mayUploadToParty,
 } from "@/lib/media/may-upload";
 import {
+  MEDIA_FINALIZE_ALREADY_PUBLISHED,
+  MEDIA_FINALIZE_PUBLISH_FAILED,
+  MEDIA_FINALIZE_SOURCE_MISSING,
+  MEDIA_FINALIZE_SOURCE_UNREADABLE,
+  MEDIA_FINALIZE_TYPE_NOT_ACCEPTED,
+  MEDIA_FINALIZE_UNEXPECTED,
+  finalizeStrippedUpload,
+  releaseQuarantineObject,
+} from "@/lib/media/finalize";
+import {
   MEDIA_STRIP_FAILED,
   MEDIA_STRIP_TOOL_UNAVAILABLE,
   MEDIA_STRIP_UNSUPPORTED_TYPE,
-  STRIPPABLE_MIME_TYPES,
-  isMediaStripRefusal,
-  stripImageMetadata,
   type MediaStripRefusalReason,
 } from "@/lib/media/strip-metadata";
 
@@ -71,6 +78,23 @@ import {
  * the screen of the person uploading. A route that collapsed these seventeen
  * outcomes into one 403 would be repeating the newsletter defect recorded in
  * `.planning/codebase/CONCERNS.md`, one domain over.
+ *
+ * ── THE SEQUENCE MOVED OUT, AND ITS BEHAVIOUR DID NOT (plan 45-17) ──────────
+ *
+ * Download, strip and write now live in `src/lib/media/finalize.ts`, because a
+ * SECOND destination arrived — the private dj-photograph archive — and two
+ * copies of a sequence whose correctness is an ORDER is one copy that will stop
+ * stripping. What stayed here is everything that is about **this** destination:
+ * the two numbers below, the ownership check on the key, the per-night
+ * predicate, the video branch with its container check and its secret-night
+ * read, the seventeen categories, and the total record deciding which refusals
+ * destroy the transit copy and which keep it.
+ *
+ * ⚠ **Nothing externally observable moved.** The seventeen category strings are
+ * byte-identical (they are now imported from the module that owns six of them
+ * rather than declared here), every status is the one it was, and every
+ * quarantine fate is the one it was. `MediaUpload.tsx` maps those exact strings
+ * to seventeen sentences and was not touched.
  *
  * ── WHAT THIS ROUTE DOES NOT DO ──────────────────────────────────────────────
  *
@@ -136,16 +160,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * The quarantine bucket, named once. Its public sibling is deliberately **not**
- * hoisted into a constant beside it, and the asymmetry is not carelessness: the
- * mechanical assertion that the strip precedes the write is a comparison of line
- * numbers, so the public bucket's name written at the top of this file would sit
- * above the strip and make a correct file fail its own check. It is therefore
- * written inline, once, at the single place that writes. Same discipline, and
- * the same reason, as `35-19-SUMMARY.md` deviation 3: a check that has to be
- * read around stops being read.
+ * The public bucket, named **once**, inline, at the single call that names a
+ * destination — and deliberately not hoisted into a constant at the top of this
+ * file.
+ *
+ * The reason changed shape in plan 45-17 and is worth stating in its new form.
+ * It used to be about line numbers: the strip lived here, and a bucket name
+ * above it would have made a correct file fail its own ordering check. The
+ * sequence has moved to `src/lib/media/finalize.ts`, so that reason expired —
+ * but a stronger one replaced it. `verify-media-strip` check A finds a second
+ * writer by looking for the public bucket's name in the same statement as a
+ * write, and a name bound to a variable is the one evasion it has to close by
+ * hand. Written inline at the one call, this file says what it publishes to in
+ * the place a reader is already standing.
+ *
+ * The quarantine bucket is not named here at all any more: reading it is the
+ * shared module's job, and this route has no business holding a second spelling
+ * of a bucket it never touches.
  */
-const QUARANTINE_BUCKET = "event-media-quarantine";
 
 /**
  * The same spelling `src/app/api/tickets/checkin/route.ts:75-76` and
@@ -178,31 +210,20 @@ const MEDIA_FINALIZE_PATH_NOT_YOURS = "media_finalize.path_not_yours";
 /** The permission question could not be answered. NOT a refusal of the person. */
 const MEDIA_FINALIZE_PERMISSION_UNRESOLVED =
   "media_finalize.permission_unresolved";
-/** There is no object at that key. */
-const MEDIA_FINALIZE_SOURCE_MISSING = "media_finalize.source_missing";
-/** The object could not be fetched, and the cause is ours rather than the caller's. */
-const MEDIA_FINALIZE_SOURCE_UNREADABLE = "media_finalize.source_unreadable";
-/** A declared type this product does not accept at all. */
-const MEDIA_FINALIZE_TYPE_NOT_ACCEPTED = "media_finalize.type_not_accepted";
 /** Declared a video; the bytes are not a video container. */
 const MEDIA_FINALIZE_CONTAINER_MISMATCH = "media_finalize.container_mismatch";
 /** A video toward a night whose venue is secret, or whose secrecy is unreadable. */
 const MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT =
   "media_finalize.video_on_secret_night";
-/** Something already occupies that key in the public bucket. */
-const MEDIA_FINALIZE_ALREADY_PUBLISHED = "media_finalize.already_published";
-/** The write to the public bucket failed. */
-const MEDIA_FINALIZE_PUBLISH_FAILED = "media_finalize.publish_failed";
-/** A cause this route did not foresee. Never merged with one it did. */
-const MEDIA_FINALIZE_UNEXPECTED = "media_finalize.unexpected";
 
 /**
  * Every way this route can say no.
  *
- * Three of them are **imported rather than re-minted**: the two the per-night
- * predicate owns and the three the stripper owns. Re-spelling any of them here
+ * Eleven of them are **imported rather than re-minted**: the two the per-night
+ * predicate owns, the three the stripper owns, and the six the shared
+ * pickup-strip-write module owns since plan 45-17. Re-spelling any of them here
  * would be a second definition of a category whose first definition is the one
- * a caller already reads.
+ * a caller already reads — and `MediaUpload.tsx` reads all seventeen.
  */
 type FinalizeRefusal =
   | typeof MEDIA_FINALIZE_UNAUTHENTICATED
@@ -339,10 +360,6 @@ function looksLikeVideoContainer(bytes: Buffer): boolean {
   return ISO_BMFF_TOP_LEVEL_BOXES.has(bytes.subarray(4, 8).toString("latin1"));
 }
 
-function isStrippableMime(mime: string): mime is (typeof STRIPPABLE_MIME_TYPES)[number] {
-  return (STRIPPABLE_MIME_TYPES as readonly string[]).includes(mime);
-}
-
 function isAllowedVideoMime(mime: string): mime is AllowedVideoMime {
   return (ALLOWED_VIDEO_MIME_TYPES as readonly string[]).includes(mime);
 }
@@ -361,20 +378,6 @@ function hasHostileCharacters(value: string): boolean {
     if (code < 0x20 || code === 0x7f || code === 0x5c) return true;
   }
   return false;
-}
-
-/**
- * The HTTP status a storage error carried, read defensively.
- *
- * `@supabase/storage-js` is a **transitive** package here — `package.json`
- * declares `@supabase/supabase-js`, not this one — so its error classes are read
- * by shape and never imported. Importing them would be the phantom dependency
- * plan 35-19 task 1 removed for `sharp`, re-introduced one module over.
- */
-function storageErrorStatus(error: unknown): number | null {
-  if (typeof error !== "object" || error === null) return null;
-  const status = (error as { status?: unknown }).status;
-  return typeof status === "number" ? status : null;
 }
 
 /** A short, safe description of a thrown thing, for the server log only. */
@@ -533,155 +536,97 @@ export async function POST(request: Request) {
       return refuse(MEDIA_UPLOAD_FORBIDDEN, partyId);
     }
 
-    // ── 5. Fetch the bytes out of quarantine ────────────────────────────────
+    // ── 5. Pick up, strip, write — in the module that owns the sequence ─────
     //
-    // The service role, because the quarantine bucket has no read policy for
-    // anybody and that absence IS its protection (plan 35-19, section 3). A
-    // policy written "for the server" would be a grant to everyone in order to
-    // serve one caller.
-    const { data: blob, error: downloadError } = await serviceClient.storage
-      .from(QUARANTINE_BUCKET)
-      .download(quarantinePath);
-
-    if (downloadError || !blob) {
-      // "There is no such object" and "storage did not answer" are two
-      // different facts and are told apart by the status the error carried:
-      // the first is terminal and is the caller's, the second is retryable and
-      // is ours. An unrecognisable error takes the retryable arm, which is the
-      // arm that keeps the member's bytes.
-      const status = storageErrorStatus(downloadError);
-      const missing = status === 404 || status === 400;
-      console.error(
-        `[media_finalize.download] quarantine object unavailable for night ` +
-          `${partyId}: status ${status ?? "unknown"}`
-      );
-      return refuse(
-        missing ? MEDIA_FINALIZE_SOURCE_MISSING : MEDIA_FINALIZE_SOURCE_UNREADABLE,
-        partyId
-      );
-    }
-
-    const sourceBytes = Buffer.from(await blob.arrayBuffer());
-
-    // ── 6. The fork on the declared type ────────────────────────────────────
-    let bytesToPublish: Buffer;
-
-    if (isStrippableMime(mimeType)) {
-      // An image. Every outcome other than a stripped buffer throws, and each
-      // throw carries its own category through to the caller — three of them,
-      // not one: the type, the tool, and the bytes. Nothing in this branch can
-      // return the bytes it was handed.
-      try {
-        bytesToPublish = await stripImageMetadata(sourceBytes, mimeType);
-      } catch (cause) {
-        if (isMediaStripRefusal(cause)) {
-          return refuse(cause.reason, partyId);
+    // Everything from here to the answer is `src/lib/media/finalize.ts`, and it
+    // is the SAME code the archive's route runs. What this call supplies is the
+    // two things that are about this destination and no other: **where** the
+    // bytes go, and **who** is let past the stripper.
+    //
+    // The destination is written inline, once, for the reason at the top of this
+    // file. It is a required argument of the module and the module has no
+    // default — a default destination is how a filed photograph becomes a
+    // published one.
+    const outcome = await finalizeStrippedUpload<
+      | typeof MEDIA_FINALIZE_CONTAINER_MISMATCH
+      | typeof MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT
+      | typeof MEDIA_FINALIZE_TYPE_NOT_ACCEPTED
+    >({
+      quarantinePath,
+      mimeType,
+      destinationBucket: "event-media",
+      logScope: "public",
+      /**
+       * The video branch — this product accepts video HERE and nothing in this
+       * repository sanitises one. The archive's route passes `null` instead,
+       * because nothing that cannot be stripped may be kept in an archive that
+       * is drawn on months later.
+       */
+      unstrippable: async (sourceBytes, declaredMime) => {
+        if (!isAllowedVideoMime(declaredMime)) {
+          // Neither an image the stripper can treat nor a video this product
+          // accepts. The two lists are not re-typed as a third opinion: one is
+          // the stripper's, the other is this file's mirror of the upload
+          // surface, named at the top.
+          return { ok: false, reason: MEDIA_FINALIZE_TYPE_NOT_ACCEPTED };
         }
-        // The stripper's contract is that it only ever throws a categorised
-        // refusal. An uncategorised throw from it is a cause this route did not
-        // foresee, and it is answered as such rather than dressed as a strip
-        // failure.
-        console.error(
-          `[${MEDIA_FINALIZE_UNEXPECTED}] the stripper threw something that is ` +
-            `not a categorised refusal. ${describe(cause)}`
-        );
-        return refuse(MEDIA_FINALIZE_UNEXPECTED, partyId);
-      }
-    } else if (isAllowedVideoMime(mimeType)) {
-      // A video, and nothing in this repository sanitises one.
-      //
-      // The claim is checked against the container first, because this is the
-      // branch that writes un-stripped bytes: a photograph labelled `video/mp4`
-      // must not reach the public bucket with its coordinates in it.
-      if (!looksLikeVideoContainer(sourceBytes)) {
-        return refuse(MEDIA_FINALIZE_CONTAINER_MISMATCH, partyId);
-      }
 
-      // `venue-secrecy.md`, gate *default chiuso*: when the state of the reveal
-      // cannot be determined, the venue is not shown. Applied here, that reads
-      // — a video is admitted only when the night is KNOWN not to be secret.
-      // Secret, unreadable and non-existent all refuse, and they refuse with the
-      // same category because they say the same thing to the person uploading:
-      // this kind of file is not accepted on this night.
-      //
-      // Read with the service role deliberately. `event_parties_select_published`
-      // (`20260225150000_party_architecture.sql:30-37`) shows an ordinary member
-      // only the nights of published events, so the caller's own privileges
-      // would answer "no row" for a night that exists — turning a question about
-      // the NIGHT into a question about WHO IS ASKING. That is the defect plan
-      // 35-18 measured inside a policy body and replaced with a `SECURITY
-      // DEFINER` accessor; the same answer applies one layer up.
-      const { data: party, error: partyError } = await serviceClient
-        .from("event_parties")
-        .select("venue_secret")
-        .eq("id", partyId)
-        .maybeSingle();
+        // The claim is checked against the container first, because this is the
+        // branch that writes un-stripped bytes: a photograph labelled
+        // `video/mp4` must not reach the public bucket with its coordinates in
+        // it.
+        if (!looksLikeVideoContainer(sourceBytes)) {
+          return { ok: false, reason: MEDIA_FINALIZE_CONTAINER_MISMATCH };
+        }
 
-      if (partyError || !party || party.venue_secret !== false) {
-        console.error(
-          `[${MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT}] video refused for night ` +
-            `${partyId}: secrecy ${
-              partyError
-                ? `unreadable (${partyError.code ?? "unknown"})`
-                : !party
-                  ? "night not found"
-                  : "true"
-            }`
-        );
-        return refuse(MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT, partyId);
-      }
+        // `venue-secrecy.md`, gate *default chiuso*: when the state of the
+        // reveal cannot be determined, the venue is not shown. Applied here,
+        // that reads — a video is admitted only when the night is KNOWN not to
+        // be secret. Secret, unreadable and non-existent all refuse, and they
+        // refuse with the same category because they say the same thing to the
+        // person uploading: this kind of file is not accepted on this night.
+        //
+        // Read with the service role deliberately.
+        // `event_parties_select_published`
+        // (`20260225150000_party_architecture.sql:30-37`) shows an ordinary
+        // member only the nights of published events, so the caller's own
+        // privileges would answer "no row" for a night that exists — turning a
+        // question about the NIGHT into a question about WHO IS ASKING. That is
+        // the defect plan 35-18 measured inside a policy body and replaced with
+        // a `SECURITY DEFINER` accessor; the same answer applies one layer up.
+        const { data: party, error: partyError } = await serviceClient
+          .from("event_parties")
+          .select("venue_secret")
+          .eq("id", partyId)
+          .maybeSingle();
 
-      // Passing un-stripped, and the limit is declared rather than implied:
-      // an MP4 or MOV carries the shot's coordinates and time in a `udta` atom
-      // exactly as a JPEG carries them in EXIF, `sharp` decodes still images
-      // only, and closing this needs a container rewriter that is in none of
-      // this phase's eight requirements. Recorded, dated 2026-08-08, as entry 6
-      // of plan 35-14. Whoever reads "EXIF sanitisation is shipped" somewhere
-      // else in this repository should come back to this paragraph.
-      bytesToPublish = sourceBytes;
-    } else {
-      // Neither an image this module can treat nor a video this product
-      // accepts. The two lists are not re-typed here as a third opinion: one is
-      // imported from the stripper, the other is this file's mirror of the
-      // upload surface, named at the top.
-      return refuse(MEDIA_FINALIZE_TYPE_NOT_ACCEPTED, partyId);
-    }
+        if (partyError || !party || party.venue_secret !== false) {
+          console.error(
+            `[${MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT}] video refused for night ` +
+              `${partyId}: secrecy ${
+                partyError
+                  ? `unreadable (${partyError.code ?? "unknown"})`
+                  : !party
+                    ? "night not found"
+                    : "true"
+              }`
+          );
+          return { ok: false, reason: MEDIA_FINALIZE_VIDEO_ON_SECRET_NIGHT };
+        }
 
-    // ── 7. The write, and it is the only one in this product ────────────────
-    //
-    // `upsert: false` on purpose: overwriting is not a thing this route does,
-    // and a key that already exists is an outcome with its own name below
-    // rather than a silent replacement of somebody's file.
-    //
-    // `contentType` is passed explicitly. Without it a Buffer is stored as
-    // `text/plain`, and the public bucket would then serve a photograph as
-    // text — the strip would have worked and the picture would still be broken.
-    // The value is the declared mime, which by this line has been checked
-    // against the real container on both branches.
-    const { error: publishError } = await serviceClient.storage
-      .from("event-media")
-      .upload(quarantinePath, bytesToPublish, {
-        contentType: mimeType,
-        upsert: false,
-      });
+        // Passing un-stripped, and the limit is declared rather than implied:
+        // an MP4 or MOV carries the shot's coordinates and time in a `udta` atom
+        // exactly as a JPEG carries them in EXIF, `sharp` decodes still images
+        // only, and closing this needs a container rewriter that is in none of
+        // this phase's eight requirements. Recorded, dated 2026-08-08, as entry
+        // 6 of plan 35-14. Whoever reads "EXIF sanitisation is shipped"
+        // somewhere else in this repository should come back to this paragraph.
+        return { ok: true };
+      },
+    });
 
-    if (publishError) {
-      // 409 means the key is taken. Reachable when an earlier call published
-      // and then failed to clean up. It is answered with its own terminal
-      // category and NOT as a success: a route that reported success for bytes
-      // it did not strip on this call would be the one shape this file exists
-      // to prevent, and no acceptance criterion could see it.
-      const status = storageErrorStatus(publishError);
-      console.error(
-        `[media_finalize.publish] write refused for night ${partyId}: status ` +
-          `${status ?? "unknown"}`
-      );
-      return refuse(
-        status === 409
-          ? MEDIA_FINALIZE_ALREADY_PUBLISHED
-          : MEDIA_FINALIZE_PUBLISH_FAILED,
-        partyId
-      );
+    if (!outcome.ok) {
+      return refuse(outcome.reason, partyId);
     }
 
     // The path, and nothing else. The row is `registerMedia`'s to write, with
@@ -705,23 +650,12 @@ export async function POST(request: Request) {
       decided === null ? "remove" : FINALIZE_QUARANTINE[decided];
 
     if (ownedQuarantinePath !== null && fate === "remove") {
-      const { error: removeError } = await serviceClient.storage
-        .from(QUARANTINE_BUCKET)
-        .remove([ownedQuarantinePath]);
-
-      // A failed cleanup never changes the answer. After a success the bytes
-      // are already public and the row is about to be written, so turning this
-      // into a refusal would report a failure that did not happen and leave the
-      // object behind anyway. What is left is an orphan in a **private** bucket
-      // — space, not disclosure — and the sweep for those is plan 35-14,
-      // entry 11.
-      if (removeError) {
-        console.error(
-          "[media_finalize.quarantine_not_cleared] an object stayed in the " +
-            "transit area. This is space, not disclosure: the bucket is " +
-            `private and has no read policy. ${describe(removeError)}`
-        );
-      }
+      // The removal itself is the shared module's, so the archive's route does
+      // not reimplement it. A failed cleanup never changes the answer: after a
+      // success the bytes are already public and the row is about to be
+      // written, so turning this into a refusal would report a failure that did
+      // not happen and leave the object behind anyway.
+      await releaseQuarantineObject(ownedQuarantinePath, "public");
     }
   }
 }

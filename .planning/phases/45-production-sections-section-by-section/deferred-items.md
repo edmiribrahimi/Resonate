@@ -359,6 +359,71 @@ che non deve moltiplicarsi.
 
 ---
 
+## DEF-45-10 — il tetto che l'uploader della galleria **dice** non e' quello che
+## **applica**
+
+**Trovata durante:** piano 45-17, Task 2, leggendo `MediaUpload.tsx` per non
+inventare numeri nuovi.
+**Stato:** pre-esistente, **non riparata**. Nessuna riga toccata da 45-17 la
+produce.
+
+`src/components/media/MediaUpload.tsx` rifiuta correttamente una foto sopra i
+**50 MB** e un video sopra i **500 MB** — ma la frase che stampa a chi ha appena
+scelto il file dice *«exceeds 10MB limit»* e *«exceeds 100MB limit»*. I due
+numeri non compaiono da nessun'altra parte nel prodotto: sono un residuo di
+limiti precedenti.
+
+**Perche' e' un difetto e non un refuso.** Il messaggio e' l'**unico effetto
+osservabile** del rifiuto: non esiste error tracking, e chi carica non ha altro
+modo di sapere quanto grande possa essere il file. Una persona con una foto da
+30 MB legge che il tetto e' 10 MB e non riprova — cioe' il prodotto rifiuta un
+file che accetterebbe. E' `meta-gates.md`, *zero fallimenti silenziosi*, nella
+forma piu' sottile: non un errore ingoiato, un errore **descritto male**.
+
+**Perche' non e' stata riparata qui.** 45-17 tocca quel file per una ragione
+sola — importare tetto e tipi da `@/lib/media/upload-limits`, cosi' che
+l'uploader dell'archivio non ne inventi di propri — e cambiare in piu' il testo
+che una persona legge e' una modifica di prodotto in un commit che dichiara di
+non farne. Il tetto e' ora **una costante sola**, quindi la riparazione e' una
+riga: interpolare `formatBytes(MAX_PHOTO_BYTES)` invece dei due letterali.
+
+**Chi la possiede:** chi tocca la galleria pubblica.
+
 ---
 
-*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10, 11, 15 e 16.*
+## DEF-45-11 — l'archivio raccoglie foto di persone riconoscibili, e la base
+## giuridica non c'e' ancora
+
+**Trovata durante:** piano 45-17. **E' la stessa voce che 45-04 ha alzato
+sull'infrastruttura**, ora che esiste un percorso vero per riempire il bucket.
+**Stato:** aperta, e **non e' un difetto di questo piano**.
+
+45-04 ha scritto che il bucket privato serve **la revoca** — rimuovere un oggetto
+resta sempre possibile dal server — e **non** la base giuridica ne' l'informativa
+(`legal-compliance.md`, gate *immagini delle persone*). Fino a 45-17 la questione
+era teorica: la tabella era vuota e non c'era modo di scriverci. Ora c'e'.
+
+Cosa manca, detto per intero perche' la meta' presente non copra l'altra:
+
+1. **base giuridica dichiarata** per conservare la fotografia di una persona
+   riconoscibile per mesi;
+2. **informativa visibile** a chi viene fotografato — e la superficie che
+   raccoglie non e' quella che riprende;
+3. **una via di revoca praticabile**, che deve funzionare **anche su cio' che e'
+   gia' uscito**: una foto tirata dall'archivio finisce in un listing pubblicato,
+   e da li' non rientra.
+
+**Perche' non e' riparabile qui.** Nessuna delle tre e' codice, e
+`legal-compliance.md` e' esplicito: una domanda legale **non si risponde in un
+modulo**. Si porta a un professionista e se ne registra la risposta con la data.
+
+**Cosa 45-17 ha fatto invece, e va tenuto:** la rimozione e' possibile per
+costruzione (service role, dietro la chiave della sezione), l'oggetto non e'
+raggiungibile senza una firma che scade, e nessuna superficie non autenticata lo
+disegna. E' la meta' meccanica della revoca. **Non e' il consenso.**
+
+**Chi la possiede:** chi decide sotto quale forma giuridica gira la serata.
+
+---
+
+*Aperto: 2026-08-17 — fase 45, piano 02. Aggiornato: 2026-08-17, piani 05, 10, 11, 15, 16 e 17.*

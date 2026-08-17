@@ -35,18 +35,33 @@
  *     `verify:capabilities`, and even that one reads a catalogue. **RLS is the
  *     security boundary** (`CLAUDE.md`, operating principle 2), not a script.
  *
- * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
+ * ── THE SIX CHECKS ──────────────────────────────────────────────────────────
  *
  *   A. No file under `src/`, other than the finalize route, writes to the
- *      `event-media` bucket.
- *   B. In the finalize route, the LAST `stripImageMetadata(` sits above the
- *      FIRST write to `event-media`.
+ *      `event-media` bucket — where "writes" includes HANDING ITS NAME to the
+ *      shared finalize module.
+ *   B. In `src/lib/media/finalize.ts`, the LAST `stripImageMetadata(` sits above
+ *      the FIRST write call.
  *   C. `src/components/media/MediaUpload.tsx` names the public bucket nowhere —
  *      it deposits into the quarantine bucket and calls the route.
  *   D. Row 15 exists, drops the member upload policy BY THE NAME THAT MIGRATION
  *      ACTUALLY CREATED, and no later migration recreates an INSERT policy for
  *      `authenticated` on that bucket.
  *   E. `sharp` is declared in `dependencies`.
+ *   F. `src/lib/media/finalize.ts` names the public bucket NOWHERE: its
+ *      destination is a required argument with no default.
+ *
+ * ── WHAT PLAN 45-17 CHANGED HERE, AND WHY IT WAS NOT OPTIONAL ───────────────
+ *
+ * A second destination arrived — the PRIVATE dj-photograph archive
+ * (`20260817120400_visual_archive_bucket.sql`) — and the sequence
+ * download-strip-write moved into one module so that two destinations could not
+ * be reached by two copies of it. B measured line numbers inside the route; the
+ * route no longer strips, so B would have reddened on a correct tree, and a gate
+ * that fails on correct work is a gate somebody switches off. It measures the
+ * module now. A gained {@link FINALIZE_CALL} so that a caller naming the public
+ * bucket on a line with no storage call is still caught, and F is new: it
+ * asserts the module holds no destination of its own.
  *
  * ── THE PREFIX TRAP, WHICH IS THE WHOLE DIFFICULTY OF CHECK A ───────────────
  *
@@ -107,8 +122,61 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = `${ROOT}/src`;
 const MIGRATIONS_DIR = `${ROOT}/supabase/migrations`;
 
-/** The one file allowed to write the public bucket. An exact path, compared for equality. */
+/** The one file allowed to NAME the public bucket as a destination. An exact path. */
 export const FINALIZE_ROUTE = 'src/app/api/media/finalize/route.ts';
+
+/**
+ * The one file that performs the sequence — download, strip, write — since plan
+ * 45-17 moved it out of the route.
+ *
+ * ── WHY THE CHECK MOVED WITH IT, WHICH IS THE ONLY HONEST OPTION ────────────
+ *
+ * Check B compares line numbers **in the file where the strip and the write
+ * actually are**. Until plan 45-17 that was the route. A second destination then
+ * arrived — the private dj-photograph archive of `20260817120400` — and two
+ * copies of a sequence whose correctness is an ORDER is one copy that will stop
+ * stripping. The sequence therefore lives in one module and both routes call it.
+ *
+ * Leaving check B pointed at the route would have produced **the worst possible
+ * outcome for a gate**: `findStripLines(FINALIZE_ROUTE)` returns nothing, B
+ * reddens on a correct tree, and the repair somebody reaches for is switching
+ * the check off. Pointing it at the module keeps the property it was written to
+ * hold — *the strip precedes the write* — measured where the two statements now
+ * sit.
+ *
+ * ── AND WHAT WOULD HAVE BEEN LOST SILENTLY IF ONLY B HAD MOVED ──────────────
+ *
+ * Check A finds a second writer by looking for the public bucket's name in the
+ * same statement as a write call. After the extraction, a file could name the
+ * public bucket and hand it to the shared module WITHOUT any `.upload(` on the
+ * line — invisible to A, and a green about nothing in the other direction. So
+ * the module's entry point is in {@link WRITE_CALLS}: naming the public bucket
+ * in a call to it counts as writing to the public bucket, which is what it is.
+ */
+export const STRIP_MODULE = 'src/lib/media/finalize.ts';
+
+/**
+ * The shared module's entry point — matched as a **bare identifier**, with NO
+ * opening parenthesis, and that is the second thing plan 45-17's probe caught.
+ *
+ * The four storage calls above are spelled `.upload(` and friends because a
+ * method cannot carry a type argument between its name and its parenthesis. This
+ * one can, and both of its callers use it:
+ *
+ *     finalizeStrippedUpload<never>({ …
+ *
+ * so `'finalizeStrippedUpload('` matched **neither** call site. The check went on
+ * printing a tick. Dropping the parenthesis costs nothing here because comments
+ * are blanked before any line is read, so a mention in prose cannot match — and
+ * the import line that also carries the identifier ends with a `;`, which is the
+ * boundary the statement window stops at.
+ *
+ * Named here rather than inline because it appears in three places — the
+ * {@link WRITE_CALLS} list, {@link findWriteCallLines} and check F's report —
+ * and three spellings of one identifier is two that stop matching after a
+ * rename.
+ */
+export const FINALIZE_CALL = 'finalizeStrippedUpload';
 
 /** The one component this phase rewrote, checked on its own by check C. */
 export const UPLOAD_COMPONENT = 'src/components/media/MediaUpload.tsx';
@@ -317,6 +385,11 @@ const WRITE_CALLS = [
   '.move(',
   '.createSignedUploadUrl(',
   '.uploadToSignedUrl(',
+  // Plan 45-17. Handing the public bucket's name to the shared module IS
+  // writing to the public bucket; without this entry the extraction would have
+  // opened a second path that names the bucket on a line carrying no storage
+  // call at all. Proved by mutation like the four above.
+  FINALIZE_CALL,
 ];
 
 /** The write call this window contains, or `null`. Named so the failure says which. */
@@ -349,6 +422,34 @@ export function findPublicBucketWrites(relPath) {
       if (window.includes(';')) break;
       window += `\n${live[j]}`;
     }
+
+    /*
+      ── AND BACKWARD, WHICH THE FIRST VERSION OF THIS CHECK DID NOT DO ────────
+
+      Measured during plan 45-17 with a probe file, and the probe is the reason
+      this loop exists: a file that hands the public bucket's name to the shared
+      finalize module writes the CALL FIRST and the destination several lines
+      BELOW it —
+
+          return finalizeStrippedUpload<never>({
+            quarantinePath: key,
+            mimeType: "image/jpeg",
+            destinationBucket: "event-media",
+
+      — so a window that only ran forward from the bucket line saw the three
+      remaining properties and no call at all. The probe passed check A while
+      publishing to the public bucket from a second file, which is precisely the
+      defect this check exists to catch, and it would have passed silently.
+
+      The walk stops at a `;` going up, because that is a statement boundary: a
+      write in a PREVIOUS statement must not be attributed to this bucket name.
+    */
+    for (let j = i - 1; j >= Math.max(0, i - STATEMENT_WINDOW); j -= 1) {
+      const previous = live[j];
+      if (previous.includes(';')) break;
+      window += `\n${previous}`;
+    }
+
     const call = writeCallIn(window);
     if (call !== null) {
       hits.push({
@@ -358,6 +459,30 @@ export function findPublicBucketWrites(relPath) {
         kind: `writes to the bucket (${call} in the same statement)`,
       });
     }
+  }
+  return hits;
+}
+
+/**
+ * Every non-comment line of `relPath` carrying one of {@link WRITE_CALLS},
+ * regardless of which bucket it writes to.
+ *
+ * This is how check B measures a module whose DESTINATION IS AN ARGUMENT: there
+ * is no bucket literal to look for, and looking for one would have made a
+ * correct module read as one that never writes. {@link FINALIZE_CALL} is
+ * excluded here — it is a write for the purposes of check A, which is about a
+ * caller naming a bucket, and it is emphatically not one inside the module that
+ * implements it, where it would match nothing anyway.
+ */
+export function findWriteCallLines(relPath) {
+  const live = liveLines(relPath);
+  const hits = [];
+  for (let i = 0; i < live.length; i += 1) {
+    const raw = live[i];
+    if (raw === '') continue;
+    const call = WRITE_CALLS.find((c) => c !== FINALIZE_CALL && raw.includes(c));
+    if (call === undefined) continue;
+    hits.push({ path: relPath, line: i + 1, text: raw.trim(), call });
   }
   return hits;
 }
@@ -388,6 +513,13 @@ if (!existsSync(`${ROOT}/${FINALIZE_ROUTE}`)) {
 }
 if (!existsSync(`${ROOT}/${UPLOAD_COMPONENT}`)) {
   refuse(`${UPLOAD_COMPONENT} does not exist. Check C has no subject. Nothing was measured.`);
+}
+if (!existsSync(`${ROOT}/${STRIP_MODULE}`)) {
+  refuse(
+    `${STRIP_MODULE} does not exist. Checks B and F have no subject: the sequence\n` +
+      '       download-strip-write lives there since plan 45-17, and measuring its ORDER\n' +
+      '       somewhere else would be measuring a different file. Nothing was measured.'
+  );
 }
 
 const files = listScannableFiles(SRC_DIR);
@@ -422,51 +554,56 @@ if (strayHits.length === 0) {
   failures.push('A');
 }
 
-// ── B. the strip precedes the write, in the route ──────────────────────────
+// ── B. the strip precedes the write, in the module that does both ──────────
 //
 // This compares line numbers, which proves an ORDER and not a PROPERTY: plan
 // 35-20 measured a mutation that publishes the UNSTRIPPED bytes while keeping
 // this ordering green (its M2). That is stated here rather than left implicit,
 // because a reader who mistakes B for a guarantee stops looking for the guard
-// that actually holds — which is the route's own structural assertions, listed
-// in `35-20-SUMMARY.md`. B's real job is narrower and still worth having: it
-// catches a write that is inserted ABOVE the strip.
-const routeStrip = findStripLines(FINALIZE_ROUTE);
-const routeWrites = findPublicBucketLines(FINALIZE_ROUTE);
+// that actually holds — which is the module's own structural assertions. B's
+// real job is narrower and still worth having: it catches a write inserted ABOVE
+// the strip.
+//
+// Measured in `src/lib/media/finalize.ts` since plan 45-17, and the write is
+// matched by CALL rather than by bucket name — the module's destination is an
+// argument, which is the whole reason a second destination could be added
+// without a second copy of the sequence.
+const moduleStrip = findStripLines(STRIP_MODULE);
+const moduleWrites = findWriteCallLines(STRIP_MODULE);
 
-if (routeStrip.length === 0) {
-  console.log(`  ✗ B  ${FINALIZE_ROUTE} contains no live call to ${STRIP_CALL}`);
+if (moduleStrip.length === 0) {
+  console.log(`  ✗ B  ${STRIP_MODULE} contains no live call to ${STRIP_CALL}`);
   console.log(
-    '\n       A finalize route that never strips is the whole defect, wearing the name of\n' +
+    '\n       A finalize module that never strips is the whole defect, wearing the name of\n' +
       '       the fix. (Comment lines are filtered before counting, so a call left COMMENTED\n' +
       '       OUT by a botched restore reads as absent — which is the correct reading.)\n'
   );
   failures.push('B');
-} else if (routeWrites.length === 0) {
-  console.log(`  ✗ B  ${FINALIZE_ROUTE} never names "${PUBLIC_BUCKET}" in code`);
+} else if (moduleWrites.length === 0) {
+  console.log(`  ✗ B  ${STRIP_MODULE} performs no write this check can see`);
   console.log(
-    '\n       Nothing publishes. Either the route stopped writing, or the bucket name moved\n' +
-      '       into a constant this check cannot see — in which case check A has stopped\n' +
-      '       meaning anything too, and both must be repaired together.\n'
+    '\n       Nothing lands anywhere. Either the module stopped writing, or the write moved\n' +
+      '       to a call outside WRITE_CALLS — in which case check A has stopped meaning\n' +
+      '       anything too, and both must be repaired together.\n'
   );
   failures.push('B');
 } else {
-  const lastStrip = routeStrip[routeStrip.length - 1].line;
-  const firstWrite = routeWrites[0].line;
+  const lastStrip = moduleStrip[moduleStrip.length - 1].line;
+  const firstWrite = moduleWrites[0].line;
   if (lastStrip < firstWrite) {
     console.log(
-      `  ✓ B  the strip precedes the write in the route (last ${STRIP_CALL} at :${lastStrip}, ` +
-        `first write at :${firstWrite})`
+      `  ✓ B  the strip precedes the write in ${STRIP_MODULE} (last ${STRIP_CALL} at ` +
+        `:${lastStrip}, first write at :${firstWrite} via ${moduleWrites[0].call})`
     );
   } else {
     console.log(
-      `  ✗ B  a write to "${PUBLIC_BUCKET}" at ${FINALIZE_ROUTE}:${firstWrite} sits at or above ` +
-        `the last ${STRIP_CALL} at :${lastStrip}`
+      `  ✗ B  a write at ${STRIP_MODULE}:${firstWrite} (${moduleWrites[0].call}) sits at or ` +
+        `above the last ${STRIP_CALL} at :${lastStrip}`
     );
     console.log(
-      '\n       Bytes can reach the public bucket without having passed the stripper. If the\n' +
-        '       bucket name was hoisted into a constant at the top of the file, move it back\n' +
-        '       inline at the single write — the reason is written in that file.\n'
+      '\n       Bytes can reach a destination bucket without having passed the stripper.\n' +
+        '       The order in that file IS the guarantee: download, strip, write, and the\n' +
+        '       write is the last statement.\n'
     );
     failures.push('B');
   }
@@ -598,10 +735,42 @@ if (pkg.dependencies && typeof pkg.dependencies.sharp === 'string') {
   failures.push('E');
 }
 
+// ── F. the shared module holds no destination of its own ───────────────────
+//
+// Plan 45-17. The module's destination is a REQUIRED ARGUMENT with no default,
+// and this check is the mechanical half of that sentence: the public bucket's
+// name must not appear in that file in any role at all — not as a fallback, not
+// as a `??`, not as a constant "for the common case".
+//
+// Why it is the public bucket specifically and not "any bucket": a default that
+// pointed at the private archive would be a filing mistake, recoverable by
+// moving an object. A default that points at the public one PUBLISHES a
+// photograph nobody decided to publish, and in this domain an accidental
+// publication is read as an announcement. The two errors are not the same size,
+// so the check guards the one that does not come back.
+const moduleBucketHits = findPublicBucketLines(STRIP_MODULE);
+
+if (moduleBucketHits.length === 0) {
+  console.log(
+    `  ✓ F  ${STRIP_MODULE} names "${PUBLIC_BUCKET}" nowhere — its destination is an argument`
+  );
+} else {
+  console.log(
+    `  ✗ F  ${moduleBucketHits.length} line(s) in ${STRIP_MODULE} name the public bucket:`
+  );
+  for (const h of moduleBucketHits) console.log(`         ${h.path}:${h.line}: ${h.text}`);
+  console.log(
+    '\n       A default destination is how a FILED photograph becomes a PUBLISHED one. The\n' +
+      `       destination is a required field of the request this module takes; ${FINALIZE_CALL}\n` +
+      "       has no fallback and must not grow one.\n"
+  );
+  failures.push('F');
+}
+
 // ── verdict ────────────────────────────────────────────────────────────────
 console.log('');
 if (failures.length === 0) {
-  console.log('  MEDIA_STRIP_OK — all five checks passed.');
+  console.log('  MEDIA_STRIP_OK — all six checks passed.');
   console.log(
     '  Read the header before treating this as safety: it says nothing about whether sharp\n' +
       '  really removes metadata, nothing about videos, and nothing about row 15 being\n' +

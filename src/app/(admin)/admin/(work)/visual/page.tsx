@@ -13,11 +13,17 @@ import { SectionStateBadge } from "@/app/(admin)/admin/manifesto/SectionStateBad
 import { SectionVoid } from "@/app/(admin)/admin/manifesto/SectionVoid";
 import type { FormatChoice } from "@/app/(admin)/admin/manifesto/refusals";
 import { PaletteSwatches } from "@/app/(admin)/admin/visual/PaletteSwatches";
+import { ArchiveUpload } from "@/app/(admin)/admin/visual/ArchiveUpload";
 
-import { saveSection } from "@/app/(admin)/admin/visual/actions";
+import {
+  recordVisualAsset,
+  saveSection,
+  signVisualAssets,
+} from "@/app/(admin)/admin/visual/actions";
 import { exportVisualCapitolato } from "@/app/(admin)/admin/visual/export-actions";
 
 import { readBrandPalette } from "@/lib/production/sections/tokens";
+import type { ArchiveSignatureResult } from "@/lib/production/sections/visual-archive";
 import { VISUAL_ASSET_KIND_LABELS } from "@/lib/production/sections/vocabulary";
 import type {
   ProductionOpenQuestion,
@@ -41,7 +47,9 @@ import type {
  * (`nextjs-architecture.md`, gate *il gruppo non autorizza*). What decides is the
  * row `"/admin/visual"` under `CAP.PRODUCTION_VISUAL_MANAGE` in
  * `src/lib/routes/capability-routes.ts` — **one entry**, read by the middleware,
- * by the guard below and (from plan 45-18) by the staff tab.
+ * by the guard below and (from plan 45-18) by the staff tab. The same key opens
+ * the archive's upload arm and signs its thumbnails, so the three cannot
+ * disagree.
  *
  * ⚠ That entry moved to the `routes:` branch in the same commit as this file,
  * and with it **the last key this phase parked on the table-only branch**. The
@@ -78,19 +86,26 @@ import type {
  * invented to fill it — and the state it shows is the one the other section
  * recorded, drawn by the same badge rather than restated in words here.
  *
- * ── The archive is listed and not shown, and that is not a shortcut ─────────
+ * ── The archive is shown through a SIGNATURE, and never through a URL ───────
  *
- * `production_visual_asset` rows carry an `object_key` that points at storage.
- * **There is no read path for those bytes until plan 45-17 mints one** — a
- * signed URL with its own expiry and its own authorisation. An image element
- * pointed at an address that does not resolve would put a broken frame on a
- * gated surface, and a broken frame is indistinguishable from an empty archive
- * to whoever is looking at it. So the archive is a **count and a list** — what
- * kind, whose photograph, and when it was taken — and the thumbnails arrive with
- * their signed-URL path in plan 45-17 and not before.
+ * `production_visual_asset` rows carry an `object_key` that points into a bucket
+ * that is **private**, has no anonymous read arm and has no client write arm at
+ * all. An archive photograph is **not published**: it is held so that a listing
+ * can be produced from it later, and a picture of somebody who has agreed to
+ * play on a date nobody has communicated is material in exactly the sense a
+ * space under negotiation is. So a thumbnail here exists because the server
+ * signed for it, briefly, behind this section's own key — the same door as the
+ * rest of the page rather than a second one.
  *
- * `object_key` is deliberately not even selected: this page has no use for it,
- * and a storage pointer that is never read cannot be logged, copied or linked.
+ * ⚠ **`object_key` is still not selected by this page**, and the absence is
+ * load-bearing rather than left over. `signVisualAssets` reads the pointers,
+ * mints the addresses and answers keyed by the ROW's identifier, so a storage
+ * pointer never reaches this file — and a pointer a page cannot name is a
+ * pointer it cannot log, copy or link.
+ *
+ * ⚠ **A signature that could not be minted draws a stated absence, never a
+ * broken frame.** The two are indistinguishable to whoever is looking, and one
+ * of them says *the archive is empty* when it is not.
  *
  * ⚠ An artist's name in a line-up that has not been announced is material in the
  * same sense a space under negotiation is — it is read as an announcement whether
@@ -181,9 +196,9 @@ export default async function AdminVisualPage() {
     The archive. Newest first — the last thing produced is the thing somebody is
     looking for, and an artist photograph is most useful while it is recent.
 
-    `object_key` is not selected. See the docblock: there is no read path for the
-    bytes until plan 45-17, and a pointer nobody reads is a pointer nobody can
-    leak.
+    `object_key` is not selected. See the docblock: the pointers are read by the
+    act that signs for them and never by this file, and a pointer nobody reads is
+    a pointer nobody can leak.
   */
   const { data: assetRows, error: assetError } = await supabase
     .from("production_visual_asset")
@@ -280,6 +295,21 @@ export default async function AdminVisualPage() {
     unreadable is still the document somebody came for.
   */
   const palette = readBrandPalette();
+
+  /*
+    THE ADDRESSES, MINTED ON THE SERVER, ONE CALL FOR THE WHOLE LIST.
+
+    ⚠ It is a `"use server"` export awaited during a page render, which is a
+    server function call and not a round trip — and it matters that it is: the
+    gate inside it resolves the access context through `cache()`, which DOES
+    memoise inside a render (and does not inside a Server Action body, measured
+    in phase 33). So the key is asked once here whatever the archive holds.
+
+    `assets.length === 0` is passed through rather than branched on: the act
+    answers an empty map for an empty list, and a branch here would be a second
+    place to decide what an empty archive means.
+  */
+  const signatures = await signVisualAssets(assets.map((asset) => asset.id));
 
   const formatsWithASection = new Set(
     sections.map((row) => row.format_id).filter((id): id is string => id !== null)
@@ -413,7 +443,19 @@ export default async function AdminVisualPage() {
 
       <section className="pb-6">
         <SectionHeading>The archive</SectionHeading>
-        <AssetList assets={assets} />
+        <WhyTheArchiveExists />
+        <AssetList assets={assets} signatures={signatures} />
+
+        {/*
+          The uploader takes its act as a PROP, the shape `SectionForm` uses one
+          directory over and for the same reason: the component imports no action
+          module of its own, so it cannot reach the sibling section's key by
+          accident. The act comes from THIS section's module, which asks THIS
+          section's key.
+        */}
+        <div className="mt-4">
+          <ArchiveUpload formats={formats} record={recordVisualAsset} />
+        </div>
       </section>
 
       {/*
@@ -500,22 +542,50 @@ function Body({ body }: { body: string | null }) {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
+ * The two sentences this section cannot be read without, and both come from the
+ * domain rather than from convention.
+ *
+ * They are on the surface and not only in a docblock because the person filling
+ * the archive on a Thursday is the person who has to act on them, and a rule
+ * that lives where only a developer reads it is a rule that governs nothing.
+ */
+function WhyTheArchiveExists() {
+  return (
+    <p className="pb-4 max-w-3xl text-sm text-muted">
+      <strong className="font-semibold text-ink">The archive precedes the
+      listing.</strong>{" "}
+      The listing goes out two days before the night, so that night&apos;s
+      photograph cannot exist yet: at an artist&apos;s first date it is their
+      press photo, and from the second it is this.{" "}
+      <strong className="font-semibold text-ink">The spelling is verified at the
+      source.</strong>{" "}
+      A name misspelled here becomes a name misspelled on a published piece, and
+      that does not come back.
+    </p>
+  );
+}
+
+/**
  * What has been produced, and what is held so that something can be produced.
  *
- * ⚠ **No image is rendered here, and it is not an omission.** The bytes have no
- * read path until plan 45-17 mints one — a signed URL with its own expiry — and
- * a broken frame on a gated surface is indistinguishable from an empty archive.
- * The count above the list is the honest form of the same information: it says
- * how much exists without pretending to show it.
+ * ⚠ **A thumbnail is drawn only where a signature was minted for it.** The
+ * bucket is private and has no anonymous read arm, so there is no address to
+ * fall back to — and falling back to a broken frame would be worse than drawing
+ * nothing: a broken frame and an empty archive are the same thing to whoever is
+ * looking. Where an address is missing, the row says so in words and keeps its
+ * kind, its artist and its date, which are the three facts somebody came for.
  *
- * **The count is the point of the archive, not decoration.** The listing goes
- * out two days before the night, so that night's photograph cannot exist yet: at
- * an artist's first date there is only their press photo, and from the second the
- * piece is pulled from an archive somebody has been building. An archive nobody
+ * **The count is the point of the archive, not decoration.** An archive nobody
  * is filling is a format that stays dependent on what arrives on the Monday for
  * the Tuesday — and the number here is the only thing that reports it.
  */
-function AssetList({ assets }: { assets: readonly AssetSelectRow[] }) {
+function AssetList({
+  assets,
+  signatures,
+}: {
+  assets: readonly AssetSelectRow[];
+  signatures: ArchiveSignatureResult;
+}) {
   if (assets.length === 0) {
     return (
       <div className="px-6 py-12 text-center">
@@ -523,40 +593,93 @@ function AssetList({ assets }: { assets: readonly AssetSelectRow[] }) {
           Nothing is held in the archive yet
         </p>
         <p className="mt-1 text-sm text-muted">
-          Uploading is a later step; this page reads. Until something is held
-          here, every piece depends on what arrives from the artist in the two
-          days before the listing.
+          Until something is held here, every piece depends on what arrives from
+          the artist in the two days before the listing. The panel below is where
+          that stops being true.
         </p>
       </div>
     );
   }
 
+  const urls = signatures.ok ? signatures.urls : {};
+
   return (
     <div>
       <p className="pb-3 text-sm text-muted">
-        {assets.length} held. Thumbnails are not drawn: the files have no read
-        path yet, and they arrive with the signed-URL path of plan 45-17.
+        {assets.length} held, privately. Nothing here is published by being
+        filed: a thumbnail loads through an address the server signs for a few
+        minutes at a time.
       </p>
-      <ul className="space-y-2">
-        {assets.map((asset) => (
-          <li
-            key={asset.id}
-            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-s-2 border-control ps-3"
-          >
-            <span className="font-mono text-sm font-semibold normal-case text-ink">
-              {VISUAL_ASSET_KIND_LABELS[asset.kind]}
-            </span>
-            <span className="text-sm text-ink">
-              {asset.artist_name ?? "No artist recorded"}
-            </span>
-            <span className="font-mono text-xs normal-case text-muted">
-              {asset.taken_on ?? "No date recorded"}
-            </span>
-            {asset.formats === null ? null : (
-              <span className="text-xs text-muted">{asset.formats.name}</span>
-            )}
-          </li>
-        ))}
+
+      {/*
+        The failed signature is announced and is NOT the empty state — the rows
+        are on the screen, and only the pictures are missing. Its own sentence,
+        for the reason the read failures above have theirs.
+      */}
+      {signatures.ok ? null : (
+        <div
+          role="alert"
+          className="mb-3 rounded-2xl border border-sem-crit/40 bg-sem-crit/10 p-4"
+        >
+          <p className="text-sm text-sem-crit">
+            {signatures.reason === "read_failed"
+              ? "The archive's entries are listed below, but the pictures could not be looked up. Reload the page; nothing in the data has changed."
+              : "The pictures could not be signed for, so none is drawn below. The entries are intact and nothing has been lost."}
+          </p>
+        </div>
+      )}
+
+      <ul className="space-y-3">
+        {assets.map((asset) => {
+          const url = urls[asset.id];
+          return (
+            <li
+              key={asset.id}
+              className="flex items-start gap-3 border-s-2 border-control ps-3"
+            >
+              {/*
+                No `alt` text carrying the artist's name: the picture IS the
+                artist, so naming it in the alternative text would repeat the
+                line beside it to a screen reader, and an empty alt on a
+                decorative-by-adjacency image is the correct answer. The name is
+                rendered as text one element over, where everybody reads it.
+
+                `img` rather than `next/image`: the address is short-lived and
+                signed, and handing it to an optimiser that caches by URL would
+                outlive the signature it was granted under.
+              */}
+              {url === undefined ? (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-sunk">
+                  <span className="px-1 text-center text-[10px] leading-tight text-muted">
+                    no picture
+                  </span>
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={url}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                />
+              )}
+
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-mono text-sm font-semibold normal-case text-ink">
+                  {VISUAL_ASSET_KIND_LABELS[asset.kind]}
+                </span>
+                <span className="text-sm text-ink">
+                  {asset.artist_name ?? "No artist recorded"}
+                </span>
+                <span className="font-mono text-xs normal-case text-muted">
+                  {asset.taken_on ?? "No date recorded"}
+                </span>
+                {asset.formats === null ? null : (
+                  <span className="text-xs text-muted">{asset.formats.name}</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
