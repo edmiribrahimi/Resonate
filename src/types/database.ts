@@ -40,6 +40,28 @@ import type {
   UnresolvedReason,
   VenueStage,
 } from "@/lib/production/ics/vocabulary";
+// The fifth import, same inverted direction and the same reason as the four
+// above. The three production sections' vocabularies are each shared by a SQL
+// `CHECK`, a seeding script and every TypeScript caller, so they are defined
+// once in `@/lib/production/sections/vocabulary` and are read from here.
+//
+// `VenueStage` is deliberately NOT re-imported from there: that module
+// re-exports it rather than restating it, and taking it from its original home
+// above keeps one name with one source. Two import paths for one type is the
+// beginning of two types.
+import type {
+  AnswersSource,
+  AttributeKey,
+  AttributeProvenance,
+  AttributeValue,
+  ExitReason,
+  ExtendedHoursStance,
+  SectionKind,
+  SectionState,
+  SizeBand,
+  SpaceCategory,
+  VisualAssetKind,
+} from "@/lib/production/sections/vocabulary";
 
 // `staff` is the fourth role (phase 43, D-01), and the measured consequence of
 // adding it here is the opposite of what a reader expects: **this widening
@@ -1592,4 +1614,339 @@ export interface ProductionPipelineRule {
   /** Free text, carrying CRITERIA ONLY. No date, no space, no name. */
   note: string | null;
   created_at: string;
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE THREE PRODUCTION SECTIONS — five row types, and what a green build proves
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * ⚠ **No Supabase client in this repository is parameterised with `Database`.**
+ * The consequence is the same one the calendar's row types already carry, and it
+ * is repeated here rather than referenced because it is the sentence a reader
+ * most needs at the moment they trust one of these interfaces:
+ *
+ * A green `npm run build` proves that the code consuming these declarations
+ * type-checks **against the declarations**. It proves nothing whatever about
+ * whether a column is spelled the way the applied migration spells it, whether
+ * it is nullable, or whether it exists. The build would pass identically against
+ * an empty database.
+ *
+ * Every name below was read out of `20260817120100_production_location.sql` and
+ * `20260817120200_production_sections.sql` by hand, in the commit that wrote
+ * them. The catalogue read-back of plan 45-08 is what turns that into a fact;
+ * until then, the hand check is the only verification performed and saying so is
+ * part of the deliverable.
+ *
+ * **The vocabularies are not restated here.** They are imported from
+ * `@/lib/production/sections/vocabulary`, which is the one place that declares
+ * them and the one place the SQL `CHECK`s were copied from. A second copy in
+ * this file would be a second truth that nothing compares — a `CHECK` constraint
+ * is invisible to `tsc`, so the divergence would survive until somebody typed a
+ * value on a page.
+ */
+
+/**
+ * One scouted space.
+ *
+ * ⚠ **A row here is desk work, and nothing about it is an availability.**
+ * Nobody has been called. The stage travels with the name everywhere the name is
+ * rendered, because that is the only thing that stops a list of places from
+ * reading as a list of venues.
+ *
+ * It is deliberately **not** a `Venue`. The reason is the write side rather than
+ * the read side: a scouted row inside `venues` would sit in the picker a night's
+ * venue is chosen from, and one wrong selection puts a space under negotiation
+ * on a night — from where the public road serves its name and its address to
+ * anybody. `promoted_venue_id` is the single crossing, it points outward, and
+ * the database refuses it from any stage but `acquired`.
+ */
+export interface ProductionSpace {
+  id: string;
+  /**
+   * ⚠ **INTERNAL, NEVER PUBLIC.** The space's name as the scouting wrote it,
+   * which may name a space under negotiation.
+   *
+   * No surface an unauthenticated visitor can reach may render it; no material,
+   * caption or capitolato may carry it before the space is acquired **in
+   * writing**; and no diagnostic, log line, error message or `.planning/`
+   * document may echo it.
+   */
+  name: string;
+  /**
+   * ⚠ **INTERNAL, NEVER PUBLIC — and this one is a STREET ADDRESS.**
+   *
+   * The difference from the field above is not one of degree. A venue *word* is
+   * shorthand that can stay ambiguous to a reader who does not already know; an
+   * address is the thing itself, and a large minority of these carry a house
+   * number.
+   *
+   * It is exactly the payload `venue_for_parties` exists to release
+   * **deliberately** — per night, never partially, absence meaning no
+   * entitlement. Nothing may carry a row of this table into that road: no
+   * foreign key, no view, no function. The export of this phase covers the
+   * manifesto and the capitolato and **cannot reach this table at all**.
+   */
+  address: string | null;
+  category: SpaceCategory | null;
+  /** Where the record came from. Provenance of the RECORD, not of an answer. */
+  source: string | null;
+  /** The scouting's prose. Criteria and observation only — no contact, no person. */
+  short_description: string | null;
+  /** Which format it was scouted for. Null is ordinary, not a gap. */
+  home_format_id: string | null;
+  /**
+   * How far the space has got — and unlike `ProductionPlan.venue_stage` this is
+   * **never null**, because the act of entering this list *is* the mapping.
+   *
+   * The column defaults to the lowest member, which is what makes a default safe
+   * here: it can never manufacture progress. Every seeded row lands at the
+   * bottom, not because the seeder is careful but because nothing else is
+   * reachable without somebody typing it.
+   */
+  stage: VenueStage;
+  /**
+   * ⚠ **A band is not a capacity.** Nothing may infer `real_capacity` from it:
+   * the target for a night is 150 to 300 people and a band cannot answer whether
+   * a given room is inside that.
+   */
+  size_band: SizeBand | null;
+  /**
+   * How many people actually fit — the second of the four questions, and the one
+   * only somebody standing in the room can close.
+   *
+   * **Null is the ordinary state**, and the surface shows it MISSING rather than
+   * deriving it from the band.
+   */
+  real_capacity: number | null;
+  /** What rig is there — the first of the four questions. A description, not a value. */
+  rig: string | null;
+  /**
+   * Whether a guest dj may play — the third question.
+   *
+   * **Null means nobody has asked**, and a surface printing *no* for a null
+   * would be reporting ignorance as a refusal. The unasked case for the group of
+   * four is carried by `answers_source`.
+   */
+  guest_dj_allowed: boolean | null;
+  /**
+   * Until what hour one may play — the fourth question, and the one that screens
+   * out the most candidates.
+   *
+   * A civil time and never an instant: a night runs 22:00 to 06:00, so this is
+   * legitimately smaller than the hour the night starts, and a conversion that
+   * moves an entry across midnight moves its weekday.
+   */
+  closing_time: CivilTime | null;
+  /**
+   * The hours the venue actually keeps. A **published fact**, so it may be
+   * researched. Free text with a sentinel default, never blank: the sentinel is
+   * a value, and a blank is not an answer.
+   */
+  published_hours: string;
+  /**
+   * Whether they will even discuss hours beyond those.
+   *
+   * ⚠ **No crawl, no inference and no default may ever move this off the unasked
+   * value.** It is absent from every source *by nature* — it is not a fact about
+   * the place, it is the answer to a phone call. A derived value here is
+   * *derived is not verified* committed in the one field built to prevent it.
+   */
+  extended_hours_stance: ExtendedHoursStance;
+  /** How the four answers were obtained. A public listing answers the wrong question. */
+  answers_source: AnswersSource;
+  /**
+   * Where the agreement is — a pointer, never an attachment.
+   *
+   * The database refuses `acquired` without it. Acquired means **in writing**,
+   * and it is the stage that unlocks naming the space in a material, so it is
+   * not a good place to trust a form or a tired reviewer.
+   */
+  agreement_evidence: string | null;
+  /**
+   * ⚠ **Leaving the race is a state, never a deletion.** A space discarded
+   * because it contradicts the identity stays listed, at zero, forever: deleting
+   * it loses the memory of the choice, and the choice gets remade from scratch
+   * at the first difficulty.
+   *
+   * The pair is inseparable in the database — an exit carries why and when, or
+   * it is not an exit.
+   */
+  exited_at: string | null;
+  exit_reason: ExitReason | null;
+  /**
+   * The one crossing that exists, and it points **outward**. Refused by the
+   * database from any stage but `acquired`: a promotion from the bottom is a
+   * desk exercise turned into a place somebody can put on a poster.
+   */
+  promoted_venue_id: string | null;
+  /**
+   * The re-runnability key of the seeding script. Nullable on purpose — a space
+   * typed by hand came from no import, and two nulls are distinct in Postgres.
+   */
+  source_key: string | null;
+  /** Facts about US rather than about the space, which is why they are not attributes. */
+  already_used: boolean;
+  in_use: boolean;
+  /** Free text, criteria and observation only. No contact, no person, no price. */
+  note: string | null;
+  first_seen_at: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+/**
+ * One attribute of one space, its value, and where that value came from.
+ *
+ * ⚠ **There is no stored figure of suitability anywhere in this phase**, on this
+ * interface or on `ProductionSpace`. How well a space suits a format is computed
+ * from these rows with that format's declared weights, at the moment somebody
+ * asks. A stored number detaches from its inputs at the first edit, and a single
+ * one would say one thing about a place across four formats that weigh the same
+ * attributes differently.
+ */
+export interface ProductionSpaceAttribute {
+  id: string;
+  space_id: string;
+  attribute: AttributeKey;
+  /**
+   * ⚠ **The unasked value is a VALUE, not an absence**, which is why this is not
+   * nullable. The archive encodes *to verify* per attribute rather than per
+   * record — on evening viability it is the value on a clear majority of rows —
+   * and a surface rendering that as an empty cell would report ignorance as a
+   * negative.
+   */
+  value: AttributeValue;
+  /**
+   * Where the value came from, and it has **no default** in the database: a
+   * value cannot exist without saying which it is.
+   *
+   * A value read off a public profile is a hypothesis; one checked on site, for
+   * that format, is a datum. A computed suitability is only as verified as its
+   * weakest input — one field-checked attribute beside nine desk-read ones does
+   * not make the result a datum.
+   */
+  provenance: AttributeProvenance;
+  answered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One rule of one authored section, and how settled its content is.
+ *
+ * ⚠ **Three states, and the middle one is the reason the table is shaped like
+ * this.** The domain names two opposite errors: inventing where a rule already
+ * exists, and answering *not decided* where a coordinate has been declared. A
+ * two-state model can only defend against one of them, and folding the middle
+ * state makes an unwritten-but-constrained format read as FREE — which is how a
+ * format gets written by whoever is under deadline.
+ *
+ * **The explicit negatives live in `body`, not in a field of their own.** A
+ * separate one would invite a surface that renders the positives and drops them,
+ * which is the exact failure the exclusions were written to prevent.
+ */
+export interface ProductionSection {
+  id: string;
+  section: SectionKind;
+  /**
+   * Null means the rule belongs to the whole brand rather than to one format —
+   * the spelling, the grid-safe square, the order of publication. Filing those
+   * per format would be four places for one rule to diverge.
+   */
+  format_id: string | null;
+  title: string;
+  /**
+   * ⚠ **No default in the database, and the absence is the decision.** A default
+   * of *written* fills the void; a default of *not decided* answers for a
+   * coordinate that has been declared. The author says which.
+   */
+  state: SectionState;
+  body: string | null;
+  /**
+   * What is missing. Required by the database **only** in the not-decided state:
+   * forcing it on the middle state would push the author into inventing a gap.
+   */
+  missing: string | null;
+  /**
+   * Whose call it is. A **role**, never a person — this project's artefacts name
+   * roles, and a decision attributed to a name ages badly the moment somebody
+   * leaves.
+   */
+  decision_owner: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/**
+ * Something that has not been decided, and whose call it is.
+ *
+ * ⚠ **It warns; it never blocks.** Nothing in this table refuses a piece of
+ * work, and nothing may be added that does: a block that fires under deadline is
+ * a block somebody routes around — and a routed-around block also teaches people
+ * to route around the next one.
+ *
+ * `section` is free text rather than a `SectionKind` on purpose: the register
+ * spans all four sections, including location and the calendar, while that union
+ * names only the two that hold authored prose.
+ */
+export interface ProductionOpenQuestion {
+  id: string;
+  question: string;
+  /** Not null. A question with no owner is the state this register abolishes. */
+  decision_owner: string;
+  section: string | null;
+  format_id: string | null;
+  opened_at: string;
+  /**
+   * ⚠ **Both or neither**, enforced in the database. A closing date with no
+   * resolution loses the thing the register was keeping; a resolution with no
+   * date leaves the question looking open to everybody reading the list.
+   */
+  closed_at: string | null;
+  resolution: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One produced piece, or one photograph of an artist.
+ *
+ * **Why the photo archive is not a nice-to-have:** the listing goes out two days
+ * before the night, so *that night's photograph cannot exist yet*. At an
+ * artist's first date there is only their press photo; from the second, the
+ * piece is pulled from an archive somebody has to have been building — or the
+ * format stays dependent on what arrives on the Monday for the Tuesday.
+ *
+ * The bytes are not here. `object_key` points at storage, and the upload path is
+ * the quarantine bucket with a server-only write that this product already has.
+ */
+export interface ProductionVisualAsset {
+  id: string;
+  kind: VisualAssetKind;
+  object_key: string;
+  /**
+   * ⚠ **INTERNAL, NEVER PUBLIC**, and the banner is narrower than a venue's.
+   *
+   * A venue word is internal until the space is acquired; **a name in a line-up
+   * is internal until the date is announced**, and the two are the same kind of
+   * fact. Publishing it early is an announcement made by accident — and it is
+   * read as an announcement whether or not it was one.
+   *
+   * No surface an unauthenticated visitor can reach may render it, and no log
+   * line may echo it. The spelling is verified at the source before anything is
+   * produced: it is irrecoverable once published, and it is a discourtesy to
+   * whoever plays.
+   */
+  artist_name: string | null;
+  format_id: string | null;
+  /** Criteria and description only: no address, and no date not yet communicated. */
+  caption: string | null;
+  /** A date and not a timestamp: nobody needs the hour, and an hour drags a zone in. */
+  taken_on: CivilDate | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
 }

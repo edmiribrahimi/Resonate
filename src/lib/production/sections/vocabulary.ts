@@ -136,6 +136,31 @@ export const SECTION_KIND_LABELS: Record<SectionKind, string> = {
 };
 
 /**
+ * What a stored visual asset is.
+ *
+ * Two members, and the pair is not a taxonomy of file types: a `piece` is
+ * something we PUBLISHED, a `dj_photo` is raw material we hold so that a piece
+ * can be made at all. The archive exists because the listing goes out two days
+ * before the night, so that night's photograph cannot exist yet — from an
+ * artist's second date the piece is pulled from what somebody built, or the
+ * format stays dependent on what arrives on the Monday for the Tuesday.
+ *
+ * Declared here rather than inline beside the row type for this module's whole
+ * reason: the SQL `CHECK` on that column is a real mirror, and a union written
+ * twice is a divergence `tsc` cannot see.
+ */
+export const VISUAL_ASSET_KINDS = ["dj_photo", "piece"] as const;
+
+/** What a stored asset is. Mirrored by the `kind` CHECK. */
+export type VisualAssetKind = (typeof VISUAL_ASSET_KINDS)[number];
+
+/** The two asset kinds, as they are written on a surface. */
+export const VISUAL_ASSET_KIND_LABELS: Record<VisualAssetKind, string> = {
+  dj_photo: "Artist photo",
+  piece: "Produced piece",
+};
+
+/**
  * Why a space left the race — and leaving it is the only thing that ever happens
  * to a space, because **no space is ever deleted** (D-45-13).
  *
