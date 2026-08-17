@@ -1100,7 +1100,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 45-08-PLAN.md — **[BLOCKING]** Apply the five additive migrations, read back from the catalogues, leave the old key granted
+- [x] 45-08-PLAN.md — **[BLOCKING]** Apply the five additive migrations, read back from the catalogues, leave the old key granted
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
