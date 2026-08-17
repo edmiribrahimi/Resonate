@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 45 context gathered
-last_updated: "2026-08-17T18:13:53.494Z"
-last_activity: 2026-08-17 -- Phase 45 execution started
+stopped_at: Phase 45 executed 18/18 — verification gaps_found, phase NOT complete
+last_updated: "2026-08-18T00:00:00.000Z"
+last_activity: 2026-08-18 -- Phase 45 executed and deployed; verification returned gaps_found
 progress:
   total_phases: 18
   completed_phases: 16
