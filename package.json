@@ -31,6 +31,7 @@
     "verify:refusal": "node scripts/verify-refusal.mjs",
     "verify": "node scripts/verify-all.mjs",
     "import:calendar": "node scripts/import-production-calendar.mjs",
+    "seed:spaces": "node scripts/seed-production-spaces.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",
     "baseline:compare": "node scripts/rls-baseline-compare.mjs"
