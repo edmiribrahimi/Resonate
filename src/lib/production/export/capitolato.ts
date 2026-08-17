@@ -126,8 +126,15 @@ type QuestionRow = Pick<
  * every format carries an identification colour, **including the one that has no
  * palette of its own**, and a colour printed in the document whose subject IS the
  * palette becomes a palette nobody decided.
+ *
+ * ⚠ `retired_at` IS selected, and the read is no longer filtered on it — the same
+ * change, for the same reason, as the manifesto's serialiser. The filter used to
+ * live in the query, which left the renderer unable to tell *this clause belongs
+ * to no format* from *this clause belongs to a format that is not in the active
+ * catalogue*, and it published the second as the first. The column carries no
+ * venue and no unannounced date, and nothing below prints it.
  */
-type FormatRow = Pick<Format, "id" | "name" | "code">;
+type FormatRow = Pick<Format, "id" | "name" | "code" | "retired_at">;
 
 /* ────────────────────────────────────────────────────────────────────────────
  * The document
@@ -181,10 +188,15 @@ export async function buildVisualCapitolato(): Promise<ExportResult> {
     return { ok: false, reason: "questions_read_failed" };
   }
 
+  /*
+    The catalogue, WHOLE — retired formats included, and the filter moved into the
+    rendering. Retirement decides how a format is READ, not whether this module
+    may know its name; a read filtered here made *no format* and *retired format*
+    the same fact by the time the renderer saw them.
+  */
   const { data: formatData, error: formatError } = await supabase
     .from("formats")
-    .select("id, name, code")
-    .is("retired_at", null)
+    .select("id, name, code, retired_at")
     .order("sort_order", { ascending: true });
 
   if (formatError) {
@@ -216,7 +228,30 @@ function render(
   questions: readonly QuestionRow[],
   formats: readonly FormatRow[]
 ): string {
+  /*
+    Two collections out of one read — see the manifesto's serialiser for the whole
+    argument; it is the same defect and the same fix.
+
+    `named` answers *which format is this clause for?* and holds every format the
+    catalogue returned, retired included. `listed` decides the headings and their
+    order, and holds the active ones.
+
+    Built as one collection from a filtered read, `!named.has(row.format_id)` was
+    true for more than one reason and treated them as one, so a clause written for
+    ONE format reached the external designer under `## Across the whole brand`. On
+    this document that is the sharpest version of it: `brand-visual-system.md`'s
+    gate *il colore non si eredita* rests entirely on a clause staying attached to
+    the format it was written for, and a colour clause reclassified as brand-wide
+    is the gate reversed inside the very document that carries it.
+
+    There is a third cause besides *no format* and *retired*: this read goes
+    through row level security, `formats_select_listed` returns what is `listed`,
+    and the rest needs `catalogue.manage` — which this arm does not ask for. So
+    `brandWide` is defined POSITIVELY, `format_id is null` and nothing else, and
+    every leftover is a leftover by construction.
+  */
   const named = new Map(formats.map((format) => [format.id, format]));
+  const listed = formats.filter((format) => format.retired_at === null);
 
   const out: string[] = [
     "# Visual capitolato",
@@ -235,22 +270,27 @@ function render(
       ""
     );
   } else {
-    for (const format of formats) {
+    for (const format of listed) {
       const mine = sections.filter((row) => row.format_id === format.id);
       if (mine.length === 0) continue;
       out.push(`## ${format.name} · ${format.code}`, "");
       for (const row of mine) out.push(...renderSection(row));
     }
 
-    const brandWide = sections.filter(
-      (row) => row.format_id === null || !named.has(row.format_id)
-    );
+    /*
+      Brand-wide means ONE thing, and it is what the column says: no format. Not
+      *no format* plus *a format I could not name* plus *a format that was
+      retired* — three sentences that happen to fail the same test, under a
+      heading whose entire content is the difference between them.
+    */
+    const brandWide = sections.filter((row) => row.format_id === null);
     if (brandWide.length > 0) {
       out.push("## Across the whole brand", "");
       for (const row of brandWide) out.push(...renderSection(row));
     }
   }
 
+  out.push(...renderWithheld(sections, named));
   out.push(...renderPalette());
   out.push(...renderQuestions(questions, named));
 
@@ -375,12 +415,127 @@ function renderPalette(): string[] {
   return out;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * What was left out, counted and said — never reclassified
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The clauses this document withheld, as a count and a reason.
+ *
+ * ── THE DECISION ────────────────────────────────────────────────────────────
+ *
+ * A clause whose format is not in the active catalogue is **not printed**, and
+ * the alternative — its own heading, marked *retired* — was weighed and refused.
+ * A heading here is `## Name · CODE`, which is the **sigla**, and
+ * `production-calendar.md` states it as a gate: a retired sigla is not cited, not
+ * even to explain the history. `brand-visual-system.md` says the same from the
+ * other end — every material carries the sigla *as it is today*. This document
+ * goes to the external designer, who produces material from it: naming a retired
+ * format in it trades a wrong attribution for an invitation to produce for
+ * something that has been retired.
+ *
+ * ── AND WHY IT IS COUNTED RATHER THAN QUIETLY DROPPED ───────────────────────
+ *
+ * This module already takes exactly this position once, about the palette
+ * (D-45-09): a failure is rendered INTO the document as a named absence rather
+ * than dropped out of it, because *«a designer handed «the palette could not be
+ * read, do not guess» behaves correctly, and one handed a document with no colour
+ * section at all reaches for the nearest colours»*. A silently missing clause is
+ * that same reach, one level up — and there is no error tracking here, so neither
+ * end would ever see it.
+ *
+ * ⚠ **The counts name no format** — not the name, not the sigla, not the title of
+ * the clause, which can carry a format's name inside it. A number and a cause is
+ * all that travels.
+ *
+ * ── TWO CAUSES, TWO SENTENCES ───────────────────────────────────────────────
+ *
+ * *Retired* and *not in the answer* send a reader to two different people, so
+ * they are two entries and not one bucket.
+ */
+function renderWithheld(
+  sections: readonly SectionRow[],
+  named: ReadonlyMap<string, FormatRow>
+): string[] {
+  const retired = sections.filter((row) => {
+    if (row.format_id === null) return false;
+    const format = named.get(row.format_id);
+    return format !== undefined && format.retired_at !== null;
+  });
+
+  const unnameable = sections.filter(
+    (row) => row.format_id !== null && !named.has(row.format_id)
+  );
+
+  if (retired.length === 0 && unnameable.length === 0) return [];
+
+  const out = ["## What this document does not carry", ""];
+
+  if (retired.length > 0) {
+    out.push(
+      `- **${count(retired.length)} written for a format that has been retired, and ${retired.length === 1 ? "it is" : "they are"} not printed above.** A retired format is not named in anything that leaves — not even to explain a history — and a clause written for one format is not a rule of the brand, so there is no heading this could have gone under. It is withheld and counted rather than moved. If you were expecting one of these, ask for it; its absence here is not permission to decide it in a piece.`,
+      ""
+    );
+  }
+
+  if (unnameable.length > 0) {
+    out.push(
+      `- **${count(unnameable.length)} pointing at a format the catalogue did not return, and ${unnameable.length === 1 ? "it is" : "they are"} not printed above.** The catalogue answered; ${unnameable.length === 1 ? "this clause does" : "these clauses do"} not match anything in the answer. That is a defect in the record, or a format this account may not read — it is not a statement about the brand, and it is reported rather than reclassified. Tell whoever keeps the catalogue.`,
+      ""
+    );
+  }
+
+  out.push(
+    "Nothing is missing from the record: what is withheld is withheld from this document, and each clause is still filed under the format it was written for.",
+    ""
+  );
+
+  return out;
+}
+
+/** `1 clause` or `n clauses`, so a sentence can be written once for both. */
+function count(n: number): string {
+  return n === 1 ? "1 clause" : `${n} clauses`;
+}
+
+/**
+ * What one open question BEARS ON, in words that cannot be read as another scope.
+ *
+ * ⚠ **`the whole brand` is now said for one reason only**: the question was filed
+ * against no format. It used to be what came out whenever the format could not be
+ * looked up, so a question about a single format reached the designer as a
+ * question about everything — and on this document the designer is the person who
+ * would then settle it in a piece.
+ */
+function scopeOf(
+  formatId: string | null,
+  named: ReadonlyMap<string, FormatRow>
+): string {
+  if (formatId === null) return "the whole brand";
+
+  const format = named.get(formatId);
+  if (format === undefined) {
+    return "one format, which the catalogue did not return -- not the brand as a whole";
+  }
+  if (format.retired_at !== null) {
+    return "one format, which has been retired -- not the brand as a whole";
+  }
+  return format.name;
+}
+
 /**
  * What is still open, at the end, and never omitted.
  *
  * On this document it is the difference between a designer asking and a designer
  * choosing. A question that reached the brief gets asked; one that did not gets
  * settled in a piece of artwork, and the piece is then the decision.
+ *
+ * ⚠ **A question is KEPT where a clause is withheld, and the asymmetry is
+ * deliberate.** A clause tells the designer what to do; an open question tells
+ * them what NOT to settle. Withholding a clause removes an instruction that
+ * should not have been given in that form; withholding a question removes the one
+ * thing standing between a designer and choosing. So a question whose format
+ * cannot be named travels, with a scope that says so.
  */
 function renderQuestions(
   questions: readonly QuestionRow[],
@@ -403,11 +558,8 @@ function renderQuestions(
   ];
 
   for (const question of questions) {
-    const format =
-      question.format_id === null ? null : named.get(question.format_id) ?? null;
-    const scope = format === null ? "the whole brand" : format.name;
     out.push(
-      `- **${question.question}** — ${scope}; whose call it is: ${question.decision_owner}.`
+      `- **${question.question}** — ${scopeOf(question.format_id, named)}; whose call it is: ${question.decision_owner}.`
     );
   }
 
