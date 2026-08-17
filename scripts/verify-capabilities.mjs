@@ -188,16 +188,46 @@ const SRC_DIR = `${ROOT}/src`;
  * expectation off the thing it is checking cannot fail.
  *
  * **If this trips, look at the capability model, not at this constant.**
- * Fifteen keys means a capability was added — which is a design decision that
+ * Eighteen keys means a capability was added — which is a design decision that
  * belongs in a plan, with a grant row and a policy or a route to go with it.
- * Thirteen means one was removed, and something is still asking for it.
+ * Sixteen means one was removed, and something is still asking for it.
  *
  * Moved from 13 to 14 by plan 44-04 (`production.read`), in the same commit as
  * the migration that inserts the row and the `keys.ts` entry that names it —
  * which is the only order in which this side means anything, for the reason
  * written at the `staff` block below.
+ *
+ * ── Moved from 14 to 17 by plan 45-05, and it is a SPLIT, not an addition ────
+ *
+ * PROD-02 makes entitlement per SECTION, so one capability answering four
+ * questions becomes four answering one each (D-45-04): `production.read` is
+ * removed and `production.calendar.manage`, `production.manifesto.manage`,
+ * `production.visual.manage` and `production.location.manage` are added.
+ * 14 − 1 + 4 = 17. It is the same legitimate reason as every move before it —
+ * the MODEL changed, in a plan, with its grants and its policies.
+ *
+ * ⚠ THIS SIDE IS RED FROM THIS COMMIT, AND THE RED IS PRE-REGISTERED. Unlike
+ * every earlier move, the code and the catalogue CANNOT change in one commit
+ * here: the split is deliberately sequenced additive-then-retire so that no
+ * entitled reader is refused at any instant. There are therefore TWO red
+ * intervals, and both are declared before either arrives:
+ *
+ *   1. from this commit until plan 45-08 applies
+ *      `20260817120000_production_section_keys.sql` — the database holds
+ *      FOURTEEN keys and this file declares seventeen;
+ *   2. from that application until plan 45-09 applies
+ *      `20260817120500_production_read_retire.sql` — the database holds
+ *      EIGHTEEN (the four new ones plus `production.read`, which the additive
+ *      migration deliberately leaves in place) and this file declares
+ *      seventeen.
+ *
+ * Green returns only after 45-09. **Neither red is repaired by editing this
+ * constant** — that is precisely the failure the paragraph above names, and the
+ * one mutation C of plan 43-02 performed in two steps. If a run at interval 1
+ * reports a MATCH at seventeen, that is not relief: it means the migration was
+ * applied out of order, and it is itself a finding.
  */
-const EXPECTED_KEY_COUNT = 14;
+const EXPECTED_KEY_COUNT = 17;
 
 /**
  * ── The pre-registered grant declaration (phase decision D-02) ─────────────
@@ -311,11 +341,27 @@ const ROLE_GRANTS = {
     //
     // ⚠ THIS `false` IS A BET, and the bet is written here so it can be lost
     // visibly: it holds only while no signup path can create a pending
-    // organizer. Reopen one and this pair is reconsidered in the same commit.
-    // It must NOT be defended by pointing at `door.operate` two lines up — that
-    // `false` protects a person in front of a queue, and nobody is standing in a
-    // queue in front of a production calendar.
-    'production.read': false,
+    // organizer. Reopen one and these pairs are reconsidered in the same commit.
+    // It must NOT be defended by pointing at `door.operate` above — that `false`
+    // protects a person in front of a queue, and nobody is standing in a queue
+    // in front of a production calendar.
+    //
+    // ── FOUR ROWS WHERE THERE WAS ONE — plan 45-05, D-45-04 ─────────────────
+    //
+    // `production.read` is REMOVED here and replaced by four section keys. The
+    // grants do not narrow and do not widen: master held the calendar before the
+    // split and holds it after (D-45-04 constraint 3), and the three new
+    // sections go to the same role (D-45-03). A rename that also changed who can
+    // read would be two changes in one diff, auditable against neither question.
+    //
+    // All four carry `false`, and the coincidence is worth naming: it arrives
+    // from D-44-27 for the calendar and D-45-20 for the other three, and from
+    // nothing else. Four rows agreeing on a value for the same reason must still
+    // not be made to move with the door's two, which agree on it for another.
+    'production.calendar.manage': false,
+    'production.manifesto.manage': false,
+    'production.visual.manage': false,
+    'production.location.manage': false,
   },
   organizer: {
     'staff.manage': false,
@@ -360,13 +406,20 @@ const ROLE_GRANTS = {
     // channel leaving no trace. `true` and not `false`: unlike the door, nothing
     // here is refused in front of a queue, and the act cannot be undone.
     'venue.reveal': true,
-    // D-44-27, plan 44-04, AND THIS IS THE ROW THE OWNER DECIDED. `false`: an
-    // organizer created by the owner is trusted by construction, and the
-    // calendar opens the moment the account exists rather than the moment a
-    // status is approved. See the paragraph on `master.production.read` above
-    // for the bet this depends on and for why the door's `false` is not its
-    // justification.
-    'production.read': false,
+    // D-44-27 (calendar) and D-45-20 (the other three), AND THESE ARE THE ROWS
+    // THE OWNER DECIDED. `false`: an organizer created by the owner is trusted
+    // by construction, and a section opens the moment the account exists rather
+    // than the moment a status is approved. See the paragraph on the master's
+    // four rows above for the bet this depends on and for why the door's `false`
+    // is not its justification.
+    //
+    // Plan 45-05, D-45-04: `production.read` is removed and four section keys
+    // take its place. The organizer held the calendar before the split and holds
+    // it after — the reach does not move in either direction.
+    'production.calendar.manage': false,
+    'production.manifesto.manage': false,
+    'production.visual.manage': false,
+    'production.location.manage': false,
   },
   // ── The fourth role, added by plan 43-05 with its migration ───────────────
   //
@@ -456,18 +509,39 @@ const ROLE_GRANTS = {
     // a night's work: it happens before the night, and `venue-secrecy.md` says
     // the error has no remedy — the mail has left and the screenshot exists.
     'venue.reveal': 'REFUSED',
-    // Refused (D-03), plan 44-04, AND THIS IS THE PAIR PHASE 44 EXISTS TO
-    // ASSERT. A member of staff rostered to a night enters to LET PEOPLE IN.
-    // The production calendar holds unannounced dates, spaces under negotiation
-    // and the shape of an internal plan — none of which is a night's work, and
-    // none of which expires the way an assignment does. A row here would let
-    // somebody who worked one door read every future date, permanently.
+    // ── FOUR REFUSALS WHERE THERE WAS ONE — plan 45-05, D-45-04 ─────────────
     //
-    // Refused BY ROLE, and not routed around by an assignment either: this key
-    // is not one of the four a per-night assignment may carry
-    // (`20260809000000_party_assignments.sql:340-342`), and its entry in
-    // `capability-routes.ts` carries no `assignmentOpenable`.
-    'production.read': 'REFUSED',
+    // `production.read` is removed and four section keys take its place. `staff`
+    // is refused ALL FOUR, and the four refusals are written separately because
+    // the mechanism is the same and the REASON is different per section — which
+    // is the only thing that makes a refusal auditable rather than habitual.
+    //
+    // Refused BY ROLE, and not routed around by an assignment either: none of
+    // the four is one of the four keys a per-night assignment may carry
+    // (`20260809000000_party_assignments.sql:340-342`), and no entry in
+    // `capability-routes.ts` carries `assignmentOpenable` for them.
+    //
+    // Refused (D-03), and this is the pair phase 44 minted and phase 45 keeps.
+    // A member of staff rostered to a night enters to LET PEOPLE IN. The
+    // production calendar holds unannounced dates, spaces under negotiation and
+    // the shape of an internal plan — none of which is a night's work, and none
+    // of which expires the way an assignment does. A row here would let somebody
+    // who worked one door read every future date, permanently.
+    'production.calendar.manage': 'REFUSED',
+    // Refused (D-03). The manifesto is written for whoever goes to the console
+    // and LEAVES THE PERIMETER when it does. *How a format sounds* is not a
+    // question the door asks, and a document built to be handed to a third party
+    // is not one to widen the read of casually.
+    'production.manifesto.manage': 'REFUSED',
+    // Refused (D-03). The capitolato names spaces and carries the rules a
+    // material must obey before it is published. A section whose content becomes
+    // a publication is not a per-night surface.
+    'production.visual.manage': 'REFUSED',
+    // Refused (D-03), AND THIS IS THE REFUSAL THAT COSTS THE MOST IF IT IS EVER
+    // LOOSENED. Every row is a space nobody has phoned, carrying a street
+    // address. A space under negotiation named outside the people negotiating is
+    // a negotiation made public, and a publication does not un-publish.
+    'production.location.manage': 'REFUSED',
   },
   member: {
     'staff.manage': 'REFUSED',
@@ -501,33 +575,48 @@ const ROLE_GRANTS = {
     // by degrees, it is the mechanism `PROJECT.md` calls the reason the community
     // is worth something. Nothing else in the model would say no.
     'venue.reveal': 'REFUSED',
-    // Refused, plan 44-04. A member holding this key would read every
-    // unannounced date and every space under negotiation the moment it was
-    // typed. `PROJECT.md` says the gating mechanism IS the product; a calendar
-    // that leaks a date before the invitation goes out is that mechanism
-    // running in reverse. Nothing else in the model would say no.
-    'production.read': 'REFUSED',
+    // ── FOUR REFUSALS WHERE THERE WAS ONE — plan 45-05, D-45-04 ─────────────
+    //
+    // Refused on all four. A member holding any of them would read every
+    // unannounced date, every space under negotiation and the street of each,
+    // the moment it was typed. `PROJECT.md` says the gating mechanism IS the
+    // product; a production surface that leaks a date before the invitation goes
+    // out is that mechanism running in reverse. Nothing else in the model would
+    // say no — which is why these four lines, and not a comment, are where the
+    // refusal exists.
+    'production.calendar.manage': 'REFUSED',
+    'production.manifesto.manage': 'REFUSED',
+    'production.visual.manage': 'REFUSED',
+    'production.location.manage': 'REFUSED',
   },
 };
 
 /**
  * The arithmetic, pre-registered beside the declaration it counts.
  *
- * 56 pairs = 4 roles × 14 capabilities. 30 grants: the sixteen the capability
+ * 68 pairs = 4 roles × 17 capabilities. 36 grants: the sixteen the capability
  * model seeded (`20260807000000_capability_model.sql:386`, *"Sixteen grant
  * rows"*), plus the two `20260808000500_staff_role.sql` adds, plus the two
  * `20260808002000_membership_register.sql` adds for `register.read`, plus the
  * six `20260809001000_assignment_resolver.sql` adds for the three per-night
  * keys, plus the two `20260810160000_manual_venue_reveal.sql` adds for
- * `venue.reveal`, plus the two `20260815120100_production_calendar_access.sql`
- * adds for `production.read`. 26 refusals — the eight that were already every
- * pair the first migration does NOT insert, plus the six `staff` refusals of
- * D-02, plus the two `register.read` refusals of D-19 (`staff` and `member`),
- * plus the six the three per-night keys owe to `staff` and `member`, plus the
- * two `venue.reveal` owes to the same two roles, plus the two `production.read`
- * owes to them.
+ * `venue.reveal`, **minus** the two `production.read` held and **plus** the
+ * eight `20260817120000_production_section_keys.sql` adds for the four section
+ * keys. 32 refusals — the eight that were already every pair the first migration
+ * does NOT insert, plus the six `staff` refusals of D-02, plus the two
+ * `register.read` refusals of D-19 (`staff` and `member`), plus the six the
+ * three per-night keys owe to `staff` and `member`, plus the two `venue.reveal`
+ * owes to the same two roles, **minus** the two `production.read` owed them and
+ * **plus** the eight the four section keys owe them.
  *
- * The three numbers have now moved five times, each because the MODEL changed,
+ * ⚠ **RECOMPUTED FROM `ROLE_GRANTS`, NOT FROM THE SENTENCE ABOVE.** The three
+ * values below were derived by walking the table — 4 roles × 17 keys, 36 values
+ * that are not `REFUSED` and 32 that are — and the prose was written to match
+ * the walk. If the two ever disagree, **the table is the fact and this paragraph
+ * is the error**: a paragraph is where an off-by-one hides, and the arithmetic
+ * side of this check exists to catch exactly that.
+ *
+ * The three numbers have now moved six times, each because the MODEL changed,
  * which is the one legitimate reason to touch them:
  *
  *   24/16/8  → 32/18/14   plan 43-05, a fourth ROLE
@@ -535,6 +624,15 @@ const ROLE_GRANTS = {
  *   36/20/16 → 48/26/22   plan 35-03, THREE per-night CAPABILITIES
  *   48/26/22 → 52/28/24   plan 37-01, a thirteenth CAPABILITY (2026-08-10)
  *   52/28/24 → 56/30/26   plan 44-04, a fourteenth CAPABILITY (2026-08-15)
+ *   56/30/26 → 68/36/32   plan 45-05, ONE capability SPLIT INTO FOUR (2026-08-17)
+ *
+ * The sixth move is the first that is not an addition, and the shape is worth
+ * naming: the grant total goes UP by six while the number of subjects entitled
+ * to the production surface stays exactly the same — two roles, before and
+ * after. A total that rises without anybody gaining reach is what a split looks
+ * like in this table, and reading it as a widening would be reading the
+ * arithmetic instead of the model. D-45-04 constraint 3 is what makes the claim
+ * checkable: it forbids the grants from narrowing or widening.
  *
  * Lowering a total to make a run pass is the failure this constant exists to
  * catch, and it has a recorded shape: mutation C of plan 43-02 did exactly that
@@ -544,9 +642,9 @@ const ROLE_GRANTS = {
  * without a decision for each of its counterparts fails here first, before any
  * database is read.
  */
-const EXPECTED_PAIR_COUNT = 56;
-const EXPECTED_GRANT_COUNT = 30;
-const EXPECTED_REFUSAL_COUNT = 26;
+const EXPECTED_PAIR_COUNT = 68;
+const EXPECTED_GRANT_COUNT = 36;
+const EXPECTED_REFUSAL_COUNT = 32;
 
 /** The marker a refusal carries in `ROLE_GRANTS`. It means: no row at all. */
 const REFUSED = 'REFUSED';
@@ -1185,8 +1283,9 @@ async function run(target, targetLabel) {
           'is itself under src/, so binding a key MAKES it asked-for by this side ' +
           '(finding F3 in the docblock). This stays a WARNING because promoting it would ' +
           'make the production build depend on a live database (D-34-11/D-34-12), and ' +
-          'because six of the fourteen keys gate TABLES rather than routes — each with its ' +
-          'reason written beside it in that same file.'
+          'because eight of the seventeen keys gate TABLES rather than routes — counted ' +
+          'by reading capability-routes.ts on 2026-08-17, each with its reason written ' +
+          'beside it in that same file.'
       );
     warn(
       '4 · every catalogue key is asked for by a policy or by src/',
