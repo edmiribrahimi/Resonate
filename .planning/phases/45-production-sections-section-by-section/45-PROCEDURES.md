@@ -5,7 +5,7 @@ status: all pending
 closes: PROD-02 criterion 1, criterion 2, criterion 3, and the half of D-45-16 that no assertion can hold
 carries: the four rows of 45-VALIDATION.md § Manual-Only Verifications, in the researcher's own reasons
 accounts: two — a hand-made account holding exactly ONE section key, in a throwaway environment; and an account holding all four keys through the master role. Roles, never names
-authorisation: three, and they are three ACTS, not one permission. A1 (plan 45-02) is spent. A2 was granted and spent on 2026-08-17 by plan 45-08, and it did NOT extend to the retirement of plan 45-09, which asks again. A3 (plan 45-10) is unasked. None of them is this document's to spend — the procedures below write nothing
+authorisation: four, and they are four ACTS, not one permission. A1 (plan 45-02) is spent. A2 was granted and spent on 2026-08-17 by plan 45-08, and it did NOT extend to the retirement of plan 45-09 — which asked again and received A2b, granted and spent on 2026-08-18. A3 (plan 45-10) was granted and spent on 2026-08-17. All four are spent; none of them is this document's to spend — the procedures below write nothing
 phase_closes: not before every Result below carries an observation
 ---
 
@@ -55,6 +55,7 @@ them into one line would be asking for a permission instead.
 |---|---|---|---|
 | **A1** | **Minting a session on a real person's identity** through the auth API, read-only, with a verified global revocation at the end — so that a refusal can be measured with a real role rather than a service key | plan 45-02 | **SPENT.** One run, one sitting; the transcript, the exit code and the date are recorded in `45-02-SUMMARY.md`. A second sitting is a second authorisation |
 | **A2** | **Applying a migration to production** — the additive key split, and then the retirement of the key it replaces, in that order and after a deploy | plans 45-08 and 45-09 | **ASKED AND GRANTED 2026-08-17**, in the owner's words *«Autorizzato: migration + rilettura»*. **SPENT the same day, by plan 45-08.** What it covered: the FIVE migrations `20260817120000`, `120100`, `120200`, `120300`, `120400`, applied ONCE each through `POST /v1/projects/{ref}/database/migrations`, **plus** the one re-run of `verify:refusal`, which mints its own session. What it did NOT cover, and each needs its own act asked by its own plan: the retirement migration `20260817120500_production_read_retire.sql` (plan 45-09), the seed (A3, plan 45-10), any second application, any further re-run, and any write of a data row. The five assigned versions and the recorded read-back are in `45-08-SUMMARY.md` |
+| **A2b** | **Retiring the key the split replaced** — applying `20260817120500_production_read_retire.sql`, and one re-run of the refusal instrument to re-measure the pair afterwards | plan 45-09 | **ASKED AND GRANTED 2026-08-18**, in the owner's words *«Autorizzato: ritiro + rilettura»*. **SPENT the same day, by plan 45-09.** What it covered: applying that ONE file, ONCE, through `POST /v1/projects/{ref}/database/migrations` — never `/database/query`, never `PUT` — **plus** one re-run of `verify:refusal`, which mints two sessions of its own. What it did NOT cover, and each would need its own act: any second application, any further re-run, any write of a data row, and any deletion beyond the three `DELETE`s the file already contains. The assigned version `20260817220627`, both snapshots and the catalogue read-back are in `45-09-SUMMARY.md`. **A2b is SPENT** |
 | **A3** | **Seeding the scouting archive** into the location section, once, all rows at the mapped stage | plan 45-10 | **ASKED AND GRANTED 2026-08-17**, in the owner's words *«Autorizzato, un run con `--apply`»*. **SPENT the same day, by plan 45-10.** What it covered: **ONE** run of `scripts/seed-production-spaces.mjs` **with `--apply`**, writing rows into `public.production_space` and `public.production_space_attribute` and into no other table — every row arriving at the lowest acquisition stage because the script does not write that column at all, and every attribute arriving `derived` because nobody has been called. What it did NOT cover, and each needs its own act: **a second `--apply` run**, any removal under any flag, any write to a table outside the location section, and the retirement migration (plan 45-09). The pre-snapshot, the transcript and the catalogue read-back are in `45-10-SUMMARY.md` |
 
 **A1 is already spent by the time anybody reads this**, and what it bought is a
@@ -73,6 +74,24 @@ who can read* — is therefore held by a measurement and not only by a diff. The
 run's exit code fell at `2`, which is the honest outcome and not a defect: ten
 of the eleven declared tables carry zero rows, and on an empty table the
 entitled answer and the unentitled answer are the same bytes.
+
+**And it has now been made a third time, on 2026-08-18 under A2b, after the old
+key was removed — and the pair still did not move.** `production_pipeline_rule`
+read `16 / 0 / 0` for the third consecutive measurement: before the split, after
+the split, and after the retirement. Two further pairs held for the first time,
+because A3's seed gave the location section rows to discriminate on:
+`production_space` at `184 / 0 / 0` and `production_space_attribute` at
+`1840 / 0 / 0`. Pairs held went from one to three, refusals from ten to eight,
+and the exit code stayed `2` for the eight tables that are still empty. Both
+minted sessions were revoked globally and each revocation was re-read as `false`.
+
+**Why that run is also the control count, and not only a re-measurement.** D12
+requires that the confirmation of a removal be asked of **a source other than the
+one acted on**. The retirement was applied through the Management API's
+migrations endpoint; this instrument reads through PostgREST with a real signed-in
+JWT, which is a different door, a different protocol and — decisively — a path
+that RLS actually governs. A count taken with the instrument that caused the
+effect is an echo, and this one is not.
 
 ---
 
