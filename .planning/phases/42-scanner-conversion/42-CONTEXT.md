@@ -100,6 +100,73 @@ coppie — le tre del flash piu' la pillola *Offline*:
 | **`red-600`** | **`--sem-done`** | **15,5** | **15,5** | **20,8** | **33,3** | **27,5** | **21,3** |
 | `red-700` | `--sem-done` | 21,3 | 23,1 | 20,8 | 35,5 | 27,5 | 30,2 |
 
+> **CORREZIONE del 2026-08-18 — le due tabelle qui sopra sono state rimisurate
+> da uno script, e su tre celle erano sbagliate. Le cifre superate restano dove
+> sono: qui sta cosa le sostituisce.**
+>
+> Fino a oggi nessuna delle due misure di questa fase era stata verificata da un
+> terzo — questo documento e `42-RESEARCH.md` §0 riportavano numeri diversi e la
+> decisione di scurire il rifiuto poggiava su uno dei due. Il piano 42-03 ha
+> scritto `scripts/verify-scan-legibility.mjs`, che implementa il metodo che
+> D-42-05 nomina — oklch → sRGB lineare, **Brettel, Vienot & Mollon 1997 a due
+> semipiani**, CIEDE2000 — e la cui aritmetica e' verificata contro fonti
+> esterne: 14 dei 15 vettori di prova di Sharma alla quarta decimale, e i valori
+> di riferimento L\*a\*b\* dei primari sRGB riprodotti esattamente. Il reperto
+> completo, con il confronto cella per cella fra le tre fonti, sta in
+> **`42-03-FINDINGS.md` §4**.
+>
+> **Cosa regge.** La direzione di entrambe le tabelle: il minimo di
+> accetta-vs-rifiuta sta **in deuteranopia** e vale **8,4** (qui era scritto
+> 8,3, la ricerca diceva 8,1 — il gate cade fra le due). Il minimo di
+> terzo-stato-vs-pillola vale **2,1**, come scritto. **La terna di oggi ha
+> minimo 2,1**, come scritto.
+>
+> **Cosa era sbagliato, e come:**
+>
+> | Cella | Qui sopra | Misurato |
+> |---|---|---|
+> | accetta vs gia' registrato, **protanopia** | 10,2 | **7,0** |
+> | rifiuta vs gia' registrato, **normale** | 38,4 | **33,1** |
+> | terna decisa `red-600`/`--sem-done`, **minimo** | 15,5 | **14,0** |
+>
+> **La prima e' la piu' importante e cambia cosa si sa del difetto.** Questa
+> tabella dava accetta-vs-terzo-stato **appena sopra** la soglia; misurata, sta
+> **sotto**. Con l'ambra di oggi il difetto non e' solo la pillola *Offline*:
+> **anche l'accettazione e il gia'-registrato sono confondibili per un
+> protanope.** Il gate lo riporta anche per un'altra strada — direzione 1 della
+> prova per mutazione — e da' la stessa cifra.
+>
+> **La seconda e' un errore di aritmetica, non di metodo, e riguarda entrambe le
+> fonti.** A vista normale non c'e' nessuna simulazione dicromatica in gioco:
+> quella distanza e' solo L\*a\*b\* e CIEDE2000. Questo documento e la ricerca
+> dicono **tutti e due 38,4** e sono **tutti e due** in errore — il che dice che
+> le due misure non erano indipendenti quanto sembravano.
+>
+> **La terza non cambia nessuna conclusione ma cambia una cifra che verra'
+> citata:** la terna decisa passa la soglia con **14,0**, non con 15,5. Resta
+> una coppia **sufficiente**, non comoda — che e' esattamente quanto D-42-01
+> dichiara qui sotto, e la frase che nomina il glifo come canale portante vale
+> per 14,0 quanto valeva per 15,5.
+>
+> **Cosa questa correzione NON tocca.** D-42-01 e D-42-02 restano come sono. Le
+> loro conclusioni non poggiano sulle celle contestate: poggiano sul fatto che
+> il set semantico non contiene un verde e che la fase 40 non ne inventa uno, e
+> sul fatto che il rifiuto su `--sem-crit` starebbe a **2,2** dal colore dei
+> pulsanti primari — cifra che il gate **conferma esattamente**. `--sem-done`
+> misura 20,1 dall'accettazione, 31,0 dal rifiuto e 27,2 dalla pillola: piu'
+> basso di quanto la ricerca dichiarava, e comunque il doppio della soglia
+> ovunque.
+>
+> **E un reperto che nessuna delle due tabelle poteva contenere**, perche'
+> nessuna delle due misurava i compositi: con la terna decisa, **accettazione
+> contro pillola *Offline* sta a 5,5 in protanopia**. Oggi la coppia e' esclusa,
+> e giustamente — il flash copre il viewport e nasconde l'intestazione in cui la
+> pillola vive. **Ma l'idea differita di trasformare il flash in una card la
+> renderebbe reale**, e adesso quell'idea ha il suo costo scritto invece che da
+> scoprire. Il gate non si fida della frase: rilegge il contenitore del flash a
+> ogni esecuzione e, se smette di essere ancorato a tutti i bordi, misura la
+> coppia e rossa nominando la premessa caduta.
+
 ### D-42-01 — Il flash e' un vocabolario di sicurezza e resta su colori grezzi, ma il rifiuto si scurisce: `red-500` → `red-600`
 
 L'accettazione resta `green-500`, il rifiuto passa a **`red-600`** (`#E7000B`).

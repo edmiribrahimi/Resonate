@@ -273,3 +273,163 @@ riempimento lo avvicina all'inchiostro: e' il costo dichiarato di `red-600`,
 e la ramificazione che il piano 42-04 teneva pronta — *se il rifiuto scende
 sotto il pavimento, quello stato solo resta bianco* — **non serve**. 3,87
 supera 3, e l'inchiostro resta uno per tutti e tre.
+
+---
+
+## 4. L'arbitrato — chi aveva ragione fra le due misure, e la risposta che nessuna delle due aveva previsto
+
+`42-CONTEXT.md` §D-42-01 e `42-RESEARCH.md` §0 riportano due tabelle che non
+coincidono, e **la decisione di scurire il rifiuto poggia su una delle due.**
+Nessuna delle due era stata verificata da un terzo. Il gate e' il terzo.
+
+### 4.0 Il metodo che il gate implementa, e i due che non ha usato
+
+Il gate implementa **oklch → sRGB lineare (matrici Ottosson) · Brettel, Vienot
+& Mollon 1997 a due semipiani in sRGB lineare · CIEDE2000**, cioe' esattamente
+il metodo che D-42-05 nomina.
+
+**Non** ha usato il metodo a **piano singolo del 1999** — che `42-RESEARCH.md`
+§0 dichiara per se' — e **non** ha usato **matrici HCIRN in spazio sRGB**, che
+sono l'errore della prima stesura ritirata di `42-CONTEXT.md`.
+
+**Le due parti aritmetiche sono state verificate contro fonti esterne prima di
+usarle per arbitrare**, perche' un arbitro non verificato e' una terza opinione:
+
+- **CIEDE2000** riproduce **14 dei 15** vettori di prova pubblicati da Sharma
+  alla quarta cifra decimale. Il quindicesimo divergeva di 0,009 e la
+  ricontrollata ha dato torto alla trascrizione del valore atteso, non
+  all'implementazione.
+- **La conversione in L\*a\*b\*** riproduce esattamente i valori di riferimento
+  dei tre primari sRGB — `#FF0000` → 53,2408 / 80,0925 / 67,2032, e cosi' gli
+  altri due.
+
+### 4.1 Il confronto, cella per cella
+
+Distanze sui **token grezzi**, cioe' come entrambe le tabelle precedenti li
+misuravano — non sui compositi del §3. Le colonne sono nell'ordine
+normale · protanopia · deuteranopia · tritanopia; dove una tabella le ordinava
+diversamente, i valori sono stati rimessi in questa colonna.
+
+| Coppia | Fonte | normale | protan | deuter | tritan |
+|---|---|---|---|---|---|
+| accetta ↔ rifiuta | contesto | 82,0 | 32,6 | 8,3 | **67,4** |
+| | ricerca | 82,0 | 31,7 | 8,1 | **60,8** |
+| | **gate** | **80,7** | **32,0** | **8,4** | **65,5** |
+| accetta ↔ terzo stato | contesto | 49,1 | **10,2** | 14,8 | 57,2 |
+| | ricerca | 49,1 | **10,5** | 15,1 | 53,5 |
+| | **gate** | **49,7** | **7,0** | **10,1** | **54,6** |
+| rifiuta ↔ terzo stato | contesto | **38,4** | 30,9 | 15,7 | 17,2 |
+| | ricerca | **38,4** | 30,1 | 15,7 | 18,8 |
+| | **gate** | **33,1** | **28,2** | **13,1** | **17,3** |
+| terzo stato ↔ pillola | contesto | 10,0 | 4,7 | 2,1 | 5,7 |
+| | ricerca | 10,0 | 4,7 | 2,0 | 5,9 |
+| | **gate** | **10,8** | **4,8** | **2,1** | **5,5** |
+| `--sem-crit` ↔ `--accent` | ricerca | 4,0 | 7,2 | 3,8 | 2,3 |
+| | **gate** | **4,0** | **6,9** | **3,6** | **2,2** |
+| `--sem-warn` ↔ accetta | ricerca | 46,4 | 2,3 | 10,0 | 49,8 |
+| | **gate** | **45,4** | **2,4** | **9,3** | **50,9** |
+| `--sem-done` ↔ accetta | ricerca | 54,0 | 63,6 | 57,1 | 22,3 |
+| | **gate** | **54,2** | **57,6** | **49,1** | **20,1** |
+| `--sem-done` ↔ rifiuta | ricerca | 38,8 | 51,5 | 60,5 | 33,7 |
+| | **gate** | **38,8** | **46,1** | **51,9** | **31,0** |
+| `--sem-done` ↔ pillola | ricerca | 65,8 | 70,3 | 69,9 | 30,4 |
+| | **gate** | **61,8** | **60,7** | **57,8** | **27,2** |
+
+### 4.2 Chi vince, in una riga per volta
+
+**Sulla direzione, il gate sta con il contesto — e la ricerca non la
+contraddiceva piu'.** La `DISCORDANZA 1` di `42-RESEARCH.md` §0 e' scritta
+contro la **prima stesura ritirata** del contesto, quella che dava 48,7 in
+deuteranopia e 28,1 in protanopia. Quella tabella non esiste piu': il contesto
+si e' gia' corretto, e da allora le due fonti concordano che il minimo di
+accetta-vs-rifiuta sta **in deuteranopia** ed e' **8 e qualcosa**. Il gate
+misura **8,4**, cioe' **fra le due**, e chiude la discordanza confermandone
+l'esito piuttosto che il numero.
+
+**Sulla tritanopia il gate sta con il contesto e non con la ricerca, e la
+ragione e' strutturale, non aritmetica.** Contesto 67,4 · ricerca 60,8 · gate
+65,5. E' esattamente dove ci si aspetta che le due si separino: la ricerca
+dichiara per se' il **metodo a piano singolo del 1999**, e il piano singolo e'
+povero **proprio sulla tritanopia** — e' la ragione per cui D-42-05 nomina il
+1997 invece di lasciare la scelta a chi implementa. La colonna tritanopia della
+ricerca non e' sbagliata per distrazione: e' il metodo che dichiara.
+
+**Sui minimi che contano, tutte e tre concordano.** Accetta-vs-rifiuta con
+`red-500` sta a 8 e qualcosa in deuteranopia; terzo-stato-vs-pillola sta a
+**2,1** in deuteranopia. Sono le due celle su cui poggiano D-42-01 e D-42-02, e
+nessuna delle due e' in discussione.
+
+### 4.3 Il reperto piu' importante: su alcune celle il gate non riproduce nessuna delle due
+
+E una di queste e' decidibile **senza credere a nessun modello di visione**.
+
+**A vista normale non c'e' nessuna simulazione dicromatica in gioco.** La
+distanza fra `red-500` e `amber-500` a vista normale e' pura aritmetica:
+conversione in L\*a\*b\* e CIEDE2000, niente altro. Entrambe le tabelle
+precedenti dicono **38,4**. Il gate misura **33,1** — con una CIEDE2000
+verificata su 14 vettori Sharma su 15 alla quarta decimale e una conversione
+L\*a\*b\* che riproduce esattamente i valori di riferimento dei primari.
+
+**Su quella cella hanno torto tutte e due.** Non e' una divergenza di metodo:
+e' un errore di calcolo condiviso, e il fatto che due misure indipendenti
+riportino la stessa cifra sbagliata dice che **non erano indipendenti quanto
+sembravano**.
+
+La seconda cella e' piu' consequenziale. **Accetta contro terzo stato, in
+protanopia:** contesto 10,2 · ricerca 10,5 · **gate 7,0**. Entrambe le tabelle
+la danno **appena sopra** la soglia di 10; il gate la da' **sotto**. Con l'ambra
+di oggi, quindi, il difetto non era solo la pillola: **anche l'accettazione e il
+terzo stato sono confondibili per un protanope**, e nessuna delle due misure
+precedenti lo aveva visto. La direzione 1 di mutazione (§2) lo riporta
+indipendentemente, ed e' la stessa cifra.
+
+**Terza cella:** la tabella delle alternative del contesto da' alla terna decisa
+un minimo di **15,5**; il gate misura **14,0**, sia sui grezzi sia sui
+compositi. La conclusione non cambia — 14 supera 10 con margine — ma il numero
+che il documento stampa e' quello sbagliato, e verra' citato.
+
+### 4.4 Cosa questo arbitrato NON fa
+
+**Non riapre D-42-01.** La sua conclusione operativa non poggia su nessuna delle
+celle contestate: poggia sul fatto che il set semantico **non contiene un
+verde** e che la fase 40 ha deciso di non inventarne uno, e sul fatto che
+portare il rifiuto su `--sem-crit` lo metterebbe a **2,2** dal colore dei
+pulsanti primari. Il gate **conferma 2,2 esattamente** (in tritanopia, che e' il
+minimo di quella coppia). Entrambi i pilastri reggono.
+
+**Non riapre D-42-02.** `--sem-done` misura **20,1** dall'accettazione, **31,0**
+dal rifiuto e **27,2** dalla pillola sui grezzi — piu' basso di quanto la
+ricerca dichiarava, e comunque il doppio della soglia su ogni coppia.
+
+**Non abbassa nessuna soglia e non sostituisce nessun colore.** `DEROGATIONS` e'
+dichiarata e vuota; la soglia resta 10; nessun file sotto `src/` e' stato
+toccato da questo piano.
+
+### 4.5 Il documento corretto, e quello no
+
+**Corretto in loco, con la data: `42-CONTEXT.md`.** E' la tabella su cui poggia
+una decisione e su cui il gate ha trovato **una cella che attraversa la soglia**
+(accetta-vs-terzo, 10,2 → 7,0) piu' un minimo dichiarato sbagliato (15,5 →
+14,0). Le cifre superate **restano visibili** con la nota che dice cosa le ha
+sostituite: questo repository corregge in loco, non cancella una tabella in cui
+qualcuno ha creduto.
+
+**`42-RESEARCH.md` §0 non viene toccato**, e la ragione va scritta perche' non
+sembri una dimenticanza: la sua `DISCORDANZA 1` e' un'obiezione a una tabella
+**gia' ritirata**, quindi non e' un'affermazione viva da correggere; e la sua
+colonna tritanopia diverge **per il metodo che il documento dichiara di se'**,
+non per un errore. Registrare qui che il 1999 e' la causa e' la correzione:
+riscriverne i numeri con un metodo che quel documento non dichiara farebbe
+sparire l'unica prova che il metodo conta.
+
+---
+
+## 5. Cosa un verde di questo gate significa, e cosa non significa
+
+**Questo gate misura la distanza fra due tinte, non la leggibilita' di uno
+schermo.**
+
+Un passaggio dice che **le tinte sono separabili**. Non dice, e non puo' dire,
+che la porta funzioni: che un rifiuto si legga come rifiuto a distanza di
+braccio, al buio, con una fila davanti, resta un'osservazione umana. Quella vive
+nel door pass, e `42-PROCEDURES.md` la tiene.
