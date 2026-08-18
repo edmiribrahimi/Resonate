@@ -535,3 +535,42 @@ risposta**, e che la normalizzazione va provata per mutazione prima di fidarsene
 ---
 
 *Aggiunto: 2026-08-18 — fase 42, piano 12.*
+
+---
+
+## DEF-42-09 — due procedure chiedono un account che il database non ammette
+
+**Aperta il 2026-08-18, trovata nei primi minuti del laboratorio.**
+
+`39-DOOR-PASS.md` §1.5 e il test **M-3** di `34-VERIFICATION.md` chiedono
+entrambi un account **`organizer` in stato `pending`**, «seminato a mano» perche'
+il prodotto non sa produrlo (43-CONTEXT D-15).
+
+**Non e' seminabile nemmeno a mano.** Letto dai cataloghi di **laboratorio e
+produzione**, identico su entrambi:
+
+```
+profiles_role_implies_approved
+CHECK (role <> ALL (ARRAY['master','organizer','staff']) OR status = 'approved')
+```
+
+Un `organizer` `pending` viola il vincolo: **la riga non puo' esistere.** Le due
+procedure descrivono uno stato che lo schema rende impossibile, e nessuna delle
+due poteva accorgersene finche' non e' esistito un posto in cui provarci.
+
+**Conseguenze da decidere, e non sono di un agente:**
+
+1. **`39-DOOR-PASS.md` §1.5 non e' eseguibile come scritta**, e il suo `Result`
+   non e' `pending`: e' irraggiungibile. Va riscritta o ritirata dichiarandolo.
+2. **Il test M-3 della fase 34 idem** — e con lui l'osservazione che quel test
+   esisteva per difendere: **D-06 della fase 43**, cioe' che `door.operate` e'
+   concesso con `requires_approved = false`.
+3. **E qui c'e' la domanda vera.** Se ruolo `organizer`, `staff` e `master`
+   implicano `approved` per vincolo di tabella, allora `requires_approved =
+   false` su `door.operate` puo' cambiare qualcosa **solo per il ruolo
+   `member`** — l'unico che il vincolo lascia stare in `pending`. O la bandiera
+   protegge un caso diverso da quello che il test descriveva, o non protegge
+   niente. **Va deciso, non dedotto qui.**
+
+Nessuna di queste tre si chiude aggirando il vincolo: toglierlo per far girare
+una prova sarebbe piegare la produzione alla verifica, che e' il verso sbagliato.
