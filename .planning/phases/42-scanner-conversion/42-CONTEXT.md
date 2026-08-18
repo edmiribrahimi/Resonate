@@ -18,8 +18,8 @@ stirarsi, e il comportamento non cambia per effetto del lavoro visivo).
 **Perimetro dei file** — sono esattamente quelli oggi recintati da
 `PHASE_42_PATHS` in `scripts/conversion-manifest.mjs:226-239`:
 
-- `src/app/(admin)/**/scanner/**` — `ScannerClient.tsx` (3449 righe, **56
-  utility di palette grezza**), `DoorSurface.tsx` (0), `page.tsx` (0)
+- `src/app/(admin)/**/scanner/**` — `ScannerClient.tsx` (3449 righe, **57
+  utility di palette grezza** piu' 42 nomi legacy — conteggio del ricercatore), `DoorSurface.tsx` (0), `page.tsx` (0)
 - `src/components/scanner/**` — `ScanFlash.tsx` (3)
 - `src/app/(admin)/door/**` — `page.tsx` (0)
 
@@ -53,76 +53,118 @@ misurabilmente rotta.**
 
 Tutti e cinque, di fatto, il semaforo verde/giallo/rosso.
 
-**La misura.** Simulazione delle tre cecita' ai colori (Vienot-Brettel-Mollon
-1999, applicata in sRGB lineare) sui colori reali del prodotto, distanza
-**CIEDE2000**. Soglia pratica: sotto 10 = due schermi che una persona di fretta
-puo' scambiare. Script in `scripts/verify-scan-legibility.mjs` (da scrivere in
-questa fase — vedi D-42-05).
+**La misura — RIFATTA il 2026-08-18, e la prima era sbagliata.**
 
-| Coppia | normale | deuteranopia | protanopia | tritanopia |
-|---|---|---|---|---|
-| accetta vs rifiuta (`green-500`/`red-500`, oggi) | 76,2 | 48,7 | **28,1** | 52,6 |
-| rifiuta vs gia' registrato (`red-500`/`amber-500`, oggi) | 34,5 | **4,3** | 26,6 | **9,6** |
-| accetta vs gia' registrato (`green-500`/`amber-500`, oggi) | 45,8 | 50,3 | **7,9** | 50,8 |
-| gia' registrato vs pillola *Offline* (`amber-500`/`yellow-500`) | **9,9** | **2,0** | **4,4** | **3,9** |
-| rifiuta se prendesse `--sem-crit` vs `--accent` | **4,0** | **0,6** | **7,3** | **0,5** |
-| gia' registrato se prendesse `--sem-warn` vs accetta | 44,8 | 50,0 | **0,5** | 57,2 |
+> **Correzione.** La prima stesura di questo documento riportava una tabella
+> costruita su due errori, e la conclusione che ne traeva era falsa. Il
+> ricercatore della fase l'ha contestata; rimisurando, aveva ragione. Gli errori:
+>
+> 1. **I colori erano quelli sbagliati.** Tailwind e' alla **v4.2.1**, e la sua
+>    palette e' in **oklch**, non negli hex della v3 che erano stati usati.
+>    `bg-green-500` rende `#00C950`, non `#22C55E`; `bg-red-500` rende `#FB2C36`,
+>    non `#EF4444` (`node_modules/tailwindcss/theme.css`).
+> 2. **Le matrici erano etichettate male.** Il documento diceva
+>    *Vienot-Brettel-Mollon 1999*, ma solo quella della protanopia lo era. Quelle
+>    di deuteranopia e tritanopia erano matrici HCIRN applicate nello spazio
+>    sbagliato.
+>
+> La rimisura usa i colori resi davvero e **Brettel, Vienot & Mollon 1997 a due
+> semipiani** in sRGB lineare — il metodo a piano singolo del 1999 e' povero
+> sulla tritanopia. **La conclusione cambia**: non era il terzo stato il difetto
+> principale, era l'accettazione contro il rifiuto.
 
-Luminanze relative: `green-500` 0,411 · `red-500` 0,229 · `amber-500` 0,439 ·
-`yellow-500` 0,498 · `--sem-done` 0,265 · `--sem-crit` 0,337 · `--accent` 0,310.
+Distanza **CIEDE2000**. Sotto 10 = due schermi che una persona di fretta puo'
+scambiare. Ogni cifra e' il **peggiore** fra le quattro simulazioni.
 
-### D-42-01 — Il flash e' un vocabolario di sicurezza, non superficie di brand: verde e rosso restano grezzi
+**Lo stato di oggi, misurato:**
 
-`green-500` e `red-500` **non prendono i token**, e la deroga si dichiara nel
-codice e nel gate invece di essere subita.
+| Coppia | normale | deuteranopia | protanopia | tritanopia | peggiore |
+|---|---|---|---|---|---|
+| accetta vs rifiuta (`green-500`/`red-500`) | 82,0 | **8,3** | 32,6 | 67,4 | **8,3** ⚠ |
+| accetta vs gia' registrato (`green-500`/`amber-500`) | 49,1 | 14,8 | 10,2 | 57,2 | 10,2 |
+| rifiuta vs gia' registrato (`red-500`/`amber-500`) | 38,4 | 15,7 | 30,9 | 17,2 | 15,7 |
+| gia' registrato vs pillola *Offline* (`amber-500`/`yellow-500`) | **10,0** | **2,1** | **4,7** | **5,7** | **2,1** ⚠ |
 
-- **Accetta e rifiuta non sono rotti**: distanza minima **28,1** su tutte e
-  quattro le simulazioni. Il consiglio generico *«non usare rosso-verde»* non si
-  applica a queste due tinte, perche' hanno luminanze molto diverse (0,411
-  contro 0,229) e la differenza sopravvive alla perdita di un canale.
-- Il set semantico **non ha un colore di accettazione** e la fase 40 ha gia'
-  deciso di non inventarne uno (`src/app/globals.css:169-173`: *«Phase 42
-  inherits a semantic set with no accept colour, and the scanner keeps its
-  current green unchanged»*). Questa decisione **estende la stessa regola al
-  rosso**, per simmetria.
-- Portare il rifiuto su `--sem-crit` lo metterebbe a **4,0** dal colore dei
-  pulsanti primari (`--accent`), **0,6** in deuteranopia: un rifiuto dipinto
-  della tinta che ovunque nel prodotto significa *premi qui*.
+**La terna di oggi ha minimo 2,1, ed e' rotta in due punti diversi.**
+
+**Le alternative, cercate invece che scelte.** Ricerca esaustiva sulla palette
+Tailwind v4 (400/500/600) piu' i token del brand con utility esposta, tenendo
+fissa l'accettazione su `green-500`, massimizzando il **minimo** fra tutte le
+coppie — le tre del flash piu' la pillola *Offline*:
+
+| rifiuta | terzo stato | min | a-r | a-t | r-t | t-Offline | r-Offline |
+|---|---|---|---|---|---|---|---|
+| `red-500` | `amber-500` — **oggi** | **2,1** | 8,3 | 10,2 | 15,7 | 2,1 | 17,3 |
+| `red-500` | `--sem-done` | 8,3 | 8,3 | 20,8 | 31,0 | 27,5 | 17,3 |
+| `--sem-crit` | `--sem-done` | 11,4 | 11,4 | 20,8 | 20,7 | 27,5 | 11,8 |
+| **`red-600`** | **`--sem-done`** | **15,5** | **15,5** | **20,8** | **33,3** | **27,5** | **21,3** |
+| `red-700` | `--sem-done` | 21,3 | 23,1 | 20,8 | 35,5 | 27,5 | 30,2 |
+
+### D-42-01 — Il flash e' un vocabolario di sicurezza e resta su colori grezzi, ma il rifiuto si scurisce: `red-500` → `red-600`
+
+L'accettazione resta `green-500`, il rifiuto passa a **`red-600`** (`#E7000B`).
+Nessuno dei due prende un token: il set semantico **non ha un colore di
+accettazione** e la fase 40 ha deciso di non inventarne uno
+(`src/app/globals.css:169-173`). Questa decisione estende la stessa regola al
+rifiuto, **ma corregge la tinta**, perche' quella di oggi non regge la misura.
+
+- **Verde contro rosso e' rotto oggi: 8,3 in deuteranopia.** La prima stesura di
+  questo documento diceva 28,1 e concludeva *«non e' rotto e non va toccato»*.
+  Era falso.
+- **`red-600` porta la coppia a 15,5** e migliora ogni altra distanza: 21,3 dalla
+  pillola *Offline* (era 17,3), 15,5 dal colore dei pulsanti primari (era 8,6).
+- **E migliora il contrasto del glifo bianco: da 3,82:1 a 4,91:1**, cioe' da
+  *passa solo come grafica larga* a *passa AA anche come testo*. Un rifiuto piu'
+  scuro con un glifo piu' leggibile e' esattamente il verso giusto per uno
+  schermo letto a distanza di braccio al buio.
+- **Perche' non `red-700`**, che misurerebbe meglio (21,3): la luminanza
+  scenderebbe a 0,110 — un lampo di rifiuto quasi spento, e alla porta la
+  luminanza e' il canale che si legge con la coda dell'occhio. `red-600` a 0,164
+  e' il compromesso, non il massimo di una colonna.
+- **Perche' non `--sem-crit`**, che pure supererebbe 10: e' a **2,2** dal colore
+  dei pulsanti primari (`--accent`) — un rifiuto dipinto della tinta che ovunque
+  nel prodotto significa *premi qui*.
+- **Resta un limite dichiarato:** 15,5 non e' una coppia comoda, e' una coppia
+  sufficiente. Il canale che porta davvero il rifiuto per un deuteranope e' il
+  **glifo**, non la tinta. Vedi il gate in D-42-05.
 
 ### D-42-02 — Il terzo stato lascia l'ambra e prende `--sem-done` (`#9B7BE0`)
 
-`already_recorded` passa da `bg-amber-500/90` a `bg-sem-done/90`. **Qui si
-rompe deliberatamente la convenzione dei cinque**, e il motivo e' misurato.
+`already_recorded` passa da `bg-amber-500/90` a `bg-sem-done/90`. **Qui si rompe
+deliberatamente la convenzione dei cinque concorrenti**, e il motivo e' misurato.
 
-- **L'ambra e' rotta oggi, non dalla conversione**: a **4,3** dal rifiuto per un
-  deuteranope, a **7,9** dall'accettazione per un protanope. E' schiacciata fra
-  gli altri due.
-- **Ed e' a 2,0 dalla pillola gialla dell'*Offline***. Il docblock di
+- **L'ambra e' a 2,1 dalla pillola gialla dell'*Offline***, e il docblock di
   `ScanFlash.tsx:65-72` dichiara per iscritto di aver evitato quella collisione
-  *scegliendo ambra invece di giallo*. **Non l'ha evitata**: 9,9 gia' a vista
-  normale. Quel commento va corretto nello stesso commit che cambia il colore —
-  e' un'affermazione falsa nel codice, non una nota di stile.
-- **`--sem-done` e' l'unico candidato con ogni distanza sopra 10 in ogni
-  simulazione** (peggiore 15,9). Alternative misurate e scartate: `--sem-warn`
-  (0,5 dall'accettazione in protanopia), `--sem-info` (14,8, regge ma e' l'inchiostro
-  terziario), `--violet` (17,2, regge ma **non ha utility esposta** — vedi sotto),
-  `--violet-deep` (11,2, e non e' mai un primo piano, `globals.css`).
-- **Non inventa nessun colore nuovo**, quindi non tocca la regola della fase 40
-  per cui aggiungere un colore al vocabolario semantico e' del proprietario:
-  `--sem-done` e' gia' dichiarato e gia' esposto come `--color-sem-done`
-  (`globals.css:394`), gia' consumato da 22 file sotto `src/`.
-- **Perche' `--sem-done` e non `--violet`**, che pure regge: `--violet` fa parte
-  della scala sunset, **dichiarata ed esposta a nessuno** per decisione
-  (`globals.css:185-196`), e `verify-tokens.mjs` check D pretende che un nome
-  dichiarato senza utility abbia **zero consumatori** sotto `src/`. Usarlo
-  richiederebbe di esporre un'utility, cioe' di riaprire una decisione della
-  fase 36.
-- **Conseguenza sull'inchiostro del glifo, da risolvere in piano:** la regola in
-  `globals.css:176-178` dice *«A SEMANTIC USED AS A FILL CARRIES --ground AS ITS
-  INK. Never --ink, never white»*. Il glifo oggi e' `text-white` per tutti e tre
-  gli stati (`ScanFlash.tsx:35`, e ancora a 144, 150, 156). Bianco su `#9B7BE0` da' 3,33:1 — passa AA come
-  grafica larga, non come testo. `--ground` su `#9B7BE0` da' ~5,5:1. Il piano
-  deve scegliere, e la scelta cambia la simmetria dei tre stati.
+  *scegliendo ambra invece di giallo*. **Non l'ha evitata**: 10,0 gia' a vista
+  normale. **Un secondo commento con lo stesso errore sta a
+  `ScannerClient.tsx:2792-2798`** (reperto del ricercatore). Entrambi si
+  correggono nel commit del colore: sono affermazioni false dentro il codice.
+- **`--sem-done` regge ovunque**: 20,8 dall'accettazione, 33,3 dal rifiuto,
+  27,5 dalla pillola *Offline*.
+- **Non inventa nessun colore nuovo** — e' gia' dichiarato ed esposto come
+  `--color-sem-done` (`globals.css:394`), gia' consumato da 22 file sotto `src/`
+  — quindi non tocca la regola della fase 40 per cui aggiungere un colore al
+  vocabolario semantico e' del proprietario.
+- **Il cambio NON e' una riga, ed e' un reperto del ricercatore.** La cronologia
+  degli scan ridisegna gli stessi tre stati con gli stessi path SVG a
+  `ScannerClient.tsx:3282-3320`, con `text-green-500`, `text-amber-500` e
+  `text-red-500`. Cambiando solo il flash, **il verdetto direbbe violetto e la
+  cronologia dello stesso scan direbbe ambra.** Sono due posti, e vanno insieme.
+- **Collisione nuova, dichiarata invece che scoperta dopo:** `--sem-done` e' a
+  **4,8** da `purple-400`, che nello scanner esiste gia' — il conteggio guest
+  list (`ScannerClient.tsx:2695`) e la pill *Undone at the door*
+  (`:2934-2935`, `:3388`). **Non tocca il flash**, che e' a schermo pieno e non
+  ha nessun viola addosso; tocca la **cronologia**, dove i due possono stare
+  sulla stessa riga. Li' pero' ogni voce porta il proprio testo e il proprio
+  glifo, e si legge da fermi, non a distanza di braccio. Il piano decide se
+  spostare la pill o lasciare la coincidenza dichiarata; **non la scopre.**
+- **L'inchiostro del glifo, da risolvere in piano:** bianco su `#9B7BE0` da'
+  3,33:1 (passa come grafica larga, non come testo); `--ground` da' 5,99:1. La
+  regola in `globals.css:176-178` dice che un semantico usato come riempimento
+  porta `--ground`, mai bianco. Il glifo oggi e' `text-white` per tutti e tre
+  (`ScanFlash.tsx:35`), quindi la scelta rompe o la regola o la simmetria.
+
+**Il risultato complessivo: la terna passa da minimo 2,1 a minimo 15,5.**
 
 ### D-42-03 — `MobileNav.tsx` si cancella, ma la porta resta bloccata sulla forma telefono
 
@@ -138,10 +180,14 @@ rompe deliberatamente la convenzione dei cinque**, e il motivo e' misurato.
 - **La porta NON prende la colonna da 224px.** E' la ragione per cui il wrapper
   fu creato (D-41-21), e vale ancora: quello schermo si legge a un ingresso, con
   una mano, al buio, con una fila davanti.
-- **Il gate si sposta nello stesso commit.**
+- **Il gate si sposta nello stesso commit, e serve piu' di una riga.**
   `scripts/verify-conversion.mjs:2839` dichiara
   `PHONE_LOCKED_NAV_WRAPPER = 'src/components/layout/MobileNav.tsx'` e i
-  docblock alle righe 1110-1123 e 2723-2726 lo descrivono. E' la regola che il
+  docblock alle righe 1110-1123 e 2723-2726 lo descrivono. **Il check E richiede
+  DUE modifiche**, non una — vedi D-42-08 punto 2: con una sola il gate esce 2.
+  E `MobileNav` e' citato in **prosa in 18 punti**, dodici dei quali su superfici
+  gia' convertite: la cancellazione trascina una ricognizione dei commenti, o
+  lascia diciotto frasi che descrivono un file che non esiste. E' la regola che il
   repo si e' gia' dato: *«either the surface moved and this entry moves with it
   in the same commit, or the entry is a claim about a file that does not
   exist»*.
@@ -216,16 +262,39 @@ ragione, non si fa passare come una scelta di pianificazione.
 
 La misura sopra non e' un ragionamento di questa conversazione: diventa
 `scripts/verify-scan-legibility.mjs`, che rilegge i colori **dai file sorgente**
-e rifiuta se una qualunque coppia fra i tre esiti — piu' la pillola *Offline* —
-scende sotto la soglia in una qualunque delle tre simulazioni. Motivi:
+— non da una lista scritta a mano — e rifiuta se una qualunque coppia fra i tre
+esiti, piu' la pillola *Offline*, scende sotto la soglia in una qualunque delle
+tre simulazioni.
+
+**Cosa deve implementare, per nome:** oklch → sRGB lineare per la palette
+Tailwind v4 (`node_modules/tailwindcss/theme.css` e' la fonte, non una copia);
+**Brettel, Vienot & Mollon 1997 a due semipiani**; CIEDE2000. **Non** il metodo
+a piano singolo del 1999, e **non** le matrici HCIRN in spazio sRGB: sono
+esattamente i due errori che hanno prodotto la prima tabella sbagliata di questo
+documento, ed e' il motivo per cui il metodo si scrive qui invece di lasciarlo
+scegliere a chi implementa.
+
+**Soglia: 10.** Con la terna decisa il minimo misurato e' **15,5**, quindi il
+gate nasce verde con margine. *Il ricercatore aveva segnalato il rischio opposto
+— un gate che nasce rosso e' un gate che qualcuno spegne — e con `red-500` sarebbe
+successo (8,3). E' una delle ragioni per cui il rifiuto si scurisce.*
+
+Motivi per cui esiste:
 
 - In un repo senza test runner l'unica prova che esistera' e' quella scritta.
-- Il difetto che questa fase ripara **era gia' in produzione e nessuno lo
-  vedeva**, con un commento accanto che dichiarava il contrario. Un gate lo
-  rende impossibile da reintrodurre.
+- **Il difetto era gia' in produzione e nessuno lo vedeva**, con **due** commenti
+  accanto che dichiaravano il contrario (`ScanFlash.tsx:65-72`,
+  `ScannerClient.tsx:2792-2798`). Un gate lo rende impossibile da reintrodurre;
+  un commento no — l'ha appena dimostrato.
 - Va provato **per mutazione** prima di essere creduto (`ai-engineering.md`,
-  gate prova per mutazione): si rimette l'ambra, si verifica che scatti, si
-  ripristina — e si asserisce che la mutazione sia stata applicata.
+  gate *prova per mutazione*): si rimette `amber-500`, si verifica che scatti, si
+  ripristina — **e si asserisce che la mutazione sia stata applicata**, perche'
+  una sostituzione che non va a segno produce un verde che non significa nulla.
+
+**Cio' che il gate NON copre, e va detto:** misura la distanza fra due tinte, non
+la leggibilita' di uno schermo. Che un rifiuto si legga come rifiuto a distanza
+di braccio al buio resta una **osservazione umana**, e vive nel door pass. Un
+verde qui dice *«le tinte sono separabili»*, mai *«la porta funziona»*.
 
 ### D-42-06 — DEF-45-01 e' un prerequisito, non un fastidio ereditato
 
@@ -251,6 +320,41 @@ superfici dichiarate — con la loro larghezza — nello stesso commit in cui il
 recinto sparisce. Tre consumatori leggono quella lista e vanno aggiornati
 insieme: `verify-conversion.mjs`, `verify-dialogs.mjs`, `verify-touch-targets.mjs`.
 
+### D-42-08 — Aprire il recinto accende tre gate che nessuno aveva contato
+
+Reperti del ricercatore, verificati eseguendo i gate su una copia del tree.
+**Stanno qui perche' il piano li affronti come lavoro previsto, non come sorprese
+al primo run rosso.**
+
+1. **Riparare DEF-45-01 non basta a far passare `verify:conversion`.** Tolte le
+   quattro voci morte, i check A-E passano e **il check F fallisce su sei pagine
+   delle fasi 44 e 45** (`calendar`, `location`, `manifesto`, `visual`) che non
+   sono mai state dichiarate. Wave 0 non e' chiusa finche' quelle sei non
+   ricevono una disposizione — e la disposizione **non e' di questa fase**: e'
+   debito delle fasi che le hanno costruite. Va registrata come tale.
+2. **Cancellare `MobileNav` fa fallire il check E, e D-42-03 non lo diceva.** Il
+   discriminante del gate e' *«importa `AppNav` direttamente e non e'
+   `MobileNav`»*: appena `DoorSurface` importa `AppNav`, il gate lo classifica
+   come mount della forma **responsive** e pretende la colonna da 224px sulla
+   porta — l'esatto contrario di cio' che D-42-03 vuole. La forma minima che
+   funziona, provata: **due** modifiche, `PHONE_LOCKED_NAV_WRAPPER` →
+   `DoorSurface.tsx` **e** la stessa path aggiunta a `NAV_MODULES`. Con una sola,
+   exit 2.
+3. **Due gate finora fuori dal recinto diventano rossi appena si apre.**
+   `verify:dialogs` su `ScanFlash.tsx:135` (la riparazione e' gia' descritta
+   dentro il gate: la ragione si sposta in `EXEMPT_SHELLS`), e
+   `verify:touch-targets` con **14 elementi sotto i 44px** in `ScannerClient.tsx`.
+   I 14 bersagli sono **fuori dal perimetro *colore, contrasto e tipo*** ma
+   dentro il gate dell'accessibilita' — e sono su una superficie che si usa con
+   una mano sola al buio. **La decisione va presa prima del primo run rosso**, e
+   le due uscite oneste sono: allargare il perimetro dichiarandolo, oppure
+   registrarli come debito con la loro misura. Non: abbassare il gate.
+
+Piu' due che il piano deve assorbire: il **check D fallisce su entrambe le
+pagine della porta** (nessuna importa `PageShell`), e il mirino oggi **si stira
+fino a 1360px** con un `qrbox` fisso da 280 — che e' il criterio 2 in cifre.
+Dettagli, misure e le strade proposte sono in `42-RESEARCH.md`.
+
 ### Claude's Discretion
 
 Il proprietario ha dichiarato il 2026-08-18: *«expert persona agisce in autonomia
@@ -270,6 +374,9 @@ spedire in una settimana con una serata.
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
+
+### Il reperto misurato di questa fase — leggerlo per primo
+- `.planning/phases/42-scanner-conversion/42-RESEARCH.md` — 1122 righe, gate **eseguiti** su una copia del tree: la forma ripetibile di un piano di conversione qui, cosa pretende ogni check, cosa si rompe cancellando `MobileNav`, la mappa di `ScannerClient.tsx`, e cosa e' catturabile meccanicamente come *prima*
 
 ### Il perimetro e i gate che lo tengono
 - `scripts/conversion-manifest.mjs` §`PHASE_42_PATHS` (righe 202-239) — il recinto che questa fase rimuove, e la ragione per cui esiste
@@ -313,7 +420,7 @@ spedire in una settimana con una serata.
 
 ### Integration Points
 - `DoorSurface.tsx` e' montato da **due** pagine — `/admin/scanner` e `/door` — e la guardia vive li' perche' non possa divergere. Il cambio di navigazione si fa in quel file solo, e serve entrambe
-- `ScannerClient.tsx` e' **3449 righe** e possiede la coda offline, la torcia, il ritorno automatico e i contatori. **56 utility di palette grezza** dentro, fra cui `bg-yellow-500` dieci volte per la pillola *Offline*. Nessuna ristrutturazione: la conversione e' meccanica e in loco
+- `ScannerClient.tsx` e' **3449 righe** e possiede la coda offline, la torcia, il ritorno automatico e i contatori. **57 utility di palette grezza** piu' 42 nomi legacy dentro, fra cui `bg-yellow-500` dieci volte per la pillola *Offline*. Nessuna ristrutturazione: la conversione e' meccanica e in loco
 - La tipografia dello scanner e' **ereditata** — nessun `font-display`/`font-sans`/`font-mono` dichiarato nel file, solo 22 pesi. I contatori alla porta sono cifre che si confrontano: il piano valuti `tabular-nums`, che e' tipografia e non comportamento
 
 </code_context>
