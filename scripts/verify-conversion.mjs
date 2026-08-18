@@ -960,6 +960,80 @@ function findUtilityHits(relPath, pattern) {
   return hits;
 }
 
+/**
+ * ── Check A's per-utility DEROGATION — a colour the product keeps raw ───────
+ *
+ * Shape: `[file, utility, fragment, reason]`. Its boundary is **a utility on a
+ * line**, never a file, and the four paragraphs below are the whole mechanism.
+ *
+ * ── 1. Why the boundary is a UTILITY and not a FILE ────────────────────────
+ *
+ * `EXEMPT_PATHS` above is the mechanism that must NOT be used for this, and the
+ * reason is measured rather than a taste. A path exemption removes the file from
+ * the closure walk, so checks A, B and D all stop reading it at once. The
+ * surface this mechanism exists for is 3449 lines long; one line of diff there
+ * would end measurement of that whole surface, permanently, and nothing
+ * downstream would ever notice — a file nobody scans reports nothing to miss.
+ * T-42-10 forbids that exit by name.
+ *
+ * **This repository has already made this correction once.** `verify-dialogs.mjs`
+ * moved its exemption from forgiving FILES to forgiving SHELLS for exactly this
+ * reason: the narrow boundary is not fussiness, it is the difference between an
+ * exemption a reader can audit and a hole a reader cannot see.
+ *
+ * ── 2. What a derogation IS ────────────────────────────────────────────────
+ *
+ * A colour the product keeps raw **because the semantic vocabulary has no word
+ * for it** — not a colour somebody liked. The set contains no accept colour and
+ * phase 40 declined to invent one (`globals.css:169-173`), so a surface that has
+ * to say *this one passed* has nothing to read; that is a derogation. A surface
+ * that could read a token and does not is a conversion nobody finished, and no
+ * entry here turns one into the other.
+ *
+ * ── 3. An entry that matches nothing REFUSES ───────────────────────────────
+ *
+ * Exit 2, naming the entry, in three directions — the same three
+ * `TYPOGRAPHIC_MEASURES` below already takes, for the same reasons:
+ *
+ *   · a file no converted surface's closure reaches — it forgives nothing today
+ *     and would begin forgiving silently the day a closure reaches that file;
+ *   · ZERO matches — stale, and a stale derogation reads exactly like a live
+ *     one. A derogation that outlives the line it forgave is a permission
+ *     nobody granted;
+ *   · TWO OR MORE matches — ambiguous: one entry would be forgiving a site
+ *     nobody named. Two sites are two decisions and get two lines.
+ *
+ * A refusal, not a failure: the tree may well be right and nothing was measured
+ * about it.
+ *
+ * **The match is counted per SITE, not per hit**, and that detail is load-bearing
+ * rather than tidy. A file reached from two declared surfaces is scanned once per
+ * surface, so its hits arrive twice — counting hits would call every derogation
+ * on a shared file ambiguous and refuse on a tree that is correct. The site key
+ * is path, line and matched token.
+ *
+ * The `utility` field is **the exact token the palette matcher captures**, which
+ * stops at the scale and carries no opacity suffix: the suffix lives in the hit's
+ * remainder, so an entry spelling one would match nothing and refuse. The
+ * `fragment` must appear on the same live line, and it is a fragment rather than
+ * a line number because **a line number drifts on the first edit above it and a
+ * stale one reads exactly like a current one**.
+ *
+ * ── 4. It starts EMPTY, and that is the honest state ───────────────────────
+ *
+ * Not a list nobody got round to filling: an empty derogation forgives nothing.
+ * The entries arrive **with the commit that makes them true** — the same commit
+ * that writes the colour they describe — because D-41-16 is the house rule and
+ * it was paid for: *an exemption discovered on a red run is an exemption nobody
+ * trusts*. This is the mechanism built before the run that would need it, on the
+ * precedent `TYPOGRAPHIC_MEASURES` set when it shipped with zero entries.
+ *
+ * **A forgiven hit is PRINTED and counted on its own line, never dropped from
+ * the report.** A forgiven hit that vanishes is a scope boundary turning into an
+ * approval, and that is the distinction this gate family keeps drawing.
+ */
+export const PALETTE_DEROGATIONS = [];
+
 /* ────────────────────────────────────────────────────────────────────────────
  * §4's two closed lists — check D's third assertion reads these
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -2942,6 +3016,22 @@ console.log('');
 const palettePattern = utilityPattern(PALETTE_NAMES, { scale: true });
 const paletteHits = [];
 const scrimsForgiven = [];
+const derogationsForgiven = [];
+
+/**
+ * The declared derogations, resolved against the tree BEFORE check A prints
+ * anything — a refusal must precede every verdict (WR-01). `sites` is a SET of
+ * path:line:token keys rather than a counter: a file reached from two declared
+ * surfaces is scanned once per surface, so counting hits would call a correct
+ * entry ambiguous. See the docblock at `PALETTE_DEROGATIONS`.
+ */
+const derogationUsage = PALETTE_DEROGATIONS.map(([file, utility, fragment, reason]) => ({
+  file,
+  utility,
+  fragment,
+  reason,
+  sites: new Set(),
+}));
 
 for (const s of surfaces) {
   for (const rel of s.scanned) {
@@ -2950,9 +3040,50 @@ for (const s of surfaces) {
         scrimsForgiven.push({ ...hit, route: s.route });
         continue;
       }
+      // Forgiven ONLY by a line naming this file, this exact matched token and a
+      // fragment present on the same live line. Anything else is still a failure:
+      // the matcher was not narrowed, so check A finds strictly no less than it
+      // did before this mechanism existed.
+      const entry = derogationUsage.find(
+        (e) => e.file === hit.path && e.utility === hit.match && hit.source.includes(e.fragment)
+      );
+      if (entry) {
+        entry.sites.add(`${hit.path}:${hit.line}:${hit.match}`);
+        derogationsForgiven.push({ ...hit, route: s.route, reason: entry.reason });
+        continue;
+      }
       paletteHits.push({ ...hit, route: s.route });
     }
   }
+}
+
+const derogationsOffClosure = derogationUsage.filter((e) => !allScanned.has(e.file));
+const derogationsStale = derogationUsage.filter((e) => allScanned.has(e.file) && e.sites.size === 0);
+const derogationsAmbiguous = derogationUsage.filter((e) => e.sites.size > 1);
+
+if (derogationsOffClosure.length > 0 || derogationsStale.length > 0 || derogationsAmbiguous.length > 0) {
+  const lines = [];
+  for (const e of derogationsOffClosure) {
+    lines.push(`       ${e.file}   ${e.utility}   — no converted surface's closure scans this file`);
+  }
+  for (const e of derogationsStale) {
+    lines.push(`       ${e.file}   ${e.utility}   — matches NOTHING: stale`);
+  }
+  for (const e of derogationsAmbiguous) {
+    lines.push(`       ${e.file}   ${e.utility}   — matches ${e.sites.size} sites: ambiguous`);
+  }
+  refuse(
+    `${lines.length} PALETTE_DEROGATIONS entr(y/ies) could not be resolved:\n\n` +
+      lines.join('\n') +
+      '\n\n       A derogation is a colour the product keeps RAW because the semantic set has no\n' +
+      '       word for it, and it is named per utility and per line so that it dies with the\n' +
+      '       line it forgave. An entry that resolves to nothing is not a smaller exemption —\n' +
+      '       it is one that looks supervised and forgives nothing, or one that will begin\n' +
+      '       forgiving on a day nobody chose.\n\n' +
+      '       This is a REFUSAL and not a failure: the tree may well be right, and nothing was\n' +
+      '       measured about it. Either the entry leaves this list in the same commit as the\n' +
+      '       utility it forgave, or the utility comes back.'
+  );
 }
 
 console.log('  check A — raw palette utilities in a converted surface\'s closure:\n');
@@ -2962,6 +3093,21 @@ console.log(`      translucent-black scrims tolerated : ${scrimsForgiven.length}
 for (const scrim of scrimsForgiven) {
   const opacity = (scrim.rest.match(/^\/\d+/) ?? [''])[0];
   console.log(`          ${scrim.path}:${scrim.line}   ${scrim.match}${opacity}`);
+}
+console.log(
+  `      palette derogations declared : ${PALETTE_DEROGATIONS.length}` +
+    `, forgiving ${new Set(derogationsForgiven.map((h) => `${h.path}:${h.line}:${h.match}`)).size} site(s)`
+);
+for (const hit of derogationsForgiven) {
+  console.log(`          ${hit.path}:${hit.line}   ${hit.match}     (reached from ${hit.route})`);
+  console.log(`             ${hit.reason.replace(/(.{79}) /g, '$1\n             ')}`);
+}
+if (derogationsForgiven.length > 0) {
+  console.log(
+    '\n      Printed, not dropped: a forgiven hit that vanished from this report would be a\n' +
+      '      scope boundary turning into an approval. Every raw utility NOT on that list still\n' +
+      '      fails, including one on the same line as a forgiven neighbour.'
+  );
 }
 console.log('');
 
@@ -2979,11 +3125,21 @@ if (paletteHits.length > 0) {
       '       a default scale name that no later change can find.\n'
   );
 } else {
+  const derogationNote =
+    PALETTE_DEROGATIONS.length === 0
+      ? '\n       No derogation is declared, which is the measured state of the tree and not an\n' +
+        '       unfilled list: an empty derogation forgives nothing. The mechanism is here BEFORE\n' +
+        '       its first red run (D-41-16), so the plan that keeps a colour raw adds a line in\n' +
+        '       the same commit rather than meeting a red and reaching for the matcher.\n'
+      : '\n       — except the site(s) forgiven by a DECLARED derogation, printed above. A\n' +
+        '       derogation says the semantic set has no word for that colour; it does not say a\n' +
+        '       surface finished converting.\n';
   console.log(
-    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) under ` +
+    `  ✓ A  no undeclared raw palette utility in ${allScanned.size} file(s) under ` +
       `${surfaces.length} converted surface(s)\n` +
       `       (${allScanned.size - routeAdjacentAdded.size} reached through the import graph, ` +
-      `${routeAdjacentAdded.size} mounted beside a page by the router)\n`
+      `${routeAdjacentAdded.size} mounted beside a page by the router)` +
+      derogationNote
   );
 }
 
