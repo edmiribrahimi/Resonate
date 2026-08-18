@@ -2665,7 +2665,7 @@ export default function ScannerClient() {
   // ── Party Selector Screen ──
   if (!selectedPartyId) {
     return (
-      <div className="min-h-dvh bg-background pb-24">
+      <div className="min-h-dvh bg-ground pb-24">
         <div className="px-6 pt-6 pb-3">
           <h1 className="text-2xl font-bold mb-1">Check-in</h1>
           <p className="text-sm text-muted">Select a party to start</p>
@@ -2677,16 +2677,16 @@ export default function ScannerClient() {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-card-border bg-card p-4 animate-pulse"
+                  className="rounded-xl border border-line bg-surface p-4 animate-pulse"
                 >
-                  <div className="h-4 w-40 bg-card-border/50 rounded mb-2" />
-                  <div className="h-3 w-28 bg-card-border/50 rounded mb-3" />
-                  <div className="h-2 bg-card-border/50 rounded-full" />
+                  <div className="h-4 w-40 bg-line/50 rounded mb-2" />
+                  <div className="h-3 w-28 bg-line/50 rounded mb-3" />
+                  <div className="h-2 bg-line/50 rounded-full" />
                 </div>
               ))}
             </>
           ) : parties.length === 0 ? (
-            <div className="rounded-xl border border-card-border bg-card p-8 text-center">
+            <div className="rounded-xl border border-line bg-surface p-8 text-center">
               <p className="text-muted text-sm">
                 No upcoming events to check in
               </p>
@@ -2703,9 +2703,9 @@ export default function ScannerClient() {
                 <button
                   key={party.partyId}
                   onClick={() => setSelectedPartyId(party.partyId)}
-                  className="w-full text-left rounded-xl border border-card-border bg-card p-4 hover:border-accent/50 active:scale-[0.98] transition-all"
+                  className="w-full text-left rounded-xl border border-line bg-surface p-4 hover:border-accent/50 active:scale-[0.98] transition-all"
                 >
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-medium text-ink">
                     {party.eventTitle}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
@@ -2728,11 +2728,11 @@ export default function ScannerClient() {
                           </span>
                         )}
                       </span>
-                      <span className="text-[10px] font-semibold text-foreground">
+                      <span className="text-[10px] font-semibold text-ink">
                         {pct}%
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-card-border overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-line overflow-hidden">
                       <div
                         className="h-full rounded-full bg-accent transition-all"
                         style={{ width: `${pct}%` }}
@@ -2788,16 +2788,16 @@ export default function ScannerClient() {
       : null;
 
   return (
-    <div className="min-h-dvh bg-background pb-24">
+    <div className="min-h-dvh bg-ground pb-24">
       {/* Sticky header with party info, search, and filters */}
-      <div className="sticky top-0 z-10 bg-background px-6 pt-6 pb-3">
+      <div className="sticky top-0 z-10 bg-ground px-6 pt-6 pb-3">
         {/* Party header + actions */}
         <div className="flex items-center justify-between mb-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleChangeParty}
-                className="shrink-0 text-muted hover:text-foreground transition-colors"
+                className="shrink-0 text-muted hover:text-ink transition-colors"
                 aria-label="Change party"
               >
                 <svg
@@ -2864,7 +2864,7 @@ export default function ScannerClient() {
             className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               showScanner
                 ? "bg-accent text-ground"
-                : "bg-card border border-card-border text-muted hover:text-foreground"
+                : "bg-surface border border-line text-muted hover:text-ink"
             }`}
           >
             <svg
@@ -2911,7 +2911,7 @@ export default function ScannerClient() {
         {/* The drift between this device's clock and the server's, shown because
             it explains an odd-looking end time — and never used to decide one. */}
         {driftMinutes !== null && (
-          <div className="mb-3 rounded-lg border border-card-border bg-card px-3 py-2">
+          <div className="mb-3 rounded-lg border border-line bg-surface px-3 py-2">
             <p className="text-[11px] leading-snug text-muted">
               This device&apos;s clock is {Math.abs(driftMinutes)} min{" "}
               {driftMinutes > 0 ? "behind" : "ahead of"} the server. Times shown
@@ -3004,7 +3004,7 @@ export default function ScannerClient() {
               <ul className="space-y-1">
                 {failedEntries.map((entry) => (
                   <li key={entry.key} className="text-[11px] text-muted">
-                    <span className="text-foreground">
+                    <span className="text-ink">
                       {failedEntryLabel(entry)}
                     </span>{" "}
                     — {failureSentence(entry.reason)}
@@ -3048,14 +3048,14 @@ export default function ScannerClient() {
             aria-label={`Checked in ${totalCheckedIn} of ${totalAttendees}${
               listAgeLabel ? `, ${listAgeLabel}` : ""
             }. Reload the attendee list now.`}
-            className="mb-3 w-full text-left rounded-lg px-2 py-2.5 transition-colors hover:bg-card-border/20 active:bg-card-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="mb-3 w-full text-left rounded-lg px-2 py-2.5 transition-colors hover:bg-line/20 active:bg-line/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted">
                 Checked in
                 {listAgeLabel && <span className="ml-2">· {listAgeLabel}</span>}
               </span>
-              <span className="text-xs font-semibold text-foreground">
+              <span className="text-xs font-semibold text-ink">
                 {totalCheckedIn} / {totalAttendees}
                 {(attendance.guestListCount ?? 0) > 0 && (
                   <span className="text-sem-info font-normal">
@@ -3071,7 +3071,7 @@ export default function ScannerClient() {
                 )}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-card-border overflow-hidden">
+            <div className="h-2 rounded-full bg-line overflow-hidden">
               <div
                 className="h-full rounded-full bg-accent transition-all"
                 style={{
@@ -3103,12 +3103,12 @@ export default function ScannerClient() {
             placeholder="Search by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-card-border bg-card py-3 pl-10 pr-10 text-sm text-foreground placeholder:text-muted/50 focus:border-accent focus:outline-none"
+            className="w-full rounded-xl border border-line bg-surface py-3 pl-10 pr-10 text-sm text-ink placeholder:text-muted/50 focus:border-accent focus:outline-none"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             >
               <svg
                 className="h-4 w-4"
@@ -3128,7 +3128,7 @@ export default function ScannerClient() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 rounded-xl bg-card p-1">
+        <div className="flex gap-1 rounded-xl bg-surface p-1">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -3136,7 +3136,7 @@ export default function ScannerClient() {
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 activeFilter === tab.key
                   ? "bg-accent/20 text-accent"
-                  : "text-muted hover:text-foreground"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {tab.label}{" "}
@@ -3238,7 +3238,7 @@ export default function ScannerClient() {
 
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
-          <div className="mb-4 rounded-xl border border-card-border bg-card p-4">
+          <div className="mb-4 rounded-xl border border-line bg-surface p-4">
             <div ref={scannerRef}>
               <div id="qr-reader" className="overflow-hidden rounded-2xl" />
             </div>
@@ -3249,7 +3249,7 @@ export default function ScannerClient() {
                 className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
                   torchOn
                     ? "bg-sem-warn/20 text-sem-warn"
-                    : "bg-card-border/30 text-muted hover:text-foreground"
+                    : "bg-line/30 text-muted hover:text-ink"
                 }`}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -3298,7 +3298,7 @@ export default function ScannerClient() {
                   disabled={!canTap}
                   className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
                     canTap
-                      ? "hover:bg-card-border/30 active:scale-[0.98]"
+                      ? "hover:bg-line/30 active:scale-[0.98]"
                       : ""
                   } ${isUndone ? "opacity-50" : ""}`}
                 >
@@ -3369,7 +3369,7 @@ export default function ScannerClient() {
                       className={`text-sm truncate block ${
                         isUndone
                           ? "text-muted line-through"
-                          : "text-foreground"
+                          : "text-ink"
                       }`}
                     >
                       {record.name}
@@ -3412,17 +3412,17 @@ export default function ScannerClient() {
 
         {/* Attendee list for selected party */}
         {attendance && (
-          <div className="rounded-xl border border-card-border bg-card p-4">
+          <div className="rounded-xl border border-line bg-surface p-4">
             <div>
               {filteredAttendees.length > 0 ? (
                 <div>
                   {filteredAttendees.map((a) => (
                     <div
                       key={a.ticketId || a.guestListEntryId}
-                      className="flex items-center justify-between py-3 border-b border-card-border/50 last:border-0"
+                      className="flex items-center justify-between py-3 border-b border-line/50 last:border-0"
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-sm text-foreground truncate">
+                        <span className="text-sm text-ink truncate">
                           {a.name}
                         </span>
                         {a.isGuestList && (

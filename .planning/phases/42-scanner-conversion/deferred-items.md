@@ -333,3 +333,95 @@ dimostrato e' piu' forte per chi legge il codice domani — la frase adesso
 descrive il meccanismo che il codice esegue, con i due `file:riga` che lo
 reggono. **Nessuna copertura di test:** questo repo non ne ha, e la prova qui e'
 la lettura dei due rami piu' `npm run build` a exit 0.
+
+---
+
+## DEF-42-06 — tre confini di controllo sulla porta prendono il nome della
+## linea, e il livello dei token aveva costruito apposta l'altra destinazione
+
+**Trovata da:** piano 42-09, task 1, mentre convertiva l'alias del bordo.
+**Non riparata qui, e la ragione e' il piano stesso.**
+
+### Cosa e' successo, in una riga
+
+L'alias del bordo risolve **uno a uno** al nome della linea, quindi la rinomina
+ha mandato **tutti e nove** i bordi della porta sullo stesso nome — compresi
+**tre che non sono bordi di card ma confini di controllo**, cioe' esattamente il
+caso che `globals.css` vieta a quel gruppo di nomi.
+
+### La citazione che rende la voce non opinabile
+
+`src/app/globals.css:44-57`, sul gruppo delle linee:
+
+> *«NONE of these may carry the boundary of a text input, a select, a secondary
+> or ghost button, a checkbox or the scanner target: that boundary is --muted or
+> lighter.»*
+
+e `src/app/globals.css:82-88`, sul nome che esiste per l'altra meta':
+
+> *«…buys the triage of 406 `border-card-border` sites two named destinations —
+> `border-line` for a card's edge, `border-control` for a control's boundary —
+> instead of one destination and a memory.»*
+
+**Le due destinazioni erano state costruite. La rinomina ne ha potuta usare una
+sola**, perche' un alias che risolve a un solo nome non offre una scelta: la
+scelta e' un giudizio su cosa quel bordo *sia*, e un piano di sostituzione non
+ha il mandato di darlo.
+
+### I tre siti, con il ruolo che li qualifica
+
+| riga | elemento | cosa fa alla porta |
+|---|---|---|
+| 2706 | `<button>` | sceglie **su quale serata** la porta sta lavorando |
+| 2867 | `<button>` | accende e spegne **la fotocamera** |
+| 3106 | `<input type="text">` | cerca un ospite **per nome**, quando la scansione non riesce |
+
+Gli altri sei restano corretti dove sono: quattro bordi di card, un riquadro di
+avviso e un divisorio di riga.
+
+### I numeri, presi dal livello dei token e non ricalcolati qui
+
+`globals.css:47-48` e `:70-79`, misurati il 2026-08-11 sulla stessa formula e
+sugli stessi quattro fondi:
+
+| nome | contrasto sui quattro fondi | soglia WCAG 1.4.11 per un confine non testuale |
+|---|---|---|
+| il gruppo linee, il piu' forte dei tre | **2,05 : 1** al massimo | 3 : 1 |
+| il nome del confine di controllo | **6,29 – 7,14** | 3 : 1 |
+
+Non e' un mancato di poco: **e' meno della meta'**, e i tre elementi stanno sul
+percorso critico di uno staff che lavora al buio con una mano sola.
+
+### Perche' non qui
+
+1. Il piano 42-09 e' **una rinomina**, e il suo criterio d'accettazione dice in
+   lettere che i valori sono identici per costruzione e che **qualunque cosa una
+   persona possa vedere dopo e' un difetto, non un miglioramento**. Passare da
+   `border-line` a `border-control` **cambia il colore**: e' un ridisegno, ed e'
+   precisamente il modo in cui un piano di rinomina smette di esserlo.
+2. `42-MAPPING.md` §9 assegna quell'alias a **una** destinazione su ogni riga.
+   Le sostituzioni sono state decise nell'onda 1: sceglierne un'altra
+   dall'interno dell'esecuzione significherebbe cambiare la mappa senza che
+   nessuno la rilegga.
+3. **Il difetto non nasce qui.** Era gia' sulla porta sotto il nome precedente:
+   e' `41-UI-SPEC.md` §5.2, reperto A1, sulla porta. La rinomina non l'ha
+   introdotto — **l'ha reso leggibile**, perche' adesso il file scrive il nome
+   che il documento dei token vieta, invece di un alias che suonava come un
+   bordo di card.
+
+### Perche' nessun gate lo trovera' da solo
+
+`--control` e' un nome noto a `scripts/verify-tokens.mjs:375`, **ma nessun
+controllo verifica che un confine di controllo lo porti.** Il gate della
+conversione conta i nomi legacy e la palette grezza; entrambi sono a zero su
+questo file. **Un verde su questa porta non dice nulla su questa voce**, ed e'
+la ragione per cui e' scritta qui invece di essere lasciata al prossimo verde.
+
+### Chi la possiede
+
+Non un piano di questa fase: il perimetro di 42 e' colore, contrasto e tipo
+**senza cambiamenti visibili**, e questo e' un cambiamento visibile con un
+numero dietro. Va portata a chi decide sul contrasto dei controlli, insieme agli
+altri siti che il reperto A1 conta fuori dalla porta — e la porta merita di
+essere trattata **per prima**, perche' e' l'unica superficie del prodotto letta
+al buio davanti a una fila.
