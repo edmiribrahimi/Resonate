@@ -425,3 +425,113 @@ numero dietro. Va portata a chi decide sul contrasto dei controlli, insieme agli
 altri siti che il reperto A1 conta fuori dalla porta — e la porta merita di
 essere trattata **per prima**, perche' e' l'unica superficie del prodotto letta
 al buio davanti a una fila.
+
+---
+
+## DEF-42-07 — lo strumento della misura dichiara, a ogni esecuzione, che l'albero
+## non e' convertito
+
+**Trovata durante:** 42-12, task 1, alla prima riesecuzione della cattura.
+**Stato:** difetto dello script, non dell'albero. **Nessun file toccato.**
+
+### Cosa e' successo, in una riga
+
+`scripts/capture-scanner-baseline.mjs` stampa una **stringa fissa** nella propria
+intestazione:
+
+> *«At this commit the scanner is **unconverted**: no class string in its perimeter
+> has been rewritten, and every constant below is the one the first real door will
+> run on.»*
+
+La frase e' vera solo per la prima esecuzione. Lo script e' stato scritto quando se
+ne prevedeva una sola, e a quel tempo la frase era un'affermazione corretta sul
+mondo. Dal piano 42-06 in poi **e' falsa**, e nessun controllo la rilegge: chi
+esegue oggi `node scripts/capture-scanner-baseline.mjs > qualcosa.md` ottiene un
+documento che mente alla quarta riga.
+
+### Perche' non ha inquinato la misura del piano 42-12
+
+La frase sta **sopra** il marcatore di apertura della regione diffabile, quindi
+non entra in nessun confronto e non ha spostato nulla. Nel reperto la sezione
+AFTER porta la propria intestazione, scritta a mano, che dice il contrario — e la
+divergenza fra le due e' scritta li' invece di essere lasciata scoprire.
+
+E' esattamente la stessa classe di difetto che la fase 42 ha gia' chiuso due volte
+altrove: **prosa che asserisce un fatto invece di leggerlo** (T-42-18, DEF-42-05).
+Qui l'asserzione sta nello strumento invece che nel prodotto, il che la rende
+peggiore di una riga sola: si ristampa a ogni esecuzione.
+
+### Perche' non qui
+
+Il piano 42-12 dichiara nella propria regola 7 che **non modifica alcun file sotto
+`src/` o `scripts/`**. E c'e' una ragione piu' forte della regola: il piano 42-12
+**e' la misura**, e uno strumento riscritto dalla misura che lo usa non e' piu' un
+riferimento indipendente. Se lo script fosse stato corretto qui, la cattura AFTER
+sarebbe stata prodotta da un binario diverso da quello che ha prodotto la BEFORE, e
+l'unica affermazione falsificabile della fase avrebbe perso il proprio termine di
+paragone — che e' precisamente il modo in cui il criterio 3 e' gia' andato perduto
+(DEF-42-04).
+
+### La riparazione, per chi la prendera'
+
+Non e' cancellare la frase: e' **derivarla**. Lo script sa gia' leggere i tre
+riempimenti del lampo — e' il blocco 1 — quindi puo' dire *convertito* o *non
+convertito* **misurandolo**, con la stessa regola con cui misura tutto il resto, e
+rifiutare se non riesce a stabilirlo. Una frase che descrive l'albero deve essere
+prodotta dall'albero.
+
+**Chi la possiede:** chiunque riesegua la cattura dopo questa fase. Fino ad allora,
+**la sezione AFTER del reperto e' l'unico posto in cui la verita' su quell'albero e'
+scritta**, e questa voce esiste perche' nessuno la deduca dall'intestazione.
+
+---
+
+## DEF-42-08 — la riga 3h chiede un'identita' che la forma del reperto rende
+## impossibile, e la richiesta non e' stata riscritta per farla tornare
+
+**Trovata durante:** 42-12, task 1, confrontando l'esito con la formulazione della riga.
+**Stato:** difetto di formulazione in `42-VALIDATION.md`. **Non corretto, di proposito.**
+
+### Cosa dice la riga, e cosa e' successo davvero
+
+`42-VALIDATION.md` riga **3h**: *«il reperto meccanico rifatto e' **identico riga per
+riga** al blocco pre-conversione»*.
+
+Il reperto **cita posizioni di riga** — le tre del lampo, le ventisei di `showFlash`,
+le sei dei glifi, i quattro letterali della decodifica. Qualunque conversione che
+aggiunga o tolga anche una sola riga sopra una di quelle citazioni **le sposta tutte**,
+senza toccare un solo valore. Nella misura del 2026-08-18: **118 righe diverse su 295**,
+di cui **115 sono solo posizioni**.
+
+L'identita' riga per riga, su un reperto costruito cosi', non e' una soglia severa: e'
+**irraggiungibile per costruzione** da qualunque fase che modifichi il file.
+
+### Perche' la riga NON e' stata riscritta
+
+Perche' riscrivere il criterio dopo aver visto l'esito e' la definizione di piegare la
+misura al risultato. Il piano 42-12 lo mette per iscritto prima della corsa — *«editing
+the earlier record to make the diff quiet is the one action that would make this whole
+apparatus worthless»* — e una riga di validazione e' l'altra meta' dello stesso
+apparato. Quindi la riga resta come e' scritta, e il reperto dichiara apertamente che
+**3h chiude nel senso che proteggeva e fallisce nel senso in cui e' formulata**.
+
+### La riparazione, per chi la prendera'
+
+Due strade, e vanno decise da chi possiede il contratto di validazione, non qui:
+
+1. **Riformulare la riga** in *«identico dopo la normalizzazione delle sole posizioni
+   di riga, con ogni differenza residua argomentata»* — che e' cio' che questa fase ha
+   effettivamente eseguito, normalizzatore provato per mutazione in quattro versi
+   compreso.
+2. **Cambiare la forma del reperto** perche' non citi piu' posizioni assolute — per
+   esempio ancorando ogni blocco al nome della funzione che lo contiene. Piu' pulito e
+   piu' costoso, e sposta il difetto invece di eliminarlo: un blocco che perde la riga
+   perde anche il modo piu' rapido per andarci.
+
+**Chi la possiede:** la fase che riusera' questo schema di reperto. Finche' non e'
+decisa, chiunque confronti due catture deve sapere che **il diff grezzo non e' la
+risposta**, e che la normalizzazione va provata per mutazione prima di fidarsene.
+
+---
+
+*Aggiunto: 2026-08-18 — fase 42, piano 12.*

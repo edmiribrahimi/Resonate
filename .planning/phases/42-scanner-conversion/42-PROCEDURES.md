@@ -53,6 +53,18 @@ conversion*, and until 3m carries an observation, the word *before* names nothin
 > to verify: it produces a criterion that can never be closed, because the
 > baseline it needed had to be taken on code that no longer exists.
 
+> ## ⚠ QUESTO CANCELLO E' STATO SCAVALCATO — leggere il blocco di deroga alla riga 3m
+>
+> **Il paragrafo qui sopra descrive la regola, non cio' che e' successo.** Il
+> proprietario ha scavalcato il cancello e le onde 3-8 sono state eseguite con la
+> riga 3m a `pending`. La conseguenza e' quella che il paragrafo stesso prevedeva,
+> alla lettera: **un criterio che non puo' piu' essere chiuso.**
+>
+> Il puntatore sta qui perche' chi legge questa sezione e si ferma prima della riga
+> 3m ne uscirebbe convinto che la fase non sia partita. La regola resta scritta
+> com'era — non e' stata riscritta per farla tornare — e la deroga sta accanto alla
+> riga che ha derogato.
+
 **Row 3n — the same pass on the CONVERTED scanner — runs at the door after that**,
 line by line against the first. **Every difference is a defect of the conversion
 until it is argued otherwise**, and the argument is written next to the
@@ -423,9 +435,36 @@ either door — but a run before the conversion and a run after are two differen
 observations, and the record must say which it was. Row 3n runs only at the door
 after 3m, and only once something has been converted to compare.
 
-**What is still true when all ten are filled.** Criterion 3 will be closed by two
+**What is still true when all ten are filled.** ~~Criterion 3 will be closed by two
 documents that disagree with each other about nothing: `42-BASELINE.md`, which
 says the constants and the roads did not move, and the two door passes, which say
-the behaviour did not. Neither closes it alone, and this document exists because
-the second half has no command behind it — only a person, at an entrance, in the
-dark, with a queue in front of them.
+the behaviour did not.~~ **That sentence was written before the derogation and it
+is no longer true: the second door pass has no first one to disagree with, and it
+never will.** What survives of it is the half that still holds — the record says
+the constants and the roads did not move, and it says so at
+`42-BASELINE.md` §comparison, with three differences argued one by one. The other
+half has no command behind it and now has no term of comparison either — only a
+person, at an entrance, in the dark, with a queue in front of them.
+
+---
+
+## Cosa il piano 42-12 ha scritto qui, e cosa no
+
+**Zero `Result:` sono stati compilati da questo piano, e nessuno andava
+compilato:** nessuna osservazione e' stata fatta, perche' nessuna porta e' stata
+lavorata fra l'onda 7 e l'onda 8. **Dieci righe, dieci `pending`, ed e' lo stato
+letterale.**
+
+Questo e' scritto qui invece di essere lasciato dedurre, perche' un documento che
+chiude una fase e mostra dieci risultati vuoti si legge in due modi opposti — *«e'
+stato dimenticato»* oppure *«nessuno ha ancora guardato»* — e solo il secondo e'
+vero. Un `Result` riempito da un'inferenza plausibile sarebbe stato peggio di uno
+vuoto, perche' quello vuoto e' vero.
+
+Cio' che il piano 42-12 ha aggiunto a questo file e' **due puntatori e nessuna
+osservazione**: il riquadro che segnala la deroga nella sezione della spina, e
+questa nota. Le dieci righe non sono state toccate.
+
+Il resto dell'evidenza della fase — per requisito, con `file:riga` — sta in
+`42-12-FINDINGS.md`, che elenca ognuna di queste dieci righe con **l'evento** che
+la chiudera'. Nove sono eseguibili. Una, la 3m, non lo e' piu'.
