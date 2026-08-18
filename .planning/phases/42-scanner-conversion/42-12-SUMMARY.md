@@ -60,7 +60,7 @@ completed: 2026-08-18
 - **Durata:** ~35 min
 - **Task:** 2 su 2
 - **File di prodotto modificati:** **0**. `git status --porcelain -- src/ scripts/` vuoto a ogni commit
-- **Commit:** 3 di lavoro + questo
+- **Commit:** due di task, uno di voci differite, piu' quelli che portano questo documento. **Il numero non e' scritto qui, ed e' una scelta:** un summary non puo' contare i commit che lo seguono senza diventare falso nel momento in cui ne arriva un altro — e' successo, due volte, scrivendo questa riga. Li conta un comando: `git log --oneline --grep '42-12'`. La tabella del self-check piu' in basso ne verifica **quattro**: sono i quattro che esistevano quando e' stata eseguita, e verificare dall'interno di se' stesso il commit che la porta non sarebbe una verifica.
 
 ## Cosa e' stato misurato, in numeri
 
