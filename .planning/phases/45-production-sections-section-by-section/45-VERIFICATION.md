@@ -38,23 +38,23 @@ gaps:
     missing:
       - "Righe scritte nelle tabelle manifesto/visual (fuori scope di questa fase, la scrittura e' materiale editoriale) e una quarta esecuzione dello strumento di rifiuto dopo che quelle righe esistono"
   - truth: "Il codice che chiude i due difetti CRITICAL della code review e' quello che gira in produzione"
-    status: failed
-    reason: "CR-01 e CR-02 sono risolti nei commit locali 94cb395 e a00b8f3 (con relativo commit di chiusura b4c3de3), ma NESSUNO dei tre e' su origin/main. Verificato: git log origin/main -1 = 13f6be8; git rev-list --count origin/main..main = 14; git branch -r --contains 94cb395 e --contains a00b8f3 = vuoto (nessun branch remoto li contiene). 13f6be8 e' anche l'ultimo deployment di produzione confermato in 45-09-SUMMARY.md:71-105 (GitHub deployment API, sha 13f6be87, environment Production, success). Quindi produzione sta ancora servendo il codice che fila byte orfani nel bucket visual-archive (CR-01) e che attribuisce una regola di un format ritirato all'intero brand (CR-02)."
+    status: resolved
+    resolved: 2026-08-18
+    reason: "RISOLTO il 2026-08-18, dopo la stesura di questo report. I tre commit sono su origin/main e in produzione. Misurato, non riferito: `git branch -r --contains 94cb395` / `--contains a00b8f3` / `--contains b4c3de3` -> `origin/main` per tutti e tre; `git rev-list --left-right --count origin/main...main` -> `0 0`; `git log origin/main -1` -> `033e3c6`. Deployment GitHub API: sha `18cf27e` environment Production state `success` (2026-08-17T23:09:52Z) e sha `033e3c6` Production `success` (2026-08-17T23:11:47Z) — entrambi discendono da b4c3de3, quindi entrambi portano i due fix. La ragione originale del gap (`origin/main` fermo a 13f6be8, nessun branch remoto contenente i commit) era vera quando e' stata scritta e non lo e' piu'."
     artifacts:
       - path: "src/app/(admin)/admin/visual/ArchiveUpload.tsx"
-        issue: "Il fix e' nel commit locale 94cb395, non su origin/main; la versione deployata e' quella descritta nel reperto originale di CR-01 (45-REVIEW.md:184-268)"
+        issue: "RISOLTO — fix 94cb395 su origin/main, deployato con 18cf27e (Production, success). L'archivio non fila piu' i byte prima di validare la riga."
       - path: "src/lib/production/export/manifesto.ts"
-        issue: "Il fix e' nel commit locale a00b8f3, non su origin/main; la versione deployata e' quella descritta nel reperto originale di CR-02 (45-REVIEW.md:319-403)"
-    missing:
-      - "git push dei commit 94cb395, a00b8f3, b4c3de3 (e dei commit di wave 9, vedi sotto) su origin/main, e conferma del deployment Vercel successivo"
+        issue: "RISOLTO — fix a00b8f3 su origin/main, deployato con 18cf27e (Production, success). Una regola di format ritirato non esce piu' come regola del brand."
+    missing: []
   - truth: "Le quattro sezioni sono raggiungibili dalla navigazione con la propria chiave (parte del criterio 1, wave 9 / piano 45-18)"
-    status: failed
-    reason: "Il piano 45-18 (commit locale 247d14d, 'le quattro sezioni entrano nella navigazione') non e' su origin/main. origin/main e' fermo a 13f6be8, che precede 247d14d di 10 commit. Le pagine delle sezioni (location, manifesto, visual) risultano deployate dalle wave precedenti — confermato da `npm run build` locale, che le include nel manifest delle route — ma le voci di navigazione a 4 chiavi aggiunte da 45-18 in src/lib/routes/staff-tabs.ts non sono ancora nel bundle di produzione. Questo non e' stato segnalato nello stato misurato fornito in ingresso, ed e' un riscontro indipendente di questo verificatore."
+    status: resolved
+    resolved: 2026-08-18
+    reason: "RISOLTO il 2026-08-18, dallo stesso push del gap precedente. `git branch -r --contains 247d14d` -> `origin/main`. Le voci di navigazione a 4 chiavi di src/lib/routes/staff-tabs.ts sono nel bundle deployato da 18cf27e/033e3c6, entrambi Production/success. **Resta pero' non misurato che la voce compaia per chi tiene la chiave e sparisca per chi non la tiene**: quella e' la meta' comportamentale del criterio 1, e vive nel gap P1 qui sopra, che e' ancora `partial`. Deployato non significa osservato."
     artifacts:
       - path: "src/lib/routes/staff-tabs.ts"
-        issue: "Modificato dal commit locale 247d14d, non presente su origin/main (verificato: git branch -r --contains 247d14d = vuoto)"
-    missing:
-      - "Lo stesso git push richiesto per il gap precedente copre anche questo: sono sullo stesso ramo di commit non pubblicati"
+        issue: "RISOLTO in quanto pubblicato — 247d14d su origin/main. La verifica per chiave resta aperta dentro P1."
+    missing: []
 ---
 
 # Fase 45: Production Sections, Section by Section — Verification Report
@@ -65,7 +65,10 @@ visivo non tiene alcun segreto. Tenere una sezione non ne concede nessun'altra.
 
 **Verified:** 2026-08-18
 **Status:** gaps_found
-**Re-verification:** No — prima verifica
+**Re-verification:** Parziale — 2026-08-18, sui soli due gap di pubblicazione.
+I gap `failed` (push e deploy) sono stati **rimisurati e chiusi**; i quattro gap
+comportamentali non sono stati ritoccati e restano come scritti. Lo stato della
+fase resta `gaps_found`.
 
 ## Goal Achievement
 
@@ -92,9 +95,9 @@ visivo non tiene alcun segreto. Tenere una sezione non ne concede nessun'altra.
 | `src/app/(admin)/admin/manifesto/SectionVoid.tsx` | Unico renderer di `not_decided`, nomina `missing` e `decision_owner` | ✓ VERIFICATO | file presente, commento di testa dichiara l'invariante, check C di `verify:section-surface` lo prova per nome |
 | `src/lib/production/ics/vocabulary.ts` | Vocabolario a 4 stadi identico a `venue-acquisition.md` | ✓ VERIFICATO | righe 186-195: `["mapped","verified","contacted","acquired"]` |
 | `.planning/phases/45-production-sections-section-by-section/45-PROCEDURES.md` | 4 procedure di verifica comportamentale, con esito | ✗ TUTTE PENDING | righe 213, 295, 361, 435 — tutte `Result: pending`, tutte dichiarate NON ESEGUITE il 2026-08-18 |
-| Fix CR-01 (`ArchiveUpload.tsx`) | In produzione | ✗ NON DEPLOYATO | commit locale `94cb395`, assente da `origin/main` |
-| Fix CR-02 (`export/manifesto.ts`, `export/capitolato.ts`) | In produzione | ✗ NON DEPLOYATO | commit locale `a00b8f3`, assente da `origin/main` |
-| Navigazione a 4 chiavi (`staff-tabs.ts`, piano 45-18) | In produzione | ✗ NON DEPLOYATO | commit locale `247d14d`, assente da `origin/main` |
+| Fix CR-01 (`ArchiveUpload.tsx`) | In produzione | ✓ DEPLOYATO *(risolto 2026-08-18, dopo la stesura)* | `94cb395` su `origin/main`; deployment `18cf27e` Production `success` |
+| Fix CR-02 (`export/manifesto.ts`, `export/capitolato.ts`) | In produzione | ✓ DEPLOYATO *(risolto 2026-08-18, dopo la stesura)* | `a00b8f3` su `origin/main`; deployment `18cf27e` Production `success` |
+| Navigazione a 4 chiavi (`staff-tabs.ts`, piano 45-18) | In produzione | ✓ DEPLOYATO *(risolto 2026-08-18)* | `247d14d` su `origin/main`; nel bundle di `18cf27e`/`033e3c6`. Che la voce compaia **per chiave** resta non osservato: e' P1 |
 
 ### Key Link Verification
 
@@ -104,7 +107,7 @@ visivo non tiene alcun segreto. Tenere una sezione non ne concede nessun'altra.
 | `production_section` (manifesto/visual) | due chiavi distinte per `format_id` scope | RLS `USING` | ✓ WIRED | righe 185-198 |
 | `production_visual_asset` | `private.has_capability('production.visual.manage')` | RLS `USING` | ✓ WIRED | righe 356-360 |
 | Sessione reale (auth API, non service key) | lettura tabelle produzione | `verify-refusal.mjs` | ✓ WIRED, misurato 2 sezioni su 4 | `45-PROCEDURES.md:79-86,106-112` |
-| Commit locale (fix + wave 9) | `origin/main` / deploy Vercel | `git push` | ✗ NOT WIRED | `git log origin/main -1` = `13f6be8`; 14 commit locali non pubblicati, inclusi i due fix CRITICAL e la navigazione a 4 chiavi |
+| Commit locale (fix + wave 9) | `origin/main` / deploy Vercel | `git push` | ✓ WIRED *(risolto 2026-08-18)* | `git rev-list --left-right --count origin/main...main` = `0 0`; `git log origin/main -1` = `033e3c6`; deployment `18cf27e` e `033e3c6` Production `success` |
 
 ### Data-Flow Trace (Level 4)
 
@@ -124,7 +127,7 @@ visivo non tiene alcun segreto. Tenere una sezione non ne concede nessun'altra.
 | `verify:section-surface` (5 check strutturali A-E) | `npm run verify:section-surface` | `SECTION_SURFACE_OK — 5 check(s) passed` | ✓ PASS |
 | `verify:section-export` (chiusura + censimento) | `npm run verify:section-export` | `SECTION_EXPORT_OK`, 9 colonne pinnate/derivate correttamente escluse, nessuna strada trovata verso indirizzo/data | ✓ PASS |
 | `npm run verify` (19 gate) | `npm run verify` | exit 2, ZERO fallimenti — solo `verify:conversion` e `verify:touch-targets` rifiutano su 4 pagine Finance/Analytics gia' rimosse (DEF-45-01, pre-esistente, non di questa fase) | ✓ PASS (nella forma corretta per un rifiuto pre-esistente) |
-| I due fix CRITICAL sono sul ramo pubblicato | `git log origin/main -1`, `git branch -r --contains 94cb395/a00b8f3/247d14d` | `origin/main` = `13f6be8`; nessun branch remoto contiene i tre commit | ✗ FAIL — non deployato |
+| I due fix CRITICAL sono sul ramo pubblicato | `git log origin/main -1`, `git branch -r --contains 94cb395/a00b8f3/247d14d` | `origin/main` = `033e3c6`; tutti e tre i commit contenuti in `origin/main`; deployment `18cf27e` Production `success` | ✓ PASS *(rimisurato 2026-08-18, dopo la stesura)* |
 
 ### Probe Execution
 
@@ -236,23 +239,39 @@ lo stato onesto e dichiarato, non un errore di questo verificatore, e questo
 report lo riporta come **deferred, non come verificato**, per istruzione
 esplicita ricevuta.
 
-A questo si aggiunge un gap che questo verificatore ha misurato in modo
-indipendente e che va oltre quanto riportato nello stato misurato fornito in
-ingresso: **14 commit locali, inclusi i due fix CRITICAL della code review
-(`94cb395`, `a00b8f3`) e l'intera wave 9 — la navigazione a quattro chiavi del
-piano 45-18 (`247d14d`) — non sono su `origin/main`**, che e' fermo al commit
-`13f6be8`, lo stesso confermato come ultimo deployment di produzione in
-`45-09-SUMMARY.md`. Produzione sta quindi servendo oggi: (a) il difetto per cui
-un upload nell'archivio visual senza `kind`/`artist_name` fila comunque i byte
-nel bucket privato lasciando un oggetto orfano irrecuperabile; (b) il difetto
-per cui un documento d'export puo' attribuire all'intero brand una regola
-scritta per un format ritirato; (c) nessuna voce di navigazione a chiave
-singola per le quattro sezioni (le pagine sono raggiungibili per URL diretto,
-gia' deployate dalle wave precedenti, ma non dal menu). Questo e' un gap
-azionabile e indipendente dalle quattro procedure manuali: la riparazione e' un
-`git push` dei commit gia' scritti, non altro lavoro di sviluppo.
+A questo si aggiungeva un gap che questo verificatore aveva misurato in modo
+indipendente e che andava oltre lo stato fornito in ingresso: **14 commit
+locali, inclusi i due fix CRITICAL della code review (`94cb395`, `a00b8f3`) e
+l'intera wave 9 — la navigazione a quattro chiavi del piano 45-18 (`247d14d`) —
+non erano su `origin/main`**, che era fermo a `13f6be8`. Produzione serviva
+allora: (a) il difetto per cui un upload nell'archivio visual senza
+`kind`/`artist_name` filava comunque i byte nel bucket privato lasciando un
+oggetto orfano irrecuperabile; (b) il difetto per cui un documento d'export
+poteva attribuire all'intero brand una regola scritta per un format ritirato;
+(c) nessuna voce di navigazione a chiave singola per le quattro sezioni.
+
+**Questo gap e' CHIUSO — rimisurato il 2026-08-18, dopo la stesura del report.**
+Il push e' avvenuto: `git rev-list --left-right --count origin/main...main` da
+`0 0`, `git log origin/main -1` da `033e3c6`, e `git branch -r --contains`
+colloca `94cb395`, `a00b8f3`, `b4c3de3` e `247d14d` tutti su `origin/main`. La
+GitHub deployment API conferma due deployment Production in stato `success`:
+`18cf27e` (2026-08-17T23:09:52Z) e `033e3c6` (2026-08-17T23:11:47Z), entrambi
+discendenti da `b4c3de3`. I tre difetti sopra non sono piu' in produzione.
+
+**Il paragrafo precedente non e' stato cancellato, ed e' deliberato:** era vero
+quando e' stato scritto, e un report di verifica che riscrive la propria storia
+per farla tornare non e' un report — e' un attestato. Cio' che cambia e' lo
+stato, non il fatto che il gap sia esistito.
+
+**Una precisazione che il verde non deve nascondere:** deployato non e'
+osservato. Che la voce di navigazione compaia per chi tiene la chiave e sparisca
+per chi non la tiene resta non misurato, e vive dentro P1 — che e' ancora
+`pending`. **Lo stato complessivo della fase resta `gaps_found`**: i tre gap
+comportamentali (P1, P2, P3) e la copertura 2/4 del criterio 4 sono intatti.
 
 ---
 
 _Verified: 2026-08-18_
 _Verifier: Claude (gsd-verifier)_
+_Re-measured 2026-08-18 (soli gap di pubblicazione): due gap `failed` -> `resolved`,
+con sha su `origin/main` e stato dei deployment Production. Nessun gap comportamentale toccato._
