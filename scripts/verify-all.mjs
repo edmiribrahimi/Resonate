@@ -262,6 +262,33 @@ const OFFLINE = [
   ["verify:semantic-separation", false, ""],
   ["verify:sunset-gradient", false, ""],
   ["verify:conversion", false, "Phase 41 — G1 and G4"],
+  [
+    "verify:scan-legibility", false,
+    "Phase 42 — the door's three answers, measured instead of asserted. WHAT IT " +
+      "MEASURES: the CIEDE2000 distance between the three outcomes the scanner can " +
+      "give — admitted, already recorded, refused — and the connectivity pill that " +
+      "shares their screen, on the fills this tree actually renders, composited in " +
+      "linear light over the ground, under normal vision and under each of the three " +
+      "dichromacies (Brettel/Viénot/Mollon 1997, two half-planes). WHAT IT DOES NOT, " +
+      "and this half matters more: it measures the distance between two HUES, not the " +
+      "readability of a screen. A pass says the tints are separable. It NEVER says the " +
+      "door works — that stays with the door pass, and it is a person's. NOT OPTIONAL, " +
+      "deliberately: it measures a property of a safety surface, it is green with " +
+      "margin from the commit that registered it, and an optional gate on the door is " +
+      "a gate that can be skipped on the night it matters. ONE PAIR IS EXCLUDED — " +
+      "accept against the connectivity pill, because the accept fill covers the " +
+      "viewport and hides the header the pill lives in, so the confusion has no moment " +
+      "in which to happen — AND THE GATE CHECKS THAT EXCLUSION'S PREMISE ON EVERY RUN " +
+      "rather than believing it: before applying it, it confirms the flash's container " +
+      "is still pinned to every edge. The day the flash becomes a card instead of a " +
+      "full screen — a live idea in this phase's deferred list — the exclusion LIFTS " +
+      "BY ITSELF and the pair is measured like the other five. It fails closed, and " +
+      "this line says so, so nobody has to open the gate to find out. It exists " +
+      "because a COMMENT made this claim first and the comment was wrong: two " +
+      "sentences in the source declared a collision avoided that measured about 2 " +
+      "apart in deuteranopia, and sat in production for months. A comment cannot " +
+      "fail. This can",
+  ],
   ["verify:dialogs", false, "Phase 41 — G2"],
   ["verify:tables", false, "Phase 41 — G3"],
   ["verify:breakpoints", false, "Phase 41 — G6"],

@@ -18,6 +18,7 @@
     "verify:semantic-separation": "node scripts/verify-semantic-separation.mjs",
     "verify:sunset-gradient": "node scripts/verify-sunset-gradient.mjs",
     "verify:conversion": "node scripts/verify-conversion.mjs",
+    "verify:scan-legibility": "node scripts/verify-scan-legibility.mjs",
     "verify:dialogs": "node scripts/verify-dialogs.mjs",
     "verify:tables": "node scripts/verify-tables.mjs",
     "verify:breakpoints": "node scripts/verify-breakpoints.mjs",
