@@ -128,4 +128,96 @@ oltre la fase che possiede il requisito.
 
 ---
 
+## DEF-42-03 — quattordici bersagli tattili sotto il minimo sulla porta, come
+## debito numerato che puo' solo scendere
+
+**Trovata durante:** 42-04, Task 3, misurando `npm run verify:touch-targets` con
+il recinto aperto su un ramo usa-e-getta.
+**Stato:** pre-esistente. **Nessun file toccato**: il ramo e' stato cancellato e
+`git status --porcelain -- src/ scripts/` e' vuoto.
+
+### Perche' oggi il gate e' verde e domani non lo sara'
+
+`verify-touch-targets` **non misura** la porta: l'esenzione 1 la recinta per
+percorso, e il gate lo stampa a ogni esecuzione con la frase che conta —
+*«If an under-44px target exists behind that fence this gate is silent about it.
+The door is where a target too small to hit becomes a queue.»*
+
+Quel recinto **si scioglie insieme al colore** (D-42-07). Nel momento in cui si
+scioglie, questi quattordici diventano un rosso, e il rosso arriva **dentro**
+un'onda di conversione che aveva promesso di non spostare niente.
+
+### Come sono stati contati
+
+Su un ramo `scratch-42-04-targets`, mai committato e cancellato: `PHASE_42_PATHS`
+svuotata, `PHASE_42_EXEMPT_PATHS` svuotata, le due pagine della porta dichiarate.
+Mutazione **asserita applicata prima di leggerne l'esito**. Esito:
+`FAILED — 14 element(s) do not declare the minimum`, tutti in
+`ScannerClient.tsx`. Ripristino per percorso esatto, riasserito.
+
+### I quattordici
+
+Il gate misura **una stringa di classi, non una scatola renderizzata** — lo
+dichiara di se' a ogni esecuzione. Quindi la colonna della dimensione dice cosa
+l'elemento **dichiara**, ed e' *derivata*, non *verificata sul campo*.
+
+| # | `ScannerClient.tsx` | Tag | Cosa dichiara in verticale | Cosa e' |
+|---|---|---|---|---|
+| 1 | `:2673` | `button` | `p-4`, nessuna altezza — la scatola e' del contenuto | la card di scelta della serata |
+| 2 | `:2768` | `button` | nessun padding, nessuna altezza — la scatola e' dell'icona | il ritorno alla scelta della serata |
+| 3 | `:2823` | `button` | `py-1.5`, corpo 12px | l'interruttore che accende lo scanner |
+| 4 | `:2863` | `button` | `py-1`, corpo 10px | *scan anyway*, sull'avviso di fine serata |
+| 5 | `:2909` | `button` | `py-0.5`, corpo 10px — **~18px, la cifra del gate** | il chip *could not be recorded* |
+| 6 | `:2918` | `button` | `py-0.5`, corpo 10px — **~18px** | il chip della coda trattenuta |
+| 7 | `:3006` | `button` | `py-2.5`, nessuna altezza | la riga del contatore, che ricarica la lista |
+| 8 | `:3061` | `input` | `py-3`, corpo 14px | il campo di ricerca |
+| 9 | `:3070` | `button` | nessun padding, posizionato — la scatola e' dell'icona | lo svuota-ricerca |
+| 10 | `:3094` | `button` | `py-2`, corpo 12px | i tre tab del filtro |
+| 11 | `:3169` | `button` | `py-2.5`, corpo 12px | la banda di freschezza della lista |
+| 12 | `:3208` | `button` | `py-2.5`, corpo 12px | la torcia |
+| 13 | `:3254` | `button` | `py-2`, nessuna altezza | una riga della cronologia — **la strada dell'annullamento** |
+| 14 | `:3418` | `button` | `py-2`, corpo 14px | il check-in di una voce di guest list |
+
+**I due piu' piccoli dell'albero sono il 5 e il 6**, e non e' un caso che siano
+pillole di coda: sono le uniche righe che dicono che qualcosa **non** e' stato
+registrato.
+
+> ⚠ **`42-RESEARCH.md` §2.7 ne nominava dieci e li chiamava quattordici.** La sua
+> lista — `:2909, :2918, :2865, :3061, :3070, :3094, :3169, :3208, :3254, :3418`
+> — omette **quattro** elementi che il gate nomina (`:2673`, `:2768`, `:2823`,
+> `:3006`) e cita `:2865` dove il gate ancora al tag, a `:2863`. Il numero era
+> giusto, l'elenco no: un piano che avesse pagato *«i dieci elencati»* avrebbe
+> lasciato quattro rossi.
+
+### La disposizione, e la sua ragione
+
+**Debito numerato, non pagamento**, sul meccanismo di `verify-breakpoints.mjs`:
+*«not an exemption nobody can see, but a debt with a number on it that can only
+go down»*. La lista vive nel gate, dichiara la propria lunghezza, e **una voce
+esce solo quando l'elemento e' stato allargato** — mai perche' e' scomoda.
+
+**Perche' non si paga qui:** ingrandire un target **cambia il layout**, e la
+seconda meta' di RESP-05 e' che il comportamento dello scanner non cambia per
+effetto del lavoro visivo. Una fase che promette di non spostare nulla e poi
+sposta quattordici bersagli su una superficie di sicurezza — inclusa la riga
+dell'annullamento — ha attraversato il confine che il proprio mandato le aveva
+messo.
+
+**La terza uscita non e' fra quelle disponibili: abbassare il gate.** Il gate lo
+dice di se' — *«Fix the ELEMENT, not this gate»* — e T-42-11 la registra come
+manomissione. Allargare un'esenzione per far sparire un rosso e' indistinguibile,
+sei mesi dopo, da una regola che non c'e' mai stata.
+
+### Chi lo possiede
+
+**Un piano piccolo e non visivo, tutto suo**, che non appartiene alla fase 42 —
+perche' la fase 42 ha dichiarato di non toccare la geometria — e che **sta dietro
+lo stesso vincolo d'ordine**: la porta si tocca dopo un door pass, non prima.
+
+La frase che quel piano dovra' tenere in testa: **un bersaglio troppo piccolo,
+alla porta, e' una fila.** Alle due di notte, al buio, con una mano, chi manca il
+tocco non se ne lamenta — riprova, e intanto qualcuno aspetta.
+
+---
+
 *Aperto: 2026-08-18 — fase 42, piani 01 e 04.*

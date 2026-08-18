@@ -633,3 +633,187 @@ straforo**.
 
 Registrato come **DEF-42-02** in `deferred-items.md`, con il suo perche' e la fase
 che lo possiede.
+
+---
+
+## 11. Le tre cose che arrivano col recinto e non sono colore
+
+Aprire `PHASE_42_PATHS` non espone solo i 106 colori. Espone anche tre cose che
+questa fase non aveva contato, e ognuna ha bisogno di una disposizione **scritta
+prima del primo run rosso** — perche' un'esenzione scoperta su un rosso e'
+un'esenzione di cui nessuno si fida (D-41-16).
+
+### 11.1 I quattordici target sotto il minimo — un debito numerato
+
+**Disposizione: (b) — si registrano come debito con un numero che puo' solo
+scendere**, sul meccanismo che `verify-breakpoints.mjs` ha gia' stabilito e che il
+suo docblock descrive in una riga: *«not an exemption nobody can see, but a debt
+with a number on it that can only go down»*.
+
+**L'argomento per rimandare invece di pagare, scritto per esteso:** ingrandire un
+target **cambia il layout**, e la seconda meta' di RESP-05 e' che il comportamento
+dello scanner non cambia per effetto del lavoro visivo. Una fase che promette di
+non spostare nulla e poi sposta quattordici bersagli tattili sulla porta ha
+cambiato la superficie su cui una persona lavora a un ingresso, sotto un mandato
+che diceva che non l'avrebbe fatto. Quattordici elementi non sono una rifinitura:
+sono la geometria di una superficie di sicurezza.
+
+**La terza uscita — abbassare il gate — e' vietata**, e il gate lo dice di se':
+*«Fix the ELEMENT, not this gate. Widening an exemption to clear a red is the
+tampering T-41-42 names.»* T-42-11 la registra come minaccia.
+
+Elenco completo, misure e proprietario in **DEF-42-03**.
+
+### 11.2 Le citazioni di `MobileNav` — tutte nello stesso commit che cancella il file
+
+Cancellare `src/components/layout/MobileNav.tsx` lascia dietro di se' due
+categorie diverse, e confonderle e' il modo per spedire un gate a exit 2.
+
+**Cinque righe rompono il build o mandano un gate a exit 2** (`42-RESEARCH.md`
+§3.4, voci 1-6), e non sono prosa:
+
+| File:riga | Cosa | Effetto se dimenticata |
+|---|---|---|
+| `DoorSurface.tsx:4` | l'import | build |
+| `DoorSurface.tsx:133` | il mount | build |
+| `scripts/conversion-manifest.mjs:192` | la voce `SPINE` | **exit 2** |
+| `scripts/verify-conversion.mjs:1125` | la voce `NAV_MODULES` | **exit 2** |
+| `scripts/verify-conversion.mjs:2856` | `PHONE_LOCKED_NAV_WRAPPER` | **exit 2** |
+
+**Venticinque righe sono prosa**, e nessun gate le legge: i gate girano su
+sorgente coi commenti spenti (`scripts/lib/comments.mjs`, `liveLines`).
+
+> ⚠ **Il piano diceva diciotto. Misurate: venticinque righe su undici file.**
+> `LC_ALL=C /usr/bin/grep -rn "MobileNav" src/ scripts/` da' **30** righe fuori
+> dal file stesso; cinque sono codice, venticinque sono prosa.
+> `42-RESEARCH.md` §3.4 le raggruppava in quattordici **voci** e le contava come
+> diciotto **frasi**: nessuno dei due numeri e' il numero di righe da editare.
+> La lista qui sotto e' per riga, che e' l'unita' con cui si edita.
+
+**Disposizione: tutte e venticinque si correggono nello stesso commit che cancella
+il file.** La terza strada — lasciarle senza dire nulla — e' quella che ha
+prodotto il difetto che questa fase e' qui a chiudere: una frase nel codice che
+afferma una cosa non vera, e che il prossimo lettore crede.
+
+| # | File:riga | Cosa deve diventare |
+|---|---|---|
+| 1 | `src/types/database.ts:1100` | il nome cambia: il componente e' `AppNav` |
+| 2 | `src/types/database.ts:1103` | il nome cambia |
+| 3 | `src/types/database.ts:1110` | il nome cambia; *«le cinque voci»* resta vero, sono le stesse |
+| 4 | `src/app/(public)/artists/[slug]/page.tsx:51` | la frase confronta `AppNav` col wrapper: il confronto muore, resta *«riceve le stesse quattro prop»* |
+| 5 | `src/app/globals.css:269` | **vedi sotto — il vincolo resta vero, cambia solo il nome** |
+| 6 | `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx:52` | *«non e' montato qui»* resta vero del nuovo nome |
+| 7 | `src/app/(admin)/admin/(work)/layout.tsx:65` | *«monta `AppNav` e non il wrapper»* perde il proprio contrasto: diventa *«monta `AppNav` nella forma responsive»* |
+| 8 | `src/app/(admin)/admin/(work)/layout.tsx:117` | correzione storica gia' datata: il nome cambia, la storia resta |
+| 9 | `src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx:86` | due occorrenze sulla stessa riga, entrambe rinominate |
+| 10 | `src/app/(admin)/admin/scanner/DoorSurface.tsx:74` | il docblock del file che compie il cambio: `<AppNav form="phone">` e `<StaffNav>` |
+| 11 | `src/app/(admin)/admin/scanner/DoorSurface.tsx:78` | il nome cambia; il fatto sulle prop resta |
+| 12 | `src/app/(admin)/admin/scanner/page.tsx:12` | *«il mount di `MobileNav`»* → *«il mount della navigazione»* |
+| 13 | `src/components/layout/AppNav.tsx:91` | **vedi sotto — la ragione muore, la prop resta** |
+| 14 | `src/lib/rbac/roles.ts:50` | dentro una correzione storica citata fra virgolette: la citazione resta, con una nota che il file non esiste piu' |
+| 15 | `src/lib/rbac/roles.ts:52` | **vedi sotto — il conteggio dei mount** |
+| 16 | `src/lib/rbac/roles.ts:111` | il nome cambia |
+| 17 | `src/lib/rbac/roles.ts:185` | il nome cambia dentro un commento storico |
+| 18 | `src/lib/rbac/roles.ts:286` | correzione storica datata: il nome cambia, la storia resta |
+| 19 | `src/lib/rbac/roles.ts:297` | **vedi sotto — il conteggio dei mount** |
+| 20 | `src/lib/capabilities/server.ts:202` | *«sono `MobileNav` e `StaffNav` — due»* → `AppNav` e `StaffNav` |
+| 21 | `src/lib/supabase/middleware.ts:314` | il nome cambia |
+| 22 | `scripts/conversion-manifest.mjs:214` | il docblock di `PHASE_42_PATHS` che spiega il wrapper — **esce insieme al recinto** |
+| 23 | `scripts/verify-conversion.mjs:1112` | il docblock di `NAV_MODULES` |
+| 24 | `scripts/verify-conversion.mjs:2740` | il docblock del discriminante |
+| 25 | `scripts/verify-conversion.mjs:2743` | il discriminante descritto per nome — cambia con la costante |
+
+#### Le tre che non sono cancellazioni semplici
+
+**(i) `src/components/layout/AppNav.tsx:91` — la ragione muore, la prop
+sopravvive.** Oggi il docblock spiega la forma `"phone"` dicendo che e' *«cio' che
+il wrapper `MobileNav.tsx` accanto a questo file rende, ed e' il motivo per cui
+quel file esiste ancora (D-41-21)»*. Cancellato il wrapper, **quella ragione non
+esiste piu' — ma la prop resta e serve.** Deve diventare, in sostanza: *`"phone"`
+— la barra a ogni larghezza. E' cio' che la porta monta, direttamente e per
+scelta: la superficie di check-in si lavora con una mano e non prende la colonna
+laterale (D-42-03).* Il nuovo consumatore va nominato, o la prop resta senza un
+perche' e il prossimo lettore la propone per la rimozione.
+
+**(ii) `src/app/globals.css:269` — il vincolo resta vero, cambia solo il nome.**
+La frase dice che ri-derivare l'altezza della barra dal markup di `MobileNav`
+invaliderebbe silenziosamente un letterale in quattro file. **Il vincolo e'
+esattamente altrettanto vero dopo**, perche' l'altezza dichiarata di 5rem e la
+sua ragione (D-41-09, la sopravvivenza verbatim del letterale all'estrazione dei
+dialog) non dipendono dal wrapper: dipendono dal markup della navigazione, che
+ora vive solo in `AppNav.tsx`. Si sostituisce il nome e **non si tocca il resto
+della frase**, perche' cancellarla toglierebbe l'unico posto in cui quel vincolo
+e' scritto.
+
+**(iii) `src/lib/rbac/roles.ts:52` e `:297` — il conteggio dei mount, che oggi
+e' gia' falso e domani torna vero.** Entrambe dicono *«tutti e tredici i mount di
+`<MobileNav>`»*. Misurato su questo albero: **`<MobileNav>` ha un solo mount**
+(`DoorSurface.tsx:133`), mentre **`<AppNav>` ne ha tredici**, uno dei quali e'
+dentro `MobileNav.tsx` stesso (`:60`). Le due frasi contano gli `AppNav` e li
+chiamano `MobileNav`.
+
+Dopo la cancellazione: 13 − 1 (il mount dentro il wrapper) + 1 (`DoorSurface`) =
+**tredici.** Il numero sopravvive; cambia l'identita' di uno dei siti. Le due
+frasi diventano *«tutti e tredici i mount di `<AppNav>`»* — **e la premessa di
+`:52` va riasserita, non ereditata**: quella riga afferma che tutti e tredici
+chiamano `getAccessContext()`, e il sito che entra al posto del wrapper e'
+`DoorSurface.tsx`, che lo chiama a `:112`. **Verificato qui.** Un conteggio
+corretto per caso e' un conteggio che il prossimo cambio rompe in silenzio.
+
+### 11.3 Il mirino — due massimi, e chi chiude quale criterio
+
+RESP-05 dice *«lo scanner si centra»*; il criterio 2 dice *«il mirino si
+centra»*. **Non sono la stessa frase**, e la fase deve dire quale chiude.
+
+**Disposizione: entrambe, per la strada C di `42-RESEARCH.md` §5.4.**
+
+| Massimo | Dove | Quale criterio chiude |
+|---|---|---|
+| **1024px** | il contenitore della superficie dello scanner | **RESP-05** — *lo scanner si centra* |
+| **384px** | il contenitore del mirino | **criterio 2** — *il mirino si centra* |
+
+Nessuno dei due e' inventato: sono due dei **tre** massimi che la shell gia'
+possiede (`PageShell.tsx:151-168`, `DECLARED_MAXIMA` a
+`verify-conversion.mjs:975`), e le altre trentaquattro superfici dichiarate
+portano gia' il primo.
+
+**La ragione dei 1024, che e' di dominio e non di simmetria:** alla porta la
+superficie si lavora **con una mano**, e su un tablet tenuto in orizzontale un
+pollice non arriva a 1360px — che e' esattamente quanto il mirino si stira oggi a
+1440px di finestra. Centrare a 1024 e' la stessa distanza di raggiungibilita' che
+il resto del prodotto ha gia' scelto, ed e' **reversibile in una riga**.
+
+**La ragione dei 384:** la regione decodificata e' **280×280** e ogni pixel oltre
+e' video che il browser decodifica per niente — a 1440px il mirino occupa
+**4,9 volte** l'area utile, a 15 fps. 384px e' il massimo piu' stretto gia'
+dichiarato dalla shell e il primo che contiene 280 con margine.
+
+**E il terzo pezzo, senza il quale i primi due contraddicono D-41-06:** check D
+legge **solo il file di pagina**, e nessuna delle due pagine della porta importa
+la shell. Serve un **meccanismo dichiarato in check D** per una superficie che e'
+a schermo pieno per costruzione, sulla forma che `TYPOGRAPHIC_MEASURES`
+(`verify-conversion.mjs:1080`) gia' usa — `[route, ragione]`. **Si scrive nel
+piano 42-05, prima del run che ne ha bisogno**, non dopo averlo visto rosso.
+
+#### Le due strade rifiutate, coi loro costi
+
+- **Strada A — avvolgere la porta nella shell.** Chiuderebbe check D senza
+  meccanismi nuovi, e costa troppo: aggiunge il padding esterno della shell
+  (`px-6 pt-12` piu' la spaziatura inferiore della navigazione), **raddoppia** il
+  `px-6` che `ScannerClient` gia' scrive dentro di se', annida una radice
+  `min-h-dvh` dentro un'altra, e mette **l'header sticky dentro un contenitore
+  centrato**. E' molto piu' di *colore, contrasto e tipo*: e' un rifacimento del
+  layout di una superficie di sicurezza.
+- **Strada B — i massimi dentro il client component, senza meccanismo.**
+  Lascerebbe **check D rosso su due pagine** e contraddirebbe D-41-06 — *il
+  massimo e' della shell e mai di una pagina* — **in silenzio**. Un rosso
+  permanente su codice corretto e' il modo piu' rapido per insegnare a chi legge
+  che quel rosso non conta.
+
+#### Cosa NON si tocca
+
+**`qrbox`, `fps` e `facingMode` restano invariati** (`ScannerClient.tsx:1529`:
+15 fps, 280×280, camera posteriore). Il criterio parla del **contenitore**. Quei
+tre letterali sono il blocco 11 del reperto meccanico (`42-BASELINE.md`), e
+cambiarli sarebbe un cambio di comportamento vestito da commit di layout — la
+cosa precisa che RESP-05 vieta e che il diff del reperto scoprirebbe comunque.
