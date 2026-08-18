@@ -999,7 +999,7 @@ Plans:
 
 **Wave 2** *(executable now, blocked on wave 1)*
 
-- [ ] 42-05-PLAN.md — the derogation mechanisms built **before** the first red run: check A per utility and check D full-bleed, both empty and both refusing when stale, plus the check E and dialog-shell edits written verbatim and proved
+- [x] 42-05-PLAN.md — the derogation mechanisms built **before** the first red run: check A per utility and check D full-bleed, both empty and both refusing when stale, plus the check E and dialog-shell edits written verbatim and proved
 
 **Wave 3** *(BLOCKED on the door pass)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 4/12 | In Progress — waves 0-1 done, waves 3-8 blocked on the door pass | - |
+| 42. Scanner Conversion | 5/12 | In Progress — waves 0-2 done, waves 3-8 blocked on the door pass | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 45 context gathered
+stopped_at: Phase 42 waves 0-2 executed (5/12 plans); waves 3-8 blocked on the door pass at the first real night
 last_updated: "2026-08-18T17:50:18.113Z"
-last_activity: 2026-08-18 -- Phase 42 execution started
+last_activity: 2026-08-18 -- Phase 42 waves 0-2 merged to main; execution stopped at the ordering constraint
 progress:
   total_phases: 18
   completed_phases: 17
@@ -249,6 +249,18 @@ Fixed by the project owner before planning — not re-opened at plan time:
 ## Blockers
 
 ()
+
+- **[Fase 42, 2026-08-18] Sette piani su dodici sono FERMI, e la loro scadenza e' un atto invece che una data.** Onde 0, 1 e 2 eseguite e fuse su `main` (piani 42-01 … 42-05): il gate `verify:conversion` torna a misurare (exit 2 -> 0), il reperto pre-conversione dello scanner esiste ed e' riproducibile byte per byte, il gate di leggibilita' e' scritto e provato per mutazione, la tabella delle sostituzioni e' decisa, e i meccanismi di deroga esistono **prima** della corsa che li userebbe. Gate post-merge dopo ogni onda: `npm run build` 0, `verify:conversion` 0, `verify:persona` 7/7. **Zero file sotto `src/` toccati in tutte e tre le onde** — misurato con `git diff --name-only`, non ricordato.
+
+  **Le onde 3-8 (`42-06` … `42-12`) portano `blocked_on: the-door-pass-on-the-unconverted-scanner`.** Il vincolo viene dagli *Ordering Constraints* del roadmap: lo scanner si converte per ultimo, e **solo dopo che le correzioni di comportamento della porta (31, 39) hanno girato a una serata vera**. Al 2026-08-18 quella serata non c'e' stata: la 39 e' in produzione dal 14 agosto, ma `/door` non e' mai stato esercitato da nessuno. Il door pass e' `39-DOOR-PASS.md` §8 piu' le dieci procedure di `42-PROCEDURES.md`, tutte `Result: pending`.
+
+  **Perche' non e' scheduling.** Una conversione spedita prima non rende il criterio 3 piu' difficile: lo rende **impossibile**, perche' la linea di base andrebbe presa su codice che non esisterebbe piu'. E la prima porta reale girerebbe insieme su correzioni mai usate e su una superficie ridipinta, senza error tracking a dire quale delle due ha ceduto.
+
+  **Due guardie d'ordine restano deliberatamente chiuse, e un verde oggi le violerebbe:** `verify-scan-legibility.mjs` **non e' registrato** in `verify-all.mjs` ne' in `package.json` (verificato: zero occorrenze in entrambi) — registrato ora misurerebbe la terna di oggi, minimo 2,1, e resterebbe rosso per settimane; `PHASE_42_PATHS` resta **chiuso**, le due pagine della porta ancora nel bucket *fenced*. Si aprono entrambe con l'onda che cambia il colore, mai prima.
+
+  **Tre reperti dell'onda 0-1 che i piani a valle ereditano, e che correggono cio' che era scritto:** l'arbitrato del colore non ha un vincitore fra le due misure precedenti — su tre celle **sbagliano entrambe**, e rifiuta-contro-terzo-stato vale 33,1 e non 38,4; con l'ambra, accetta-contro-terzo-stato in protanopia sta a **7,0**, non a 10,2; i bersagli tattili sono **quattordici** e il piano ne elencava dieci, quindi chi avesse pagato «i dieci elencati» avrebbe lasciato quattro rossi dentro l'onda che prometteva di chiuderli.
+
+  **Tre voci differite aperte, nessuna chiudibile da un agente:** DEF-42-01 (le sei superfici di produzione delle fasi 44/45 appartengono al perimetro della 42? decisione del proprietario), DEF-42-02, DEF-42-03 (quattordici bersagli sotto i 44px sulla porta — chiede un piano proprio, dietro lo stesso vincolo d'ordine).
 
 - **[Fase 38, decisione del proprietario 2026-08-11] Le sette procedure umane di fase 38 sono DIFFERITE al lotto di fine v1.5**, insieme alle 32 voci `human_needed` di 43, 35 e 34: chiedono tutte la stessa cosa — una sessione con cinque account veri, piu' due telefoni. **Differito non e' verificato:** LIVE-01 e LIVE-06 restano aperti, e i due difetti che solo P5 e P6 possono vedere restano non visti (il canale che si unisce, dice `SUBSCRIBED` e non consegna nulla; il fan-out sulla notte assente che degrada LIVE-01 in LIVE-04 senza un errore da nessuna parte).
 
