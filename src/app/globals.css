@@ -266,7 +266,7 @@
    * 5rem is a DECLARED bar height, not a measured one, and that is deliberate:
    * D-41-09 requires `pb-[calc(1.5rem+5rem+env(safe-area-inset-bottom))]` to
    * survive the dialog extraction verbatim. Re-deriving the height from
-   * MobileNav's markup would silently invalidate that literal in four files.
+   * AppNav's markup would silently invalidate that literal in four files.
    *
    * NO --color-* MAPPING, and therefore no Tailwind utility — these are layout
    * variables, not colours. They are reached only through arbitrary values:

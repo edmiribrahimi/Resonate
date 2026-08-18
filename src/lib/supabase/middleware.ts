@@ -311,7 +311,7 @@ export async function updateSession(request: NextRequest) {
   // No decision in this file has ever read them.
   //
   // They DO still travel in the access-context payload, and that is not
-  // an oversight. `MobileNav` and `StaffNav` are `"use client"` components that
+  // an oversight. `AppNav` and `StaffNav` are `"use client"` components that
   // take `role` and `status` as props and cannot import the DAL, so a parent
   // Server Component resolves them and passes them down. Removing the two
   // fields from the payload is STAFF-03 in phase 34, not this phase — doing it

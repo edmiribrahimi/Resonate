@@ -1253,10 +1253,28 @@ export const FULL_BLEED_SURFACES = [];
  *
  * They are two rather than one, and the reason is measured rather than
  * stylistic: `AppNav` carries **both tiers** — the bar below 768px and the
- * leading column at and above it — while `MobileNav` is the thin wrapper that
- * renders `AppNav` locked to its phone form, so the door keeps today's layout
- * (D-41-21). **Either one reachable is navigation mounted**, and a check that
- * knew only the first would call the door navigation-free.
+ * leading column at and above it — while the door mounts that same primitive
+ * locked to its phone form, so the check-in surface keeps the bar at every
+ * width (D-42-03). **Either one reachable is navigation mounted**, and a check
+ * that knew only the first would call the door navigation-free.
+ *
+ * ── The second entry used to be a wrapper, and the discriminant is weaker ────
+ *
+ * Until Phase 42 the phone-locked entry was `src/components/layout/AppNav`'s
+ * one-line wrapper (D-41-21), **a dedicated file whose only purpose was to pass
+ * `form="phone"`**. It is now the door's own surface file — 160-odd lines that
+ * **also** perform the access guard. The consequence is stated rather than
+ * discovered: if that file ever stopped passing `form="phone"`, this gate would
+ * **stay green**, where before the same mistake was impossible without emptying
+ * the wrapper.
+ *
+ * The sturdier alternative exists and is named: make the discriminant **the
+ * prop rather than the path** — *imports `AppNav` directly and does not pass
+ * `form="phone"` on the same mount*. It is **declined here with its reason**:
+ * Phase 42 changes colour, contrast and type, and rewriting a gate's
+ * discriminant is none of the three. Done inside a conversion wave, a gate
+ * behaving differently could not be attributed to the conversion or to the new
+ * discriminant. The limitation is inherited written, not hidden.
  *
  * **A path here that is not on disk REFUSES.** A stale entry does not report
  * "no navigation found on any surface" as a red — it reports it as agreement,
@@ -1266,7 +1284,7 @@ export const FULL_BLEED_SURFACES = [];
  */
 export const NAV_MODULES = [
   ['src/components/layout/AppNav.tsx', 'both tiers — the bar below 768px, the leading column at and above it'],
-  ['src/components/layout/MobileNav.tsx', 'the wrapper that renders AppNav locked to its phone form (D-41-21)'],
+  ['src/app/(admin)/admin/scanner/DoorSurface.tsx', 'the file that mounts AppNav locked to its phone form (D-42-03)'],
 ];
 
 const NAV_MODULE_PATHS = NAV_MODULES.map(([path]) => path);
@@ -2881,13 +2899,20 @@ const navigationBySurface = surfaces.map((s) => {
  *     did not have.
  *
  * **The discriminator on the mounting side is textual and local.** `AppNav`
- * carries both tiers; `MobileNav` is the thin wrapper that renders it locked to
- * the phone form, so that the door keeps the bar at every width (D-41-21).
- * A file therefore mounts the RESPONSIVE form when it imports `AppNav`
- * **directly** and is not `MobileNav` itself — the single file that passes the
- * phone form. Measured 2026-08-13 that yields exactly two files, which is the
- * intended set; every other mount site reaches the navigation through the
- * wrapper and is correctly absent from both halves of the equality.
+ * carries both tiers; the door mounts it locked to the phone form, so that the
+ * check-in surface keeps the bar at every width (D-42-03). A file therefore
+ * mounts the RESPONSIVE form when it imports `AppNav` **directly** and is not
+ * the phone-locked mount named below — the single file that passes
+ * `form="phone"`. The door is consequently absent from both halves of the
+ * equality, which is the intended result and not an omission: it declares no
+ * column clearance because it takes no column.
+ *
+ * **This discriminator is a path, and a path is weaker than a prop.** Until
+ * Phase 42 the excluded file was a one-line wrapper that could not stop passing
+ * the phone form without being emptied; it is now the door's surface file,
+ * which also carries the access guard. `NAV_MODULES` above states the
+ * consequence and names the sturdier alternative that was declined, with its
+ * reason. It is not restated here so that there is one place to correct.
  *
  * **The declaring side is assembled at run time and never written whole.** A
  * complete utility written in this file would be a live Tailwind candidate and
@@ -2997,9 +3022,9 @@ const filesDeclaringColumnClearance = [
  * navigation, and the two halves of one gate would be reading different trees.
  */
 const RESPONSIVE_NAV_MODULE = 'src/components/layout/AppNav.tsx';
-const PHONE_LOCKED_NAV_WRAPPER = 'src/components/layout/MobileNav.tsx';
+const PHONE_LOCKED_NAV_MOUNT = 'src/app/(admin)/admin/scanner/DoorSurface.tsx';
 
-const pairingModulesUndeclared = [RESPONSIVE_NAV_MODULE, PHONE_LOCKED_NAV_WRAPPER].filter(
+const pairingModulesUndeclared = [RESPONSIVE_NAV_MODULE, PHONE_LOCKED_NAV_MOUNT].filter(
   (path) => !NAV_MODULE_PATHS.includes(path)
 );
 if (pairingModulesUndeclared.length > 0) {
@@ -3023,7 +3048,7 @@ function importsDirectly(rel, targetRel) {
 }
 
 const filesMountingResponsiveForm = allSrcFiles
-  .filter((rel) => rel !== PHONE_LOCKED_NAV_WRAPPER && importsDirectly(rel, RESPONSIVE_NAV_MODULE))
+  .filter((rel) => rel !== PHONE_LOCKED_NAV_MOUNT && importsDirectly(rel, RESPONSIVE_NAV_MODULE))
   .sort();
 
 const declaringWithoutMounting = filesDeclaringColumnClearance.filter(
@@ -3853,7 +3878,7 @@ console.log(
 for (const rel of filesDeclaringColumnClearance) console.log(`              ${rel}`);
 console.log(
   `          file(s) MOUNTING the responsive form              : ${filesMountingResponsiveForm.length}` +
-    `   (import ${RESPONSIVE_NAV_MODULE.split('/').pop()} directly, and are not the phone-locked wrapper)`
+    `   (import ${RESPONSIVE_NAV_MODULE.split('/').pop()} directly, and are not the phone-locked mount)`
 );
 for (const rel of filesMountingResponsiveForm) console.log(`              ${rel}`);
 console.log('');
@@ -4036,8 +4061,9 @@ if (mountingWithoutDeclaring.length > 0) {
       '       page declares it any more — so a file that takes the responsive form and forgets\n' +
       '       the declaration gets no clearance at all rather than a wrong one.\n\n' +
       '       Either this file declares the clearance on the wrapper around its own content, at\n' +
-      `       the ${COLUMN_CLEARANCE_TIER} tier, or it mounts the phone-locked wrapper instead and keeps the bar\n` +
-      '       at every width — which is what the door does, by decision (D-41-21, D-41.1-06).\n'
+      `       the ${COLUMN_CLEARANCE_TIER} tier, or it mounts the navigation locked to the phone form\n` +
+      '       instead and keeps the bar at every width — which is what the door does, by\n' +
+      '       decision (D-42-03, superseding D-41-21; D-41.1-06).\n'
   );
 }
 

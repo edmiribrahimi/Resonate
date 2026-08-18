@@ -49,7 +49,7 @@ import { PageTitle, SectionHeading } from "@/components/ui/Typography";
  * `src/app/(admin)/admin/venues/actions.ts`; both are imported by absolute
  * specifier.
  *
- * `MobileNav` is NOT mounted here: `(work)/layout.tsx` mounts it — and `StaffNav`
+ * `AppNav` is NOT mounted here: `(work)/layout.tsx` mounts it — and `StaffNav`
  * — once for every page in the group (D-34-07). The public version of this file
  * mounted its own; keeping that would have drawn two.
  *

@@ -47,9 +47,12 @@ import type { UserRole, UserStatus } from "@/types/database";
  *
  * The first version of this repair replaced the tuple with a module-scope
  * `throw` that read the map through `resolveRoute` — and justified it with the
- * sentence *"this module is imported by `MobileNav` and is therefore evaluated
- * while pages are prerendered"*. **That sentence was an inference, and it was
- * wrong.** All thirteen `MobileNav` mount sites call `getAccessContext()`,
+ * sentence *"this module is imported by [the phone-form nav wrapper] and is
+ * therefore evaluated while pages are prerendered"*. The bracket is an
+ * editorial substitution, not a paraphrase: the quotation named a file Phase 42
+ * deleted, and a quotation pointing at nothing teaches the next reader less
+ * than one that says what it pointed at. **That sentence was an inference, and
+ * it was wrong.** All thirteen `<AppNav>` mount sites call `getAccessContext()`,
  * which reads `cookies()`, so **none of them is prerendered** — and the
  * paragraph above states, correctly, that this file is read from a
  * `"use client"` navigation, which means the throw shipped in the *client*
@@ -108,7 +111,7 @@ export const STATUSES = {
 export interface NavItem {
   /**
    * Typed as `Route` rather than `string` by plan 34-01 — form 1, the
-   * `NavItem<Route>[]` shape the Next.js docs give. `MobileNav` hands this
+   * `NavItem<Route>[]` shape the Next.js docs give. `AppNav` hands this
    * straight to `<Link>`, so without the type here a nav entry could point at
    * an address that does not exist and nothing would say so until a member
    * tapped it.
@@ -182,7 +185,7 @@ const NAV_ITEMS: NavItem[] = [
     // **Why Phase 34 left it open rather than patched it.** It was the SAFE
     // direction of the two — a hidden entry the server would have allowed,
     // never a drawn entry the server refuses. Closing it meant giving this
-    // function the capability set, which meant changing `MobileNav`'s props,
+    // function the capability set, which meant changing the navigation's props,
     // which meant editing the door's own surface: the file this project least
     // wants opened by accident. The owner assigned it here rather than to a
     // later phase, because this phase opens that file anyway
@@ -283,7 +286,7 @@ const NAV_ITEMS: NavItem[] = [
  *
  * ── The mount count, corrected because the stale one was load-bearing
  *
- * This docblock used to put the `MobileNav` mount count at **44**, and that
+ * This docblock used to put the navigation's mount count at **44**, and that
  * number was the reason given for *not* changing this signature. **Measured on
  * this tree: 13 mount sites.** The count collapsed when plan 34-05 introduced
  * `admin/(work)/layout.tsx` and folded every work surface into a single mount.
@@ -291,10 +294,18 @@ const NAV_ITEMS: NavItem[] = [
  * how a decision outlives its reason — so it is corrected here rather than
  * left to rot, and the same correction is made in `(work)/layout.tsx`.
  *
+ * **Re-measured after Phase 42 deleted the phone-form wrapper: still 13.** One
+ * of the thirteen changed identity — the mount that lived inside the wrapper
+ * left, and the door's own surface file took its place — so the number survives
+ * a change that could have moved it, and it survives because it was counted
+ * again rather than carried over. All thirteen still call `getAccessContext()`,
+ * the door at `DoorSurface.tsx:130`, which is the premise the paragraph above
+ * rests on and not an assumption inherited with it.
+ *
  * @param capabilities the keys the subject holds by role
  * @param liveAssignmentCapabilities the coarser set held by a live per-night
  *   assignment, or `null` when the payload did not carry the key. **Both are
- *   required**: all 13 `<MobileNav>` mount sites pass them, so a fourteenth
+ *   required**: all 13 `<AppNav>` mount sites pass them, so a fourteenth
  *   that forgets is a build error naming the file — the same discipline the
  *   one-element tuple at the top of this file enforced before this phase spent
  *   it.

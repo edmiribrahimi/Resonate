@@ -128,10 +128,12 @@ export function existsCaseExact(relPath) {
  * file that still needs the walk. `pending` means *declared spine, not yet
  * converted* — it is excluded from nothing until its plan lands.
  *
- * D-41-01 counts fourteen spine members and this list has fifteen entries: the
- * navigation is one member and two files, because D-41-21 keeps the wrapper as
- * the mechanism that holds Phase 42's fence. The discrepancy is arithmetic, not
- * scope creep, and is written here so nobody re-derives it as a defect.
+ * D-41-01 counts fourteen spine members and this list has fourteen entries —
+ * one file each. It had fifteen while the navigation was one member and two
+ * files: D-41-21 kept a wrapper beside `AppNav` as the mechanism holding Phase
+ * 42's fence, and **Phase 42 deleted it once the door mounted the phone form
+ * directly** (D-42-03). The arithmetic is recorded rather than silently
+ * corrected, so the entry that left is not re-derived as a missing one.
  *
  * Shape: `[path, state, reason]`, `state` one of `converted` | `pending`.
  */
@@ -189,10 +191,6 @@ export const SPINE = [
     "the product navigation in both tiers — the spine member every mount site shares",
   ],
   [
-    "src/components/layout/MobileNav.tsx", "converted",
-    "the wrapper locking the door to the phone form (D-41-21) — the same spine member as AppNav, kept as a separate file because it is the mechanism holding Phase 42's fence, and Phase 42 deletes it",
-  ],
-  [
     "src/components/staff/StaffNav.tsx", "converted",
     "the eight work tabs in two forms — mounted by the work layout, a surface of none",
   ],
@@ -210,14 +208,18 @@ export const SPINE = [
  * judgement, because the failure mode is a gate quietly widening its own scope
  * one convenient file at a time.
  *
- * **This exclusion costs nothing, and that is a built thing rather than a
- * lucky one.** `src/components/layout/MobileNav.tsx` exists as a thin wrapper
- * precisely so the door keeps today's navigation layout while the primitive
- * behind it gained a second tier (D-41-21). Without that wrapper, excluding the
- * door would have meant either leaving it on an unconverted component or
- * putting a 224px column on a screen someone reads at an entrance — a change to
- * the door's surface, delivered by a phase whose own fence says the door is not
- * its business.
+ * **This exclusion cost nothing, and that was a built thing rather than a lucky
+ * one.** While the fence stood, a thin wrapper beside `AppNav` existed
+ * precisely so the door kept today's navigation layout as the primitive behind
+ * it gained a second tier (D-41-21). Without it, excluding the door would have
+ * meant either leaving it on an unconverted component or putting a 224px column
+ * on a screen someone reads at an entrance — a change to the door's surface,
+ * delivered by a phase whose own fence says the door is not its business.
+ *
+ * That wrapper is **gone**: Phase 42 deleted it and the door now mounts
+ * `AppNav` with `form="phone"` directly (D-42-03), which is the same layout by
+ * a shorter road. The mechanism is no longer a file, it is a prop — and the
+ * fence it protected is still here, because opening it is another plan's work.
  *
  * Shape: `[glob, reason]`. Consumers match by prefix-with-wildcard, and a
  * consumer that cannot express a glob should match the literal directory rather

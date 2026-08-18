@@ -83,7 +83,7 @@ import { PageTitle, SectionHeading } from "@/components/ui/Typography";
  * ── Both navs are gone from this file ────────────────────────────────────────
  *
  * `admin/(work)/layout.tsx` resolves the access context once for the whole tree
- * and mounts `StaffNav` and `MobileNav` (D-34-07), so the `MobileNav` mount and
+ * and mounts `StaffNav` and `AppNav` (D-34-07), so the `AppNav` mount and
  * the `as UserRole` / `as UserStatus` casts both twins carried are deleted here.
  * `getAccessContext` is `cache()`-scoped per request, so the guard below costs
  * no second round trip. It **throws** `capabilities.resolve_failed` and is

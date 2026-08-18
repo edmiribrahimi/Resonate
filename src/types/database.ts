@@ -1097,17 +1097,17 @@ export interface RoleCapability {
  * also the case in which `capabilities` is empty.
  *
  * **No new caller may branch on `role` or `status`.** They survive in this
- * payload for exactly two client components — `MobileNav` and `StaffNav`. The
+ * payload for exactly two client components — `AppNav` and `StaffNav`. The
  * sentence that stood here said both *take `role` and `status` as props*, and
  * that has not been true of either for a while: `StaffNav` has taken
- * serialisable capability keys since plan 34-04, and `MobileNav` takes them as
+ * serialisable capability keys since plan 34-04, and `AppNav` takes them as
  * of plan 39-03 (D-39-06), where the Check-in entry started being drawn on
  * `door.operate`. Both are still `"use client"` and still cannot import the
  * data-access layer, so a Server Component parent still resolves and passes
  * down — that part was and remains the reason these fields exist here.
  *
  * What keeps `role` and `status` in the payload today is narrower: four of
- * `MobileNav`'s five entries are governed by no capability at all, so the nav
+ * `AppNav`'s five entries are governed by no capability at all, so the nav
  * still needs to know who is signed in and whether they are approved. Removing
  * these two fields therefore waits on a capability that governs those entries,
  * not on a conversion that has already happened. Every new decision asks

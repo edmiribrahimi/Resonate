@@ -62,9 +62,9 @@ import type { UserRole, UserStatus } from "@/types/database";
  * below it they are a strip in flow above the content. Two trees, each removed
  * at the other tier by `display` — never one tree filtered by width.
  *
- * It mounts `AppNav` and not the `MobileNav` wrapper deliberately: the wrapper
- * exists to lock the **door** to the bar form (D-41-21), and a work surface is
- * not the door.
+ * It mounts `AppNav` in its **responsive** form deliberately: the phone form
+ * belongs to the **door**, which keeps the bar at every width (D-42-03), and a
+ * work surface is not the door.
  *
  * ── The clearance: declared here, applied by the shell ───────────────────────
  *
@@ -114,7 +114,7 @@ import type { UserRole, UserStatus } from "@/types/database";
  * ── `AppNav` now takes the capability set too, and the count that used to
  *    justify otherwise was wrong ──────────────────────────────────────────────
  *
- * This paragraph used to say plan 34-04 did not change `MobileNav`'s signature
+ * This paragraph used to say plan 34-04 did not change the navigation's signature
  * because it is mounted on **44** pages. That number was already stale when it
  * was written: it predates plan 34-05, which introduced this very layout and
  * folded every work surface into a single mount. **Measured: 13 mount sites**,

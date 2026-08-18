@@ -48,8 +48,8 @@ import type { UserRole, UserStatus } from "@/types/database";
  * public specimen, and the line the gate itself matched on its last green run.
  *
  * **What this does not change.** `41-UI-SPEC.md` §0 rule 5: width may change
- * layout, never membership. `AppNav` receives the same four props `MobileNav`
- * received, in the same order, so no entry appears or disappears and **no
+ * layout, never membership. `AppNav` receives the same four props this surface
+ * passed before, in the same order, so no entry appears or disappears and **no
  * capability check is touched**.
  *
  * ── The bio's reading measure stays, and it stays as it is ───────────────────
