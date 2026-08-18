@@ -614,37 +614,34 @@ function fileImportMap(relPath) {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
- * EXEMPTION 1 — Phase 42, by path.
+ * EXEMPTION 1 — Phase 42, by path. **EMPTY SINCE 2026-08-18 (plan 42-11).**
  *
- * The door and the scanner belong to Phase 42, which takes colour, contrast and
- * type only. `ScannerClient.tsx:2909,2918` are about eighteen pixels and are the
- * **smallest interactive elements in the tree** — and they are not this phase's
- * to change. Excluding them is not indulgence: the check-in path is read at an
- * entrance, in the dark, one-handed, with no network, and a visual phase that
- * reaches into it is a visual phase touching the door.
+ * Three globs stood here and the argument was this: the door and the scanner
+ * belong to Phase 42, which takes colour, contrast and type only, so the
+ * smallest interactive elements in the tree were not that phase's to change.
+ * The argument was correct while it stood, and it is spent: Phase 42 finished,
+ * and the fence emptied in the same commit that declared both door addresses on
+ * the manifest's `CONVERTED` list.
  *
- * By path and not by judgement, because the failure mode of a judgement is a
- * gate that widens its own scope one convenient file at a time.
+ * **What the fence was hiding, said out loud rather than absorbed.** Its own
+ * printed warning read *"If an under-44px target exists behind that fence this
+ * gate is silent about it. The door is where a target too small to hit becomes
+ * a queue."* It did. **Fourteen** of them, every one in the check-in client, and
+ * the two smallest are the pills that say something was NOT recorded. They did
+ * not arrive with this commit — they were measured on a throwaway branch on
+ * 2026-08-18, BEFORE the fence came down, precisely so that their disposition
+ * was decided off a red nobody was under pressure to clear (D-41-16).
  *
- * **If this gate ever finds an under-44px target inside these paths it will not
- * report it, and that silence is deliberate** — but it is also the most
- * important thing this gate could ever find, so the paths are printed on every
- * run with the reminder that they were never measured.
+ * They are now `DOOR_TARGET_DEBT` below: a debt with a number on it that can
+ * only go down, and NOT a fourteenth widening of anything. **No threshold
+ * moved. 44px is still 44px, and no exemption above was widened by a
+ * character.**
+ *
+ * The constant stays exported and empty: it is compared against the manifest's
+ * `PHASE_42_PATHS` on every run and a drift REFUSES, so deleting it here would
+ * turn a compared pair into an unchecked one.
  */
-export const PHASE_42_EXEMPT_PATHS = [
-  [
-    'src/app/(admin)/**/scanner/**',
-    'the scanner surface and its route — Phase 42 decides what the door looks like',
-  ],
-  [
-    'src/components/scanner/**',
-    "the scanner's components — the check-in path, read at an entrance with one hand and no network",
-  ],
-  [
-    'src/app/(admin)/door/**',
-    "the door's second address (STAFF-04) — excluding one address and not the other would fence half a thing",
-  ],
-];
+export const PHASE_42_EXEMPT_PATHS = [];
 
 /**
  * EXEMPTION 2 — elements rendered by a primitive.
@@ -1260,6 +1257,172 @@ export const BELOW_FLOOR_BY_DECISION_ELEMENTS = [
   ],
 ];
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE DOOR'S TOUCH-TARGET DEBT — a number that can only go down
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** All fourteen live in one file, and naming it once keeps the list readable. */
+const SCANNER_CLIENT = 'src/app/(admin)/admin/scanner/ScannerClient.tsx';
+
+/**
+ * The ceiling, frozen. **A ratchet is a ratchet only because this number is not
+ * edited to make room.**
+ *
+ * `DOOR_TARGET_DEBT` may SHRINK freely — every entry that leaves has left
+ * because somebody enlarged the element. It may never grow past this figure: a
+ * fifteenth entry REFUSES (exit 2) until a person edits this constant, and
+ * editing it is a visible act with a date and a name on it rather than one more
+ * line in a list.
+ *
+ * **Why the count was taken BEFORE this commit and not after it.** The fence
+ * that hid these fourteen came down in the same commit that introduces them, so
+ * a budget written after the first green run would have started at whatever the
+ * run happened to show. It did not: plan 42-04 emptied both fences on a
+ * throwaway branch on 2026-08-18, asserted the mutation applied before reading
+ * its result, measured `FAILED — 14 element(s) do not declare the minimum`, and
+ * deleted the branch. DEF-42-03 records the fourteen with their measurements and
+ * their owner. **A budget declared while the surface was fenced would have
+ * started at zero and then risen, and a ratchet that goes up is not a ratchet.**
+ */
+export const DOOR_TARGET_DEBT_CEILING = {
+  count: 14,
+  measured: '2026-08-18',
+  by: 'plan 42-04, on a throwaway branch, before the fence came down',
+  decision: 'DEF-42-03',
+};
+
+/**
+ * The fourteen elements on the door that do not declare the 44px minimum.
+ *
+ * ── WHY A DEBT AND NOT A PAYMENT, written out ───────────────────────────────
+ *
+ * **Enlarging a target changes the layout**, and the second half of RESP-05 is
+ * that the scanner's behaviour does not change as a result of the visual work. A
+ * phase that promises to move nothing and then moves fourteen touch targets on a
+ * door — the undo row among them — has changed the surface a person works at an
+ * entrance, under a mandate that said it would not. Fourteen elements are not a
+ * finish: they are the geometry of a safety surface.
+ *
+ * ── THE EXIT THAT IS NOT AVAILABLE ──────────────────────────────────────────
+ *
+ * **Lowering the gate.** This file says it of itself and the sentence is not
+ * decoration: *Fix the ELEMENT, not this gate. Widening an exemption to clear a
+ * red is the tampering T-41-42 names.* No threshold moved to make this list
+ * possible; 44px is still 44px; and not one exemption above was widened by a
+ * character. T-42-11 registers the alternative as a threat by name.
+ *
+ * **A target too small to hit, at a door, is a QUEUE.** At two in the morning,
+ * in the dark, one-handed, whoever misses the tap does not complain — they try
+ * again, and somebody waits. The two smallest in the whole tree are on this list
+ * and they are the pills that say something was NOT recorded, which is the worst
+ * possible place for the smallest thing on a screen.
+ *
+ * ── SHAPE, AND THE FOUR GUARDS ──────────────────────────────────────────────
+ *
+ * `[path, tag, fragment, declares, note]` — exemption 9's shape with `declares`
+ * in place of `token`, because what an entry records is what the element DOES
+ * declare in the vertical, which is what a future plan has to raise. `fragment`
+ * is an attribute and never a line number: a line number drifts on the first
+ * edit above it and a stale one reads exactly like a current one — all fourteen
+ * of these drifted by ~30 lines between the measurement and this commit, which
+ * is the argument made by the tree rather than by a paragraph.
+ *
+ *   · the fragment matching ZERO or TWO OR MORE elements REFUSES (exit 2) —
+ *     `resolveDeclaredElement`'s refusals, shared with exemptions 9 and 10.
+ *     **An entry that stops resolving does not quietly shrink the debt;**
+ *   · an entry whose element now DECLARES the minimum REFUSES — the debt was
+ *     paid and the line leaves in the same commit that paid it. This is the only
+ *     exit an entry has, and it is the direction the ratchet turns;
+ *   · the list growing past `DOOR_TARGET_DEBT_CEILING` REFUSES;
+ *   · **and every other under-floor element still FAILS.** A fifteenth small
+ *     target written onto this surface is not forgiven by the fourteen: it is a
+ *     red on its own line, which is what stops this list becoming a fence with a
+ *     number painted on it.
+ *
+ * The measured sizes are DERIVED, not verified on a device: this gate reads a
+ * class string, never a rendered box, and it says so of itself on every run.
+ * H41-4 — a person on a large touch screen — is still the only thing in this
+ * repository that proves anything renders at 44px, and it is still owed.
+ *
+ * ── WHO OWNS IT ─────────────────────────────────────────────────────────────
+ *
+ * A small non-visual plan of its own, NOT phase 42 — which declared it would not
+ * touch the geometry — and behind the same ordering constraint: the door is
+ * touched after a door pass, not before one.
+ */
+export const DOOR_TARGET_DEBT = [
+  [
+    SCANNER_CLIENT, 'button', 'setSelectedPartyId(party.partyId)',
+    'p-4, no height — the box is the content\'s',
+    'the card that chooses WHICH NIGHT the door is working on. The first thing touched in a shift and the one whose mistake is silent: the wrong night admits nobody and looks like it is working',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'onClick={handleChangeParty}',
+    'no padding, no height — the box is the icon\'s',
+    'the way back to the night selector. Its box is the glyph and nothing else, so it is small by construction rather than by a padding somebody chose',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'setShowScanner((v) => !v)',
+    'py-1.5, 12px body',
+    'the switch that turns the camera ON and OFF. Missing it costs a re-tap, and a re-tap at an entrance costs the person in front of the queue',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'setScanPastEnd(true)',
+    'py-1, 10px body',
+    'SCAN ANYWAY, on the end-of-night warning. It is the override, and an override should not be the hardest thing on the screen to hit',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'onClick={toggleFailedEntries}',
+    'py-0.5, 10px body — about 18px, the smallest in the tree',
+    'the chip that says something COULD NOT BE RECORDED. One of the two smallest interactive elements in the whole product, and it is the row that says the door did not manage to write something down — the worst possible pairing of importance and size',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'onClick={handleRetryBlocked}',
+    'py-0.5, 10px body — about 18px, the smallest in the tree',
+    'the chip for the HELD QUEUE, twin of the one above and the other of the two smallest. Same pairing: the entries that have not reached the server are announced by the tiniest targets on the surface',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'requestReload("manual")',
+    'py-2.5, no height',
+    'the counter row, which RELOADS the attendee list. The staff\'s answer to a list that looks wrong, so its size is the cost of doubting the screen',
+  ],
+  [
+    SCANNER_CLIENT, 'input', 'ref={searchRef}',
+    'py-3, 14px body',
+    'the search field — the road in when the SCAN FAILS. Every path that goes through a camera has this as its fallback, so it is the last thing that should be hard to hit',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'setSearchQuery("")',
+    'no padding, positioned — the box is the icon\'s',
+    'the clear-search control, sitting inside the field above. Its box is the glyph, so it is small for the same structural reason as the back arrow',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'setActiveFilter(tab.key)',
+    'py-2, 12px body',
+    'the three filter tabs. Three adjacent small targets are worse than one, because the miss is not a no-op — it selects the neighbour, and the operator reads a filtered list believing it is another',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'requestReload("band")',
+    'py-2.5, 12px body',
+    'the list freshness band, which reloads on tap. Its whole reason for existing is to be pressed the moment somebody stops trusting the list\'s age',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'onClick={toggleTorch}',
+    'py-2.5, 12px body',
+    'the TORCH. Reached in the dark by definition, and the one control on this surface whose use case guarantees the operator cannot see it well',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'handleUndoCheckIn(record)',
+    'py-2, no height',
+    'a history row — and this one is THE UNDO PATH. It is the only act on the door that reverses another, and both directions of a miss are bad: too small to reach when somebody was admitted by mistake, and adjacent rows are all the same shape',
+  ],
+  [
+    SCANNER_CLIENT, 'button', 'handleGuestCheckIn(a.guestListEntryId!)',
+    'py-2, 14px body',
+    'the guest-list check-in — the manual admission, which is an exception to the gating and therefore a thing that should be deliberate and easy to do right, not fiddly',
+  ],
+];
+
 /**
  * The shapes this gate is known to red on, written down instead of pre-empted —
  * and what happened when the first of them actually arrived.
@@ -1669,7 +1832,7 @@ console.log(
 /* ── Exemption 2's premise, asserted before it forgives anything ────────────── */
 
 const failures = [];
-const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0 };
+const applied = { e1: fenced.size, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0, debt: 0 };
 
 const PRIMITIVE_FILES = new Map();
 for (const [symbol, path, reason] of PRIMITIVE_COMPONENTS) {
@@ -1935,9 +2098,18 @@ console.log('');
 /* ── Exemptions 9 and 10 — declared elements, resolved before the scan ─────── */
 
 /**
- * One resolver for both new lists, because they resolve identically and two
- * copies of a refusal drift apart. The label is passed in so the message names
- * the exemption a reader is looking at, which is the only part that differs.
+ * One resolver for THREE declared lists — exemptions 9 and 10 and the door's
+ * debt — because they resolve identically and three copies of a refusal drift
+ * apart. The label is passed in so the message names the list a reader is
+ * looking at, which is the only part that differs.
+ *
+ * **The label carries its own noun and the helper no longer prints the word
+ * *exemption* for it.** The third caller is a DEBT and not an exemption, and the
+ * distinction is the whole reason that list exists: an exemption says this
+ * element is not to be measured, a debt says it was measured, it failed, and
+ * somebody wrote the failure down with a number that can only fall. A refusal
+ * that called it an exemption would teach the next reader the opposite of what
+ * the list means, in the one message they read while something is wrong.
  *
  * Resolved against the file on disk rather than against the scan's scope: an
  * entry is stale whether or not a converted closure happens to reach its file
@@ -1947,7 +2119,7 @@ console.log('');
 function resolveDeclaredElement(label, path, tag, fragment) {
   if (!existsSync(`${ROOT}/${path}`)) {
     refuse(
-      `exemption ${label} declares an element in ${path}, which is not on disk. A stale\n` +
+      `${label} declares an element in ${path}, which is not on disk. A stale\n` +
         '       exemption silently removes a real element from the measured set — the one\n' +
         '       failure direction that produces a green. Nothing was measured.'
     );
@@ -1956,7 +2128,7 @@ function resolveDeclaredElement(label, path, tag, fragment) {
   const { found, unterminated } = scanElements(path);
   if (unterminated.length > 0) {
     refuse(
-      `${path} has ${unterminated.length} unterminated opening tag(s), so exemption ${label}'s\n` +
+      `${path} has ${unterminated.length} unterminated opening tag(s), so ${label}'s\n` +
         '       declared elements could not be resolved against it. Nothing was measured.'
     );
   }
@@ -1965,7 +2137,7 @@ function resolveDeclaredElement(label, path, tag, fragment) {
 
   if (matches.length === 0) {
     refuse(
-      `exemption ${label} declares <${tag}> in ${path} by the fragment\n` +
+      `${label} declares <${tag}> in ${path} by the fragment\n` +
         `         ${fragment}\n` +
         '       and NOTHING in that file matches it. The entry is stale: it forgives nothing\n' +
         '       while looking like a guarded case, and the element it used to name is now\n' +
@@ -1974,7 +2146,7 @@ function resolveDeclaredElement(label, path, tag, fragment) {
   }
   if (matches.length > 1) {
     refuse(
-      `exemption ${label} declares <${tag}> in ${path} by the fragment\n` +
+      `${label} declares <${tag}> in ${path} by the fragment\n` +
         `         ${fragment}\n` +
         `       and ${matches.length} elements match it (lines ${matches.map((m) => m.line).join(', ')}).\n` +
         '       An ambiguous entry forgives an element nobody named. Narrow the fragment.\n' +
@@ -2001,7 +2173,7 @@ function tokenPresent(text, token) {
 const UNREADABLE_ENTRIES = [];
 
 for (const [path, tag, fragment, token, reason] of UNREADABLE_BOX_ELEMENTS) {
-  const match = resolveDeclaredElement('9', path, tag, fragment);
+  const match = resolveDeclaredElement('exemption 9', path, tag, fragment);
 
   /*
    * The element must actually carry the construction this entry rests on.
@@ -2045,7 +2217,7 @@ function unreadableEntry(relPath, el) {
 const BELOW_FLOOR_ENTRIES = [];
 
 for (const [path, tag, fragment, act, reason] of BELOW_FLOOR_BY_DECISION_ELEMENTS) {
-  const match = resolveDeclaredElement('10', path, tag, fragment);
+  const match = resolveDeclaredElement('exemption 10', path, tag, fragment);
 
   /*
    * The abuse this list invites is parking an element here and quietly raising
@@ -2075,6 +2247,76 @@ function belowFloorEntry(relPath, el) {
     ) ?? null
   );
 }
+
+/* ── The door's debt, resolved against the tree BEFORE anything is measured ─── */
+
+/*
+ * The ceiling first, because a list that has grown past it must not be read at
+ * all — a refusal that fires after the entries resolve would let a fifteenth
+ * entry print itself as though it were supervised.
+ */
+if (DOOR_TARGET_DEBT.length > DOOR_TARGET_DEBT_CEILING.count) {
+  refuse(
+    `DOOR_TARGET_DEBT declares ${DOOR_TARGET_DEBT.length} entries against a frozen ceiling of\n` +
+      `       ${DOOR_TARGET_DEBT_CEILING.count}, measured ${DOOR_TARGET_DEBT_CEILING.measured} by ${DOOR_TARGET_DEBT_CEILING.by}\n` +
+      `       (${DOOR_TARGET_DEBT_CEILING.decision}).\n\n` +
+      '       THIS DEBT ONLY GOES DOWN. An entry leaves when somebody enlarges the element it\n' +
+      '       names; it does not arrive because a new small target was written onto the door and\n' +
+      '       somebody needed the gate green. A ratchet that can be let out one tooth is not a\n' +
+      '       ratchet, and a debt that rises is an exemption wearing a number.\n\n' +
+      '       If the ceiling genuinely has to move, move THIS CONSTANT, with a date and a\n' +
+      '       decision on it — a visible act, not one more line in a list. Nothing was measured.'
+  );
+}
+
+const DOOR_DEBT_ENTRIES = [];
+
+for (const [path, tag, fragment, declares, note] of DOOR_TARGET_DEBT) {
+  const match = resolveDeclaredElement("the door's DEBT", path, tag, fragment);
+
+  /*
+   * The only exit an entry has, and it is the direction the ratchet turns: the
+   * element was enlarged, so the line leaves in the SAME COMMIT that enlarged
+   * it. Keeping it would record a debt against a control that no longer owes
+   * anything — stale in the direction that makes a paid debt look open, and a
+   * number nobody can trust in either direction is not a number.
+   */
+  if (readHeights(match.text).verdict === 'pass') {
+    refuse(
+      `DOOR_TARGET_DEBT records ${path}:${match.line} as below the ${REQUIRED_PX}px floor, and that\n` +
+        '       element now DECLARES the floor. The debt was paid and its line did not leave with\n' +
+        '       the commit that paid it. Delete the entry rather than keeping it: a debt list that\n' +
+        '       counts settled items is a number that overstates itself, and the next reader has no\n' +
+        '       way to tell which fourteen are real. Nothing was measured.'
+    );
+  }
+
+  DOOR_DEBT_ENTRIES.push({ path, tag, fragment, declares, note, line: match.line, applied: 0 });
+}
+
+function doorDebtEntry(relPath, el) {
+  return (
+    DOOR_DEBT_ENTRIES.find(
+      (e) => e.path === relPath && e.tag === el.name && el.text.includes(e.fragment)
+    ) ?? null
+  );
+}
+
+console.log(
+  `  the door's touch-target DEBT — ${DOOR_DEBT_ENTRIES.length} element(s) below the ${REQUIRED_PX}px floor,\n` +
+    `  ceiling ${DOOR_TARGET_DEBT_CEILING.count} frozen ${DOOR_TARGET_DEBT_CEILING.measured} (${DOOR_TARGET_DEBT_CEILING.decision}):\n`
+);
+for (const e of DOOR_DEBT_ENTRIES) {
+  console.log(`    ${e.path}:${e.line}  <${e.tag}>   declares ${e.declares}`);
+  console.log(`       ${e.note}`);
+}
+console.log(
+  '\n    NOT an exemption: a DEBT, and it only goes down. An entry leaves when the element\n' +
+    '    is enlarged, and an entry whose element already declares the floor REFUSES. A\n' +
+    '    FIFTEENTH small target on this surface is NOT forgiven by these fourteen — it\n' +
+    '    fails on its own line. The exit that is not available is lowering the gate: fix\n' +
+    '    the ELEMENT, never this file. A target too small to hit, at a door, is a queue.\n'
+);
 
 console.log(
   `  exemption 9 — ${UNREADABLE_ENTRIES.length} element(s) whose box is decided outside any height utility:\n`
@@ -2106,7 +2348,7 @@ for (const rel of [...inScope].sort()) {
   const isPrimitiveFile = PRIMITIVE_FILES.has(rel);
   const importsDataTable = [...imports.values()].includes(SHRINK_REQUIRES_IMPORT);
 
-  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0, skipped: 0 };
+  const row = { path: rel, found: found.length, measured: 0, passed: 0, e2a: 0, e2b: 0, e3: 0, e4: 0, e5: 0, e6: 0, e7: 0, e8: 0, e9: 0, e10: 0, debt: 0, skipped: 0 };
 
   for (const el of found) {
     // A component call site: exemption 2b or 6, and only when the import agrees.
@@ -2227,6 +2469,22 @@ for (const rel of [...inScope].sort()) {
       continue;
     }
 
+    /*
+     * The door's declared DEBT — and note where this sits: BELOW the
+     * measurement, not above it. These fourteen are measured like every other
+     * element and they FAIL the measurement; what a declared entry changes is
+     * that the failure is a debt somebody wrote down rather than a red nobody
+     * chose. An element skipped before `readHeights` would be an exemption, and
+     * this is deliberately not one.
+     */
+    const debt = doorDebtEntry(rel, el);
+    if (debt !== null) {
+      debt.applied += 1;
+      row.debt += 1;
+      applied.debt += 1;
+      continue;
+    }
+
     failures.push({
       path: rel,
       line: el.line,
@@ -2333,7 +2591,30 @@ console.log(`    7  an input of type hidden — NOT a target ${applied.e7}`);
 console.log(`    8  a minimum living in a module constant   ${applied.e8}`);
 console.log(`    9  a box decided outside any height class ${applied.e9}`);
 console.log(`   10  BELOW the floor by decision            ${applied.e10}`);
+console.log(`    —  the door's DEBT (not an exemption)     ${applied.debt}   of ${DOOR_TARGET_DEBT_CEILING.count} declared, ceiling ${DOOR_TARGET_DEBT_CEILING.count}`);
 console.log('');
+
+/*
+ * An entry that resolved onto a real element and was then never reached by the
+ * scan is the same defect `EXEMPT_SHELLS` refuses on in the sibling gate: it
+ * looks supervised, it forgives nothing, and the debt it counts is a number
+ * about something the loop did not visit. It can happen without anybody editing
+ * this list — an earlier exemption starting to claim the element, or the file
+ * leaving every converted closure — which is exactly why it is checked rather
+ * than assumed.
+ */
+const debtUnapplied = DOOR_DEBT_ENTRIES.filter((e) => e.applied === 0);
+if (debtUnapplied.length > 0) {
+  refuse(
+    `${debtUnapplied.length} DOOR_TARGET_DEBT entr(y/ies) resolved onto a real element and were then\n` +
+      '       never reached by the scan:\n\n       ' +
+      debtUnapplied.map((e) => `${e.path}:${e.line}  <${e.tag}>  ${e.fragment}`).join('\n       ') +
+      '\n\n       Either an exemption above now claims that element — in which case the debt is\n' +
+      '       double-counting it — or the file left every converted closure and this debt is\n' +
+      '       being reported about a surface nobody measures. Both make the number wrong in the\n' +
+      '       direction a reader cannot see. Nothing was measured.'
+  );
+}
 
 /*
  * Seven and eight are the 2026-08-14 contract edit, and a green must state what
@@ -2532,10 +2813,13 @@ if (failures.length > 0) {
 }
 
 console.log('  PASSED — every measured element declares an unprefixed minimum of at least');
-console.log(`  ${REQUIRED_PX}px, or matches one of the ten exemptions printed above.\n`);
+console.log(`  ${REQUIRED_PX}px, or matches one of the ten exemptions printed above, or is one of`);
+console.log("  the door's declared DEBT.\n");
 console.log('  This is NOT a statement that anything renders at 44px. H41-4 is.');
 console.log(
-  `  And it is NOT a statement that every target is ${REQUIRED_PX}px: ${BELOW_FLOOR_ENTRIES.length} are deliberately under it,\n` +
-    '  under exemption 10, and that is a decision this green carries rather than hides.\n'
+  `  And it is NOT a statement that every target is ${REQUIRED_PX}px. ${BELOW_FLOOR_ENTRIES.length} are deliberately under\n` +
+    `  it under exemption 10, and ${DOOR_DEBT_ENTRIES.length} MORE — every one of them on the door — are under it\n` +
+    '  and NOT by decision: they are a debt this green carries openly rather than hides,\n' +
+    '  and the number can only go down. A target too small to hit, at a door, is a queue.\n'
 );
 process.exit(0);

@@ -197,48 +197,47 @@ export const SPINE = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
- * PHASE_42_PATHS — excluded by path, because they belong to another phase
+ * PHASE_42_PATHS — the fence that stood over the door, and came down
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
- * Paths this phase does not open for anything beyond a read.
+ * **EMPTY SINCE 2026-08-18, and the argument that filled it is gone with it.**
  *
- * The door and the scanner are **Phase 42's**, which takes colour, contrast and
- * type only and does not touch behaviour. The exclusion is by path and not by
- * judgement, because the failure mode is a gate quietly widening its own scope
- * one convenient file at a time.
+ * Three globs stood here — the scanner surface and its route, the scanner's
+ * components, and the door's second address — and the docblock above them
+ * argued that Phase 42 would decide what the door looks like and that no other
+ * phase should open those files. **That argument is spent.** Phase 42 did the
+ * work; the door is converted; and one sentence of that docblock had already
+ * stopped being true, because it described a thin navigation wrapper beside
+ * `AppNav` that plan 42-07 deleted. A fence whose text names a file the tree no
+ * longer has is a fence nobody can check.
  *
- * **This exclusion cost nothing, and that was a built thing rather than a lucky
- * one.** While the fence stood, a thin wrapper beside `AppNav` existed
- * precisely so the door kept today's navigation layout as the primitive behind
- * it gained a second tier (D-41-21). Without it, excluding the door would have
- * meant either leaving it on an unconverted component or putting a 224px column
- * on a screen someone reads at an entrance — a change to the door's surface,
- * delivered by a phase whose own fence says the door is not its business.
+ * **What replaced it is not silence: it is measurement.** The door's two
+ * addresses are declared in `CONVERTED` below — `/admin/scanner` and `/door` —
+ * so five checks that had never opened a line of that surface now walk it like
+ * any other. A fence says *nobody measured this*; a `CONVERTED` entry says
+ * *somebody did, and here is what whole turned out to mean*. The two are not
+ * interchangeable, and the swap is the whole content of plan 42-11.
  *
- * That wrapper is **gone**: Phase 42 deleted it and the door now mounts
- * `AppNav` with `form="phone"` directly (D-42-03), which is the same layout by
- * a shorter road. The mechanism is no longer a file, it is a prop — and the
- * fence it protected is still here, because opening it is another plan's work.
+ * **The constant stays exported and stays empty**, rather than being deleted.
+ * Three consumers read it — `verify-conversion.mjs` refuses if it is not an
+ * array, and `verify-dialogs.mjs` and `verify-touch-targets.mjs` each compare
+ * their own local fence against this one and REFUSE on a drift. Deleting the
+ * export would turn a compared pair into an unchecked one, which is the failure
+ * direction that prints a tick.
  *
- * Shape: `[glob, reason]`. Consumers match by prefix-with-wildcard, and a
- * consumer that cannot express a glob should match the literal directory rather
- * than approximate the pattern.
+ * Shape, unchanged for whoever needs it next: `[glob, reason]`. Consumers match
+ * by prefix-with-wildcard, and a consumer that cannot express a glob should
+ * match the literal directory rather than approximate the pattern.
+ *
+ * **And what an empty fence does NOT have.** `PENDING_SURFACES` below carries a
+ * refusal this list deliberately does not: a glob matching no `page.tsx` on
+ * disk is exit 2 there. The asymmetry is written out in that list's own
+ * docblock and it is still correct — this fence dissolves by the hand of the
+ * plan written to dissolve it, which has now happened, and an empty list cannot
+ * go stale.
  */
-export const PHASE_42_PATHS = [
-  [
-    "src/app/(admin)/**/scanner/**",
-    "the scanner surface and its route — Phase 42 decides what the door looks like above phone width, and it is its decision and not this phase's",
-  ],
-  [
-    "src/components/scanner/**",
-    "the scanner's components — the check-in path, which is read at an entrance in the dark with one hand and has an offline behaviour no visual phase should disturb",
-  ],
-  [
-    "src/app/(admin)/door/**",
-    "the door's second address — a thin page over the same surface (STAFF-04); excluding one address and not the other would have fenced half a thing",
-  ],
-];
+export const PHASE_42_PATHS = [];
 
 /* ────────────────────────────────────────────────────────────────────────────
  * PENDING_SURFACES — surfaces another phase built and no phase has measured
@@ -1011,6 +1010,54 @@ export const CONVERTED = [
   [
     "/events/[slug]", "src/app/(public)/events/[slug]/page.tsx", "default",
     "plans 41.2-15 … 41.2-18 — whole, and 'whole' here is the route file (41.2-15, knot 2), the secret-venue hint dialog (41.2-16, knot 3), the three money satellites (41.2-17) and four more satellites plus the placeholder (41.2-18); the shared money core beneath it was converted in wave 5 as spine and is not claimed here. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred, because this surface mounts the responsive navigation. THE NAVIGATION SENTENCE: the responsive form is mounted DIRECTLY and the tablet-tier clearance declared in the same commit — the TWELFTH of twelve — the token byte-identical by checksum to the specimen at src/app/(public)/gallery/page.tsx:110. THE CAUTION, and this one is the heaviest in the phase, because this is THE ONE PAGE IN THE PRODUCT WHERE MONEY AND A SECRET ADDRESS MEET. Every venue-critical property was counted AFTER the diff, not reasoned about: (1) the venue chain is still THREE BRANCHES AND AN ELSE-NULL, tests identical and in order, the guard byte-identical including indentation — the body was deliberately left two levels shallower than its new wrappers so that claim carries no whitespace qualifier; (2) the reveal test is still WRITTEN POSITIVELY and still carries the comment that explains why, because `undefined !== null` is TRUE and the negated form plus a dropped column opens every secret night silently; (3) the render mode is still DECLARED and not derived — one occurrence before, one after; (4) this route still exports NO social-preview metadata — zero occurrences before and after — and THE ABSENCE IS A DECISION (T-37-25), because a preview card carrying a secret address is a publication; (5) the night select's columns are unchanged as a MULTISET over comment-stripped source, 22 tokens and 21 distinct, corroborated by a raw second instrument agreeing in both states, with the qualified embed hint kept WHOLE as one token — unqualified it answers an ambiguity error and FAILS SILENTLY, rendering the page as though the night had no parties at all. THE COUNT '17' IS A DRIFTED FIGURE and is recorded rather than quietly satisfied (F-41.2-15-01): the plan and the context both said seventeen, the tree says 18 top-level items / 22 tokens / 21 distinct, and the MULTISET is the assertion while the number only describes it. The visibility function still has SEVEN ARMS AND TWO VERDICTS, still ANDed at the render site so the narrower always wins. Every satellite mount conditional and every prop is byte-identical, and NOT DRAWING A SATELLITE WAS NEVER THE GUARD — this conversion did not make it one. The hint dialog reached the platform's modal — Escape, focus trap, inert background — WITHOUT ONE CONDITIONAL LINE CHANGING, its three unlock branches still three and its deliberate two-bullet asymmetry still asymmetric; its two roads in became chips rather than buttons carrying an address, because the button ladder's link branch renders a bare anchor and would have lost client navigation, prefetching and the build-time address check silently. On the money satellites every validation attribute is proved unchanged as a SORTED MULTISET over comment-stripped source rather than by anybody reading a diff, and the purchase resumption's conditions are absent from the diff entirely. The upload surface still does not name the bucket it must never name; the tree's LAST use of the retired breakpoint tier was migrated by copying the analog's RULE rather than its literal string; and the share control's exit enumeration was rebuilt by reading the code, its payload proved byte-identical by checksum. RECORDED AND NOT REPAIRED: a seventh money-path failure — a reduction applied before signing up is carried INTO the stored intent and never carried OUT of it. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
+  ],
+
+  /* ──────────────────────────────────────────────────────────────────────────
+   * PHASE 42 — THE DOOR, at both of its addresses.
+   *
+   * Converted by plans 42-06 … 42-10 and declared here by 42-11, the phase's
+   * single gate editor (D-41.1-22, applied again): a shared list is one file
+   * every plan in a wave would want to edit, so five plans reported and one
+   * plan writes. Every reason below is that work reported, joined into the one
+   * string this list's shape requires.
+   *
+   * ── WHY THESE TWO ENTRIES AND THE FENCE ARE ONE COMMIT ────────────────────
+   *
+   * Until 2026-08-18 both pages sat behind `PHASE_42_PATHS` above, and check F
+   * counted them in a bucket of their own. With the fence gone and no entry
+   * here, two `page.tsx` files go UNACCOUNTED; with an entry here and the fence
+   * still standing, the census counts the same page twice. Neither order is a
+   * state this tree may pass through, so the fence empties and these two lines
+   * arrive together.
+   *
+   * ── BOTH ARE `default`, AND BOTH OTHER WIDTHS ARE UNAVAILABLE ─────────────
+   *
+   * Neither route is on §4's closed wide list, so `default` is the answer and
+   * not a fallback — the same answer thirty-four other declared surfaces give.
+   * `focus` is UNAVAILABLE rather than deferred: check E fails any surface
+   * declaring it while mounting a navigation, and this surface mounts one,
+   * locked to its phone form (D-42-03). `wide` would mean adding two routes to
+   * a CLOSED list, which is a decision nobody took and not a default anybody
+   * may reach for.
+   *
+   * ── THE TWO ENTRIES ARE TWO, AND THAT IS THE POINT ────────────────────────
+   *
+   * The door has two addresses on purpose (D-39-01, D-39-02): `/door`, because
+   * in this project `admin` in a URL is an address and not an authorisation and
+   * the person working the door is not an administrator; and `/admin/scanner`,
+   * served permanently and as a REAL PAGE, never a redirect, because a redirect
+   * needs a network the door is designed not to have. Declaring one and not the
+   * other would declare half a thing — the same argument the fence made when it
+   * fenced both.
+   * ────────────────────────────────────────────────────────────────────────── */
+
+  [
+    "/admin/scanner", "src/app/(admin)/admin/scanner/page.tsx", "default",
+    "plans 42-06 … 42-10 — whole, and 'whole' here is TWENTY files walked and FOUR carrying markup: the route file, the access guard that mounts the navigation, the check-in client, and the accept/refuse/already-recorded flash. The other sixteen are libraries with no class attribute in them. No loading, error or not-found file exists beside the route — listed, not assumed. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred, because this surface mounts a navigation and check E fails any focus surface that does. THE NAVIGATION SENTENCE, and it is the one surface in the product that reads differently from the other twelve: the navigation is mounted LOCKED TO ITS PHONE FORM, so the door keeps the bar at every width and never receives the leading column — the tablet-tier clearance is therefore ABSENT here BY DECISION (D-42-03), and check E's pairing counts twelve declaring files against twelve mounting the responsive form with this surface in neither set. THE CAUTION, and its formula is NOT the one every entry above carries, because that formula is about queries and columns and money and this surface is about a DOOR: at two in the morning, in the dark, one-handed, in front of a queue, with the radio off. So the assertion is the one a reviewer can hold against the diff HERE: no outcome changed — the three the scanner can say are still three, still the same type, still reached from the same call sites; no dwell changed; no haptic changed, nor the outcome-to-haptic mapping; no queue shape or store version changed; no undo path changed; no torch behaviour changed; no auto-return changed; and the decode configuration is BYTE-IDENTICAL — frame rate, decoded region and camera facing are three literals this phase did not touch, because changing them would be a behaviour change dressed as a layout commit. All of it is diffable rather than assertable: the mechanical record in 42-BASELINE.md is re-captured after this phase and compared block by block, and the only content differences it accepts are the two outcome fills and the scanned-file count. WHAT STAYED RAW, so a reader of this list finds the derogation without opening the gate: the accept green and the darkened refusal red are DECLARED DEROGATIONS in check A, per utility and per line, because the semantic vocabulary has NO accept colour — phase 40 declined to invent one — and because the refusal deliberately does not take the critical semantic, which sits at 2.2 from the colour that everywhere else in this product means press here. THE MAXIMA ARE THE SURFACE'S OWN AND SAID SO: this page does not import the shell and is declared FULL-BLEED for it, carrying 1024px on the surface container and 384px on the viewfinder — both of them two of the shell's own three, never a fourth number. RECORDED AND NOT REPAIRED: fourteen touch targets below the floor (DEF-42-03, a numbered debt in verify-touch-targets), three control boundaries at 2.05:1 against a 3:1 floor (DEF-42-06), and the door's counters left proportional rather than tabular (DEF-42-02). AND WHAT NO GREEN HERE SAYS: criterion 3 — every scanner behaviour unchanged from before the conversion — is PERMANENTLY WITHOUT A TERM OF COMPARISON (DEF-42-04), because the door pass on the unconverted scanner was never run and its subject no longer exists. This entry is a written claim about a diff; that the door works at an entrance is a person's observation and it is still owed",
+  ],
+  [
+    "/door", "src/app/(admin)/door/page.tsx", "default",
+    "plans 42-06 … 42-10 — the door's permanent address (STAFF-04, D-39-01), whole, and 'whole' here is the SAME twenty files as /admin/scanner with ONE substitution: this route file in place of that one. Nineteen of the twenty are shared, because both addresses render the same guard and the same client — this page is nine live lines and a mount. It is declared SEPARATELY rather than folded into its twin for the reason the fence gave when it fenced both: check D reads the PAGE FILE, check F counts page files on disk, and a surface reached by two routes that declares only one leaves the other unaccounted. Both addresses are opened by ONE capability entry and never by a second predicate, and that is unchanged by this phase. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE for the same check-E reason as its twin. THE CAUTION IS THE SAME CAUTION, and it is repeated in full rather than cross-referenced, because a reason that lives somewhere else is a reason that stops being true unnoticed: no outcome changed; no dwell changed; no haptic changed, nor the outcome-to-haptic mapping; no queue shape or store version changed; no undo path changed; no torch behaviour changed; no auto-return changed; and the decode configuration is BYTE-IDENTICAL — frame rate, decoded region and camera facing untouched. Diffed against 42-BASELINE.md block by block rather than asserted. WHAT STAYED RAW: the accept green and the darkened refusal red, both DECLARED DEROGATIONS in check A per utility and per line — the semantic set has no accept colour, and the refusal declines the critical semantic because it collides with the accent. THE MAXIMA ARE THE SURFACE'S OWN: full-bleed by construction, 1024px on the surface and 384px on the viewfinder, both drawn from the shell's own three. RECORDED AND NOT REPAIRED: DEF-42-02, DEF-42-03 and DEF-42-06, none of them this phase's to close. AND WHAT NO GREEN HERE SAYS: criterion 3 has no term of comparison and cannot acquire one (DEF-42-04) — a green on this line says the files agree with the gates, never that the door works in front of a queue",
   ],
 ];
 
