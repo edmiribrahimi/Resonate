@@ -146,31 +146,71 @@ rompe deliberatamente la convenzione dei cinque**, e il motivo e' misurato.
   in the same commit, or the entry is a claim about a file that does not
   exist»*.
 
-### D-42-04 — Linea di base meccanica prima della conversione; una sola serata
+### D-42-04 — La conversione non si spedisce prima della prima porta reale
 
-**Il criterio 3 come e' scritto nel roadmap non e' soddisfacibile alla lettera,
-e questo va dichiarato invece di farlo passare.** Dice *«verified by running the
-door pass again on a device»*, ma **non esiste una prima esecuzione**:
-`39-VERIFICATION.md` e' `human_needed`, e `39-DOOR-PASS.md` §8 e' rimandato per
-progetto alla serata di fine v1.5 (D-39-07), insieme al lotto della fase 38.
+**Questa decisione e' stata scritta sbagliata una prima volta, il 2026-08-18, e
+qui e' corretta prima che un piano la ereditasse.** La prima stesura diceva:
+reperto meccanico, conversione subito, un solo door pass dopo. **Contraddiceva un
+vincolo esplicito del roadmap**, elencato sotto *Ordering Constraints* con la
+premessa *«not preferences — each one has a failure mode behind it»*:
 
-Come si chiude davvero:
+> *The scanner is converted last (42), and only after the door's behavioural
+> corrections (31, 39) have shipped and been used at a real night.*
 
-1. **Prima della conversione**, un reperto meccanico datato sul codice attuale:
-   i tre `delay` di `FLASH_STATES`, la sequenza degli aptici per esito, la forma
-   della coda offline, i tre esiti su entrambe le strade (rete accesa e spenta),
-   il manifest delle route. Committato come evidenza.
-2. **Dopo la conversione**, lo stesso reperto rifatto e confrontato riga per
-   riga. Una differenza e' un difetto della conversione, non un dettaglio.
-3. **La serata di fine v1.5 esegue UN door pass**, sul codice convertito, e
-   chiude in un colpo il lotto di 38, 39 e la meta' umana della 42. Il criterio 3
-   si chiude come *reperto meccanico invariato + door pass sul convertito*, e
-   il VERIFICATION lo scrive in quei termini.
-4. **Si spedisce in un giorno senza serata e la prima richiesta la fa chi
-   spedisce** — regola §0.6 di `39-DOOR-PASS.md`, gia' scritta e gia' pagata.
+**Il vincolo non e' soddisfatto oggi.** Verificato il 2026-08-18 contro il
+calendario di produzione (che vive in `docs/`, ignorato — **la data non si
+scrive qui**, vedi sotto): la fase 39 e' stata spedita l'11 agosto 2026 e
+**nessuna porta reale ha ancora girato su quelle correzioni**. L'unica serata
+andata in onda dell'intero calendario resta `Resonate 002`, che e' precedente.
+La prossima porta reale e' a calendario e **non e' ancora annunciata**.
 
-Non c'e' conflitto con il lotto 38/39: quelle procedure misurano realtime e
-offline, e questa fase non tocca il comportamento.
+**Il modo di fallire che il vincolo previene.** Se la conversione arriva prima
+di quella serata, la prima porta reale gira contemporaneamente su correzioni di
+comportamento mai usate **e** su una superficie ridipinta. Quando qualcosa va
+storto alle due di notte davanti a una fila, nessuno puo' dire quale delle due
+l'ha causato — e non c'e' error tracking a raccogliere il pezzo. Il costo del
+vincolo e' un'attesa; il costo di violarlo e' un'indagine impossibile su un
+turno alla porta.
+
+**Cosa segue, in ordine — ancorato a eventi, mai a date:**
+
+1. **Ora — wave 0, e non tocca nessun file dello scanner.** La riparazione di
+   DEF-45-01 (D-42-06) e l'apertura del recinto (D-42-07). Si puo' spedire
+   subito: rende misuranti due gate che oggi non misurano nulla.
+2. **Ora — il reperto meccanico sul codice NON convertito.** I tre `delay` di
+   `FLASH_STATES`, la sequenza degli aptici per esito, la forma della coda
+   offline, i tre esiti su entrambe le strade, il manifest delle route.
+   Committato come evidenza datata. **Serve comunque**, ed e' l'unica cosa che
+   rende la parola *invariato* misurabile su un file di 3449 righe.
+3. **Alla prima porta reale — il door pass sullo scanner NON convertito**, che
+   chiude il lotto umano delle fasi 38 e 39 (`39-DOOR-PASS.md` §8, D-39-07).
+   **Questa e' la linea di base del criterio 3**, ed e' la prima che questo
+   progetto avra' mai.
+4. **Dopo quella serata — le onde di conversione**, spedite in un giorno **senza
+   serata**, con la prima richiesta fatta da chi spedisce (`39-DOOR-PASS.md`
+   §0.6). Il reperto meccanico si rifa' e si confronta riga per riga: una
+   differenza e' un difetto della conversione, non un dettaglio.
+5. **Alla porta successiva — il door pass sul convertito**, e il criterio 3 si
+   chiude nei suoi termini letterali: *rieseguito*, con un prima e un dopo.
+
+**Conseguenza sulla pianificazione, ed e' il motivo per cui si pianifica lo
+stesso oggi:** i piani si scrivono adesso e restano pronti, cosi' la conversione
+parte il giorno dopo la serata invece di cominciare allora. **Ma l'esecuzione
+delle onde di conversione e' bloccata fino a quella porta**, e il piano deve
+dirlo, non lasciarlo dedurre.
+
+**La data non sta in questo documento, e non e' una svista.** `.planning/` e'
+tracciato su un repository **pubblico**, e la serata in questione **non e'
+ancora annunciata**: il suo listing esce due giorni prima. Scrivere qui la data,
+la sede o la sigla la pubblicherebbe, e una pubblicazione non si annulla
+(`ai-engineering.md`, gate *la pianificazione e' pubblica*; `venue-secrecy.md`
+applicato al materiale). Chi esegue legge la data **dal calendario in `docs/`**,
+che e' ignorato. *Una prima stesura di questo paragrafo la conteneva ed e' stata
+tolta prima del commit — registrato qui perche' e' un errore facile da rifare.*
+
+**Se il proprietario decide di spedire prima**, e' una violazione consapevole di
+un vincolo d'ordine dichiarato: si registra come tale, con la sua data e la sua
+ragione, non si fa passare come una scelta di pianificazione.
 
 ### D-42-05 — Il gate della leggibilita' e' uno script, non un'opinione
 
