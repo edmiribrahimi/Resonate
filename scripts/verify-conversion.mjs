@@ -1179,6 +1179,76 @@ export const TYPOGRAPHIC_MEASURES = [
 ];
 
 /**
+ * ── FULL-BLEED BY CONSTRUCTION — check D's escape for a surface that cannot
+ * ── take the shell without changing what it is ──────────────────────────────
+ *
+ * Shape: `[route, reason]`, resolved against `CONVERTED`. It forgives **one
+ * thing and nothing else**: the missing shell import. Read that sentence again
+ * before adding a line, because the two paragraphs after it are the whole of
+ * what this list is not.
+ *
+ * ── The narrow argument it exists to carry ──────────────────────────────────
+ *
+ * A full-screen safety surface. Its verdict covers the viewport by design, its
+ * header is sticky at the top of the device, and it is worked one-handed at an
+ * entrance, at night, with a queue behind the person in front. Wrapping it in
+ * the shell would add the shell's outer padding, its top inset and its
+ * navigation inset, and would nest a full-height root inside another one — **a
+ * change to the surface, delivered by a phase that said it would only change
+ * colour, contrast and type**. The two roads not taken are written out in
+ * `42-MAPPING.md` §11.3 with their costs, and the road that was taken is this
+ * one because it is the only one that leaves the surface alone.
+ *
+ * ── THIS IS NOT PERMISSION TO WRITE A MAXIMUM WHEREVER IT IS CONVENIENT ─────
+ *
+ * An entry means the surface takes responsibility for **its own container
+ * maximum**, and that maximum must be one of the three the shell declares —
+ * `DECLARED_MAXIMA`, the same three, **not a fourth number invented for one
+ * page**. §4 has three tiers; a fourth maximum is a fourth tier and editing the
+ * contract comes first.
+ *
+ * **And that last rule is NOT machine-checked here, which is said out loud
+ * rather than implied.** Check D reads the page file only, and it does so on
+ * purpose: measured across `src/` on 2026-08-18, the shared closure legitimately
+ * carries widths that are not tiers at all — a dialog's own two sizes, a toast's
+ * column, an image told not to overflow its box. A closure-wide assertion would
+ * redden a full-bleed route for widths that are not its own, which is the shape
+ * of red this phase family has already learned nobody reads twice. So the number
+ * is checked **by the person writing the commit**, against `DECLARED_MAXIMA`
+ * above, and this paragraph is where they meet the rule.
+ *
+ * ── What an entry does NOT do ───────────────────────────────────────────────
+ *
+ * Check D's other assertions stay exactly as they were. A declared page still
+ * may not write a maximum of its own — `pagesWithOwnMaximum` reads a full-bleed
+ * page like any other — the shell must still declare §4's three and only those,
+ * and the declared width must still agree with §4's closed lists. An entry here
+ * says *this page does not import the shell, and that is the decision*; it says
+ * nothing about anything else on the page.
+ *
+ * ── Why the key is the ROUTE ────────────────────────────────────────────────
+ *
+ * So the entry **dissolves the day that route takes the shell**. Two refusals,
+ * both exit 2:
+ *
+ *   · a route no `CONVERTED` surface declares — it forgives nothing today and
+ *     would begin forgiving silently the day that route is declared, which is a
+ *     guard nobody wrote;
+ *   · a route whose page **does** import the shell — stale, and a stale escape
+ *     reads exactly like a live one.
+ *
+ * ── It starts EMPTY ─────────────────────────────────────────────────────────
+ *
+ * For the reason `PALETTE_DEROGATIONS` starts empty and `TYPOGRAPHIC_MEASURES`
+ * once did: an empty escape forgives nothing, and D-41-16 wants the mechanism
+ * built before the run that would need it — *an exemption discovered on a red
+ * run is an exemption nobody trusts*. The entries arrive in the same commit as
+ * the `CONVERTED` declarations they belong to; either order alone is a red or a
+ * refusal on a correct tree.
+ */
+export const FULL_BLEED_SURFACES = [];
+
+/**
  * The two modules through which a navigation reaches a surface — check E2.
  *
  * They are two rather than one, and the reason is measured rather than
@@ -3380,9 +3450,30 @@ const measuresOnUndeclaredPage = measureUsage.filter((e) => !declaredPageFiles.h
 
 const measuresApplied = [];
 
+/**
+ * The declared full-bleed surfaces, resolved against `CONVERTED` BEFORE any
+ * verdict prints. `hits` counts the declared surfaces an entry actually
+ * forgave, which is what the staleness refusal is read off: an entry whose page
+ * imports the shell forgave nothing and must say so loudly.
+ */
+const fullBleedUsage = FULL_BLEED_SURFACES.map(([route, reason]) => ({ route, reason, hits: 0 }));
+const declaredRoutes = new Set(surfaces.map((s) => s.route));
+const fullBleedOnUndeclaredRoute = fullBleedUsage.filter((e) => !declaredRoutes.has(e.route));
+const fullBleedApplied = [];
+
 for (const s of surfaces) {
   const importsShell = importedSymbolsFrom(s.pageFile, SHELL_FILE).has('PageShell');
-  if (!importsShell) pagesWithoutShell.push(s);
+  if (!importsShell) {
+    // Forgiven ONLY by a line naming this route. Everything else check D asserts
+    // about this page is asserted below exactly as it was.
+    const entry = fullBleedUsage.find((e) => e.route === s.route);
+    if (entry) {
+      entry.hits += 1;
+      fullBleedApplied.push({ route: s.route, pageFile: s.pageFile, reason: entry.reason });
+    } else {
+      pagesWithoutShell.push(s);
+    }
+  }
 
   liveLines(s.pageFile).forEach((line, i) => {
     MAX_WIDTH_RE.lastIndex = 0;
@@ -3437,6 +3528,29 @@ if (measuresOnUndeclaredPage.length > 0 || measuresStale.length > 0 || measuresA
   );
 }
 
+const fullBleedStale = fullBleedUsage.filter((e) => declaredRoutes.has(e.route) && e.hits === 0);
+
+if (fullBleedOnUndeclaredRoute.length > 0 || fullBleedStale.length > 0) {
+  const lines = [];
+  for (const e of fullBleedOnUndeclaredRoute) {
+    lines.push(`       ${e.route}   — no CONVERTED surface declares this route`);
+  }
+  for (const e of fullBleedStale) {
+    lines.push(`       ${e.route}   — that page DOES import the shell: stale`);
+  }
+  refuse(
+    `${lines.length} FULL_BLEED_SURFACES entr(y/ies) could not be resolved:\n\n` +
+      lines.join('\n') +
+      '\n\n       A surface is full-bleed BY CONSTRUCTION or it is not, and the escape is keyed on\n' +
+      '       the route so that it dissolves the day that route takes the shell. An entry that\n' +
+      '       resolves to nothing is not a smaller escape — it is one that looks supervised and\n' +
+      '       forgives nothing, or one that will begin forgiving on a day nobody chose.\n\n' +
+      '       This is a REFUSAL and not a failure: the tree may well be right, and nothing was\n' +
+      '       measured about it. Either the entry leaves this list in the same commit as the\n' +
+      '       shell import it forgave, or the shell import comes back.'
+  );
+}
+
 console.log('  check D — the container (G4):\n');
 console.log(`      maxima the shell declares : ${[...shellMaxima].sort().join(' · ') || '(none)'}`);
 console.log(`      §4 wide list  : ${WIDE_ROUTES.length} route(s), closed`);
@@ -3444,7 +3558,11 @@ console.log(`      §4 focus list : ${FOCUS_ROUTES.length} route(s), closed`);
 console.log(`      surfaces whose width was compared against §4 : ${surfaces.length}`);
 console.log(
   `      typographic measures declared : ${TYPOGRAPHIC_MEASURES.length}` +
-    `, applied ${measuresApplied.length} time(s)   (D-41.1-27)\n`
+    `, applied ${measuresApplied.length} time(s)   (D-41.1-27)`
+);
+console.log(
+  `      full-bleed surfaces declared  : ${FULL_BLEED_SURFACES.length}` +
+    `, applied ${fullBleedApplied.length} time(s)   (D-42-03, 42-MAPPING §11.3)\n`
 );
 
 if (maximaMissing.length > 0 || maximaExtra.length > 0) {
@@ -3498,6 +3616,20 @@ if (widthDisagreements.length > 0) {
   );
 }
 
+if (fullBleedApplied.length > 0) {
+  console.log(`  ! D  ${fullBleedApplied.length} page(s) forgiven the shell import as FULL-BLEED BY CONSTRUCTION:\n`);
+  for (const hit of fullBleedApplied) {
+    console.log(`       ${hit.route}   ${hit.pageFile}`);
+    console.log(`         ${hit.reason.replace(/(.{82}) /g, '$1\n         ')}`);
+  }
+  console.log(
+    '\n       Not a failure and not a narrowing: this forgives the MISSING SHELL IMPORT and\n' +
+      '       nothing else. The page still may not write a maximum of its own, the shell still\n' +
+      '       owns §4\'s three, and the maximum such a surface takes responsibility for must be\n' +
+      '       one of those three — checked by the person writing it, not by this line.\n'
+  );
+}
+
 if (measuresApplied.length > 0) {
   console.log(`  ! D  ${measuresApplied.length} width(s) forgiven as a DECLARED typographic measure:\n`);
   for (const hit of measuresApplied) {
@@ -3519,11 +3651,24 @@ if (!failures.includes('D')) {
         '       BEFORE its first red run (D-41-16), so the next plan that decides a paragraph\n' +
         '       should read at a measure adds a line rather than deleting the width.\n'
       : '\n';
+  const shellClause =
+    fullBleedApplied.length === 0
+      ? `all ${surfaces.length} converted page(s) import it`
+      : `${surfaces.length - fullBleedApplied.length} of ${surfaces.length} converted page(s) import it, ` +
+        `and ${fullBleedApplied.length} is/are DECLARED full-bleed above`;
+  const fullBleedNote =
+    FULL_BLEED_SURFACES.length === 0
+      ? '\n       No surface is declared full-bleed, which is the measured state of the tree: an\n' +
+        '       empty escape forgives nothing. That mechanism is here BEFORE its first red run\n' +
+        '       too, so the plan that declares a full-screen safety surface adds a line rather\n' +
+        '       than wrapping the surface in a shell to make a gate go quiet.\n'
+      : '';
   console.log(
-    `  ✓ D  the shell declares §4's three maxima and only those; all ${surfaces.length} converted\n` +
-      '       page(s) import it, write no undeclared maximum of their own, and carry the width\n' +
-      '       §4 assigns' +
-      measureNote
+    `  ✓ D  the shell declares §4's three maxima and only those;\n` +
+      `       ${shellClause},\n` +
+      '       write no undeclared maximum of their own, and carry the width §4 assigns' +
+      measureNote +
+      fullBleedNote
   );
 }
 
