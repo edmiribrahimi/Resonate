@@ -199,7 +199,7 @@ import type { CapabilityKey } from "./keys";
  * longer the header injection in `src/lib/supabase/middleware.ts`, which plan
  * 33-14 deleted outright
  * (measured: **44** files read the injected role/status headers, not 46, and
- * phase 33 takes that count to **0**). It is `MobileNav` and `StaffNav` — two
+ * phase 33 takes that count to **0**). It is `AppNav` and `StaffNav` — two
  * `"use client"` components that take `role` and `status` as props and
  * therefore cannot import this module. Next.js's own guidance for that case is
  * to resolve in a parent Server Component and pass the values down as props,

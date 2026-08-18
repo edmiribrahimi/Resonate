@@ -88,9 +88,13 @@ export interface AppNavProps {
   liveAssignmentCapabilities: readonly string[] | null;
   /**
    * `"responsive"` — the bar below 768 px, the column at and above it.
-   * `"phone"` — the bar at every width, which is what the `MobileNav.tsx`
-   * wrapper beside this file renders, and why that file still exists
-   * (D-41-21).
+   * `"phone"` — the bar at every width. **It has one consumer, and naming it is
+   * the point:** the door mounts this component with `form="phone"`, directly
+   * and by decision (D-42-03). The check-in surface is worked one-handed at an
+   * entrance and does not give 224 px to a column. Until Phase 42 the same prop
+   * reached the door through a one-line wrapper beside this file; the wrapper
+   * is deleted and the reason it carried lives here, or the next reader finds
+   * a prop with no purpose and proposes removing it.
    */
   form?: "responsive" | "phone";
   /**

@@ -9,7 +9,7 @@ import DoorSurface from "./DoorSurface";
  * address is not deprecated on a timer and is not removed in a later phase — it
  * is part of the deliverable.
  *
- * The guard, the `ScannerClient` mount and the `MobileNav` mount all live in
+ * The guard, the `ScannerClient` mount and the navigation mount all live in
  * `./DoorSurface`, which `/door` mounts too. The long explanation of the gate
  * moved there with it, because it explains the gate rather than this address.
  */
