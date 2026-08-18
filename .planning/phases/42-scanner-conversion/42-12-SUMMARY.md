@@ -187,3 +187,30 @@ La sezione della spina descriveva il cancello d'ordine come vivo, e la deroga st
 - **E che il comportamento sia invariato rispetto a prima**, perche' quel *prima* non esiste.
 
 Il reperto prova che le **costanti** e le **strade** non si sono mosse. Non prova che il **comportamento** non si sia mosso — e questa distinzione e' scritta dentro il reperto stesso dal giorno in cui e' stato preso.
+
+---
+
+## Self-Check: PASSED
+
+Ogni affermazione di questo documento e' stata riverificata dopo averlo scritto, con
+un comando invece che con una rilettura.
+
+| affermazione | comando | esito |
+|---|---|---|
+| I cinque file esistono su disco | `[ -f … ]` per ognuno | **5 su 5 FOUND** |
+| I quattro commit esistono | `git log --oneline --all \| grep` | **4 su 4 FOUND** — `9dd20ec`, `0d96ee0`, `1eac770`, `7de9ad8` |
+| Il reperto porta una sezione AFTER | `grep -c 'AFTER-DIFFABLE-BEGIN'` | **4** occorrenze (marcatore + le citazioni in prosa) |
+| Le due voci differite sono state aperte | `grep -c 'DEF-42-07\|DEF-42-08'` | **2** |
+| Nessun `Result` compilato | `grep -c '^Result: pending'` | **10** su 10 |
+| Le citazioni `file:riga` superano il minimo di quindici | `grep -cE …` | **32** righe, **37** citazioni distinte |
+| Nessun file di prodotto toccato | `git status --porcelain -- src/ scripts/` | **0 righe** |
+| `STATE.md` e `ROADMAP.md` non toccati | `git diff --name-only fd3bf46..HEAD \| grep -c` | **0** — li aggiorna l'orchestratore |
+| Il ramo non porta cancellazioni | `git diff --diff-filter=D --name-only` | **0** |
+| Il ramo tocca **solo** `.planning/phases/42-scanner-conversion/` | `git diff --name-only fd3bf46..HEAD` | **5 file**, tutti li' dentro |
+
+**Una nota sull'ambiente, perche' non venga scoperta come sorpresa.** Un worktree
+nasce senza `node_modules`, e sia la cattura sia il build ne hanno bisogno. E' stato
+usato un **collegamento simbolico** alla copia del checkout principale, per la durata
+delle misure, **e rimosso prima del commit di questo documento**: `node_modules` e'
+ignorato da git e non e' mai entrato in un commit, ma un collegamento lasciato dietro
+in un worktree che sta per essere rimosso non e' uno stato che valga la pena lasciare.
