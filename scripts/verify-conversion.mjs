@@ -1032,7 +1032,68 @@ function findUtilityHits(relPath, pattern) {
  * the report.** A forgiven hit that vanishes is a scope boundary turning into an
  * approval, and that is the distinction this gate family keeps drawing.
  */
-export const PALETTE_DEROGATIONS = [];
+const SCANNER_CLIENT = 'src/app/(admin)/admin/scanner/ScannerClient.tsx';
+const SCAN_FLASH = 'src/components/scanner/ScanFlash.tsx';
+
+export const PALETTE_DEROGATIONS = [
+  /* ── GROUP A — the vocabulary of ACCEPTANCE, six utilities on five lines ───
+   *
+   * One argument for all six, decided in 42-MAPPING.md §3 in wave 1 and
+   * transcribed here in the commit that made it true: **the semantic set has no
+   * accept colour, and phase 40 declined to invent one** (globals.css:169-173).
+   * Substituting the nearest semantic would make the door say *completed* where
+   * the product means *passed* — two different facts at an entrance, and the
+   * gate would go green on a surface that had started lying.
+   *
+   * Inventing a token is the owner's, not a conversion plan's, and until one
+   * exists these six stay raw and stay PRINTED on every run.
+   * ─────────────────────────────────────────────────────────────────────────── */
+  [
+    SCAN_FLASH, 'bg-green-500', 'bg:',
+    'the ACCEPT flash fill, at /90 over the ground. This is the colour a member of staff reads with the corner of their eye in a queue, and the semantic set has no word for it: there is no accept token, and phase 40 declined to invent one. Its separation from the other two outcomes is not left to this line — verify:scan-legibility measures it on every run, composited, under normal vision and three dichromacies, and the tightest pair on this tree is 14.0 against a threshold of 10',
+  ],
+  [
+    SCANNER_CLIENT, 'bg-green-500', 'onlineWash:',
+    'the wash behind the ONLINE connectivity pill. Same argument as the flash fill and the same absent token; kept in the same family as the accept outcome deliberately, because the pill and the flash are the two things on this screen that mean the door is working',
+  ],
+  [
+    SCANNER_CLIENT, 'text-green-500', 'onlineWash:',
+    'the ink of the ONLINE connectivity pill, on the same line as its wash and forgiven as its own entry rather than folded into it: the boundary of a derogation is a UTILITY on a line, so two utilities are two decisions and get two lines, and a raw utility NOT on this list still fails even beside a forgiven neighbour',
+  ],
+  [
+    SCANNER_CLIENT, 'bg-green-500', 'onlineDot:',
+    'the dot of the ONLINE connectivity pill — the smallest mark on the surface and the one a person checks without reading. Same absent token, its own line because it is its own site',
+  ],
+  [
+    SCANNER_CLIENT, 'text-green-500', 'h-4 w-4',
+    'the SUCCESS glyph in the door history, where the operator re-reads what has just been admitted. The history is the road to the undo, so a glyph that stopped meaning admitted would misdirect the one act on this surface that reverses another',
+  ],
+  [
+    SCANNER_CLIENT, 'text-green-500', 'font-medium',
+    'the ARRIVED mark in the attendee list. Same absent accept token, and the word beside it carries the meaning too — the colour is the second channel, never the only one',
+  ],
+
+  /* ── GROUP B — the vocabulary of REFUSAL, darkened by one step ─────────────
+   *
+   * D-42-01. Taking the refusal to the critical semantic would put it at **2.2**
+   * from the colour of primary buttons — a refusal painted the tint that
+   * everywhere else in this product means *press here* (42-03-FINDINGS.md §4.4,
+   * confirmed by the gate). One step darker than the default scale is the
+   * measured answer; a second step would read better on a chart and would dim
+   * the flash's luminance, and at a door luminance is the channel read with the
+   * corner of the eye.
+   *
+   * **The two lines travel together** or the verdict and its echo diverge.
+   * ─────────────────────────────────────────────────────────────────────────── */
+  [
+    SCAN_FLASH, 'bg-red-600', 'bg:',
+    'the REFUSE flash fill, at /90 over the ground, darkened one step from the default scale. It declines --sem-crit deliberately: that token sits at 2.2 from the accent, and a refusal wearing the colour of every primary action in the product is the one confusion this surface cannot afford. D-42-01',
+  ],
+  [
+    SCANNER_CLIENT, 'text-red-600', 'h-4 w-4',
+    'the REFUSAL glyph in the door history — the echo of the flash above, and it moves with it or the two stop agreeing. Same declined semantic, same measured reason. D-42-01',
+  ],
+];
 
 /* ────────────────────────────────────────────────────────────────────────────
  * §4's two closed lists — check D's third assertion reads these
@@ -1246,7 +1307,16 @@ export const TYPOGRAPHIC_MEASURES = [
  * the `CONVERTED` declarations they belong to; either order alone is a red or a
  * refusal on a correct tree.
  */
-export const FULL_BLEED_SURFACES = [];
+export const FULL_BLEED_SURFACES = [
+  [
+    '/admin/scanner',
+    'the door, at the address it has always had. This page does NOT import the shell and that is the decision, not an omission: wrapping it would add the shell outer padding, double the horizontal padding the check-in client already writes for itself, nest one full-height root inside another, and put a sticky header inside a centred container — a layout rebuild of a safety surface, shipped by a phase that said it would change colour, contrast and type. The two roads not taken are written out with their costs in 42-MAPPING.md §11.3. THE SURFACE OWNS ITS OWN CONTAINER MAXIMUM, and the maximum is ONE OF THE SHELL\'S THREE and never a fourth number: 1024px on the two roots of the check-in client. The reason is of domain rather than symmetry — at the door the surface is worked ONE-HANDED, and on a tablet held sideways a thumb does not reach the 1360px the viewfinder stretched to at a 1440px window',
+  ],
+  [
+    '/door',
+    'the door, at its permanent address (STAFF-04, D-39-01) — the same surface through the same guard, so the same decision and the same reason. Nine live lines and a mount: this page imports no shell because the client beneath it is full-bleed by construction, and a route file cannot take a container its own child contradicts. THE SURFACE OWNS ITS OWN CONTAINER MAXIMUM and that maximum is one of the shell\'s three: 1024px on the surface roots, and 384px — the narrowest of the three — on the viewfinder, chosen because the decoded region is 280x280 and every pixel past it is video the browser decodes for nothing. Declared twice rather than once because check D reads the PAGE FILE, and an escape keyed on the route dissolves the day THAT route takes the shell; one entry covering two routes would keep forgiving the second after the first was fixed',
+  ],
+];
 
 /**
  * The two modules through which a navigation reaches a surface — check E2.

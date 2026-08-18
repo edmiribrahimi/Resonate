@@ -629,6 +629,31 @@ const ACK_ANCHOR = 'justify-' + 'center';
 const SERVE_ANCHOR = 'flex-' + 'col';
 
 /**
+ * The door's flash anchor — assembled, like the two above, for DEF-41-01.
+ *
+ * **Why the state lookup and not one of the two layout anchors already in this
+ * file.** The flash's shell line carries BOTH of them, so either would resolve
+ * by coincidence and describe nothing about this overlay. The utility that pins
+ * it to all four edges is worse still: it is one of the three parts of the
+ * matcher itself, so it cannot distinguish one overlay from another and could
+ * never go stale while the line is a shell at all. The rung and the animation
+ * are bracketed arbitrary values, which DEF-41-01 forbids spelling in a script.
+ *
+ * The state lookup is the ONE thing on that line that describes THIS flash: a
+ * single table governs the colour, the dwell and the glyph of all three
+ * outcomes, and the file says so of itself — *"One lookup, and the only place
+ * any of this changes"*.
+ *
+ * **And it goes stale in the right direction.** It survived the commit that
+ * changed the three fills, because that commit edited the table and not the
+ * lookup on the shell line. It DIES the day the flash stops driving its fill
+ * from one lookup — which is precisely the deferred idea of rebuilding it as a
+ * card instead of a full screen. An exemption that survived that rebuild would
+ * be an exemption for something other than the thing it was granted for.
+ */
+const FLASH_ANCHOR = '$' + '{state.bg}';
+
+/**
  * THE FOUR EXEMPT SHELLS — element-scoped, one entry per shell (41.2-22).
  *
  * Shape: `[path, anchor, shape, reason]`, deliberately `verify-touch-targets.mjs`
@@ -706,6 +731,12 @@ export const EXEMPT_SHELLS = [
     SERVE_ANCHOR,
     'hand-rolled overlay',
     'the ACTIVE serve screen on the drinks menu, and the shell D-41.2-07 rests on. Its argument is NOT the twin\'s and plan 41.2-12 re-derived it from this file\'s own comments after explicitly declining to inherit D-41.2-06. It runs in BOTH directions: the serve area "takes the whole screen above the Cancel row", so inside the primitive it SHRINKS to a panel body at the panel\'s own width — the bartender HAS TO AIM — while the narrow Cancel GROWS to a full-width control under the thumb. The guard would loosen on the reversible act and tighten on the irreversible one, which is the exact inverse of what this surface needs. TWO-DIRECTIONAL, and that is the difference from the twin',
+  ],
+  [
+    'src/components/scanner/ScanFlash.tsx',
+    FLASH_ANCHOR,
+    'hand-rolled overlay',
+    'the door accept/refuse/already-recorded FLASH — a status layer and not a dialog. This gate already held the reason inside its own Phase 42 fence entry, verbatim: it is role="status", aria-live="assertive", it dismisses itself on a timer, so there is nothing to trap focus for and nothing for Escape to close. Converting it to the primitive would be wrong, and REMAINING would be a false statement about it because that list is dialogs without a focus trap. The reason MOVES here when the fence comes down; it is not invented here. The anchor is the state lookup rather than a layout utility because the flash line carries BOTH existing anchors, and because a rebuild that stops driving the fill from one lookup is exactly the change that must stop this entry',
   ],
 ];
 
@@ -943,20 +974,34 @@ export const NEVER_MEASURED_BY_B = new Map([
  * Shape: `[glob, reason]`. The globs are compared with the manifest's
  * `PHASE_42_PATHS` before anything is measured, and a drift refuses.
  */
-export const PHASE_42_EXEMPT_PATHS = [
-  [
-    'src/app/(admin)/**/scanner/**',
-    'the scanner surface and its route — Phase 42 decides what the door looks like, and check B never reads a line of it',
-  ],
-  [
-    'src/components/scanner/**',
-    "the scanner's components — including the accept/refuse flash at ScanFlash.tsx:135, which is a status layer and not a dialog, and which the widened matcher would otherwise redden",
-  ],
-  [
-    'src/app/(admin)/door/**',
-    "the door's second address (STAFF-04) — fencing one address and not the other would fence half a thing",
-  ],
-];
+/**
+ * **EMPTY SINCE 2026-08-18 (plan 42-11), together with the manifest's.**
+ *
+ * The paragraphs above are the argument the three globs rested on, and they are
+ * kept rather than deleted: the WR-02 overlap refusal and the check-A/check-C
+ * decision they record are still live mechanisms, and a paragraph removed on
+ * the day its list empties leaves the next reader unable to tell a spent
+ * argument from a forgotten one.
+ *
+ * **What changed is which mechanism carries the flash.** The second entry used
+ * to forgive `src/components/scanner/**` whole, and it carried inside its own
+ * reason the sentence that matters — *the accept/refuse flash … is a status
+ * layer and not a dialog*. That sentence has MOVED to `EXEMPT_SHELLS`, where it
+ * forgives ONE SHELL by an anchor rather than a whole directory by a glob. The
+ * boundary is the shell and never the file, which is the correction this gate
+ * already made once; keeping a path fence would have re-made the mistake it
+ * fixed.
+ *
+ * **And with both fences down the whole door surface carries exactly ONE
+ * dialog shell** — measured on a throwaway branch by plan 42-05 before this
+ * commit existed, not supposed: none hidden in the 3449-line check-in client,
+ * none anywhere else. Forgiven shells went 4 → 5, `REMAINING` stayed 0.
+ *
+ * The constant stays exported and empty: it is compared against the manifest's
+ * `PHASE_42_PATHS` on every run and a drift REFUSES, so deleting it here would
+ * turn a compared pair into an unchecked one.
+ */
+export const PHASE_42_EXEMPT_PATHS = [];
 
 /**
  * `**` crosses separators, `*` does not, everything else is literal.
