@@ -495,7 +495,7 @@ interface ScanRecord {
   /**
    * The same three states the flash shows, so the history and the screen never
    * disagree about what happened. `already_recorded` also covers a flagged
-   * admission — amber means *admitted, look at this afterwards*, and `canUndo`
+   * admission — it means *admitted, look at this afterwards*, and `canUndo`
    * carries whether there is anything to reverse, which is a separate question.
    */
   status: ScanFlashType;
@@ -3270,8 +3270,10 @@ export default function ScannerClient() {
             {scanHistory.map((record, i) => {
               const isUndone = record.undone;
               const isSuccess = record.status === "success" && !isUndone;
-              // The same amber as the flash: admitted-and-flagged, or already
-              // recorded. Never red, because neither is a refusal.
+              // The same third state as the flash: admitted-and-flagged, or
+              // already recorded. Never the refusal, because neither is one.
+              // Named by state and not by hue: the hue lives in one lookup, and
+              // a comment that spells it goes stale the day the lookup moves.
               const isFlagged = record.status === "already_recorded" && !isUndone;
               const isError = record.status === "error";
               // A flagged admission is still an admission, so it stays undoable.
