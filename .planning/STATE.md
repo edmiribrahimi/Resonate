@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
 status: executing
-stopped_at: Phase 42 waves 0-2 executed (5/12 plans); waves 3-8 blocked on the door pass at the first real night
+stopped_at: Phase 42 executed 12/12 under owner derogation; NOT complete — criterion 3 permanently unclosable (DEF-42-04), 9 procedures pending
 last_updated: "2026-08-18T17:50:18.113Z"
-last_activity: 2026-08-18 -- Phase 42 waves 0-2 merged to main; execution stopped at the ordering constraint
+last_activity: 2026-08-18 -- Phase 42 fully executed (waves 0-8 merged to main); ordering gate overridden by the owner
 progress:
   total_phases: 18
   completed_phases: 17
