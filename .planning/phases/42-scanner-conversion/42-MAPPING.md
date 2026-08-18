@@ -443,3 +443,193 @@ colore e' questa banda* deve trovare una risposta sola, e non andare a caccia.
 scritto una seconda volta, in un file diverso da quello che tutti guardano, con
 gli stessi tre path SVG del flash. E' la riga che, dimenticata, fa dire violetto
 al verdetto e ambra alla cronologia dello stesso scan.
+
+---
+
+## 8. L'inchiostro del flash — uno per tutti e tre, con i suoi numeri
+
+### 8.1 La decisione
+
+**`--ground` su tutti e tre gli stati**, dall'unico elemento condiviso che li
+disegna (`ScanFlash.tsx:31-44`, il componente `Glyph`). Soddisfa la regola in
+modo uniforme, toglie l'ultima utility acromatica grezza dal file, e tiene **un
+inchiostro invece di tre**.
+
+La regola che la decisione deve soddisfare e' scritta in `globals.css:176-178`:
+*«A SEMANTIC USED AS A FILL CARRIES `--ground` AS ITS INK. Never `--ink`, never
+white.»* Il terzo stato **e'** un riempimento semantico dopo P3, quindi la regola
+lo vincola alla lettera; accettazione e rifiuto restano grezzi per deroga, ma
+dare loro un inchiostro diverso significherebbe **tre inchiostri per un elemento
+che ne ha uno**, ed e' esattamente cio' che il piano vieta.
+
+### 8.2 I tre contrasti misurati, e il pavimento applicato
+
+Compositi: il riempimento fuso sul token di fondo alla propria alpha, in luce
+lineare — il numero che una persona vede.
+
+| Riempimento | Composito | Contrasto con `--ground` |
+|---|---|---|
+| accettazione `bg-green-500/90` | `#01C04D` | **8,18 : 1** ✓ |
+| terzo stato `bg-sem-done/90` | `#9475D6` | **5,49 : 1** ✓ |
+| rifiuto `bg-red-600/90` | `#DD010C` | **3,87 : 1** ✓ |
+
+**Il pavimento applicato e' 3:1, non 4,5:1.** Il glifo e' un segno tracciato
+grande — `h-20 w-20`, spessore 2,5 — non testo corrente: si applica il pavimento
+*grafica* di WCAG 1.4.11. Il gate lo **dichiara a ogni esecuzione**, invece di
+lasciarlo dedurre da chi legge il verde.
+
+**Il rifiuto e' il piu' stretto dei tre, e la ragione e' strutturale:** scurire il
+riempimento lo avvicina all'inchiostro. E' il costo dichiarato di `red-600`, ed e'
+il verso opposto del beneficio che D-42-01 comprava scurendolo.
+
+### 8.3 Il ramo di riserva — non serve
+
+Il piano teneva pronta una ramificazione: **se il composito del rifiuto scendesse
+sotto il pavimento grafico, quello stato solo resterebbe bianco**, come quinta
+deroga dichiarata, con l'asimmetria registrata invece che nascosta.
+
+**Non scatta. 3,87 supera 3**, e lo supera con lo stesso margine che
+`42-03-FINDINGS.md` §3 aveva gia' misurato in modo indipendente. L'inchiostro
+resta **uno**, e non esiste una quinta deroga.
+
+### 8.4 Gli altri tre bianchi dello stesso file, che il glifo non copriva
+
+`ScanFlash.tsx` porta **quattro** siti d'inchiostro, non uno: il glifo, il
+titolo, il sottotitolo e il suggerimento *tap to dismiss*. Tutti e quattro sono
+palette grezza, tutti e quattro devono avere un target, e i tre non-glifo stanno
+sugli **stessi** riempimenti.
+
+Misurato — contrasto dell'inchiostro sul riempimento, per ognuna delle sei forme
+possibili:
+
+| Inchiostro | accettazione | terzo stato | rifiuto |
+|---|---|---|---|
+| `--ground` pieno | **8,18** | **5,49** | **3,87** |
+| `--ground` all'80% | 3,36 | 2,89 | 2,46 |
+| `--ground` al 50% | 1,78 | 1,69 | 1,59 |
+| bianco pieno | 2,44 | 3,63 | 5,16 |
+| bianco all'80% | 2,15 | 3,11 | 4,33 |
+| bianco al 50% | 1,72 | 2,32 | 3,08 |
+
+**La decisione: `--ground` pieno su tutti e quattro i siti, e le due alpha
+cadono.**
+
+- **Il titolo** e' 24px in grassetto, quindi *testo grande*: pavimento 3:1.
+  Passa su tutti e tre (8,18 / 5,49 / 3,87). **Oggi passa su uno solo**: bianco
+  su accettazione misura 2,44 e sul terzo stato 2,36.
+- **Sottotitolo e suggerimento** sono testo corrente: pavimento 4,5:1. Passano su
+  accettazione e terzo stato, e **restano a 3,87 sul rifiuto — sotto il
+  pavimento. E' un residuo dichiarato.** Oggi quegli stessi due misurano
+  2,15 / 2,08 / 3,52 e 1,72 / 1,68 / 2,58: **falliscono su tutti e sei**. La
+  decisione migliora ogni singola cella e ne lascia una insufficiente.
+- **Perche' non tenere il bianco sul solo rifiuto**, dove misurerebbe 5,16:
+  romperebbe due celle per ripararne una (2,44 sull'accettazione, 3,63 sul terzo
+  stato) e spaccherebbe l'inchiostro per stato, che e' cio' che il piano vieta.
+- **Perche' le alpha non si possono tenere:** il massimo che un inchiostro
+  traslucido raggiunge su uno qualsiasi dei tre riempimenti e' **3,36**. Una
+  gerarchia costruita sulla trasparenza, qui, e' una gerarchia costruita
+  sull'illeggibilita'.
+- **Cosa cambia visivamente, detto invece che scoperto:** la gerarchia fra
+  titolo, sottotitolo e suggerimento non poggia piu' su due alpha ma su **corpo,
+  peso e posizione** — 24px in grassetto, 14px, 12px al bordo inferiore. Restano
+  tre livelli, distinti da cio' che non costa contrasto.
+
+### 8.5 Cosa NON si aggiunge a `ScanFlash`
+
+**Nessuna prop di colore, nessuna variante, nessun `className` di sovrascrittura.**
+Il file lo dichiara nel proprio docblock, e la ragione e' che un'uscita di
+sicurezza stilistica li' andrebbe poi disfatta un sito di chiamata alla volta.
+
+La distinzione che serve tenere: **aggiungere un campo alla tabella di lookup
+esistente non e' un'uscita di sicurezza; aggiungere una prop lo e'.** La prima
+resta interna al file e continua a essere l'unico posto dove i tre stati sono
+descritti; la seconda sposta la decisione fuori, dove nessuno la conta.
+
+---
+
+## 9. La tabella dei token legacy — 42 righe
+
+E' la meta' meccanica della conversione: i quattro alias di `globals.css:246-249`
+risolvono **uno a uno** ai nomi che gia' puntano, e gli alias esistono
+esattamente perche' questa parte sia una rinomina e non un ridisegno.
+
+| Alias | Punta a | Utility di partenza | Utility di arrivo |
+|---|---|---|---|
+| `--background` | `--ground` | `bg-background` | `bg-ground` |
+| `--foreground` | `--ink` | `text-foreground` | `text-ink` |
+| `--card` | `--surface` | `bg-card` | `bg-surface` |
+| `--card-border` | `--line` | `bg-card-border`, `border-card-border` | `bg-line`, `border-line` |
+
+**Le alpha si conservano invariate**: `bg-card-border/50` diventa `bg-line/50`.
+
+Questa e' la parte piu' noiosa e quella piu' facile da lasciare a meta', quindi
+ha la sua tabella e il suo conteggio.
+
+| Riga | Utility | Target |
+|---|---|---|
+| 2638 | `bg-background` | `bg-ground` |
+| 2650 | `border-card-border` | `border-line` |
+| 2650 | `bg-card` | `bg-surface` |
+| 2652 | `bg-card-border/50` | `bg-line/50` |
+| 2653 | `bg-card-border/50` | `bg-line/50` |
+| 2654 | `bg-card-border/50` | `bg-line/50` |
+| 2659 | `border-card-border` | `border-line` |
+| 2659 | `bg-card` | `bg-surface` |
+| 2676 | `border-card-border` | `border-line` |
+| 2676 | `bg-card` | `bg-surface` |
+| 2678 | `text-foreground` | `text-ink` |
+| 2701 | `text-foreground` | `text-ink` |
+| 2705 | `bg-card-border` | `bg-line` |
+| 2761 | `bg-background` | `bg-ground` |
+| 2763 | `bg-background` | `bg-ground` |
+| 2770 | `text-foreground` | `text-ink` |
+| 2828 | `bg-card` | `bg-surface` |
+| 2828 | `border-card-border` | `border-line` |
+| 2828 | `text-foreground` | `text-ink` |
+| 2875 | `border-card-border` | `border-line` |
+| 2875 | `bg-card` | `bg-surface` |
+| 2968 | `text-foreground` | `text-ink` |
+| 3012 | `bg-card-border/20` | `bg-line/20` |
+| 3012 | `bg-card-border/40` | `bg-line/40` |
+| 3019 | `text-foreground` | `text-ink` |
+| 3035 | `bg-card-border` | `bg-line` |
+| 3067 | `border-card-border` | `border-line` |
+| 3067 | `bg-card` | `bg-surface` |
+| 3067 | `text-foreground` | `text-ink` |
+| 3072 | `text-foreground` | `text-ink` |
+| 3092 | `bg-card` | `bg-surface` |
+| 3100 | `text-foreground` | `text-ink` |
+| 3202 | `border-card-border` | `border-line` |
+| 3202 | `bg-card` | `bg-surface` |
+| 3213 | `bg-card-border/30` | `bg-line/30` |
+| 3213 | `text-foreground` | `text-ink` |
+| 3260 | `bg-card-border/30` | `bg-line/30` |
+| 3331 | `text-foreground` | `text-ink` |
+| 3374 | `border-card-border` | `border-line` |
+| 3374 | `bg-card` | `bg-surface` |
+| 3381 | `border-card-border/50` | `border-line/50` |
+| 3384 | `text-foreground` | `text-ink` |
+
+**42 righe — il numero atteso, senza divergenze.** Distribuzione: `text-foreground`
+×12 · `bg-card` ×9 · `border-card-border` ×9 (piu' una con alpha, a 3381) ·
+`bg-card-border` ×9 · `bg-background` ×3. `ScanFlash.tsx` e gli altri tre file del
+perimetro non ne portano nessuno.
+
+**Tre di queste righe stanno in un ramo di ternario** — 2828 (interruttore
+spento), 3213 (torcia spenta), 3260 (riga di cronologia toccabile) — e sono le
+stesse tre che al §7 compaiono come *«solo legacy»*.
+
+---
+
+## 10. La tipografia dei numeri — detta, e rimandata
+
+Le cifre tabulari sui contatori della porta — `ScannerClient.tsx:2693` e `:3020`,
+che sono i due *fatti / totale* — sono tipografia, e si potrebbe sostenere che
+stiano dentro *colore, contrasto e tipo*. **Sono fuori da questa fase lo stesso**,
+e la ragione non e' un giudizio: **DS-05 non e' fra i requisiti di questa fase**
+— ci sono solo DS-04 e RESP-05 — e `42-CONTEXT.md` §Deferred lo mette fra le voci
+rimandate **con l'istruzione che venga declinato ad alta voce anziche' fatto di
+straforo**.
+
+Registrato come **DEF-42-02** in `deferred-items.md`, con il suo perche' e la fase
+che lo possiede.

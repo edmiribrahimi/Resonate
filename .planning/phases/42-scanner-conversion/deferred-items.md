@@ -93,4 +93,39 @@ scritto per scioglierlo, questo per mano di sei commit che nessuno coordina.
 
 ---
 
-*Aperto: 2026-08-18 — fase 42, piano 01.*
+## DEF-42-02 — le cifre dei contatori della porta non sono tabulari, e questa
+## fase declina di renderle tali
+
+**Trovata durante:** 42-04, Task 2 (decisione dell'inchiostro e della tipografia).
+**Stato:** pre-esistente. **Nessun file toccato.**
+
+### Cosa migliorerebbe
+
+I due contatori della porta — `ScannerClient.tsx:2693` e `:3020`, entrambi nella
+forma *fatti / totale* — sono **numeri che una persona confronta**: guarda lo
+schermo, entra qualcuno, riguarda lo schermo. Con glifi a larghezza
+proporzionale, passare da una cifra all'altra sposta orizzontalmente tutte le
+altre, e il confronto costa una lettura invece di uno sguardo. Alla porta,
+davanti a una fila, quella differenza si paga in secondi.
+
+Vale anche per i due contatori di guest list a `:2695` e `:3022`, che stanno
+nella stessa riga di testo.
+
+### Perche' non qui
+
+**DS-05 — una tipografia per display, dati e interfaccia — non e' fra i requisiti
+di questa fase.** La fase 42 porta **DS-04** e **RESP-05**, e nient'altro.
+Farla comunque sarebbe scope creep travestito da rifinitura, e
+`42-CONTEXT.md` §Deferred lo aveva gia' previsto per nome, chiedendo che venisse
+**detto e rimandato** invece che fatto in silenzio.
+
+### Chi la possiede
+
+**La fase che porta DS-05**, e non un piano di questa. E' una modifica di **una
+utility per contatore**, non tocca nessun valore, nessuna query e nessun esito —
+quindi non ha bisogno di stare dietro il door pass, e non ha ragione di aspettare
+oltre la fase che possiede il requisito.
+
+---
+
+*Aperto: 2026-08-18 — fase 42, piani 01 e 04.*
