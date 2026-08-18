@@ -32,7 +32,7 @@ interface ScanFlashProps {
 function Glyph({ children }: { children: ReactNode }) {
   return (
     <svg
-      className="h-20 w-20 text-white"
+      className="h-20 w-20 text-ground"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -62,12 +62,31 @@ interface FlashState {
  * A state told apart by hue alone is a state half the devices at the door cannot
  * tell apart.
  *
- * **Amber, not yellow, and that is the point.** `yellow-500` already means
- * *Offline* on the scanner's connectivity pill
- * (`src/app/(admin)/admin/scanner/ScannerClient.tsx`). If the third scan state
- * were yellow too, a member of staff glancing at a phone at two in the morning
- * would have to work out whether the screen means "already admitted" or "you
- * have no signal" — two facts with nothing in common.
+ * **The paragraph that stood here was wrong, and it is kept visible.** It read
+ * *"Amber, not yellow, and that is the point"*, and argued that choosing
+ * `amber-500` over `yellow-500` stopped this state from reading as the
+ * connectivity pill's *Offline* in a dark room. It asserted the absence of a
+ * defect instead of measuring it — twice, in two files — and every reader after
+ * it believed the assertion.
+ *
+ * **Measured on 2026-08-18** by `scripts/verify-scan-legibility.mjs`, which
+ * composites each fill onto the ground at its own alpha, converts to linear
+ * light, and compares the pairs under normal vision and under simulated
+ * protanopia, deuteranopia and tritanopia. With amber the third state sat
+ * **4.5** from the pill in deuteranopia and **7.0** from acceptance in
+ * protanopia, against a threshold of 10. The comment had not claimed the second
+ * pair at all: the defect it denied was not even the only one.
+ *
+ * **What replaced it.** The third state is the completion semantic — every
+ * competitor paints this amber, and the reason to break with them is a
+ * measurement rather than a taste. The refusal is one step darker (D-42-01),
+ * which moves it away from acceptance, from the pill, and from the colour that
+ * everywhere else in this product means *press here*. The ink is `--ground` on
+ * all four sites, because a semantic used as a fill carries the ground as its
+ * ink and never white (`globals.css:176-178`).
+ *
+ * **The gate now measures every pair on every run.** A comment here cannot
+ * assert this again — the numbers are printed, or nothing is.
  *
  * **Dwell is information.** `already_recorded` sits for 2500 ms rather than 2000
  * because it carries a time and an operator to read, and it is read while
@@ -88,7 +107,7 @@ const FLASH_STATES: Record<ScanFlashType, FlashState> = {
     ),
   },
   already_recorded: {
-    bg: "bg-amber-500/90",
+    bg: "bg-sem-done/90",
     delay: 2500,
     // A clock face: it reads as *already, earlier*. An exclamation mark or a
     // crossed circle would read as a refusal, which this state never is.
@@ -103,7 +122,7 @@ const FLASH_STATES: Record<ScanFlashType, FlashState> = {
     ),
   },
   error: {
-    bg: "bg-red-500/90",
+    bg: "bg-red-600/90",
     delay: 2000,
     icon: (
       <Glyph>
@@ -141,19 +160,19 @@ export default function ScanFlash({
       <div className="mb-4">{state.icon}</div>
 
       {/* Title */}
-      <p className="text-2xl font-bold text-white text-center px-8">
+      <p className="text-2xl font-bold text-ground text-center px-8">
         {title}
       </p>
 
       {/* Subtitle */}
       {subtitle && (
-        <p className="text-sm text-white/80 text-center mt-2 px-8">
+        <p className="text-sm text-ground text-center mt-2 px-8">
           {subtitle}
         </p>
       )}
 
       {/* Tap hint */}
-      <p className="absolute bottom-12 text-xs text-white/50">
+      <p className="absolute bottom-12 text-xs text-ground">
         Tap to dismiss
       </p>
     </div>

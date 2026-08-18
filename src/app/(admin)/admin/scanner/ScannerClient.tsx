@@ -414,6 +414,26 @@ const SAFETY_RELOAD_MS = 5 * 60_000;
  */
 const FRESHNESS_TICK_MS = 5_000;
 
+/**
+ * The connectivity pill's colour, in one place because a gate reads it.
+ *
+ * `scripts/verify-scan-legibility.mjs` measures the third scan state against
+ * this pill, and written inline the pill gave it nothing stable to read —
+ * `bg-yellow-500` appears ten times in this file across five different
+ * features, and a gate that guesses prints a green over a measurement it never
+ * made. The identifier and the `offlineDot` key are a contract with that gate
+ * (`42-03-FINDINGS.md` §1); the utilities are spelled out in full because
+ * Tailwind never emits a class name composed at runtime; both branches read
+ * from here so one pill has one source of truth. The colours themselves are
+ * unchanged — this is a lift, and plan 42-08 decides what they become.
+ */
+const CONNECTIVITY_PILL = {
+  onlineWash: "bg-green-500/15 text-green-500",
+  onlineDot: "bg-green-500",
+  offlineWash: "bg-yellow-500/15 text-yellow-500",
+  offlineDot: "bg-yellow-500",
+} as const;
+
 /** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
 function readDoorAuthPayload(body: unknown): CachedDoorAuth | null {
   if (typeof body !== "object" || body === null) return null;
@@ -475,7 +495,7 @@ interface ScanRecord {
   /**
    * The same three states the flash shows, so the history and the screen never
    * disagree about what happened. `already_recorded` also covers a flagged
-   * admission — amber means *admitted, look at this afterwards*, and `canUndo`
+   * admission — it means *admitted, look at this afterwards*, and `canUndo`
    * carries whether there is anything to reverse, which is a separate question.
    */
   status: ScanFlashType;
@@ -2790,19 +2810,28 @@ export default function ScannerClient() {
                     {selectedParty?.partyTitle || "Check-in"}
                   </h1>
                   {/* Online/Offline status indicator — connectivity, and only
-                      connectivity. It keeps `yellow-500` for Offline, which is
-                      precisely why the third scan state is amber and not yellow:
-                      the two must not read as one signal in a dark room. The
-                      queue count used to live inside this ternary and is now
-                      below, outside it. */}
+                      connectivity. The queue count used to live inside this
+                      ternary and is now below, outside it.
+
+                      What stood here was wrong, and is kept visible because it
+                      was believed: that this pill's `yellow-500` was "precisely
+                      why the third scan state is amber and not yellow — the two
+                      must not read as one signal in a dark room". It asserted
+                      the defect's absence instead of measuring it. Measured
+                      2026-08-18 by scripts/verify-scan-legibility.mjs, amber sat
+                      4.5 from this pill in deuteranopia against a threshold of
+                      10; the third state is now the completion semantic
+                      (ScanFlash.tsx) and the gate measures the pair every run.
+                      The colour here is unchanged and lives in
+                      CONNECTIVITY_PILL. */}
                   {isOnline ? (
-                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-500">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    <span className={`shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${CONNECTIVITY_PILL.onlineWash}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${CONNECTIVITY_PILL.onlineDot}`} />
                       Online
                     </span>
                   ) : (
-                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
-                      <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                    <span className={`shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${CONNECTIVITY_PILL.offlineWash}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${CONNECTIVITY_PILL.offlineDot} animate-pulse`} />
                       Offline
                     </span>
                   )}
@@ -3241,8 +3270,10 @@ export default function ScannerClient() {
             {scanHistory.map((record, i) => {
               const isUndone = record.undone;
               const isSuccess = record.status === "success" && !isUndone;
-              // The same amber as the flash: admitted-and-flagged, or already
-              // recorded. Never red, because neither is a refusal.
+              // The same third state as the flash: admitted-and-flagged, or
+              // already recorded. Never the refusal, because neither is one.
+              // Named by state and not by hue: the hue lives in one lookup, and
+              // a comment that spells it goes stale the day the lookup moves.
               const isFlagged = record.status === "already_recorded" && !isUndone;
               const isError = record.status === "error";
               // A flagged admission is still an admission, so it stays undoable.
@@ -3293,7 +3324,7 @@ export default function ScannerClient() {
                       </svg>
                     ) : isFlagged ? (
                       <svg
-                        className="h-4 w-4 text-amber-500"
+                        className="h-4 w-4 text-sem-done"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -3307,7 +3338,7 @@ export default function ScannerClient() {
                       </svg>
                     ) : isError ? (
                       <svg
-                        className="h-4 w-4 text-red-500"
+                        className="h-4 w-4 text-red-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"

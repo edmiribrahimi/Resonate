@@ -257,3 +257,42 @@ Non chiude il criterio 3 — nulla lo chiude piu' — ma e' la **prima** osserva
 del comportamento della porta che questo progetto avra', e da li' in poi diventa
 il *prima* di qualunque cosa venga dopo. Le altre nove righe di
 `42-PROCEDURES.md` restano `pending` ed eseguibili.
+
+---
+
+## DEF-42-05 — una frase che dice due volte la stessa cosa, e nomina un colore che non c'e' piu'
+
+**Aperta il 2026-08-18 dal piano 42-06. Fuori dal suo perimetro, e non chiusa da
+esso.**
+
+`src/app/(admin)/admin/scanner/ScannerClient.tsx`, accanto a
+`markCheckedInLocally` sul ramo del biglietto online, porta questo commento:
+
+> *«A failure here costs a later amber flag instead of a later amber flag — no
+> admission and no refusal turns on it — so it is logged under its own category
+> rather than put on the screen.»*
+
+**Due difetti in una riga, e sono indipendenti.**
+
+1. **La frase non afferma nulla.** *«X instead of X»* e' una costruzione che
+   sembra un compromesso spiegato e non lo e': manca il termine di paragone che
+   giustifica la scelta di non mettere il fallimento sullo schermo. Chi la legge
+   crede di aver capito perche' il fallimento non si vede, e non l'ha capito —
+   che e' peggio di un commento assente.
+2. **Nomina l'ambra**, e dal piano 42-06 il terzo stato non e' piu' ambra su
+   nessuna delle due superfici che lo disegnano. E' la stessa classe di difetto
+   che 42-06 e' esistito per chiudere (T-42-18): prosa che asserisce un colore
+   invece di lasciarlo a un lookup.
+
+**Perche' non l'ha corretta il piano 42-06.** Il primo difetto e' preesistente e
+non e' stato causato da quel commit; correggerlo richiede di sapere **quale**
+fosse il termine di paragone inteso, e quella e' una domanda a chi ha scritto il
+percorso, non una sostituzione di stringa. Il piano 42-06 ha corretto le due
+frasi che la propria modifica ha reso false — a `:498` e nella catena della
+cronologia, entrambe riscritte **per stato invece che per tinta**, cosi' che non
+tornino stantie al prossimo spostamento — e ha lasciato questa qui.
+
+**A chi tocca:** al piano che converte la palette grezza di questo file
+(**42-08**), o a un passaggio di prosa dedicato. **Regola da applicare quando si
+tocca:** un commento nomina lo **stato**, mai la **tinta** — la tinta vive in un
+lookup solo, e una frase che la scrive invecchia da sola.
