@@ -9,6 +9,17 @@ created: 2026-08-18
 
 # Phase 42 — Validation Strategy
 
+> **Attenzione a leggere questo file da solo — 2026-08-18.** Tutte e 37 le righe
+> qui sotto portano ancora `⬜ pending`, comprese cinque che sono chiuse: la
+> chiusura e' registrata in `42-BASELINE.md` §Step 5 e in `42-VERIFICATION.md`,
+> non qui. **La fonte di cosa e' chiuso e' `42-VERIFICATION.md`**, e la riga 3m
+> non e' *pending*: e' permanentemente non chiudibile (`DEF-42-04`). Questo
+> disallineamento e' rumore documentale, non un difetto di codice — ma chi
+> legge solo questo file non puo' saperlo, ed e' per questo che la nota sta in
+> testa invece che in fondo.
+
+
+
 > Contratto di validazione per il campionamento del feedback durante l'esecuzione.
 > Derivato da `42-RESEARCH.md` (misurato 2026-08-18) e da `42-CONTEXT.md`
 > D-42-01…D-42-08.
