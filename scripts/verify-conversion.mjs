@@ -50,8 +50,10 @@
  * This is **G1 (checks A, B, C) and G4 (checks D and E) in one script**, over one
  * manifest, with one walk — plus **check F, added by plan 41.2-19, which is the
  * only check here whose scope comes from the TREE rather than from the
- * manifest**: every `page.tsx` under `src/app` must be declared, fenced, or on
- * `NON_DECLARABLE`. Every other check asks *is what is written real*; F asks the
+ * manifest**: every `page.tsx` under `src/app` must be declared, behind one of
+ * the TWO fences — `PHASE_42_PATHS` or `PENDING_SURFACES`, kept apart by plan
+ * 42-01 — or on `NON_DECLARABLE`. Every other check asks *is what is written
+ * real*; F asks the
  * opposite, *is what is real written*, and until it existed a forty-second page
  * added next month was invisible to the whole suite. They are not split, and the
  * reason is not economy:
@@ -1425,18 +1427,19 @@ try {
 }
 
 const {
-  SPINE, PHASE_42_PATHS, PRIMITIVES, CONVERTED, NON_DECLARABLE,
+  SPINE, PHASE_42_PATHS, PENDING_SURFACES, PRIMITIVES, CONVERTED, NON_DECLARABLE,
   checkManifest, convertedSpinePaths, existsCaseExact,
 } = manifest;
 
 for (const [name, value] of [
   ['SPINE', SPINE], ['PHASE_42_PATHS', PHASE_42_PATHS],
+  ['PENDING_SURFACES', PENDING_SURFACES],
   ['PRIMITIVES', PRIMITIVES], ['CONVERTED', CONVERTED],
   ['NON_DECLARABLE', NON_DECLARABLE],
 ]) {
   if (!Array.isArray(value)) {
     refuse(
-      `the manifest does not export ${name} as an array. This script reads four declared\n` +
+      `the manifest does not export ${name} as an array. This script reads five declared\n` +
         '       lists and a check function; a manifest with a different shape is a manifest\n' +
         '       this gate cannot measure, and guessing at the new shape would be worse than\n' +
         '       refusing. Nothing was measured.'
@@ -1578,6 +1581,20 @@ const phase42Patterns = PHASE_42_PATHS.map(([glob, reason]) => ({ glob, reason, 
 
 function phase42Match(relPath) {
   return phase42Patterns.find((p) => p.re.test(relPath)) ?? null;
+}
+
+/*
+ * The second fence, read the SAME way and kept a SEPARATE thing — plan 42-01.
+ * Same translation, same find, same `[glob, reason]` shape; a different bucket
+ * in check F's census and a different line in its report, because the moment
+ * *fenced by the phase that is running* and *fenced as another phase's debt* are
+ * one number, a reader can no longer tell which of the two he is being asked to
+ * accept.
+ */
+const pendingPatterns = PENDING_SURFACES.map(([glob, reason]) => ({ glob, reason, re: globToRegExp(glob) }));
+
+function pendingMatch(relPath) {
+  return pendingPatterns.find((p) => p.re.test(relPath)) ?? null;
 }
 
 /* ── the route-adjacent extension of the scanned set (D-41.1-21) ─────────────
@@ -3777,14 +3794,24 @@ if (!failures.includes('E')) {
  *   1. the `pageFile` of an entry in `CONVERTED`;
  *   2. matched by a glob in `PHASE_42_PATHS` — a FENCE: nobody measured it, and
  *      nothing here says the markup behind it is right;
- *   3. named in `NON_DECLARABLE` — a CATEGORY REFUSAL: somebody measured it and
+ *   3. matched by a glob in `PENDING_SURFACES` — ALSO A FENCE, and a different
+ *      one: a surface another phase built, whose conversion is that phase's
+ *      debt. Added by plan 42-01;
+ *   4. named in `NON_DECLARABLE` — a CATEGORY REFUSAL: somebody measured it and
  *      found nothing for a surface criterion to be true or false about.
  *
- * A page in none of the three is a **FAILURE** (exit 1), named at its path. The
- * three buckets are printed separately on every run and are deliberately not
+ * A page in none of the four is a **FAILURE** (exit 1), named at its path. The
+ * four buckets are printed separately on every run and are deliberately not
  * collapsed into one number: collapsing *fenced* into *exempt* — in the code or,
  * worse, in the report a reader actually sees — is how a scope boundary quietly
  * turns into an approval (`verify-dialogs.mjs:612-628`, the same distinction).
+ *
+ * **AND THE TWO FENCES ARE NOT COLLAPSED INTO EACH OTHER EITHER**, which is the
+ * same argument applied one level down. They are the same KIND of fact —
+ * unmeasured — and they are not the same fact: the first dissolves when the
+ * phase that owns it runs, the second when six unrelated commits each carry one
+ * entry across to `CONVERTED`. A single count would let the second grow while
+ * the first shrinks and print a number that never moved.
  *
  * **The stale direction refuses rather than fails**, and it refuses inside
  * `checkManifest()` above, before this check runs: a `NON_DECLARABLE` entry
@@ -3828,6 +3855,7 @@ const nonDeclarablePaths = new Set(NON_DECLARABLE.map(([pageFile]) => pageFile))
 
 const censusDeclared = [];
 const censusFenced = [];
+const censusPending = [];
 const censusNonDeclarable = [];
 const censusUnaccounted = [];
 
@@ -3841,6 +3869,11 @@ for (const rel of treePages) {
     censusFenced.push({ rel, glob: behind.glob });
     continue;
   }
+  const pending = pendingMatch(rel);
+  if (pending) {
+    censusPending.push({ rel, glob: pending.glob });
+    continue;
+  }
   if (nonDeclarablePaths.has(rel)) {
     censusNonDeclarable.push(rel);
     continue;
@@ -3852,12 +3885,17 @@ console.log('  check F — the tree-side census: every page.tsx accounted for (c
 console.log(`      page.tsx files under ${APP_DIR_REL}      : ${treePages.length}`);
 console.log(`      declared in CONVERTED                : ${censusDeclared.length}`);
 console.log(`      behind the Phase 42 fence            : ${censusFenced.length}   (measured by nobody — a fence, not an exemption)`);
+console.log(`      pending another phase's conversion   : ${censusPending.length}   (measured by nobody — another phase's debt, not this one's approval)`);
 console.log(`      on NON_DECLARABLE                    : ${censusNonDeclarable.length}   (measured, and not a surface)`);
 console.log(`      unaccounted for                      : ${censusUnaccounted.length}\n`);
 
 for (const { rel, glob } of censusFenced) {
   console.log(`       ${rel}`);
   console.log(`         fenced by  ${glob}`);
+}
+for (const { rel, glob } of censusPending) {
+  console.log(`       ${rel}`);
+  console.log(`         pending, fenced by  ${glob}`);
 }
 for (const rel of censusNonDeclarable) {
   const reason = NON_DECLARABLE.find(([p]) => p === rel)?.[1] ?? '';
@@ -3874,14 +3912,17 @@ if (censusUnaccounted.length > 0) {
     '\n       A route file that renders a surface and is on no list is a surface no gate\n' +
       '       walks: checks A, B and D never open it, and the phase reports green over a\n' +
       '       screen nobody looked at. Put it on CONVERTED with the plan that converted it,\n' +
-      '       behind PHASE_42_PATHS if another phase owns it, or on NON_DECLARABLE with the\n' +
-      '       argument for why it is not a surface. All three are decisions somebody reads.\n'
+      '       behind PHASE_42_PATHS if this phase is the one that will not open it, on\n' +
+      '       PENDING_SURFACES with the phase that built it named inside the reason, or on\n' +
+      '       NON_DECLARABLE with the argument for why it is not a surface. All four are\n' +
+      '       decisions somebody reads.\n'
   );
 } else {
   console.log(
     `  ✓ F  all ${treePages.length} page.tsx file(s) under ${APP_DIR_REL} are accounted for —\n` +
-      `       ${censusDeclared.length} declared, ${censusFenced.length} fenced, ${censusNonDeclarable.length} non-declarable, and the three buckets are\n` +
-      '       printed apart because fenced and exempt are not the same fact\n'
+      `       ${censusDeclared.length} declared, ${censusFenced.length} fenced by Phase 42, ${censusPending.length} pending another phase,\n` +
+      `       ${censusNonDeclarable.length} non-declarable, and the four buckets are printed apart because\n` +
+      '       fenced and exempt are not the same fact, and neither are the two fences\n'
   );
 }
 
