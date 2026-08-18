@@ -221,3 +221,39 @@ tocco non se ne lamenta — riprova, e intanto qualcuno aspetta.
 ---
 
 *Aperto: 2026-08-18 — fase 42, piani 01 e 04.*
+
+---
+
+## DEF-42-04 — il criterio 3 non e' piu' chiudibile, ed e' una decisione presa, non un incidente
+
+**Aperta il 2026-08-18. Non assegnabile a un piano: non esiste un piano che la chiuda.**
+
+Il criterio 3 della fase 42 dice *ogni comportamento dello scanner e' invariato
+rispetto a prima della conversione*. La misura del *prima* era la riga 3m di
+`42-PROCEDURES.md` — il door pass sullo scanner non convertito — e il roadmap la
+teneva davanti alla conversione con un vincolo d'ordine esplicito.
+
+**Il proprietario ha scavalcato quel cancello il 2026-08-18**, con il costo
+enunciato prima della scelta, e le onde 3-8 sono state eseguite con la riga 3m a
+`pending`. Da quel momento la riga non e' rimandata: **e' impossibile**, perche' lo
+scanner non convertito che doveva misurare non esiste piu'.
+
+**Conseguenze, scritte perche' nessuno le riscopra come sorpresa:**
+
+1. Il criterio 3 resta **senza termine di paragone in modo permanente**. Ogni
+   documento che dichiari la fase 42 verificata deve dirlo, invece di contarlo fra
+   i criteri chiusi.
+2. La riga 3n — lo stesso pass sullo scanner convertito — puo' ancora essere
+   eseguita, ma produce una **descrizione**, non un confronto. Il suo valore
+   scende, e non e' un ripiego equivalente.
+3. Il secondo motivo del vincolo resta in piedi e non e' coperto da questa deroga:
+   **alla prima porta reale, correzioni di comportamento mai esercitate e una
+   superficie ridipinta gireranno insieme**, senza error tracking che dica quale
+   delle due ha ceduto. Chi spedisce alla porta lo fa sapendolo.
+
+**Cosa si puo' ancora fare, e vale la pena farlo:** eseguire ugualmente
+`39-DOOR-PASS.md` §0.6 e §8 sullo scanner convertito, alla prima porta reale.
+Non chiude il criterio 3 — nulla lo chiude piu' — ma e' la **prima** osservazione
+del comportamento della porta che questo progetto avra', e da li' in poi diventa
+il *prima* di qualunque cosa venga dopo. Le altre nove righe di
+`42-PROCEDURES.md` restano `pending` ed eseguibili.

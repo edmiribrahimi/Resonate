@@ -1,7 +1,7 @@
 ---
 phase: 42-scanner-conversion
 written: 2026-08-18
-status: ten procedures, ten `Result: pending`. Nothing below has been run, and `pending` is the literal state of every one of them — not `skipped`, not `n/a`
+status: ten procedures, ten `Result: pending`. Nothing below has been run, and `pending` is the literal state of every one of them — not `skipped`, not `n/a`. **Row 3m is the exception, and not because it was run: its execution gate was overridden by the owner on 2026-08-18 and the row is no longer runnable at all — the unconverted scanner it had to measure no longer exists. See the derogation block at row 3m.**
 carries: the ten manual rows of `42-VALIDATION.md` § Manual-Only Verifications — 1h, 1i, 2d, 3m, 3n, 3o, 3p, 3q, 3r, 3s — each with the researcher's own reason for why no command closes it
 closes: success criterion 1 (rows 1h, 1i), criterion 2 (row 2d), criterion 3 (rows 3m–3s)
 writes_nothing: none of the ten creates a row, spends a number or grants a key. There is no authorisation to ask for here and no snapshot to take. What they do change is the state of a real night's door, so they are run by whoever is already working it — never by a second person standing behind the queue
@@ -198,7 +198,46 @@ from the calendar in `docs/`, which git ignores. **Before any conversion ships.*
 5. When the sitting ends, write here **where the filled pass lives** and its
    commit, so row 3n has something to open.
 
-Result: pending
+> ## DEROGA DEL PROPRIETARIO — 2026-08-18
+>
+> **Il cancello d'esecuzione di questa riga e' stato scavalcato deliberatamente, e
+> le onde 3-8 della fase 42 sono state eseguite con questa riga a `pending`.**
+> Non e' una dimenticanza, non e' un errore di procedura e non e' un `Result` da
+> riempire dopo: e' una decisione presa dal proprietario il 2026-08-18, dopo che
+> il costo era stato enunciato e messo per iscritto nell'opzione scelta.
+>
+> **Cosa si perde, alla lettera.** Questa riga doveva essere il primo *prima* che
+> questo progetto avrebbe mai avuto per il comportamento della porta. Non essendo
+> stata eseguita finche' lo scanner era non convertito, **non e' piu' eseguibile**:
+> il codice su cui andava misurata non esiste piu'. Di conseguenza:
+>
+> - **Il criterio 3 — *ogni comportamento dello scanner e' invariato rispetto a
+>   prima della conversione* — non e' piu' chiudibile.** Non e' aperto: e' privo
+>   di un termine di paragone, in modo permanente.
+> - **La riga 3n perde il proprio oggetto.** Chiedeva un confronto riga per riga
+>   fra due osservazioni umane; la prima non esiste e non puo' piu' esistere.
+>   Eseguire 3n da sola produce una descrizione, non un confronto.
+>
+> **Cosa NON cambia, e va detto perche' non venga letto come un via libera.** Il
+> vincolo del roadmap esisteva anche per una seconda ragione, che resta intatta:
+> alla prima porta reale, correzioni di comportamento mai usate (fasi 31 e 39) e
+> una superficie ridipinta girano **insieme**, e questo repository non ha error
+> tracking. Se qualcosa cede davanti a una fila, nessuno potra' dire quale delle
+> due l'ha causato. Questo rischio e' stato accettato, non rimosso.
+>
+> **Alternativa che era disponibile e non e' stata presa:** una seduta di
+> laboratorio su ambiente usa-e-getta, con 3m e 3n appaiati nelle stesse
+> condizioni, che avrebbe chiuso il criterio 3 nei suoi termini senza toccare la
+> produzione. E' registrata qui perche' la decisione sia leggibile per intero da
+> chi la rilegge, non perche' venga riaperta.
+>
+> **Le altre nove righe di questo documento restano `pending` e restano
+> eseguibili.** Nessuna di esse e' chiusa da questa deroga, e nessuna va marcata
+> `skipped` o `n/a` per coerenza con questa: `pending` resta lo stato letterale.
+
+Result: pending — e non e' piu' riempibile. Vedi la deroga qui sopra: la riga
+non e' stata eseguita finche' lo scanner era non convertito, e da quel momento
+non ha piu' un oggetto da misurare.
 
 ---
 
