@@ -418,20 +418,26 @@ const FRESHNESS_TICK_MS = 5_000;
  * The connectivity pill's colour, in one place because a gate reads it.
  *
  * `scripts/verify-scan-legibility.mjs` measures the third scan state against
- * this pill, and written inline the pill gave it nothing stable to read —
- * `bg-yellow-500` appears ten times in this file across five different
- * features, and a gate that guesses prints a green over a measurement it never
- * made. The identifier and the `offlineDot` key are a contract with that gate
+ * this pill, and written inline the pill gave it nothing stable to read: its
+ * tint was one occurrence among many of the same utility in this file, and a
+ * gate that guesses prints a green over a measurement it never made. The
+ * identifier and the `offlineDot` key are a contract with that gate
  * (`42-03-FINDINGS.md` §1); the utilities are spelled out in full because
  * Tailwind never emits a class name composed at runtime; both branches read
- * from here so one pill has one source of truth. The colours themselves are
- * unchanged — this is a lift, and plan 42-08 decides what they become.
+ * from here so one pill has one source of truth.
+ *
+ * Offline carries the warning semantic. Its legality is the pill's own word:
+ * that semantic is also a format's identification colour, so the standing rule
+ * is that anything wearing it carries text, and this one carries *Offline*.
+ * Online stays on the raw acceptance vocabulary — the semantic set holds no
+ * colour for *this one passed*, and phase 40 declined to invent one — which is
+ * a declared derogation, not an omission.
  */
 const CONNECTIVITY_PILL = {
   onlineWash: "bg-green-500/15 text-green-500",
   onlineDot: "bg-green-500",
-  offlineWash: "bg-yellow-500/15 text-yellow-500",
-  offlineDot: "bg-yellow-500",
+  offlineWash: "bg-sem-warn/15 text-sem-warn",
+  offlineDot: "bg-sem-warn",
 } as const;
 
 /** Read `doorAuth` off an attendance body, field by field. Anything else is `null`. */
@@ -2712,7 +2718,7 @@ export default function ScannerClient() {
                       <span className="text-[10px] text-muted">
                         {checked} / {total}
                         {party.guestListCount > 0 && (
-                          <span className="text-purple-400">
+                          <span className="text-sem-info">
                             {" "}
                             (+{party.guestListCount} guest list)
                           </span>
@@ -2822,8 +2828,8 @@ export default function ScannerClient() {
                       4.5 from this pill in deuteranopia against a threshold of
                       10; the third state is now the completion semantic
                       (ScanFlash.tsx) and the gate measures the pair every run.
-                      The colour here is unchanged and lives in
-                      CONNECTIVITY_PILL. */}
+                      Which tint each branch wears is not written here: it lives
+                      in CONNECTIVITY_PILL, and the gate reads it there. */}
                   {isOnline ? (
                     <span className={`shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${CONNECTIVITY_PILL.onlineWash}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${CONNECTIVITY_PILL.onlineDot}`} />
@@ -2853,7 +2859,7 @@ export default function ScannerClient() {
             onClick={() => setShowScanner((v) => !v)}
             className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               showScanner
-                ? "bg-accent text-white"
+                ? "bg-accent text-ground"
                 : "bg-card border border-card-border text-muted hover:text-foreground"
             }`}
           >
@@ -2882,8 +2888,8 @@ export default function ScannerClient() {
 
         {/* The night is over, said once, with a way back that costs one tap. */}
         {nightIsOver && (
-          <div className="mb-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
-            <p className="text-[11px] leading-snug text-yellow-500">
+          <div className="mb-3 rounded-lg border border-sem-warn/30 bg-sem-warn/10 px-3 py-2">
+            <p className="text-[11px] leading-snug text-sem-warn">
               This night is over
               {nightEndedClock ? ` — it ended at ${nightEndedClock}` : ""}.
               Nothing has been removed: anything still waiting to be reported is
@@ -2891,7 +2897,7 @@ export default function ScannerClient() {
             </p>
             <button
               onClick={() => setScanPastEnd(true)}
-              className="mt-1.5 rounded-full bg-yellow-500/20 px-2.5 py-1 text-[10px] font-medium text-yellow-500 active:scale-95 transition-transform"
+              className="mt-1.5 rounded-full bg-sem-warn/20 px-2.5 py-1 text-[10px] font-medium text-sem-warn active:scale-95 transition-transform"
             >
               Scan anyway
             </button>
@@ -2929,26 +2935,26 @@ export default function ScannerClient() {
           queue.undone > 0) && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             {queue.pending > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+              <span className="flex items-center gap-1 rounded-full bg-sem-warn/15 px-2 py-0.5 text-[10px] font-medium text-sem-warn">
+                <span className="h-1.5 w-1.5 rounded-full bg-sem-warn animate-pulse" />
                 Pending ({queue.pending})
               </span>
             )}
             {queue.failed > 0 && (
               <button
                 onClick={toggleFailedEntries}
-                className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500 active:scale-95 transition-transform"
+                className="flex items-center gap-1 rounded-full bg-sem-crit/15 px-2 py-0.5 text-[10px] font-medium text-sem-crit active:scale-95 transition-transform"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                <span className="h-1.5 w-1.5 rounded-full bg-sem-crit" />
                 Could not be recorded ({queue.failed})
               </button>
             )}
             {queue.blocked > 0 && (
               <button
                 onClick={handleRetryBlocked}
-                className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-500 active:scale-95 transition-transform"
+                className="flex items-center gap-1 rounded-full bg-sem-warn/15 px-2 py-0.5 text-[10px] font-medium text-sem-warn active:scale-95 transition-transform"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-sem-warn animate-pulse" />
                 Sign in again to record {queue.blocked}{" "}
                 {queue.blocked === 1 ? "entry" : "entries"}
               </button>
@@ -2960,14 +2966,14 @@ export default function ScannerClient() {
                 not promise a report that no endpoint accepts yet; see the
                 cross-plan note in `35-13-SUMMARY.md`. */}
             {queue.undone > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-medium text-purple-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+              <span className="flex items-center gap-1 rounded-full bg-sem-warn/15 px-2 py-0.5 text-[10px] font-medium text-sem-warn">
+                <span className="h-1.5 w-1.5 rounded-full bg-sem-warn" />
                 Undone at the door, held on this device ({queue.undone})
               </span>
             )}
             {queue.unreadable && (
-              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              <span className="flex items-center gap-1 rounded-full bg-sem-crit/15 px-2 py-0.5 text-[10px] font-medium text-sem-crit">
+                <span className="h-1.5 w-1.5 rounded-full bg-sem-crit" />
                 This device cannot read its own queue
               </span>
             )}
@@ -2982,8 +2988,8 @@ export default function ScannerClient() {
             behind it is a number nobody trusts. No email and no membership code
             is rendered here — see `failedEntryLabel`. */}
         {failedEntries !== null && (
-          <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-red-400 mb-2">
+          <div className="mb-3 rounded-xl border border-sem-crit/30 bg-sem-crit/5 p-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-sem-crit mb-2">
               Could not be recorded
             </p>
             {failedEntries.length === 0 ? (
