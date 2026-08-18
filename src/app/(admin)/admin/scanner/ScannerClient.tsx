@@ -2705,7 +2705,7 @@ export default function ScannerClient() {
                   onClick={() => setSelectedPartyId(party.partyId)}
                   className="w-full text-left rounded-xl border border-line bg-surface p-4 hover:border-accent/50 active:scale-[0.98] transition-all"
                 >
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-medium text-ink">
                     {party.eventTitle}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
@@ -2728,7 +2728,7 @@ export default function ScannerClient() {
                           </span>
                         )}
                       </span>
-                      <span className="text-[10px] font-semibold text-foreground">
+                      <span className="text-[10px] font-semibold text-ink">
                         {pct}%
                       </span>
                     </div>
@@ -2797,7 +2797,7 @@ export default function ScannerClient() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleChangeParty}
-                className="shrink-0 text-muted hover:text-foreground transition-colors"
+                className="shrink-0 text-muted hover:text-ink transition-colors"
                 aria-label="Change party"
               >
                 <svg
@@ -2864,7 +2864,7 @@ export default function ScannerClient() {
             className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               showScanner
                 ? "bg-accent text-ground"
-                : "bg-surface border border-line text-muted hover:text-foreground"
+                : "bg-surface border border-line text-muted hover:text-ink"
             }`}
           >
             <svg
@@ -3004,7 +3004,7 @@ export default function ScannerClient() {
               <ul className="space-y-1">
                 {failedEntries.map((entry) => (
                   <li key={entry.key} className="text-[11px] text-muted">
-                    <span className="text-foreground">
+                    <span className="text-ink">
                       {failedEntryLabel(entry)}
                     </span>{" "}
                     — {failureSentence(entry.reason)}
@@ -3055,7 +3055,7 @@ export default function ScannerClient() {
                 Checked in
                 {listAgeLabel && <span className="ml-2">· {listAgeLabel}</span>}
               </span>
-              <span className="text-xs font-semibold text-foreground">
+              <span className="text-xs font-semibold text-ink">
                 {totalCheckedIn} / {totalAttendees}
                 {(attendance.guestListCount ?? 0) > 0 && (
                   <span className="text-sem-info font-normal">
@@ -3103,12 +3103,12 @@ export default function ScannerClient() {
             placeholder="Search by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-line bg-surface py-3 pl-10 pr-10 text-sm text-foreground placeholder:text-muted/50 focus:border-accent focus:outline-none"
+            className="w-full rounded-xl border border-line bg-surface py-3 pl-10 pr-10 text-sm text-ink placeholder:text-muted/50 focus:border-accent focus:outline-none"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             >
               <svg
                 className="h-4 w-4"
@@ -3136,7 +3136,7 @@ export default function ScannerClient() {
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 activeFilter === tab.key
                   ? "bg-accent/20 text-accent"
-                  : "text-muted hover:text-foreground"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {tab.label}{" "}
@@ -3249,7 +3249,7 @@ export default function ScannerClient() {
                 className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
                   torchOn
                     ? "bg-sem-warn/20 text-sem-warn"
-                    : "bg-line/30 text-muted hover:text-foreground"
+                    : "bg-line/30 text-muted hover:text-ink"
                 }`}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -3369,7 +3369,7 @@ export default function ScannerClient() {
                       className={`text-sm truncate block ${
                         isUndone
                           ? "text-muted line-through"
-                          : "text-foreground"
+                          : "text-ink"
                       }`}
                     >
                       {record.name}
@@ -3422,7 +3422,7 @@ export default function ScannerClient() {
                       className="flex items-center justify-between py-3 border-b border-line/50 last:border-0"
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-sm text-foreground truncate">
+                        <span className="text-sm text-ink truncate">
                           {a.name}
                         </span>
                         {a.isGuestList && (
