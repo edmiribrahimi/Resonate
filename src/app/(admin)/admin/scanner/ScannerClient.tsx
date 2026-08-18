@@ -3054,7 +3054,7 @@ export default function ScannerClient() {
               <span className="text-xs font-semibold text-foreground">
                 {totalCheckedIn} / {totalAttendees}
                 {(attendance.guestListCount ?? 0) > 0 && (
-                  <span className="text-purple-400 font-normal">
+                  <span className="text-sem-info font-normal">
                     {" "}
                     (+{attendance.guestListCount} guest list)
                   </span>
@@ -3158,7 +3158,7 @@ export default function ScannerClient() {
         */}
         {cameraFault && (
           <div
-            className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-400"
+            className="mb-4 rounded-xl border border-sem-crit/40 bg-sem-crit/10 px-3 py-2 text-xs leading-relaxed text-sem-crit"
             role="status"
             aria-live="polite"
           >
@@ -3206,8 +3206,8 @@ export default function ScannerClient() {
               onClick={() => requestReload("band")}
               className={`w-full rounded-xl border px-3 py-2.5 text-left text-xs leading-relaxed transition-colors ${
                 channelLive
-                  ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-500 active:bg-yellow-500/20"
-                  : "border-red-500/40 bg-red-500/10 text-red-400 active:bg-red-500/20"
+                  ? "border-sem-warn/40 bg-sem-warn/10 text-sem-warn active:bg-sem-warn/20"
+                  : "border-sem-crit/40 bg-sem-crit/10 text-sem-crit active:bg-sem-crit/20"
               }`}
             >
               {stalenessBandText(channelLive, listAgeMs)}
@@ -3222,8 +3222,8 @@ export default function ScannerClient() {
                 key={notice.key}
                 className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
                   notice.tone === "error"
-                    ? "border-red-500/40 bg-red-500/10 text-red-400"
-                    : "border-yellow-500/40 bg-yellow-500/10 text-yellow-500"
+                    ? "border-sem-crit/40 bg-sem-crit/10 text-sem-crit"
+                    : "border-sem-warn/40 bg-sem-warn/10 text-sem-warn"
                 }`}
               >
                 {notice.text}
@@ -3244,7 +3244,7 @@ export default function ScannerClient() {
                 onClick={toggleTorch}
                 className={`mt-3 w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium transition-colors ${
                   torchOn
-                    ? "bg-yellow-500/20 text-yellow-400"
+                    ? "bg-sem-warn/20 text-sem-warn"
                     : "bg-card-border/30 text-muted hover:text-foreground"
                 }`}
               >
@@ -3422,7 +3422,7 @@ export default function ScannerClient() {
                           {a.name}
                         </span>
                         {a.isGuestList && (
-                          <span className="shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-400">
+                          <span className="shrink-0 rounded-full bg-sem-info/20 px-2 py-0.5 text-[10px] font-medium text-sem-info">
                             Guest List
                           </span>
                         )}
