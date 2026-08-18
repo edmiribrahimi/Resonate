@@ -239,6 +239,81 @@ export const PHASE_42_PATHS = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * PENDING_SURFACES — surfaces another phase built and no phase has measured
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Real surfaces, on no converted list, whose conversion is somebody else's debt.
+ *
+ * **THE SAME KIND OF THING AS `PHASE_42_PATHS`, AND NOT THE SAME KIND AS
+ * `NON_DECLARABLE`.** Read the docblock below this one for the distinction it
+ * draws and do not blur it here: a **fence** says *nobody measured it*, a
+ * **category refusal** says *somebody measured it and there is nothing for a
+ * surface criterion to be true or false about*. The six pages behind this list
+ * are the first kind. They render. A person looks at them. Nothing in this file
+ * says one word about their markup, and this entry is the written form of that
+ * silence rather than a substitute for it.
+ *
+ * **WHY IT EXISTS, MEASURED 2026-08-18 BY PLAN 42-01.** Repairing DEF-45-01 —
+ * the four `CONVERTED` entries naming surfaces the product no longer has — was
+ * necessary and not sufficient. With `checkManifest()` no longer refusing,
+ * checks A–E passed and **check F failed on six page files** that phases 44 and
+ * 45 added and never declared. Check F itself names the three dispositions
+ * available and all three are decisions somebody reads: declare them converted,
+ * fence them, or refuse them as non-surfaces. Declaring them would be the lie
+ * `CONVERTED`'s own docblock names — *a list of claims is how a gate becomes a
+ * rubber stamp* — because no plan walked their closure. Refusing them as
+ * non-surfaces would be false: they have markup. So: fenced, by name, with the
+ * owning phase written inside the reason.
+ *
+ * **THE NAME CARRIES NO PHASE NUMBER, ON PURPOSE.** `PHASE_42_PATHS` can be
+ * named for a phase because it names ONE phase's scope and dissolves when that
+ * phase runs. This list is the general shape — *a surface whose conversion
+ * belongs to whoever built it* — and a third phase will leave a page behind
+ * eventually. This repository has already paid for a constant whose name became
+ * a false description of what it holds; a name that describes the CONDITION
+ * survives the arithmetic changing under it.
+ *
+ * **THE ONE EXIT, and it is the same rule every list in this file states.** An
+ * entry leaves here in the SAME COMMIT as its `CONVERTED` entry arrives. Not
+ * before — an entry that leaves early makes check F red on a correct tree — and
+ * not after, because an entry that outlives its surface is a fence around
+ * nothing, which is why `checkManifest()` now refuses on exactly that (a
+ * refusal `PHASE_42_PATHS` does NOT have, and the asymmetry is deliberate: the
+ * Phase 42 fence dissolves by a plan that is written to dissolve it, this one by
+ * six unrelated commits nobody coordinates).
+ *
+ * The reason travels WITH the entry for the reason every list here repeats: a
+ * list whose reasons live somewhere else is a list whose reasons stop being true
+ * unnoticed.
+ *
+ * Grouped by the directory that owns the surfaces rather than spelled as six
+ * near-identical globs, because six lines differing by one path segment are six
+ * lines nobody proof-reads.
+ *
+ * Shape: `[glob, reason]` — the same shape `PHASE_42_PATHS` carries, matched the
+ * same way by the same helper in the consumer.
+ */
+export const PENDING_SURFACES = [
+  [
+    "src/app/(admin)/admin/(work)/calendar/**",
+    "the production calendar and its detail page — built by PHASE 44, and its debt: two page files that render, that no plan has walked, and that this phase neither converts nor claims. Phase 42 converts the scanner and takes colour, contrast and type only; absorbing six surfaces it did not build would be a scope change, and a scope change is an owner's decision and not a planning adjustment. NOT AN APPROVAL: nothing here says the markup behind these two pages is right, only that nobody measured it. The entry leaves this list in the SAME COMMIT as its CONVERTED entry arrives, which is the only exit — and a glob here that stops matching any page.tsx is a REFUSAL, because a fence that can silently match nothing is a fence that never dissolves. Recorded as DEF-42-01 with the run that found it",
+  ],
+  [
+    "src/app/(admin)/admin/(work)/location/**",
+    "the venue archive and its detail page — built by PHASE 45, and its debt, on the same terms as the calendar entry above: two page files that render, unmeasured, fenced by name and not declared converted. NOT AN APPROVAL. The exit is one CONVERTED entry per surface, in the commit that converts it, and until then this line is the written form of nobody having looked. Recorded as DEF-42-01",
+  ],
+  [
+    "src/app/(admin)/admin/(work)/manifesto/**",
+    "the sound manifesto section — built by PHASE 45, and its debt. One page file, rendering, on no converted list. NOT AN APPROVAL: unmeasured, fenced, and it leaves this list in the same commit as its CONVERTED entry. Recorded as DEF-42-01",
+  ],
+  [
+    "src/app/(admin)/admin/(work)/visual/**",
+    "the visual system section — built by PHASE 45, and its debt. One page file, rendering, on no converted list. NOT AN APPROVAL: unmeasured, fenced, and it leaves this list in the same commit as its CONVERTED entry. Recorded as DEF-42-01",
+  ],
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
  * NON_DECLARABLE — the page files that are not surfaces, and never will be
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -1031,7 +1106,105 @@ export function checkManifest() {
     }
   }
 
+  /*
+   * A PENDING_SURFACES glob matching NO page.tsx on disk REFUSES — the sixth
+   * condition, added 2026-08-18 by plan 42-01, and the one `PHASE_42_PATHS`
+   * deliberately does not have.
+   *
+   * The other five conditions read a path and ask the filesystem about it. This
+   * one reads a PATTERN, so the stale direction looks different: an entry cannot
+   * name a file that is gone, it can only stop catching anything — and a fence
+   * catching nothing is indistinguishable, in the report and in the exit code,
+   * from a fence doing its job. Check F subtracts this list from the tree's
+   * census exactly as it subtracts NON_DECLARABLE, so a glob that has quietly
+   * stopped matching is a scope boundary nobody can see, still printed as though
+   * somebody drew it.
+   *
+   * Either the surface was CONVERTED and the entry should have left in that
+   * commit, or it was removed from the product and the entry outlived it. Both
+   * are the same defect DEF-45-01 recorded on CONVERTED, in the direction that
+   * prints a tick instead of a red.
+   *
+   * The walk is here rather than in a consumer for the reason the module's own
+   * docblock gives: nothing runs at import time, but a consumer must be able to
+   * ask ONE function whether the lists can be trusted before reading an entry.
+   */
+  for (const [glob] of PENDING_SURFACES) {
+    if (!globMatchesSomePage(glob)) {
+      refusals.push(
+        `PENDING_SURFACES declares ${glob}, which matches NO page.tsx on disk. A fence\n` +
+          "       that catches nothing is not a smaller fence: it is a scope boundary a reader\n" +
+          "       still sees printed and no file is behind. Either the surface was CONVERTED —\n" +
+          "       in which case this line leaves in the SAME COMMIT as its CONVERTED entry,\n" +
+          "       which is this list's only exit — or the surface was removed from the product\n" +
+          "       and the entry outlived it, which is DEF-45-01 again in the direction that\n" +
+          "       prints a tick. Nothing was measured."
+      );
+    }
+  }
+
   return { ok: refusals.length === 0, refusals };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * The glob helper `checkManifest()`'s sixth condition needs
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * `**` spans separators, `*` does not, every other character is literal.
+ *
+ * Deliberately the SAME translation `verify-conversion.mjs` applies to
+ * `PHASE_42_PATHS`, so a glob written here means on this side exactly what it
+ * means on the consumer's side. Two matchers disagreeing about one pattern would
+ * let `checkManifest()` accept a fence check F never applies — which is a
+ * refusal that does not fire and a page that goes unaccounted for.
+ */
+function globToRegExp(glob) {
+  let out = "^";
+  for (let i = 0; i < glob.length; i += 1) {
+    const ch = glob[i];
+    if (ch === "*") {
+      if (glob[i + 1] === "*") {
+        out += ".*";
+        i += 1;
+        if (glob[i + 1] === "/") i += 1;
+      } else {
+        out += "[^/]*";
+      }
+      continue;
+    }
+    out += ch.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(`${out}$`);
+}
+
+/** Every `page.tsx` under `src/app`, relative to ROOT, symlinks not followed. */
+function appPageFiles() {
+  const out = [];
+  const walk = (abs, rel) => {
+    let entries;
+    try {
+      entries = readdirSync(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
+      const childRel = `${rel}/${entry.name}`;
+      if (entry.isDirectory()) {
+        walk(join(abs, entry.name), childRel);
+        continue;
+      }
+      if (entry.isFile() && entry.name === "page.tsx") out.push(childRel);
+    }
+  };
+  walk(join(ROOT, "src/app"), "src/app");
+  return out;
+}
+
+function globMatchesSomePage(glob) {
+  const re = globToRegExp(glob);
+  return appPageFiles().some((rel) => re.test(rel));
 }
 
 /** The spine entries a walk may skip today — `pending` members are NOT skipped. */
