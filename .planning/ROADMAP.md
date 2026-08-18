@@ -1020,7 +1020,7 @@ Plans:
 
 **Wave 7** *(BLOCKED)*
 
-- [ ] 42-11-PLAN.md — the declaration: the fence down in all three consumers, the two door addresses declared, every derogation entered with its argument, and the legibility gate registered in both halves at once
+- [x] 42-11-PLAN.md — the declaration: the fence down in all three consumers, the two door addresses declared, every derogation entered with its argument, and the legibility gate registered in both halves at once
 
 **Wave 8** *(BLOCKED)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 10/12 | In Progress — conversione sotto deroga del proprietario (DEF-42-04) | - |
+| 42. Scanner Conversion | 11/12 | In Progress — conversione sotto deroga del proprietario (DEF-42-04) | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
