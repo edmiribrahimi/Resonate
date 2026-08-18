@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import MobileNav from "@/components/layout/MobileNav";
+import AppNav from "@/components/layout/AppNav";
 import ScannerClient from "./ScannerClient";
 import type { UserRole, UserStatus } from "@/types/database";
 
@@ -71,11 +71,12 @@ import type { UserRole, UserStatus } from "@/types/database";
  * deliberately: the causes are the middleware's vocabulary for a routing
  * decision, and reaching this line means the routing already said yes.
  *
- * `<MobileNav>` and `<StaffNav>` are `"use client"` components and cannot
- * import the DAL, so the values they need are resolved in the parent Server
- * Component and passed down — Next.js's own guidance for that case. **What they
- * take has changed:** `StaffNav` has taken serialisable capability keys since
- * plan 34-04, and `MobileNav` takes them as of plan 39-03, which is what lets
+ * `<AppNav form="phone">` and `<StaffNav>` are `"use client"` components and
+ * cannot import the DAL, so the values they need are resolved in the parent
+ * Server Component and passed down — Next.js's own guidance for that case.
+ * **What they take has changed:** `StaffNav` has taken serialisable capability
+ * keys since plan 34-04, and the navigation takes them as of plan 39-03, which
+ * is what lets
  * the Check-in entry be drawn on `door.operate` — the same key the guard below
  * asks — instead of on a role list plus an approval flag (D-39-06). It still
  * takes `role` and `status` as well, because four of its five entries are
@@ -85,6 +86,23 @@ import type { UserRole, UserStatus } from "@/types/database";
  * unchanged by it, and so is `requireDoorOperator({ partyId })` in the three
  * door Route Handlers, which is where the boundary on the door's data actually
  * is.
+ *
+ * ── `form="phone"`, and the wrapper that used to carry it — D-42-03 ──────────
+ *
+ * This file used to import a one-line wrapper whose whole job was to pass that
+ * prop. The wrapper predated the prop; once the prop existed it was a layer
+ * with nothing in it, and it is deleted. **The reason it existed did not die
+ * with it and is restated here:** the door does **not** take the 224 px
+ * column. This screen is read at an entrance, one-handed, in the dark, with a
+ * queue in front of it, and a tablet losing that much width to navigation is a
+ * smaller working area on the surface that can least afford one.
+ *
+ * So this file mounts the navigation **directly, locked to the phone form**,
+ * and it declares **no column clearance** — the navigation inset resolves to
+ * zero here by design, and that absence is what keeps the door on the bar.
+ * Check E in `scripts/verify-conversion.mjs` names this path for exactly that
+ * reason; if this mount ever stopped passing `form="phone"`, that gate would
+ * not notice, and the limitation is written into its entry there.
  *
  * ── Why this is a component and no longer a page — phase 39 ──────────────────
  *
@@ -130,7 +148,8 @@ export default async function DoorSurface() {
   return (
     <>
       <ScannerClient />
-      <MobileNav
+      <AppNav
+        form="phone"
         role={ctx.role as UserRole | null}
         status={ctx.status as UserStatus | null}
         capabilities={[...ctx.capabilities]}
