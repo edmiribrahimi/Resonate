@@ -222,3 +222,11 @@ Vanno dichiarati, perche' un criterio dato per verde quando la sua lettera non e
 ---
 *Fase: 42-scanner-conversion · Piano 06*
 *Completato: 2026-08-18, sotto la deroga del proprietario registrata nel commit `5e85d6b`*
+
+## Self-Check: PASSED
+
+Quattro file dichiarati, quattro presenti sul disco. Cinque commit dichiarati,
+cinque presenti in `git log`. Albero di lavoro pulito; il symlink a
+`node_modules` — necessario per `npm run build` e per il gate, che legge
+`node_modules/tailwindcss/theme.css` — e' stato rimosso prima del commit finale
+e non e' mai entrato in un indice.
