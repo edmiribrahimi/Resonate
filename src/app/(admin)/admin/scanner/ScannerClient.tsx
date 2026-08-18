@@ -3239,7 +3239,7 @@ export default function ScannerClient() {
         {/* QR Scanner - collapsible, continuous camera */}
         {showScanner && (
           <div className="mb-4 rounded-xl border border-line bg-surface p-4">
-            <div ref={scannerRef}>
+            <div ref={scannerRef} className="mx-auto w-full max-w-sm">
               <div id="qr-reader" className="overflow-hidden rounded-2xl" />
             </div>
             {/* Torch toggle — only shown when camera supports it */}
