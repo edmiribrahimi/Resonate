@@ -275,7 +275,11 @@ documento, ed e' il motivo per cui il metodo si scrive qui invece di lasciarlo
 scegliere a chi implementa.
 
 **Soglia: 10.** Con la terna decisa il minimo misurato e' **15,5**, quindi il
-gate nasce verde con margine. *Il ricercatore aveva segnalato il rischio opposto
+gate nasce verde con margine — **una volta che il colore e' cambiato**. Lo
+script **si scrive e si prova per mutazione in wave 0**, ma **si registra in
+`verify-all.mjs` solo con l'onda che cambia il colore**: registrato prima,
+misurerebbe la terna di oggi (minimo 2,1) e resterebbe rosso per tutto
+l'intervallo che D-42-04 blocca. Vedi D-42-09. *Il ricercatore aveva segnalato il rischio opposto
 — un gate che nasce rosso e' un gate che qualcuno spegne — e con `red-500` sarebbe
 successo (8,3). E' una delle ragioni per cui il rifiuto si scurisce.*
 
@@ -312,13 +316,50 @@ quattro voci sta in **wave 0**, prima di qualunque conversione, ed e' la
 riparazione che DEF-45-01 gia' descrive: *«la riparazione e' la rimozione delle
 quattro voci dalla lista CONVERTED, non un allargamento del matcher»*.
 
-### D-42-07 — Il recinto si apre, non si aggira
+**Questa resta in wave 0** — a differenza di D-42-05 e D-42-07, vedi la
+correzione qui sotto: toglie voci morte da una lista, e non pretende nulla dal
+codice dello scanner.
+
+### D-42-07 — Il recinto si apre insieme al colore, non prima
 
 `PHASE_42_PATHS` e' il recinto che ha tenuto la porta fuori dalle fasi 41.x. E'
 **questa** la fase che lo rimuove, e i tre percorsi entrano in `CONVERTED` come
 superfici dichiarate — con la loro larghezza — nello stesso commit in cui il
 recinto sparisce. Tre consumatori leggono quella lista e vanno aggiornati
 insieme: `verify-conversion.mjs`, `verify-dialogs.mjs`, `verify-touch-targets.mjs`.
+
+> **Correzione del 2026-08-18, dal campionamento (`42-VALIDATION.md`).** Questa
+> decisione diceva *wave 0*. **Era sbagliato, e per la stessa ragione che vale
+> per D-42-05.** Aprire il recinto fa scansionare a `verify:conversion` file
+> ancora **non convertiti** — 57 utility grezze piu' 42 nomi legacy — quindi il
+> gate diventa rosso e **resta rosso per tutto l'intervallo che D-42-04 blocca**,
+> cioe' fino alla prima porta reale. *«Un rifiuto permanente e' un rifiuto che
+> dopo la terza volta nessuno legge»* — e' scritto in DEF-45-01, ed e'
+> esattamente il difetto che questa fase eredita e non deve ricreare.
+>
+> **Il recinto viaggia con il colore.** Si apre nell'onda che converte, non
+> prima.
+
+### D-42-09 — La regola che governa D-42-05 e D-42-07 insieme
+
+**Un gate si registra quando il codice che lo rende verde esiste, mai prima.**
+
+Le due decisioni corrette qui sopra sbagliavano nello stesso modo, e la regola
+va scritta una volta invece di essere riscoperta la terza:
+
+| Cosa | Quando | Perche' |
+|---|---|---|
+| **Scrivere** `verify-scan-legibility.mjs` e provarlo per mutazione | **wave 0** | Non dipende dal colore: la prova per mutazione consiste proprio nel rimetterlo com'e' |
+| **Registrarlo** in `verify-all.mjs` | **con l'onda del colore** | Registrato prima, misura la terna di oggi — minimo 2,1 — ed e' rosso per settimane |
+| Riparare DEF-45-01 (D-42-06) | **wave 0** | Toglie voci morte da una lista; non guarda lo scanner |
+| Aprire `PHASE_42_PATHS` (D-42-07) | **con l'onda del colore** | Aperto prima, scansiona file non convertiti ed e' rosso per settimane |
+| Il reperto meccanico pre-conversione (D-42-04) | **wave 0** | Deve descrivere il codice **prima**, quindi non puo' aspettare |
+
+**La forma generale, che vale oltre questa fase:** in una fase la cui esecuzione
+e' spezzata da un blocco esterno, ogni gate va collocato **dalla parte del
+blocco in cui puo' essere verde**. Un gate rosso per attesa e' indistinguibile
+da un gate rosso per difetto, e i due si trattano nello stesso modo: si smette
+di guardarli.
 
 ### D-42-08 — Aprire il recinto accende tre gate che nessuno aveva contato
 
@@ -377,6 +418,8 @@ spedire in una settimana con una serata.
 
 ### Il reperto misurato di questa fase — leggerlo per primo
 - `.planning/phases/42-scanner-conversion/42-RESEARCH.md` — 1122 righe, gate **eseguiti** su una copia del tree: la forma ripetibile di un piano di conversione qui, cosa pretende ogni check, cosa si rompe cancellando `MobileNav`, la mappa di `ScannerClient.tsx`, e cosa e' catturabile meccanicamente come *prima*
+
+- `.planning/phases/42-scanner-conversion/42-VALIDATION.md` — la mappa di campionamento: 37 righe, **8 raggiungibili ora**, 29 bloccate dietro il door pass, **10 che nessun comando puo' chiudere** e il perche' di ciascuna
 
 ### Il perimetro e i gate che lo tengono
 - `scripts/conversion-manifest.mjs` §`PHASE_42_PATHS` (righe 202-239) — il recinto che questa fase rimuove, e la ragione per cui esiste
