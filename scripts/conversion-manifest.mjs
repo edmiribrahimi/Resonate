@@ -581,6 +581,35 @@ export const CONVERTED = [
   /* ──────────────────────────────────────────────────────────────────────────
    * WAVE 5 — the five analytics surfaces plans 41.1-12 … 41.1-15 converted.
    *
+   * ── CORRECTED 2026-08-18 BY PLAN 42-01: THREE OF THE FIVE ARE GONE ─────────
+   *
+   * **Two of this block's five entries are still below; three left this list on
+   * 2026-08-18, together with `/admin/finance` from the WAVE 9 block.** The
+   * surfaces they named — `/admin/analytics`, `/admin/analytics/compare`,
+   * `/admin/analytics/members` and `/admin/finance` — were **REMOVED FROM THE
+   * PRODUCT** by a declared decision (finance and analytics are read in the
+   * payment provider's own console, not here), and this list did not move in the
+   * same commit. `checkManifest()` therefore refused — exit 2, *nothing was
+   * measured* — on four entries claiming files that are not on disk, and it took
+   * `verify:conversion` and `verify:touch-targets` down with it: two of the
+   * seventeen gates in this repository measured nothing until this correction.
+   *
+   * DEF-45-01 named the repair in its own words — *"the repair is the removal of
+   * the four entries from the CONVERTED list, not a widening of the matcher"* —
+   * and a removal is what was done: no matcher widened, no tolerance added, no
+   * entry repointed at a neighbouring file. Verified before deleting: exactly
+   * four of the then-38 entries had a `pageFile` absent from the tree, and they
+   * were exactly those four. 34 remain, all present.
+   *
+   * **The history below is kept and not deleted, and its tense is now wrong on
+   * purpose.** The paragraphs that follow describe work that really happened and
+   * a hold that was really reasoned about; what changed is the world, not the
+   * record of it. Read them as *what was true until 2026-08-18*, and read this
+   * paragraph for what is true after. `/admin/events/[id]/analytics` — a
+   * per-night surface, a different route from the three removed ones — is
+   * untouched and still declared.
+   * ──────────────────────────────────────────────────────────────────────────
+   *
    * Same construction as the wave-3 block above and for the same reason: every
    * reason below is the text the plan that did the work reported in its own
    * SUMMARY, taken verbatim rather than re-composed, with the only editorial
@@ -588,12 +617,23 @@ export const CONVERTED = [
    * into the one string this list's shape requires. Four plans reported; this
    * one writes (D-41.1-22).
    *
-   * **All five routes are NAMED on §4's closed wide list**, so `checkManifest()`
-   * and check D can compare the width against the contract rather than take it
-   * on agreement: `verify-conversion.mjs`'s `WIDE_ROUTES` carries all five at
-   * :1223-:1227.
+   * **All five routes were NAMED on §4's closed wide list**, so `checkManifest()`
+   * and check D could compare the width against the contract rather than take it
+   * on agreement: `verify-conversion.mjs`'s `WIDE_ROUTES` carried all five at
+   * :1223-:1227. Three of those five routes no longer have a surface; their names
+   * stay on `WIDE_ROUTES` because that list is a **contract about width**, read
+   * only for routes this list declares, and a route nobody declares is a name
+   * nothing consults. Removing them is a separate decision from this repair and
+   * was not taken here.
    *
-   * ── THE SIXTH SURFACE OF THIS WAVE WAS HELD, AND THE HOLD IS NOW SPENT ─────
+   * ── THE SIXTH SURFACE OF THIS WAVE WAS HELD, THE HOLD WAS SPENT, AND THE
+   *    SURFACE IS NOW GONE ────────────────────────────────────────────────────
+   *
+   * *(History. `/admin/finance` left this list on 2026-08-18 with the three
+   * analytics entries above — the surface was removed from the product, see the
+   * correction at the head of this block. What follows is why it was held while
+   * it existed, kept because a hold reasoned about in writing is the record of a
+   * decision and deleting it would leave the reader with an absence.)*
    *
    * `/admin/finance` was converted by plan 41.1-15 and was **held**, not
    * forgotten. Check A walks a declared surface's import closure, and this one
@@ -605,8 +645,10 @@ export const CONVERTED = [
    * reconciliation that follows the wave which converts the refund dialog.
    *
    * **RELEASED 2026-08-14 by plan 41.1-24, and the hold's reason was checked
-   * expired rather than assumed expired.** The entry is in the WAVE 9 block at
-   * the end of this list. What was checked before writing it: `RefundDialog.tsx`
+   * expired rather than assumed expired.** The entry lived in the WAVE 9 block
+   * further down until 2026-08-18, when the surface itself was removed from the
+   * product and the entry went with it. What was checked before writing it:
+   * `RefundDialog.tsx`
    * is on plan 41.1-17's SUMMARY as converted, and the file on this tree carries
    * no raw palette hit for check A to redden on. A hold released because its
    * calendar passed rather than because its cause was re-measured is the same
@@ -632,29 +674,19 @@ export const CONVERTED = [
    * is false and it would refuse with "not on disk under that exact name" —
    * a refusal whose sentence points at a missing file rather than at a missing
    * field, which is a long way from the actual defect. The page file measured
-   * on this tree on 2026-08-14 is
-   * `src/app/(admin)/admin/(work)/finance/page.tsx`, and `/admin/finance` is on
-   * §4's closed wide list at `verify-conversion.mjs:1218`. Recorded here rather
+   * on this tree on 2026-08-14 was
+   * `src/app/(admin)/admin/(work)/finance/page.tsx` — **not on disk since the
+   * surface was removed from the product**, which is exactly the refusal
+   * DEF-45-01 records — and `/admin/finance` is on §4's closed wide list at
+   * `verify-conversion.mjs:1218`. Recorded here rather
    * than silently corrected in the quotation: a reported entry text is taken as
    * reported, and an editorial fix to somebody else's sentence is exactly the
    * move this block's opening paragraph refuses.
    * ────────────────────────────────────────────────────────────────────────── */
 
   [
-    "/admin/analytics/members", "src/app/(admin)/admin/(work)/analytics/members/page.tsx", "wide",
-    "plan 41.1-12 — whole, and 'whole' here is SIX files in two directories: the route file and its loading state under (work)/, and the two tables and the two KPI tiles under components/analytics/. Everything else the closure reaches is spine already converted (the two motion wrappers) or a lib module carrying zero class attributes. Named on §4's CLOSED wide list — the primary object is two dense tables. This is the surface that gives DataTable its SECOND and THIRD adopters, which is what turns one proof into a pattern. THE CAUTION, because this surface reads money without moving any: the total spend and the chain spend are both MARK slots and never meta details (D-41.1-13), each supplying its own emphasis because the primitive gives a mark position and not weight; no query changed, no column added, no capability check touched, no action payload altered, and no status transition, refund amount, idempotency key or webhook path exists anywhere in the closure. TWO THINGS A READER WILL SEE. First, the referral chain becomes a REAL table for the first time: its body used to hold one cell spanning all three columns with a native disclosure inside, so its three headers labelled columns no cell aligned to, and the three are actual cells now. Second, that file crosses to the client, because the expansion apparatus is controlled and needs state — declared here and in its docblock rather than discovered in a diff, and no new audience is created, since every name and figure it carries is already rendered to HTML today. The rank stopped being an array index and became a property of the row (gap G-a): widening the primitive's published cell signature for one table was refused, and dropping the rank from the card was refused too, because list position is not the fact.",
-  ],
-  [
     "/admin/events/[id]/analytics", "src/app/(admin)/admin/(work)/events/[id]/analytics/page.tsx", "wide",
     "plan 41.1-13 — whole, and 'whole' here is TEN files in two directories: the route file and its loading state under (work)/, and eight cards, charts and one table under src/components/analytics/. The rest of the closure is spine or carries zero class attributes: the animation wrapper writes none of its own and is already reached by two declared surfaces, the count-up and the query module have none at all, and the primitives are converted. Named on §4's CLOSED wide list. This is the surface that gives DataTable its SECOND adopter — one column declaration, five columns, and revenue as the mark because a figure that decides money is never a meta (D-41.1-13). THE PART WITH NO ANALOG IS THE CHARTS: no converted file in this tree is one, and a chart's palette is unreachable by a class-string scanner, so all three were READ. Four legacy token aliases became the current names at identical values; the two accent bar fills and the funnel's data-carried four-step palette were LEFT AND REPORTED rather than substituted, because §5.1 has no clause for a chart series and the categorical palette lives in a file outside the authorized list — neither is a format identification colour and neither is a sunset stop, which is the halt test, and both pass it. Nine raw palette hits left the surface and three of them were decisions rather than substitutions: the token lifecycle's three segments ARE states and take the completion and critical semantics, the attendance meter STOPPED GRADING because the set has no green, amber may not be a bare fill and the thresholds are written nowhere, and the discount line lost a hue the semantic set has no meaning for. The legend words and the meta labels are untouched, so colour is not the only channel anywhere on this page. No query changed, no column added, no capability check touched, no action payload altered — the organizer refusal, the admin.access gate on the two master-only panels and the skipped funnel round trip are byte-identical",
-  ],
-  [
-    "/admin/analytics", "src/app/(admin)/admin/(work)/analytics/page.tsx", "wide",
-    "plan 41.1-14 — whole, and 'whole' here is four files: the route file, its placeholder, the KPI grid and the activity feed. Named on §4's closed wide list, because its primary object is a multi-column grid — the one genuinely three-tier axis this product has, and the axis that grid was declaring from the SMALL prefix, which put three columns into the 544px a portrait tablet leaves. It gained the middle step. The figures moved to the data face, which §7.1 requires of any figure and count and which is what aligns them; the revenue tile lost an accent wash and an accent edge with no semantic tone put in their place, because a fill that means look here first is not a fill that grades. Eight hand-rolled pulsing blocks gone. No query changed, no column added, no capability check touched, no action payload altered.",
-  ],
-  [
-    "/admin/analytics/compare", "src/app/(admin)/admin/(work)/analytics/compare/page.tsx", "wide",
-    "plan 41.1-14 — whole, and 'whole' here is four files: the route file, its placeholder, the event picker and the comparison chart. Named on §4's closed wide list: its primary object is up to four series side by side. The picker is the only thing a person touches on this surface, so every row is the checkbox primitive now — the 16px drawn box kept, a 44x44 target around it — and the two mode pills are chips, which closes finding A2 where an accent fill carried white at 2.91:1. THE CHART WAS READ RATHER THAN SCANNED: its four series colours are one token and three raw values set through a rendering prop, invisible to every class-string gate, and neither a format identity colour nor the sunset gradient — so they were recorded, not substituted, and the gap they expose is a question for the owner. Six hand-rolled pulsing blocks gone. No query changed, no column added, no capability check touched, no action payload altered.",
   ],
   [
     "/admin/members/growth", "src/app/(admin)/admin/(work)/members/growth/page.tsx", "wide",
@@ -665,6 +697,15 @@ export const CONVERTED = [
    * WAVE 9 — the last five, and the commit that carries them is also the commit
    * that deletes the layout shim.
    *
+   * ── CORRECTED 2026-08-18 BY PLAN 42-01: FOUR OF THE FIVE ARE BELOW ─────────
+   *
+   * `/admin/finance` left this block on 2026-08-18 because the surface was
+   * **removed from the product** by a declared decision, and this list had not
+   * moved with it — the fourth of the four dead entries DEF-45-01 named, and the
+   * reason `checkManifest()` had been refusing with exit 2. The paragraph about
+   * the held entry below is kept as history; see the correction at the head of
+   * the WAVE 5 block for the measurement and the repair.
+   *
    * Four of the five reasons below are the text the plan that did the work
    * reported in its own SUMMARY, taken verbatim rather than re-composed, on the
    * same argument as the wave-3 and wave-5 blocks: the plan that walked the
@@ -673,8 +714,9 @@ export const CONVERTED = [
    * joined into the one string this list's shape requires. Three plans reported;
    * this one writes (D-41.1-22).
    *
-   * The fifth — `/admin/finance` — is the entry plan 41.1-15 drafted and this
-   * list held; see the WAVE 5 block above for why it was held and what was
+   * The fifth — `/admin/finance` — was the entry plan 41.1-15 drafted and this
+   * list held, and it is **no longer below**: see the correction at the head of
+   * this block. See the WAVE 5 block above for why it was held and what was
    * re-measured before releasing it. **The draft was THREE elements where this
    * list takes FOUR**, which plan 41.1-15 recorded rather than silently
    * corrected. The missing element is `pageFile`, supplied here from the tree;
@@ -691,16 +733,23 @@ export const CONVERTED = [
    * declarable work pages, all 23 declared**. With the 8 surfaces Phase 41
    * declared before this phase opened, this list holds **28** entries.
    *
+   * **RE-MEASURED 2026-08-18 by plan 42-01, because that count is history and a
+   * stale count is read as a current one.** The tree moved twice since: four
+   * surfaces were removed from the product (see the correction above) and six
+   * were added by phases 44 and 45. Counted on this tree today:
+   * **26** page files under `admin/(work)/`, of which **1** is the redirect this
+   * list explains at length, **19** are declared here, and **6** are fenced by
+   * `PENDING_SURFACES` as debt of the phases that built them. 1 + 19 + 6 = 26,
+   * and the arithmetic closes with no residue — which is the condition check F
+   * exists to keep true rather than to assert once. Across the whole of
+   * `src/app` the list holds **34** entries.
+   *
    * That count is also the precondition the layout shim's removal was waiting
    * for: `src/app/(admin)/admin/(work)/layout.tsx` stopped applying the leading
    * clearance in the same commit as these five entries, and may never stop
    * declaring it.
    * ────────────────────────────────────────────────────────────────────────── */
 
-  [
-    "/admin/finance", "src/app/(admin)/admin/(work)/finance/page.tsx", "wide",
-    "the finance ledger — the transaction list on DataTable, its cursor pagination and async detail intact; no query changed, no column added, no capability check touched, no action payload altered, and no status transition, refund amount, idempotency key or webhook path moved",
-  ],
   [
     "/admin/events/[id]/sales", "src/app/(admin)/admin/(work)/events/[id]/sales/page.tsx", "wide",
     "plan 41.1-21 — whole, and 'whole' here is TWO files: the route file and SalesDashboard.tsx, its only importer. The third file in the closure, RefundActions.tsx, was converted once as spine in plan 41.1-17 precisely so this surface and the tickets surface could stay two plans, and it is not opened here. THE MONEY FLOOR'S ONE EXCEPTION IS HERE and is written in the component rather than only in a plan: D-41.1-13 puts the figure that decides money in a row's mark, and on this surface there is no such figure on a row — the event total is a card ABOVE the table, so the row's mark is the tier pill. A reader who finds a money table whose mark is a pill and no explanation concludes the rule was skipped. wide, named on §4's closed list as 'the per-event sales table'. There is no loading file for this route to convert. Three empty states in, three out, and the one that matters is chosen by a named value in the caller so a search matching nothing cannot claim the night sold nothing. No query changed, no column added, no capability check touched, no action payload altered; no status transition, no refund amount, no idempotency key and no webhook path moved.",
