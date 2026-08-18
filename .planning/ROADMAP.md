@@ -995,7 +995,7 @@ Plans:
 
 **Wave 1** *(executable now, blocked on wave 0)*
 
-- [ ] 42-04-PLAN.md — `42-MAPPING.md`: every site's target, the derogations by name, the violet collision and the glyph ink decided with numbers, and the dispositions for the fourteen small targets, the eighteen dead citations and the viewfinder's two maxima
+- [x] 42-04-PLAN.md — `42-MAPPING.md`: every site's target, the derogations by name, the violet collision and the glyph ink decided with numbers, and the dispositions for the fourteen small targets, the eighteen dead citations and the viewfinder's two maxima
 
 **Wave 2** *(executable now, blocked on wave 1)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 3/12 | In Progress — wave 0 done, waves 3-8 blocked on the door pass | - |
+| 42. Scanner Conversion | 4/12 | In Progress — waves 0-1 done, waves 3-8 blocked on the door pass | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
