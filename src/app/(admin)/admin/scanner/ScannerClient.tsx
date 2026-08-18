@@ -2072,9 +2072,13 @@ export default function ScannerClient() {
         });
 
         // The cache follows the server, without queueing anything: the entry is
-        // already on the record. A failure here costs a later amber flag instead
-        // of a later amber flag — no admission and no refusal turns on it — so it
-        // is logged under its own category rather than put on the screen.
+        // already on the record. What a failure here costs is a later *already
+        // recorded*: this ticket, read again on this device with the radio off,
+        // takes the not-yet-arrived branch of `ticketOffline` and says *admitted*
+        // instead. No admission and no refusal turns on it — the server's record
+        // is untouched, and the next successful refresh rewrites the row
+        // (checkin-store.ts:740-753) — so it is logged under its own category
+        // rather than put on the screen.
         markCheckedInLocally(partyId, "ticket", ticketId, {
           at: readString(parsed, "at") ?? undefined,
         }).catch((error) => {

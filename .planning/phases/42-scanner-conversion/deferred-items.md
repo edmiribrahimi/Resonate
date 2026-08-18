@@ -296,3 +296,40 @@ tornino stantie al prossimo spostamento — e ha lasciato questa qui.
 (**42-08**), o a un passaggio di prosa dedicato. **Regola da applicare quando si
 tocca:** un commento nomina lo **stato**, mai la **tinta** — la tinta vive in un
 lookup solo, e una frase che la scrive invecchia da sola.
+
+### CHIUSA il 2026-08-18 dal piano 42-08 — e il termine di paragone e' stato letto, non scelto
+
+**Il termine mancante non e' stato ricostruito a intuito: sta nel codice, in due
+rami dello stesso `if`.** La domanda «quale fosse il paragone inteso» aveva una
+risposta meccanica che nessuno era andato a prendere.
+
+`markCheckedInLocally` (`src/lib/offline/checkin-store.ts:975-989`) e' **l'unico
+scrittore** di `checkedIn` su questo percorso, e se fallisce la riga in cache
+resta a *non arrivato*. Il costo si legge in `ticketOffline`
+(`src/app/(admin)/admin/scanner/ScannerClient.tsx`), che si dirama esattamente
+su quel campo:
+
+- `cached.checkedIn` vero → `showFlash("already_recorded", …)` con l'ora e
+  l'operatore;
+- `cached.checkedIn` falso → `checkInLocally(…)` e
+  `showFlash(flagged ? "already_recorded" : "success", …)`.
+
+Quindi il fallimento **costa una lettura di *gia' registrato*** — lo stesso
+biglietto, riletto su quel telefono con la radio spenta, dice *ammesso* invece.
+E il resto della frase regge alla verifica: **nessun ingresso e nessun rifiuto
+ci gira sopra**, perche' il registro del server non e' toccato e il primo
+aggiornamento riuscito riscrive la riga (`checkin-store.ts:740-753`,
+`localWins` e' falso quando la riga locale non dice *arrivato*).
+
+**Cosa e' stato scritto:** la frase nomina ora lo **stato** e il ramo che lo
+produce, mai la tinta — la regola che questa voce chiedeva di applicare. La
+costruzione *X invece di X* e' sparita perche' il secondo termine e' stato
+trovato, non perche' la frase sia stata accorciata fino a non affermare piu'
+nulla.
+
+**Cosa questa chiusura NON prova.** Che l'autore intendesse *questo* paragone
+resta indimostrabile: la persona non e' stata interrogata. Quello che e'
+dimostrato e' piu' forte per chi legge il codice domani — la frase adesso
+descrive il meccanismo che il codice esegue, con i due `file:riga` che lo
+reggono. **Nessuna copertura di test:** questo repo non ne ha, e la prova qui e'
+la lettura dei due rami piu' `npm run build` a exit 0.
