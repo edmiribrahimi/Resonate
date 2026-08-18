@@ -989,9 +989,9 @@ Plans:
 
 **Wave 0** *(executable now)*
 
-- [ ] 42-01-PLAN.md — DEF-45-01 repaired and a named fence for the six production pages phases 44 and 45 never declared, so `verify:conversion` measures again
-- [ ] 42-02-PLAN.md — the mechanical baseline: a deterministic capture script, `42-BASELINE.md`, and `42-PROCEDURES.md` with ten results at `pending`
-- [ ] 42-03-PLAN.md — `verify-scan-legibility.mjs` written and mutation-proved four ways on a throwaway branch, deliberately unregistered, and the two disagreeing colour measurements arbitrated
+- [x] 42-01-PLAN.md — DEF-45-01 repaired and a named fence for the six production pages phases 44 and 45 never declared, so `verify:conversion` measures again
+- [x] 42-02-PLAN.md — the mechanical baseline: a deterministic capture script, `42-BASELINE.md`, and `42-PROCEDURES.md` with ten results at `pending`
+- [x] 42-03-PLAN.md — `verify-scan-legibility.mjs` written and mutation-proved four ways on a throwaway branch, deliberately unregistered, and the two disagreeing colour measurements arbitrated
 
 **Wave 1** *(executable now, blocked on wave 0)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 0/12 | Planned — waves 3-8 blocked on the door pass | - |
+| 42. Scanner Conversion | 3/12 | In Progress — wave 0 done, waves 3-8 blocked on the door pass | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
