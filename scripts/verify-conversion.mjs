@@ -960,6 +960,80 @@ function findUtilityHits(relPath, pattern) {
   return hits;
 }
 
+/**
+ * ── Check A's per-utility DEROGATION — a colour the product keeps raw ───────
+ *
+ * Shape: `[file, utility, fragment, reason]`. Its boundary is **a utility on a
+ * line**, never a file, and the four paragraphs below are the whole mechanism.
+ *
+ * ── 1. Why the boundary is a UTILITY and not a FILE ────────────────────────
+ *
+ * `EXEMPT_PATHS` above is the mechanism that must NOT be used for this, and the
+ * reason is measured rather than a taste. A path exemption removes the file from
+ * the closure walk, so checks A, B and D all stop reading it at once. The
+ * surface this mechanism exists for is 3449 lines long; one line of diff there
+ * would end measurement of that whole surface, permanently, and nothing
+ * downstream would ever notice — a file nobody scans reports nothing to miss.
+ * T-42-10 forbids that exit by name.
+ *
+ * **This repository has already made this correction once.** `verify-dialogs.mjs`
+ * moved its exemption from forgiving FILES to forgiving SHELLS for exactly this
+ * reason: the narrow boundary is not fussiness, it is the difference between an
+ * exemption a reader can audit and a hole a reader cannot see.
+ *
+ * ── 2. What a derogation IS ────────────────────────────────────────────────
+ *
+ * A colour the product keeps raw **because the semantic vocabulary has no word
+ * for it** — not a colour somebody liked. The set contains no accept colour and
+ * phase 40 declined to invent one (`globals.css:169-173`), so a surface that has
+ * to say *this one passed* has nothing to read; that is a derogation. A surface
+ * that could read a token and does not is a conversion nobody finished, and no
+ * entry here turns one into the other.
+ *
+ * ── 3. An entry that matches nothing REFUSES ───────────────────────────────
+ *
+ * Exit 2, naming the entry, in three directions — the same three
+ * `TYPOGRAPHIC_MEASURES` below already takes, for the same reasons:
+ *
+ *   · a file no converted surface's closure reaches — it forgives nothing today
+ *     and would begin forgiving silently the day a closure reaches that file;
+ *   · ZERO matches — stale, and a stale derogation reads exactly like a live
+ *     one. A derogation that outlives the line it forgave is a permission
+ *     nobody granted;
+ *   · TWO OR MORE matches — ambiguous: one entry would be forgiving a site
+ *     nobody named. Two sites are two decisions and get two lines.
+ *
+ * A refusal, not a failure: the tree may well be right and nothing was measured
+ * about it.
+ *
+ * **The match is counted per SITE, not per hit**, and that detail is load-bearing
+ * rather than tidy. A file reached from two declared surfaces is scanned once per
+ * surface, so its hits arrive twice — counting hits would call every derogation
+ * on a shared file ambiguous and refuse on a tree that is correct. The site key
+ * is path, line and matched token.
+ *
+ * The `utility` field is **the exact token the palette matcher captures**, which
+ * stops at the scale and carries no opacity suffix: the suffix lives in the hit's
+ * remainder, so an entry spelling one would match nothing and refuse. The
+ * `fragment` must appear on the same live line, and it is a fragment rather than
+ * a line number because **a line number drifts on the first edit above it and a
+ * stale one reads exactly like a current one**.
+ *
+ * ── 4. It starts EMPTY, and that is the honest state ───────────────────────
+ *
+ * Not a list nobody got round to filling: an empty derogation forgives nothing.
+ * The entries arrive **with the commit that makes them true** — the same commit
+ * that writes the colour they describe — because D-41-16 is the house rule and
+ * it was paid for: *an exemption discovered on a red run is an exemption nobody
+ * trusts*. This is the mechanism built before the run that would need it, on the
+ * precedent `TYPOGRAPHIC_MEASURES` set when it shipped with zero entries.
+ *
+ * **A forgiven hit is PRINTED and counted on its own line, never dropped from
+ * the report.** A forgiven hit that vanishes is a scope boundary turning into an
+ * approval, and that is the distinction this gate family keeps drawing.
+ */
+export const PALETTE_DEROGATIONS = [];
+
 /* ────────────────────────────────────────────────────────────────────────────
  * §4's two closed lists — check D's third assertion reads these
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -1103,6 +1177,76 @@ export const TYPOGRAPHIC_MEASURES = [
     "the artist bio is prose and reads at a measure; the shell's 1024px is a line length nobody finishes",
   ],
 ];
+
+/**
+ * ── FULL-BLEED BY CONSTRUCTION — check D's escape for a surface that cannot
+ * ── take the shell without changing what it is ──────────────────────────────
+ *
+ * Shape: `[route, reason]`, resolved against `CONVERTED`. It forgives **one
+ * thing and nothing else**: the missing shell import. Read that sentence again
+ * before adding a line, because the two paragraphs after it are the whole of
+ * what this list is not.
+ *
+ * ── The narrow argument it exists to carry ──────────────────────────────────
+ *
+ * A full-screen safety surface. Its verdict covers the viewport by design, its
+ * header is sticky at the top of the device, and it is worked one-handed at an
+ * entrance, at night, with a queue behind the person in front. Wrapping it in
+ * the shell would add the shell's outer padding, its top inset and its
+ * navigation inset, and would nest a full-height root inside another one — **a
+ * change to the surface, delivered by a phase that said it would only change
+ * colour, contrast and type**. The two roads not taken are written out in
+ * `42-MAPPING.md` §11.3 with their costs, and the road that was taken is this
+ * one because it is the only one that leaves the surface alone.
+ *
+ * ── THIS IS NOT PERMISSION TO WRITE A MAXIMUM WHEREVER IT IS CONVENIENT ─────
+ *
+ * An entry means the surface takes responsibility for **its own container
+ * maximum**, and that maximum must be one of the three the shell declares —
+ * `DECLARED_MAXIMA`, the same three, **not a fourth number invented for one
+ * page**. §4 has three tiers; a fourth maximum is a fourth tier and editing the
+ * contract comes first.
+ *
+ * **And that last rule is NOT machine-checked here, which is said out loud
+ * rather than implied.** Check D reads the page file only, and it does so on
+ * purpose: measured across `src/` on 2026-08-18, the shared closure legitimately
+ * carries widths that are not tiers at all — a dialog's own two sizes, a toast's
+ * column, an image told not to overflow its box. A closure-wide assertion would
+ * redden a full-bleed route for widths that are not its own, which is the shape
+ * of red this phase family has already learned nobody reads twice. So the number
+ * is checked **by the person writing the commit**, against `DECLARED_MAXIMA`
+ * above, and this paragraph is where they meet the rule.
+ *
+ * ── What an entry does NOT do ───────────────────────────────────────────────
+ *
+ * Check D's other assertions stay exactly as they were. A declared page still
+ * may not write a maximum of its own — `pagesWithOwnMaximum` reads a full-bleed
+ * page like any other — the shell must still declare §4's three and only those,
+ * and the declared width must still agree with §4's closed lists. An entry here
+ * says *this page does not import the shell, and that is the decision*; it says
+ * nothing about anything else on the page.
+ *
+ * ── Why the key is the ROUTE ────────────────────────────────────────────────
+ *
+ * So the entry **dissolves the day that route takes the shell**. Two refusals,
+ * both exit 2:
+ *
+ *   · a route no `CONVERTED` surface declares — it forgives nothing today and
+ *     would begin forgiving silently the day that route is declared, which is a
+ *     guard nobody wrote;
+ *   · a route whose page **does** import the shell — stale, and a stale escape
+ *     reads exactly like a live one.
+ *
+ * ── It starts EMPTY ─────────────────────────────────────────────────────────
+ *
+ * For the reason `PALETTE_DEROGATIONS` starts empty and `TYPOGRAPHIC_MEASURES`
+ * once did: an empty escape forgives nothing, and D-41-16 wants the mechanism
+ * built before the run that would need it — *an exemption discovered on a red
+ * run is an exemption nobody trusts*. The entries arrive in the same commit as
+ * the `CONVERTED` declarations they belong to; either order alone is a red or a
+ * refusal on a correct tree.
+ */
+export const FULL_BLEED_SURFACES = [];
 
 /**
  * The two modules through which a navigation reaches a surface — check E2.
@@ -2942,6 +3086,22 @@ console.log('');
 const palettePattern = utilityPattern(PALETTE_NAMES, { scale: true });
 const paletteHits = [];
 const scrimsForgiven = [];
+const derogationsForgiven = [];
+
+/**
+ * The declared derogations, resolved against the tree BEFORE check A prints
+ * anything — a refusal must precede every verdict (WR-01). `sites` is a SET of
+ * path:line:token keys rather than a counter: a file reached from two declared
+ * surfaces is scanned once per surface, so counting hits would call a correct
+ * entry ambiguous. See the docblock at `PALETTE_DEROGATIONS`.
+ */
+const derogationUsage = PALETTE_DEROGATIONS.map(([file, utility, fragment, reason]) => ({
+  file,
+  utility,
+  fragment,
+  reason,
+  sites: new Set(),
+}));
 
 for (const s of surfaces) {
   for (const rel of s.scanned) {
@@ -2950,9 +3110,50 @@ for (const s of surfaces) {
         scrimsForgiven.push({ ...hit, route: s.route });
         continue;
       }
+      // Forgiven ONLY by a line naming this file, this exact matched token and a
+      // fragment present on the same live line. Anything else is still a failure:
+      // the matcher was not narrowed, so check A finds strictly no less than it
+      // did before this mechanism existed.
+      const entry = derogationUsage.find(
+        (e) => e.file === hit.path && e.utility === hit.match && hit.source.includes(e.fragment)
+      );
+      if (entry) {
+        entry.sites.add(`${hit.path}:${hit.line}:${hit.match}`);
+        derogationsForgiven.push({ ...hit, route: s.route, reason: entry.reason });
+        continue;
+      }
       paletteHits.push({ ...hit, route: s.route });
     }
   }
+}
+
+const derogationsOffClosure = derogationUsage.filter((e) => !allScanned.has(e.file));
+const derogationsStale = derogationUsage.filter((e) => allScanned.has(e.file) && e.sites.size === 0);
+const derogationsAmbiguous = derogationUsage.filter((e) => e.sites.size > 1);
+
+if (derogationsOffClosure.length > 0 || derogationsStale.length > 0 || derogationsAmbiguous.length > 0) {
+  const lines = [];
+  for (const e of derogationsOffClosure) {
+    lines.push(`       ${e.file}   ${e.utility}   — no converted surface's closure scans this file`);
+  }
+  for (const e of derogationsStale) {
+    lines.push(`       ${e.file}   ${e.utility}   — matches NOTHING: stale`);
+  }
+  for (const e of derogationsAmbiguous) {
+    lines.push(`       ${e.file}   ${e.utility}   — matches ${e.sites.size} sites: ambiguous`);
+  }
+  refuse(
+    `${lines.length} PALETTE_DEROGATIONS entr(y/ies) could not be resolved:\n\n` +
+      lines.join('\n') +
+      '\n\n       A derogation is a colour the product keeps RAW because the semantic set has no\n' +
+      '       word for it, and it is named per utility and per line so that it dies with the\n' +
+      '       line it forgave. An entry that resolves to nothing is not a smaller exemption —\n' +
+      '       it is one that looks supervised and forgives nothing, or one that will begin\n' +
+      '       forgiving on a day nobody chose.\n\n' +
+      '       This is a REFUSAL and not a failure: the tree may well be right, and nothing was\n' +
+      '       measured about it. Either the entry leaves this list in the same commit as the\n' +
+      '       utility it forgave, or the utility comes back.'
+  );
 }
 
 console.log('  check A — raw palette utilities in a converted surface\'s closure:\n');
@@ -2962,6 +3163,21 @@ console.log(`      translucent-black scrims tolerated : ${scrimsForgiven.length}
 for (const scrim of scrimsForgiven) {
   const opacity = (scrim.rest.match(/^\/\d+/) ?? [''])[0];
   console.log(`          ${scrim.path}:${scrim.line}   ${scrim.match}${opacity}`);
+}
+console.log(
+  `      palette derogations declared : ${PALETTE_DEROGATIONS.length}` +
+    `, forgiving ${new Set(derogationsForgiven.map((h) => `${h.path}:${h.line}:${h.match}`)).size} site(s)`
+);
+for (const hit of derogationsForgiven) {
+  console.log(`          ${hit.path}:${hit.line}   ${hit.match}     (reached from ${hit.route})`);
+  console.log(`             ${hit.reason.replace(/(.{79}) /g, '$1\n             ')}`);
+}
+if (derogationsForgiven.length > 0) {
+  console.log(
+    '\n      Printed, not dropped: a forgiven hit that vanished from this report would be a\n' +
+      '      scope boundary turning into an approval. Every raw utility NOT on that list still\n' +
+      '      fails, including one on the same line as a forgiven neighbour.'
+  );
 }
 console.log('');
 
@@ -2979,11 +3195,21 @@ if (paletteHits.length > 0) {
       '       a default scale name that no later change can find.\n'
   );
 } else {
+  const derogationNote =
+    PALETTE_DEROGATIONS.length === 0
+      ? '\n       No derogation is declared, which is the measured state of the tree and not an\n' +
+        '       unfilled list: an empty derogation forgives nothing. The mechanism is here BEFORE\n' +
+        '       its first red run (D-41-16), so the plan that keeps a colour raw adds a line in\n' +
+        '       the same commit rather than meeting a red and reaching for the matcher.\n'
+      : '\n       — except the site(s) forgiven by a DECLARED derogation, printed above. A\n' +
+        '       derogation says the semantic set has no word for that colour; it does not say a\n' +
+        '       surface finished converting.\n';
   console.log(
-    `  ✓ A  no raw palette utility in ${allScanned.size} file(s) under ` +
+    `  ✓ A  no undeclared raw palette utility in ${allScanned.size} file(s) under ` +
       `${surfaces.length} converted surface(s)\n` +
       `       (${allScanned.size - routeAdjacentAdded.size} reached through the import graph, ` +
-      `${routeAdjacentAdded.size} mounted beside a page by the router)\n`
+      `${routeAdjacentAdded.size} mounted beside a page by the router)` +
+      derogationNote
   );
 }
 
@@ -3224,9 +3450,30 @@ const measuresOnUndeclaredPage = measureUsage.filter((e) => !declaredPageFiles.h
 
 const measuresApplied = [];
 
+/**
+ * The declared full-bleed surfaces, resolved against `CONVERTED` BEFORE any
+ * verdict prints. `hits` counts the declared surfaces an entry actually
+ * forgave, which is what the staleness refusal is read off: an entry whose page
+ * imports the shell forgave nothing and must say so loudly.
+ */
+const fullBleedUsage = FULL_BLEED_SURFACES.map(([route, reason]) => ({ route, reason, hits: 0 }));
+const declaredRoutes = new Set(surfaces.map((s) => s.route));
+const fullBleedOnUndeclaredRoute = fullBleedUsage.filter((e) => !declaredRoutes.has(e.route));
+const fullBleedApplied = [];
+
 for (const s of surfaces) {
   const importsShell = importedSymbolsFrom(s.pageFile, SHELL_FILE).has('PageShell');
-  if (!importsShell) pagesWithoutShell.push(s);
+  if (!importsShell) {
+    // Forgiven ONLY by a line naming this route. Everything else check D asserts
+    // about this page is asserted below exactly as it was.
+    const entry = fullBleedUsage.find((e) => e.route === s.route);
+    if (entry) {
+      entry.hits += 1;
+      fullBleedApplied.push({ route: s.route, pageFile: s.pageFile, reason: entry.reason });
+    } else {
+      pagesWithoutShell.push(s);
+    }
+  }
 
   liveLines(s.pageFile).forEach((line, i) => {
     MAX_WIDTH_RE.lastIndex = 0;
@@ -3281,6 +3528,29 @@ if (measuresOnUndeclaredPage.length > 0 || measuresStale.length > 0 || measuresA
   );
 }
 
+const fullBleedStale = fullBleedUsage.filter((e) => declaredRoutes.has(e.route) && e.hits === 0);
+
+if (fullBleedOnUndeclaredRoute.length > 0 || fullBleedStale.length > 0) {
+  const lines = [];
+  for (const e of fullBleedOnUndeclaredRoute) {
+    lines.push(`       ${e.route}   — no CONVERTED surface declares this route`);
+  }
+  for (const e of fullBleedStale) {
+    lines.push(`       ${e.route}   — that page DOES import the shell: stale`);
+  }
+  refuse(
+    `${lines.length} FULL_BLEED_SURFACES entr(y/ies) could not be resolved:\n\n` +
+      lines.join('\n') +
+      '\n\n       A surface is full-bleed BY CONSTRUCTION or it is not, and the escape is keyed on\n' +
+      '       the route so that it dissolves the day that route takes the shell. An entry that\n' +
+      '       resolves to nothing is not a smaller escape — it is one that looks supervised and\n' +
+      '       forgives nothing, or one that will begin forgiving on a day nobody chose.\n\n' +
+      '       This is a REFUSAL and not a failure: the tree may well be right, and nothing was\n' +
+      '       measured about it. Either the entry leaves this list in the same commit as the\n' +
+      '       shell import it forgave, or the shell import comes back.'
+  );
+}
+
 console.log('  check D — the container (G4):\n');
 console.log(`      maxima the shell declares : ${[...shellMaxima].sort().join(' · ') || '(none)'}`);
 console.log(`      §4 wide list  : ${WIDE_ROUTES.length} route(s), closed`);
@@ -3288,7 +3558,11 @@ console.log(`      §4 focus list : ${FOCUS_ROUTES.length} route(s), closed`);
 console.log(`      surfaces whose width was compared against §4 : ${surfaces.length}`);
 console.log(
   `      typographic measures declared : ${TYPOGRAPHIC_MEASURES.length}` +
-    `, applied ${measuresApplied.length} time(s)   (D-41.1-27)\n`
+    `, applied ${measuresApplied.length} time(s)   (D-41.1-27)`
+);
+console.log(
+  `      full-bleed surfaces declared  : ${FULL_BLEED_SURFACES.length}` +
+    `, applied ${fullBleedApplied.length} time(s)   (D-42-03, 42-MAPPING §11.3)\n`
 );
 
 if (maximaMissing.length > 0 || maximaExtra.length > 0) {
@@ -3342,6 +3616,20 @@ if (widthDisagreements.length > 0) {
   );
 }
 
+if (fullBleedApplied.length > 0) {
+  console.log(`  ! D  ${fullBleedApplied.length} page(s) forgiven the shell import as FULL-BLEED BY CONSTRUCTION:\n`);
+  for (const hit of fullBleedApplied) {
+    console.log(`       ${hit.route}   ${hit.pageFile}`);
+    console.log(`         ${hit.reason.replace(/(.{82}) /g, '$1\n         ')}`);
+  }
+  console.log(
+    '\n       Not a failure and not a narrowing: this forgives the MISSING SHELL IMPORT and\n' +
+      '       nothing else. The page still may not write a maximum of its own, the shell still\n' +
+      '       owns §4\'s three, and the maximum such a surface takes responsibility for must be\n' +
+      '       one of those three — checked by the person writing it, not by this line.\n'
+  );
+}
+
 if (measuresApplied.length > 0) {
   console.log(`  ! D  ${measuresApplied.length} width(s) forgiven as a DECLARED typographic measure:\n`);
   for (const hit of measuresApplied) {
@@ -3363,11 +3651,24 @@ if (!failures.includes('D')) {
         '       BEFORE its first red run (D-41-16), so the next plan that decides a paragraph\n' +
         '       should read at a measure adds a line rather than deleting the width.\n'
       : '\n';
+  const shellClause =
+    fullBleedApplied.length === 0
+      ? `all ${surfaces.length} converted page(s) import it`
+      : `${surfaces.length - fullBleedApplied.length} of ${surfaces.length} converted page(s) import it, ` +
+        `and ${fullBleedApplied.length} is/are DECLARED full-bleed above`;
+  const fullBleedNote =
+    FULL_BLEED_SURFACES.length === 0
+      ? '\n       No surface is declared full-bleed, which is the measured state of the tree: an\n' +
+        '       empty escape forgives nothing. That mechanism is here BEFORE its first red run\n' +
+        '       too, so the plan that declares a full-screen safety surface adds a line rather\n' +
+        '       than wrapping the surface in a shell to make a gate go quiet.\n'
+      : '';
   console.log(
-    `  ✓ D  the shell declares §4's three maxima and only those; all ${surfaces.length} converted\n` +
-      '       page(s) import it, write no undeclared maximum of their own, and carry the width\n' +
-      '       §4 assigns' +
-      measureNote
+    `  ✓ D  the shell declares §4's three maxima and only those;\n` +
+      `       ${shellClause},\n` +
+      '       write no undeclared maximum of their own, and carry the width §4 assigns' +
+      measureNote +
+      fullBleedNote
   );
 }
 
