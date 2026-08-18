@@ -2665,7 +2665,7 @@ export default function ScannerClient() {
   // ── Party Selector Screen ──
   if (!selectedPartyId) {
     return (
-      <div className="min-h-dvh bg-ground pb-24">
+      <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
         <div className="px-6 pt-6 pb-3">
           <h1 className="text-2xl font-bold mb-1">Check-in</h1>
           <p className="text-sm text-muted">Select a party to start</p>
@@ -2788,7 +2788,7 @@ export default function ScannerClient() {
       : null;
 
   return (
-    <div className="min-h-dvh bg-ground pb-24">
+    <div className="mx-auto w-full max-w-5xl min-h-dvh bg-ground pb-24">
       {/* Sticky header with party info, search, and filters */}
       <div className="sticky top-0 z-10 bg-ground px-6 pt-6 pb-3">
         {/* Party header + actions */}
