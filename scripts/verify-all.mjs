@@ -254,6 +254,13 @@ const OFFLINE = [
       "and nothing about the capability model was measured. That is its honest " +
       "state on any machine that does not hold them, and it is not a pass",
   ],
+  [
+    "verify:ics-reachable", false,
+    "B-2 dell'audit v1.5 — src/lib/production/ics/ non ha importatori statici e il " +
+      "suo unico consumatore e' un import() costruito a runtime. verify:ics li tocca " +
+      "ma sta in NEEDS_MATERIAL e non viene mai lanciato qui: questo gate non chiede " +
+      "materiale, quindi gira ovunque e non esce mai 2",
+  ],
   ["verify:no-header-identity", false, ""],
   ["verify:no-credit-account", false, ""],
   ["verify:media-strip", false, ""],

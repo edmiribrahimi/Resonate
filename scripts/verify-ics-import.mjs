@@ -360,11 +360,42 @@ let ics;
 try {
   ics = await import(join(ICS_DIR, "index.ts"));
 } catch (error) {
-  refuseNow(
-    `src/lib/production/ics/ could not be imported: ${error.message}\n` +
-      "       The check exercises that module rather than re-implementing it, so\n" +
-      "       nothing was measured."
+  /* ── Un modulo che non si importa e' un FALLIMENTO, non un rifiuto ──────────
+   *
+   * Corretto il 2026-08-19, dall'audit di milestone della v1.5 (reperto B-2).
+   * Qui c'era `refuseNow`, che esce **2**. In `verify-all.mjs` un rifiuto non e'
+   * un fallimento e **non fa uscire la suite diversa da zero** — quindi con i
+   * moduli rinominati o rotti `npm run verify` sarebbe rimasto verde, e il
+   * rifiuto sarebbe stato indistinguibile da quello normale «qui non c'e'
+   * docs/», che su ogni macchina tranne una e' lo stato atteso.
+   *
+   * La distinzione e' la ragione per cui il rifiuto esiste: **`docs/` assente e'
+   * una precondizione mancante; un modulo che non si carica e' una cosa rotta.**
+   * Collassarle nello stesso esito rende il rifiuto un posto dove i difetti si
+   * nascondono.
+   *
+   * Perche' conta proprio qui: `src/lib/production/ics/*` non ha **alcun
+   * importatore statico**. Il solo consumatore e'
+   * `scripts/import-production-calendar.mjs`, con un `await import()` costruito a
+   * runtime — invisibile a `npm run build`, a `verify:conversion` e a qualunque
+   * grep. Questo gate e' l'unica cosa che li tocca su una macchina qualsiasi, e
+   * finche' usciva 2 non li difendeva.
+   * ─────────────────────────────────────────────────────────────────────────── */
+  say("");
+  fail(
+    "0",
+    "src/lib/production/ics/ non si importa — e questo e' un fallimento, non un rifiuto",
+    [
+      String(error.message),
+      "Nessun modulo sotto src/lib/production/ics/ ha un importatore statico:",
+      "il solo consumatore e' un import() costruito a runtime dentro",
+      "scripts/import-production-calendar.mjs, che ne' il build ne' un grep vedono.",
+      "Questo controllo e' l'unica difesa di quel percorso su una macchina",
+      "qualunque, quindi qui si esce 1 e la suite diventa rossa.",
+    ]
   );
+  say("");
+  process.exit(1);
 }
 
 /* ────────────────────────────────────────────────────────────────────────────

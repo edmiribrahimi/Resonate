@@ -26,6 +26,7 @@
     "verify:touch-targets": "node scripts/verify-touch-targets.mjs",
     "verify:comment-stripper": "node scripts/verify-comment-stripper.mjs",
     "verify:ics": "node scripts/verify-ics-import.mjs",
+    "verify:ics-reachable": "node scripts/verify-ics-reachable.mjs",
     "verify:calendar-surface": "node scripts/verify-calendar-surface.mjs",
     "verify:section-surface": "node scripts/verify-section-surface.mjs",
     "verify:section-export": "node scripts/verify-section-export.mjs",
