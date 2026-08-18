@@ -298,6 +298,21 @@ documenti e contro il codice, ed ecco cosa hanno cambiato **in questo piano**:
 - **Il vincolo d'ordine resta in piedi:** nessuna onda di conversione parte prima
   della prima porta reale (D-42-04).
 
+## Self-Check: PASSED
+
+| Affermazione | Comando | Esito |
+|---|---|---|
+| i tre file esistono | `ls -la` sui tre percorsi | tutti presenti |
+| i quattro commit esistono | `git log --oneline --all` filtrato sugli sha | 4 su 4 |
+| zero file sotto `src/` | `git diff --stat 9d4246a..HEAD -- src/` | vuoto |
+| nessuna cancellazione | `git diff --diff-filter=D --name-only 9d4246a..HEAD` | vuoto |
+| albero pulito | `git status --porcelain` | vuoto |
+| `node_modules` non committato | symlink rimosso prima del commit del sommario | assente dal diff |
+
+Diffstat dell'intero piano: **3 file, 961 inserzioni, 8 cancellazioni** — e le
+otto cancellazioni sono le righe di verdetta di check A e check D riscritte,
+nessun'altra.
+
 ---
 *Phase: 42-scanner-conversion*
 *Completed: 2026-08-18*
