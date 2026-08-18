@@ -1007,8 +1007,8 @@ Plans:
 
 **Wave 4** *(BLOCKED)*
 
-- [ ] 42-07-PLAN.md — `MobileNav` deleted, the door mounts the navigation locked to the phone form, both halves of check E move in the same commit, and eighteen sentences stop naming a deleted file
-- [ ] 42-08-PLAN.md — the rest of the door's raw palette, both branches of every expression-chosen colour, and the message tables untouched
+- [x] 42-07-PLAN.md — `MobileNav` deleted, the door mounts the navigation locked to the phone form, both halves of check E move in the same commit, and eighteen sentences stop naming a deleted file
+- [x] 42-08-PLAN.md — the rest of the door's raw palette, both branches of every expression-chosen colour, and the message tables untouched
 
 **Wave 5** *(BLOCKED)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 6/12 | In Progress — conversione in corso sotto deroga del proprietario (DEF-42-04) | - |
+| 42. Scanner Conversion | 8/12 | In Progress — conversione sotto deroga del proprietario (DEF-42-04) | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
