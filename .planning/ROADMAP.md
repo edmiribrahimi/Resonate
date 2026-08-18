@@ -1003,7 +1003,7 @@ Plans:
 
 **Wave 3** *(BLOCKED on the door pass)*
 
-- [ ] 42-06-PLAN.md — the three outcomes take their measured colours in **both** places they are drawn, the two false comments are corrected, and the connectivity pill becomes readable by a machine *(opens with the blocking checkpoint)*
+- [x] 42-06-PLAN.md — the three outcomes take their measured colours in **both** places they are drawn, the two false comments are corrected, and the connectivity pill becomes readable by a machine *(opens with the blocking checkpoint)*
 
 **Wave 4** *(BLOCKED)*
 
@@ -1046,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 5/12 | In Progress — waves 0-2 done, waves 3-8 blocked on the door pass | - |
+| 42. Scanner Conversion | 6/12 | In Progress — conversione in corso sotto deroga del proprietario (DEF-42-04) | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
