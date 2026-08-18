@@ -968,7 +968,64 @@ Plans:
   2. The viewfinder centres at every width instead of stretching, on phone, tablet and desktop
   3. Every scanner behaviour — flash timing, haptics, auto-return, torch, offline verdict, undo — is unchanged from before the conversion, verified by running the door pass again on a device
 
-**Plans**: TBD
+**Plans**: 12 plans, in 9 waves — **cut in two by an external block**
+
+> **The execution of this phase is split by an ordering constraint, and the plan
+> set encodes the split.** Plans 42-01 to 42-05 are executable now and touch no
+> file under the scanner. Plans 42-06 to 42-12 are **blocked on the door pass
+> being run on the UNCONVERTED scanner at the first real door** (D-42-04, and the
+> Ordering Constraint below). Plan 42-06 opens with a blocking checkpoint on that
+> row, and every blocked plan carries the same banner. The rule that decides which
+> side each gate falls on is D-42-09: **a gate is registered when the code that
+> makes it green exists, never before** — a gate red because it is waiting is
+> indistinguishable from a gate red because something is broken, and both get
+> ignored.
+>
+> The night is anchored as an **event** and never as a date: this repository is
+> public and the night is not announced. Whoever executes reads the calendar in
+> `docs/`, which git ignores.
+
+Plans:
+
+**Wave 0** *(executable now)*
+
+- [ ] 42-01-PLAN.md — DEF-45-01 repaired and a named fence for the six production pages phases 44 and 45 never declared, so `verify:conversion` measures again
+- [ ] 42-02-PLAN.md — the mechanical baseline: a deterministic capture script, `42-BASELINE.md`, and `42-PROCEDURES.md` with ten results at `pending`
+- [ ] 42-03-PLAN.md — `verify-scan-legibility.mjs` written and mutation-proved four ways on a throwaway branch, deliberately unregistered, and the two disagreeing colour measurements arbitrated
+
+**Wave 1** *(executable now, blocked on wave 0)*
+
+- [ ] 42-04-PLAN.md — `42-MAPPING.md`: every site's target, the derogations by name, the violet collision and the glyph ink decided with numbers, and the dispositions for the fourteen small targets, the eighteen dead citations and the viewfinder's two maxima
+
+**Wave 2** *(executable now, blocked on wave 1)*
+
+- [ ] 42-05-PLAN.md — the derogation mechanisms built **before** the first red run: check A per utility and check D full-bleed, both empty and both refusing when stale, plus the check E and dialog-shell edits written verbatim and proved
+
+**Wave 3** *(BLOCKED on the door pass)*
+
+- [ ] 42-06-PLAN.md — the three outcomes take their measured colours in **both** places they are drawn, the two false comments are corrected, and the connectivity pill becomes readable by a machine *(opens with the blocking checkpoint)*
+
+**Wave 4** *(BLOCKED)*
+
+- [ ] 42-07-PLAN.md — `MobileNav` deleted, the door mounts the navigation locked to the phone form, both halves of check E move in the same commit, and eighteen sentences stop naming a deleted file
+- [ ] 42-08-PLAN.md — the rest of the door's raw palette, both branches of every expression-chosen colour, and the message tables untouched
+
+**Wave 5** *(BLOCKED)*
+
+- [ ] 42-09-PLAN.md — the forty-two legacy token aliases, longest name first, reconciled against the baseline
+
+**Wave 6** *(BLOCKED)*
+
+- [ ] 42-10-PLAN.md — the scanner centres and the viewfinder centres, and the decode configuration does not move
+
+**Wave 7** *(BLOCKED)*
+
+- [ ] 42-11-PLAN.md — the declaration: the fence down in all three consumers, the two door addresses declared, every derogation entered with its argument, and the legibility gate registered in both halves at once
+
+**Wave 8** *(BLOCKED)*
+
+- [ ] 42-12-PLAN.md — the baseline re-run and diffed line by line, evidence at `file:line` per requirement, and criterion 3 stated as **open** until the door pass is re-run
+
 **UI hint**: yes
 
 ## Progress
@@ -989,7 +1046,7 @@ Plans:
 | 39. The Door's Own Address | 4/4 | Complete   | 2026-08-11 |
 | 40. Brand Tokens & Typography | 5/5 | Complete   | 2026-08-11 |
 | 41. Shared Primitives & Three-Tier Layout | 30/30 | Complete   | 2026-08-13 |
-| 42. Scanner Conversion | 0/TBD | Not started | - |
+| 42. Scanner Conversion | 0/12 | Planned — waves 3-8 blocked on the door pass | - |
 
 *`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
 
