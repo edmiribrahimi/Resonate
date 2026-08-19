@@ -1,105 +1,92 @@
 ---
-phase: 58-il-calendario-si-legge-come-lo-si-scrive
+phase: 58-il-calendario-e-uno-specchio
 milestone: v1.6
 created: 2026-08-20
-requirements: [ICS-01, ICS-02, ICS-03, ICS-04, ICS-05, ICS-06]
+rewritten: 2026-08-20
+requirements: [ICS-01, ICS-02, ICS-03, ICS-04, ICS-05, ICS-06, ICS-07, ICS-08]
 ---
 
 # Fase 58 — contesto
 
-## Da dove viene
+> **Questo documento e' stato riscritto lo stesso giorno in cui e' nato.** La
+> prima stesura pianificava di riparare la riconciliazione. Una domanda del
+> proprietario — *«a cosa servono tutte queste riconciliazioni?»* — ha cambiato la
+> fase, e la versione precedente e' registrata sotto per non far ricominciare da
+> capo chi si chiedera' perche' non si e' presa quella strada.
 
-Da tre ritrovamenti della fase 48, in ordine di scoperta e in ordine inverso di
-importanza: le assenze false, la loro ripulitura asimmetrica, e sotto entrambi la
-causa vera — **31 voci su 104 che lo strumento non sa leggere**.
+## La domanda, e la misura che le ha risposto
 
-Il referto completo, con le misure: `48-FINDING-01.md`.
+La riconciliazione difende cio' che sta nelle tabelle e **non** sta nel
+calendario. Misurato il 2026-08-20:
 
-## La decisione presa
+| | quante ce n'erano |
+|---|---|
+| spunte di checklist | 14 voci, **0 spuntate** |
+| piani legati a una serata pubblicata | 2 piani, **0 legati** |
+| proposte della regola | **6** |
 
-**Il proprietario ha scelto: lo strumento impara a risolvere un nome** (2026-08-20).
-L'alternativa — i calendari adottano la forma canonica con le sigle — non e' stata
-presa perche' chiede disciplina a ogni voce, per sempre, ed e' il tipo di
-disciplina che un giorno qualcuno non applichera'.
+**Una sola delle tre esisteva.** Cancellare tutto e riscrivere dal file avrebbe
+perso sei righe e nient'altro.
 
-## ⚠ Cosa quella decisione NON copre, e va saputo prima di pianificare
+E nel difendere stati che non c'erano ancora, la riconciliazione **ha rotto
+l'unica cosa che c'era**: 66 assenze false, poi 17 timbri che non si toglievano,
+poi un'asimmetria fra tabelle che esisteva solo per gestire quei timbri.
 
-*«Risolvere un nome»* copre `Listing - re:sonate` → serie `RSNT`.
+## Il disegno
 
-**Non copre che quel titolo non porta un numero.** Misurato sui titoli veri:
+**Cio' che viene dal calendario e' uno specchio.** Si cancella e si riscrive dal
+file, **per quel calendario**. Se una voce non c'e' piu' nel file, non c'e' piu'.
 
-| forma | numero | esito oggi |
-|---|---|---|
-| `LiveCut - RSNT-002 - PT2` | **si'** | passa |
-| `After Movie - RSNT-001` | **si'** | passa |
-| `Listing - re:sonate` | **no** | `kind_without_series_and_number` |
-| `Listing - RamaDub x Booze` | **no** | `kind_without_series_and_number` |
-| `Tonight - RamaDub x Booze` | **no** | idem |
+**Due sole eccezioni, e sono nominate**: le **spunte** e il **legame con una
+serata pubblicata**. Sono le uniche cose che una persona ha messo li' e che il
+calendario non sa. Si riagganciano.
 
-**Il calendario usa due convenzioni, e sono entrambe sensate per chi lo scrive a
-mano:** sigla e numero per un pezzo legato a un'edizione precisa, tipo e nome per
-uno ricorrente. Nessuno le ha dichiarate perche' nessuno aveva avuto bisogno di
-dirle a una macchina.
+**`ICS-03` e' il confine, ed e' l'unica riga che va difesa nel tempo.** Ogni stato
+umano che nascera' dopo — una nota, un'assegnazione, un allegato — o entra in
+quella lista con una decisione scritta, **oppure il primo import lo cancella senza
+che nessuno se ne accorga**. Uno specchio e' semplice esattamente perche' e'
+spietato, e questa e' la riga dove quella spietatezza si ferma.
 
-## Il fatto tecnico che decide la forma della riparazione
+## Cosa NON si semplifica, e perche'
 
-**`number` e' non-nullable** su `PieceFields` nel riconciliatore, e un pezzo si
-aggancia alla sua notte per `seriesCode + number`. **Un pezzo senza numero oggi
-non e' rappresentabile**, non solo non e' leggibile.
+**La lettura dei titoli resta**, ed e' l'unica parte che aggiunge invece di
+togliere: **uno specchio che non capisce cosa sta specchiando riporta 31 voci su
+104 come «non classificate»** — misurato sull'unione dei due calendari.
 
-Da cui due strade, e la seconda e' quella giusta:
+Due cose da leggere che oggi non si leggono:
 
-1. **rendere il numero nullable** attraverso classificatore, riconciliatore,
-   script e schema — e allora un pezzo orfano diventa uno stato normale, che e'
-   il contrario di cio' che serve;
-2. **trovare il numero invece di rinunciarvi**: la data del pezzo piu' la regola
-   di pipeline della sua serie dicono a quale serata appartiene. Un listing sta al
-   martedi' **prima** della sua serata; la serata di quella serie piu' vicina in
-   quella direzione **e'** la sua.
+1. **un nome dove va la sigla** — `Listing - re:sonate`, `Listing - RamaDub x
+   Booze` — risolto dalla mappa degli alias che esiste gia';
+2. **un pezzo senza numero** — quegli stessi titoli non ne portano uno. Il numero
+   **non si abbandona: si trova**, dalla data del pezzo piu' la regola di pipeline
+   della sua serie. Un listing sta al martedi' prima della sua serata.
 
-La seconda usa una cosa che il progetto ha gia' — `production_pipeline_rule`, con
-`anchor_weekday` e `anchor_direction` — e produce un pezzo **completo**, non uno
-mutilato.
+Il punto 2 impone una **seconda passata**: il classificatore decide una voce alla
+volta, e la notte a cui un listing appartiene e' un'altra voce dello stesso file.
+Prima le notti, poi l'aggancio.
 
-## Perche' e' una seconda passata, e non una riga in piu'
+## La contropartita, dichiarata
 
-Il classificatore decide una voce **alla volta** e non conosce le altre. La notte
-a cui un listing appartiene e' un'altra voce dello stesso file, che magari non e'
-ancora stata letta.
+**Uno specchio cancella le proposte a ogni giro** — sono date che la regola
+calcola e il file non porta. Va bene, **a patto che sia detto**: chi le guarda
+deve sapere che si ricalcolano, non che sono state decise una volta.
 
-Quindi: **prima si classificano le notti, poi si agganciano i pezzi senza
-numero.** Non e' una complicazione aggiunta: e' il minimo che la forma del
-problema impone, e scriverlo qui evita che qualcuno tenti la riga in piu' e
-scopra il vincolo a meta' strada.
+## La strada NON presa, e perche'
 
-## I due casi che restano aperti quale che sia la strada
+La prima stesura di questa fase riparava la riconciliazione: scope per calendario
+sull'assenza, ripulitura dei timbri con lo strumento riparato, l'asimmetria fra
+tabelle. **Era piu' codice per difendere zero spunte e zero legami.**
 
-- **`Timetable` nudo** — 7 voci, senza serie e senza numero. Non c'e' nome da
-  risolvere: solo la data. E' aggancіabile per data alla notte del giorno stesso —
-  che e' proprio cio' che `production-calendar.md` dichiara per la timetable — ma
-  **la regola va letta, non assunta**.
-- **`Flyering`** — 7 voci, e **non e' uno dei sei tipi di pezzo** che il prodotto
-  conosce. Non e' un difetto di lettura: e' un pezzo di produzione che il modello
-  non ha. Diventa un settimo tipo, oppure un giorno occupato, oppure un rifiuto
-  con motivo — e la scelta e' del proprietario perche' e' una scelta sul modello
-  editoriale, non sul parser.
-
-## Cosa NON si fa in questa fase
-
-- **Non si toglie a mano un solo timbro di assenza.** `ICS-04` viene dopo
-  `ICS-03`, e con lo strumento riparato: una pulizia manuale adesso cancella
-  l'unica prova che il difetto esiste.
-- **Non si allarga l'audit del referto** per farlo passare. Lo script prescrive
-  la riparazione da se': *riscrivere la riga che parla*.
-- **Non si tocca il calendario del proprietario.** La decisione presa e'
-  esattamente che il calendario resti come lo si scrive.
+Se un giorno quelle tabelle porteranno molto stato umano, la riconciliazione
+tornera' ad avere senso — e allora si riaprira' con **una misura davanti**, come
+questa. Non prima.
 
 ## Lo stato di partenza, misurato il 2026-08-20
 
 | | |
 |---|---|
-| impegni | 79, **zero assenti** |
-| pezzi | 46, di cui **17 timbrati assenti** — 14 falsi, 3 corretti (il format cancellato) |
-| piani | 2 · checklist 14 · divergenze 0 |
+| impegni | 79, zero assenti |
+| pezzi | 46, di cui **17 timbrati assenti** — che lo specchio rende irrilevanti |
+| piani 2 · checklist 14 · proposte 6 · divergenze 0 |
 | voci non classificate sull'unione | **31 su 104** |
-| pezzi prodotti dal satellite | **0 su 28 voci** |
+| pezzi prodotti dal calendario del satellite | **0 su 28 voci** |

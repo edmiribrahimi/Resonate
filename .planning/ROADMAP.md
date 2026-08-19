@@ -85,42 +85,56 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **55** — Visual, una pagina per format (`VIS`)
 - [ ] **56** — La navetta (`SHTL`)
 - [ ] **57** — I documenti che ancora difendono la community (`DOC`)
-- [ ] **58** — Il calendario si legge come lo si scrive (`ICS`) — *aperta il 2026-08-20 da tre ritrovamenti della 48*
+- [ ] **58** — Il calendario e' uno specchio (`ICS`) — *aperta e riscritta il 2026-08-20; toglie codice invece di aggiungerne*
 
 ---
 
 ## Phase Details
 
-### 58 — Il calendario si legge come lo si scrive
+### 58 — Il calendario e' uno specchio
 
-Aperta dai tre ritrovamenti della fase 48, registrati in
-[`48-FINDING-01.md`](phases/48-il-catalogo-dei-format-dice-la-verita/48-FINDING-01.md).
-**Esegue quando il proprietario lo decide**: non e' nella catena del perno.
+Aperta dai tre ritrovamenti della fase 48 e **riscritta il 2026-08-20**, dopo una
+domanda del proprietario: *«il calendario deve semplicemente riportare cosa e'
+scritto nel calendario, senza tutte queste riconciliazioni — a cosa servono?»*
+
+**La risposta e' stata misurata invece che argomentata**, e gli ha dato ragione:
+
+| cosa la riconciliazione protegge | quante ce n'erano |
+|---|---|
+| spunte di checklist | 14 voci, **0 spuntate** |
+| legami con una serata pubblicata | 2 piani, **0 legati** |
+| proposte della regola | **6** |
+
+**Una sola delle tre esisteva.** La riconciliazione stava difendendo stati che non
+c'erano ancora, e nel farlo rompeva l'unica cosa che c'era: ha prodotto 66 assenze
+false, poi 17 timbri che non si toglievano, e un'asimmetria fra tabelle che
+esisteva solo per gestirle.
 
 | ID | Requisito |
 |---|---|
-| **ICS-01** | Un titolo puo' portare **il nome di una serie** dove la grammatica canonica pretende la sigla, e lo strumento lo risolve dalla mappa degli alias che **gia' esiste** (`party_series.ics_alias`). Decisione del proprietario, 2026-08-20. |
-| **ICS-02** | Un pezzo **senza numero** si aggancia alla serata **dalla data**, nella direzione che la regola di pipeline dichiara — non da un numero che il titolo non porta. |
-| **ICS-03** | L'assenza si calcola **per calendario**: una riga scritta da un file non e' dichiarata assente da un altro. |
-| **ICS-04** | I timbri di assenza falsi si tolgono **con lo strumento riparato**, mai a mano. |
-| **ICS-05** | La riga che fa fallire l'audit del referto quando si scrive una proposta e' **riscritta**. L'audit non si allarga. |
-| **ICS-06** | `Timetable` nudo e `Flyering` ricevono una decisione dichiarata: un tipo, un rifiuto con motivo, o un giorno occupato. |
+| **ICS-01** | Cio' che viene dal calendario e' **uno specchio**: si cancella e si riscrive dal file. Nessun timbro di assenza, nessuna divergenza, nessun aggiornamento campo per campo. Una voce che il file non porta piu' **non c'e' piu'**. |
+| **ICS-02** | Lo specchio e' **ristretto al calendario che si sta importando**. Importare il satellite non tocca le righe della notte. |
+| **ICS-03** | **Due sole eccezioni allo specchio, nominate**: le **spunte** di checklist e il **legame con una serata pubblicata**. Si riagganciano, non si ricreano. Nessuna terza eccezione senza che qualcuno la dichiari qui. |
+| **ICS-04** | I titoli si leggono: un **nome** dove la grammatica canonica pretende la sigla si risolve dalla mappa degli alias che gia' esiste. |
+| **ICS-05** | Un pezzo **senza numero** si aggancia alla serata **dalla data**, nella direzione che la regola di pipeline dichiara. |
+| **ICS-06** | Le **proposte** — date che la regola calcola e il file non porta — **si ricalcolano a ogni import**, e la superficie lo dichiara invece di lasciarle sembrare durevoli. |
+| **ICS-07** | La riga che fa fallire l'audit del referto quando si scrive una proposta e' **riscritta**. L'audit non si allarga. |
+| **ICS-08** | `Timetable` nudo e `Flyering` ricevono una decisione dichiarata: un tipo, un giorno occupato, o un rifiuto con motivo. |
 
-> **Il ritrovamento che ha aperto la fase, in una riga.** Rinominare `Resonate` in
-> `re:sonate` era **corretto** — e' la grafia che il modulo di brand impone — e ha
-> reso **31 voci su 104 illeggibili allo strumento**. Nessuno aveva scritto che la
-> grafia di un nome e la sigla di una serie finiscono nello stesso posto dentro un
-> titolo, quindi le due regole non sapevano di essere in conflitto.
+> **Questa fase toglie codice.** Spariscono le assenze, le divergenze,
+> l'asimmetria fra tabelle e i 17 timbri falsi — che non esisterebbero. Resta la
+> lettura dei titoli, che serve comunque: **uno specchio che non capisce cosa sta
+> specchiando riporta 31 voci su 104 come «non classificate»**.
 
-> **ICS-02 e' la meta' che nessuno vede.** *«Lo strumento impara a risolvere un
-> nome»* copre `Listing - re:sonate`; non copre che quel titolo **non porta un
-> numero**. Il calendario usa due convenzioni — sigla e numero per un pezzo legato
-> a un'edizione, tipo e nome per uno ricorrente — ed e' ragionevole per chi lo
-> scrive a mano. Senza `ICS-02`, `ICS-01` risolve la serie e lascia il pezzo
-> orfano.
+> **`ICS-06` e' la contropartita dello specchio, e va detta.** Uno specchio puro
+> cancella le proposte a ogni giro. Va bene — a patto che sia **dichiarato** che si
+> ricalcolano, invece di lasciar credere a chi le guarda che siano state decise
+> una volta.
 
-> **`ICS-04` dopo `ICS-03`, mai prima.** Una pulizia manuale adesso cancellerebbe
-> l'unica prova che il difetto esiste.
+> **`ICS-03` e' il confine, ed e' l'unica riga che va difesa nel tempo.** Ogni
+> stato umano che nasce dopo — una nota, un'assegnazione, un allegato — o entra in
+> quella lista **con una decisione scritta**, oppure il primo import lo cancella
+> senza che nessuno se ne accorga.
 
 ---
 

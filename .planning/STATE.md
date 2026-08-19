@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.6 **58** — il calendario si legge come lo si scrive (aperta dai ritrovamenti della 48, contesto scritto, piani da fare)
+**Current Focus:** v1.6 **58** — il calendario e' uno specchio (riscritta il 2026-08-20 dopo una misura: toglie codice invece di aggiungerne; piani da fare)
 
 ## Current Position
 
