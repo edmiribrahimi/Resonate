@@ -107,6 +107,10 @@ dichiarate.
    riportava «0 inviati» come successo; e `resend.batch.send` **non lancia** su
    un rifiuto, quindi un lotto respinto veniva contato come inviato e marcava
    `reminder_sent = true` per sempre. Sbloccate anche le voci 2 e 3 della fase 37.
+   **Spedite il 2026-08-19**: `origin/main` a `8760340`, deployment Production
+   **success**, prima richiesta fatta a mano su 14 rotte piu' 4 API sull'host
+   canonico `www.` — pubbliche 200, protette 307, `/set-password` **200**, i due
+   cron **401** senza segreto, webhook e finalize **405** su GET. **Zero 500.**
    **Restano aperti per decisione, non per codice:** la riconciliazione di
    `MASTER_EMAIL` che su un accesso con password non gira mai, e la cancellazione
    di un account che ha agito (tocca l'immutabilita' del registro e
