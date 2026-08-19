@@ -5,6 +5,29 @@ created: 2026-08-18
 status: allestito e misurato fedele; nessuna procedura eseguita
 ---
 
+
+> ## IL LABORATORIO E' STATO CANCELLATO — 2026-08-19
+>
+> Il progetto usa-e-getta e' stato **eliminato** dopo la terza seduta, insieme
+> alle sue credenziali locali (`.env.lab.local`, `.env.lab.seed.json`).
+> Cancellato **per ref**, con il rifiuto sulla produzione attivo e il nome del
+> progetto **riletto dal server** prima di premere; l'assenza confermata dalla
+> lista dei progetti, cioe' da una fonte diversa da quella con cui si e'
+> cancellato.
+>
+> **La ragione e' la stessa per cui era stato costruito:** conteneva account con
+> password nota, e un ambiente dimenticato e' una superficie che nessuno guarda.
+>
+> **Questo documento resta perche' e' la ricetta.** Tutto cio' che serve a
+> rifarlo e' qui: il percorso di bootstrap con i suoi tre ostacoli, i nove
+> cataloghi da confrontare per dire che e' fedele, e cosa un laboratorio prova e
+> cosa no. Rifarlo costa poche ore, stavolta senza le sorprese.
+>
+> **Cosa ha prodotto prima di sparire:** tre sedute (`v1.5-LAB-SITTING.md`,
+> `v1.5-LAB-SITTING-2.md`), B-1 e B-2 percorsi (`v1.5-B1-B2-FINDINGS.md`),
+> **14 voci `human_needed` chiuse** e **cinque reperti**, due dei quali sono
+> difetti in produzione che nessun gate aveva visto.
+
 # Il laboratorio della porta
 
 > **Cosa c'e' qui:** come e' fatto l'ambiente usa-e-getta, che cosa e' stato
