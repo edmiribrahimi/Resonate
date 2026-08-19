@@ -85,10 +85,44 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **55** — Visual, una pagina per format (`VIS`)
 - [ ] **56** — La navetta (`SHTL`)
 - [ ] **57** — I documenti che ancora difendono la community (`DOC`)
+- [ ] **58** — Il calendario si legge come lo si scrive (`ICS`) — *aperta il 2026-08-20 da tre ritrovamenti della 48*
 
 ---
 
 ## Phase Details
+
+### 58 — Il calendario si legge come lo si scrive
+
+Aperta dai tre ritrovamenti della fase 48, registrati in
+[`48-FINDING-01.md`](phases/48-il-catalogo-dei-format-dice-la-verita/48-FINDING-01.md).
+**Esegue quando il proprietario lo decide**: non e' nella catena del perno.
+
+| ID | Requisito |
+|---|---|
+| **ICS-01** | Un titolo puo' portare **il nome di una serie** dove la grammatica canonica pretende la sigla, e lo strumento lo risolve dalla mappa degli alias che **gia' esiste** (`party_series.ics_alias`). Decisione del proprietario, 2026-08-20. |
+| **ICS-02** | Un pezzo **senza numero** si aggancia alla serata **dalla data**, nella direzione che la regola di pipeline dichiara — non da un numero che il titolo non porta. |
+| **ICS-03** | L'assenza si calcola **per calendario**: una riga scritta da un file non e' dichiarata assente da un altro. |
+| **ICS-04** | I timbri di assenza falsi si tolgono **con lo strumento riparato**, mai a mano. |
+| **ICS-05** | La riga che fa fallire l'audit del referto quando si scrive una proposta e' **riscritta**. L'audit non si allarga. |
+| **ICS-06** | `Timetable` nudo e `Flyering` ricevono una decisione dichiarata: un tipo, un rifiuto con motivo, o un giorno occupato. |
+
+> **Il ritrovamento che ha aperto la fase, in una riga.** Rinominare `Resonate` in
+> `re:sonate` era **corretto** — e' la grafia che il modulo di brand impone — e ha
+> reso **31 voci su 104 illeggibili allo strumento**. Nessuno aveva scritto che la
+> grafia di un nome e la sigla di una serie finiscono nello stesso posto dentro un
+> titolo, quindi le due regole non sapevano di essere in conflitto.
+
+> **ICS-02 e' la meta' che nessuno vede.** *«Lo strumento impara a risolvere un
+> nome»* copre `Listing - re:sonate`; non copre che quel titolo **non porta un
+> numero**. Il calendario usa due convenzioni — sigla e numero per un pezzo legato
+> a un'edizione, tipo e nome per uno ricorrente — ed e' ragionevole per chi lo
+> scrive a mano. Senza `ICS-02`, `ICS-01` risolve la serie e lascia il pezzo
+> orfano.
+
+> **`ICS-04` dopo `ICS-03`, mai prima.** Una pulizia manuale adesso cancellerebbe
+> l'unica prova che il difetto esiste.
+
+---
 
 ### 47 — Il token che si beve e si fa rimborsare
 

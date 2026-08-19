@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.6 **48** — catalogo e colori fatti; l'import del calendario e' fermo su un ritrovamento che serve una decisione del proprietario
+**Current Focus:** v1.6 **58** — il calendario si legge come lo si scrive (aperta dai ritrovamenti della 48, contesto scritto, piani da fare)
 
 ## Current Position
 
