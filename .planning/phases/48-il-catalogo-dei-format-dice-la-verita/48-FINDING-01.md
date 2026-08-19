@@ -141,3 +141,88 @@ dell'altro, l'asimmetria era coperta dal rumore.**
 4. Lo scope per calendario, che l'unione **aggira ma non risolve**: l'unione e'
    un passo manuale prima di ogni import, e un passo manuale prima di un
    percorso che scrive in produzione e' un passo che un giorno qualcuno saltera'.
+
+---
+
+# Ritrovamento 03 — il calendario nuovo e' brand-corretto e macchina-illeggibile
+
+## Il fatto
+
+Le assenze dei pezzi **non si tolgono perche' quelle voci non producono piu' un
+pezzo da incontrare.** Misurato sul registro degli import, che conserva come ogni
+esecuzione ha classificato le sue voci:
+
+| import | voci | pezzi riconosciuti | non classificate |
+|---|---|---|---|
+| calendario della notte, versione superata | 79 | **39** | 5 |
+| calendario della notte, versione nuova | 76 | **23** | 9 |
+| unione dei due | 104 | **23** | **31** |
+
+**Trentuno voci su centoquattro non sono classificabili — quasi un terzo.**
+
+## La causa: una quarta grammatica che nessuno ha dichiarato
+
+Lo strumento ne conosce **tre**, e lo dice nei suoi commenti:
+
+| | forma | esempio |
+|---|---|---|
+| canonica | `<Tipo> - <SIGLA>-<NNN>` | `LiveCut - RSNT-007 - PT1` |
+| vecchia, invertita | `<Parola> <NNN> - <Tipo>` | `Resonate 002 - Listing` |
+| notte | `<Parola>[ x <Parola>] <NNN>` | `re:sonate 004` |
+
+Il calendario nuovo scrive **`Listing - re:sonate`**: forma canonica, ma con il
+**nome** dove la grammatica pretende la **sigla**. Non e' nessuna delle tre.
+
+**E il calendario e' internamente incoerente**: i LiveCut scrivono `RSNT`, i
+listing scrivono `re:sonate`. Le stesse quattordici voci LiveCut passano; i sette
+listing no.
+
+## Il conto per forma, sull'unione
+
+**Passano** — 18 voci: `LiveCut - RSNT-NNN - PTn` (14), `LiveCut - RSNT-PRLN-NNN`
+(2), `Visuals - RSNT-NNN` (2), piu' `After Movie - RSNT-NNN` (7) e le due forme
+di notte (9).
+
+**Non passano** — e sono i gruppi che contano:
+
+| n | forma | perche' |
+|---|---|---|
+| 22 | `Tonight/Listing/LiveCut/Recap - RamaDub x Booze` | **TUTTI i pezzi del satellite**: nome del locale dove va la sigla |
+| 9 | `Listing - re:sonate` e `Listing - re:sonate x Perlone` | nome dove va la sigla |
+| 7 | `Timetable` | tipo nudo, senza serie ne' numero |
+| 7 | `Flyering - re:sonate`, `Flyering - SoY` | *Flyering* non e' uno dei sei tipi |
+| 18 | `SoY`, `SoY x Unum`, `Music`, `Video Production`, … | **corretto**: sono giorni occupati, non nostri pezzi |
+
+> **Il satellite non ha prodotto un solo pezzo.** Il suo import dichiaro' `pezzi
+> 0`, ed era vero: tutte e ventidue le sue voci editoriali scrivono il nome del
+> locale dove lo strumento cerca una sigla.
+
+## Perche' e' successo, e perche' non e' colpa di nessuno
+
+La rinominazione da `Resonate` a `re:sonate` **e' corretta**: e' la grafia che
+`brand-visual-system.md` impone ovunque, e il calendario ha smesso di sbagliarla.
+
+**Rendere il calendario brand-corretto lo ha reso macchina-illeggibile.** Le due
+cose non erano in conflitto per nessuna ragione profonda: lo strumento chiede una
+sigla, la grafia riguarda un nome, e nessuno aveva scritto che quei due campi
+finiscono nello stesso posto in un titolo.
+
+## La decisione, ed e' del proprietario
+
+Due strade, e non sono equivalenti:
+
+1. **I calendari adottano la forma canonica** — `Listing - RSNT-002`,
+   `Listing - BZ-001` — che i LiveCut usano gia'. Nessun codice cambia; cambia
+   come si scrive un titolo, per sempre, su ogni voce nuova.
+2. **Lo strumento impara a risolvere un nome** nella posizione della sigla,
+   passando dalla mappa degli alias che **esiste gia'** (`party_series.ics_alias`,
+   parola → codice). Il calendario resta come lo si scrive naturalmente.
+
+La seconda e' piu' clemente verso chi scrive il calendario a mano, e usa un
+meccanismo che il progetto ha gia'. La prima non costa codice ma chiede
+disciplina a ogni voce, per sempre — ed e' esattamente il tipo di disciplina che
+un giorno qualcuno non applichera'.
+
+**Restano comunque da decidere due casi**, quale che sia la strada: `Timetable`
+nudo, senza serie ne' numero, e `Flyering`, che non e' uno dei sei tipi di pezzo
+che il prodotto conosce.
