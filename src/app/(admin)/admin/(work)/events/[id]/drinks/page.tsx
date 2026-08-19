@@ -9,7 +9,10 @@ import DrinkMenuManager from "@/app/(admin)/admin/events/[id]/drinks/DrinkMenuMa
 import EventQRCode from "@/app/(public)/events/[slug]/menu/EventQRCode";
 import { FOCUS_RING } from "@/components/ui/Button";
 import { PageShell } from "@/components/ui/PageShell";
-import { PageTitle } from "@/components/ui/Typography";
+import { PageTitle, SectionHeading } from "@/components/ui/Typography";
+import RefundRequestList, {
+  type PendingRefund,
+} from "@/app/(admin)/admin/events/[id]/drinks/RefundRequestList";
 
 /**
  * The drink menu of an event — the single surface, where there were two.
@@ -108,6 +111,66 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
 
   const menuUrl = `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.slug}/menu`;
 
+  /*
+    ── Le richieste di rimborso in attesa di questa serata ────────────────────
+
+    LETTE CON IL CLIENT LEGATO AL COOKIE, non con quello di servizio. Una lettura
+    che scavalca la policy non prova nulla sulla policy, e la policy — che chiede
+    `staff.manage` — e' il confine vero: la guardia in cima a questa pagina
+    impedisce di ARRIVARE qui, non di leggere queste righe.
+
+    L'embed e' qualificato sul nome del vincolo perche' `drink_tokens` ha piu' di
+    una relazione verso le tabelle vicine, e un embed ambiguo e' risposto da
+    PostgREST con un 300 che attraverso questo client NON solleva: `data` torna
+    null e la lista si disegna vuota. Su questa superficie una lista vuota per
+    errore e' indistinguibile da «nessuno ha chiesto niente», che e' anche lo
+    stato normale.
+
+    ⚠ UNA COINCIDENZA CHE OGGI TIENE, E CHE NON E' UN VINCOLO. La guardia in cima
+    a questa pagina chiede `organizer.access`; la policy della tabella chiede
+    `staff.manage`. Misurate in produzione il 2026-08-20, le due sono tenute
+    **dagli stessi ruoli** — master e organizer — quindi chi arriva qui puo'
+    leggere.
+
+    Il giorno in cui divergessero, un lettore ammesso dalla pagina e rifiutato
+    dalla base dati leggerebbe zero righe SENZA UN ERRORE — PostgREST non
+    distingue «la policy ti ha rifiutato» da «non c'e' niente» — e la sezione gli
+    direbbe «nessuna richiesta in attesa», che sarebbe falso e credibile. Se un
+    giorno si tocca l'una delle due, si guarda l'altra.
+  */
+  const { data: refundRows, error: refundError } = await supabase
+    .from("drink_refund_request")
+    .select(
+      "token_id, requested_at, drink_tokens!inner(drink_name, price, status, activation_count, event_id)"
+    )
+    .eq("status", "pending")
+    .eq("drink_tokens.event_id", eventId)
+    .order("requested_at", { ascending: true });
+
+  if (refundError) {
+    // Non silenzioso: una lettura fallita non si rende come «nessuna richiesta».
+    console.error(
+      `[drinks.refund_requests_read_failed] ${refundError.code || "transport"}: ${refundError.message}`
+    );
+  }
+
+  const pendingRefunds: PendingRefund[] = (refundRows ?? []).map((row) => {
+    const t = row.drink_tokens as unknown as {
+      drink_name: string;
+      price: number;
+      status: string;
+      activation_count: number | null;
+    };
+    return {
+      tokenId: row.token_id as string,
+      drinkName: t.drink_name,
+      price: Number(t.price),
+      activationCount: t.activation_count,
+      requestedAt: row.requested_at as string,
+      redeemed: t.status === "redeemed",
+    };
+  });
+
   return (
     /*
       `default` and not `wide`: §4's wide list is closed and does not name this
@@ -133,6 +196,23 @@ export default async function DrinksPage({ params }: DrinksPageProps) {
         eventTitle={event.title}
         initialItems={items}
       />
+
+      <div className="mt-8">
+        <SectionHeading>Richieste di rimborso</SectionHeading>
+        <p className="mb-3 text-sm text-muted">
+          Un drink mai attivato viene rimborsato da solo quando qualcuno lo
+          chiede. Qui arrivano gli altri: il numero accanto dice quante volte
+          quel token è stato attivato, ed è un fatto da leggere, non un verdetto.
+        </p>
+        {refundError ? (
+          <p className="text-sm text-ink-2">
+            Non siamo riusciti a leggere le richieste di rimborso. Questa lista
+            non è vuota: è illeggibile.
+          </p>
+        ) : (
+          <RefundRequestList requests={pendingRefunds} />
+        )}
+      </div>
 
       {/* Menu QR Code */}
       <div className="mt-8">

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/utils/slugify";
-import { createCheckout } from "@/lib/sumup";
+import { createCheckout, getCheckout, refundTransaction } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import type { AccessType, DrinkItem } from "@/types/database";
 import { menuCloseInstant, DEFAULT_VENUE_REVEAL_HOURS } from "@/utils/datetime";
@@ -14,6 +14,7 @@ import {
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
+import { getAccessContext } from "@/lib/capabilities/server";
 
 import { redactDbError } from "@/lib/errors/redact";
 // Service-role client for operations where RLS blocks legitimate access
@@ -1991,4 +1992,151 @@ export async function redeemDrinkToken(
   }
 
   return { success: true };
+}
+
+/**
+ * Le due decisioni su una richiesta di rimborso di un drink (`DRK-03`,
+ * `DRK-05b`).
+ *
+ * ── Perche' esistono, quando `DRK-05` rimborsa gia' da solo ─────────────────
+ *
+ * `DRK-05` copre un caso: token **mai attivato**. Ogni altro — attivato e poi
+ * annullato, una volta o quattro — arriva qui, e ci arriva **con il suo
+ * conteggio**. Non e' un sospetto: quattro attivazioni possono essere quattro
+ * ripensamenti in una fila lunga. E' una cosa che prima non si poteva sapere.
+ *
+ * ── E la richiesta non viene MAI respinta automaticamente ───────────────────
+ *
+ * Un rifiuto automatico e' un rimborso automatico con il segno cambiato, e la
+ * decisione del proprietario del 2026-08-19 riguarda **entrambi i segni**:
+ * *«solo un admin o un organizer possono emettere rimborsi, in casi specifici
+ * visionati di persona»*. Nessun ramo qui chiude una richiesta senza una persona.
+ */
+export type DrinkRefundDecision =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/**
+ * Accogliere: emette il rimborso e chiude la richiesta.
+ *
+ * La regola del denaro vale identica al percorso automatico: il codice di
+ * transazione **si rilegge dal checkout**, non si prende per buono quello
+ * memorizzato — quel campo lo ha scritto un webhook.
+ */
+export async function approveDrinkRefund(
+  tokenId: string
+): Promise<DrinkRefundDecision> {
+  const { capabilities, userId } = await getAccessContext();
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
+    return { ok: false, message: "Non hai i permessi per emettere un rimborso." };
+  }
+
+  const service = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+
+  const { data: token } = await service
+    .from("drink_tokens")
+    .select("id, status, price, order_id, event_id")
+    .eq("id", tokenId)
+    .single();
+
+  if (!token) return { ok: false, message: "Questo drink non esiste più." };
+  if (token.status === "refunded")
+    return { ok: false, message: "Questo drink risulta già rimborsato." };
+
+  const { data: order } = await service
+    .from("drink_orders")
+    .select("sumup_checkout_id, sumup_transaction_code, refunded_amount")
+    .eq("id", token.order_id)
+    .single();
+
+  if (!order?.sumup_checkout_id)
+    return { ok: false, message: "L'ordine non ha un pagamento a cui agganciare il rimborso." };
+
+  try {
+    const checkout = await getCheckout(order.sumup_checkout_id);
+    const txCode =
+      checkout.transactions?.[0]?.transaction_code ??
+      order.sumup_transaction_code ??
+      null;
+    if (!txCode)
+      return { ok: false, message: "SumUp non riporta una transazione per questo ordine." };
+
+    const amount = Math.round(Number(token.price) * 100) / 100;
+    await refundTransaction(txCode, amount);
+
+    await service
+      .from("drink_tokens")
+      .update({ status: "refunded", refunded_at: new Date().toISOString() })
+      .eq("id", tokenId);
+
+    await service
+      .from("drink_orders")
+      .update({ refunded_amount: Number(order.refunded_amount ?? 0) + amount })
+      .eq("id", token.order_id);
+
+    await service
+      .from("drink_refund_request")
+      .update({
+        status: "approved",
+        decided_at: new Date().toISOString(),
+        decided_by: userId,
+      })
+      .eq("token_id", tokenId);
+
+    revalidatePath(`/admin/events/${token.event_id}/drinks`);
+    return { ok: true };
+  } catch (err) {
+    logMoneyPathFailure("drink refund approve", {
+      code: null,
+      message: err instanceof Error ? err.message : null,
+    });
+    return {
+      ok: false,
+      message: "Il rimborso non è partito. Il drink non risulta rimborsato: riprova o falla a mano su SumUp.",
+    };
+  }
+}
+
+/**
+ * Respingere: chiude la richiesta con una nota, e **non muove denaro**.
+ *
+ * Nessuna chiamata a `refundTransaction` compare in questa funzione, ed e'
+ * l'unica cosa che la distingue davvero da quella sopra.
+ */
+export async function rejectDrinkRefund(
+  tokenId: string,
+  note?: string
+): Promise<DrinkRefundDecision> {
+  const { capabilities, userId } = await getAccessContext();
+  if (!capabilities.has(CAP.STAFF_MANAGE)) {
+    return { ok: false, message: "Non hai i permessi per decidere su un rimborso." };
+  }
+
+  const service = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+
+  const { error } = await service
+    .from("drink_refund_request")
+    .update({
+      status: "rejected",
+      decided_at: new Date().toISOString(),
+      decided_by: userId,
+      decision_note: note?.trim() || null,
+    })
+    .eq("token_id", tokenId)
+    .eq("status", "pending");
+
+  if (error) {
+    logMoneyPathFailure("drink refund reject", error);
+    return { ok: false, message: "Non siamo riusciti a registrare la decisione." };
+  }
+
+  return { ok: true };
 }

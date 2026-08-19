@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
-import { createCheckout } from "@/lib/sumup";
+import { createCheckout, getCheckout, refundTransaction } from "@/lib/sumup";
 import { verifyTicketToken } from "@/utils/qr";
 import { menuCloseInstant } from "@/utils/datetime";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
@@ -547,7 +547,7 @@ export async function requestDrinkRefundGuest(
 
   const { data: token, error: tokenError } = await serviceClient
     .from("drink_tokens")
-    .select("id, status, party_id, event_parties(date, end_time, menu_closes_at, refund_request_window_hours)")
+    .select("id, status, price, order_id, activation_count, party_id, event_parties(date, end_time, menu_closes_at, refund_request_window_hours)")
     .eq("id", tokenId)
     .single();
 
@@ -643,5 +643,150 @@ export async function requestDrinkRefundGuest(
     };
   }
 
+  /*
+    ── LA BIFORCAZIONE (`DRK-05` / `DRK-05b`) ────────────────────────────────
+
+    `activation_count = 0` → il token non e' MAI stato attivato, e lo sappiamo.
+    Il rimborso parte subito.
+
+    Qualunque altro valore, `null` compreso → una persona guarda.
+
+    IL `null` NON E' UNO ZERO, ED E' LA RIGA PIU' IMPORTANTE DI QUESTO BLOCCO.
+    Significa «riga creata prima che si contasse»: non sappiamo se sia stata
+    attivata. Trattarlo come «mai attivato» rimborserebbe automaticamente proprio
+    i token su cui non abbiamo dati — cioe' l'errore che la fase 47 esiste per
+    togliere, applicato all'indietro. Il confronto stretto con `0` lo esclude da
+    solo, e la migration 20260820100000 ha reso la colonna nullable proprio per
+    questo.
+
+    E NON SI LEGGE `activated_at`. Dal 2026-08-19 quel campo sopravvive
+    all'annullamento: `activated_at IS NULL` non significa piu' «mai attivato».
+  */
+  if (token.activation_count !== 0) {
+    // Resta in attesa. Nessun denaro si muove, e la richiesta e' gia' registrata:
+    // chi decide la vede, con il conteggio accanto.
+    return { ok: true };
+  }
+
+  const esitoRimborso = await emettiRimborsoAutomatico({
+    tokenId,
+    orderId: token.order_id as string,
+    importo: Number(token.price),
+  });
+
+  if (!esitoRimborso.ok) {
+    /*
+      L'EMISSIONE E' FALLITA, E LA RICHIESTA RESTA VISIBILE E IN ATTESA.
+
+      Non «riprova piu' tardi» silenzioso, non un log e basta: questo progetto non
+      ha alcun tracciamento degli errori, quindi un fallimento che non produce un
+      effetto osservabile e' un fallimento che nessuno sapra' mai
+      (`meta-gates.md`). La riga rimasta `pending` E' l'effetto osservabile:
+      compare a chi decide, che la chiudera' a mano.
+
+      A chi ha chiesto diciamo che la richiesta c'e' — perche' e' vero, ed e'
+      esattamente la situazione in cui si trova. Non gli diciamo «rimborsato»,
+      che sarebbe falso, ne' «errore», che gli farebbe credere di dover rifare
+      qualcosa che e' gia' fatto.
+    */
+    return { ok: true };
+  }
+
   return { ok: true };
+}
+
+/**
+ * Emette il rimborso di un singolo token e chiude la sua richiesta.
+ *
+ * ── La regola del denaro, applicata qui senza sconti ────────────────────────
+ *
+ * *«ALWAYS verify via GET checkout API»* — `src/app/api/webhooks/sumup/route.ts`
+ * la enuncia sul webhook, e ogni nuovo percorso che muove denaro la eredita. Il
+ * codice di transazione **si rilegge dal checkout**, non si prende per buono
+ * quello memorizzato: quel campo lo ha scritto un webhook, ed e' esattamente il
+ * genere di valore che la regola dice di non credere sulla parola.
+ *
+ * ── Idempotenza ────────────────────────────────────────────────────────────
+ *
+ * Il vincolo di unicita' su `token_id` garantisce **una richiesta per token**, e
+ * lo stato del token passa a `refunded` prima che questa funzione ritorni. Una
+ * seconda invocazione trova `already_requested` a monte e non arriva qui.
+ */
+async function emettiRimborsoAutomatico({
+  tokenId,
+  orderId,
+  importo,
+}: {
+  tokenId: string;
+  orderId: string;
+  importo: number;
+}): Promise<{ ok: boolean }> {
+  const serviceClient = getServiceClient();
+
+  try {
+    const { data: order } = await serviceClient
+      .from("drink_orders")
+      .select("sumup_checkout_id, sumup_transaction_code, refunded_amount")
+      .eq("id", orderId)
+      .single();
+
+    if (!order?.sumup_checkout_id) {
+      logMoneyPathFailure("drink auto-refund: nessun checkout sull'ordine", {
+        code: "no_checkout",
+        message: `order=${orderId}`,
+      });
+      return { ok: false };
+    }
+
+    // Interrogato SEMPRE, non solo come ripiego: e' la regola del dominio.
+    const checkout = await getCheckout(order.sumup_checkout_id);
+    const txCode =
+      checkout.transactions?.[0]?.transaction_code ??
+      order.sumup_transaction_code ??
+      null;
+
+    if (!txCode) {
+      logMoneyPathFailure("drink auto-refund: nessun codice di transazione", {
+        code: "no_tx_code",
+        message: `order=${orderId}`,
+      });
+      return { ok: false };
+    }
+
+    const arrotondato = Math.round(importo * 100) / 100;
+    await refundTransaction(txCode, arrotondato);
+
+    await serviceClient
+      .from("drink_tokens")
+      .update({ status: "refunded", refunded_at: new Date().toISOString() })
+      .eq("id", tokenId);
+
+    // Sopravvive alla cancellazione del token, come faceva il cron.
+    await serviceClient
+      .from("drink_orders")
+      .update({
+        refunded_amount: Number(order.refunded_amount ?? 0) + arrotondato,
+      })
+      .eq("id", orderId);
+
+    // `decided_automatically` invece di un `decided_by` inventato: una decisione
+    // ha sempre un autore, e qui l'autore e' la regola. Il vincolo del database
+    // rifiuta entrambi insieme e rifiuta nessuno dei due.
+    await serviceClient
+      .from("drink_refund_request")
+      .update({
+        status: "approved",
+        decided_at: new Date().toISOString(),
+        decided_automatically: true,
+      })
+      .eq("token_id", tokenId);
+
+    return { ok: true };
+  } catch (err) {
+    logMoneyPathFailure("drink auto-refund", {
+      code: null,
+      message: err instanceof Error ? err.message : null,
+    });
+    return { ok: false };
+  }
 }
