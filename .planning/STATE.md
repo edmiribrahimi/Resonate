@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: "Piattaforma, non community"
-status: phase-planned
-stopped_at: "Fase 47 pianificata il 2026-08-19 — 6 piani, 3 onde. Prossimo passo: eseguire 47-01 (la migration), che apre l'onda 1."
+status: phase-executed
+stopped_at: "Fase 47 ESEGUITA il 2026-08-20 — 6 piani su 6, tre migration in produzione. Verifica human_needed: 5 requisiti chiusi su 9, 4 chiedono un'osservazione umana (un acquisto vero, un telefono con la rete spenta, una persona che legge il runbook). Prossimo passo: fase 48."
 last_updated: "2026-08-19T20:00:00.000Z"
 last_activity: "2026-08-19 -- v1.5 archiviata e spedita (tag v1.5, Production success); v1.6 aperta con roadmap in .planning/ROADMAP.md"
 progress:
   total_phases: 11
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 6
+  percent: 9
 ---
 
 # State: Resonate
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.6 **47** — il token che si beve e si fa rimborsare (difetto vivo sul percorso del denaro)
+**Current Focus:** v1.6 **48** — il catalogo dei format dice la verita' (la 47 e' eseguita, verifica `human_needed`)
 
 ## Current Position
 
