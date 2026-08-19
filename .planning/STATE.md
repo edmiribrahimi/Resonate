@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: "Piattaforma, non community"
-status: roadmap-written
-stopped_at: "v1.6 aperta il 2026-08-19 — roadmap scritta, undici fasi 47..57, nessuna pianificata. Prossimo passo: pianificare 47 (il difetto del token drink)."
+status: phase-planned
+stopped_at: "Fase 47 pianificata il 2026-08-19 — 6 piani, 3 onde. Prossimo passo: eseguire 47-01 (la migration), che apre l'onda 1."
 last_updated: "2026-08-19T20:00:00.000Z"
 last_activity: "2026-08-19 -- v1.5 archiviata e spedita (tag v1.5, Production success); v1.6 aperta con roadmap in .planning/ROADMAP.md"
 progress:
   total_phases: 11
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -39,10 +39,18 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
 sulle superfici).
 
-**Nessuna fase e' stata pianificata.** Il prossimo passo e' pianificare **47**, il
-difetto del token drink misurato il 2026-08-19 (`deactivate_drink_token` azzera
-`activated_at`, che e' l'unica traccia di un'attivazione, e `purchased` e' lo
-stato su cui il rimborso seleziona). Subito dopo viene **48**:
+**La fase 47 e' pianificata**: sei piani in tre onde, contesto in
+`.planning/phases/47-il-token-che-si-beve-e-si-fa-rimborsare/47-CONTEXT.md`.
+L'onda 1 e' 47-01 (la migration), 47-05 (i 5 secondi) e 47-06 (il runbook);
+l'onda 2 e' 47-02 (il cron) e 47-03 (la richiesta); l'onda 3 e' 47-04 (la
+decisione), che chiude perche' senza il conteggio non ha il dato su cui decidere.
+
+Il difetto che la fase ripara e' stato **riprodotto in laboratorio**, non
+dedotto: `deactivate_drink_token` azzera `activated_at`, unica traccia di
+un'attivazione, e `purchased` e' lo stato su cui il rimborso seleziona. Referto
+in `.planning/v1.6-PHASE-47-PROBE.md`.
+
+Dopo la 47 viene la **48**:
 cancellazione di SunSet, RamaDub a `#2B4BE8`, e import del calendario di
 produzione dai due `.ics` forniti — con la prova a vuoto letta per intero prima
 di qualunque `--apply`.
