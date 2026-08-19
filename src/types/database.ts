@@ -609,7 +609,25 @@ export interface DrinkToken {
   price: number;
   token: string;
   status: DrinkTokenStatus;
+  /**
+   * Quando il token e' stato attivato **l'ultima volta**.
+   *
+   * NON significa «e' attivo adesso»: dal 2026-08-19 (fase 47, `DRK-04`)
+   * sopravvive all'annullamento. Per sapere se un token e' attivo si legge
+   * `status`, che e' l'unica fonte che lo dice.
+   */
   activated_at: string | null;
+  /**
+   * Quante volte questo token e' stato attivato, in tutta la sua vita.
+   *
+   * `null` = riga creata **prima** che si contasse: nessun dato. `0` = mai
+   * attivato, **e lo sappiamo**. La distinzione decide chi puo' essere
+   * rimborsato automaticamente (`DRK-05`): trattare un `null` come «mai
+   * attivato» rimborserebbe da solo proprio i token su cui non sappiamo nulla.
+   *
+   * Non decresce: annullare non disfa un'attivazione, la chiude.
+   */
+  activation_count: number | null;
   redeemed_at: string | null;
   refunded_at: string | null;
   created_at: string;

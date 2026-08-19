@@ -83,21 +83,33 @@ console.log(`   token ${tok.id}  status=${tok.status}  activated_at=${tok.activa
 console.log("\n2 · il ciclo attiva -> annulla, cinque giri (il barista versa fra i due)");
 for (let giro = 1; giro <= 5; giro++) {
   await q(`select activate_drink_token('${tok.id}')`);
-  const a = one(await q(`select status, activated_at from drink_tokens where id='${tok.id}'`));
+  const a = one(await q(`select status, activated_at, activation_count from drink_tokens where id='${tok.id}'`));
   await q(`select deactivate_drink_token('${tok.id}')`);
-  const d = one(await q(`select status, activated_at from drink_tokens where id='${tok.id}'`));
-  console.log(`   giro ${giro}: attivo(status=${a.status}, activated_at=${a.activated_at ? "valorizzato" : "NULL"})`
-            + ` -> annullato(status=${d.status}, activated_at=${d.activated_at === null ? "NULL" : d.activated_at})`);
+  const d = one(await q(`select status, activated_at, activation_count from drink_tokens where id='${tok.id}'`));
+  console.log(`   giro ${giro}: attivo(status=${a.status}, n=${a.activation_count})`
+            + ` -> annullato(status=${d.status}, activated_at=${d.activated_at === null ? "NULL" : "valorizzato"}, n=${d.activation_count})`);
   if (giro === 5) {
-    check("dopo cinque drink lo stato e'", d.status, "purchased");
-    check("la traccia dell'attivazione e'", d.activated_at, "null");
+    // DOPO DRK-04 queste due righe dicono il CONTRARIO di quello che dicevano
+    // prima: la traccia sopravvive e il conteggio la quantifica.
+    check("dopo cinque drink la traccia dell'attivazione sopravvive", d.activated_at !== null, "true");
+    check("il conteggio delle attivazioni e'", d.activation_count, "5");
+    // Questa NON cambia, ed e' il punto: la riparazione non impedisce il ciclo,
+    // lo rende visibile. A impedirlo e' la procedura del banco.
+    check("lo stato e' ancora (la riparazione non impedisce il ciclo)", d.status, "purchased");
   }
 }
 
-// ── il token e' selezionabile per il rimborso ──────────────────────────────
-console.log("\n3 · il selettore del cron di rimborso — .eq('status','purchased')");
+// ── il token e' selezionabile per il rimborso, ma ora distinguibile ────────
+console.log("\n3 · il selettore del rimborso, e cosa lo distingue ora");
 const r = one(await q(`select count(*)::int as n from drink_tokens where id='${tok.id}' and status='purchased'`));
-check("il token bevuto cinque volte e' rimborsabile", r.n, 1);
+check("il token bevuto cinque volte e' ancora in 'purchased'", r.n, 1);
+const auto = one(await q(`select count(*)::int as n from drink_tokens where id='${tok.id}' and status='purchased' and activation_count = 0`));
+check("ma NON passa il filtro del rimborso automatico (mai attivato)", auto.n, 0);
+const mai = one(await q(`
+  insert into drink_tokens (order_id, event_id, drink_name, price, status)
+  values ('${ord.id}', '${ev.id}', 'PROBE-F0', 5.00, 'purchased')
+  returning activation_count`));
+check("un token nuovo mai toccato nasce con conteggio", mai.activation_count, "0");
 
 // ── controprova: NON si puo' servire due volte ─────────────────────────────
 console.log("\n4 · controprova — servire due volte");

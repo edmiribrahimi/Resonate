@@ -421,12 +421,28 @@ function GuestRedeemConfirmationModal({
   const [isPending, startTransition] = useTransition();
   const servedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /*
+    CINQUE SECONDI, E IL NUMERO E' PER CHI STA AL BANCO.
+
+    La sequenza dichiarata dal proprietario il 2026-08-19 e': **si tocca, si
+    legge SERVED, poi si versa**. La lettura avviene AL TOCCO, quindi questa
+    schermata deve sopravvivere alla lettura — non alla versata.
+
+    Una prima stesura della fase 47 chiedeva che non si chiudesse affatto,
+    temendo un barista che preme, si gira a prendere il bicchiere e torna a
+    conferma scaduta. Quel timore descrive un ordine diverso — premi, versa, poi
+    verifica — che NON e' quello in uso. Il congedo manuale e' stato valutato e
+    scartato.
+
+    Abbassare questo numero toglie a chi sta al banco l'unico controllo che ha in
+    mano. Vedi `.planning/v1.6-PHASE-47-PROBE.md`.
+  */
   useEffect(() => {
     if (phase !== "served") return;
     servedTimerRef.current = setTimeout(() => {
       onRedeemed();
       onClose();
-    }, 3000);
+    }, 5000);
     return () => {
       if (servedTimerRef.current) clearTimeout(servedTimerRef.current);
     };
@@ -447,6 +463,20 @@ function GuestRedeemConfirmationModal({
     });
   }, [signedToken, startTransition, onActivated]);
 
+  /*
+    `setPhase("served")` STA DOPO L'`await`, E NON E' UNO STILE: E' UNA GARANZIA.
+
+    Il barista consegna il drink perche' ha visto questa schermata. Se comparisse
+    prima della conferma del server, un momento di rete assente produrrebbe un
+    drink versato e un token mai riscattato — cioe' esattamente il difetto che la
+    fase 47 e' andata a chiudere, riaperto da un'ottimizzazione dell'interfaccia.
+
+    NESSUNA TRANSIZIONE DI STATO DI QUESTO TOKEN DIVENTA OTTIMISTICA. Chi in
+    futuro volesse «rendere piu' reattiva» questa modale sta togliendo la sola
+    cosa che rende affidabile la procedura del banco.
+
+    Misurato in laboratorio il 2026-08-19: `.planning/v1.6-PHASE-47-PROBE.md`.
+  */
   const handleServe = useCallback(() => {
     setError(null);
     setPhase("serving");
