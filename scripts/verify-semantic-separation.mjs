@@ -236,6 +236,7 @@ export const CATALOGUE_TO_TOKEN = {
   pink: '--pink',
   pinkSoft: '--pink-soft',
   violet: '--violet',
+  blue: '--blue',
 };
 
 /** The catalogue key deliberately compared against nothing. Named so the report can say so. */
@@ -248,11 +249,12 @@ export const CATALOGUE_UNCOMPARED = 'neutral';
  * removed, coming back through the token layer.
  */
 export const FORMAT_NAMES = [
-  'sunset',
+  // 'sunset' e 'snst' sono usciti il 2026-08-20 con il format (`CAT-01`). Un
+  // format cancellato non ha piu' un nome da proteggere, e tenerlo qui avrebbe
+  // fatto fallire il controllo su una prosa che lo nomina come storia.
   'ramadub',
   'motionlab',
   'resonate',
-  'snst',
   'rmdb',
   'mtnlb',
   'rsnt',
@@ -266,7 +268,7 @@ export const FORMAT_NAMES = [
  * spells them, and the spelling is the point: they are matched exactly, never
  * case-insensitively, so an ordinary English word does not become a format.
  */
-export const FORMAT_IDENTIFIERS = ['color_hex', 'SunSet', 'RamaDub', 'MotionLab'];
+export const FORMAT_IDENTIFIERS = ['color_hex', 'RamaDub', 'MotionLab'];
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git']);

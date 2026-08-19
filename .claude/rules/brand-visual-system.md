@@ -32,11 +32,14 @@ apre la notte 22:00–06:00.
 | Viola notte | `#A874E8` | transizione al notturno |
 | Rosa caldo | `#FF5C93` | accento primario |
 | Rosa Resonate | `#F6B6D2` | testi, solchi, wordmark |
-| Arancio tramonto | `#FF7A2F` | glow sull'orizzonte |
+| Arancio tramonto | `#FF7A2F` | glow sull'orizzonte — **resta nella palette, non e' piu' il colore di un format** |
+| Blu RamaDub | `#6E8BFF` | identificativo di RamaDub, dal 2026-08-20 |
 | Ultimo raggio | `#FFB25E` | highlight, riflesso del disco |
 
-Il gradiente **arancio → rosa → viola → nero** e' la firma **esclusiva di
-SunSet**: usarlo altrove gli toglie il significato.
+Il gradiente **arancio → rosa → viola → nero** era la firma esclusiva del format
+del tramonto. **Quel format e' stato cancellato il 2026-08-20**, e il gradiente
+**non e' passato a nessuno**: resta senza proprietario, e usarlo su un altro
+format significa vestirlo dell'identita' di una cosa che non esiste piu'.
 
 ## Fisso contro variabile
 
@@ -88,7 +91,13 @@ Quello che resta qui e' l'unico punto in cui i due domini si toccano:
 ## Quality Gates — produzione dei materiali
 
 - **Gate capitolato, non file**: Le locandine di **Resonate** le produce un **grafico esterno**: quello che possediamo e consegniamo e' il **capitolato**, non il file. Il capitolato porta le regole — `@ Secret Venue`, zona grid-safe, data leggibile in miniatura, progressivo di serie, un pezzo per ogni voce della pipeline — e **non porta l'indirizzo**. Vedi `venue-secrecy.md`, gate il capitolato e' un percorso di uscita.
-- **Gate il colore non si eredita**: Il gradiente **arancio → rosa → viola → nero** e' la firma esclusiva di SunSet. RamaDub usa il suo arancio `#FF7A2F` **piatto, senza sfumatura**: stessa famiglia, grammatica opposta. MotionLab **non ha ancora una palette** — e finche' non ce l'ha, i suoi materiali restano neutri: prendere in prestito il tramonto per riempire il vuoto e' il modo in cui un format perde l'identita' prima di averla.
+- **Gate il colore non si eredita**: RamaDub e' **`#6E8BFF`, un blu, piatto e senza sfumatura** — dal 2026-08-20, e il valore e' stato **misurato**: 6.46:1 sul fondo, dentro la fascia delle altre tinte del catalogo (5.57–11.92). Il primo blu proposto dava 3.11:1, sotto la soglia del testo, e non e' stato preso. MotionLab **non ha ancora una palette** — e finche' non ce l'ha, i suoi materiali restano neutri: prendere in prestito il colore di un altro per riempire il vuoto e' il modo in cui un format perde l'identita' prima di averla.
+
+  > **Il gradiente arancio → rosa → viola → nero non ha piu' un proprietario.**
+  > Era la firma esclusiva del format del tramonto, **cancellato il 2026-08-20**
+  > (`CAT-01`). Non e' passato a nessun altro e **non si eredita**: un format che
+  > lo indossasse indosserebbe l'identita' di una cosa che non esiste piu'. Vale
+  > il gate *una sigla ritirata non si cita*, applicato a un colore.
 - **Gate tipografia dichiarata**: RamaDub e' **Anton** per il titolo e **Space Mono** per i dati, entrambi Google Fonts a licenza libera. Senza Canva Pro il titolo degrada ad **Archivo Black**: e' una degradazione prevista, non un'alternativa a piacere. Cambiare famiglia e' una decisione di sistema, non una scelta del singolo pezzo.
 - **Gate il piano B si disegna prima**: La foto del dj arriva il lunedi' per il martedi', e a volte non arriva. Il pezzo senza foto — fondo nero, tipografia grande, stessa fascia — **si disegna in anticipo**, non il martedi' alle 19: un piano B improvvisato sotto scadenza e' il pezzo che uscira' davvero.
 - **Gate l'archivio precede il listing**: Il listing esce **due giorni prima** della serata, quindi **lo scatto di quella sera non puo' esistere**. Alla prima data di un dj serve la sua press photo; dalla seconda si pesca dall'archivio — che qualcuno deve costruire ogni giovedi', o il format resta dipendente da cosa manda l'artista.
@@ -98,6 +107,8 @@ Quello che resta qui e' l'unico punto in cui i due domini si toccano:
 
 ## Imperative Behaviors
 
+- When naming RamaDub's colour: `#6E8BFF`, flat and never a gradient
+- When tempted to reuse the sunset gradient: don't — its format is gone and it passed to nobody
 - When writing the brand anywhere: `re:sonate` with a normal e — the `ɘ` lives only inside the logo
 - When naming a format: SunSet, RamaDub, MotionLab — CamelCase, never all caps
 - When naming an event in the app: take the name from the format, with its per-venue progressivo

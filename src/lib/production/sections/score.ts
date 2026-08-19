@@ -173,19 +173,26 @@ export const FORMAT_WEIGHTS: Readonly<
     { source: "attribute", attribute: "evening_licence", weight: 1.5 },
   ],
 
-  // SunSet — *uno spazio esterno rivolto a ovest*.
-  SNST: [
-    // *esterno/tramonto* 4 → `outdoor_sunset`. Exact.
-    { source: "attribute", attribute: "outdoor_sunset", weight: 4 },
-    // *musica e dj* 3 → `music_at_home`. The archive's nearest graded value;
-    // the same under-crediting note as Resonate's row applies.
-    { source: "attribute", attribute: "music_at_home", weight: 3 },
-    // *impianto* 1,5 → `audio`. The graded value, not the free-text `rig`
-    // column, which is a description somebody was given on a call.
-    { source: "attribute", attribute: "audio", weight: 1.5 },
-    // *console* 1,5 → `console`. Exact.
-    { source: "attribute", attribute: "console", weight: 1.5 },
-  ],
+  /*
+    QUI STAVA IL FORMAT DEL TRAMONTO, e i suoi pesi sono usciti il 2026-08-20 con
+    il format stesso (`CAT-01`). Pesava `outdoor_sunset` 4, `music_at_home` 3,
+    `audio` e `console` 1,5.
+
+    ── L'ATTRIBUTO `outdoor_sunset` RESTA, e non e' una svista ────────────────
+
+    E' una proprieta' dello SPAZIO — *esterno, rivolto al tramonto* — non un
+    riferimento al format: sta fra i dieci valori ammessi da un CHECK su 1840
+    righe in produzione, e toglierlo romperebbe lo schema. Continua a comparire
+    sulla scheda di uno spazio come fatto; smette solo di alimentare un punteggio,
+    perche' nessun format lo pesa piu'.
+
+    ── E i 58 spazi che erano suoi ────────────────────────────────────────────
+
+    58 spazi su 184 portavano quel format come `home_format_id`. Sono rimasti in
+    archivio con tutti i loro attributi e i punteggi sugli altri format; hanno
+    perso solo l'etichetta che diceva perche' furono cercati. Decisione del
+    proprietario, 2026-08-20.
+  */
 
   // MotionLab — *la cornice espositiva*.
   MTNLB: [

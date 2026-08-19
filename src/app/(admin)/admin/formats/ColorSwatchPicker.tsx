@@ -86,6 +86,7 @@ export type CatalogueColorKey =
   | "pink"
   | "pinkSoft"
   | "violet"
+  | "blue"
   | "neutral";
 
 interface CatalogueColor {
@@ -120,6 +121,7 @@ const CATALOGUE_COLORS: Record<CatalogueColorKey, CatalogueColor> = {
   pink: { hex: "#FF5C93", label: "Pink" }, //  6.32:1
   pinkSoft: { hex: "#F6B6D2", label: "Pink soft" }, // 11.00:1
   violet: { hex: "#A874E8", label: "Violet" }, //  5.55:1
+  blue: { hex: "#6E8BFF", label: "Blue" }, //  6.46:1 — RamaDub, dal 2026-08-20
   neutral: { hex: "#8C82A6", label: "Neutral grey" }, //  5.14:1 — the deliberate neutral
 };
 
@@ -129,6 +131,7 @@ const COLOR_ORDER: readonly CatalogueColorKey[] = [
   "orange",
   "pink",
   "pinkSoft",
+  "blue",
   "violet",
   "neutral",
 ];

@@ -158,8 +158,9 @@
    *
    * The two coincidences, written down so they are not rediscovered:
    *
-   *   --sem-warn IS --amber IS SunSet's identification colour. An amber mark
-   *     cannot tell a reader "caution" from "this is a SunSet night" by hue,
+   *   --sem-warn IS --amber, and until 2026-08-20 --amber was ALSO SunSet's
+   *     identification colour: an amber mark could not tell a reader "caution"
+   *     from "this is a SunSet night" by hue,
    *     so ANYTHING AMBER CARRIES TEXT. UI-SPEC Open Question 3.
    *   --sem-info IS --muted, the tertiary ink. Less dangerous — an info notice
    *     reading as tertiary text is a degradation, not a wrong statement.
@@ -212,6 +213,21 @@
    */
   --amber: #FFB25E;
   --orange: #FF7A2F;
+  /*
+    --blue e' il colore identificativo di RamaDub dal 2026-08-20 (`CAT-02`).
+
+    NON ridefinisce --orange, ed e' una decisione: --orange e' un colore di
+    PALETTE — e' anche il secondo stop del gradiente tramonto — non «il colore di
+    RamaDub». Ridefinirlo in blu avrebbe dato un nome che mente, che e'
+    esattamente cio' che il controllo E di verify-semantic-separation esiste per
+    impedire su un altro asse.
+
+    Il valore e' stato MISURATO, non scelto a occhio: 6.46:1 su --ground e
+    6.14:1 su --surface, dentro la fascia delle altre tinte del catalogo
+    (5.57–11.92). Il primo blu proposto, #2B4BE8, dava 3.11:1 e 2.95:1 — sotto la
+    soglia del testo, e sotto 3:1 perfino per un elemento non testuale.
+  */
+  --blue: #6E8BFF;
   --pink: #FF5C93;
   --pink-soft: #F6B6D2;
   --violet: #A874E8;
