@@ -2,6 +2,8 @@
 phase: 41-shared-primitives-three-tier-layout
 verified: 2026-08-14T03:10:00Z
 status: human_needed
+lab_sitting_5: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-5.md` — H41-6a OSSERVATA a 768px (dieci voci, la striscia non scorre in orizzontale); H41-6b osservata in SITTING-4.
 lab_sitting_4: >
   2026-08-19, `.planning/v1.5-LAB-SITTING-4.md` — H41-2 / A2 NON chiusa: il browser headless non scorre questa pagina, quindi la domanda resta aperta. Conferma la regola che headless non e' un dispositivo.
 score: 5/10 must-haves fully verified — the same five as round 5, and the number is deliberately not inflated. What moved is the composition: FAILED truths 1 → 0. The reintroduction guard, open five consecutive rounds, is closed and proved by asserted mutation on the real files; the four Group B items are closed; what remains is entirely human observation, unchanged since round 1

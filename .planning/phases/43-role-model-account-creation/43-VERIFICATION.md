@@ -2,6 +2,8 @@
 phase: 43-role-model-account-creation
 verified: 2026-08-08
 status: human_needed
+lab_sitting_5: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-5.md` — M-43-07 OSSERVATA (nessuna via a master, ne' creando ne' promuovendo). M-43-03 OSSERVATA: fallita, riparata e ripercorsa lo stesso giorno. M-43-04 provata in BUILD DI PRODUZIONE: la frase non e' raggiungibile dall'interfaccia, perche' su una riga pending il prodotto offre solo Approve e Reject.
 score: "9/9 con codice e DDL a posto e corretti alla lettura · 4/9 con evidenza automatica, misurata solo su container · 0/9 osservati in produzione"
 must_haves_total: 9
 code_in_place: 9

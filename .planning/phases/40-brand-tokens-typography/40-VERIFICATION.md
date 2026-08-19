@@ -2,6 +2,8 @@
 phase: 40-brand-tokens-typography
 verified: 2026-08-11T22:30:00Z
 status: human_needed
+lab_sitting_5: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-5.md` — H4 OSSERVATA con uno scostamento: le cifre hanno font-variant-numeric: tabular-nums ma su ui-monospace, non su Inter.
 score: 6/6 code-level truths verified; 2 observations (H1, H3) pending human sitting
 overrides_applied: 0
 human_verification:

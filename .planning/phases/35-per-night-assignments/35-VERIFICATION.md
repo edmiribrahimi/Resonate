@@ -2,6 +2,8 @@
 phase: 35-per-night-assignments
 verified: 2026-08-09T00:00:00Z
 status: human_needed
+lab_sitting_5: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-5.md` — Prova 11 OSSERVATA (200 recorded con la serata, 403 per-notte a chi non e' assegnato, 409 alla seconda scansione) e il gruppo 6/8/9/13 COMPLETO. La Prova 11 ha portato al difetto PGRST200 sulla porta.
 score: "5/5 truths delivered in code; 2/5 (ASSIGN-04, ASSIGN-06/07) fully closed by automated/container measurement; 3/5 (ASSIGN-01, ASSIGN-02/03, ASSIGN-05) code-complete but their observable half lives on a phone, in a production build, or after a migration nobody has applied — 0 of 13 written manual procedures executed"
 must_haves_total: 5
 code_in_place: "5/5 roadmap success criteria have matching, reviewed source: party_assignments schema, per-night resolver, door guard second arm (35-22), door.supervise gate, party_credits table"

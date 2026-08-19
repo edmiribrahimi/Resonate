@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
+import { redactDbError } from "@/lib/errors/redact";
 /**
  * Ticket tiers, discount codes, sold tickets and pending refunds — the two
  * former pages, collapsed into one (D-34-05).
@@ -275,7 +276,12 @@ export default async function TicketTiersPage({ params }: PageProps) {
   const serviceClient = getServiceClient();
   const { data: soldTickets } = await serviceClient
     .from("tickets")
-    .select("id, user_id, amount_paid, tier_id, created_at, profiles(full_name, email), ticket_tiers(name)")
+    // Niente `profiles(...)`: `tickets.user_id` referenzia `auth.users`, non
+    // `public.profiles`, quindi PostgREST rifiuta l'incorporamento con
+    // `PGRST200` — e qui l'errore era scartato nella destrutturazione, quindi la
+    // lista dei venduti sarebbe stata VUOTA senza dirlo. I nomi si risolvono
+    // sotto, con una seconda lettura.
+    .select("id, user_id, amount_paid, tier_id, created_at, ticket_tiers(name)")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
 
@@ -294,10 +300,32 @@ export default async function TicketTiersPage({ params }: PageProps) {
     pendingRefunds = data ?? [];
   }
 
+  // I nomi dei compratori, con una seconda lettura e a blocchi di 100: una
+  // serata in target sta fra 150 e 300 persone, e 300 uuid in un `in()` sono
+  // ~11 KB di URL.
+  const idsCompratori = [
+    ...new Set(
+      (soldTickets ?? [])
+        .map((t: { user_id: string | null }) => t.user_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const profiloDi = new Map<string, { full_name: string | null; email: string | null }>();
+  for (let i = 0; i < idsCompratori.length; i += 100) {
+    const { data: profili, error: profiliError } = await serviceClient
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", idsCompratori.slice(i, i + 100));
+    if (profiliError) {
+      console.error(`[tickets.buyer_names_unreadable] ${redactDbError(profiliError)}`);
+      break;
+    }
+    for (const pr of profili ?? []) profiloDi.set(pr.id, { full_name: pr.full_name, email: pr.email });
+  }
+
   const ticketBuyerMap = new Map<string, string>();
   for (const t of soldTickets ?? []) {
-    const rawProfile = t.profiles as unknown;
-    const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as { full_name: string; email: string } | null;
+    const profile = t.user_id ? profiloDi.get(t.user_id) : undefined;
     ticketBuyerMap.set(t.id, profile?.full_name || profile?.email || "Unknown");
   }
 
@@ -452,9 +480,8 @@ export default async function TicketTiersPage({ params }: PageProps) {
               Sold Tickets ({(soldTickets ?? []).length})
             </SectionHeading>
             <div className="space-y-2">
-              {(soldTickets ?? []).map((ticket: { id: string; amount_paid: number; created_at: string; profiles: unknown; ticket_tiers: unknown }) => {
-                const rawProfile = ticket.profiles as unknown;
-                const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as { full_name: string; email: string } | null;
+              {(soldTickets ?? []).map((ticket: { id: string; user_id: string | null; amount_paid: number; created_at: string; ticket_tiers: unknown }) => {
+                const profile = ticket.user_id ? profiloDi.get(ticket.user_id) ?? null : null;
                 const rawTier = ticket.ticket_tiers as unknown;
                 const tier = (Array.isArray(rawTier) ? rawTier[0] : rawTier) as { name: string } | null;
                 return (

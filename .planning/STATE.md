@@ -90,7 +90,13 @@ dichiarate.
    Non è differito: è **perso**. La riga 3m doveva misurare lo scanner non
    convertito, e quel codice non esiste più.
 2. **88 voci `human_needed` su dodici verifiche**, tutte della stessa specie.
-   Cinque sedute di laboratorio il 2026-08-19 (`v1.5-LAB-SITTING.md`, `-2.md`,
+   **UN DIFETTO SULLA PORTA, trovato il 2026-08-19 e riparato** (`v1.5-LAB-SITTING-5.md`):
+   ogni scansione rispondeva `500 Ticket lookup failed` — la QUARTA faccia dello
+   stesso `PGRST200`, e la sola sull'unica superficie che non perdona. Non si era
+   mai vista perche' la porta non e' mai stata percorsa. Dopo la riparazione la
+   porta ha funzionato per la prima volta: `200 recorded`, `403` a chi non e'
+   assegnato, `409 already_recorded` alla seconda scansione.
+   Sei sedute di laboratorio il 2026-08-19 (`v1.5-LAB-SITTING.md`, `-2.md`,
    `-3.md`, `-4.md`) ne hanno **chiuse 31**, e l'ultima ha aggredito anche le
    fasi mai toccate — 46 (le sei procedure che il proprietario aveva declinato il
    14 agosto e riaperto il 19), 44 P1 e P4, 39 §0-§1, 38 P7 e le due voci

@@ -21,6 +21,7 @@ import {
 import { readNightArm } from "@/lib/door/night-arm";
 import type { DoorScanEvent } from "@/types/database";
 
+import { redactDbError } from "@/lib/errors/redact";
 /**
  * The door: one scanned code, one of three answers.
  *
@@ -912,8 +913,25 @@ export async function POST(request: Request) {
     // --- The ticket -----------------------------------------------------------
     const { data: ticket, error: ticketError } = await serviceClient
       .from("tickets")
+      // ── `profiles` NON si incorpora, e la ragione e' misurata ─────────────
+      //
+      // Qui c'era `profiles(full_name)`, e **non ha mai funzionato**: PostgREST
+      // risponde `PGRST200 — Could not find a relationship between 'tickets'
+      // and 'profiles' in the schema cache`, perche' `tickets.user_id`
+      // referenzia `auth.users(id)` e NON `public.profiles`. Nessuna chiave
+      // esterna da seguire.
+      //
+      // **Conseguenza, misurata alla porta il 2026-08-19:** ogni scansione
+      // rispondeva `500 Ticket lookup failed`. In produzione non si e' mai
+      // visto perche' non c'e' mai stata una scansione — zero biglietti, zero
+      // account staff, zero assegnazioni. Sarebbe emerso alla prima porta vera,
+      // alle due di notte, davanti a una fila.
+      //
+      // Il nome del titolare si risolve sotto, con una seconda lettura, e la
+      // sua assenza **non ferma l'ingresso**: `checkin-offline.md` fissa
+      // l'asimmetria — rifiutare un ospite valido e' l'errore caro.
       .select(
-        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, profiles(full_name), ticket_tiers(name)"
+        "id, checked_in, checked_in_at, checked_in_by, event_id, party_id, user_id, ticket_type, ticket_tiers(name)"
       )
       .eq("id", ticketId)
       .single();
@@ -1055,10 +1073,26 @@ export async function POST(request: Request) {
     const wrongParty = ticket.party_id !== null && ticket.party_id !== partyId;
     const wrongEvent = ticket.event_id !== party.event_id;
 
-    const memberProfile = ticket.profiles as unknown as {
-      full_name: string;
-    } | null;
-    const memberName = memberProfile?.full_name || "Unknown";
+    // Il nome, con una seconda lettura. Un fallimento qui **non rifiuta
+    // nessuno**: si perde l'etichetta sullo schermo, non l'ingresso.
+    let memberName = "Unknown";
+    if (ticket.user_id) {
+      const { data: profilo, error: profiloError } = await serviceClient
+        .from("profiles")
+        .select("full_name")
+        .eq("id", ticket.user_id)
+        .maybeSingle();
+      if (profiloError) {
+        // Categoria propria, e mai l'oggetto: su questa tabella la riga che
+        // l'errore porta con se' contiene il codice tessera, che e' la sola
+        // credenziale d'ingresso.
+        console.error(
+          `[checkin.holder_name_unreadable] ${redactDbError(profiloError)}`
+        );
+      } else if (profilo?.full_name) {
+        memberName = profilo.full_name;
+      }
+    }
     const tier = ticket.ticket_tiers as unknown as { name: string } | null;
 
     if (wrongParty || wrongEvent) {
