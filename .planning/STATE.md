@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: "Piattaforma, non community"
 status: phase-executed
-stopped_at: "Fase 47 ESEGUITA il 2026-08-20 — 6 piani su 6, tre migration in produzione. Verifica human_needed: 5 requisiti chiusi su 9, 4 chiedono un'osservazione umana (un acquisto vero, un telefono con la rete spenta, una persona che legge il runbook). Prossimo passo: fase 48."
+stopped_at: "Fase 47 ESEGUITA il 2026-08-20 — 6 piani su 6, tre migration in produzione. Verifica human_needed: 7 requisiti chiusi su 9 (due dalla testimonianza del proprietario sulla serata dell'8 maggio), 3 restano aperti perche' quel codice non esisteva a quella data. Prossimo passo: fase 48."
 last_updated: "2026-08-19T20:00:00.000Z"
 last_activity: "2026-08-19 -- v1.5 archiviata e spedita (tag v1.5, Production success); v1.6 aperta con roadmap in .planning/ROADMAP.md"
 progress:

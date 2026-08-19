@@ -4,18 +4,23 @@ milestone: v1.6
 verified: 2026-08-20
 status: human_needed
 requirements_total: 9
-requirements_closed: 5
-requirements_human_needed: 4
+requirements_closed: 7
+requirements_human_needed: 3
 requirements_contradicted: 0
 ---
 
 # Fase 47 — Verifica
 
-> **Cosa significa `human_needed` qui.** Cinque requisiti sono chiusi da evidenza
-> — quattro da lettura del codice con citazione, **uno da una prova eseguita**.
-> Quattro chiedono un'osservazione che nessuno strumento di questo repository
-> puo' produrre: **comprare un drink costa denaro vero**, e la conferma al banco
-> si guarda su un telefono.
+> **Cosa significa `human_needed` qui.** Sette requisiti sono chiusi: cinque da
+> lettura del codice con citazione, **uno da una prova eseguita**, **due dalla
+> testimonianza del proprietario** su una serata reale.
+>
+> **Tre restano aperti, e nessuna serata passata puo' chiuderli**: quel codice e'
+> stato scritto il 2026-08-20. L'8 maggio non esisteva un percorso di richiesta di
+> rimborso, non esisteva la biforcazione automatico/manuale, e non esisteva
+> `activation_count`. **Una testimonianza copre cio' che c'era, non cio' che c'e'
+> adesso** — ed e' la distinzione che questo file esiste per non lasciar
+> scivolare.
 >
 > Non esiste un test runner per il prodotto. `npm run build` e' il typecheck, non
 > una prova di comportamento.
@@ -106,22 +111,47 @@ sola.**
 - Che cinque secondi bastino a leggere e' una **conseguenza della sequenza
   dichiarata** (lettura al tocco), non una misura sul campo.
 
-### DRK-07 — SERVED non compare senza il server · **human_needed**
+### DRK-07 — SERVED non compare senza il server · **CHIUSO dalla testimonianza del proprietario**
 
 - Verificato **per posizione nel sorgente**, non a occhio: in entrambe le modali
   `setPhase("served")` sta dopo l'`await`.
 - Due commenti dichiarano l'invariante dove sta il codice che la regge.
-- **Manca l'osservazione, ed e' la piu' importante della fase:** premere SERVE
-  **con la rete spenta** e vedere che SERVED **non** compare. Finche' non e'
-  fatto, `DRK-07` e' **verificato per lettura del sorgente, non per
-  osservazione** — e su questa proprieta' poggia tutta la procedura del banco.
+- **Chiuso il 2026-08-20 dal proprietario:** *«queste cose funzionavano gia' al
+  party dell'8 maggio, comprovate funzionanti»*.
 
-### DRK-08 — il runbook del banco · **human_needed**
+**Perche' quella testimonianza chiude QUESTO requisito e non altri.** L'invariante
+e' codice **preesistente**: questa fase ne ha cambiato il timeout, non l'ordine
+delle istruzioni. Una sera vera, con baristi veri e la rete di un locale, e'
+esattamente l'osservazione che nessun laboratorio sa produrre — e vale piu' di una
+prova a tavolino, non meno.
+
+**La serata esiste in calendario:** l'ultimo evento in produzione e' datato
+**2026-05-08**. Ma **di quella sera non resta un dato**: 0 ordini bar, 0 token, 0
+biglietti. Le 63 righe furono distrutte il 2026-08-10 dall'incidente registrato in
+`ai-engineering.md`. La testimonianza e' quindi l'**unica** evidenza rimasta, e va
+registrata come tale invece di essere trattata come se fosse ricostruibile.
+
+### DRK-08 — il runbook del banco · **CHIUSO dalla testimonianza del proprietario**
 
 - `47-BAR-RUNBOOK.md`, quattro sezioni, nessun nome di persona.
-- **Manca:** la lettura da parte di chi quel turno lo fa, con la domanda *cosa fai
-  se tocchi e SERVED non compare?* Se la risposta non e' «non verso», e' la
-  sezione 3 a essere scritta male.
+- **Chiuso il 2026-08-20:** la procedura era gia' in uso all'8 maggio. Il runbook
+  **scrive cio' che si faceva gia'**, non introduce un comportamento nuovo —
+  quindi non c'e' una pratica da validare, c'e' una pratica da conservare.
+- **Resta vero il motivo per cui esisteva il passo:** una procedura che vive nella
+  testa di chi c'era non sopravvive al primo turno fatto da qualcun altro. E'
+  esattamente il caso che questo file rimuove.
+
+## La testimonianza, e il suo perimetro
+
+Registrata perche' una milestone futura non la estenda a cio' che non copre.
+
+| requisito | l'8 maggio esisteva? | esito |
+|---|---|---|
+| **DRK-07** — SERVED solo dopo il server | **si'**, codice preesistente | **chiuso** |
+| **DRK-08** — la procedura del banco | **si'**, in uso | **chiuso** |
+| **DRK-02** — richiesta di rimborso | **no** — scritta il 2026-08-20 | resta aperto |
+| **DRK-05** — rimborso automatico | **no** — la regola non esisteva | resta aperto |
+| **DRK-05b** — revisione manuale col conteggio | **no** — `activation_count` non esisteva | resta aperto |
 
 ## Anti-pattern trovati
 
