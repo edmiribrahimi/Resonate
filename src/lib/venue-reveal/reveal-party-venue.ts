@@ -283,7 +283,7 @@ async function collectRecipients(
   const ticketsQuery = bound(
     supabase
       .from("tickets")
-      .select("id, user_id, created_at, profiles(email, full_name)")
+      .select("id, user_id, created_at")
       .eq("party_id", party.id)
       .eq("venue_reveal_sent", false)
   );
@@ -292,7 +292,7 @@ async function collectRecipients(
   const rsvpsQuery = bound(
     supabase
       .from("rsvps")
-      .select("id, user_id, created_at, profiles(email, full_name)")
+      .select("id, user_id, created_at")
       .eq("party_id", party.id)
       .eq("venue_reveal_sent", false)
   );
@@ -301,7 +301,7 @@ async function collectRecipients(
   const masterQuery = bound(
     supabase
       .from("tickets")
-      .select("id, user_id, created_at, profiles(email, full_name)")
+      .select("id, user_id, created_at")
       .eq("event_id", party.event_id)
       .is("party_id", null)
       .eq("venue_reveal_sent", false)
@@ -331,6 +331,69 @@ async function collectRecipients(
     }
   }
 
+  // ── I profili si risolvono con una SECONDA query, non con un incorporamento ──
+  //
+  // Qui stava `profiles(email, full_name)` dentro le tre select, e **non ha mai
+  // funzionato**: PostgREST rifiuta con `PGRST200 — Could not find a
+  // relationship between 'tickets' and 'profiles' in the schema cache`, perche'
+  // `tickets.user_id` e `rsvps.user_id` referenziano `auth.users(id)` e NON
+  // `public.profiles`. Nessuna delle due tabelle ha una chiave esterna verso
+  // `profiles`: verificato sul catalogo di produzione, sei vincoli su `tickets`,
+  // nessuno verso `profiles` (2026-08-19).
+  //
+  // La conseguenza era l'intero dominio: `collectRecipients` e' chiamata sia da
+  // `countVenueRevealRecipients` (da cui il bottone disabilitato nel pannello)
+  // sia da `revealPartyVenue`, che e' l'invio vero — condiviso fra l'azione
+  // manuale e il cron giornaliero. **La rivelazione del venue non partiva per
+  // nessuna delle due strade.**
+  //
+  // Perche' una seconda query e non una chiave esterna: aggiungere
+  // `tickets.user_id -> profiles(id)` significa una migration su una tabella del
+  // percorso del denaro per far funzionare una lettura. La lettura si risolve
+  // qui, senza toccare lo schema.
+  //
+  // Perche' a blocchi di 100: le sedi in target stanno fra 150 e 300 persone
+  // (`community-membership.md`), e 300 uuid in un `in()` sono ~11 KB di URL —
+  // sopra il tetto di piu' di un proxy. Un rifiuto per lunghezza di URL qui
+  // sarebbe `unavailable`, cioe' una rivelazione che non parte, e arriverebbe
+  // solo alle serate piene.
+  const idsUtente = [
+    ...new Set(
+      [
+        ...(tickets.data || []),
+        ...(masterTickets.data || []),
+        ...(rsvps.data || []),
+      ]
+        .map((r) => r.user_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const profiloDi = new Map<string, { email: string; full_name: string | null }>();
+
+  for (let i = 0; i < idsUtente.length; i += 100) {
+    const blocco = idsUtente.slice(i, i + 100);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", blocco);
+
+    if (error) {
+      // Stessa regola delle tre query sopra: categoria propria, MAI `details`
+      // (che su questa tabella porta l'indirizzo di un membro), e **non**
+      // collassato in «non c'e' nessuno».
+      console.error(
+        `[venue_reveal.profiles_query_failed] night ${party.id}, ` +
+          `blocco ${i / 100 + 1}: ${error.code ?? "unknown"} — ${error.message}`
+      );
+      return { recipients: new Map(), unavailable: true };
+    }
+
+    for (const p of data || []) {
+      if (p.email) profiloDi.set(p.id, { email: p.email, full_name: p.full_name });
+    }
+  }
+
   const emailMap = new Map<string, Recipient>();
 
   const upsert = (email: string, fullName: string | null): Recipient => {
@@ -343,20 +406,17 @@ async function collectRecipients(
     return existing;
   };
 
+  // Una riga il cui `user_id` non ha profilo viene SALTATA, non contata: e' la
+  // stessa direzione di prima (`if (!profile) continue`), ed e' quella sicura —
+  // meno mail, non piu'.
   for (const ticket of [...(tickets.data || []), ...(masterTickets.data || [])]) {
-    const profile = ticket.profiles as unknown as {
-      email: string;
-      full_name: string;
-    } | null;
+    const profile = ticket.user_id ? profiloDi.get(ticket.user_id) : undefined;
     if (!profile) continue;
     upsert(profile.email, profile.full_name).ticketIds.push(ticket.id);
   }
 
   for (const rsvp of rsvps.data || []) {
-    const profile = rsvp.profiles as unknown as {
-      email: string;
-      full_name: string;
-    } | null;
+    const profile = rsvp.user_id ? profiloDi.get(rsvp.user_id) : undefined;
     if (!profile) continue;
     upsert(profile.email, profile.full_name).rsvpIds.push(rsvp.id);
   }

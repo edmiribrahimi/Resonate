@@ -98,11 +98,19 @@ dichiarate.
    costruzione**. Il laboratorio e' stato ricostruito e ricancellato lo stesso
    giorno; la ricetta e ora **anche gli attrezzi** stanno in `42-LAB.md`,
    `scripts/lab-bootstrap.mjs` e `scripts/lab-fidelity.mjs`.
-   **Tre difetti in produzione trovati cosi', che nessun gate aveva visto:**
-   il link d'invito non imposta una password; la rivelazione manuale del venue
-   non legge i propri destinatari; e **su un accesso con password la
-   riconciliazione di `MASTER_EMAIL` non gira mai** — la prova scritta per
-   accorgersene non puo' fallire.
+   **Difetti in produzione trovati cosi', che nessun gate aveva visto — e
+   RIPARATI il 2026-08-19** (`v1.5-REPAIRS.md`, sei file, zero migration, ognuno
+   esercitato in laboratorio prima di essere dichiarato):
+   il link d'invito non faceva entrare nessuno; la **rivelazione del venue non
+   partiva per nessuna via** — ne' a mano ne' dal cron, perche' il modulo e'
+   condiviso; il cron dei promemoria portava lo stesso incorporamento rotto e
+   riportava «0 inviati» come successo; e `resend.batch.send` **non lancia** su
+   un rifiuto, quindi un lotto respinto veniva contato come inviato e marcava
+   `reminder_sent = true` per sempre. Sbloccate anche le voci 2 e 3 della fase 37.
+   **Restano aperti per decisione, non per codice:** la riconciliazione di
+   `MASTER_EMAIL` che su un accesso con password non gira mai, e la cancellazione
+   di un account che ha agito (tocca l'immutabilita' del registro e
+   `legal-compliance.md`).
 3. **La porta in produzione non è mai stata esercitata**: zero account `staff`,
    zero assegnazioni, zero scansioni. Il meccanismo è provato in laboratorio; la
    sua adozione no.

@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase/service";
+import { buildPasswordSetLink } from "@/lib/auth/password-set-link";
 import { sendEmail } from "@/lib/email";
 import { render } from "@react-email/render";
 import { GuestInvitationEmail } from "@/emails/guest-invitation";
@@ -230,21 +231,43 @@ export async function processGuestEntry(
       throw new Error(`Failed to create user: ${authError.message}`);
     }
 
-    // Generate password-set link (recovery type for existing user, NOT invite which creates users)
-    const { data: linkData, error: linkError } =
-      await serviceClient.auth.admin.generateLink({
-        type: "recovery",
-        email: emailLower,
-      });
+    // ── Il link con cui l'ospite sceglie la password ────────────────────────
+    //
+    // Qui c'era `generateLink` **senza `redirectTo`**, e il suo `action_link`
+    // veniva mandato cosi' com'e'. Portava lo stesso difetto misurato sul
+    // percorso dei membri il 2026-08-19 — sessione nel frammento, callback che
+    // non trova `?code`, token bruciato — e in piu' senza destinazione: il
+    // rimbalzo finiva sulla Site URL del progetto, cioe' dove capita.
+    //
+    // Una definizione sola, condivisa con `createAccount`.
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+    let claimUrl = appUrl ? `${appUrl.replace(/\/+$/, "")}/login` : "";
 
-    if (linkError) {
-      console.error("Failed to generate recovery link:", linkError);
-      // Continue without password link -- user can still use "forgot password"
+    if (!appUrl) {
+      // Il ripiego che stava qui inventava un dominio (`https://resonate.app`)
+      // che non e' questo prodotto: un invito con dentro l'indirizzo sbagliato
+      // e' peggio di un invito senza link.
+      console.error(
+        "[guest_list.app_url_missing] NEXT_PUBLIC_APP_URL assente: l'invito " +
+          "parte senza link per impostare la password"
+      );
+    } else {
+      const link = await buildPasswordSetLink(
+        serviceClient.auth.admin,
+        emailLower,
+        appUrl
+      );
+      if (link.ok) {
+        claimUrl = link.url;
+      } else {
+        // Si prosegue con `/login`: l'ospite ha comunque il biglietto, e da li'
+        // puo' usare Reset Password. Ma il fallimento ha la sua categoria e non
+        // sparisce, perche' questo repository non ha error tracking.
+        console.error(
+          `[guest_list.invitation_link_failed] reason=${link.reason} detail=${link.detail}`
+        );
+      }
     }
-
-    const claimUrl =
-      linkData?.properties?.action_link ||
-      `${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/login`;
 
     // Wait briefly for the handle_new_user trigger to create the profile
     // The trigger fires on auth.users INSERT and creates the profile row

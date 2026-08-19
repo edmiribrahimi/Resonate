@@ -13,6 +13,7 @@ import { MemberApprovedEmail } from "@/emails/member-approved";
 import { MemberRejectedEmail } from "@/emails/member-rejected";
 import { MemberReactivatedEmail } from "@/emails/member-reactivated";
 import { AccountInvitationEmail } from "@/emails/account-invitation";
+import { buildPasswordSetLink } from "@/lib/auth/password-set-link";
 
 // Service-role client for operations that need to bypass RLS
 // (organizers don't have RLS write permission on profiles)
@@ -2349,13 +2350,19 @@ export async function createAccount(input: {
         };
       }
 
-      // The callback, not `/set-password` directly. Plan 43-04: the callback is
-      // what exchanges the recovery code for a session, and a link aimed
-      // straight at the surface would land there with no session and draw the
-      // expired-link notice on a link that was fine. `next` is resolved by that
-      // route against its own enumerated allow-list, on which `/set-password`
-      // is a listed entry.
-      const redirectTo = `${appUrl}/api/auth/callback?next=/set-password`;
+      // ── Il link punta a `/set-password`, NON al callback ─────────────────
+      //
+      // Il piano 43-04 aveva ragionato al contrario — «il callback e' quello che
+      // scambia il codice per una sessione» — e **quel ragionamento non reggeva
+      // per un link generato dal server**. Misurato in laboratorio il
+      // 2026-08-19: `generateLink` produce un flusso *implicito*, la sessione
+      // arriva nel FRAMMENTO, il frammento non viaggia verso il server, il
+      // callback non trova `?code` e rimanda a `/login?error=auth` — **col token
+      // gia' bruciato**. Nessuno degli account invitati poteva entrare.
+      //
+      // Il link ora si costruisce in un posto solo, da `hashed_token`, e
+      // `/set-password` lo spende con `verifyOtp` sulla pagina che ha il campo.
+      // Vedi `src/lib/auth/password-set-link.ts`.
 
       const serviceClient = getServiceClient();
 
@@ -2505,52 +2512,32 @@ export async function createAccount(input: {
 
       // ── 5. The link ─────────────────────────────────────────────────────
       //
-      // `recovery` and not `invite`: `invite` CREATES a user (the user already
-      // exists by now) and does not permit setting a password; `recovery`
-      // requires an existing user and does. A recovery link also cannot carry
-      // metadata — `GenerateRecoveryLinkParams.options` is
-      // `Pick<GenerateLinkOptions, 'redirectTo'>` in the installed 2.97.0
-      // package — which is why the target rides in the URL.
-      const { data: link, error: linkError } =
-        await serviceClient.auth.admin.generateLink({
-          type: "recovery",
-          email,
-          options: { redirectTo },
-        });
+      // Una definizione sola, condivisa con il percorso della guest list, che
+      // portava lo stesso difetto e per giunta senza `redirectTo`.
+      const link = await buildPasswordSetLink(
+        serviceClient.auth.admin,
+        email,
+        appUrl
+      );
 
-      if (linkError || !link?.properties?.action_link) {
+      if (!link.ok) {
         console.error(
           `[members.invitation_link_failed] createAccount: subject=${memberId} ` +
-            `code=${linkError?.code ?? "unknown"} status=${linkError?.status ?? "unknown"}`
+            `reason=${link.reason} detail=${link.detail}`
         );
         revalidatePath("/admin/members");
         return {
           ok: false,
           failure: "invitation_link_failed",
-          detail: linkError?.code ?? "no_action_link",
+          detail: link.detail,
           ...codeCarried,
         };
       }
 
-      if (!sameRedirectTarget(link.properties.redirect_to ?? "", redirectTo)) {
-        // The requested target was not honoured — the signature of an allow-list
-        // entry that is not there. The link WORKS; it just lands somewhere with
-        // no password field. Sending it would be worse than not sending it,
-        // because the failure would then be a person's confusion rather than an
-        // operator's notice. The returned value is not logged: it is a URL Auth
-        // chose, and the diagnosis is the mismatch, not its content.
-        console.error(
-          `[members.invitation_link_misaimed] createAccount: subject=${memberId} ` +
-            `redirect_to did not match the requested target`
-        );
-        revalidatePath("/admin/members");
-        return {
-          ok: false,
-          failure: "invitation_link_misaimed",
-          detail: "redirect_to_mismatch",
-          ...codeCarried,
-        };
-      }
+      // Il controllo su `redirect_to` che stava qui non ha piu' oggetto: la
+      // destinazione non e' piu' scelta da Auth ma costruita da noi, quindi non
+      // c'e' nessuna allow-list che possa disattenderla in silenzio. Era una
+      // guardia giusta sul percorso sbagliato.
 
       // ── 6. The send, AWAITED ────────────────────────────────────────────
       //
@@ -2560,7 +2547,7 @@ export async function createAccount(input: {
       // requirement failing quietly — and this project has no error tracking, so
       // quietly means nobody ever finds out.
       try {
-        await sendAccountInvitation(email, fullName, link.properties.action_link);
+        await sendAccountInvitation(email, fullName, link.url);
       } catch (err) {
         logEmailFailure("createAccount", memberId, err);
         revalidatePath("/admin/members");

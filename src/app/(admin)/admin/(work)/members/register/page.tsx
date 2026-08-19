@@ -252,14 +252,23 @@ export default async function MembershipRegisterPage() {
     ),
   ];
 
+  // Il **codice tessera** entra in questa lettura accanto al nome, perche' e'
+  // l'etichetta durevole del registro: un profilo puo' avere `full_name` vuoto,
+  // e senza il codice questa pagina resterebbe senza niente da mostrare per un
+  // account che esiste benissimo.
   const names: Record<string, string> = {};
+  const codes: Record<string, string> = {};
+  /** La lettura e' fallita? NON e' la stessa cosa di «l'account non c'e' piu'». */
+  let namesUnavailable = false;
+
   if (peopleIds.length > 0) {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, membership_code")
       .in("id", peopleIds);
 
     if (profilesError) {
+      namesUnavailable = true;
       console.error("members.register:name_lookup", {
         code: profilesError.code,
         message: profilesError.message,
@@ -267,6 +276,7 @@ export default async function MembershipRegisterPage() {
     }
     for (const p of profiles ?? []) {
       names[p.id] = p.full_name ?? "";
+      if (p.membership_code) codes[p.id] = p.membership_code;
     }
   }
 
@@ -309,10 +319,40 @@ export default async function MembershipRegisterPage() {
         isSystem: true,
       };
     }
-    const name = row.actor_id ? names[row.actor_id] : "";
+    // ── «Non esiste piu'» si deduce dal DATO, non dal nome ──────────────────
+    //
+    // Qui stava `label: name || "An account that no longer exists"`, e il
+    // ripiego scattava su un **nome vuoto**: con `full_name` vuoto — che nulla
+    // impedisce — la superficie d'audit affermava una cosa FALSA su chi ha
+    // agito, compreso il master, che esiste. Era anche un'asimmetria dentro
+    // questo stesso file: `subjectOf` calcola `deleted` da `subject_id === null`,
+    // cioe' dal dato, e questa funzione lo deduceva dall'etichetta.
+    //
+    // I quattro casi, distinti, perche' un registro che confonde «non l'ho
+    // potuto leggere» con «non c'e' piu'» e' peggio di un registro vuoto.
+    if (row.actor_id === null) {
+      return {
+        label: "An account that no longer exists",
+        note: "The act stands: the register outlives the account that performed it.",
+        isSystem: false,
+      };
+    }
+
+    const name = names[row.actor_id];
+    if (name) return { label: name, note: null, isSystem: false };
+
+    const code = codes[row.actor_id];
+    if (code) {
+      // Il codice tessera e' l'etichetta durevole del registro: nomina la riga
+      // senza pubblicare una persona. Un nome vuoto non e' un account assente.
+      return { label: code, note: "This account has no name recorded.", isSystem: false };
+    }
+
     return {
-      label: name || "An account that no longer exists",
-      note: null,
+      label: namesUnavailable ? "Name could not be read" : "Account not found",
+      note: namesUnavailable
+        ? "The name lookup failed for this page. This is NOT \u201cthe account is gone\u201d \u2014 reload before concluding anything about who acted."
+        : "This account is not in the members table, but its id is still on the act.",
       isSystem: false,
     };
   }

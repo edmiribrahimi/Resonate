@@ -190,6 +190,50 @@ export default function SetPasswordForm() {
     (async () => {
       try {
         const supabase = createClient();
+
+        // ── Il token dell'invito si spende QUI, non una tappa prima ──────────
+        //
+        // Un link d'invito arriva come `?token_hash=…&type=recovery`, e questa
+        // e' la pagina che ha il campo della password. Prima il link passava da
+        // `/auth/v1/verify` e depositava la sessione **nel frammento**, che non
+        // viaggia verso il server: il callback non trovava `?code`, rimandava a
+        // `/login?error=auth`, **e il token era gia' bruciato**. Chi riceveva un
+        // invito non entrava, e il secondo clic non poteva funzionare.
+        // Vedi `src/lib/auth/password-set-link.ts`.
+        //
+        // `verifyOtp` scambia il token per una sessione sul posto. Se fallisce
+        // NON si finge che vada bene: il probe sotto direbbe `absent`, cioe'
+        // «il tuo link e' morto», che e' la frase giusta solo per un token
+        // scaduto o gia' speso — e infatti e' quella che si mostra.
+        const params = new URLSearchParams(window.location.search);
+        const tokenHash = params.get("token_hash");
+        const otpType = params.get("type");
+
+        if (tokenHash && otpType === "recovery") {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash: tokenHash,
+          });
+
+          if (cancelled) return;
+
+          if (verifyError) {
+            // Categoria propria: un token speso o scaduto non e' la stessa cosa
+            // di una rete che non risponde, e le due hanno azioni successive
+            // diverse. Il token NON viene mai registrato.
+            console.error(
+              `[set-password.verify_otp_failed] code=${verifyError.code ?? "none"} ` +
+                `message=${verifyError.message}`
+            );
+            setGate(verifyError.status && verifyError.status >= 500 ? "unverifiable" : "absent");
+            return;
+          }
+
+          // L'indirizzo si ripulisce del token: resta nella cronologia del
+          // browser, negli screenshot e in cio' che si incolla a qualcuno.
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+
         const { data, error } = await supabase.auth.getSession();
 
         if (cancelled) return;
