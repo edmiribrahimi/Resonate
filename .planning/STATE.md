@@ -1,18 +1,70 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: Platform Layout, Access Model & Door Fixes
-status: milestone-closed
-stopped_at: v1.5 CHIUSA il 2026-08-19 accettando il debito — 14/76 requisiti, 88 human_needed, 1 criterio perso in modo permanente. Prossima milestone da aprire.
-last_updated: "2026-08-18T17:50:18.113Z"
-last_activity: 2026-08-19 -- v1.5 archiviata E SPEDITA; deploy Production success su 3e43be5; prima richiesta fatta a mano su 18 rotte + 2 API, zero 500
+milestone: v1.6
+milestone_name: "Piattaforma, non community"
+status: roadmap-written
+stopped_at: "v1.6 aperta il 2026-08-19 — roadmap scritta, undici fasi 47..57, nessuna pianificata. Prossimo passo: pianificare 47 (il difetto del token drink)."
+last_updated: "2026-08-19T20:00:00.000Z"
+last_activity: "2026-08-19 -- v1.5 archiviata e spedita (tag v1.5, Production success); v1.6 aperta con roadmap in .planning/ROADMAP.md"
 progress:
-  total_phases: 18
-  completed_phases: 17
-  total_plans: 261
-  completed_plans: 252
-  percent: 94
+  total_phases: 11
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
+
+# State: Resonate
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-08-05)
+
+**Core Value:** Members can discover events, confirm attendance, and buy tickets within a trusted, curated community -- the gating mechanism (referral + approval) is what makes the community valuable.
+
+> ⚠ **Questa riga e' vera oggi e smette di esserlo dentro v1.6.** Il perno della
+> milestone toglie le iscrizioni e i soci; `DOC-01` la riscrive **in fondo**, non
+> adesso, perche' uno stato che descrive un futuro non e' uno stato. Fino ad
+> allora la si legge come cio' che il prodotto e' ancora, non come cio' che
+> vogliamo che resti.
+
+**Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
+
+**Current Focus:** v1.6 **47** — il token che si beve e si fa rimborsare (difetto vivo sul percorso del denaro)
+
+## Current Position
+
+**Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
+`.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
+community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
+sulle superfici).
+
+**Nessuna fase e' stata pianificata.** Il prossimo passo e' pianificare **47**, il
+difetto del token drink misurato il 2026-08-19 (`deactivate_drink_token` azzera
+`activated_at`, che e' l'unica traccia di un'attivazione, e `purchased` e' lo
+stato su cui il rimborso seleziona). Subito dopo viene **48**:
+cancellazione di SunSet, RamaDub a `#2B4BE8`, e import del calendario di
+produzione dai due `.ics` forniti — con la prova a vuoto letta per intero prima
+di qualunque `--apply`.
+
+**Due cose misurate il 2026-08-19 che la pianificazione di 49 deve gia' sapere:**
+
+- l'acquisto di un biglietto parte da `auth.getUser()`
+  (`src/app/(public)/events/[slug]/actions.ts:97`) — **non esiste acquisto da
+  ospite per i biglietti**, mentre per i drink esiste;
+- la pagina della serata legge `userTicket` **al singolare**
+  (`src/app/(public)/events/[slug]/page.tsx:640`) — **un ordine con piu'
+  biglietti e' una cosa che i biglietti non hanno mai fatto**.
+
+---
+
+# Archivio di sessione — v1.5
+
+*Tutto cio' che segue e' lo stato della v1.5 al momento della sua chiusura,
+conservato per intero. La milestone e' archiviata in
+`.planning/milestones/v1.5-ROADMAP.md` e verificata in
+`.planning/v1.5-MILESTONE-AUDIT.md`.*
+
 
 # State: Resonate
 

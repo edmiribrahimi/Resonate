@@ -10,6 +10,7 @@ Registro storico delle versioni spedite. Ogni voce rimanda al proprio archivio.
 | v1.3 | — | — | [roadmap](milestones/v1.3-ROADMAP.md) · [audit](v1.3-MILESTONE-AUDIT.md) |
 | v1.4 | Check-in Overhaul | 2026-03-11 | audit **passed**, 16 requisiti su 16 — [audit](v1.4-MILESTONE-AUDIT.md) |
 | **v1.5** | **Platform Layout, Access Model & Door Fixes** | **2026-08-19** | **audit `gaps_found`, chiusa accettando il debito** — vedi sotto |
+| **v1.6** | **Piattaforma, non community** | *aperta 2026-08-19* | in corso — 10 fasi, [roadmap](ROADMAP.md) |
 
 ---
 

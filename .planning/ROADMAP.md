@@ -7,288 +7,563 @@
 - [x] **v1.2** -- SumUp API deep integration: official SDK, admin finance dashboard, refunds, APMs (Satispay/MyBank/Apple Pay/Google Pay), menu closing + auto-refund (7 phases, 12 plans, 33 requirements) -- [archive](.planning/milestones/v1.2-ROADMAP.md)
 - [x] **v1.3** -- Refinement & Intelligence: analytics (PostHog + Recharts dashboards), layout elegance (motion, skeletons, toast), guest list management, discount codes, navigation consolidation (9 phases, 19 plans, 60 requirements) -- [archive](.planning/milestones/v1.3-ROADMAP.md)
 - [x] **v1.4** -- Check-in Overhaul: party selection, continuous QR scanner with flash/haptic, offline support, membership door check-in (2 phases, 5 plans, 16 requirements) -- [archive](.planning/milestones/v1.4-ROADMAP.md)
+- [x] **v1.5** -- Platform Layout, Access Model & Door Fixes: capability model in the database, server data-access layer, fourth role, per-night assignments, one work surface, format model, brand tokens, production calendar and sections (18 phases, 261 plans, 76 requirements) -- **archiviata con debito dichiarato, non `passed`** -- [archive](.planning/milestones/v1.5-ROADMAP.md) - [audit](.planning/v1.5-MILESTONE-AUDIT.md)
 
 ---
 
-# Milestone v1.5 — Platform Layout, Access Model & Door Fixes
+# Milestone v1.6 — Piattaforma, non community
 
 ## Overview
 
-v1.5 rebuilds four things that today sit on top of each other badly: the defects
-live at the door and the bar right now, the permission model, the duplicated
-work surfaces, and the visual system. The order is not a preference — it is the
-whole plan. The live defects go first because they exist regardless of this
-milestone and because one of them (an attendee-cache refresh that reverts an
-unsynced check-in) turns from a rare race into the normal case the moment live
-updates are switched on. Then the capability model is defined **in the
-database**, once, so that a page, a server action and a row-level policy all ask
-the same question of the same definition; the server data-access layer is built
-on top of it and header trust ends there; the fourth role and account creation
-land next, then per-night assignments, and **only then** do the duplicated route
-trees collapse into one — so the collapse is built once, against four roles and
-assignments that already exist, rather than once for three roles and again
-afterwards. The format model and the design conversion follow the collapse for
-the same reason. The door is never bundled with the routing work: a redirect
-needs a network the door is designed not to need, so its address moves in a step
-of its own, verified on a device with the network off. The design track runs
-last, and the scanner is the last surface it touches — a visual regression there
-is a safety issue, not a cosmetic one.
+v1.6 fa due cose che sembrano indipendenti e non lo sono.
 
-**A fifth thing was added on 2026-08-11:** the production material stops living
-outside the product. The calendar, and then each production section under its own
-entitlement, come inside (44, 45). They run **after** the visual track and not
-before it, for the reason phase 41 states about itself — a surface converts whole
-or not at all, and the production section is the largest set of new surfaces in
-the project. Building it before the token layer and the shared primitives exist
-would create the biggest half-converted surface in the product and force 41 and
-42 to reopen every screen just written.
+**Il perno.** re:sonate smette di essere una community e diventa una
+piattaforma: nessuno si iscrive piu', entrano solo organizer e staff, e l'app
+diventa il posto dove si guardano gli eventi, si comprano i biglietti, si
+guardano foto e video e si ascoltano i LiveCut. E' una decisione del
+proprietario del **2026-08-14**, presa per essere aperta subito dopo la chiusura
+della v1.5.
 
-**Milestone numbering continues from v1.4:** phases run 31 → 45. Phase 43 was
-added on 2026-08-06, after 34 and 35 had already been numbered and cited; it
-executes between 33 and 35, not at the end. Phases **44 and 45 were added on
-2026-08-11** (owner decision) and execute **after 42** — they carry PROD-01 and
-PROD-02, promoted out of Future Requirements once the capability model (32) and
-the format model (36) had both shipped, which were the only stated reasons they
-were deferred. See the note below.
+**L'impianto.** Undici voci sulle superfici: il catalogo dei format allineato
+alla realta', la barra di navigazione con i suoi due pulsanti nuovi, la sezione
+TASK, la sezione Location portata alla parita' con il tracker di produzione, le
+pagine visual per format, e un servizio navetta.
+
+**Perche' stanno nella stessa milestone e in quest'ordine.** L'impianto
+costruisce cancelli, e il perno smonta i ruoli e gli stati su cui quei cancelli
+si appoggerebbero. Costruire la barra di navigazione prima del perno significa
+costruirla due volte: una per un mondo con `member` e `pending`, e una per il
+mondo senza. Il proprietario lo ha deciso esplicitamente il 2026-08-19:
+*«dentro v1.6, smonta anche il perno»*.
+
+**Il vincolo che il perno impone a tutto il resto:** niente cancelli nuovi su
+`status`. E' un valore che sta per smettere di variare, e un gate costruito su
+di esso e' un gate che nasce gia' morto. Dove un cancello su `status` fosse
+inevitabile per coerenza con le superfici accanto, va **dichiarato come debito
+che questa milestone rimuove**, non lasciato implicito.
+
+### Il fatto che ha cambiato la forma del perno
+
+Misurato il 2026-08-19, prima di pianificare: **oggi non si puo' comprare un
+biglietto senza account.** L'acquisto parte da `auth.getUser()`
+(`src/app/(public)/events/[slug]/actions.ts:97`), e la pagina della serata legge
+`userTicket` **al singolare** (`src/app/(public)/events/[slug]/page.tsx:640`):
+un account, un biglietto, perche' l'account *e'* l'identita'.
+
+Ne discendono due cose che non erano nella richiesta e che il perno non puo'
+evitare:
+
+1. **L'acquisto da ospite va costruito PRIMA di togliere le iscrizioni**, o
+   esiste una finestra in cui l'app non vende piu' niente.
+2. **Un ordine con piu' biglietti e' una cosa che i biglietti non hanno mai
+   fatto.** I drink si': hanno ordini con piu' voci, il token in `localStorage`
+   e `claimGuestOrders`. Quello e' il precedente da seguire, e sta gia' in
+   questo codice.
 
 ## Phases
 
-**Phase Numbering:**
+> **Numerazione: 47 → 57, e non riparte da uno.** I numeri di fase **continuano
+> attraverso le milestone** — v1.3 ha chiuso a 28, v1.4 a 30, v1.5 a 46 — e le
+> cartelle sotto `.planning/phases/` portano quel numero. Durante la
+> conversazione che ha prodotto questa roadmap le fasi sono state chiamate
+> `F0..F10`: quella numerazione **non esiste piu'**, e' stata corretta prima di
+> qualunque citazione fuori da questo file, ed e' l'ultimo momento in cui era
+> lecito farlo. Da qui in avanti **nessuna fase viene rinumerata**.
 
-- Integer phases (31, 32, 33): Planned milestone work
-- Decimal phases (32.1, 32.2): Urgent insertions (marked with INSERTED)
+Execution order **is** the list order. Un numero di fase e' un'identita', non
+una posizione: vale la stessa regola della v1.5 e nessuna fase viene rinumerata
+per assecondare una decisione presa dopo che e' stata citata.
 
-Decimal phases appear between their surrounding integers in numeric order.
+- [ ] **47** — Il token che si beve e si fa rimborsare (`DRK`) — **difetto vivo, va per primo**
+- [ ] **48** — Il catalogo dei format dice la verita' (`CAT`)
+- [ ] **49** — Comprare senza account (`BUY`)
+- [ ] **50** — Via le iscrizioni (`REG`)
+- [ ] **51** — Via le superfici da socio, e la porta (`MEM`)
+- [ ] **52** — La barra di navigazione e i ritocchi (`NAV`)
+- [ ] **53** — TASK (`TASK`)
+- [ ] **54** — Location, alla pari con il tracker (`LOC`)
+- [ ] **55** — Visual, una pagina per format (`VIS`)
+- [ ] **56** — La navetta (`SHTL`)
+- [ ] **57** — I documenti che ancora difendono la community (`DOC`)
 
-> **This list is in execution order, and execution order is NOT numerically
-> ascending. That is deliberate.**
->
-> **A phase number is an identity, not a position.** Phase 43 was added on
-> 2026-08-06, when 34 and 35 were already numbered and already cited by twelve
-> committed documents — citations that bind requirement IDs to phase numbers
-> (*"Phase 34's CAP-02"*), one of them inside the closed verification record of a
-> completed phase. Renumbering would make a closed record false, and a record is
-> corrected only when it was wrong when written, never to match a decision taken
-> afterwards. So the numbers stay fixed and **order is expressed by position in
-> this list and by `Depends on`** — nowhere else.
->
-> **Why the order moved (owner decision, 2026-08-06):** phase 34 collapses the
-> admin and organizer trees into one capability-driven surface. Building it
-> before the fourth role and before per-night assignments exist would mean
-> building it once for three roles, and again for four roles plus assignments.
->
-> Execution order: **33 → 43 → 35 → 34 → 36 → 37 → …**
-
-- [x] **Phase 31: Live Defects at the Door and the Bar** - Correct the nine defects present in production today, before anything is built on top of them (completed 2026-08-06)
-- [x] **Phase 32: Capability Model in the Database** - One definition of every permission, evaluated identically by pages, actions and row-level policies (completed 2026-08-06)
-- [x] **Phase 33: Server Data-Access Layer** - Identity and capability resolved from the session in one server-only place; no surface trusts a request header (completed 2026-08-07)
-- [x] **Phase 43: Role Model & Account Creation** - The fourth role grants entry and nothing else; master and organizer create accounts, and every act that changes who someone is is recorded with its author (executed 2026-08-08 — **verification `human_needed`: nothing deployed, 16/16 manual checks pending**, see `43-VERIFICATION.md`)
-- [x] **Phase 35: Per-Night Assignments** - What a person can do on one night is granted for that night alone, separate from role and separate from public credit (completed 2026-08-09)
-- [x] **Phase 34: One Work Surface** - The duplicated admin and organizer trees become a single capability-driven surface; the door is deliberately untouched (completed 2026-08-10)
-- [x] **Phase 36: Formats & Series Numbering** - Each night carries its format and stored series number; the events surface filters to one format (completed 2026-08-10)
-- [x] **Phase 37: Manual Venue Reveal** - The scheduled reveal stays the normal path, with a confirmed and recorded manual path for master and organizer (executed 2026-08-11 — NOT deployed, NOT verified; the anonymous address read is still open in production by owner decision)
-- [ ] **Phase 38: Live Attendance Freshness** - The attendee list updates by itself while the network is there, and never stands between a scan and its verdict
-- [ ] **Phase 39: The Door's Own Address** - The door moves to its permanent address in a step of its own, verified with the network off — *code executed 2026-08-11, four plans, all automated gates green; **not complete**: `39-VERIFICATION.md` is `human_needed` and criteria 2 and 3 close only at the end-of-v1.5 sitting (D-39-07), same night as Phase 38*
-- [~] **Phase 40: Brand Tokens & Typography** - Colour, surface, line and type come from one token set, released whole (5/5 plans executed 2026-08-11 — **verification `human_needed`**, not complete: DS-10 and DS-06's home-screen half are proven only by `40-RELEASE-PASS.md` H1/H3, every `Result: pending`, in the end-of-v1.5 sitting. Scheduled is not verified.)
-- [~] **Phase 41: Shared Primitives & Three-Tier Layout** - The shared layer is built and proven on its first eight whole surfaces (30/30 plans executed — **verification `human_needed`** at round 6, 2026-08-14, **0 gaps**: the reintroduction guard that held this phase at `gaps_found` for five consecutive rounds was closed by a LATER phase, 41.1-01's shared comment stripper, and re-derived three independent ways. Score stays 5/10 and the composition is the point — FAILED truths 1 → 0; what remains is seven human observations, H41-1…H41-7, unchanged since round 1, in the end-of-v1.5 sitting. **None of the seven requirements closes here**; RESP-01 closes only after 41.2)
-- [~] **Phase 41.1: Work-Surface Conversion** - The 21 remaining work pages convert onto the layer, the work-surface gates stop being ratchets, and the three knots the work surface reaches — the event form, the refunds, the venue reveal — are taken on their own in the last wave (25/25 plans executed 2026-08-13, 16/16 gates green — **verification `human_needed`**, not complete: `41.1-VERIFICATION.md` verifies 5/5 success criteria in their mechanical half with 0 gaps, and leaves six human observations owed in the end-of-v1.5 sitting, one of them Critical — that the reveal confirmation's focus visibly lands on Cancel. **None of the five requirements closes here**; RESP-01 closes only in 41.2. The box was `[x]` from 2026-08-13 to 2026-08-14, ticked by `roadmap.update-plan-progress` when the last SUMMARY landed, while no verification document existed at all — the same failure recorded for Phase 39, corrected the same way)
-- [~] **Phase 41.2: Public, Member and Money Surfaces** - The public and member surfaces convert, the bar is taken on its own, and the public event page — where money and the address genuinely meet — is taken on its own after it (22 plans in 9 waves executed 2026-08-14 — **verification `human_needed`**, 3/4 success criteria verified in their mechanical half, **0 gaps**. All four ratchets read **0** and the gates are absolutes; 38 surfaces declared with check F accounting for all 41 `page.tsx`; check E's pairing 12 = 12 in both directions. **Criterion 4 does not close and cannot: RESP-01 closes only by the written human pass**, `41.2-RESP-01-PASS.md`, 57 rows, every `Result: pending`. **RESP-03's criterion 5 is partly false by declared decision** — two controls sit below the 44px floor on purpose, because the floor would make the token-reverting tap easier to hit at a counter; exemptions D-41.2-06/07 and gate exemptions 9/10 carry their own reasons, and the gate prints them. Nine silent failures on the money path are recorded and unrepaired — five of them found during execution, none seen by the research)
-- [~] **Phase 46: Silent Failures on the Money Path** - A failure on a path that carries money produces an effect somebody can see (7 plans in 2 waves executed 2026-08-14 — **verification `human_needed`**, 12/12 code truths confirmed against the tree, **0 gaps**. **The manual pass was DECLINED by the owner on 2026-08-14** — `46-UAT.md`, 1 skipped and 5 declined, none run. Do not read the `human_needed` status as *awaiting a pass*: it is awaiting a pass nobody intends to make. **So the mechanical half is verified and the half this phase exists for is not** — no test runner, no error tracking, and those six procedures were the only evidence that would ever exist that a failure now produces an effect a person can *see*. A green build proves a refusal category cannot exist without a sentence; it does not prove the sentence reaches a screen. The owner's grounds are recorded in `46-UAT.md` and are not unreasonable — the setup cost is high against a risk measured at zero on a past public edition. Two of the six need only DevTools at a live night, if it is ever reopened. *This phase had no checklist line until now: it was added to the details section on 2026-08-14 and never listed here.* **The perimeter is narrower than the roadmap section below**, by owner decision D-46-11 at discuss-phase — the members area is under review for removal, which took `DI-41.2-01`, `-07`, `-09`…`-12` and `-20` out of scope, and D-46-09 took the guest refund refusal with them. **Consequently success criterion 3 and the RSVP half of criterion 2 are knowingly unmet and cannot be met here** — their code is under review for deletion. `OBS-05` was therefore not created; `OBS-02`, `OBS-03`, `OBS-04` were. Three accepted risks are declared, not discovered: the advisory pre-check inside `purchaseTicket` **stays permissive** because the real guard is `reserve_ticket`, which locks the tier row and fails closed (D-46-05); **the window where a guest pays and the database then refuses stays silent** until the deferred seat-reservation phase (D-46-07); and no bar-side order lookup was built (D-46-10c). Two findings arrived after planning and are repaired: the refund cron's delete count was wrong in **two** ways, not one — `.delete()` returns `count === null` even on success without `{ count: "exact" }` — and `GuestTokenDisplay`'s poll bound sat inside the `try` after both early returns, so against a permanently failing endpoint it was **never evaluated** and the poll ran forever)
-- [ ] **Phase 42: Scanner Conversion** - The scanner takes the visual system last, with its behaviour untouched — *eseguita 2026-08-18, NON completa: `roadmap.update-plan-progress` l'ha marcata `[x]` all'atterraggio del dodicesimo SUMMARY, `phase.complete` non e' mai stato lanciato. Corretta a `[ ]` con la ragione accanto, come gia' per la fase 39: il criterio 3 e' permanentemente non chiudibile (DEF-42-04) e nove procedure di `42-PROCEDURES.md` sono `pending`. Una spunta su una fase la cui unica prova mancante e' quella che conta e' il fallimento silenzioso che questo repo si e' scritto di non ripetere.*
-- [~] **Phase 44: The Production Calendar Comes Inside** - The calendar stops living outside the product; it is imported into the database and never through the repository (13/13 plans executed 2026-08-15 in 7 waves — **verification `human_needed`**, not complete: all five success criteria have structural evidence and **0 gaps**, and four of them are BUILT rather than PROVEN. `44-PROCEDURES.md` carries P1–P4 with every `Result: pending`. **Criterion 4 cannot be closed by any tool in this repository**: nothing here authenticates as a role, and the Management API connects with a role that bypasses RLS — the read-back proves the six policies EXIST, never that they REFUSE, so P1 with real accounts is the first refusal evidence this project will ever have. **The calendar's content is NOT imported**: `production_plan` and `production_piece` hold 0 rows and `production_pipeline_rule` holds 16 — loading confidential material into production is the owner's act, and the authorisation spent in this phase covered the two migrations only. A third migration, `20260815120200`, closes a defect this phase introduced and applied: the tick function was EXECUTE-able by `anon` and `authenticated` because the access migration wrote the GRANT without the REVOKE; measured ACL now `{postgres, service_role}`. The box was `[x]` for a few minutes on 2026-08-15, ticked by `roadmap.update-plan-progress` when the last SUMMARY landed and before verification ran — the same failure recorded for Phase 39 and Phase 41.1, corrected the same way)
-- [ ] **Phase 45: Production Sections, Section by Section** - Each production section is entitled separately, because they do not carry the same risk (18/18 plans executed 2026-08-18; **verification `gaps_found` — not complete**, see 45-VERIFICATION.md)
+---
 
 ## Phase Details
 
-*Sections below are in execution order, matching the checklist above.*
+### 47 — Il token che si beve e si fa rimborsare
 
-## v1.5 — Platform Layout, Access Model & Door Fixes · ARCHIVIATA 2026-08-19
+Un difetto **riprodotto in laboratorio il 2026-08-19**, non dedotto: referto in
+[`v1.6-47-PROBE.md`](v1.6-47-PROBE.md), sonda in
+`scripts/probe-drink-token-cycle.mjs`. **Va per primo** perche' 49 apre
+l'acquisto agli ospiti, e quello moltiplica i drink venduti.
 
-18 fasi · 261 piani · **archiviata con debito dichiarato, non `passed`**: 14 requisiti su 76 chiusi, 88 voci `human_needed`, e il criterio 3 della fase 42 permanentemente non chiudibile (`DEF-42-04`). Dettaglio in [`milestones/v1.5-ROADMAP.md`](milestones/v1.5-ROADMAP.md) · audit in [`v1.5-MILESTONE-AUDIT.md`](v1.5-MILESTONE-AUDIT.md) · sedute di laboratorio in [`v1.5-LAB-SITTING.md`](v1.5-LAB-SITTING.md).
+> **La prova, in una riga.** Cinque cicli attiva -> annulla su un token comprato,
+> in un ambiente misurato fedele alla produzione su **dieci cataloghi su dieci**:
+> stato finale `purchased`, `activated_at` **NULL**, e il predicato del rimborso
+> **lo seleziona**. Le controprove tengono: servire due volte non e' possibile, e
+> il database rifiuta di annullare un token servito.
+>
+> ⚠ **`DRK-04` distrugge la possibilita' di rimisurare.** Una volta che
+> l'annullamento smette di azzerare `activated_at`, il comportamento vecchio non
+> e' piu' osservabile. Ecco perche' la prova e' stata fatta **prima** di
+> pianificare, e non dopo.
 
-*`Executed*` = tutti i piani hanno un SUMMARY su disco, **non** che la fase sia deployata o verificata. Per la 37: il ramo e' 219 commit avanti a `origin/main`, la seconda migration e' applicata a zero, e undici voci `human_needed` restano aperte (`37-13-SUMMARY.md`).
+| ID | Requisito |
+|---|---|
+| **DRK-01** | **Nessun cron emette piu' rimborsi.** `/api/cron/refund-expired-tokens` smette di chiamare `refundTransaction()`. |
+| **DRK-02** | Un token non riscattato si rimborsa **su richiesta**, entro una finestra dalla chiusura del menu: **72 ore di default, modificabile**. |
+| **DRK-03** | L'emissione resta dietro `STAFF_MANAGE` — solo admin e organizer. Gia' vero oggi, e non si allenta. |
+| **DRK-04** | `deactivate_drink_token` **smette di azzerare `activated_at`**, e le attivazioni si **contano**. Un token annullato ha una storia. |
+| **DRK-05** | Un token **mai attivato** si rimborsa **automaticamente, su richiesta**. |
+| **DRK-05b** | Un token **attivato e disattivato una o piu' volte** puo' comunque essere **richiesto** — la richiesta non e' mai rifiutata — ma il rimborso e' **manuale, dopo revisione**, con il conteggio delle attivazioni davanti a chi decide. |
+| **DRK-06** | La schermata SERVED resta in vista **5 secondi** invece di 3 (`GuestTokenDisplay.tsx:426`). Si congeda comunque da sola: **la lettura avviene al tocco, prima della versata**, quindi la schermata deve sopravvivere alla lettura, non al gesto. |
+| **DRK-07** | La schermata SERVED **non puo' comparire senza la conferma del server**. E' vero oggi per costruzione e va **preservato come invariante**, non ottimizzato. |
+| **DRK-08** | Il runbook del bar — *si tocca, si legge SERVED, poi si versa* — e' scritto, e vive nella sezione TASK (53). |
+
+> ## Il difetto, per intero, perche' non si dimentichi perche' esiste questa fase
+>
+> **Cosa NON e' il problema** — verificato leggendo il codice:
+>
+> - **riscattare due volte e' impossibile**: `redeem_drink_token` prende il lock
+>   sulla riga (`FOR UPDATE`), e' idempotente, e restituisce `false` se il token
+>   era gia' servito; l'azione controlla quel booleano e solleva
+>   (`menu/actions.ts:456`);
+> - **lo schermo non puo' dire SERVED senza il server**: `setPhase("served")` sta
+>   **dopo** l'`await`, e un fallimento riporta ad `active` mostrando l'errore;
+> - **non esiste coda offline per i drink**: senza rete non cambia nulla, in
+>   nessun verso.
+>
+> **Cosa e' il problema.** Il cliente controlla **due** transizioni — attiva e
+> annulla — il barista una sola: serve. E `deactivate_drink_token` riporta il
+> token da `active` a `purchased` **azzerando `activated_at`**, che e' l'**unica**
+> traccia di un'attivazione: non c'e' tabella di audit e non c'e' contatore.
+>
+> Da cui: attivo, il barista versa *prima* di premere, annullo, e il token torna
+> `purchased` **senza memoria**. Ripetuto tutta la sera. E `purchased` e'
+> esattamente lo stato su cui il rimborso seleziona
+> (`refund-expired-tokens/route.ts:165`). Ha bevuto tutta la sera, si e' fatto
+> ridare i soldi, e **nel database non e' rimasto niente che dica che sia
+> successo**.
+>
+> **Nessuno l'ha fatto**: in produzione ci sono zero ordini bar.
+>
+> **DRK-04 e' l'unico pezzo che non si recupera dopo.** Ogni annullamento che
+> avviene prima di quella modifica e' una storia persa per sempre.
+>
+> **La sequenza al banco, dichiarata dal proprietario il 2026-08-19:** il barista
+> tocca lo schermo mentre il token e' attivo, **legge SERVED al tocco**, e **solo
+> allora versa**. La verifica sta *prima* del gesto, non durante.
+>
+> **Da cui DRK-06 nella forma che ha.** Una prima stesura di questa fase chiedeva
+> che la schermata non si chiudesse affatto, temendo un barista che preme, si
+> gira a prendere il bicchiere e torna a conferma scaduta. Quel timore descrive un
+> ordine diverso — *premi, versa, poi verifica* — che non e' quello in uso. Con la
+> lettura al tocco, la schermata deve sopravvivere alla **lettura**: cinque secondi
+> bastano, e la correzione e' registrata qui invece di lasciare in piedi un
+> requisito nato da una sequenza sbagliata.
+>
+> **DRK-07 invece non si allenta, ed e' il fondamento di tutto il resto.** La
+> procedura funziona **solo** perche' quella schermata e' una conferma del server:
+> chi la rendesse ottimistica per «velocizzare l'UX» toglierebbe al barista
+> l'unico controllo che ha in mano, e nessuno se ne accorgerebbe finche' qualcuno
+> non beve gratis tutta la sera.
+>
+> **La forma decisa il 2026-08-19, e la distinzione che porta.** Il barista **non
+> consegna mai il drink prima di vedere SERVED**: la procedura, da sola,
+> **previene** il ciclo. Cio' che la procedura non fa e' **renderlo visibile** —
+> e i due casi lasciano oggi dati identici, `purchased` con `activated_at` a
+> `NULL`. Non si potrebbe verificare che la procedura sia stata seguita, ne'
+> difendere un barista accusato ingiustamente.
+>
+> Da cui la divisione:
+>
+> - **mai attivato** → rimborso **automatico su richiesta**;
+> - **attivato e disattivato una o piu' volte** → la richiesta **si puo' sempre
+>   fare e non viene rifiutata**, ma il rimborso e' **manuale, dopo revisione**.
+>
+> **DRK-04 e' il presupposto di entrambe.** Senza la traccia dell'attivazione e
+> senza il conteggio, i due casi sono **indistinguibili**, e la regola qui sopra
+> non e' applicabile: non esiste il dato su cui deciderebbe.
+>
+> **Una cosa residua, detta una volta.** Il barista guarda uno schermo sul
+> telefono di un estraneo: vale che sia **lui a toccarlo**, su una schermata viva.
+> Uno screenshot di un SERVED precedente e' identico a quello vero.
+>
+> ⚠ **Da verificare in fase di piano, non qui:** lo stesso cron cancella i token
+> `redeemed` e `refunded` 24 ore dopo la chiusura del menu. La finestra di
+> richiesta e' 72. Vanno guardate insieme prima di toccare l'una o l'altro.
+
+### 48 — Il catalogo dei format dice la verita'
+
+Apre la milestone perche' il catalogo lo leggono quattro superfici a valle: la
+barra dei format nella pagina eventi, le viste della sezione Location, le pagine
+visual, e i chip di TASK. Farlo dopo significa riaprire quattro superfici.
+
+| ID | Requisito |
+|---|---|
+| **CAT-01** | Il format SunSet e' **cancellato**: riga di catalogo, sue serate, e ogni riferimento nel codice dell'app. Resta **solo** nel tracker di produzione, per memoria (decisione del proprietario, 2026-08-19). |
+| **CAT-02** | RamaDub porta **`#2B4BE8`** nel catalogo e nei token di brand. |
+| **CAT-03** | `brand-visual-system.md` e' aggiornato **nello stesso commit** di CAT-02: oggi dichiara che RamaDub e' arancio `#FF7A2F` piatto e che il gradiente tramonto e' firma esclusiva di SunSet. Due righe che CAT-01 e CAT-02 rendono false. |
+| **CAT-04** | Il calendario di produzione e' importato dai due file `.ics` forniti dal proprietario, con `npm run import:calendar` **a vuoto letto per intero prima** di `--apply`. |
+| **CAT-05** | Le voci di calendario che non appartengono a nessun format del catalogo sono **classificate esplicitamente dalla prova a vuoto**. Nessuna entra per default e nessuna viene scartata in silenzio: sono contate e riportate. |
+
+> **CAT-01 e' una deroga dichiarata a una guardia monotona.** `meta-gates.md`
+> elenca la numerazione di serie fra i tre interruttori a senso unico: *«un
+> progressivo assegnato e' gia' su una locandina»*. Il costo e' stato enunciato
+> al proprietario il 2026-08-19 con due alternative — ritirare il format tenendo
+> le serate, oppure ritirarlo e non importarle — e la cancellazione e' stata
+> scelta. **Il file `.ics` aggiornato fornito subito dopo non contiene piu'
+> alcuna occorrenza di SunSet** (misurato: 0 su 79 voci, contro 3 su 91 nella
+> versione precedente), quindi l'import e la cancellazione non si contraddicono.
+
+### 49 — Comprare senza account
+
+Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
+
+| ID | Requisito |
+|---|---|
+| **BUY-01** | Un ordine puo' contenere **piu' biglietti**. |
+| **BUY-02** | Il tetto di biglietti per ordine e' **6 di default, modificabile per serata** dall'organizer. |
+| **BUY-03** | L'acquisto **non richiede un account**: una mail basta. |
+| **BUY-04** | I biglietti si ritrovano **senza login**, dalla credenziale del biglietto e dalla mail — sul modello dei token drink da ospite, che in questo codice esiste gia'. |
+| **BUY-05** | Il codice del biglietto smette di nascere da `Math.random()` (`src/utils/qr.ts:49`). |
+
+> **Perche' BUY-05 e' un requisito di questa fase e non un ritocco rimandabile.**
+> La firma del biglietto e' HMAC; **il codice no**. Finche' esiste un account,
+> il codice non e' l'unica cosa che lega una persona al suo acquisto. Con
+> l'acquisto da ospite **lo diventa**: e' l'unica prova che qualcuno ha pagato.
+> La fase che rende quel codice l'unica credenziale e' la fase che deve
+> ripararlo.
+
+> **Perche' il tetto e' 6, e perche' il numero e' un fatto di dominio.**
+> Le sedi in target stanno fra 150 e 300 persone, e **dopo il perno il biglietto
+> e' l'unica cosa che regola chi entra**: non c'e' piu' un'approvazione a monte.
+> Senza account, un tetto alto e' una persona che ne compra cinquanta e li
+> rivende — cioe' la serata che sceglie il suo pubblico da sola. Sei e' un gruppo
+> di amici con un solo pagante.
+
+### 50 — Via le iscrizioni
+
+| ID | Requisito |
+|---|---|
+| **REG-01** | `/register` e ogni percorso di auto-iscrizione sono rimossi. |
+| **REG-02** | Lo stato `pending` e' smontato: il valore, le mail di approvazione e rifiuto, e le superfici che lo mostrano. |
+| **REG-03** | Il referral (*invite a friend*) e' rimosso. |
+| **REG-04** | Entrano solo `master`, `admin`, `organizer`, `staff`. Gli account li crea un admin o un organizer **dentro l'app** — percorso che esiste gia' dalla fase 43. |
+| **REG-05** | Nessun cancello nuovo su `status`. Quelli esistenti che sopravvivono a questa fase sono **elencati** come debito che 51 o 57 chiudono. |
+
+### 51 — Via le superfici da socio, e la porta
+
+| ID | Requisito |
+|---|---|
+| **MEM-01** | La membership card e' rimossa: superficie, rotta e capability. |
+| **MEM-02** | Lo storico delle presenze e' rimosso. |
+| **MEM-03** | `/api/membership/verify` e' rimosso **insieme al suo precache nel service worker e alla sua coda offline**. |
+| **MEM-04** | La rimozione e' verificata **su un dispositivo con la rete spenta**, prima e dopo, e la procedura e' scritta passo per passo. |
+
+> **Fase separata, e non in pacchetto con nient'altro.** E' la stessa regola che
+> la v1.5 ha applicato all'indirizzo della porta: *un redirect ha bisogno di una
+> rete che la porta e' progettata per non avere*. Qui si toglie un percorso che
+> il service worker precachea e che la coda offline conosce, e una rimozione
+> parziale si manifesta **alle due di notte, davanti a una fila**. E l'asimmetria
+> resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
+> doppio.
+
+### 52 — La barra di navigazione e i ritocchi
+
+| ID | Requisito |
+|---|---|
+| **NAV-01** | L'ordine della barra e': Home · Events · Gallery · Check-in · **TASK** · Account · **Management**. |
+| **NAV-02** | La gallery e' raggiungibile solo da chi ha `gallery.view` (admin, organizer, staff): **voce di barra, riga nella mappa delle rotte, e guardia in cima alla pagina**. |
+| **NAV-03** | Management e' un **pannello che scende**, con le voci in **ordine alfabetico**, e sparisce dalla pagina Account. |
+| **NAV-04** | Da telefono, dentro uno strumento di management, la barra degli strumenti resta **appesa in alto**. |
+| **NAV-05** | Nella pagina membri il numero `staff` **non e' piu' un link con filtro**: si comporta come le altre tre cifre (`MemberTable.tsx:1109`). |
+| **NAV-06** | Nella pagina eventi compaiono **solo i format che hanno almeno una serata** — passata o futura — visibile a chi guarda. |
+
+> **NAV-02 non e' una sola modifica ma tre, e la prima da sola non protegge
+> niente.** Oggi `/gallery` **non e' nella mappa delle rotte affatto**: nascondere
+> la voce di barra lascerebbe l'indirizzo aperto a chiunque lo digiti. Hiding a
+> nav item is not protecting a route — e' scritto in `ManagementSection.tsx` e
+> vale qui.
+>
+> **Il cancello e' temporaneo per costruzione.** Il perno dice che l'app e' anche
+> il posto dove si guardano foto e video: la gallery si riapre togliendo una
+> riga, quando ci sara' qualcosa da pubblicare.
+
+> **NAV-06 si costruisce dall'array di eventi gia' letto, PRIMA del filtro per
+> format, e mai da una seconda interrogazione.** Una lettura del tipo *«questo
+> format ha qualcosa?»* e' l'unico canale che rivela una bozza **senza mostrare
+> niente**: nessuna ispezione visiva della pagina potrebbe coglierla. Ricavando
+> il chip dall'array, la riga varia con chi guarda ma non gli mostra mai nulla
+> che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
+> format, o selezionandone uno spariscono tutti gli altri.
+
+### 53 — TASK
+
+La checklist a quattro fasi del tracker di produzione entra nell'app, e
+**il tracker smette di comandare**: resta come fotografia del giorno in cui e'
+stata scritta, e lo dichiara.
+
+| ID | Requisito |
+|---|---|
+| **TASK-01** | Ogni voce e' **rivolta a un ruolo** — organizer o staff — e questo decide a chi compare come *disponibile*. |
+| **TASK-02** | Ogni voce puo' essere **presa in carico da una persona**. Presa in carico e completamento sono **due atti distinti**: nessuna voce si dichiara fatta prima di essere stata presa. |
+| **TASK-03** | Chi prende e chi completa **restano scritti**, con quando. |
+| **TASK-04** | Il badge porta **due numeri**: quante voci sono disponibili per te, e quante ne hai in mano. |
+| **TASK-05** | Chi ha un runbook assegnato lo vede dentro TASK. |
+| **TASK-06** | Il contenuto iniziale si carica da un **file locale**, con uno script fuori dal prefisso `verify:`, sul modello di `seed:spaces`. |
+
+> **TASK-06 non e' una preferenza di implementazione: e' il Guardrail 5.**
+> La checklist del tracker nomina **spazi in trattativa, numeri di telefono e
+> indirizzi mail**. Quel contenuto vive nel database, che e' privato e sotto RLS.
+> **Non puo' entrare in un file del repository**, che e' pubblico e dove una
+> pubblicazione non si annulla: un file spinto resta nei fork, nelle cache dei
+> mirror e nella history anche dopo la rimozione.
+
+> **Il runbook non e' un concetto nuovo**: esiste gia' nel progetto come la
+> procedura che si segue alla porta (`31-DOOR-RUNBOOK.md`). Si aggancia alle
+> **assegnazioni per serata** costruite nella fase 35: il tuo runbook e' la
+> procedura del ruolo che hai quella sera.
+
+### 54 — Location, alla pari con il tracker
+
+I 184 spazi e i 1840 attributi sono **gia' in produzione** dalla fase 45, e i
+dieci attributi corrispondono uno a uno alle colonne-criterio del tracker.
+Manca la superficie.
+
+| ID | Requisito |
+|---|---|
+| **LOC-01** | **Quattro sotto-viste** — Resonate, RamaDub, MotionLab, Tutte — con il conteggio sulla linguetta e la riga appesa sotto la testata. (Erano cinque: SunSet esce con CAT-01.) |
+| **LOC-02** | Per ogni vista: intro, **quattro statistiche**, filtri per categoria con la meccanica isola-poi-accumula, conteggio risultati, ordinamento. |
+| **LOC-03** | Tabella a **intestazioni variabili per vista**; nella vista Tutte, i punteggi dei format affiancati con il bordo sulla cella verificata. |
+| **LOC-04** | Legenda, nota di metodo, nota per format. |
+| **LOC-05** | Le tre cautele: l'intro dichiara che **nessuno e' stato chiamato**; ogni nome porta **il suo stato**; ogni punteggio e' marcato **derivato**. |
+| **LOC-06** | L'**indirizzo resta fuori dalla lista**. Sta sulla scheda del singolo spazio, dove gia' e'. |
+
+> **LOC-05 e' la condizione a cui il proprietario ha concesso la parita'**
+> (2026-08-19). `SpaceList.tsx` oggi rifiuta la classifica di proposito, citando
+> `venue-acquisition.md`: *una classifica non e' una disponibilita'*. La parita'
+> con il tracker **rovescia quella scelta**, e la rovescia consapevolmente: il
+> punteggio misura quanto uno spazio *sarebbe* adatto, mai se ci ospiterebbe, e
+> la superficie deve dirlo da sola.
+
+> **Tre celle del tracker resteranno vuote, ed e' la conseguenza accettata di una
+> decisione, non un difetto da correggere dopo.** Il seed della fase 45 escluse
+> per dichiarazione quattro gruppi di campi, e il proprietario ha scelto di non
+> aggiungerli (2026-08-19): mancano quindi il **regime giuridico** — con lui il
+> sottotitolo della colonna *Fino a tardi* e la statistica sul tesseramento — le
+> **tre frasi di evidenza**, e il **segno del vino naturale**.
+
+### 55 — Visual, una pagina per format
+
+Oggi l'app ha il contenitore — capitolato, palette, archivio — e **nessuna**
+delle pagine per format del tracker.
+
+| ID | Requisito |
+|---|---|
+| **VIS-01** | Una pagina dedicata per **RamaDub** e una per **MotionLab**. (Erano tre: SunSet esce con CAT-01.) |
+| **VIS-02** | Ogni pagina porta la struttura del tracker: cappello con lo stato, *Le scelte fatte*, i mockup, *I pezzi di ogni data* con la loro ancora temporale, *Domande aperte*. |
+| **VIS-03** | **MotionLab resta neutro.** Non ha ancora una palette, e i suoi materiali non prendono in prestito quella di un altro format. |
+| **VIS-04** | Nessuna pagina allude al **genere musicale** di un format la cui identita' sonora non e' scritta. |
+
+> **VIS-03 e VIS-04 sono due gate del progetto, non prudenza.**
+> `brand-visual-system.md`: *un format senza palette resta neutro — prendere in
+> prestito il tramonto per riempire il vuoto e' il modo in cui un format perde
+> l'identita' prima di averla*. E `sound-manifesto.md`: dove l'identita' sonora
+> non e' scritta, **i materiali non possono alludervi**.
+
+### 56 — La navetta
+
+| ID | Requisito |
+|---|---|
+| **SHTL-01** | Sull'acquisto si sceglie **quante navette**, da 0 fino al numero di biglietti dell'ordine. **Un posto vale una persona**: quattro persone in navetta sono quattro navette comprate. |
+| **SHTL-01b** | Il posto **viaggia sul biglietto**, non sull'ordine: dei biglietti dell'ordine, N ne portano uno, e il biglietto lo dichiara. Al ritrovo risponde il biglietto. |
+| **SHTL-08** | **Navetta gratuita: nessun biglietto e nessun QR in piu'.** Esiste solo il biglietto d'ingresso alla festa. Ne discende che su un servizio gratuito un tetto limita **quante navette si vendono, non chi sale**. |
+| **SHTL-09** | **Navetta a pagamento: nessun secondo QR.** Il QR del biglietto e' uno solo e vale per entrambe le cose. Cosa quel biglietto abbia diritto di fare lo **risolve il server** — e, senza rete, la cache locale — **mai il contenuto del QR**, che resta codice piu' firma. |
+| **SHTL-10** | Lo stesso QR viene letto **due volte, da due atti diversi**: la **salita**, dallo staff autista, e l'**ingresso**, dallo staff porta. Sono **due segni distinti** sul biglietto: nessuno dei due consuma l'altro, e un biglietto salito non e' un biglietto entrato. |
+| **SHTL-13** | **L'ingresso non dipende dalla salita.** Chi ha comprato la navetta e poi decide di non prenderla entra alla festa **normalmente**: il suo QR non e' mai stato letto dall'autista, e alla porta questo non cambia nulla — nessun avviso, nessuno stato intermedio, nessuna esitazione. |
+| **SHTL-11** | Quale dei due atti compie uno scanner lo decide **l'assegnazione di quella serata**, non un interruttore che l'operatore puo' sbagliare. |
+| **SHTL-12** | Entrambi gli atti funzionano **senza rete**: coda, archivio locale e riconoscimento dei doppioni li distinguono. Verificato **su due dispositivi con la rete spenta**, e la procedura e' scritta passo per passo. |
+| **SHTL-02** | Il servizio puo' essere **gratuito o a pagamento**, per serata. |
+| **SHTL-02b** | Il **numero di posti ancora disponibili si mostra solo quando il servizio e' a pagamento**. Su un servizio gratuito con tetto, l'opzione smette semplicemente di essere selezionabile quando e' pieno, senza contatore pubblico. |
+| **SHTL-03** | Se e' **a pagamento il tetto e' obbligatorio**; se e' **gratuito il tetto e' facoltativo**, e senza tetto e' illimitato. **Il vincolo vive nel database**, non nel form. |
+| **SHTL-04** | Un tetto si puo' **alzare, mai portare sotto quanto e' gia' stato venduto**. |
+| **SHTL-05** | Chi ha preso la navetta riceve, **insieme ai biglietti**, il link del gruppo WhatsApp dove vivono i dettagli. |
+| **SHTL-06** | Il link arriva nella mail e sulla pagina del biglietto, **dietro la credenziale del biglietto**. Sulla pagina pubblica della serata non compare mai. |
+| **SHTL-07** | Se e' a pagamento, lo stato del pagamento si verifica **interrogando SumUp**, mai fidandosi di cio' che il webhook annuncia, e il percorso e' **idempotente in entrambi i rami**. |
+
+> **Il link e' un invito che non si ritira.** Un invito WhatsApp e' riusabile e
+> inoltrabile: chi ce l'ha entra, e chi lo gira fa entrare. Se nel gruppo si
+> condivide il punto di ritrovo — e si condividera' — **il gruppo diventa un
+> canale di rivelazione del venue**. E' la stessa forma di `venue_reveal_sent`:
+> l'app puo' cambiare quale link consegna d'ora in poi, **non puo' togliere dal
+> gruppo chi c'e' gia'**. La revoca vive su WhatsApp, e va saputo prima di usarlo.
+>
+> **Un rimborso non toglie nessuno dal gruppo.** Nessuna riga di codice cambia
+> questo: la ripulitura e' un gesto umano che qualcuno deve fare.
+
+> **Il numero di navette e' un CONTROLLO, non una cifra di pianificazione**
+> — correzione del proprietario, 2026-08-19, che sostituisce una riga precedente
+> di questo stesso documento. Un posto vale una persona: **quattro persone in
+> navetta sono quattro navette comprate**, non una.
+>
+> **Da cui SHTL-01b, che non e' un dettaglio di implementazione ma la condizione
+> perche' la regola sopra sia vera.** Un numero che vive sull'ordine non ferma
+> nessuno al ritrovo — chi ne ha comprata una si presenta in due e l'autista li
+> conta. Un numero che vive **sul biglietto** e' verificabile, perche' il
+> biglietto e' gia' la cosa che una persona porta con se'. Una regola d'acquisto
+> non applicabile al ritrovo non e' una regola: e' una speranza.
+>
+> ⚠ **Il check-in di oggi e' UN SEGNO SOLO, e questo e' il difetto che 56 deve
+> risolvere prima di ogni altra cosa** — decisione del proprietario, 2026-08-19:
+> il QR si legge due volte, dall'autista e alla porta.
+>
+> Il percorso attuale marca il biglietto come **entrato**. Se lo scansiona
+> l'autista al ritrovo, alla porta quel biglietto risulta **gia' entrato**: la
+> porta rifiuta un ospite valido, che e' l'errore peggiore che questo prodotto
+> possa fare, perche' avviene **davanti a una fila** e non si recupera con una
+> scusa. `checkin-offline.md`, e l'asimmetria vale identica al ritrovo: un rifiuto
+> in strada alle nove di sera e' lo stesso errore, in un posto dove non c'e'
+> nemmeno un supervisore.
+>
+> **Da cui SHTL-10: due segni, non uno.** *Salito* ed *entrato* convivono sullo
+> stesso biglietto e nessuno dei due consuma l'altro.
+>
+> **E da cui SHTL-13, che e' l'altra meta' della stessa proprieta' e va scritta
+> a parte perche' si sbaglia da sola.** SHTL-10 dice che la salita non consuma
+> l'ingresso; SHTL-13 dice che **l'ingresso non pretende la salita**. Chi compra
+> la navetta e poi ci ripensa e' un caso ordinario, non un'anomalia: il suo
+> biglietto alla porta deve leggersi **identico a qualunque altro**. Un implementatore
+> che aggiunge una spia *«navetta non usata»* per completezza sta mettendo alla
+> porta una ragione per fermarsi a guardare — e alla porta ogni esitazione e' una
+> fila. La porta pone **una** domanda: questo biglietto puo' entrare. E da cui **SHTL-11**: se
+> l'atto dipendesse da un interruttore sullo schermo, il primo autista che parte
+> con lo scanner in modalita' porta brucerebbe l'ingresso di un pullman intero.
+>
+> **E da cui SHTL-12, che e' la parte che costa.** Il ritrovo ha meno rete della
+> porta, non piu'. I due atti devono attraversare interi la coda offline e il
+> service worker, e il riconoscimento dei doppioni deve sapere **di quale atto**
+> parla — o una salita accodata e un ingresso accodato si annullano a vicenda al
+> primo momento di rete.
+
+> **Va ultima**, e non insieme all'impianto — e ora per due ragioni invece di una.
+> E' il secondo percorso del denaro in un progetto che **non ha alcun
+> tracciamento degli errori**, ed e' anche, dal 2026-08-19, **una fase della
+> porta**: SHTL-10, SHTL-11 e SHTL-12 modificano lo scanner, la coda offline e il
+> service worker. Vale la regola che la v1.5 si e' data e non ha mai rotto — **il
+> lavoro sulla porta non sta in pacchetto con nient'altro, e si verifica su un
+> dispositivo con la rete spenta**, non alla scrivania con la fibra. Nessun fallimento
+> di produzione raggiunge un essere umano da solo, e un percorso critico nuovo
+> senza osservabilita' va costruito sapendolo.
+
+### 57 — I documenti che ancora difendono la community
+
+| ID | Requisito |
+|---|---|
+| **DOC-01** | `PROJECT.md` non dichiara piu' che *«the gating mechanism is what makes the community valuable»*. |
+| **DOC-02** | `CLAUDE.md` non apre piu' con *«il gating E' il prodotto»*. |
+| **DOC-03** | `community-membership.md` e `access-gating.md` descrivono il modello che esiste dopo il perno. |
+| **DOC-04** | `npm run verify:persona` e' verde: nessun path morto, indice e frontmatter concordi, context budget rimisurato. |
+
+> **Chiude in fondo, e non apre.** I moduli della persona hanno `paths:` che
+> puntano a file veri: cancellare una superficie prima di aggiornarli lascia un
+> gate acceso su un percorso morto, e riscrivere l'identita' prima che la cosa sia
+> sparita significa descrivere un futuro che non c'e' ancora. **Ogni fase che
+> cancella si porta dietro il proprio aggiornamento di modulo**; questa chiude
+> l'identita' quando la cosa e' davvero sparita.
+
+---
 
 ## Decisions Fixed Before Planning
 
-These were decided by the project owner and are not re-opened at plan time:
+Decise dal proprietario e non riaperte in fase di piano.
 
-| Decision | Applies to |
-|---|---|
-| Live freshness uses a **push channel**, not polling — with a mandatory full reload on every reconnection and an infrequent safety reload underneath | Phase 38 |
-| Undoing a check-in requires a **supervising capability**; a person assigned to the door for one night cannot undo unless they are also an organizer | Phase 35 |
-| The venue reveal stays scheduled **plus** a manual path for master and organizer, behind confirmation and recorded | Phase 37 |
-| A staff role **implies `approved`, enforced by the database** — and the baseline harness keeps the ability to seed the four personas that rule forbids | Phase 43 |
-| `door.operate` keeps `requires_approved = false`; it is not redundant with the constraint above and is not removed as tidying | Phase 43 |
-| **Phase numbers are identity, not position.** No phase is renumbered to match an ordering decision taken after it was cited | All phases |
-| The interface stays **English only** — no translation work in this milestone | All phases |
+| Decisione | Data | Vale per |
+|---|---|---|
+| **Nessun rimborso automatico**: nessun cron muove denaro | 2026-08-19 | 47, 56 |
+| Un token non riscattato si rimborsa **su richiesta entro 72h** dalla chiusura del menu — default modificabile | 2026-08-19 | 47 |
+| Chi **annulla** un token attivo puo' sempre **chiedere** il rimborso; cambia solo che e' **manuale dopo revisione**, non automatico | 2026-08-19 | 47 |
+| Il barista **tocca, legge SERVED al tocco, poi versa** — e SERVED resta 5 secondi | 2026-08-19 | 47, 53 |
+| Il perno «piattaforma, non community» entra in **questa** milestone, non nella successiva | 2026-08-19 | 49, 50, 51, 57 |
+| SunSet e' **cancellato**, non ritirato — format e serate. Resta solo nel tracker, per memoria | 2026-08-19 | 48, 54, 55 |
+| RamaDub e' **`#2B4BE8`** | 2026-08-19 | 48 |
+| La sezione Location va **alla pari con il tracker, con le cautele addosso** | 2026-08-19 | 54 |
+| I campi che il seed della fase 45 escluse **non vengono aggiunti** in questa milestone | 2026-08-19 | 54 |
+| Management e' **un pannello che scende**, non una pagina | 2026-08-19 | 52 |
+| TASK comanda, **il tracker smette** | 2026-08-19 | 53 |
+| La navetta e' **un posto per persona, portato dal biglietto** — quattro persone, quattro navette | 2026-08-19 | 56 |
+| Il **contatore dei posti** si mostra solo quando il servizio e' a pagamento | 2026-08-19 | 56 |
+| **Un solo QR letto due volte**: salita dall'autista, ingresso alla porta — quindi due segni distinti sul biglietto | 2026-08-19 | 56 |
+| La navetta **gratuita non emette nulla**: esiste solo il biglietto d'ingresso | 2026-08-19 | 56 |
+| I dettagli della navetta vivono **su WhatsApp**, non nell'app: niente corse, orari, cambio o disdetta | 2026-08-19 | 56 |
+| Tetto biglietti **6 di default, modificabile** | 2026-08-19 | 49 |
+| Il **nodo legale** e' chiuso: non si riapre | 2026-08-14 | tutte |
+| L'interfaccia resta **in inglese**: nessuna traduzione in questa milestone | ereditata da v1.5 | tutte |
+| Un numero di fase e' **un'identita', non una posizione** | ereditata da v1.5 | tutte |
 
 ## Ordering Constraints
 
-Not preferences — each one has a failure mode behind it.
+Non preferenze: ognuno ha un modo di fallire dietro.
 
-- **Live defects first.** They exist in production today and are independent of the new architecture. The attendee-cache merge fix (FIX-05, FIX-06) must land before Phase 38: the live channel's whole purpose is to run that refresh constantly, which turns a rare race into the normal case.
-- **Database before application.** The capability definition (32) exists before the data-access layer (33) calls it, before the role model (43) adds a fourth role to it, before assignment policies (35) reuse it, before the route map (34) maps to it, and before the channel authorisation (38) reuses it a third time. One definition, several callers, only works if the definition comes first.
-- **The role model and assignments before the route collapse.** Phase 34 renders one surface from what the viewer is entitled to. Built before the fourth role (43) and before per-night assignments (35) exist, it would be built once for three roles and again for four roles plus assignments — the same "build it twice" cost the collapse exists to remove, relocated rather than avoided.
-- **Route collapse before formats and design.** Otherwise each is built twice, once per duplicated tree — the exact cost the collapse exists to remove.
-- **The door is not part of routing.** Its address moves in Phase 39, alone, because a redirect needs a network the door is designed not to need.
-- **The scanner is converted last** (42), and only after the door's behavioural corrections (31, 39) have shipped and been used at a real night.
+- **47 prima di tutto.** E' un difetto vivo sul percorso del denaro, indipendente
+  da questa milestone, e **49 lo amplifica**: aprire l'acquisto agli ospiti
+  moltiplica i drink venduti. La v1.5 si e' data la stessa regola e l'ha
+  rispettata — i difetti vivi vanno per primi.
+- **Il catalogo prima delle superfici.** Il catalogo dei format lo leggono la
+  barra della pagina eventi, le viste della Location, le pagine visual e i chip
+  di TASK. Cancellare un format e cambiarne il colore **dopo** aver costruito
+  quattro superfici significa riaprirle tutte e quattro.
+- **L'acquisto da ospite prima della rimozione delle iscrizioni.** Invertirli
+  apre una finestra in cui l'app **non vende piu' niente**. Non e' un rischio
+  teorico: e' l'unico ordine possibile.
+- **Il perno prima dell'impianto.** L'impianto costruisce cancelli; il perno
+  smonta i ruoli e gli stati su cui si appoggerebbero. Invertirli significa
+  costruire la barra di navigazione due volte.
+- **La porta non e' mai in pacchetto.** MEM-03 toglie un percorso che il service
+  worker precachea e che la coda offline conosce. Si verifica **su un dispositivo
+  con la rete spenta**, in una fase che non contiene nient'altro.
+- **TASK dopo la barra.** Il pulsante e la sezione arrivano insieme: una barra
+  con un pulsante che non porta da nessuna parte e' peggio di una barra senza.
+- **La navetta ultima, e trattata come lavoro sulla porta.** E' il secondo
+  percorso del denaro, e dal 2026-08-19 e' anche una modifica allo scanner, alla
+  coda offline e al service worker (SHTL-10..12). Nessuna delle due cose si
+  costruisce nello stesso respiro di un lavoro di impianto, e la seconda si
+  verifica **con la rete spenta, su due dispositivi**.
+- **I documenti in fondo.** Un modulo della persona aggiornato prima della
+  cancellazione descrive un futuro; aggiornato molto dopo, difende un morto.
 
-### Phase 44: The Production Calendar Comes Inside
+## Il gate della verifica, in un repository senza test
 
-**Goal**: The production calendar stops living outside the product. A night's format, series number, venue state and editorial anchors are readable in the app by the people entitled to them — imported from the local material into the database, and never through the repository.
-**Depends on**: Phase 32 (capability model), Phase 36 (format model and series numbering), Phase 41 (shared primitives, so the surface lands in the finished visual system rather than being converted afterwards)
-**Requirements**: PROD-01
-**Success Criteria** (what must be TRUE):
+Non esiste un test runner per il prodotto: `package.json` non ha script `test` e
+non esiste alcun file `*.test.*` o `*.spec.*`. **Nessuna fase di questa milestone
+puo' essere dichiarata verificata perche' «i test passano».**
 
-  1. A night is readable in the product carrying its format, its series number, its venue state and its editorial anchors — nobody opens a document outside the app to know what is on
-  2. The material reaches the database **without passing through the repository**: no venue under negotiation, no unannounced date and no line-up appears in a migration, a seed, a fixture, a test or a planning document
-  3. A night's editorial pieces are **derived** from its date and format rather than typed in, using the **weekday** rules measured on the real calendar on 2026-08-15 and recorded in `.claude/rules/production-calendar.md` (persona 1.14.0) — satellites: listing Tue, tonight Thu, recap Mon, LiveCut Mon; SunSet: listing Tue, LiveCut Mon+Tue; the night: timetable on the night itself, LiveCut Tue/Wed/Thu of the **next** night's week, after movie the Mon before the next edition's listing. **The anchors are weekdays, not day-offsets** — the night falls Friday *or* Saturday, so a stored offset turns one rule into two and flags a correct night as an error. *(This criterion previously read "listing at −2 … timetable at −1 … podcast cover at +4"; every one of those figures was wrong against the calendar, and the piece is called LiveCut, not podcast. Corrected rather than deleted so the change is visible.)*
-  4. The calendar is reachable only by someone the capability model admits, and the middleware, the page guard and the row-level policy ask the same question of the same definition
-  5. Moving a night recomputes everything downstream of it, and a series progressivo is appended, never renumbered
+La verifica minima e' `npm run build`, che e' anche il typecheck. Vi si
+aggiungono `npm run verify:routes`, `npm run verify:tokens`,
+`npm run verify:persona` — quest'ultimo obbligatorio in **ogni** fase che tocca
+`CLAUDE.md` o `.claude/**`, e da rilanciare **dopo** una cancellazione, mai
+prima: il build non conosce i glob della persona.
 
-**Plans**: 13 plans, in 7 waves
+Per tutto cio' che tocca **accesso, denaro, porta o venue** — cioe' 49, 50, 51,
+52 e 56 — serve una **procedura manuale scritta**: quali passi, con quale ruolo,
+e cosa si deve osservare. Scritta, non evocata: in un repository senza test e'
+l'unica prova che esistera'.
 
-Plans:
-**Wave 1**
+## Cosa NON entra in questa milestone
 
-- [x] 44-01-PLAN.md — The pure `.ics` reader: the literal source, RFC 5545 unfolding, and a nesting parser that constructs no `Date`
-- [x] 44-02-PLAN.md — The structural migration: six tables, the `ics_alias` column, and the published pipeline stored as weekday and anchor — zero rows of production material
+- **I campi di scouting esclusi dal seed della fase 45** — regime giuridico,
+  prontezza, vino naturale, le tre frasi di evidenza. Decisione del proprietario.
+- **La palette di MotionLab.** Non e' decisa, e non si inventa qui.
+- **Il manifesto sonoro di Resonate, RamaDub e MotionLab.** Non e' scritto.
+  *«Non e' ancora deciso»* e' la risposta corretta.
+- **Il tracciamento degli errori.** Resta assente, e 56 lo dichiara invece di
+  lasciar credere che qualcuno se ne accorgera'.
+- **La riapertura della gallery al pubblico.** Il cancello di NAV-02 e' costruito
+  per essere tolto, non per restare.
 
-**Wave 2** *(blocked on Wave 1)*
+## Domande aperte, da decidere dentro la milestone
 
-- [x] 44-03-PLAN.md — The classifier and the anchor resolver: four classes, three grammars, and three refusals that stay three
-- [x] 44-04-PLAN.md — The fourteenth capability key, six SELECT policies, the number-refusing trigger and the author-recording tick *(owner checkpoint: `requires_approved`)*
-- [x] 44-05-PLAN.md — The presentation layer: the date renderer that cannot render a bare date, the stage badge that cannot disappear, the commitment row that cannot draw a format
-
-**Wave 3** *(blocked on Wave 2)*
-
-- [x] 44-06-PLAN.md — The reconciler: a plan of writes, returned and never applied, keyed on `UID`, generating no number
-- [x] 44-07-PLAN.md — **[BLOCKING]** Apply both migrations through the Management API migrations endpoint, read back from the catalogues, prove nothing moved *(owner checkpoint: production write)*
-
-**Wave 4** *(blocked on Wave 3)*
-
-- [x] 44-08-PLAN.md — The golden-file check that makes the hand parser defensible, with a mutation proof per assertion
-- [x] 44-09-PLAN.md — S1: the map entry, the chronological archive, and the last import's effect at its foot
-
-**Wave 5** *(blocked on Wave 4)*
-
-- [x] 44-10-PLAN.md — The local import runner, the dry run, the real import, and the second run that must change nothing *(owner checkpoint: the dry run)*
-- [x] 44-11-PLAN.md — S2: one night, its pieces through the five-variant date renderer, and its checklist
-
-**Wave 6** *(blocked on Wave 5)*
-
-- [x] 44-12-PLAN.md — The two writes: the checklist tick, and the announcement that is the single bridge to `event_parties` *(owner checkpoints: the venue on an unacquired space, and the confirmation's wording)*
-
-**Wave 7** *(blocked on Wave 6)*
-
-- [x] 44-13-PLAN.md — The tab, the ten surface assertions as a command, and the four procedures no command in this repository can settle
-
-**UI hint**: yes
-
-### Phase 45: Production Sections, Section by Section
-
-**Goal**: Each production section is entitled separately, because they do not carry the same risk — scouting holds open negotiations, the visual system holds nothing secret. Holding one section grants no other.
-**Depends on**: Phase 44
-**Requirements**: PROD-02
-**Success Criteria** (what must be TRUE):
-
-  1. Entitlement is **per section**, not per role: a viewer holding one section is refused the others, and the refusal comes from the row-level policy — not from the navigation hiding a link
-  2. A space in the scouting section carries its stage — mapped, verified, contacted, acquired — and a stage that is not `acquired` is visible as such wherever the space is named
-  3. A section whose content is not yet written **declares the emptiness** instead of filling it, and no surface implies a decision the owner has not taken
-  4. Every section's read path is proven refused by a session that lacks its capability, exercised with a real role rather than a service key
-
-**Plans**: 18 plans, in 9 waves
-
-Plans:
-**Wave 1**
-
-- [x] 45-01-PLAN.md — The vocabularies, the two structural migrations and the five row types
-- [x] 45-02-PLAN.md — The instrument that authenticates as a real role, and its first authorised run
-- [x] 45-03-PLAN.md — The naming decision, and the key split as two migrations around one deploy
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 45-04-PLAN.md — The read arms for the five new tables, and the private archive bucket
-- [x] 45-05-PLAN.md — The declarations: four keys, four bindings, the calendar moved off the old string
-- [x] 45-06-PLAN.md — The two source gates, the reachability census, and 45-PROCEDURES.md
-- [x] 45-07-PLAN.md — Scores computed never stored, the shared stage badge, the two cells
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 45-08-PLAN.md — **[BLOCKING]** Apply the five additive migrations, read back from the catalogues, leave the old key granted
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 45-09-PLAN.md — **[BLOCKING]** Retire `production.read` once the deploy is live
-- [x] 45-10-PLAN.md — The seed: the desk archive at stage `mapped`, re-runnable, under its own authorisation
-- [x] 45-11-PLAN.md — The location surfaces, and the binding that moves with them
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 45-12-PLAN.md — The manifesto and visual surfaces, the three states, and the palette read at runtime
-- [x] 45-13-PLAN.md — The location writes: the gate first, the refusals named, two fields in every log
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 45-14-PLAN.md — The promotion act: the one crossing into `venues`, and the confirmation that says so
-- [x] 45-15-PLAN.md — The manifesto and visual writes, and the form that takes no state decision
-
-**Wave 7** *(blocked on Wave 6 completion)*
-
-- [x] 45-16-PLAN.md — The export: two documents, declared tables, and a closure walk that proves the rest unreachable
-
-**Wave 8** *(blocked on Wave 7 completion)*
-
-- [x] 45-17-PLAN.md — The dj photo archive, on the upload path that already strips
-
-**Wave 9** *(blocked on Wave 8 completion)*
-
-- [x] 45-18-PLAN.md — The four tabs, the full sweep, and the four things only a person can see
-
-**UI hint**: yes
-
-### Phase 46: Silent Failures on the Money Path
-
-**Goal**: A failure on a path that carries money produces an effect somebody can see. Today nine of them produce a confident, well-formatted, wrong statement instead — and this repository has **no error tracking**, so none of them reaches a human by itself.
-
-**Depends on**: nothing structural. **Runs BEFORE Phase 42** — the numbering is sequential because *a progressivo assigned is never renumbered*, and this roadmap already decouples number from order (33 → 43 → 35 → 34 → 36 → …).
-**Requirements**: OBS-02, OBS-03, OBS-04 — **created by this phase** in `.planning/REQUIREMENTS.md` under a new `### Observable Failure on the Money Path` heading (plan 46-01). `OBS-05` was proposed by the research and is **not** created: it covered `DI-41.2-09`, which left the perimeter with D-46-11.
-
-> **Why this phase exists and why it is not a bug list.** All nine were found by Phase 41.2 and are recorded, with `file:line` and consequence, in that phase's `deferred-items.md` **Group M**. Four came from research before any conversion; **five were found during execution and the research never saw them**. Every one was deliberately **recorded and not repaired**, because repairing them is *new copy on a money path* or *a payload change* — stop condition 2 — and a visual conversion is not where the product decides what someone is told when their money does something unexpected.
->
-> **They are not nine catches that say the wrong thing.** Two have no handler at all; one coalesces a failed count to a legitimate value; one writes a value and never reads it. They are **four different ways to produce a confident, well-formatted, wrong statement** — which is worse than a blank screen, because a blank screen is distrusted.
-
-**Success Criteria** (what must be TRUE):
-
-  1. Every one of the nine has an **observable effect** — visible to the person affected, or to staff, or as a measurable consequence in the data. `meta-gates.md` is explicit that with no error tracking, *logging the error is not sufficient*: the log is a place nobody looks
-  2. A refusal that has **distinguishable causes says which one**, wherever the next step differs. The recorded cases include five RSVP refusals arriving as one opaque sentence, and a refund refusal whose third cause is the only one where the right advice is *wait*
-  3. **The one that charges the wrong amount is fixed first**: a discount applied before signing up is written into the saved purchase intent and never read back, so a returning guest **pays full price with no refusal and no trace**. It is the only one of the nine that takes money that was not owed
-  4. **The monotone guards are untouched.** A payment reaching completion still corrects forward; nothing makes an amount that was taken look like it was not; no reveal becomes reachable earlier
-  5. Each fix is proved by an **observable outcome**, not by a log line — and where the outcome can only be seen by a person, it goes in a written procedure with its `Result: pending`, because there is still no test runner
-
-**Plans:** 7/7 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 46-01-PLAN.md — the three requirements, and every sentence this phase ships, approved in one pass (blocking checkpoint)
-- [x] 46-02-PLAN.md — the one refusal shape, and a comment on the accidental fallback that must survive
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 46-03-PLAN.md — the three permissive reads inside `purchaseTicket` say which failure they had (F-46-01, DI-TODO-A)
-- [x] 46-04-PLAN.md — the organizer's menu-closing command gets two distinguishable outcomes (DI-41.2-06, -06b)
-- [x] 46-05-PLAN.md — what a guest sees when the browser cannot hold their receipt (DI-41.2-02, -03, -04)
-- [x] 46-06-PLAN.md — the public event page stops printing counts it could not read (DI-41.2-08) — Critical, owner in the loop
-- [x] 46-07-PLAN.md — the refund cron tells the truth and terminates as failed (DI-TODO-B)
-
-**UI hint**: partial — several fixes are copy a person reads, which is a product decision before it is a visual one
-
-> **Two success criteria above are NOT met by this phase, and it is written here rather than discovered at verification.** Criterion 3 — the one that charges the wrong amount (`DI-41.2-09`) — and criterion 2's *"five RSVP refusals"* (`DI-41.2-20`) both live in code that D-46-11 put under review for deletion, together with `DI-41.2-01`, `-07`, `-09` … `-12` and `DEF-41.2-A`. The perimeter this phase was planned against is `46-CONTEXT.md` `<domain>`, which is narrower than the nine. If the members area survives that decision, those items return as their own phase.
->
-> **And one risk is accepted rather than closed** (D-46-07): the window in which a guest pays and no ticket is issued stays silent. The fix is an architecture change — hold the seat before payment — and it is the deferred phase that runs immediately after this one.
-
-> **The nine, by identifier**, in `41.2-deferred-items.md` Group M: `DI-41.2-01` … `DI-41.2-04` (research), `DI-41.2-06` … `DI-41.2-09` (execution), `DEF-41.2-A` (the refund refusal). `DI-41.2-10` … `DI-41.2-12` are adjacent intent-handling cases found alongside them and should be scoped in or out deliberately, not by accident.
-
----
-*Last updated: 2026-08-14 — Phase 46 added (silent failures on the money path), to run BEFORE Phase 42. Execution order stays decoupled from numbering: 33 → 43 → 35 → 34 → 36 → … → 41.2 → 46 → 42 → 44 → 45, with no phase renumbered*
+- **Una navetta pagata e non usata si rimborsa?** **Chiuso il 2026-08-19: no,
+  niente si rimborsa in automatico.** Il rimborso lo emette un admin o un
+  organizer, caso per caso, guardato di persona. 47 toglie l'unico cron che
+  faceva il contrario.
