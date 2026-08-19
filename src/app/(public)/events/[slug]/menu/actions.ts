@@ -470,3 +470,178 @@ export async function redeemDrinkTokenGuest(
 
   return { success: true };
 }
+
+/**
+ * L'esito di una richiesta di rimborso, come valore restituito e non come
+ * eccezione.
+ *
+ * ── Perche' un valore e non un `throw` ──────────────────────────────────────
+ *
+ * Next **oscura il messaggio** di un errore lanciato fuori da una server action
+ * in build di produzione: chi lo riceve legge una stringa opaca. Su un percorso
+ * che riguarda denaro, un rifiuto che arriva vuoto e' un rifiuto che nessuno puo'
+ * capire — e la persona che lo riceve non ha modo di sapere se deve riprovare,
+ * aspettare, o scrivere a qualcuno.
+ *
+ * ── Perche' sei cause e non una ─────────────────────────────────────────────
+ *
+ * `meta-gates.md`, controllo zero fallimenti silenziosi: nessun `catch` che
+ * collassi cause diverse in un unico messaggio. Il progetto ha gia' un precedente
+ * registrato — il form della newsletter che rispondeva *«Qualcosa e' andato
+ * storto»* a un problema di rete, a una chiave mancante e a un indirizzo gia'
+ * iscritto — e la conseguenza fu che divenne indebuggabile sia per chi lo subiva
+ * sia per chi sviluppava.
+ *
+ * Qui le sei cause portano a sei azioni diverse da parte di chi legge: due sono
+ * definitive (bevuto, gia' rimborsato), una e' un'attesa (richiesta gia'
+ * aperta), una e' una scadenza (finestra chiusa), due sono un guasto.
+ */
+export type DrinkRefundRequestOutcome =
+  | { ok: true }
+  | {
+      ok: false;
+      cause:
+        | "invalid_signature"
+        | "not_found"
+        | "already_redeemed"
+        | "already_refunded"
+        | "window_closed"
+        | "already_requested"
+        | "transport";
+      message: string;
+      /** Presente solo su `window_closed`: fino a quando si poteva chiedere. */
+      deadline?: string;
+    };
+
+/**
+ * Chiedere il rimborso di un token non riscattato — **anche senza account**.
+ *
+ * ── Cosa questa azione NON fa, ed e' la sua proprieta' principale ────────────
+ *
+ * **Non muove denaro.** Non chiama `refundTransaction`, non cambia lo stato del
+ * token, non tocca l'ordine. Crea una richiesta. La decisione — automatica per un
+ * token mai attivato, manuale per uno attivato e poi annullato — e' del piano
+ * 47-04, e vive altrove di proposito: un'azione che chiedesse *e* decidesse
+ * renderebbe impossibile cambiare la regola senza toccare il percorso pubblico.
+ *
+ * ── Perche' regge un ospite ─────────────────────────────────────────────────
+ *
+ * La credenziale e' **la firma del token**, come in `redeemDrinkTokenGuest`. Un
+ * ospite non ha una sessione, e dopo il perno della v1.6 nessun cliente avra' un
+ * account affatto. La verifica avviene sul server, e il client di servizio
+ * esegue solo dopo che la firma ha retto.
+ */
+export async function requestDrinkRefundGuest(
+  signedToken: string
+): Promise<DrinkRefundRequestOutcome> {
+  const tokenId = verifyTicketToken(signedToken);
+  if (!tokenId) {
+    return {
+      ok: false,
+      cause: "invalid_signature",
+      message: "Questo codice non è valido. Riapri il link che hai ricevuto.",
+    };
+  }
+
+  const serviceClient = getServiceClient();
+
+  const { data: token, error: tokenError } = await serviceClient
+    .from("drink_tokens")
+    .select("id, status, party_id, event_parties(date, end_time, menu_closes_at, refund_request_window_hours)")
+    .eq("id", tokenId)
+    .single();
+
+  if (tokenError || !token) {
+    // La causa di trasporto e quella di assenza sono due cose diverse: la prima
+    // si riprova, la seconda no. Un solo messaggio per entrambe manderebbe una
+    // persona a riprovare all'infinito su un token che non esiste.
+    if (tokenError && tokenError.code !== "PGRST116") {
+      logMoneyPathFailure("drink refund request token read", tokenError);
+      return {
+        ok: false,
+        cause: "transport",
+        message: "Non siamo riusciti a leggere il tuo drink. Riprova fra poco.",
+      };
+    }
+    return {
+      ok: false,
+      cause: "not_found",
+      message: "Questo drink non risulta più fra i nostri.",
+    };
+  }
+
+  if (token.status === "redeemed") {
+    // La causa che qualcuno contestera', quindi la piu' precisa delle sei.
+    return {
+      ok: false,
+      cause: "already_redeemed",
+      message: "Questo drink risulta servito, quindi non è rimborsabile.",
+    };
+  }
+
+  if (token.status === "refunded") {
+    return {
+      ok: false,
+      cause: "already_refunded",
+      message: "Questo drink è già stato rimborsato.",
+    };
+  }
+
+  // ── La finestra ────────────────────────────────────────────────────────────
+  //
+  // Si misura dalla CHIUSURA DEL MENU, come la grazia dell'attivazione, non
+  // dall'acquisto: sono due istanti diversi e sceglierne uno per distrazione
+  // sposta la scadenza di ore.
+  const party = token.event_parties as unknown as {
+    date: string;
+    end_time: string | null;
+    menu_closes_at: string | null;
+    refund_request_window_hours: number;
+  } | null;
+
+  if (party) {
+    const closeTimeStr = party.menu_closes_at ?? party.end_time;
+    if (closeTimeStr && party.date) {
+      const closeDt = menuCloseInstant(party.date, closeTimeStr);
+      const deadline = new Date(
+        closeDt.getTime() + party.refund_request_window_hours * 60 * 60 * 1000
+      );
+      if (new Date() > deadline) {
+        // Il messaggio dice FINO A QUANDO si poteva chiedere, non solo che e'
+        // tardi: un rifiuto che non dice quale scadenza si e' persa e' un
+        // rifiuto che la persona leggera' come arbitrario.
+        return {
+          ok: false,
+          cause: "window_closed",
+          message: "Il tempo per chiedere il rimborso di questo drink è scaduto.",
+          deadline: deadline.toISOString(),
+        };
+      }
+    }
+  }
+
+  const { error: insertError } = await serviceClient
+    .from("drink_refund_request")
+    .insert({ token_id: tokenId });
+
+  if (insertError) {
+    // `23505` e' la violazione del vincolo di unicita' sul token: c'e' gia' una
+    // richiesta. Non e' un guasto, ed e' l'unico codice che questo ramo
+    // interpreta — ogni altro resta un guasto e viene detto come tale.
+    if (insertError.code === "23505") {
+      return {
+        ok: false,
+        cause: "already_requested",
+        message: "Abbiamo già la tua richiesta per questo drink.",
+      };
+    }
+    logMoneyPathFailure("drink refund request insert", insertError);
+    return {
+      ok: false,
+      cause: "transport",
+      message: "Non siamo riusciti a registrare la richiesta. Riprova fra poco.",
+    };
+  }
+
+  return { ok: true };
+}

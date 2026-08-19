@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import PressableCard from "@/components/motion/PressableCard";
-import { Button } from "@/components/ui/Button";
+import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Chip";
 import { Dialog } from "@/components/ui/Dialog";
@@ -21,7 +21,7 @@ import {
 } from "@/lib/failure/money-path";
 import { formatDateTimeNoYear } from "@/utils/formatTime";
 
-import { redeemDrinkTokenGuest } from "./actions";
+import { redeemDrinkTokenGuest, requestDrinkRefundGuest } from "./actions";
 
 /**
  * The drinks a guest bought without an account, and the panel they hold up at
@@ -640,6 +640,93 @@ function GuestRedeemConfirmationModal({
 // GuestDrinkTokenCard — fork of DrinkTokenCard using guest redeem modal
 // ---------------------------------------------------------------------------
 
+/**
+ * Chiedere il rimborso di un drink non bevuto.
+ *
+ * ── Il comando non si nasconde MAI, e non lo disabilita il browser ──────────
+ *
+ * Il piano chiedeva di disabilitarlo fuori finestra. Farlo qui vorrebbe dire
+ * ricalcolare la scadenza **nel browser**, cioe' far decidere una scadenza di
+ * denaro all'orologio del cliente — che puo' essere sbagliato, e che chiunque
+ * puo' spostare.
+ *
+ * Quindi: il comando si vede sempre, il **server** dice se la finestra e'
+ * chiusa e **fino a quando**, e solo a quel punto la superficie lo spiega e
+ * smette di offrirlo. Un comando assente non si distingue da un prodotto che
+ * quel servizio non lo offre; un comando che mente sulla scadenza e' peggio di
+ * entrambi.
+ *
+ * ── E' una RICHIESTA, e il testo non deve lasciare credere altro ────────────
+ *
+ * La differenza fra «abbiamo ricevuto la tua richiesta» e «ti abbiamo
+ * rimborsato» e' la differenza fra un'attesa e un reclamo.
+ */
+function GuestRefundRequest({ signedToken }: { signedToken: string }) {
+  const [state, setState] = useState<
+    | { phase: "idle" }
+    | { phase: "sending" }
+    | { phase: "sent" }
+    | { phase: "refused"; message: string; final: boolean }
+  >({ phase: "idle" });
+
+  if (state.phase === "sent") {
+    return (
+      <p className="mt-2 text-xs text-ink-2">
+        Abbiamo ricevuto la tua richiesta. La guarda una persona: non è ancora un
+        rimborso.
+      </p>
+    );
+  }
+
+  if (state.phase === "refused") {
+    return (
+      <div className="mt-2">
+        {/* Il messaggio arriva INTERO dal server: sei cause, sei frasi. Un
+            riassunto qui rimetterebbe il «qualcosa è andato storto» che il
+            percorso e' costruito per non avere. */}
+        <p className="text-xs text-ink-2">{state.message}</p>
+        {!state.final && (
+          <button
+            type="button"
+            onClick={() => setState({ phase: "idle" })}
+            className={`mt-1 text-xs underline underline-offset-4 ${FOCUS_RING}`}
+          >
+            Riprova
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={state.phase === "sending"}
+      onClick={async () => {
+        setState({ phase: "sending" });
+        const esito = await requestDrinkRefundGuest(signedToken);
+        if (esito.ok) {
+          setState({ phase: "sent" });
+          return;
+        }
+        // «Definitivo» significa: riprovare non cambierebbe l'esito. Offrire
+        // «Riprova» su un drink gia' servito manderebbe una persona a premere
+        // un pulsante che non puo' funzionare.
+        const finale =
+          esito.cause === "already_redeemed" ||
+          esito.cause === "already_refunded" ||
+          esito.cause === "window_closed" ||
+          esito.cause === "already_requested" ||
+          esito.cause === "not_found";
+        setState({ phase: "refused", message: esito.message, final: finale });
+      }}
+      className={`mt-2 text-xs text-ink-2 underline underline-offset-4 disabled:opacity-50 ${FOCUS_RING}`}
+    >
+      {state.phase === "sending" ? "Invio…" : "Non l'ho bevuto — chiedi il rimborso"}
+    </button>
+  );
+}
+
 function GuestDrinkTokenCard({
   token,
   onRedeemed,
@@ -705,7 +792,14 @@ function GuestDrinkTokenCard({
           </div>
           <Badge className="shrink-0">Refunded</Badge>
         </div>
-        <p className="mt-2 text-xs text-ink-2">Automatically refunded</p>
+        {/*
+          Diceva «Automatically refunded», e dal 2026-08-20 non e' piu' vero:
+          nessun rimborso e' automatico (`DRK-01`). Un token arriva in questo
+          stato perche' QUALCUNO ha deciso, e la frase deve dire quello — o la
+          prima persona che legge crede che il sistema si sia mosso da solo e
+          non capisce perche' sul suo secondo drink non sia successo.
+        */}
+        <p className="mt-2 text-xs text-ink-2">Refunded</p>
       </Card>
     );
   }
@@ -730,6 +824,12 @@ function GuestDrinkTokenCard({
         <Button className="mt-3 w-full" onClick={() => setShowModal(true)}>
           {isActive ? "Active — tap to serve" : "Redeem"}
         </Button>
+        {/*
+          Solo su un token non riscattato: qui `status` e' 'purchased' o
+          'active'. Non e' offerto su un token servito ne' su uno gia'
+          rimborsato, che hanno rami loro sopra.
+        */}
+        <GuestRefundRequest signedToken={token.token} />
       </PressableCard>
 
       {/* Mounted only while open — one panel, not one per card. */}
