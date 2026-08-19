@@ -19,9 +19,36 @@ status: allestito e misurato fedele; nessuna procedura eseguita
 > password nota, e un ambiente dimenticato e' una superficie che nessuno guarda.
 >
 > **Questo documento resta perche' e' la ricetta.** Tutto cio' che serve a
-> rifarlo e' qui: il percorso di bootstrap con i suoi tre ostacoli, i nove
-> cataloghi da confrontare per dire che e' fedele, e cosa un laboratorio prova e
-> cosa no. Rifarlo costa poche ore, stavolta senza le sorprese.
+> rifarlo e' qui: il percorso di bootstrap con i suoi tre ostacoli, i cataloghi
+> da confrontare per dire che e' fedele, e cosa un laboratorio prova e cosa no.
+>
+> ## RIFATTO E RICANCELLATO LO STESSO GIORNO — 2026-08-19, quarta seduta
+>
+> Il laboratorio e' stato **ricostruito** per aggredire le voci che la terza
+> seduta aveva dichiarato «ancora fattibili», e **cancellato di nuovo** a fine
+> seduta con le stesse guardie. Esito in `.planning/v1.5-LAB-SITTING-3.md`.
+>
+> **La ricostruzione e' costata minuti invece che ore, e per una ragione
+> fragile:** gli script della seduta precedente erano ancora nella cartella
+> temporanea di quella sessione, per caso. Questa ricetta era **prosa senza
+> attrezzi**, e una ricetta senza attrezzi si esegue una volta sola.
+>
+> **Il caso e' stato tolto di mezzo.** Il percorso ora e' codice nel repository:
+>
+> | | |
+> |---|---|
+> | `scripts/lab-bootstrap.mjs` | schema senza il riferimento in avanti → 67 migration tollerando **solo** i duplicati → la chiave esterna rimessa → i tre oggetti che il percorso non porta |
+> | `scripts/lab-fidelity.mjs` | **dieci** cataloghi contro la produzione, in sola lettura su entrambi |
+> | `scripts/seed-lab-door.mjs` | la semina, con le quattro regole della rimozione |
+>
+> Restano da fare a mano solo la creazione del progetto e le sue chiavi.
+>
+> **Due correzioni al confronto dei cataloghi**, trovate rieseguendolo:
+> il catalogo degli enum cercava in `public`, dove il prodotto non ne ha —
+> diceva «identici» con **0 contro 0**, cioe' non misurava niente; e i **bucket
+> di storage** non erano confrontati, senza i quali la Prova 8 della fase 35 non
+> ha dove scrivere. Ora sono nove piu' uno, e lo script **dichiara** quando un
+> catalogo e' vuoto su entrambi i lati invece di contarlo come una conferma.
 >
 > **Cosa ha prodotto prima di sparire:** tre sedute (`v1.5-LAB-SITTING.md`,
 > `v1.5-LAB-SITTING-2.md`), B-1 e B-2 percorsi (`v1.5-B1-B2-FINDINGS.md`),
@@ -128,7 +155,8 @@ toccare la produzione:
   (due dispositivi), §7 (chi non e' assegnato non sente nulla)
 - `42-PROCEDURES.md` righe 1h, 1i, 2d, 3o, 3p, 3q, 3r, 3s
 - Le voci `human_needed` delle fasi 34, 35, 37, 43 che chiedono soltanto una
-  sessione di ruolo
+  sessione di ruolo — fra cui, misurate il 2026-08-19: `W-43-14-C`, `W-43-14-F`
+  e la **Prova 8** della fase 35 (l'upload per-notte, otto passi su otto)
 
 **Restano fuori dalla portata di qualunque ambiente:**
 
@@ -142,6 +170,15 @@ toccare la produzione:
 - **Il service worker della produzione.** Il laboratorio ha la sua origine,
   quindi le sue cache. Misura il *comportamento* delle regole `NetworkFirst`
   24h/32 voci, non lo stato caldo della cache di produzione.
+- **`M-43-05` e `M-43-06`, la riconciliazione di `MASTER_EMAIL`.** Sembravano
+  fattibili qui e **non lo sono**, misurato il 2026-08-19: la riconciliazione
+  gira **solo** dentro `/api/auth/callback` dopo uno scambio di codice riuscito,
+  e un codice vero chiede che una mail arrivi. Supabase **valida il dominio prima
+  di spedire**, quindi nessun indirizzo di laboratorio lo ottiene; un link
+  generato dal server e' sempre implicito; una riga di `auth.flow_state` scritta
+  a mano GoTrue la rifiuta. La **sostanza** della prova e' stata misurata al
+  livello sotto la rotta (sei casi, conteggio dei master mai sceso), l'anello
+  della rotta no. Vedi `v1.5-LAB-SITTING-3.md`.
 
 ## La sessione di ruolo, misurata
 

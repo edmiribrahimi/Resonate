@@ -90,9 +90,19 @@ dichiarate.
    Non è differito: è **perso**. La riga 3m doveva misurare lo scanner non
    convertito, e quel codice non esiste più.
 2. **88 voci `human_needed` su dodici verifiche**, tutte della stessa specie.
-   La seduta di laboratorio del 2026-08-19 ne ha aggredita una parte —
-   `v1.5-LAB-SITTING.md` — ma la stanza buia, la tasca e i due dispositivi
-   restano dovuti.
+   Quattro sedute di laboratorio il 2026-08-19 (`v1.5-LAB-SITTING.md`,
+   `-2.md`, `-3.md`) ne hanno **chiuse 17**. Delle 41 aggredite ne restano 18:
+   **12 non eseguibili in nessun ambiente** (un telefono in una mano, una
+   fotocamera, IndexedDB, una stanza buia — piu' `M-43-05/06`, che chiede una
+   casella postale vera), **4 bloccate dal Reperto 5**, **2 impossibili per
+   costruzione**. Il laboratorio e' stato ricostruito e ricancellato lo stesso
+   giorno; la ricetta e ora **anche gli attrezzi** stanno in `42-LAB.md`,
+   `scripts/lab-bootstrap.mjs` e `scripts/lab-fidelity.mjs`.
+   **Tre difetti in produzione trovati cosi', che nessun gate aveva visto:**
+   il link d'invito non imposta una password; la rivelazione manuale del venue
+   non legge i propri destinatari; e **su un accesso con password la
+   riconciliazione di `MASTER_EMAIL` non gira mai** — la prova scritta per
+   accorgersene non puo' fallire.
 3. **La porta in produzione non è mai stata esercitata**: zero account `staff`,
    zero assegnazioni, zero scansioni. Il meccanismo è provato in laboratorio; la
    sua adozione no.
