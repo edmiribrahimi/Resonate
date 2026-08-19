@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Platform Layout, Access Model & Door Fixes
-status: executing
-stopped_at: Phase 42 executed 12/12, verification human_needed — criterion 3 permanently unclosable (DEF-42-04); 0/3 roadmap success criteria closed; 9 procedures runnable at the first real door
+status: milestone-closed
+stopped_at: v1.5 CHIUSA il 2026-08-19 accettando il debito — 14/76 requisiti, 88 human_needed, 1 criterio perso in modo permanente. Prossima milestone da aprire.
 last_updated: "2026-08-18T17:50:18.113Z"
-last_activity: 2026-08-18 -- Phase 42 executed and verified; 42-VERIFICATION.md human_needed, 50/50 must-have, 0/3 criteri
+last_activity: 2026-08-19 -- milestone v1.5 archiviata; 30 voci differite riconosciute; non spedita
 progress:
   total_phases: 18
   completed_phases: 17
@@ -31,7 +31,40 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 Phase: 42 (scanner-conversion) — EXECUTING
 quattro, tre onde, gate automatici verdi. `39-VERIFICATION.md` e' `human_needed`:
 i criteri 2 e 3 li chiude solo `39-DOOR-PASS.md` §8, alla serata di fine v1.5,
-insieme al lotto della fase 38 (D-39-07). Vedi `## Blockers`.
+insieme al lotto della fase 38 (D-39-07). Vedi `## Deferred Items
+
+**Trenta voci riconosciute e differite alla chiusura della v1.5, il 2026-08-19.**
+Riconosciute significa **viste e accettate**, non risolte: nessuna di queste è
+chiusa da questa chiusura, e la milestone si archivia portandosele dietro
+dichiarate.
+
+| Categoria | Voce | Stato |
+|---|---|---|
+| todo | `form-untick-venue-secret-leaves-no-trace` | aperto — venue-secrecy, access-gating |
+| todo | `module-load-throws-500-the-whole-middleware-surface` | aperto |
+| todo | `postgrest-details-leaks-the-row` | aperto — access-gating, checkin-offline |
+| todo | `profiles-email-not-unique` | aperto |
+| uat | `07-UAT.md` | testing |
+| uat | `32-HUMAN-UAT.md`, `33-HUMAN-UAT.md`, `35-UAT.md`, `37-HUMAN-UAT.md`, `38-HUMAN-UAT.md`, `39-HUMAN-UAT.md`, `43-HUMAN-UAT.md`, `46-UAT.md` | partial |
+| uat | `35-HUMAN-UAT.md` | written |
+| verifica | `24-VERIFICATION.md`, `45-VERIFICATION.md` | gaps_found |
+| verifica | `05`, `34`, `35`, `37`, `38`, `39`, `40`, `41`, `41.1`, `41.2`, `43`, `44`, `46` | human_needed |
+| domanda aperta | `40-CONTEXT.md` | 1 |
+
+**Le tre che pesano più delle altre, e la ragione per cui:**
+
+1. **Il criterio 3 della fase 42 non è chiudibile e non lo sarà mai** — `DEF-42-04`.
+   Non è differito: è **perso**. La riga 3m doveva misurare lo scanner non
+   convertito, e quel codice non esiste più.
+2. **88 voci `human_needed` su dodici verifiche**, tutte della stessa specie.
+   La seduta di laboratorio del 2026-08-19 ne ha aggredita una parte —
+   `v1.5-LAB-SITTING.md` — ma la stanza buia, la tasca e i due dispositivi
+   restano dovuti.
+3. **La porta in produzione non è mai stata esercitata**: zero account `staff`,
+   zero assegnazioni, zero scansioni. Il meccanismo è provato in laboratorio; la
+   sua adozione no.
+
+## Blockers`.
 
 **Fase 38, stato reale al 2026-08-11.** 38-01…38-06 eseguiti, uniti e con build
 verde dopo ogni fusione d'onda. **38-07 e' fermo a 1 task su 3**: ha raccolto le

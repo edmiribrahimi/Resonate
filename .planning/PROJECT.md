@@ -10,11 +10,41 @@ Members can discover events, confirm attendance, and buy tickets within a truste
 
 ## Current State
 
-**Shipped:** v1.4 — Check-in Overhaul (2026-03-11)
+**Chiusa:** v1.5 — Platform Layout, Access Model & Door Fixes (2026-08-19)
 
-Delivered: party selection for check-in, continuous QR scanner with green/red flash + haptic feedback, scan history with undo, offline support via IndexedDB + service worker, membership door check-in with attendance recording, torch toggle for dark venues.
+Consegnato: modello di capability nel database con assegnazioni per serata, uno
+strato di accesso dati lato server, una sola superficie di lavoro, format e
+numerazione di serie, rivelazione manuale del venue, freschezza dell'elenco in
+tempo reale, l'indirizzo proprio della porta, il sistema visivo su tutte le
+superfici incluso lo scanner, il calendario di produzione dentro il prodotto con
+le sue quattro sezioni entitolate separatamente, e le riparazioni dei fallimenti
+silenziosi sul percorso del denaro.
 
-**Next Milestone:** v1.5 — Platform Layout, Access Model & Door Fixes
+**Chiusa accettando il debito, non `passed`.** Il codice c'e' ed e' verde a ogni
+gate; **nessuna delle diciotto verifiche di fase e' `passed`** perche' 62
+requisiti su 76 aspettano un'osservazione umana, e **un criterio e' perso in modo
+permanente** — il criterio 3 della fase 42 (`DEF-42-04`). Il registro sta in
+`MILESTONES.md`, l'audit in `v1.5-MILESTONE-AUDIT.md`.
+
+**NON SPEDITA.** Alla chiusura `main` e' avanti a `origin/main`, e la regola di
+deploy della fase 39 vale: si spedisce in un giorno **senza serata**, e la prima
+richiesta la fa chi spedisce.
+
+**Next Milestone:** da definire — `/gsd:new-milestone`
+
+> **La direzione e' gia' decisa dal proprietario il 2026-08-14, e aspetta un
+> contenitore:** re:sonate smette di essere una community e diventa una
+> **piattaforma**. Nessun cliente si iscrive piu', solo organizer e staff fanno
+> login, e cadono membership card, event history e referral. Con esse cade
+> l'intero asse dello stato: senza iscrizioni, `pending` non significa piu'
+> nulla.
+>
+> **La domanda che va risposta prima della prima riga di codice:** se nessun
+> cliente ha un account, **chi possiede un biglietto?** E' la scelta che decide
+> cosa legge lo scanner alla porta.
+>
+> Restano aperte anche: il cambio di API key e merchant code SumUp (proprietario,
+> 2026-08-16, non fatto) e le voci differite delle fasi 41.2, 42 e 45.
 
 ## Current Milestone: v1.5 Platform Layout, Access Model & Door Fixes
 
