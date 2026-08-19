@@ -55,7 +55,6 @@ intensita' del sole (piu' caldo in stagione, piu' viola in chiusura).
 - **Gate `@ Secret Venue`**: L'after party **non svela la location** nella comunicazione. E' la controparte editoriale di `venue-secrecy.md`: la stessa regola, sull'altro canale. Un indirizzo in una storia annulla un cron.
 - **Gate grid-safe**: Le informazioni critiche — logo, titolo, data grande, dj, orari — stanno **dentro il quadrato centrale**, la zona sempre visibile nella griglia del profilo. Un post bello che nella griglia perde la data e' un post che non comunica.
 - **Gate data leggibile nel grid**: Il giorno e' grande e leggibile anche in miniatura. E' l'unica informazione che deve sopravvivere a ogni ridimensionamento.
-- **Gate canale per format**: **SunSet va solo in storie → evidenze. Il feed resta al notturno.** Non e' una preferenza estetica: e' cio' che tiene il profilo coerente con l'identita' della notte.
 - **Gate ordine di pubblicazione**: Invitation → After Party → After Movie. **Nel grid l'ordine si inverte** (il piu' recente va in alto a sinistra): After Movie · After Party · Invitation. Chi impagina deve pensare al risultato finale nella griglia, non alla sequenza di pubblicazione. Di un carosello, nel grid appare **solo la cover**.
 - **Gate cielo**: Sempre notturno stellato. **Niente palme** — il riferimento non e' tropicale.
 - **Gate sigla corrente**: Ogni materiale porta la sigla del format **come e' oggi**: il giovedi' e' `RMDB-BZ-###` / `RMDB-MR-###`, con progressivo per locale. Le sigle ritirate non si citano. Vedi `production-calendar.md`, gate una sigla ritirata non si cita.
@@ -85,8 +84,8 @@ Quello che resta qui e' l'unico punto in cui i due domini si toccano:
 
 ## La grafia, che non e' una preferenza tipografica
 
-- **Gate grafia del brand**: Si scrive **`re:sonate` con la e normale** — nelle grafiche, nell'app, nelle mail, in prosa, ovunque. **La e rovesciata `ɘ` esiste solo dentro il logo** ed e' un segno disegnato, non un carattere da digitare: incollarla in un testo produce una parola che i motori di ricerca, i lettori di schermo e la casella di posta di qualcuno non riconoscono. I format sono **`SunSet`**, **`RamaDub`**, **`MotionLab`** — CamelCase, mai maiuscolo pieno.
-- **Gate il nome sull'app e' il nome del format**: Un satellite si chiama **`RamaDub x <venue>`** con il progressivo per locale; il tramonto e' **`SunSet`**; la notte e' **`re:sonate`**; la serata doppia si comunica come **`SunSet × re:sonate`** anche se in calendario e nell'app sta come due voci. La serie di Nizza ha numerazione propria e non entra nella sequenza della notte. Sono gli stessi nomi in tre posti — app, calendario, materiali — e **il format e' la fonte del nome**, non il contrario.
+- **Gate grafia del brand**: Si scrive **`re:sonate` con la e normale** — nelle grafiche, nell'app, nelle mail, in prosa, ovunque. **La e rovesciata `ɘ` esiste solo dentro il logo** ed e' un segno disegnato, non un carattere da digitare: incollarla in un testo produce una parola che i motori di ricerca, i lettori di schermo e la casella di posta di qualcuno non riconoscono. I format sono **`RamaDub`** e **`MotionLab`** — CamelCase, mai maiuscolo pieno.
+- **Gate il nome sull'app e' il nome del format**: Un satellite si chiama **`RamaDub x <venue>`** con il progressivo per locale; la notte e' **`re:sonate`**. La serie di Nizza ha numerazione propria e non entra nella sequenza della notte. Sono gli stessi nomi in tre posti — app, calendario, materiali — e **il format e' la fonte del nome**, non il contrario. *(La serata doppia tramonto + notte non esiste piu': il format del tramonto e' stato cancellato il 2026-08-20.)*
 
 ## Quality Gates — produzione dei materiali
 
@@ -110,12 +109,11 @@ Quello che resta qui e' l'unico punto in cui i due domini si toccano:
 - When naming RamaDub's colour: `#6E8BFF`, flat and never a gradient
 - When tempted to reuse the sunset gradient: don't — its format is gone and it passed to nobody
 - When writing the brand anywhere: `re:sonate` with a normal e — the `ɘ` lives only inside the logo
-- When naming a format: SunSet, RamaDub, MotionLab — CamelCase, never all caps
+- When naming a format: RamaDub, MotionLab — CamelCase, never all caps
 - When naming an event in the app: take the name from the format, with its per-venue progressivo
 - When designing anything for an after party: write `@ Secret Venue`, never the address
 - When laying out a post: keep logo, title, date, djs and times inside the grid-safe square
 - When planning a publication sequence: check how it reads in the grid, reversed
-- When producing SunSet material: stories and highlights only, never the feed
 - When using a format sigla: use today's, and never name a retired one
 - When building a RamaDub piece: photo full-bleed, two scrim bands, text inside them — never a frame, never bare text
 - When a highlight needs a cover: design it as its own piece, centred inside 720×720
@@ -126,7 +124,7 @@ Quello che resta qui e' l'unico punto in cui i due domini si toccano:
 - When crediting an artist: verify the spelling and the @ at the source
 - When a space is not acquired in writing: keep its name out of every material
 - When briefing the external designer: hand over the capitolato, never the address
-- When a format has no palette yet: keep it neutral, never borrow SunSet's sunset
+- When a format has no palette yet: keep it neutral, never borrow another's colour
 - When the photo may not arrive: design the no-photo piece in advance
 - When a listing is due: pull from the archive, since that night's photo cannot exist yet
 - When a material names an exhibition space: budget the space's approval inside the two days

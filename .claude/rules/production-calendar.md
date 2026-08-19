@@ -35,7 +35,6 @@ podcast e after movie, e ognuno di questi ha un'ancora temporale precisa.
 | Sigla | Format | Orario | Giorno | Cadenza |
 |---|---|---|---|---|
 | `RSNT` | Resonate — la notte | 22:00 → 06:00 | venerdi' o sabato | irregolare, 8 edizioni ago26→lug27, distanza 1–3 mesi |
-| `SNST` | SunSet — il tramonto | 18:00 → 22:00 | — | **3 date l'anno**, solo aprile–ottobre |
 | `RMDB-BZ` / `RMDB-MR` | RamaDub — il satellite | 18:00 → 22:00 | **giovedi'** su tutte le date **pianificate** | un satellite ogni 14 giorni — **tranne l'apertura di stagione**, dove le prime tre date corrono a 7 |
 | `MTNLB-<sede>` | MotionLab — il luogo | 18:00 → 22:00 | **non deciso** | **nessuna data in calendario** — vedi sotto |
 | `RSNT-PRLN` | **serie** di Resonate — al Perlone Club di Nizza | come RSNT | — | serie a se', numerazione propria, guest opzionale |
@@ -69,8 +68,17 @@ sommato a quello di prima.**
 > dichiarava era un'intenzione, non un ritmo in atto. E' la stessa correzione
 > della rotazione qui sopra: un format senza sede non ha cadenza, ha un'attesa.
 
-**SunSet e' sempre in coppia con la notte**: 18→22 il tramonto, 22→06 la notte,
-comunicato come *SunSet × re:sonate*. Da giugno a settembre il format si ferma.
+> **Un quarto format e' stato CANCELLATO il 2026-08-20** (`CAT-01`, decisione del
+> proprietario): il tramonto, 18→22, tre date l'anno, che si comunicava in coppia
+> con la notte. Non e' stato ritirato — **e' stato rimosso dal catalogo**, con la
+> sua serie, i suoi due pesi di pipeline e il suo manifesto sonoro.
+>
+> **Non si cita piu'**, nemmeno per spiegare la storia: vale il gate *una sigla
+> ritirata non si cita*, e vale a maggior ragione per una cancellata. Resta solo
+> nel tracker di produzione, per memoria, per scelta esplicita.
+>
+> Il suo colore, il gradiente arancio → rosa → viola → nero, **non e' passato a
+> nessuno**. Vedi `brand-visual-system.md`.
 
 ## La pipeline, e la sua unica eccezione
 
@@ -81,22 +89,6 @@ comunicato come *SunSet × re:sonate*. Da giugno a settembre il format si ferma.
 - **Misurato sulle due date pianificate** (`RMDB-BZ-001`, `RMDB-MR-001`): quattro
   ancore su quattro conformi. Due date non sono una serie storica, e la riga non
   pretende di esserlo
-
-**SunSet ha la sua pipeline, e non e' quella dei satelliti:**
-- **LiveCut: DUE puntate, a +2 e +3** dal sabato — lunedi' e martedi' dopo.
-  Misurato su 3 edizioni su 3, il 2026-08-15. *(Questa riga diceva un solo
-  LiveCut a +2: era vero sul calendario di ieri, non su quello di oggi.)* Vale
-  anche qui **uno per dj**, la stessa regola della notte: SunSet ne ha due
-  perche' i dj sono due, e la notte ne ha tre. **Il numero di puntate discende
-  dalla line-up, non dal format** — cambiarla cambia il piano di pubblicazione
-- **Listing: molto piu' in anticipo di un satellite.** Esce **di martedi'**, ma
-  **11 o 18 giorni prima**, non i 4 del martedi' immediatamente precedente.
-  Misurato su tutte e tre le edizioni in calendario: −11, −18, −11
-- **L'anticipo non e' un numero fisso, e non si inventa qui.** Finche' non e'
-  dichiarato, un materiale SunSet non puo' dedurre la data del proprio listing:
-  si legge dal calendario
-- Ragione di dominio: SunSet e' **tre date l'anno**, non un satellite ogni
-  quattordici giorni. Un annuncio con piu' respiro e' coerente con la rarita'
 
 > ## `LiveCut` e `Podcast` sono due cose diverse, e una delle due non esiste ancora
 >
@@ -163,7 +155,6 @@ aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 > | | serata | listing | tonight | recap | LiveCut | after movie |
 > |---|---|---|---|---|---|---|
 > | **RamaDub** | gio | mar | gio | lun | lun | — |
-> | **SunSet** | sab | mar | — | — | lun + mar | — |
 > | **Perlone** | sab | mar | — | — | lun | — |
 > | **La notte** | ven **o** sab | mar | — | — | mar mer gio | lun |
 >
@@ -197,7 +188,6 @@ aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 - **Gate un podcast per dj**: Il numero di puntate discende dalla line-up. Cambiare la line-up cambia il numero di podcast: non e' un dettaglio editoriale, e' una modifica al piano di pubblicazione.
 - **Gate numerazione senza salti**: I progressivi di serie non hanno salti ne' duplicati. Un progressivo assegnato **e' gia' su una locandina**: si aggiunge in coda, non si rinumera. E' una guardia monotona (vedi `meta-gates.md`).
 - **Gate rotazione**: Il ciclo Booze → MotionLab → Muro e' un **piano dichiarato**, non un fatto verificato: al 2026-08-15 nessun satellite e' andato in onda, e in calendario la rotazione corre **a due** perche' MotionLab non ha date. Romperla resta una decisione da dichiarare — ma va dichiarata come cambio di piano, non come interruzione di una serie che non e' ancora cominciata. **E il conteggio si rilegge dal calendario ogni volta che lo si cita.**
-- **Gate finestra stagionale**: SunSet esiste solo tra aprile e ottobre, tre volte l'anno. Una quarta data o una data invernale contraddice l'identita' del format, non solo il calendario.
 - **Gate segnaposto dichiarato**: MotionLab e' a calendario di giovedi' **solo come segnaposto**: il suo giorno non e' deciso. Finche' non lo e', ogni materiale che ne dichiara il giorno e' provvisorio e va marcato tale. Trattare un segnaposto come un fatto e' il modo in cui si stampa la data sbagliata.
 - **Gate una sigla ritirata non si cita**: Il giovedi' e' `RMDB-BZ-###` e `RMDB-MR-###`, **una sigla per locale, con progressivo che corre per locale**. La sigla precedente del giovedi' e' stata **ritirata il 4 agosto 2026**: non ha una coda aperta e non va piu' nominata, nemmeno per spiegare la storia. Al prossimo cambio di sigla vale comunque il principio: ogni cambio va accompagnato da una ricognizione di cosa e' gia' uscito, **e la ricognizione si chiude dichiarandola chiusa** — altrimenti il gate resta acceso su un lavoro che non esiste piu'.
 - **Gate il calendario batte il tracker**: Quando il calendario e un documento di lavoro piu' vecchio dicono cose diverse, **vince il calendario** — e l'altro documento non e' "una versione alternativa": e' **la fonte da correggere**. Precedente registrato e chiuso il 5 agosto 2026: sull'orario del secondo atto della serata doppia il tracker di luglio divergeva dal calendario; **l'orario e' quello di `RSNT`, 22:00 → 06:00**, e il tracker era da correggere. Finche' una divergenza del genere resta aperta, **blocca la timetable**: e' un dato che si stampa.
@@ -218,4 +208,4 @@ aggiungerli a un satellite allargherebbe il format, non il piano editoriale.
 - When MotionLab's weekday appears in any material: mark it provisional until decided
 - When changing a format sigla: audit what has already been published under the old one, then declare the audit closed
 - When a sigla has been retired: stop naming it — not even as historical context
-- When asked what a format sounds like: answer from the manifesto if written, say "not yet defined" if not
+- When asked what a format sounds like: no format has a written manifesto — say "not yet defined" and cite the declared coordinates

@@ -21,6 +21,14 @@ sede per una data
 contattato, o acquisito. Sono quattro cose diverse e oggi la maggior parte del
 lavoro sta al primo gradino.
 
+> **Un quarto insieme di pesi e' uscito il 2026-08-20** con il format del
+> tramonto (`CAT-01`). **58 spazi su 184 erano stati cercati per lui** — esterni,
+> rivolti a ovest, rooftop — e **sono rimasti tutti in archivio**: hanno perso
+> l'etichetta che diceva perche' furono cercati, non i loro attributi ne' i
+> punteggi sugli altri format. L'attributo *esterno rivolto al tramonto* resta e
+> continua a comparire su una scheda: smette solo di alimentare un punteggio,
+> perche' nessun format lo pesa piu'.
+
 ## Il fatto che governa tutto il resto
 
 Lo scouting copre **184 spazi su quattro format**, ed e' **tutto lavoro a
@@ -35,7 +43,6 @@ no in fretta**, non a costruire un ranking elegante.
 | Format | Criterio dominante | Pesi (su 10) |
 |---|---|---|
 | **Resonate** | carattere ed esclusivita' | carattere **4** · capienza in target 150–300 **2,5** · musica ammessa **2** · agibilita' fino a tardi **1,5** |
-| **SunSet** | uno spazio esterno rivolto a ovest | esterno/tramonto **4** · musica e dj **3** · impianto **1,5** · console **1,5** |
 | **MotionLab** | la cornice espositiva | cornice **4** · musica gia' di casa **3** · impianto **1,5** · agibilita' serale **1,5** |
 | **RamaDub** | la vocazione all'aperitivo | vocazione, musica, audio, console, capienza — **pesi non ancora dichiarati** |
 
