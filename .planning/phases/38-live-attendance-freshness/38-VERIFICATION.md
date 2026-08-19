@@ -2,6 +2,8 @@
 phase: 38-live-attendance-freshness
 verified: 2026-08-11T14:30:00Z
 status: human_needed
+lab_sitting_4: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-4.md` — P7 — la meta' RLS OSSERVATA con sessioni vere (ognuno vede il proprio e nient'altro). La meta' del canale realtime resta dovuta: chiede due dispositivi.
 score: 1/7 requirements closed (LIVE-07); 6/7 structurally built and applied to production, behaviourally unconfirmed
 overrides_applied: 0
 human_verification:

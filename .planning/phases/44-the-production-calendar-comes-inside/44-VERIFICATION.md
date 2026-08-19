@@ -2,6 +2,8 @@
 phase: 44-the-production-calendar-comes-inside
 verified: 2026-08-15T00:00:00Z
 status: human_needed
+lab_sitting_4: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-4.md` — P1 OSSERVATA a tre livelli con account veri (tabella-verdetto completa meno la gamba organizer/pending, impossibile per costruzione). P4.1 OSSERVATA per intero; P4.2 solo il passo 64.
 score: 5/5 structural criteria verified — 4 of them still need a written procedure result before they are PROVEN, not merely built
 overrides_applied: 0
 human_verification:

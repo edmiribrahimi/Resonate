@@ -9,6 +9,7 @@ import { verifyTicketToken } from "@/utils/qr";
 import { menuCloseInstant } from "@/utils/datetime";
 import { logMoneyPathFailure } from "@/lib/failure/money-path";
 
+import { redactDbError } from "@/lib/errors/redact";
 /**
  * Why the three causes below travel as a VALUE, and why they stay three.
  *
@@ -331,7 +332,7 @@ export async function purchaseDrinksGuest(
     });
 
   if (insertError) {
-    console.error("Failed to create drink order:", insertError);
+    console.error(`[drinks.order_insert_failed] ${redactDbError(insertError)}`);
     throw new Error("Failed to initiate drink purchase");
   }
 

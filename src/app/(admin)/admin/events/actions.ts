@@ -15,6 +15,7 @@ import {
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
 
+import { redactDbError } from "@/lib/errors/redact";
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
 function getServiceClient() {
@@ -1583,7 +1584,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     });
 
   if (insertError) {
-    console.error("Failed to create pending purchase:", insertError);
+    console.error(`[tickets.pending_purchase_insert_failed] ${redactDbError(insertError)}`);
     throw new Error("Failed to initiate purchase");
   }
 
@@ -1873,7 +1874,7 @@ export async function purchaseDrinks(
     });
 
   if (insertError) {
-    console.error("Failed to create drink order:", insertError);
+    console.error(`[drinks.order_insert_failed] ${redactDbError(insertError)}`);
     throw new Error("Failed to initiate drink purchase");
   }
 

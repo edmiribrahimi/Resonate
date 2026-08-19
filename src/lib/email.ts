@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 
+import { redactDbError } from "@/lib/errors/redact";
 // Lazy initialization to avoid build-time errors when env vars are missing
 let _resend: Resend | null = null;
 export function getResend() {
@@ -35,7 +36,7 @@ export async function sendEmail({
   });
 
   if (error) {
-    console.error("Email send failed:", error);
+    console.error(`[email.send_failed] ${redactDbError(error)}`);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 

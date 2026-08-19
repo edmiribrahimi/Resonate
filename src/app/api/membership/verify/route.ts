@@ -15,6 +15,7 @@ import type {
 } from "@/lib/door/outcome";
 import type { UserRole } from "@/types/database";
 
+import { redactDbError } from "@/lib/errors/redact";
 /** The subject of every row this route writes. FIX-13: a thing, never a person. */
 const SUBJECT_TYPE = "membership" satisfies DoorSubjectType;
 
@@ -282,7 +283,7 @@ export async function POST(request: Request) {
       .single();
 
     if (partyError && partyError.code !== "PGRST116") {
-      console.error("[membership-verify] party lookup failed:", partyError);
+      console.error(`[membership-verify.party_lookup_failed] ${redactDbError(partyError)}`);
       return NextResponse.json(
         { valid: false, error: "Party lookup failed" },
         { status: 500 }

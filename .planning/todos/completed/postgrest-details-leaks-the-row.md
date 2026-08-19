@@ -63,3 +63,17 @@ normale di un'operazione quotidiana.
 Questo vincolo e' stato consegnato agli esecutori dei piani `43-06`, `43-09` e
 `43-11` dentro i loro prompt. Questo todo resta aperto per i **siti esistenti**,
 che nessun piano della fase 43 possiede.
+
+
+---
+
+## CHIUSO il 2026-08-19
+
+Una definizione sola — `src/lib/errors/redact.ts` — applicata ai **sei siti veri**
+che possono portare un errore PostgREST in un log del server. I cinque della
+porta erano **gia' sicuri per costruzione**: `getAccessContext` lancia un `Error`
+con categoria e codice, non l'oggetto PostgREST, quindi `details` non c'e' mai
+stato.
+
+La fuga si e' ripresentata da sola durante la seduta, in un `DETAIL: Failing row
+contains (…)` restituito da un vincolo violato: non era un'ipotesi.

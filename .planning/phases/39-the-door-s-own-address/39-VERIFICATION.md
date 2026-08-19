@@ -2,6 +2,8 @@
 phase: 39-the-door-s-own-address
 verified: 2026-08-11T15:34:19Z
 status: human_needed
+lab_sitting_4: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-4.md` — §0-§1 OSSERVATA sul filo, entrambi gli indirizzi: master e staff assegnato 200, membro 307, anonimo 307 verso /login?redirect=… — e quel parametro si chiama `redirect` mentre la pagina di accesso legge `next`.
 score: 4/6 must-haves verified in code; 2 require the end-of-v1.5 sitting by design (D-39-07)
 overrides_applied: 0
 human_verification:

@@ -1,18 +1,54 @@
 ---
 phase: 05-event-management
 verified: 2026-02-25T12:30:00Z
-status: human_needed
+status: passed
+status_note: >
+  Le tre voci human_verification sono state RISOLTE COME OBSOLETE il 2026-08-19,
+  non eseguite: descrivono un prodotto che non esiste piu'. Nessuna osservazione
+  umana del comportamento originale della fase 05 e' mai stata fatta, e non e'
+  piu' possibile farla, perche' quel comportamento e' stato sostituito. Ogni voce
+  porta la sua evidenza contro il codice corrente.
 score: 5/5 must-haves verified
 human_verification:
+  # TUTTE E TRE RISOLTE COME OBSOLETE il 2026-08-19. Verificate contro il codice
+  # corrente prima di chiuderle; nessuna e' stata eseguita, perche' non c'e' piu'
+  # niente da eseguire.
   - test: "Organizer navigates to event management via direct URL /organizer/events"
-    expected: "Organizer can see their events list, create a new event, edit and delete events"
-    why_human: "The organizer MobileNav routes to /organizer/members, not /organizer/events. The events management page is accessible by direct URL but has no nav shortcut. Requires human to confirm this is acceptable or if a nav link was intended."
+    expected: "Organizer can see their events list, create, edit and delete events"
+    why_human: "The organizer MobileNav routes to /organizer/members, not /organizer/events."
+    resolved: obsolete
+    resolved_on: 2026-08-19
+    resolved_because: >
+      La domanda (manca una scorciatoia verso /organizer/events?) non descrive
+      piu' il prodotto. La fase 34 ha collassato i due alberi in una superficie
+      sola e /organizer/* e' oggi un reindirizzamento su /admin/*
+      (src/middleware.ts:53, src/lib/routes/organizer-redirects.ts); la gestione
+      eventi vive in src/app/(admin)/admin/events. Misurato anche dal vivo alla
+      spedizione della v1.5: /organizer risponde 308.
   - test: "Secret location displays correctly for authenticated member without a ticket"
-    expected: "Authenticated member sees 'Buy a ticket to reveal the address' CTA; location address is NOT shown"
-    why_human: "The implementation gates on authentication, not ticket ownership. ROADMAP SC5 says 'hidden until member has a ticket' but Plan 03 explicitly defers actual ticket check to Phase 6. Requires human confirmation that the Phase 5 scoping (auth-gated CTA rather than ticket-gated) satisfies the intent."
+    expected: "Authenticated member sees the CTA; location address is NOT shown"
+    why_human: "The implementation gates on authentication, not ticket ownership."
+    resolved: obsolete
+    resolved_on: 2026-08-19
+    resolved_because: >
+      Il difetto che questa voce segnalava (gate sull'AUTENTICAZIONE invece che
+      sul BIGLIETTO, contro ROADMAP SC5) non esiste piu':
+      src/app/(public)/events/[slug]/page.tsx:216 decide su hasTicketForParty o
+      hasMasterTicket, e la riga 240 dichiara i tre livelli. Il comportamento e'
+      stato inoltre OSSERVATO con quattro sessioni vere il 2026-08-19
+      (v1.5-LAB-SITTING-2.md, fase 37 voce 1): anonimo nessun indirizzo e nessun
+      indizio, membro approvato senza biglietto solo l'indizio, titolare di
+      biglietto indirizzo visibile.
   - test: "RSVP button state reflects user's actual RSVP status"
-    expected: "A member who has RSVP'd sees 'I'm going (checkmark)' state; one who hasn't sees 'I'm going' button"
-    why_human: "Line 51 of [slug]/page.tsx: const hasRSVP = false; // TODO: check user's RSVP status. The RSVP button is hardcoded to always show the 'not going' state. This is a pre-existing stub from before Phase 5, and RSVP is not in the EVNT requirements, but it is a visible regression risk."
+    expected: "A member who has RSVPd sees the going state"
+    why_human: "Line 51 of [slug]/page.tsx: const hasRSVP = false; // TODO"
+    resolved: obsolete
+    resolved_on: 2026-08-19
+    resolved_because: >
+      Lo stub non c'e' piu': hasRSVP ha ZERO occorrenze in src/, e lo stato
+      dell'RSVP si legge dalla tabella rsvps
+      (src/app/(public)/events/[slug]/page.tsx:654-661, userRsvp). Il riferimento
+      di riga della voce non punta piu' a quel codice.
 ---
 
 # Phase 5: Event Management Verification Report

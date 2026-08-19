@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { CAP } from "@/lib/capabilities/keys";
+import { redactDbError } from "@/lib/errors/redact";
 import {
   mayUploadToParty,
   MEDIA_NIGHT_REQUIRED,
@@ -327,7 +328,7 @@ export async function deleteMedia(mediaId: string) {
       .remove([storagePath]);
 
     if (storageError) {
-      console.error("Failed to delete storage file:", storageError);
+      console.error(`[media.storage_delete_failed] ${redactDbError(storageError)}`);
       // Continue to delete the DB record even if storage deletion fails
     }
   }

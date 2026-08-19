@@ -85,3 +85,23 @@ mitigazione — non stringe il raggio di una rotta, cambia solo chi lo scopre.
 - `.planning/phases/39-the-door-s-own-address/39-DOOR-PASS.md` §0.6
 - `.claude/rules/meta-gates.md` — controllo zero fallimenti silenziosi
 - `.claude/rules/checkin-offline.md` — l'asimmetria che fissa i default
+
+
+---
+
+## CHIUSO il 2026-08-19 — spostato al compilatore, non tolto
+
+Il todo chiedeva *«spostare le parti dimostrabili al livello dei tipi»*, non di
+sostituire un throw con un altro. Fatto: il secondo throw a module-load del
+middleware — quello su `assignmentOpenable` — e' ora un'asserzione di tipo
+(`src/lib/supabase/middleware.ts`), perche' `Binding` dichiara
+`assignmentOpenable?: true` e l'unico modo di romperlo e' togliere la proprieta',
+che e' un errore di compilazione.
+
+**Provato per mutazione**: togliendo `assignmentOpenable: true` alla entry della
+porta, `tsc` fallisce con `TS2339` a `middleware.ts:247`. Il fallimento e'
+passato dalla **prima richiesta dopo il deploy** a `next build`.
+
+Il throw sullo **shadowing** resta a runtime, ed e' corretto che resti: e' una
+proprieta' della mappa intera, non dimostrabile al livello dei tipi. La classe
+resta accettata come rischio in `39-SECURITY.md`, con un throw in meno.

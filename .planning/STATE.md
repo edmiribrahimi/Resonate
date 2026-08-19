@@ -90,8 +90,12 @@ dichiarate.
    Non è differito: è **perso**. La riga 3m doveva misurare lo scanner non
    convertito, e quel codice non esiste più.
 2. **88 voci `human_needed` su dodici verifiche**, tutte della stessa specie.
-   Quattro sedute di laboratorio il 2026-08-19 (`v1.5-LAB-SITTING.md`,
-   `-2.md`, `-3.md`) ne hanno **chiuse 17**. Delle 41 aggredite ne restano 18:
+   Cinque sedute di laboratorio il 2026-08-19 (`v1.5-LAB-SITTING.md`, `-2.md`,
+   `-3.md`, `-4.md`) ne hanno **chiuse 31**, e l'ultima ha aggredito anche le
+   fasi mai toccate — 46 (le sei procedure che il proprietario aveva declinato il
+   14 agosto e riaperto il 19), 44 P1 e P4, 39 §0-§1, 38 P7 e le due voci
+   Critical di 41.1/41.2. **Il conteggio vero delle voci `human_needed` e' 91**,
+   non 88: contato dai file, non citato. Delle 41 aggredite ne restano 18:
    **12 non eseguibili in nessun ambiente** (un telefono in una mano, una
    fotocamera, IndexedDB, una stanza buia — piu' `M-43-05/06`, che chiede una
    casella postale vera), **4 bloccate dal Reperto 5**, **2 impossibili per

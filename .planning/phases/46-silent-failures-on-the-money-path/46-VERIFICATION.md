@@ -2,6 +2,8 @@
 phase: 46-silent-failures-on-the-money-path
 verified: 2026-08-14T20:41:28Z
 status: human_needed
+lab_sitting_4: >
+  2026-08-19, `.planning/v1.5-LAB-SITTING-4.md` — Le sei procedure ESEGUITE in laboratorio il 2026-08-19, rovesciando il rifiuto del 2026-08-14 su istruzione del proprietario. Quattro osservate (1, 3, 4, 6), due a meta' (2, 5).
 score: 12/12 code-level must-haves verified; 6/6 manual procedures pending
 overrides_applied: 0
 gaps: []

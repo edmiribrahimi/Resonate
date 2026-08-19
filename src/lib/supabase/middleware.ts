@@ -207,15 +207,45 @@ for (const doorAddress of DOOR_ADDRESSES) {
     );
   }
 
-  if (!doorBinding.assignmentOpenable) {
-    throw new Error(
-      `middleware: "${doorAddress}" is bound to "${CAP.DOOR_OPERATE}" but is not ` +
-        `assignment-openable. A member of staff assigned to tonight's door holds ` +
-        `that capability by assignment and by no other route, so without this ` +
-        `flag the middleware refuses the person rostered to work the door.`
-    );
-  }
 }
+
+/**
+ * ── `assignmentOpenable`: la stessa garanzia, spostata al COMPILATORE ────────
+ *
+ * Qui sotto c'era un secondo `throw` a module-load, e un throw a module-load in
+ * questo file non fallisce a `npm run build`: fallisce quando il runtime
+ * **istanzia il bundle del middleware**, cioe' alla **prima richiesta dopo il
+ * deploy**. E il middleware copre ogni rotta che matcha, quindi quel 500 arriva
+ * anche dove non c'entra niente — `/api/webhooks/sumup`, i quattro cron,
+ * `/api/tickets/checkin`. **Una configurazione sbagliata della porta metteva
+ * giu' la strada dei soldi**, attraverso il bundle condiviso e non attraverso una
+ * riga che qualcuno avesse scritto.
+ *
+ * Non e' stato tolto: e' stato **spostato dove costa meno**. Le due righe sotto
+ * dicono la stessa cosa al compilatore, quindi il fallimento arriva a `next
+ * build` — prima del deploy invece che dopo — ed e' il todo
+ * `module-load-throws-500-the-whole-middleware-surface` che chiede esattamente
+ * questo: *«spostare le parti dimostrabili al livello dei tipi»*.
+ *
+ * **Perche' e' una sostituzione sicura e non una rimozione.** Il controllo a
+ * runtime guardava `resolveRoute(doorAddress).assignmentOpenable`. Ma se
+ * `doorBinding.key === CAP.DOOR_OPERATE` — che il throw qui sopra continua a
+ * pretendere, ed e' il caso dello *shadowing*, l'unico che resta davvero
+ * runtime — allora quel binding **e'** la entry della porta, e il suo
+ * `assignmentOpenable` viene compilato da questa dichiarazione
+ * (`capability-routes.ts:984`). Dichiarazione piu' identita' della chiave
+ * implicano il flag: le due condizioni insieme sono cio' che il throw
+ * verificava.
+ *
+ * `Binding` dichiara `assignmentOpenable?: true`, quindi il valore `false` non
+ * e' nemmeno rappresentabile: l'unico modo di romperlo e' **togliere la
+ * proprieta'**. Indicizzare un tipo con una chiave che non ha e' un errore di
+ * compilazione — che e' precisamente il rilevatore che serve.
+ */
+type DoorBinding = (typeof CAPABILITY_ROUTES)[typeof CAP.DOOR_OPERATE];
+const _doorIsAssignmentOpenable: true =
+  true satisfies DoorBinding["assignmentOpenable"];
+void _doorIsAssignmentOpenable;
 
 /**
  * The first segments of the collapsed work surface. **Plural since Phase 39.**
