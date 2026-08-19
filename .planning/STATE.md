@@ -5,7 +5,7 @@ milestone_name: Platform Layout, Access Model & Door Fixes
 status: milestone-closed
 stopped_at: v1.5 CHIUSA il 2026-08-19 accettando il debito — 14/76 requisiti, 88 human_needed, 1 criterio perso in modo permanente. Prossima milestone da aprire.
 last_updated: "2026-08-18T17:50:18.113Z"
-last_activity: 2026-08-19 -- milestone v1.5 archiviata; 30 voci differite riconosciute; non spedita
+last_activity: 2026-08-19 -- v1.5 archiviata E SPEDITA; deploy Production success su 3e43be5; prima richiesta fatta a mano su 18 rotte + 2 API, zero 500
 progress:
   total_phases: 18
   completed_phases: 17
@@ -31,7 +31,40 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 Phase: 42 (scanner-conversion) — EXECUTING
 quattro, tre onde, gate automatici verdi. `39-VERIFICATION.md` e' `human_needed`:
 i criteri 2 e 3 li chiude solo `39-DOOR-PASS.md` §8, alla serata di fine v1.5,
-insieme al lotto della fase 38 (D-39-07). Vedi `## Deferred Items
+insieme al lotto della fase 38 (D-39-07). Vedi `## Deploy della v1.5 — 2026-08-19
+
+**Spedita.** `origin/main` da `033e3c6` a `3e43be5`, 90 commit, piu' il tag
+`v1.5`. Deployment GitHub/Vercel: **Production, success**.
+
+**Le condizioni sono state misurate, non ricordate:**
+
+- **Niente di privato nel diff:** `docs/` 0, `.firecrawl/` 0, `.env*` 0, ref del
+  laboratorio 0, segreti 0. 75 file, di cui 25 di prodotto.
+- **Zero migration nel diff** — il codice non chiede allo schema nulla che non
+  abbia gia'. L'ordine migration→deploy non era un rischio in questa spedizione.
+- **Giorno senza serata:** letto dal calendario in `docs/` (che resta locale),
+  263 voci totali, **0** nella finestra ieri/oggi/domani.
+- **Produzione inerte:** 0 serate future, 0 biglietti, 0 acquisti pendenti,
+  0 ordini bar, 0 scansioni. Nessuno alla porta mentre si spediva.
+
+**La prima richiesta dopo il deploy e' stata fatta a mano**, come la fase 39
+pretende, su **18 rotte piu' 2 API**: pubbliche **200**, protette **307** al
+login, `/organizer` **308** (il rewrite della fase 34 e' vivo),
+`/api/webhooks/sumup` **405** su GET, `/api/cron/venue-reveal` **401** senza
+segreto. **Zero 500** — l'assertion della mappa a module load ha retto.
+
+> **Una cosa scoperta facendolo:** l'apice `resonatemotion.com` risponde **307**
+> verso `www.`, su **ogni** rotta comprese le pubbliche. La prima sonda leggeva
+> l'apice e dava 307 dappertutto — sembrava un guasto totale ed era un
+> reindirizzamento di dominio. **L'host canonico e' `www.`**, ed e' quello su cui
+> vanno fatte le prossime sonde.
+
+**Cosa il deploy NON cambia:** le 88 voci `human_needed` restano aperte, il
+criterio 3 della fase 42 resta perso, e da oggi **la porta in produzione e'
+quella convertita, mai esercitata da nessuno**. Alla prima porta reale,
+correzioni mai usate e superficie ridipinta girano insieme, senza error tracking.
+
+## Deferred Items
 
 **Trenta voci riconosciute e differite alla chiusura della v1.5, il 2026-08-19.**
 Riconosciute significa **viste e accettate**, non risolte: nessuna di queste è
