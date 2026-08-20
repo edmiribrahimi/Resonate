@@ -1,7 +1,7 @@
 /**
  * verify-ics-reachable — i moduli del lettore del calendario esistono e si caricano
  *
- * QUELLO CHE ASSERISCE, in una frase: **i sette moduli sotto
+ * QUELLO CHE ASSERISCE, in una frase: **gli otto moduli sotto
  * `src/lib/production/ics/` esistono, il loro barrel si importa, ed espone ogni
  * simbolo che un consumatore a runtime chiama per nome** — su qualunque macchina,
  * senza aprire `docs/` e senza toccare un database.
@@ -37,7 +37,7 @@
  *
  * ── ESITI ───────────────────────────────────────────────────────────────────
  *
- *   0  i sette file ci sono, il barrel si importa, e nessun simbolo atteso manca
+ *   0  gli otto file ci sono, il barrel si importa, e nessun simbolo atteso manca
  *   1  FALLIMENTO — un file manca, l'import solleva, o un simbolo non e' esportato
  *
  * **Non esce mai 2.** Non ha precondizioni da cui possa essere rifiutato: se
@@ -57,13 +57,19 @@ const ICS_DIR = join(ROOT, "src", "lib", "production", "ics");
 /**
  * I moduli attesi. Il barrel per ultimo: e' quello che importa gli altri.
  *
- * ⚠ **Sette, e fino alla fase 58 erano sei.** `anchors` mancava dall'elenco pur
+ * ⚠ **Otto, ed erano sei prima della fase 58.** `anchors` mancava dall'elenco pur
  * essendo sul disco e importato dal barrel: il controllo A non lo difendeva, e la
  * sua assenza sarebbe stata scoperta dal controllo B — che dice *«il barrel non
  * si importa»*, cioe' la diagnosi sbagliata per un file cancellato. Il conteggio
  * si legge da `MODULI.length` e non si scrive a mano, per la ragione registrata
  * nel piano 58-07: un numero fisso in una riga verde e' un numero che nessuno
  * rilegge quando scade.
+ *
+ * ⚠ **`guard` entra qui nello stesso commit in cui nasce, ed e' il modulo che
+ * dimostra perche' questo controllo esiste.** E' il predicato che decide se uno
+ * specchio non presidiato puo' cancellare un calendario: non ha alcun importatore
+ * statico, quindi `npm run build` resta verde se sparisce, e la sua assenza si
+ * scoprirebbe la notte in cui il cron gira senza guardia.
  */
 const MODULI = [
   "parse",
@@ -71,6 +77,7 @@ const MODULI = [
   "classify",
   "anchors",
   "reconcile",
+  "guard",
   "vocabulary",
   "index",
 ];
