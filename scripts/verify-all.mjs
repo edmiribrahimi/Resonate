@@ -261,6 +261,25 @@ const OFFLINE = [
       "ma sta in NEEDS_MATERIAL e non viene mai lanciato qui: questo gate non chiede " +
       "materiale, quindi gira ovunque e non esce mai 2",
   ],
+  [
+    "verify:ics-grammar", false,
+    "Phase 58 — the grammar of the calendar's titles, on titles it builds itself. It " +
+      "belongs HERE and not in NEEDS_MATERIAL beside verify:ics, and the difference is " +
+      "the whole reason that third list exists: verify:ics measures the real file, so " +
+      "it reads a gitignored directory that exists on one machine and REFUSES on every " +
+      "other. This one constructs its own titles, aliases, nights and pipeline rules " +
+      "from words that are already public, opens no docs/, no database and no " +
+      "connection, and builds no Date — so it runs everywhere and NEVER exits 2. " +
+      "IT IS RED ON PURPOSE FROM THE COMMIT THAT REGISTERED IT, and the red is bounded " +
+      "and named: 3 of its 18 cases (T1, T2, F1) assert ICS-08 and ICS-08b — the bare " +
+      "Timetable and the seventh piece kind — which are plan 58-06's work, in the wave " +
+      "after the one that put this line here. The other 15 are green, and the count " +
+      "that matters is the second one: ZERO GUESSED. A MISSED is the reader attributing " +
+      "less than it should; a GUESSED is it attributing a series, a progressivo or a " +
+      "night the title never carried, and that one is the grave direction because a " +
+      "progressivo is a monotone guard already printed on a poster. If this gate ever " +
+      "reports a GUESSED, stop and read it before anything else",
+  ],
   ["verify:no-header-identity", false, ""],
   ["verify:no-credit-account", false, ""],
   ["verify:media-strip", false, ""],
