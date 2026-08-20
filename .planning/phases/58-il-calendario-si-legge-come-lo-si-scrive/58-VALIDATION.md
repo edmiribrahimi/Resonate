@@ -2,7 +2,7 @@
 phase: 58
 slug: il-calendario-e-uno-specchio
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-20
 ---
@@ -11,9 +11,12 @@ created: 2026-08-20
 
 > Contratto di validazione della fase, per il campionamento del feedback durante
 > l'esecuzione. Derivato dalla sezione `## Validation Architecture` di
-> `58-RESEARCH.md`, **piu' le sei decisioni del proprietario del 2026-08-20**
-> (`58-CONTEXT.md`, D-58-01 → D-58-06), che aggiungono due requisiti e ne
-> modificano tre.
+> `58-RESEARCH.md`, **piu' le sette decisioni del proprietario del 2026-08-20**
+> (`58-CONTEXT.md`, D-58-01 → D-58-07), che aggiungono quattro requisiti
+> (`ICS-01b`, `ICS-03b`, `ICS-09`, `ICS-10`, `ICS-10b`) e ne modificano tre.
+> **D-58-07 rovescia meta' di `D-44-26`**: le sue cinque difese sono requisiti,
+> e la prima — *il corpo del feed non si stampa mai* — ha bisogno di un controllo
+> sul sorgente o non esiste.
 
 ---
 
@@ -164,12 +167,29 @@ cascata** — qui `production_checklist_item`, che pende da `production_plan` co
 
 ## Validation Sign-Off
 
-- [ ] Ogni task ha una verifica automatica o una dipendenza dall'onda 0
-- [ ] Continuita' del campionamento: mai tre task consecutivi senza verifica automatica
-- [ ] L'onda 0 copre tutte le voci marcate ❌
-- [ ] Nessun flag di watch-mode
-- [ ] Feedback latency < 180 s
-- [ ] Le tre procedure manuali sono **scritte** prima dell'onda che le richiede
-- [ ] `nyquist_compliant: true` in frontmatter
+- [x] Ogni task ha una verifica automatica o una dipendenza dall'onda 0 — *verificato sui dodici piani dal plan-checker, 2026-08-20*
+- [x] Continuita' del campionamento: mai tre task consecutivi senza verifica automatica
+- [x] L'onda 0 copre tutte le voci marcate ❌ — piani `58-01` e `58-02`
+- [x] Nessun flag di watch-mode
+- [x] Feedback latency < 180 s
+- [x] Le tre procedure manuali sono **scritte** prima dell'onda che le richiede — `P-58-A`/`P-58-B`/`P-58-C` nascono in `58-02` (onda 0); il primo `--apply` e' in `58-11` (onda 7)
+- [x] `nyquist_compliant: true` in frontmatter
 
-**Approval:** pending
+⚠ **`wave_0_complete` resta `false`, e non e' una dimenticanza:** l'onda 0 e'
+**pianificata**, non **eseguita**. Diventa `true` quando `58-01` e `58-02` hanno
+il loro commit — non prima, o il campo direbbe che esistono gate che nessuno ha
+ancora scritto.
+
+⚠ **Un limite noto e accettato, dichiarato invece di aggirato:** la latenza del
+feedback e' ~90–180 s perche' `npm run build` e' il gate dei tipi e non esiste
+un'alternativa piu' veloce in questo repo (CLAUDE.md, Guardrail 1 e 2). Non e' un
+difetto introdotto da questi piani: e' la forma che ha la verifica dove non c'e'
+un test runner.
+
+⚠ **Un debito del gate di fase, dichiarato dai piani invece che scoperto dopo:**
+i **numeri d'oro del controllo B** di `verify-ics-import.mjs` cambiano con
+`ICS-04`/`ICS-05`/`ICS-08`. Da `58-03` in avanti `npm run verify:ics` e' **atteso
+rosso su B**, e si chiude **rimisurando sul file vero, sulla macchina del
+proprietario** — mai aggiustando i numeri per far passare il gate.
+
+**Approval:** approvato 2026-08-20 — plan-checker, `## VERIFICATION PASSED`, zero blocker

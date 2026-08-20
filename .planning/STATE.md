@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.6
-milestone_name: "Piattaforma, non community"
-status: phase-executed
-stopped_at: "Fase 48 in corso il 2026-08-20 — catalogo e colori fatti (SunSet cancellato, RamaDub #6E8BFF misurato, 184 spazi conservati). L'import del calendario e' APPLICATO ma ha prodotto un RITROVAMENTO: lo strumento vuole una sola istantanea e i file sono due, quindi ognuno marca assente cio' che l'altro ha scritto. NON riapplicare finche' il proprietario non sceglie."
-last_updated: "2026-08-19T20:00:00.000Z"
-last_activity: "2026-08-19 -- v1.5 archiviata e spedita (tag v1.5, Production success); v1.6 aperta con roadmap in .planning/ROADMAP.md"
+milestone_name: Piattaforma, non community
+status: executing
+stopped_at: Phase 45 context gathered
+last_updated: "2026-08-20T14:12:56.075Z"
+last_activity: 2026-08-20
 progress:
-  total_phases: 11
-  completed_phases: 0
-  total_plans: 6
-  completed_plans: 6
-  percent: 9
+  total_phases: 51
+  completed_phases: 47
+  total_plans: 348
+  completed_plans: 338
+  percent: 92
 ---
 
 # State: Resonate
@@ -60,6 +60,7 @@ di qualunque `--apply`.
 - l'acquisto di un biglietto parte da `auth.getUser()`
   (`src/app/(public)/events/[slug]/actions.ts:97`) — **non esiste acquisto da
   ospite per i biglietti**, mentre per i drink esiste;
+
 - la pagina della serata legge `userTicket` **al singolare**
   (`src/app/(public)/events/[slug]/page.tsx:640`) — **un ordine con piu'
   biglietti e' una cosa che i biglietti non hanno mai fatto**.
@@ -72,7 +73,6 @@ di qualunque `--apply`.
 conservato per intero. La milestone e' archiviata in
 `.planning/milestones/v1.5-ROADMAP.md` e verificata in
 `.planning/v1.5-MILESTONE-AUDIT.md`.*
-
 
 # State: Resonate
 
@@ -100,10 +100,13 @@ insieme al lotto della fase 38 (D-39-07). Vedi `## Deploy della v1.5 — 2026-08
 
 - **Niente di privato nel diff:** `docs/` 0, `.firecrawl/` 0, `.env*` 0, ref del
   laboratorio 0, segreti 0. 75 file, di cui 25 di prodotto.
+
 - **Zero migration nel diff** — il codice non chiede allo schema nulla che non
   abbia gia'. L'ordine migration→deploy non era un rischio in questa spedizione.
+
 - **Giorno senza serata:** letto dal calendario in `docs/` (che resta locale),
   263 voci totali, **0** nella finestra ieri/oggi/domani.
+
 - **Produzione inerte:** 0 serate future, 0 biglietti, 0 acquisti pendenti,
   0 ordini bar, 0 scansioni. Nessuno alla porta mentre si spediva.
 
@@ -149,6 +152,7 @@ dichiarate.
 1. **Il criterio 3 della fase 42 non è chiudibile e non lo sarà mai** — `DEF-42-04`.
    Non è differito: è **perso**. La riga 3m doveva misurare lo scanner non
    convertito, e quel codice non esiste più.
+
 2. **88 voci `human_needed` su dodici verifiche**, tutte della stessa specie.
    **UN DIFETTO SULLA PORTA, trovato il 2026-08-19 e riparato** (`v1.5-LAB-SITTING-5.md`):
    ogni scansione rispondeva `500 Ticket lookup failed` — la QUARTA faccia dello
@@ -185,6 +189,7 @@ dichiarate.
    `MASTER_EMAIL` che su un accesso con password non gira mai, e la cancellazione
    di un account che ha agito (tocca l'immutabilita' del registro e
    `legal-compliance.md`).
+
 3. **La porta in produzione non è mai stata esercitata**: zero account `staff`,
    zero assegnazioni, zero scansioni. Il meccanismo è provato in laboratorio; la
    sua adozione no.
@@ -233,7 +238,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 42
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -314,7 +319,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-18 -- Phase 42 execution started
+Last activity: 2026-08-20
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking

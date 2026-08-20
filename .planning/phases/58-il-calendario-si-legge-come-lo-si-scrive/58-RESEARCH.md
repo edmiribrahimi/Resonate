@@ -1350,7 +1350,28 @@ const lineupDependent = pieces.some(
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — 2026-08-20)
+
+> **Tutte e sei sono chiuse.** Le prime quattro dal proprietario, con la misura
+> davanti (`58-CONTEXT.md`, blocco `<decisions>`); le ultime due dal piano, che le
+> chiude **misurando** invece di scegliere. La sezione resta com'e' stata scritta,
+> con la risoluzione accanto a ciascuna: cancellare la domanda perderebbe la
+> ragione per cui la risposta ha la forma che ha.
+>
+> | # | Chiusa da | Esito |
+> |---|---|---|
+> | 1 — la guardia sul progressivo | **D-58-01** | L'import confronta, **rifiuta con uscita `2` senza scrivere**, e una rinumerazione voluta passa da una riautorizzazione esplicita **registrata nel referto**. Il trigger resta installato per gli altri scrittori; il commento della sua migration si riscrive. |
+> | 2 — la riga legata a una serata annunciata | **D-58-02** | Opzione (a): una riga con un legame **non si cancella mai**. E' un'eccezione di **sopravvivenza**, distinta dalle due di stato, e per questo e' `ICS-03b` nel ROADMAP e non una nota. |
+> | 3 — `Timetable` e `Flyering` | **D-58-03** e **D-58-04** | `Timetable` nudo → pezzo della notte, agganciato per data. `Flyering` → **settimo tipo**. Due decisioni, come la ricerca aveva chiesto. |
+> | 4 — il vocabolario delle chiavi | **D-58-06** | Tre chiavi, una per format: `rsnt`, `rmdb`, `mtnlb`. Vocabolario chiuso; ogni aggiunta futura e' una migration dichiarata; nessuna nomina uno spazio. |
+> | 5 — scrivere il numero derivato | **`58-03-PLAN.md`** | **Non si scrive.** Regola unica: si memorizza cio' che il titolo portava; cio' che solo l'aggancio implica lo da' il join. La simmetria con `origin` e' dichiarata — una data proposta si memorizza perche' si disegna, un numero derivato no perche' `plan_id` c'e' gia'. |
+> | 6 — la finestra massima dell'aggancio | **`58-02-PLAN.md`, misura M2** | **Misurata, non scelta**, sui pezzi gia' agganciati, per coppia (serie, tipo), in **onda 0** — cioe' prima che lo specchio possa cancellare le righe da cui si misura. Le coppie senza campione restano vuote e **rifiutano**. |
+>
+> **Una settima domanda e' nata dopo la ricerca e non e' in questo elenco:** il
+> conflitto fra `D-58-05` e `D-44-26`, trovato dal pattern mapper e chiuso da
+> **D-58-07** — meta' della decisione del 2026-08-15 e' rovesciata, e le cinque
+> difese che la sostituiscono sono requisiti (`ICS-10b`), non intenzioni.
+
 
 1. **La guardia monotona sul progressivo, dopo lo specchio.**
    - Cosa sappiamo: il trigger e' `BEFORE UPDATE OF number`; uno specchio non fa
