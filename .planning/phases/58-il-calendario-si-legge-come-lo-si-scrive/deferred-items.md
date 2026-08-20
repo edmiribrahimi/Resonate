@@ -47,3 +47,33 @@ trovate**, e non riparate. Ognuna porta chi l'ha vista e quando.
 - **Come si chiude:** se un controllo futuro avra' bisogno dei vincoli dal
   catalogo, usare `pg_constraint` — ed e' anche la fonte da cui `M4` aveva letto
   i dodici nomi.
+
+---
+
+## 3. `P-58-C` passo 5 non ha ancora uno strumento: il ripristino DALL'ISTANTANEA
+
+- **Trovata:** piano 58-09, task 2, 2026-08-20
+- **Il fatto:** il piano 58-09 costruisce due cose che sembrano la stessa e non
+  lo sono. **(a)** L'istantanea su disco, scritta prima della cancellazione,
+  nella directory ignorata. **(b)** Il riaggancio dentro la corsa, che rimette
+  spunte e legami **letti dal database prima di cancellare** e tenuti in memoria.
+- **Perche' conta:** `P-58-C` esiste per la corsa che **muore a meta'**. In quel
+  caso la memoria del processo e' andata, e le righe non ci sono piu': una
+  seconda corsa riscrive il contenuto del file — che e' il passo 4 della
+  procedura, e funziona — ma le sue liste di riaggancio sono **vuote**, perche'
+  legge un calendario appena svuotato. Il passo 5 dice *«ripristinare spunte e
+  legami dall'istantanea del passo 3, con il percorso di ripristino dedicato»*, e
+  **quel percorso oggi non esiste**: nessun argomento dell'importatore legge un
+  file di istantanea.
+- **Quanto e' grave oggi:** misurato il 2026-08-20 il caso e' vuoto — **0 spunte
+  e 0 legami** in produzione — quindi un rientro non perderebbe niente. Diventa
+  grave alla prima spunta.
+- **Non riparata perche':** il piano 58-09 elenca tre file e nessun argomento di
+  ripristino; costruirlo qui sarebbe uno strumento che **scrive in produzione**
+  aggiunto senza che nessun piano lo abbia dichiarato — ed e' esattamente il tipo
+  di percorso che questa fase pretende sia deciso prima di esistere.
+- **Come si chiude:** un argomento esplicito che legge un'istantanea per
+  percorso, ne verifica l'ora contro la corsa interrotta, e riscrive **solo** le
+  due eccezioni di stato conservando `ticked_by` e `ticked_at` originali — mai
+  da `record_checklist_tick`. Va dichiarato in 58-11 o 58-12, insieme alla
+  decisione se `P-58-C` puo' chiudersi senza di esso.
