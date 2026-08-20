@@ -31,6 +31,7 @@ import type { MembershipAct, MembershipActorKind } from "@/lib/membership/acts";
 import type {
   AnchorDirection,
   AnchorKind,
+  CalendarKey,
   CivilDate,
   CivilTime,
   EntryClass,
@@ -1217,6 +1218,30 @@ export type ProductionChecklistKind =
 export interface ProductionPlan {
   id: string;
   /**
+   * ⚠ **WHICH CALENDAR this row was mirrored from — the boundary of the
+   * mirror.** The import deletes a calendar's rows and rewrites them from the
+   * file, so this is what a `DELETE` filters on: without it, *absent from the
+   * file* and *belongs to a different file* are the same observation, and
+   * importing one calendar deletes the other's rows.
+   *
+   * ⚠ **The value is DECLARED, never derived.** Not from the content — the sigla
+   * comes out of the classification, so reading the scope back off it is
+   * circular — and not from the filename, which carries a **date**, not a scope.
+   * It arrives as a required argument of the importer, with no default.
+   *
+   * ✅ **Publishable**, and that is the deliberate opposite of `venue_word`
+   * below: the three keys are format sigle, which are printed on materials, and
+   * no key may name a space. A report, a log line or a `.planning/` document may
+   * echo this column.
+   *
+   * **Null is TRANSITIONAL.** The rows that predate the column came from imports
+   * run when it did not exist and are not attributable to a calendar; inventing
+   * an attribution would be writing a fact into the column that governs a
+   * deletion. Plan 58-09 collects them under an explicit one-off argument and
+   * tightens this table to `NOT NULL`.
+   */
+  calendar_key: CalendarKey | null;
+  /**
    * The calendar entry's own `UID`, and the identity is the file's rather than
    * ours. The alternatives were measured and rejected: a title changes when the
    * owner renames a night, `(date, title)` changes twice over, and a content
@@ -1315,6 +1340,20 @@ export interface ProductionPlan {
 export interface ProductionPiece {
   id: string;
   /**
+   * ⚠ **WHICH CALENDAR this row was mirrored from**, and the same boundary as
+   * {@link ProductionPlan.calendar_key} — declared by the importer, never
+   * derived from the content or from the filename, and **publishable** because
+   * the keys are format sigle and no key may name a space.
+   *
+   * This is the table where a mis-scoped `DELETE` costs most: a piece carries
+   * its checklist through `ON DELETE CASCADE`, so deleting the wrong calendar's
+   * pieces takes the ticks with them — and a tick is the one thing in here a
+   * person put there.
+   *
+   * **Null is TRANSITIONAL**, closed by plan 58-09.
+   */
+  calendar_key: CalendarKey | null;
+  /**
    * Nullable, unlike a plan's: **a proposal has no uid**, because it does not
    * exist in the file. Two nulls are distinct in Postgres, so the unique
    * constraint does not collapse every proposal into one row — that is the
@@ -1410,6 +1449,18 @@ export interface ProductionPiece {
  */
 export interface ProductionCommitment {
   id: string;
+  /**
+   * ⚠ **WHICH CALENDAR this row was mirrored from**, same boundary as
+   * {@link ProductionPlan.calendar_key} — declared by the importer, never
+   * derived, and **publishable** because the keys are format sigle and no key
+   * may name a space.
+   *
+   * Here a mis-scoped deletion produces the one failure this table exists to
+   * prevent: a day the calendar shows as **free** while it is taken.
+   *
+   * **Null is TRANSITIONAL**, closed by plan 58-09.
+   */
+  calendar_key: CalendarKey | null;
   source_uid: string;
   /**
    * **One** day this commitment occupies, not *the* day: a recurring commitment
@@ -1450,6 +1501,22 @@ export interface ProductionCommitment {
  */
 export interface ProductionImportRun {
   id: string;
+  /**
+   * ⚠ **WHICH CALENDAR this run mirrored** — declared by the importer as its
+   * required argument, never derived, and **publishable** for the same reason as
+   * the three columns above: the keys are format sigle, and no key may name a
+   * space. A report that cannot say which calendar it wrote for stops being
+   * readable the day a second calendar exists.
+   *
+   * ⚠ **Null FOREVER here, and that is a decision rather than an oversight.**
+   * The three mirrored tables are tightened to `NOT NULL` by plan 58-09; this
+   * one is deliberately not. **The register is never deleted** — it is the
+   * domain's only diagnostic instrument, the one that made it possible to date
+   * the 17 false absence stamps — so its historical runs will always be
+   * key-less. Back-filling them would make the register lie about the past it
+   * exists to preserve.
+   */
+  calendar_key: CalendarKey | null;
   started_at: string;
   /**
    * **Null means the run did not finish** — which is itself the observation, and
