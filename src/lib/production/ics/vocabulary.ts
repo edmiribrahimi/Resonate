@@ -1,10 +1,10 @@
 /**
  * The production calendar's vocabularies, named once.
  *
- * Eight closed sets — piece kinds, date origins, unresolved reasons, entry
- * classes, naming conventions, venue stages, anchor kinds and anchor directions
- * — plus the two civil-time aliases every other module in this directory takes
- * its dates in.
+ * Nine closed sets — piece kinds, date origins, unresolved reasons, entry
+ * classes, naming conventions, venue stages, anchor kinds, anchor directions and
+ * calendar keys — plus the two civil-time aliases every other module in this
+ * directory takes its dates in.
  *
  * This module is the source. It imports nothing — not `@/types/database`, which
  * will import *from here* — so that a divergence between the two paths is a type
@@ -14,11 +14,13 @@
  *
  * ── (a) The SQL mirror is REAL for this module ───────────────────────────────
  *
- * Six of the eight sets below are duplicated as SQL `CHECK` vocabularies by this
- * phase's migration (plan 44-02): the piece `kind`, the `origin`, the
- * `unresolved_reason`, the `naming_convention` and the `venue_stage` columns,
- * and the anchor kind + direction pair that stores a rule as
- * `(anchor kind, weekday, direction)` instead of a day count.
+ * Seven of the nine sets below are duplicated as SQL `CHECK` vocabularies. Six
+ * of them by the calendar's own migration (plan 44-02): the piece `kind`, the
+ * `origin`, the `unresolved_reason`, the `naming_convention` and the
+ * `venue_stage` columns, and the anchor kind + direction pair that stores a rule
+ * as `(anchor kind, weekday, direction)` instead of a day count. The seventh,
+ * {@link CALENDAR_KEYS}, by plan 58-07 — on **four** tables at once, because the
+ * boundary of a mirror has to exist on every table the mirror deletes from.
  *
  * That mirror changes what a green build proves, and the direction of the
  * difference matters. `@/lib/capabilities/keys` states the opposite case in as
@@ -32,11 +34,17 @@
  * changed constraint set is a new migration, never an edit to an applied one
  * (`supabase-data.md`, gate *migration in avanti*).
  *
- * That rule has been exercised once, and the file that did it is the worked
- * example: `20260820120000_production_piece_flyering.sql` (plan 58-06) widens
- * the **two** `IN` lists that mirror {@link PIECE_KINDS} — one on
- * `production_piece`, one on `production_pipeline_rule` — in a **single**
- * transaction, and lands in the same commit as the literal below.
+ * That rule has been exercised twice, and both files are worked examples:
+ *
+ *   * `20260820120000_production_piece_flyering.sql` (plan 58-06) widens the
+ *     **two** `IN` lists that mirror {@link PIECE_KINDS} — one on
+ *     `production_piece`, one on `production_pipeline_rule` — in a **single**
+ *     transaction, and lands in the same commit as the literal below;
+ *   * `20260820121000_production_calendar_key.sql` (plan 58-07) creates the
+ *     **four** lists that mirror {@link CALENDAR_KEYS}, likewise in one
+ *     transaction and in the same commit as the literal. Its `CHECK` is written
+ *     as *null, or one of the three* rather than as a bare `IN`, because the
+ *     column's nullability is a declared transition — see {@link CALENDAR_KEYS}.
  *
  * ── (b) The forbidden kind, and why this file does not spell its name ────────
  *
@@ -271,6 +279,60 @@ export const ANCHOR_DIRECTIONS = ["on", "before", "after"] as const;
 
 /** Which way to look from the anchor. Mirrored by the `anchor_direction` CHECK. */
 export type AnchorDirection = (typeof ANCHOR_DIRECTIONS)[number];
+
+/**
+ * WHICH CALENDAR a mirrored row came from — the boundary of the mirror.
+ *
+ * One key per format, taken from the sigle. Three, and closed (D-58-06).
+ *
+ * ⚠ **This is not a label: it is what a `DELETE` filters on.** The import
+ * mirrors one calendar by deleting its rows and rewriting them from the file, so
+ * without this column *"absent from the file"* and *"belongs to a different
+ * file"* are the same observation and importing the satellite deletes the
+ * night's rows. That is finding 3 of phase 48 and the whole of `ICS-02`.
+ *
+ * ⚠ **The value is DECLARED, never inferred, and the two obvious inferences were
+ * measured and rejected.** The two snapshots on the owner's machine declare the
+ * **same** `X-WR-CALNAME` and the parser exposes no calendar-level property at
+ * all; a filename carries a **date**, not a scope. So the key arrives as a
+ * required argument of the importer — with **no default**, because a default is
+ * exactly the step somebody eventually skips — and is written to the column.
+ * Handing a production `DELETE` a free-form string written by somebody else's
+ * application is the risk this vocabulary closes.
+ *
+ * ⚠ **NO KEY MAY EVER NAME A SPACE.** Format sigle are public — they are printed
+ * on materials — and venue names under negotiation are not. The per-venue sigle
+ * (`RMDB-<venue>`) therefore stay out: this key is per **calendar**, not per
+ * **series**. A space's name here would be published in every import report, in
+ * `@/types/database`, and in every `.planning/` document that quotes one — and
+ * this repository is public, so that publication is irreversible
+ * (`venue-acquisition.md`, gate *uno spazio non acquisito non si nomina*).
+ *
+ * **Adding a format, or splitting the calendars differently, needs a new key,
+ * and every addition is a declared migration** — a `CHECK` on four tables and
+ * this literal, in the same commit, per claim (a). Never a free value.
+ *
+ * ── The column is nullable, and the nullability is TRANSITIONAL ──────────────
+ *
+ * The mirrored tables were already populated when the column was created, and
+ * their rows came from imports run when it did not exist: **they are not
+ * attributable to a calendar**, and a fallback value would be an invented fact
+ * written into the column that governs a deletion. So the `CHECK` says *null, or
+ * one of the three*, there is no backfill, and no fourth *unknown* member
+ * re-opens the vocabulary D-58-06 closed.
+ *
+ * **Who closes the transition:** plan 58-09 — the first mirror run collects the
+ * key-less rows under an explicit one-off argument and counts them in its
+ * report, and a second migration tightens `production_plan`,
+ * `production_piece` and `production_commitment` to `NOT NULL`.
+ * `production_import_run` keeps the column nullable **forever**: the register is
+ * never deleted, so its historical rows stay key-less, and that is said rather
+ * than tidied away.
+ */
+export const CALENDAR_KEYS = ["rsnt", "rmdb", "mtnlb"] as const;
+
+/** Which calendar a row was mirrored from. Mirrored by the `calendar_key` CHECK on four tables. */
+export type CalendarKey = (typeof CALENDAR_KEYS)[number];
 
 /**
  * Production's own words for the seven pieces, exactly as they are written on a
