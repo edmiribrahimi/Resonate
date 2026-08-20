@@ -139,7 +139,7 @@ Plans:
 - [x] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
 - [x] 58-04-PLAN.md — `ICS-06`: le proposte si ricalcolano, e la superficie lo dice *(onda 1)*
 - [x] 58-05-PLAN.md — `ICS-07`: nessun identificativo grezzo nel referto *(onda 1)*
-- [ ] 58-06-PLAN.md — `ICS-08` + `ICS-08b`: la timetable e' un pezzo, il volantinaggio e' il settimo tipo *(onda 2)*
+- [x] 58-06-PLAN.md — `ICS-08` + `ICS-08b`: la timetable e' un pezzo, il volantinaggio e' il settimo tipo *(onda 2)*
 - [ ] 58-07-PLAN.md — `ICS-02`: la chiave di calendario, chiusa da un `CHECK` e indicizzata *(onda 3)*
 - [ ] 58-08-PLAN.md — `ICS-01`/`ICS-03`/`ICS-03b`: lo specchio nel modulo puro, in sottrazione *(onda 4)*
 - [ ] 58-09-PLAN.md — lo scrittore che cancella: rifiuti in ordine, istantanea, riaggancio, guardia del progressivo *(onda 5)*
