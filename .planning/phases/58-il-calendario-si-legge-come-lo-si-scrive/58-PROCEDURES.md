@@ -253,6 +253,15 @@ esiste prima del codice che la citera'.
 > risposto con quei numeri davanti.
 > ⚠ **Il cron non e' autorizzato da questa riga** e non lo e' da nessuna delle
 > altre due: gira per la prima volta nel piano 58-12.
+>
+> ⚠ **NON ANCORA SPESA, al 2026-08-20.** Il piano 58-11 si e' fermato **prima**
+> di qualunque scrittura: lo specchio non ha una sorgente registrata e rifiuta al
+> gate 2 (`deferred-items.md`, voce 4). E i numeri messi davanti a questa
+> autorizzazione sono quelli di `M1`, che nel frattempo e' invecchiata di una
+> corsa (voce 6): i pezzi sono **63** e gli impegni **85**, non 46 e 79. Le
+> spunte e i legami — la meta' che decideva — restano **0 e 0**. Poiche'
+> l'autorizzazione non e' stata consumata, **i numeri veri vanno rimessi davanti
+> al proprietario prima che lo sia.**
 > Si chiede il giorno in cui si esegue, nominando questa procedura. Un permesso
 > a eseguire P-58-B **non copre questa**, e questa non copre quella: sono due
 > atti, non un permesso (`ai-engineering.md`, *gate l'autorizzazione a scrivere
@@ -424,6 +433,12 @@ Result: pending
 > `production_checklist_item`**.
 > ⚠ **Il cron non e' autorizzato da questa riga**: gira per la prima volta nel
 > piano 58-12.
+>
+> ⚠ **NON ANCORA SPESA, al 2026-08-20**, per la stessa ragione di P-58-A
+> (`deferred-items.md`, voce 4). E questa procedura porta un secondo blocco, suo
+> e indipendente: **i passi 21, 22 e 23 pretendono un file di prova, e
+> l'argomento che lo faceva entrare non esiste piu'** dall'onda 6 (voce 5).
+> Registrare l'indirizzo non li sblocca.
 > E' **un'autorizzazione diversa** da quella di P-58-A e non ne eredita nulla:
 > P-58-A mette e toglie una spunta su una voce che esiste gia'; **questa crea un
 > legame verso una serata pubblicata** e mette alla prova il rifiuto che
