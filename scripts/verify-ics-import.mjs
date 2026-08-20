@@ -208,6 +208,14 @@ const MIGRATIONS = [
   // `PIECE_KINDS`. Without this line check G reads a `CHECK` that has been
   // superseded and reports the seventh member as unmirrored.
   "supabase/migrations/20260820120000_production_piece_flyering.sql",
+  // Plan 58-07 (D-58-06, ICS-02): the mirror's boundary — `calendar_key` on the
+  // three mirrored tables plus the import register, with FOUR CHECK vocabularies
+  // that mirror `CALENDAR_KEYS`. Without this line check G reads no CHECK
+  // carrying those three members and reports every one of them as unmirrored —
+  // which is exactly what it did, at 15:58:47Z on 2026-08-20, before this line
+  // was added. That red is the evidence the seventh pair is actually asserted
+  // rather than silently skipped.
+  "supabase/migrations/20260820121000_production_calendar_key.sql",
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1336,8 +1344,20 @@ function checkVocabularies(sql) {
 
   const lists = [...sqlByFile.values()].flatMap((sql) => checkVocabularies(sql));
 
-  // Six vocabularies, named from the module so that a rename is a build error
+  // Seven vocabularies, named from the module so that a rename is a build error
   // here and not a silently skipped assertion.
+  //
+  // `CALENDAR_KEYS` (plan 58-07) is the seventh, and it is the one whose CHECK is
+  // NOT a bare `IN`: its four constraints read `calendar_key IS NULL OR
+  // calendar_key IN (…)`, because the column's nullability is a declared
+  // transition and the constraint says so. `checkVocabularies` reads it anyway —
+  // it extracts every `IN (…)` list sitting inside a `CHECK ( … )` span rather
+  // than requiring the span to BE one, which is also how it already reads
+  // `production_piece_unresolved_check`, written in the same shape since plan
+  // 44-02. No adaptation was needed, and that is worth recording: had the
+  // extractor missed the shape, the repair belonged HERE and not in the
+  // constraint — the constraint tells the truth about the transition, and a gate
+  // that cannot read it is the incomplete half.
   const mirrored = [
     ["PIECE_KINDS", ics.PIECE_KINDS],
     ["PIECE_DATE_ORIGINS", ics.PIECE_DATE_ORIGINS],
@@ -1345,6 +1365,7 @@ function checkVocabularies(sql) {
     ["VENUE_STAGES", ics.VENUE_STAGES],
     ["ANCHOR_KINDS", ics.ANCHOR_KINDS],
     ["ANCHOR_DIRECTIONS", ics.ANCHOR_DIRECTIONS],
+    ["CALENDAR_KEYS", ics.CALENDAR_KEYS],
   ];
 
   let membersChecked = 0;
@@ -1380,7 +1401,11 @@ function checkVocabularies(sql) {
   if (gProblems.length === 0) {
     pass(
       "G",
-      `${membersChecked} declared members across 6 vocabularies, each accepted by a ` +
+      // Counted from `mirrored` rather than written as a literal: a hard-coded
+      // number in a PASS line is a number that goes stale the next time a
+      // vocabulary is added, and a green line reporting the wrong count is the
+      // quiet kind of wrong — nobody re-reads a check that passed.
+      `${membersChecked} declared members across ${mirrored.length} vocabularies, each accepted by a ` +
         `CHECK constraint · ${lists.length} CHECK vocabularies read from ` +
         `${sqlByFile.size} migration(s), none carrying a member the TypeScript lacks`
     );
