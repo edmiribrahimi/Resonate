@@ -1,48 +1,73 @@
 #!/usr/bin/env node
 /**
- * import-production-calendar.mjs — the production calendar, carried from the
- * owner's machine into the database, by hand, printing counts and never a line
- * of the file.
+ * import-production-calendar.mjs — the production calendar, read from the
+ * address that registers it, into the database, printing counts and never a line
+ * of what it read.
  *
- * WHAT IT DOES, in one sentence: **it reads the newest `.ics` snapshot in
- * `docs/`, drives `src/lib/production/ics/` to parse, classify and reconcile it
- * against what the six production tables already hold, prints the resulting plan
- * of writes as counts, and — only when `--apply` is passed explicitly — performs
- * those writes.**
+ * WHAT IT DOES, in one sentence: **it reads one calendar from the address
+ * registered for it in the environment, drives `src/lib/production/ics/` to
+ * parse, classify and reconcile it against what the six production tables
+ * already hold, prints the resulting plan of writes as counts, and — only when
+ * `--apply` is passed explicitly — performs those writes.**
  *
- * ── ⚠ WHY THIS IS A LOCAL SCRIPT AND NOT AN UPLOAD (D-44-26) ────────────────
+ * ── ⚠ THE SOURCE IS AN ADDRESS, AND THE FILE ARGUMENTS ARE GONE (`ICS-09`) ──
  *
- * There is **no upload surface in this product**: no Server Action that accepts
- * a file, no route that receives one, no drag target anywhere. That is a
- * decision, not an omission, and the reason is not convenience.
+ * This script used to take `--file` and `--docs-dir` and read the newest
+ * snapshot sitting in a gitignored directory on one machine. **Both arguments
+ * have been removed from the import path**, and the removal is declared here
+ * rather than left for somebody to notice from an error.
  *
- * An in-product upload would make the `.ics` **transit a serverless function** —
- * carrying spaces under negotiation, unannounced dates and line-ups into logs,
- * caches, framework error pages and whatever a future exception handler decides
- * to echo. The owner's own flow is *many changes on the Mac, then update the
- * app*, so the upload would buy no convenience while adding that cost. The
- * surface does not exist today, and criterion 2 of this phase exists to keep it
- * from existing.
+ * The reason is not tidiness. D-58-05 says the source of a calendar is an
+ * address registered once per calendar key, and `ICS-09` says that **without it
+ * the import refuses — it does not fall back to a file and it does not fall back
+ * to a default.** A second way in that still worked would be a fallback nobody
+ * declared: the run would succeed on the one machine that holds the material and
+ * quietly mirror a stale export, which is precisely the failure the registration
+ * exists to prevent. Leaving the arguments in place would have meant *not having
+ * closed it*.
+ *
+ * The gate `npm run verify:ics` still opens the material for itself. That is a
+ * **measurement** of a file, not a write to a database, and the distinction is
+ * the whole reason it may keep doing so.
+ *
+ * ── ⚠ HALF OF D-44-26 FELL ON 2026-08-20, AND HALF DID NOT (D-58-07) ────────
+ *
+ * D-44-26 forbade **two** things: (1) an upload control inside the product, and
+ * (2) the calendar transiting a server at all. The owner reversed **(2) only**,
+ * for the scheduled mirror, and the reason the prohibition existed did not
+ * evaporate with it: it became a thing to **defend by construction** instead of
+ * a surface that happened not to exist.
+ *
+ * **(1) stays forbidden, word for word.** No Server Action that accepts a file,
+ * no route that receives one, no drag target anywhere. `44-UI-SPEC.md` §11.3 and
+ * check **U2** of `verify-calendar-surface.mjs` remain valid and are not
+ * touched by this file.
+ *
+ * The five defences that replace the surface that used not to exist are
+ * requirements and not good intentions — the body is never printed, nothing is
+ * persisted, the failures are reported by distinct category, the address and its
+ * host are registered secrets, and the product gains no upload control. They are
+ * implemented below, each beside the line that carries it.
  *
  * **Where this disagrees with the research, and it does:** `44-RESEARCH.md`
  * §Import Path recommends building the upload **as well as** this script, and
- * weighs it fairly. That document is dated *before* the owner closed the
- * question. The disagreement is written down instead of smoothed over, so the
- * next reader who opens the research is not surprised by an absence and does not
- * "complete" the phase by building the thing it deliberately left out. Where the
- * two differ, the owner's decision wins (`44-UI-SPEC.md` §11.3).
+ * weighs it fairly. That recommendation is still refused, and it is refused by
+ * the half of D-44-26 that stands.
  *
  * ── ⚠ THIS RUN'S OUTPUT IS A PUBLICATION SURFACE ────────────────────────────
  *
- * `docs/` is gitignored and held there by check **F** of
- * `npm run verify:persona`. Everything in it — unannounced dates, spaces under
- * negotiation, line-ups — is material this repository must never publish, and
- * `github.com/edmiribrahimi/Resonate` is public.
+ * What arrives from the address — unannounced dates, spaces under negotiation,
+ * line-ups — is material this repository must never publish, and
+ * `github.com/edmiribrahimi/Resonate` is public. The same holds for `docs/`,
+ * gitignored and held there by check **F** of `npm run verify:persona`, which is
+ * where this run's snapshot of the rows it removes is written.
  *
  * So the rule is narrower than "be careful": somebody will paste this run into
  * an issue. It prints **counts, digested identifiers and reason codes**, and it
- * prints no title, no date, no venue word, no line-up and **not even the name of
- * the file it read** — that name carries a date. A failure is logged with `error.code`
+ * prints no title, no date, no venue word, no line-up and **not one byte of what
+ * it read** — that is defence 1 of D-58-07, and it is absolute because from plan
+ * 58-12 this run happens on a platform whose runtime logs are retained. A
+ * failure is logged with `error.code`
  * and `error.message` and never with PostgREST's third field, the one that
  * carries the entire rejected row: for `production_plan` that row carries the
  * word for a space. Its name is deliberately not written anywhere in this file,
@@ -242,11 +267,14 @@
  *                       of every `DELETE` below, and a default is exactly the
  *                       step somebody eventually skips. Validated against the
  *                       closed vocabulary the database also holds as a `CHECK`.
- *   `--file <path>`     one snapshot, by path. Overrides the search.
- *   `--docs-dir <dir>`  where to search for the newest `.ics`. Defaults to
- *                       `docs/` beside this repository. The directory name
- *                       carries no date; a snapshot's file name does, which is
- *                       why the search prints neither.
+ *   `--accept-shrink`   allow a calendar that arrives carrying fewer entries
+ *                       than the declared floor to be mirrored anyway. Without
+ *                       it, that is a refusal. It covers a SHRUNK feed only:
+ *                       **an empty one is never authorisable**, whatever is
+ *                       passed. Its use is recorded in the report, in the same
+ *                       shape as the renumbering re-authorisation, because a
+ *                       guard with no authorised exit is a guard somebody
+ *                       removes.
  *   `--reauthorise-renumbering`
  *                       allow a known entry to come back with a different
  *                       progressivo. Without it, that is a refusal. Its use is
@@ -283,7 +311,11 @@
  *   more.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+// ⚠ `readFileSync`, `readdirSync` and `statSync` are gone from this list, and
+// that is the removal `ICS-09` asked for made visible in one line: this script
+// no longer opens the material at all. What is left writes the snapshot of the
+// rows it is about to remove, and reads nothing but its own environment file.
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { registerHooks } from "node:module";
@@ -416,8 +448,16 @@ function parseArguments(argv) {
      * the value ends up as the single condition of four `DELETE` statements.
      */
     calendar: null,
-    file: null,
-    docsDir: null,
+    /**
+     * The authorised way past the feed guard, and past `feed_shrank` ONLY.
+     *
+     * ⚠ There is deliberately no argument here that reads bytes from anywhere
+     * other than the registered address: `--file` and `--docs-dir` were removed
+     * with `ICS-09`, and the header says why. An unrecognised `--file` now lands
+     * in `unknown` below and REFUSES, which is the honest answer — better than a
+     * flag silently ignored on a run somebody believed had read their export.
+     */
+    acceptShrink: false,
     reauthoriseRenumbering: false,
     adoptUnkeyedRows: false,
     help: false,
@@ -435,15 +475,10 @@ function parseArguments(argv) {
     else if (argument === "--help" || argument === "-h") options.help = true;
     else if (argument === "--reauthorise-renumbering") options.reauthoriseRenumbering = true;
     else if (argument === "--adopt-unkeyed-rows") options.adoptUnkeyedRows = true;
+    else if (argument === "--accept-shrink") options.acceptShrink = true;
     else if (argument === "--calendar") {
       i += 1;
       options.calendar = argv[i] ?? null;
-    } else if (argument === "--file") {
-      i += 1;
-      options.file = argv[i] ?? null;
-    } else if (argument === "--docs-dir") {
-      i += 1;
-      options.docsDir = argv[i] ?? null;
     } else unknown.push(argument);
   }
 
@@ -478,8 +513,8 @@ if (options.help) {
   say("  --dry-run          print the plan and write nothing. THE DEFAULT.");
   say("  --apply            perform the writes. Must be passed explicitly.");
   say("  --calendar <key>   WHICH calendar this run mirrors. REQUIRED, no default.");
-  say("  --file <path>      one snapshot, by path.");
-  say("  --docs-dir <dir>   where to search for the newest snapshot.");
+  say("  --accept-shrink    allow a source that arrives smaller than the declared floor.");
+  say("                     Covers a shrunk source only; an empty one is never allowed.");
   say("  --reauthorise-renumbering");
   say("                     allow a known entry back with a different progressivo.");
   say("  --adopt-unkeyed-rows");
@@ -641,17 +676,21 @@ say("");
  * line-ups, so it lives in a deployment-platform variable — never in this tree,
  * never in `.planning/`, never in a report and never in a log.
  *
- * **What this gate does today, and what it deliberately does not.** It asserts
- * that a source is REGISTERED for the declared key, and registers the value as a
- * secret so no line can print it. **Fetching from it is plan 58-10's** (`ICS-09`
- * / `ICS-10`, with the feed guard). Until then the bytes still come from a file
- * on disk, and the report says so rather than letting a reader assume otherwise.
+ * **Nothing bypasses this any more, because there is nothing left to bypass it
+ * with.** `--file` and `--docs-dir` are gone (`ICS-09`, declared at the top of
+ * this file): the registration no longer merely asserts that this deployment
+ * mirrors this calendar — it is now the ONLY way bytes reach this run.
  *
- * ⚠ **`--file` does not bypass this.** The file argument says where the bytes
- * come from; the registration says that this deployment mirrors this calendar at
- * all. A key nobody registered is a key naming a calendar this deployment does
- * not own, and running a removal for it is the failure the whole gate exists
- * against.
+ * ── ⚠ THE HOST IS REGISTERED TOO, AND THAT IS NOT BELT-AND-BRACES ───────────
+ *
+ * Defence 4 of D-58-07 asks for both. The whole address is the secret, but a
+ * network-layer message is written by somebody else and routinely carries **only
+ * the host** — *getaddrinfo ENOTFOUND ‹host›* is the shape. A redaction list
+ * holding the full address would not match that string, and the provider's host
+ * alone already narrows down who could have published this calendar. So both go
+ * in, and both go in **before the first `say()` of this block**: the guarantee
+ * this file offers is that every printed string passes through one list, and a
+ * list that gets filled after the first line is not that guarantee.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -683,23 +722,92 @@ if (feedSource === null || feedSource.trim() === "") {
 // Registered before anything else can print: the address is a secret in the
 // exact sense this file's redaction list means, and an error body written by
 // somebody else can echo back what it was sent.
-registerSecret(feedSource);
+registerSecret(feedSource.trim());
+
+/**
+ * The address this run reads from, and the two things settled while parsing it.
+ *
+ * ⚠ **The scheme is normalised, not guessed.** A calendar published from a Mac
+ * is commonly handed out under the `webcal:` scheme, which is the same request
+ * over TLS with a different word in front. It is rewritten here, once, where a
+ * reader can see it happen — rather than left to fail later as *unreachable*,
+ * which would send somebody looking at their network for an hour.
+ *
+ * ⚠ **The rewrite is done on the STRING and the address re-parsed, and that is
+ * not a stylistic choice — the obvious version does nothing.** Assigning to
+ * `.protocol` on a parsed address whose scheme is not one the URL standard calls
+ * *special* is **silently ignored**: the assignment appears to succeed, the
+ * value does not change, and the refusal below then fires on an address that had
+ * just been repaired. It was written the obvious way first and measured going
+ * red on a perfectly good subscription address. A repair that fails without
+ * saying so is the silent failure this project keeps writing down.
+ *
+ * ⚠ **Anything that is neither of the two is a refusal, not a coercion.** A
+ * `file:` address would turn the registration back into a local read and quietly
+ * reopen the door `ICS-09` closed; an unknown scheme is a typo or a paste of
+ * something else entirely. Neither gets repaired into a request.
+ */
+function resolveFeedAddress(raw) {
+  // On the string, before parsing, and anchored at the start so it cannot touch
+  // anything inside the address.
+  const normalised = raw.replace(/^webcal:/i, "https:");
+
+  let parsed;
+  try {
+    parsed = new URL(normalised);
+  } catch {
+    refuse(
+      "bad_feed_source",
+      `${feedSourceVariableName} is set but is not an address. Its VALUE is not printed ` +
+        "here and will not be: it is readable by anybody holding it. Check the variable " +
+        "where it is configured."
+    );
+  }
+
+  // The host goes into the redaction list before it can appear in any message —
+  // including the refusal three lines below, which names a scheme and nothing
+  // else.
+  registerSecret(parsed.hostname);
+
+  if (parsed.protocol !== "https:") {
+    refuse(
+      "bad_feed_source",
+      `${feedSourceVariableName} carries a scheme this run will not read from. Two are ` +
+        "accepted — the secure web one, and the calendar-subscription one, which is " +
+        "rewritten to it. A local-file scheme is refused rather than followed: it would " +
+        "reopen the second way in that ICS-09 closed."
+    );
+  }
+
+  // The normalised form as well as the raw one. `new URL()` may add a trailing
+  // slash or lower-case the host, so the string this run actually requests can
+  // differ by a character from the one the variable holds — and a redaction list
+  // matches by substring, not by intent.
+  registerSecret(parsed.href);
+
+  return parsed;
+}
+
+const feedAddress = resolveFeedAddress(feedSource.trim());
+
 say("  ✓ a source is registered for this calendar (never printed, redacted everywhere)");
-say("    ⚠ reading FROM it is plan 58-10's. This run still takes its bytes from disk.");
+say("    the address AND its host are registered secrets — a network message carries the");
+say("    host on its own, and the host alone narrows down who published this calendar.");
 say("");
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Gate 3 — credentials, BEFORE the file is opened
+ * Gate 3 — credentials, BEFORE the source is read
  *
  * ⚠ **Third now, and it used to be first.** The move is the refusal order this
  * file's header states and `scripts/verify-mirror-guards.mjs` fixes: with the
  * credentials first, all three cases above answer `missing_credential` and the
  * gate measures the wrong thing.
  *
- * It still comes before the material. A refusal that has already read the
- * material is a refusal that did work it did not need to do, and the discipline
- * this script is asked for is *never a partial run*: if the run cannot finish,
- * it does not start.
+ * It still comes before the material, and since `ICS-09` that ordering buys more
+ * than it used to: a refusal that has already read the source is a refusal that
+ * pulled unannounced dates and spaces under negotiation into this process for no
+ * reason. The discipline this script is asked for is *never a partial run* — if
+ * the run cannot finish, it does not start, and it does not read.
  *
  * ⚠ **The environment FILE is read INSIDE this function**, never at the top of
  * the script. That is the second half of the contract: read at the top, gate 2's
@@ -747,77 +855,183 @@ const credentials = loadEnvironment();
 say("  ✓ credentials present (never printed, and redacted from every line above and below)");
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Gate 4 — the material
+ * Gate 4 — the material, read from the registered address
+ *
+ * ⚠ **This block had no analogue to copy from and was written from nothing.**
+ * There is exactly one call to the platform's HTTP reader outside a browser
+ * anywhere in this repository — `scripts/rls-baseline.mjs` — and it has **no
+ * timeout** and distinguishes only *not-OK* from *not-JSON*. The one piece of
+ * code here that IS copied whole is the secrecy list, which that same file owns
+ * and which this file already uses.
+ *
+ * ── ⚠ THE FOUR WAYS THIS CAN FAIL ARE FOUR, AND NEVER ONE ───────────────────
+ *
+ * Defence 3 of D-58-07, and the *zero silent failures* gate taken from the hard
+ * side: distinguish the causes **without echoing what produced them**. This
+ * project has already paid once for a `catch` that collapsed them — the
+ * newsletter form answering *«qualcosa è andato storto»* to a network problem, a
+ * missing key and an address already subscribed alike, recorded in
+ * `.planning/codebase/CONCERNS.md`.
+ *
+ *   `feed_unreachable`     nothing answered: network, name resolution, or the
+ *                          timeout fired
+ *   `feed_unauthorised`    an answer arrived and it was 401, 403 or 404 — the
+ *                          address no longer grants this calendar, which is the
+ *                          expected shape after a re-publication invalidates the
+ *                          old one
+ *   `feed_unavailable`     an answer arrived with any other non-2xx status. Kept
+ *                          apart from the one above ON PURPOSE: a reader chasing
+ *                          a 503 looks at the provider, a reader chasing a 403
+ *                          looks at the registration, and one label for both
+ *                          sends half of them to the wrong place
+ *   `feed_not_a_calendar`  a 2xx whose body is not a readable calendar — bounds
+ *                          exceeded, or the parser refused it
+ *
+ * and the fourth family of the requirement, *too small*, is the feed guard —
+ * which likewise answers in **two** categories rather than one, for the reason
+ * `src/lib/production/ics/guard.ts` states: only one of the two can ever be
+ * authorised.
+ *
+ * ── ⚠ NOTHING IS PERSISTED, AND NOTHING OF THE BODY IS PRINTED ──────────────
+ *
+ * Defences 1 and 2. The body is read inside the function below and **never
+ * leaves it**: what comes out is the parse result, the byte size and the line
+ * count. Nothing writes it to disk, the request is made with no store, and no
+ * refusal on this path interpolates a single character of it — a parser refusal
+ * carries the parser's own reason code, which is a word from a closed
+ * vocabulary and not a quotation.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The newest `.ics` snapshot, or `null`.
+ * How long this run waits for the calendar, in milliseconds.
  *
- * The **path is returned and never printed**: a snapshot is named after the day
- * it was taken, so its file name is a date, and a date is the first thing this
- * script may not say out loud.
+ * ⚠ Chosen, not measured — same discipline as the guard's floor. It exists
+ * because from plan 58-12 nobody is watching: a read with no bound is a run that
+ * does not end, and a scheduled job that does not end is one that never reports.
  */
-function findMaterial(docsDir) {
-  if (!existsSync(docsDir) || !statSync(docsDir).isDirectory()) return null;
+const FEED_TIMEOUT_MS = 20_000;
 
-  const snapshots = readdirSync(docsDir)
-    .filter((name) => name.toLowerCase().endsWith(".ics"))
-    .sort();
-
-  if (snapshots.length === 0) return null;
-  return join(docsDir, snapshots[snapshots.length - 1]);
-}
-
-const docsDir = options.docsDir ?? join(ROOT, "docs");
-let materialPath = options.file;
-
-if (materialPath === null) {
-  materialPath = findMaterial(docsDir);
-  if (materialPath === null) {
+/**
+ * Reads the calendar and returns **the parse and two counts**. Never the body.
+ *
+ * @returns `{ parsed, byteSize, physicalLineCount }`
+ */
+async function readRegisteredFeed() {
+  let response;
+  try {
+    response = await globalThis.fetch(feedAddress, {
+      // Defence 2: no HTTP cache anywhere along the path. A cached calendar is a
+      // copy of the material sitting somewhere nobody declared.
+      cache: "no-store",
+      redirect: "follow",
+      headers: {
+        "cache-control": "no-store",
+        accept: "text/calendar",
+      },
+      signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+    });
+  } catch (error) {
+    // ⚠ **The name and the system code, never `error.message`.** A network
+    // message routinely interpolates the host — *getaddrinfo ENOTFOUND ‹host›* —
+    // and while the host is a registered secret and would be redacted, the rule
+    // this file keeps is to not print the thing rather than to rely on the net
+    // catching it. `name` distinguishes a timeout from a failed connection and
+    // `cause.code` is a symbolic constant that names nothing.
+    const symptom = `${error?.name ?? "error"}${
+      typeof error?.cause?.code === "string" ? ` / ${error.cause.code}` : ""
+    }`;
     refuse(
-      "no_material",
-      "the snapshot directory holds no .ics file. That directory is gitignored, is " +
-        "never deployed and is never cloned, so the calendar lives only on the " +
-        "owner's machine — which makes this the expected state everywhere else. " +
-        "Pass --file or --docs-dir to point at it."
+      "feed_unreachable",
+      `the registered source did not answer within ${FEED_TIMEOUT_MS}ms, or could not be ` +
+        `reached at all: ${symptom}. Nothing was read, so nothing was written. The ` +
+        "address itself is not printed."
     );
   }
-} else if (!existsSync(materialPath)) {
-  refuse("no_material", "the path given to --file does not exist.");
+
+  if (response.status === 401 || response.status === 403 || response.status === 404) {
+    refuse(
+      "feed_unauthorised",
+      `the registered source answered ${response.status}: this address no longer grants ` +
+        "this calendar. That is what a re-publication looks like from here — the old " +
+        `address stops working. Re-register ${feedSourceVariableName} with the new one.`
+    );
+  }
+
+  if (!response.ok) {
+    refuse(
+      "feed_unavailable",
+      `the registered source answered ${response.status}. That is the provider refusing ` +
+        "or failing for a reason that is not access — it is reported apart from the " +
+        "access case so that whoever reads this looks at the right place."
+    );
+  }
+
+  const body = await response.text();
+  const bytes = Buffer.byteLength(body, "utf8");
+  const lines = body.split(/\r?\n/).length;
+
+  if (bytes > ics.MAX_INPUT_BYTES) {
+    refuse(
+      "feed_not_a_calendar",
+      `what arrived is larger than the ${ics.MAX_INPUT_BYTES}-byte bound the parser ` +
+        "declares. Something that size is not this calendar."
+    );
+  }
+  if (lines > ics.MAX_INPUT_LINES) {
+    refuse(
+      "feed_not_a_calendar",
+      `what arrived carries more than the ${ics.MAX_INPUT_LINES}-line bound the parser ` +
+        "declares."
+    );
+  }
+
+  /*
+   * ⚠ THE ENVELOPE IS CHECKED HERE AND NOT LEFT TO THE READER, and it was added
+   * after measuring what happens without it.
+   *
+   * The shared reader refuses only on the two bounds: handed a page of HTML it
+   * comes back with no refusal and **zero entries**, and the run would then be
+   * stopped one gate later by the feed guard — as `feed_empty`. That is the
+   * wrong category, and the wrong category is the whole failure defence 3 of
+   * D-58-07 exists against: `feed_empty` sends a person to look at their export,
+   * when what actually happened is that the address answered `200` with somebody
+   * else's page — a sign-in wall, a captive portal, a provider's error page.
+   * Those are two different repairs.
+   *
+   * The literal below is an iCalendar keyword, not material.
+   */
+  if (!/^BEGIN:VCALENDAR/im.test(body)) {
+    refuse(
+      "feed_not_a_calendar",
+      "the registered source answered successfully, but what came back is not a calendar " +
+        "at all — it carries no calendar envelope. It is reported apart from an empty " +
+        "calendar on purpose: an empty one means look at the export, this one means look " +
+        "at the address."
+    );
+  }
+
+  const result = ics.parseIcs(body);
+
+  if (result.refusal !== null) {
+    // The reason is the parser's own code — a member of a closed vocabulary —
+    // and never a quotation of what it was reading.
+    refuse(
+      "feed_not_a_calendar",
+      `the reader refused what arrived: ${result.refusal.reason}. A 2xx answer that is ` +
+        "not a calendar is a different finding from an address that does not answer, and " +
+        "it is reported as one."
+    );
+  }
+
+  // The body goes out of scope here and is never returned, never stored and
+  // never assigned to anything that outlives this call.
+  return { parsed: result, byteSize: bytes, physicalLineCount: lines };
 }
 
-/* ────────────────────────────────────────────────────────────────────────────
- * Stage 1 — the file: bounds, then parse
- *
- * The bounds are asserted BEFORE parsing, against the two the parser itself
- * declares, so that a file which is not this file refuses instead of producing a
- * plan somebody might apply.
- * ──────────────────────────────────────────────────────────────────────────── */
-
-const text = readFileSync(materialPath, "utf8");
-const byteSize = Buffer.byteLength(text, "utf8");
-const physicalLineCount = text.split(/\r?\n/).length;
-
-if (byteSize > ics.MAX_INPUT_BYTES) {
-  refuse(
-    "input_too_large",
-    `the snapshot is larger than the ${ics.MAX_INPUT_BYTES}-byte bound the parser ` +
-      "declares. A file that size is not this calendar."
-  );
-}
-if (physicalLineCount > ics.MAX_INPUT_LINES) {
-  refuse(
-    "input_too_long",
-    `the snapshot carries more than the ${ics.MAX_INPUT_LINES}-line bound the parser ` +
-      "declares."
-  );
-}
-
-const parsed = ics.parseIcs(text);
-
-if (parsed.refusal !== null) {
-  refuse("parse_refused", `the parser refused the input: ${parsed.refusal.reason}`);
-}
+const feed = await readRegisteredFeed();
+const parsed = feed.parsed;
+const byteSize = feed.byteSize;
+const physicalLineCount = feed.physicalLineCount;
 
 // From here on, every exit — refusal, failure or success — is audited.
 auditReady = true;
@@ -825,10 +1039,10 @@ auditReady = true;
 const distinctUids = new Set(parsed.events.map((event) => event.uid)).size;
 
 say("");
-say("  ── the file ──────────────────────────────────────────────────────────");
+say("  ── what arrived ──────────────────────────────────────────────────────");
 say(
-  `     ${byteSize} bytes · ${parsed.events.length} entries · ${distinctUids} distinct UIDs · ` +
-    `${parsed.malformed.length} malformed line(s)`
+  `     ${byteSize} bytes · ${physicalLineCount} lines · ${parsed.events.length} entries · ` +
+    `${distinctUids} distinct UIDs · ${parsed.malformed.length} malformed line(s)`
 );
 say(
   `     ${parsed.unsupportedRecurrences.length} unsupported recurrence(s) · ` +
@@ -953,9 +1167,22 @@ try {
  * the six production tables carry **no write policy at all** (D-44-22), exactly
  * as the catalogue tables do not (`formats/actions.ts:17-22`), so a cookie
  * client is refused for everybody and this is not a preference — it is the only
- * client that can write these rows. The untrusted-input half is answered by
- * there being no HTTP surface: the only input is a file on the machine that
- * holds the key, and the process exits when it is done.
+ * client that can write these rows.
+ *
+ * ⚠ **The untrusted-input half changed on 2026-08-20 and is written out rather
+ * than left standing.** It used to read *the only input is a file on the machine
+ * that holds the key*. Since `ICS-09` the input arrives **over the network**,
+ * from an address, and the body is written by somebody else. What answers the
+ * half now is that no part of that body reaches this client as an instruction:
+ * it is parsed by pure modules into typed rows, the calendar key that scopes
+ * every removal comes from an ARGUMENT and never from the body (D-58-05,
+ * *the scope is declared, not deduced*), and the guard below decides whether the
+ * run may proceed on a **count**. Content from an address is data. It is never a
+ * command — `ai-engineering.md`, gate *prompt security*, is the same rule for a
+ * different reader.
+ *
+ * The product still has no HTTP surface that receives a calendar, and that half
+ * of D-44-26 did not fall.
  */
 const db = createClient(credentials.url, credentials.serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -965,6 +1192,116 @@ const db = createClient(credentials.url, credentials.serviceKey, {
 function describe(error) {
   return `${error?.code ?? "no_code"}: ${error?.message ?? "no message"}`;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Gate 5 — the feed guard (`ICS-10`, guard a)
+ *
+ * ⚠ **It runs HERE, which is before every removal and before the plan is even
+ * built.** The order is the point: a run that is going to refuse should refuse
+ * having done as little as possible, and a run that refuses on this gate has
+ * opened no transaction, taken no snapshot and deleted nothing. The exit is `2`,
+ * which in this repository means *nothing was written* — so *nothing failed*.
+ *
+ * The comparison is **two counts and nothing else**, and the predicate that
+ * makes it lives in `src/lib/production/ics/guard.ts`, where the threshold is
+ * declared as a policy that was chosen rather than measured. Read that module
+ * before changing the number here, because the number is not here.
+ *
+ * ⚠ **The previous count comes from the register, not from the tables.** The
+ * question is *how much did the last successful mirror of THIS calendar carry*,
+ * and only `production_import_run` answers it: counting rows in the mirrored
+ * tables would count what is there now, which is exactly what a half-finished
+ * previous run would have made wrong. A dry run writes no register row (this
+ * file's header says why), so the previous count is always the last **applied**
+ * one.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const lastRun = await db
+  .from("production_import_run")
+  .select("entries_seen")
+  .eq("calendar_key", calendarKey)
+  .eq("dry_run", false)
+  .not("finished_at", "is", null)
+  .order("finished_at", { ascending: false })
+  .limit(1);
+
+if (lastRun.error) {
+  // Not folded into the catalogue's category: a register this run cannot read is
+  // a guard this run cannot apply, and proceeding as though there were no
+  // previous mirror would turn an unreadable register into permission to delete.
+  refuse(
+    "register_unreadable",
+    `the import register could not be read, so the feed guard cannot be applied — ` +
+      `${describe(lastRun.error)}. It is refused rather than treated as a first run: ` +
+      "a first run is allowed to write, and that is not something to infer from an error."
+  );
+}
+
+/**
+ * How many entries the last applied mirror of this calendar carried.
+ *
+ * ⚠ `null` and `0` are different answers and stay different: `null` is *there is
+ * no previous applied mirror for this key* — the first pass, which the guard
+ * cannot forbid. A row whose `entries_seen` is genuinely absent is treated the
+ * same way for the same reason, and that is the conservative direction only
+ * because the empty-feed rule below fires regardless of what came before.
+ */
+const previousEntries =
+  lastRun.data.length === 0 || lastRun.data[0].entries_seen === null
+    ? null
+    : lastRun.data[0].entries_seen;
+
+const feedVerdict = ics.mirrorGuard({
+  previousEntries,
+  currentEntries: parsed.events.length,
+});
+
+say("");
+say("  ── the feed guard ────────────────────────────────────────────────────");
+if (previousEntries === null) {
+  say(
+    `     no previous applied mirror for this calendar · ${parsed.events.length} entr(y/ies) ` +
+      "arriving. A first pass is admitted; the guard cannot forbid the beginning."
+  );
+} else {
+  say(
+    `     previous ${previousEntries} · arriving ${parsed.events.length} · floor ` +
+      `${ics.mirrorShrinkMargin(previousEntries)} (${ics.MIRROR_SHRINK_FLOOR} of the previous)`
+  );
+}
+
+if (feedVerdict === "feed_empty") {
+  refuse(
+    "feed_empty",
+    "what arrived carries no entries at all. That is a wrong export or a source that " +
+      "stopped answering with a calendar — it is never a decision, and no argument " +
+      "authorises it. Nothing was removed."
+  );
+}
+
+if (feedVerdict === "feed_shrank" && !options.acceptShrink) {
+  refuse(
+    "feed_shrank",
+    "what arrived is smaller than the declared floor, so this run would have deleted " +
+      "the calendar and written back less than it removed. The floor is a policy that " +
+      "was chosen and not measured, and it errs towards refusing. If the calendar really " +
+      "did lose those entries, say so with --accept-shrink; the report will record that " +
+      "you did."
+  );
+}
+
+if (feedVerdict === "feed_shrank") {
+  // The authorised exit, recorded — the same shape as the renumbering
+  // re-authorisation, and for the same reason: a guard that can be walked past
+  // silently is a guard nobody can audit afterwards.
+  say(
+    "     ⚠ AUTHORISED: --accept-shrink was passed, so a source below the floor is being " +
+      "mirrored anyway. This line is the record of that decision."
+  );
+} else {
+  say("     ✓ admitted.");
+}
+say("");
 
 /**
  * One read, and a **label** that is not the table's own name.

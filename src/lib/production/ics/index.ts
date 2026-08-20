@@ -1,10 +1,10 @@
 /**
  * The production calendar's reader, in one import.
  *
- * Six modules — the vocabularies, the line unfolder, the parser, the classifier,
- * the anchor resolver and the reconciler — behind one specifier, so that the local
- * script and the golden-file check read the same definitions rather than two that
- * agree today.
+ * Seven modules — the vocabularies, the line unfolder, the parser, the classifier,
+ * the anchor resolver, the reconciler and the feed guard — behind one specifier, so
+ * that the local script and the golden-file check read the same definitions rather
+ * than two that agree today.
  *
  * ── (a) EVERY MODULE BEHIND THIS BARREL IS PURE ─────────────────────────────
  *
@@ -91,3 +91,4 @@ export * from "./parse";
 export * from "./classify";
 export * from "./anchors";
 export * from "./reconcile";
+export * from "./guard";

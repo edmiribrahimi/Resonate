@@ -32,6 +32,7 @@
     "verify:section-surface": "node scripts/verify-section-surface.mjs",
     "verify:section-export": "node scripts/verify-section-export.mjs",
     "verify:refusal": "node scripts/verify-refusal.mjs",
+    "verify:mirror-guards": "node scripts/verify-mirror-guards.mjs",
     "verify": "node scripts/verify-all.mjs",
     "import:calendar": "node scripts/import-production-calendar.mjs",
     "seed:spaces": "node scripts/seed-production-spaces.mjs",

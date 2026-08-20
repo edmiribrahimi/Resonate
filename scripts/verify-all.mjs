@@ -280,6 +280,24 @@ const OFFLINE = [
       "progressivo is a monotone guard already printed on a poster. If this gate ever " +
       "reports a GUESSED, stop and read it before anything else",
   ],
+  [
+    "verify:mirror-guards", false,
+    "Phase 58 — le guardie dello specchio, su casi che il gate costruisce dentro di se'. " +
+      "STA QUI e non in NEEDS_MATERIAL accanto a verify:ics, ed e' la stessa distinzione " +
+      "che regge verify:ics-grammar: non apre docs/, non chiede credenziali e non ne " +
+      "passa nessuna ai processi figli — l'ambiente del figlio e' costruito per " +
+      "INCLUSIONE, solo PATH e HOME, quindi nessun segreto entra e nessuno puo' uscire da " +
+      "un messaggio d'errore. Gira ovunque e NON ESCE MAI 2. Misura due famiglie: il " +
+      "predicato puro della guardia del feed (sette casi, compreso quello esattamente al " +
+      "margine, costruito dalla soglia LETTA dal modulo e mai copiata qui) e i tre rifiuti " +
+      "dell'importatore, di cui asserisce SOLO uscita e categoria — del referto del figlio " +
+      "non stampa una riga, perche' quel figlio e' lo script che apre il calendario. " +
+      "UN CASO E' DICHIARATO RIMANDATO e non simulato: R4, il progressivo che torna " +
+      "diverso, che legge l'istantanea e quindi il database — va misurato in P-58-B con " +
+      "tre asserzioni insieme, uscita 2, categoria, e ZERO scritture lette dal catalogo. " +
+      "Un verde qui NON dice che lo specchio sia sicuro: dice che queste strade non " +
+      "portano a una scrittura",
+  ],
   ["verify:no-header-identity", false, ""],
   ["verify:no-credit-account", false, ""],
   ["verify:media-strip", false, ""],
