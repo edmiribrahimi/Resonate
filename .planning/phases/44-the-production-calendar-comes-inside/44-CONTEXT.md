@@ -256,6 +256,17 @@ rather than a reading of any document:
 
 ### The two decisions the researcher returned to the owner — both closed 2026-08-15
 
+> ⚠ **D-44-26 was HALF-REVERSED on 2026-08-20 (phase 58, D-58-07).** The owner
+> chose an automatic mirror running on the platform, so **the `.ics` now does
+> transit a server** — the exact cost this decision refused. The other half
+> stands: **no upload control inside the product**, so §11.3 of `44-UI-SPEC.md`
+> and check **U2** of `verify-calendar-surface.mjs` remain valid and untouched.
+> The reason this decision existed did not stop being true; it became something
+> defended by construction instead of a surface that does not exist. The five
+> defences that replace it are in
+> `.planning/phases/58-il-calendario-si-legge-come-lo-si-scrive/58-CONTEXT.md`,
+> D-58-07. **Read that before citing the paragraph below as current.**
+
 - **D-44-26: the import is a LOCAL SCRIPT ONLY.** No upload surface inside the
   product. The owner's flow is *many changes on the Mac, then update the app*,
   and against that flow an in-product upload buys no convenience while adding a

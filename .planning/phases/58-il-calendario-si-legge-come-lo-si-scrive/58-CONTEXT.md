@@ -201,6 +201,56 @@ questa. Non prima.
   build: la CLI Supabase non e' installata, si applica dalla Management API, e i
   tipi TypeScript vengono da un file generato.
 
+
+### La reversione di `D-44-26`, dichiarata come tale
+
+- **D-58-07 — il calendario passa da un server, e questa riga rovescia
+  `D-44-26`.** Il 2026-08-15 il proprietario aveva chiuso l'import come **script
+  locale soltanto**, con questa ragione scritta: *«the `.ics` would otherwise
+  transit a Vercel server, carrying spaces under negotiation and unannounced
+  dates into logs, caches and runtime errors. That surface does not exist today,
+  and criterion 2 of this phase exists to keep it from existing.»*
+  Il 2026-08-20, con il conflitto davanti, il proprietario ha scelto
+  **l'aggiornamento automatico sulla piattaforma**. La decisione precedente e'
+  **superata**, non dimenticata, e la ragione per cui esisteva vale ancora: e'
+  diventata una cosa **da difendere per costruzione** invece di una superficie
+  che non esiste.
+
+  **Cade meta' di `D-44-26`, non tutta.** Quella decisione vietava **due** cose:
+  (1) un controllo di caricamento dentro il prodotto, (2) il transito del `.ics`
+  da un server. **La (1) resta vietata** — nessun `input type="file"`, nessun
+  bersaglio di trascinamento, nessuna Server Action che riceve un calendario:
+  `44-UI-SPEC.md` §11.3 e il controllo **U2** di `verify-calendar-surface.mjs`
+  restano validi e non si toccano. Cade solo la (2), e solo per il percorso del
+  cron.
+
+  **Le cinque difese che sostituiscono la superficie che non esisteva.** Sono
+  requisiti, non buone intenzioni: il piano le aggancia a `ICS-10` e la fase non
+  passa senza.
+  1. **Il corpo del feed non si stampa mai** — non in un log, non in un messaggio
+     d'errore, non nel referto, non in una eccezione non catturata. Escono
+     **conteggi e categorie**, mai testo del calendario. I log di runtime della
+     piattaforma sono conservati: questa non e' una precauzione, e' l'unica
+     difesa che c'e'.
+  2. **Nessuna persistenza.** Il payload vive in memoria per la durata
+     dell'esecuzione: nessuna scrittura su disco, nessuna cache HTTP
+     (`no-store`), nessun corpo trattenuto dopo la trasformazione.
+  3. **Gli errori si riportano per categoria** — rete, autenticazione, feed
+     malformato, feed sospetto — **senza riecheggiare il contenuto**. E' il gate
+     *zero fallimenti silenziosi* preso dal verso difficile: distinguere le cause
+     **senza** rivelare cio' che le ha prodotte.
+  4. **Il link e' un segreto registrato**, con `registerSecret`/`redact` che il
+     repo gia' usa (`scripts/rls-baseline.mjs:158-176`, gia' in uso
+     nell'importatore) — e si registra **anche l'host**, non solo l'indirizzo
+     intero, o un messaggio di rete lo stampa comunque.
+  5. **La superficie non guadagna nessun controllo di caricamento.** Vedi sopra:
+     e' la meta' di `D-44-26` che non cade.
+
+  ⚠ **Il piano deve verificare le difese, non dichiararle.** Un controllo sul
+  sorgente che nessuna `console`/`say`/risposta d'errore del percorso del cron
+  interpoli il corpo del feed e' l'unico modo in cui la difesa 1 esiste davvero:
+  scritta e basta, e' una promessa che il primo `catch` distratto rompe.
+
 </decisions>
 
 <open_questions>
