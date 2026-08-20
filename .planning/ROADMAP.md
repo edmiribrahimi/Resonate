@@ -85,7 +85,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 - [ ] **55** — Visual, una pagina per format (`VIS`)
 - [ ] **56** — La navetta (`SHTL`)
 - [ ] **57** — I documenti che ancora difendono la community (`DOC`)
-- [ ] **58** — Il calendario e' uno specchio (`ICS`) — *aperta e riscritta il 2026-08-20; toglie codice invece di aggiungerne*
+- [ ] **58** — Il calendario e' uno specchio (`ICS`) — *aperta e riscritta il 2026-08-20; toglie la riconciliazione al centro, e dopo la ricerca guadagna la sorgente per link e lo specchio automatico*
 
 ---
 
@@ -113,18 +113,41 @@ esisteva solo per gestirle.
 | ID | Requisito |
 |---|---|
 | **ICS-01** | Cio' che viene dal calendario e' **uno specchio**: si cancella e si riscrive dal file. Nessun timbro di assenza, nessuna divergenza, nessun aggiornamento campo per campo. Una voce che il file non porta piu' **non c'e' piu'**. |
-| **ICS-02** | Lo specchio e' **ristretto al calendario che si sta importando**. Importare il satellite non tocca le righe della notte. |
-| **ICS-03** | **Due sole eccezioni allo specchio, nominate**: le **spunte** di checklist e il **legame con una serata pubblicata**. Si riagganciano, non si ricreano. Nessuna terza eccezione senza che qualcuno la dichiari qui. |
+| **ICS-01b** | La guardia sul **progressivo** sopravvive allo specchio: un `source_uid` gia' noto che arriva con un numero diverso fa **rifiutare** l'import, che **non scrive niente** e nomina la serata e i due numeri. Una rinumerazione voluta passa da una **riautorizzazione esplicita**, che si registra nel referto. *(D-58-01.)* |
+| **ICS-02** | Lo specchio e' **ristretto al calendario che si sta importando**. Importare il satellite non tocca le righe della notte. Lo scopo si **dichiara** — arriva dalla sorgente registrata, mai dedotto dal contenuto ne' dal nome del file — e senza di esso l'import **rifiuta**, senza default. Vocabolario **chiuso** di tre chiavi, una per format: `rsnt`, `rmdb`, `mtnlb`; ogni aggiunta futura e' una migration dichiarata, e **nessuna chiave nomina uno spazio**. *(D-58-06.)* |
+| **ICS-03** | **Due sole eccezioni di stato, nominate**: le **spunte** di checklist e il **legame con una serata pubblicata**. Si riagganciano per `source_uid`, non si ricreano, e un ripristino **conserva chi aveva spuntato**. Nessuna terza eccezione senza che qualcuno la dichiari qui. |
+| **ICS-03b** | Una eccezione di **sopravvivenza**, distinta dalle due di stato: una riga di piano che porta un **legame con una serata pubblicata non si cancella mai**, qualunque cosa dica il file. Il referto **conta** le righe sopravvissute a un'assenza. *(D-58-02.)* |
 | **ICS-04** | I titoli si leggono: un **nome** dove la grammatica canonica pretende la sigla si risolve dalla mappa degli alias che gia' esiste. |
 | **ICS-05** | Un pezzo **senza numero** si aggancia alla serata **dalla data**, nella direzione che la regola di pipeline dichiara. |
 | **ICS-06** | Le **proposte** — date che la regola calcola e il file non porta — **si ricalcolano a ogni import**, e la superficie lo dichiara invece di lasciarle sembrare durevoli. |
 | **ICS-07** | La riga che fa fallire l'audit del referto quando si scrive una proposta e' **riscritta**. L'audit non si allarga. |
-| **ICS-08** | `Timetable` nudo e `Flyering` ricevono una decisione dichiarata: un tipo, un giorno occupato, o un rifiuto con motivo. |
+| **ICS-08** | `Timetable` nudo e' un **pezzo della notte**, agganciato per data dalla sua regola gia' esistente (`RSNT / timetable / self / on`). Se quel giorno non porta una serata classificata, l'esito e' **non classificata** — visibile. *(D-58-03.)* |
+| **ICS-08b** | `Flyering` diventa il **settimo tipo di pezzo**: `PIECE_KINDS`, `PIECE_KIND_LABELS`, il `CHECK` di `production_piece`, il `CHECK` di `production_pipeline_rule` e `database.ts` cambiano **nello stesso commit**. La sua regola di ancora **non e' mai stata misurata**: il piano decide se nasce o se il tipo esiste senza regola, dichiarandolo. *(D-58-04.)* |
+| **ICS-09** | La **sorgente e' un indirizzo**, non un file esportato a mano: ogni calendario si registra una volta con la sua chiave. Il link vive **solo** in variabile d'ambiente — mai nel repo, mai in `.planning/`, mai nel referto, mai nei log — e senza sorgente registrata l'import **rifiuta**. *(D-58-05.)* |
+| **ICS-10** | Lo specchio **gira da solo**, e le sue due guardie sono la ragione per cui e' accettabile: **(a)** un feed vuoto o drasticamente piu' piccolo del precedente fa **rifiutare** senza cancellare niente; **(b)** l'esito e l'ora dell'**ultimo specchio riuscito per chiave** sono **visibili su una superficie**, e un fallimento e' distinguibile da «non e' ancora girato». Il percorso e' autenticato. *(D-58-05; questo progetto non ha error tracking, quindi un log non e' un effetto osservabile.)* |
 
-> **Questa fase toglie codice.** Spariscono le assenze, le divergenze,
-> l'asimmetria fra tabelle e i 17 timbri falsi — che non esisterebbero. Resta la
-> lettura dei titoli, che serve comunque: **uno specchio che non capisce cosa sta
-> specchiando riporta 31 voci su 104 come «non classificate»**.
+> **Questa fase toglie codice al centro e ne aggiunge ai bordi.** Spariscono le
+> assenze, le divergenze, l'asimmetria fra tabelle e i 17 timbri falsi — che non
+> esisterebbero. Resta la lettura dei titoli, che serve comunque: **uno specchio
+> che non capisce cosa sta specchiando riporta 31 voci su 104 come «non
+> classificate»**.
+>
+> **E il 2026-08-20 il proprietario ha allargato il perimetro**, in due punti
+> misurabili: `ICS-08b` apre una lista di tipi che era chiusa per scelta, e
+> `ICS-09`/`ICS-10` spostano la sorgente da un file esportato a mano a un
+> indirizzo riletto da un processo non presidiato. La seconda e' la piu' pesante:
+> **cancella e riscrive senza nessuno che guardi, in un progetto senza error
+> tracking.** Le due guardie di `ICS-10` non sono rifiniture — sono la ragione
+> per cui quel processo e' accettabile, e la procedura di ripristino va scritta
+> prima del primo giro, non dopo il primo incidente.
+
+> **Il progressivo perde la sua guardia strutturale, e la riga qui sotto e'
+> l'autorizzazione.** Il trigger che rifiuta la rinumerazione e'
+> `BEFORE UPDATE OF number`, e uno specchio non fa mai `UPDATE`: la terza guardia
+> monotona del progetto smetterebbe di esistere senza che una riga di SQL lo
+> dichiari. `ICS-01b` la ricostruisce nell'applicazione — che e' l'unico posto
+> rimasto in cui puo' stare — e `meta-gates.md` pretende che l'allentamento sia
+> **autorizzato per iscritto**: questa e' la scrittura.
 
 > **`ICS-06` e' la contropartita dello specchio, e va detta.** Uno specchio puro
 > cancella le proposte a ogni giro. Va bene — a patto che sia **dichiarato** che si

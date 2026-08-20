@@ -90,3 +90,147 @@ questa. Non prima.
 | piani 2 · checklist 14 · proposte 6 · divergenze 0 |
 | voci non classificate sull'unione | **31 su 104** |
 | pezzi prodotti dal calendario del satellite | **0 su 28 voci** |
+
+---
+
+# Le decisioni del proprietario — 2026-08-20, dopo la ricerca
+
+> Sei decisioni prese davanti alla misura, non prima. **Due allargano la fase**
+> (D-58-04, D-58-05) e **tre modificano un requisito gia' scritto** (ICS-02,
+> ICS-03, ICS-08). Il ROADMAP e' stato aggiornato di conseguenza.
+
+<decisions>
+## Implementation Decisions
+
+### Il progressivo, quando la guardia del database smette di scattare
+
+- **D-58-01 — l'import si ferma e lo dice.** Il trigger
+  `production_plan_refuse_renumber` e' `BEFORE UPDATE OF number`, e uno specchio
+  non fa mai `UPDATE`: la terza guardia monotona del progetto smetterebbe di
+  esistere senza che nessuna riga di SQL lo dichiari. **Al suo posto:** prima di
+  cancellare, lo specchio confronta i progressivi dell'istantanea con quelli in
+  arrivo; se un `source_uid` gia' noto porta un numero diverso, **rifiuta**
+  (uscita `2`) e **non scrive niente**, nominando la serata e i due numeri. Una
+  rinumerazione voluta passa da un **argomento esplicito di riautorizzazione**,
+  che **si registra nel referto**.
+  **Costo accettato, dichiarato:** la protezione si sposta nell'applicazione,
+  cioe' esattamente dove il commento della migration dice che *non sopravvive al
+  chiamante distratto*. E' l'unico posto rimasto in cui puo' stare, e questa riga
+  e' l'autorizzazione documentata che `meta-gates.md` pretende.
+
+### La serata pubblicata che sparisce dal file
+
+- **D-58-02 — una riga di piano con un legame non si cancella mai**, qualunque
+  cosa dica il file. Lo specchio guadagna un'**eccezione di sopravvivenza**,
+  **distinta** dalle due eccezioni di **stato** di `ICS-03` (le spunte e il
+  legame si *riagganciano*; questa riga *non se ne va*). `ICS-03` e' stato
+  riscritto per nominarla: non dichiararla la renderebbe la terza eccezione non
+  dichiarata che `ICS-03` esiste per vietare. Il referto **conta** le righe
+  sopravvissute a un'assenza.
+
+### Le due parole di `ICS-08`, che sono due decisioni
+
+- **D-58-03 — `Timetable` nudo e' un pezzo della notte**, agganciato per data.
+  La sua regola di pipeline esiste gia' (`RSNT / timetable / self / on`: il
+  giorno stesso della serata), quindi l'aggancio e' **esatto e senza
+  ambiguita'**. Se in quel giorno non c'e' una serata classificata, l'esito e'
+  **non classificata** — visibile, che e' meglio di oggi, dove diventa in
+  silenzio *un giorno occupato da qualcun altro*.
+- **D-58-04 — `Flyering` diventa il settimo tipo di pezzo.** Apre una lista che
+  era chiusa per scelta, e il costo e' dichiarato: `PIECE_KINDS`,
+  `PIECE_KIND_LABELS`, il `CHECK` di `production_piece`, il `CHECK` di
+  `production_pipeline_rule` e `src/types/database.ts` cambiano **nello stesso
+  commit** — e' il claim (a) di `vocabulary.ts`, non una raccomandazione.
+  ⚠ **Resta aperto e il piano lo chiude:** il volantinaggio non ha una regola di
+  ancora, e nessuno l'ha misurata. Il piano decide se ne nasce una o se il tipo
+  esiste **senza** regola — e in quel caso `conforms_to_rule` per quel tipo non
+  significa niente e va dichiarato, non lasciato a `false`.
+
+### Da dove arriva il calendario
+
+- **D-58-05 — la sorgente e' un link, e lo specchio gira da solo.** I calendari
+  si pubblicano dal Mac del proprietario e l'import li legge dal loro indirizzo,
+  invece che da un file esportato a mano. **E l'aggiornamento automatico entra in
+  questa fase**, non in una successiva. Due nuovi requisiti: `ICS-09` (la
+  sorgente) e `ICS-10` (l'aggiornamento e le sue guardie).
+  **Cio' che il proprietario ha davanti, e che va riscritto qui perche' non si
+  perda:**
+  1. **Un link pubblicato e' leggibile da chiunque lo abbia.** Porta date non
+     annunciate, sedi in trattativa e line-up. Vive **solo** in variabile
+     d'ambiente sulla piattaforma di deploy: mai nel repo, mai in `.planning/`,
+     mai in un referto, mai in un log. Ri-pubblicare invalida il vecchio
+     indirizzo — quindi e' recuperabile, a differenza di un push su un repo
+     pubblico — ma chi l'ha visto una volta se lo tiene.
+  2. **A scrivere in produzione non e' piu' una persona.** E questo progetto
+     **non ha error tracking**: nessun fallimento raggiunge un essere umano da
+     solo. Un processo non presidiato che **cancella e riscrive** e' la forma
+     peggiore in cui quel difetto puo' presentarsi. Da cui le due guardie di
+     `ICS-10`, che non sono rifiniture: sono la ragione per cui il cron e'
+     accettabile.
+  3. **`P-58-C`, la procedura di ripristino, smette di essere teorica.** Un
+     processo che muore fra la cancellazione e la riscrittura, di notte, senza
+     nessuno che guardi. Va scritta **prima** del primo `--apply`.
+- **D-58-06 — tre chiavi di calendario: `rsnt`, `rmdb`, `mtnlb`** — una per
+  format, dalle sigle, che sono pubbliche. Il vocabolario e' **chiuso** con un
+  `CHECK` e specchiato in TypeScript, come i sei tipi di pezzo. Il proprietario
+  ha dichiarato che **aggiungere un format o cambiare l'assetto dei calendari
+  richiedera' chiavi nuove**: ogni aggiunta e' una migration dichiarata, non un
+  valore libero. **Nessuna chiave puo' contenere il nome di uno spazio.**
+
+### Claude's Discretion — decisioni tecniche prese qui, non dal proprietario
+
+- **Il trigger resta installato.** D-58-01 sposta la protezione
+  nell'applicazione, ma il trigger continua a difendere **qualunque altro
+  scrittore** che facesse un `UPDATE` del numero. Cio' che cambia e' il commento
+  della sua migration, che oggi dichiara una protezione che l'import non
+  attraversa piu': va **riscritto**, dicendo dove la protezione vive adesso.
+  Lasciarlo com'e' sarebbe l'opzione (b) della ricerca — un gate che sembra
+  presidiato e non lo e'.
+- **Lo scopo si dichiara, non si deduce.** Opzione **A** della ricerca: la chiave
+  del calendario arriva dalla **sorgente registrata**, mai dal contenuto del file
+  (circolare: le sigle vengono dalla classificazione, che e' cio' che questa fase
+  ripara) e mai dal nome del file (**porta una data**). Senza chiave,
+  l'applicazione **rifiuta** — nessun default, perche' un default e' esattamente
+  il passo che un giorno qualcuno salta.
+- **Nessuna UI-SPEC formale per questa fase.** Le superfici toccate esistono gia'
+  (`src/app/(admin)/admin/calendar/`), il sistema visivo e' quello del prodotto,
+  e i cambiamenti sono una dichiarazione testuale (`ICS-06`) piu' l'esito e
+  l'ora dell'ultimo specchio per chiave (`ICS-10`). Il contratto delle superfici
+  vive gia' in `verify-calendar-surface.mjs`, ed e' li' che va esteso.
+- **Le migration si verificano leggendo il catalogo vivo**, non con un verde di
+  build: la CLI Supabase non e' installata, si applica dalla Management API, e i
+  tipi TypeScript vengono da un file generato.
+
+</decisions>
+
+<open_questions>
+## Le tre domande che il piano chiude — non il proprietario
+
+1. **La finestra massima dell'aggancio (`ICS-05`).** Senza una finestra, un pezzo
+   orfano si attacca alla prima serata a qualunque distanza. Il valore **si
+   misura sul calendario vero**, non si sceglie. Finche' non e' misurato, **il
+   rifiuto e' la risposta corretta**.
+2. **Se scrivere il numero derivato su un pezzo agganciato (`ICS-05`).** La
+   colonna e' nullabile; scrivere un progressivo derivato lo rende
+   indistinguibile da uno letto dal file. Serve una colonna di provenienza, come
+   `origin` gia' fa per la data? Da decidere **con la simmetria dichiarata**.
+3. **La regola di ancora di `flyering` (`ICS-08` / D-58-04).** Vedi sopra.
+
+</open_questions>
+
+<deferred>
+## Fuori perimetro, esplicitamente
+
+- **Riaprire la riconciliazione.** Se un giorno quelle tabelle porteranno molto
+  stato umano, tornera' ad avere senso — e si riaprira' **con una misura
+  davanti**, come questa. Non prima.
+- **Due voci di `48-FINDING-01` sono decadute** e non vanno pianificate: capire
+  l'asimmetria dei timbri di assenza, e togliere i 17 timbri falsi. **Lo specchio
+  cancella le righe che li portano.**
+
+</deferred>
+
+## L'ordine, che il ricercatore segnala e che vincola le onde
+
+**La lettura dei titoli va prima dello specchio.** Uno specchio che oggi capisce
+il 70% del file cancellerebbe e riscriverebbe il 70% del file.
