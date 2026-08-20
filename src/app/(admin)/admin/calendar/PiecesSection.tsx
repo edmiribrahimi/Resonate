@@ -100,8 +100,42 @@ export interface PieceRowView {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The two sentences this section owns
+ * The three sentences this section owns
  * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * What a proposal **is**, said once and above the list (ICS-06).
+ *
+ * ⚠ **The counterpart of a mirror.** A proposal is not stored so it can be
+ * looked up later: it is worked out again from the pipeline rules every time
+ * the calendar is read in. So a row can change, or stop being there, with
+ * nobody having touched it — and a change nobody announced is a change
+ * somebody will later swear was never made. That is why the sentence exists at
+ * all: `58-CONTEXT.md` admits the recomputation *«a patto che sia detto»*, and
+ * this is where it is said.
+ *
+ * ── Where it deliberately is NOT ────────────────────────────────────────────
+ *
+ * Not on `PieceDate`. That component is the one renderer of a piece's date
+ * (check U5) and it already carries the four channels that keep a proposal
+ * from reading as settled — badge, dashed edge, muted ink, the adjacent word.
+ * Repeating this sentence on every row would add a fifth channel that is pure
+ * noise, and a caution repeated on the majority case is the exact failure §5.3
+ * refuses. It goes **once**, above the list.
+ *
+ * ── And it does not raise its voice ─────────────────────────────────────────
+ *
+ * `REASON`, never `emphasis`. On this surface `emphasis` means *look here
+ * first* and exactly two facts earn it — `Late` and `Diverged` (check U6). A
+ * proposal is the majority case here, not an alarm: the sentence explains, it
+ * does not summon.
+ *
+ * It names no format, no sigla and no brand (U8), and it carries no date and
+ * builds none (U3). Check U11 asserts that it exists, that it is conditioned
+ * on the rows, and that it spends no emphasis.
+ */
+const PROPOSALS_RECOMPUTED =
+  "Rows marked Proposed are not decisions: they are worked out again every time the calendar is read in, so one can change or stop being there on its own.";
 
 /**
  * Why this section may print no figure for the LiveCuts (D-44-13).
@@ -193,10 +227,24 @@ export function PiecesSection({
       piece.state.unresolved === "depends_on_lineup"
   );
 
+  // Same device, same reason (ICS-06): whether this section is holding a
+  // proposal is a fact about the rows in hand, so it is read off them. A prop
+  // would let a caller say *no proposals here* over a list full of them, and
+  // the sentence that is supposed to keep a recomputation honest would be the
+  // thing hiding it.
+  const proposalsHeld = pieces.some(
+    (piece) => "origin" in piece.state && piece.state.origin === "proposed"
+  );
+
   return (
     <div>
-      {lineupDependent ? (
-        <p className={`mb-4 ${REASON}`}>{LINEUP_DEPENDENT}</p>
+      {proposalsHeld || lineupDependent ? (
+        <div className="mb-4 space-y-1">
+          {proposalsHeld ? (
+            <p className={REASON}>{PROPOSALS_RECOMPUTED}</p>
+          ) : null}
+          {lineupDependent ? <p className={REASON}>{LINEUP_DEPENDENT}</p> : null}
+        </div>
       ) : null}
 
       <ul className="divide-y divide-line">
