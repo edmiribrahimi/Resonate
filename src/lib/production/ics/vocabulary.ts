@@ -24,7 +24,7 @@
  * difference matters. `@/lib/capabilities/keys` states the opposite case in as
  * many words — *a capability key has no such mirror*, so a misspelling there is
  * a runtime `false` rather than a compile error. Here the database physically
- * refuses a row whose `kind` is not one of the six: `next build` catches the
+ * refuses a row whose `kind` is not one of the seven: `next build` catches the
  * TypeScript side, the `CHECK` catches the SQL side, and the two agree **only
  * because they were written once here and copied**.
  *
@@ -32,24 +32,57 @@
  * changed constraint set is a new migration, never an edit to an applied one
  * (`supabase-data.md`, gate *migration in avanti*).
  *
- * ── (b) The seventh piece kind, and why this file does not spell its name ────
+ * That rule has been exercised once, and the file that did it is the worked
+ * example: `20260820120000_production_piece_flyering.sql` (plan 58-06) widens
+ * the **two** `IN` lists that mirror {@link PIECE_KINDS} — one on
+ * `production_piece`, one on `production_pipeline_rule` — in a **single**
+ * transaction, and lands in the same commit as the literal below.
  *
- * `PIECE_KINDS` has six members and it is closed. There is exactly one word a
- * reader will be tempted to add as a seventh, and it names a **different thing
- * that does not exist yet** (D-44-22): a mix sent in by a selector who is not in
- * any line-up, as opposed to `livecut`, which is the recording of a set somebody
- * actually played at one of our nights. The distinction is not terminology. A
- * piece of the first kind, drawn on a production surface beside real dates and
- * real progressivi, reads as an announcement that the person will play — and it
- * is not one. `production-calendar.md` puts it as a gate: a calendar entry
- * carrying that word today is a naming error or a thing that should not be
- * there, and the measured file contains zero of them.
+ * ── (b) The forbidden kind, and why this file does not spell its name ────────
+ *
+ * `PIECE_KINDS` has **seven** members and it is **still closed**. The seventh,
+ * `flyering`, was admitted on 2026-08-20 by D-58-04; the closure never was about
+ * the count, and this is the paragraph to read before touching it.
+ *
+ * There is exactly one word a reader will be tempted to add, and **it is not
+ * `flyering`**. It names a **different thing that does not exist yet** (D-44-22):
+ * a mix sent in by a selector who is not in any line-up, as opposed to `livecut`,
+ * which is the recording of a set somebody actually played at one of our nights.
+ * The distinction is not terminology. A piece of that kind, drawn on a production
+ * surface beside real dates and real progressivi, reads as an announcement that
+ * the person will play — and it is not one. `production-calendar.md` puts it as a
+ * gate: a calendar entry carrying that word today is a naming error or a thing
+ * that should not be there, and the measured file contains zero of them.
  *
  * **The word itself is deliberately not written anywhere in this directory**,
  * for the reason `src/app/(admin)/admin/formats/actions.ts:58-63` gives about
  * its own forbidden literal: *a grep whose only match is the sentence forbidding
  * the thing is a grep that gets ignored the third time it goes red.* The
  * prohibition is enforceable precisely because the grep has nothing to find.
+ *
+ * ⚠ **Two different words, and the gate that watches the forbidden one is called
+ * `SEVENTH_KIND_WORD`.** That name counted positions in a list that has since
+ * grown, so its number is now off by one — and it was **left alone on purpose**
+ * (D-58-04). Renaming it would touch a constant whose only job is to be searched
+ * for in a calendar outside this repository; the number in a variable name is
+ * not what makes that search correct, and a rename is one more place where a
+ * refactor can quietly drop the check. Whoever reads it next should read this
+ * paragraph, not renumber it.
+ *
+ * ── (b bis) `flyering` is admitted, and it has NO pipeline rule ──────────────
+ *
+ * The seventh kind is not an editorial piece: it is an activity that occupies an
+ * afternoon, and nobody has measured an anchor for it. So no rule row is seeded
+ * for it, and the consequence is **declared rather than left to a default**: a
+ * `flyering` piece carries `conforms_to_rule = null`, never `false`. The column
+ * is nullable for exactly this reason, and its own comment says so — *"we could
+ * not work it out" is a third answer and must not arrive dressed as false.*
+ *
+ * Having no rule, it is never joined to a night by the second pass: it stays an
+ * **orphan piece**, which the schema provides for, and an orphan that is visible
+ * is what D-58-04 was for. If an anchor is ever measured, the rule is born the
+ * way the other sixteen were — from the calendar, in a migration, written by
+ * whoever owns that format.
  *
  * ── (c) No `Date` is constructed anywhere in this directory ──────────────────
  *
@@ -78,11 +111,25 @@
  */
 
 /**
- * The six pieces the pipeline produces. Measured in the source file, in full —
- * these six and nothing else (`44-RESEARCH.md` §Entry Grammars, class A).
+ * The seven pieces the pipeline produces.
  *
- * `livecut` is the only audio member, and it is the only audio piece the
- * pipeline has. See claim (b) above before adding a seventh.
+ * The **first six** were measured in the source file, in full — these six and
+ * nothing else (`44-RESEARCH.md` §Entry Grammars, class A). `livecut` is the
+ * only audio member, and it is the only audio piece the pipeline has.
+ *
+ * ⚠ **`flyering` is the one member that is NOT a count off the calendar, and
+ * that has to be said rather than blurred.** It was admitted by D-58-04 so that
+ * a title of that shape reads as ours instead of landing among the days taken by
+ * somebody else — a `commitment` has no channel of its own on the surface, and a
+ * silent misreading is the failure mode this project names first. Re-measured on
+ * 2026-08-20 against both snapshots on the owner's machine: **zero entries carry
+ * that word today.** The reading is defensive, and the honest description of it
+ * is *"a shape the file may carry"*, not *"a shape the file carries"*.
+ *
+ * **Appended, never inserted.** The order of this list is not load-bearing for
+ * the database, but it is the order a reader diffs, and appending is the same
+ * discipline the progressivo of a series follows. See claim (b) above — the
+ * closure is about **which** word, not about how many.
  */
 export const PIECE_KINDS = [
   "listing",
@@ -91,9 +138,10 @@ export const PIECE_KINDS = [
   "livecut",
   "timetable",
   "after_movie",
+  "flyering",
 ] as const;
 
-/** One of the six pieces. Mirrored by the `kind` CHECK on `production_piece`. */
+/** One of the seven pieces. Mirrored by the `kind` CHECK on `production_piece`. */
 export type PieceKind = (typeof PIECE_KINDS)[number];
 
 /**
@@ -225,13 +273,18 @@ export const ANCHOR_DIRECTIONS = ["on", "before", "after"] as const;
 export type AnchorDirection = (typeof ANCHOR_DIRECTIONS)[number];
 
 /**
- * Production's own words for the six pieces, exactly as they are written on a
+ * Production's own words for the seven pieces, exactly as they are written on a
  * surface (`44-UI-SPEC.md` §13.4). `LiveCut` is CamelCase because that is how
  * production writes it, on all of its occurrences in the calendar.
  *
+ * `Flyering` is spelt the way the title of that shape spells it. It is the one
+ * label with no occurrence in either measured snapshot to check it against — see
+ * {@link PIECE_KINDS} — so it is the one that a future calendar can contradict,
+ * and the repair would be here rather than in a reader.
+ *
  * Typed as a **total** `Record` over the union on purpose, exactly as
  * `CAP_DESCRIPTIONS` is in `@/lib/capabilities/keys` and `DOOR_OUTCOME_KINDS` is
- * in `@/lib/door/outcome`: a seventh kind added to `PIECE_KINDS` without a label
+ * in `@/lib/door/outcome`: a further kind added to `PIECE_KINDS` without a label
  * here is a `npm run build` error, and a label for a kind that no longer exists
  * is an error too. It is the one part of this file's contract the compiler can
  * hold, and in a repository with no test runner that is worth saying rather than
@@ -244,6 +297,7 @@ export const PIECE_KIND_LABELS: Record<PieceKind, string> = {
   livecut: "LiveCut",
   timetable: "Timetable",
   after_movie: "After Movie",
+  flyering: "Flyering",
 };
 
 /**

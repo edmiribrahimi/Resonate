@@ -146,6 +146,8 @@ export const INCLUSION_RULE = [
   "A title of the form `<Word> <NNN> - <Kind>` enters as a piece of that kind, under the legacy naming convention, joined by resolving its leading word through the alias map.",
   "A title of the form `<Word>[ x <Word>] <NNN>`, carrying no kind token, enters as a night, joined by resolving the word after the ` x ` — or the leading word where there is none — through the alias map.",
   "An entry whose word the alias map does not resolve is recorded as unclassified with the reason `alias_unresolved`, and is never guessed onto the nearest series: the mapping is an abbreviation somebody declares, not a derivation anything computes. This holds for all three of the grammars that carry a word — the night, the legacy piece and the named piece — and in each of them the refusal is reached only where the title is unmistakably ours.",
+  "A title that is **nothing but** a kind — the bare `Timetable` — enters as a piece of that kind with **neither a series nor a progressivo**, because the title carries neither, and the night it belongs to is found by the second pass from its date. Where the piece names no series the candidates are the nights of **every** series whose pipeline declares a rule for that kind, and the three outcomes are the same three: one joins, none is `no_candidate_edition`, more than one is `several_candidate_editions`. It is never a day taken by somebody else — that outcome has no channel of its own on the import summary, so a piece of ours read that way disappears in silence.",
+  "A piece whose **kind has no pipeline rule at all** — `flyering`, the seventh kind (D-58-04) — is neither joined nor refused. It enters as a piece, with its series resolved through the alias map where the title names one and no progressivo either way, and it stays an **orphan**: `plan_id` empty, and `conforms_to_rule` **null** rather than `false`, because *we could not work it out* is a third answer and must not arrive dressed as a refusal. No rule is invented for it — nobody has measured an anchor, and an invented one would be an offset written where a rule belongs. An orphan piece is a state the schema provides for, and a visible orphan is what this decision buys.",
   "A piece that carries no progressivo is joined to a night by comparing its date against every candidate night of its series, in the direction its pipeline rule declares. Exactly one candidate joins; none is recorded as `no_candidate_edition`; more than one is recorded as `several_candidate_editions`. **Never the nearest.** The join writes which night, and still no number.",
   "An entry carrying a word the alias map knows, but no recognisable kind and no progressivo, is recorded as unclassified, with its uid and a reason, and is counted. It is never handed a format and a progressivo it does not have — a progressivo is a monotone guard and, once assigned, is already on a poster.",
   "Every other entry enters as a commitment: it occupies a day and nothing more. It is not ours, it carries no format, no series and no number, and the only reason it is imported is so that a day that is taken never shows as free.",
@@ -236,8 +238,25 @@ export interface ClassifiedPiece {
   entryClass: "piece";
   uid: string;
   kind: PieceKind;
-  /** Carried by the title as a sigla, or resolved from the name it carries instead. */
-  seriesCode: string;
+  /**
+   * Carried by the title as a sigla, resolved from the name it carries instead,
+   * **or `null` where the title carries neither**.
+   *
+   * Nullable since `ICS-08`, and the null is a deliverable exactly as
+   * {@link ClassifiedPiece.number}'s is. A title that is nothing but a kind — the
+   * bare `Timetable` of D-58-03 — names neither its series nor its edition, and
+   * the only honest answer is that it names neither. Which night it belongs to
+   * is answered by date, in {@link attachNumberlessPieces}, among the nights of
+   * every series that owns a rule for that kind.
+   *
+   * ⚠ **It is never filled in from the join.** The night the second pass finds
+   * carries the series, one join away; copying it here would turn a derived
+   * value into a written one, and the two would silently disagree the first time
+   * a night is corrected. The rule the whole phase turns on holds for this field
+   * as well: *what the title carried is remembered; what only the join implies
+   * is not.*
+   */
+  seriesCode: string | null;
   /**
    * The progressivo, **or `null` where the title carries none**.
    *
@@ -466,6 +485,9 @@ export function classifyEntry(
   const night = readNight(event, title, aliases);
   if (night !== null) return night;
 
+  const bare = readBareKind(event, title);
+  if (bare !== null) return bare;
+
   // Nothing matched a grammar. An entry that still carries a word the
   // declaration knows is **recorded and counted**, never guessed: guessing hands
   // it a format and a progressivo it does not have, which is the precise harm
@@ -629,6 +651,56 @@ function readCanonicalPiece(
   }
 
   return unclassified(event.uid, "kind_without_series_and_number");
+}
+
+/**
+ * `<Kind>` — a title that is **nothing but** one of production's own words for a
+ * piece, with no series, no progressivo and no second segment (D-58-03).
+ *
+ * ── Why this is a piece and not a day taken by somebody else ────────────────
+ *
+ * Before `ICS-08` such a title fell all the way through to the last branch of
+ * {@link classifyEntry} and became a **commitment** — a row in the table that
+ * says of itself that it holds *something which is not our production, and which
+ * occupies a day*. That is worse than being unreadable, and the difference is
+ * not academic: an unclassified entry has a channel of its own on the import
+ * summary and is counted there, while a commitment is a normal, expected outcome
+ * that the surface draws as *a day that is taken*. A piece of ours read that way
+ * disappears in silence, and silence is the failure mode this project names
+ * first (`meta-gates.md`).
+ *
+ * ── The order it is tried in, and why that order is safe ────────────────────
+ *
+ * Fourth, after the three grammars. It cannot steal an entry from any of them: a
+ * canonical or legacy piece carries the segment separator and a night carries a
+ * trailing number, and a title that is exactly a kind label has neither. Trying
+ * it last also keeps it from shadowing a future grammar that happens to start
+ * with a kind word.
+ *
+ * ── ⚠ It is a SHAPE THE READER ADMITS, not a shape the file carries ─────────
+ *
+ * Re-measured on 2026-08-20 against both snapshots on the owner's machine:
+ * **zero** entries are bare like this — every `Timetable` in the file carries a
+ * sigla and is read by the canonical grammar. So this branch changes no count
+ * today, and describing it as *"seven timetables stop being days taken by
+ * somebody else"* would be a claim the material does not support. What it does
+ * buy is that the first one written this way is read instead of vanishing.
+ *
+ * ── Neither a series nor a number is invented ───────────────────────────────
+ *
+ * The title carries neither, so the piece carries neither: `seriesCode` and
+ * `number` are both `null`, and therefore so is the key. Which night it belongs
+ * to is found by {@link attachNumberlessPieces} from its **date** — and for the
+ * one kind the calendar bares today the answer is exact rather than approximate,
+ * because the night's `timetable` rule anchors on `self`, the night's own day. A
+ * date with no night on it is `no_candidate_edition`: unclassified, counted and
+ * visible, which is the point.
+ */
+function readBareKind(event: IcsEvent, title: string): ClassifiedEntry | null {
+  const kind = KIND_BY_LABEL.get(title.trim().toLowerCase());
+  if (kind === undefined) return null;
+
+  return piece(event, kind, null, null, null, CANONICAL_CONVENTION);
 }
 
 /**
@@ -945,7 +1017,7 @@ function unclassified(uid: string, reason: UnclassifiedReason): UnclassifiedEntr
 function piece(
   event: IcsEvent,
   kind: PieceKind,
-  seriesCode: string,
+  seriesCode: string | null,
   number: number | null,
   partMarker: string | null,
   namingConvention: NamingConvention
@@ -956,7 +1028,8 @@ function piece(
     kind,
     seriesCode,
     number,
-    key: number === null ? null : joinKey(seriesCode, number),
+    key:
+      seriesCode === null || number === null ? null : joinKey(seriesCode, number),
     partMarker,
     namingConvention,
     date: event.startDate,

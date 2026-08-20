@@ -1332,6 +1332,22 @@ export interface ProductionPiece {
   /** What was WRITTEN. Text and not a key: an unresolvable code survives as evidence. */
   series_code: string | null;
   number: number | null;
+  /**
+   * One of **seven** since 2026-08-20 (D-58-04), mirrored by
+   * `production_piece_kind_check` — widened by
+   * `20260820120000_production_piece_flyering.sql`, which widens the twin CHECK
+   * on `production_pipeline_rule` in the same transaction.
+   *
+   * ⚠ **`flyering` has no pipeline rule, and that is a decision.** Nobody has
+   * measured an anchor for it — it is not a graphic that goes out at an anchor,
+   * it is an activity that occupies an afternoon — so no rule row exists for it
+   * and none is invented. The consequence is DECLARED rather than left to a
+   * default: a piece of that kind carries `conforms_to_rule` **null**, never
+   * `false`, because *we could not work it out* is a third answer and must not
+   * arrive dressed as a refusal. Having no rule it is never joined to a night by
+   * the importer's second pass either: it stays an orphan piece, which
+   * `plan_id` above is nullable to allow.
+   */
   kind: PieceKind;
   /** `PT1`, `PT2` and their kin — a label the file carries, not a fact we decide. */
   part_marker: string | null;
@@ -1590,6 +1606,19 @@ export interface ProductionPipelineRule {
    * rule for a Nizza date and reported a conforming series as diverging.
    */
   series_id: string | null;
+  /**
+   * The same seven-value vocabulary as `ProductionPiece.kind`, mirrored here by
+   * a **second, independent** CHECK — `production_pipeline_rule_kind_check` —
+   * which `20260820120000_production_piece_flyering.sql` widens in the same
+   * transaction as the first. Two lists, one commit, or the kind can be stored
+   * and can never become a rule.
+   *
+   * ⚠ **No row of this table carries `flyering` today, and the absence is the
+   * decision** (D-58-04). Sixteen rules were seeded from the calendar; a
+   * seventeenth for a kind nobody has measured would be an offset written where
+   * a rule belongs. If an anchor is ever measured, the rule is born the way the
+   * sixteen were: from the calendar, in a migration, by whoever owns the format.
+   */
   piece_kind: PieceKind;
   /** Which event the weekday is counted from. */
   anchor_kind: AnchorKind;
