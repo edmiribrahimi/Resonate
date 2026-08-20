@@ -1234,13 +1234,15 @@ export interface ProductionPlan {
    * no key may name a space. A report, a log line or a `.planning/` document may
    * echo this column.
    *
-   * **Null is TRANSITIONAL.** The rows that predate the column came from imports
-   * run when it did not exist and are not attributable to a calendar; inventing
-   * an attribution would be writing a fact into the column that governs a
-   * deletion. Plan 58-09 collects them under an explicit one-off argument and
-   * tightens this table to `NOT NULL`.
+   * ✅ **NOT NULL since 2026-08-20**, and the transition is closed. The rows
+   * that predated the column came from imports run when it did not exist and
+   * were not attributable to a calendar; the first supervised mirror run took
+   * them in under an explicit one-off argument — a CLAIM somebody made, not a
+   * fact the rows carried — and the migration that follows it tightened this
+   * table. The `CHECK` still spells *null, or one of the three*: that null arm
+   * is now unreachable and is left in place on purpose.
    */
-  calendar_key: CalendarKey | null;
+  calendar_key: CalendarKey;
   /**
    * The calendar entry's own `UID`, and the identity is the file's rather than
    * ours. The alternatives were measured and rejected: a title changes when the
@@ -1389,9 +1391,10 @@ export interface ProductionPiece {
    * pieces takes the ticks with them — and a tick is the one thing in here a
    * person put there.
    *
-   * **Null is TRANSITIONAL**, closed by plan 58-09.
+   * ✅ **NOT NULL since 2026-08-20**: the transition closed with the first
+   * supervised mirror run and the migration that followed it.
    */
-  calendar_key: CalendarKey | null;
+  calendar_key: CalendarKey;
   /**
    * Nullable, unlike a plan's: **a proposal has no uid**, because it does not
    * exist in the file. Two nulls are distinct in Postgres, so the unique
@@ -1521,9 +1524,10 @@ export interface ProductionCommitment {
    * Here a mis-scoped deletion produces the one failure this table exists to
    * prevent: a day the calendar shows as **free** while it is taken.
    *
-   * **Null is TRANSITIONAL**, closed by plan 58-09.
+   * ✅ **NOT NULL since 2026-08-20**: the transition closed with the first
+   * supervised mirror run and the migration that followed it.
    */
-  calendar_key: CalendarKey | null;
+  calendar_key: CalendarKey;
   source_uid: string;
   /**
    * **One** day this commitment occupies, not *the* day: a recurring commitment
@@ -1583,8 +1587,9 @@ export interface ProductionImportRun {
    * readable the day a second calendar exists.
    *
    * ⚠ **Null FOREVER here, and that is a decision rather than an oversight.**
-   * The three mirrored tables are tightened to `NOT NULL` by plan 58-09; this
-   * one is deliberately not. **The register is never deleted** — it is the
+   * The three mirrored tables were tightened to `NOT NULL` on 2026-08-20; this
+   * one deliberately was not, and the migration that tightened them says so in
+   * a section of its own rather than leaving a silence. **The register is never deleted** — it is the
    * domain's only diagnostic instrument, the one that made it possible to date
    * the 17 false absence stamps — so its historical runs will always be
    * key-less. Back-filling them would make the register lie about the past it
