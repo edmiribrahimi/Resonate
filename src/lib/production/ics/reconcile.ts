@@ -1033,7 +1033,19 @@ export interface NumberlessAttachmentOutcome {
  * A piece whose kind has **no rule** is neither joined nor refused. It stays an
  * orphan, which the schema already allows and which a measured after movie in the
  * real file already is: refusing it would lose a real piece, and joining it to
- * the wrong night would be worse.
+ * the wrong night would be worse. Since D-58-04 that is also the permanent state
+ * of every `flyering` piece — no anchor has been measured for the seventh kind,
+ * so no rule row exists for it and none is invented, and `conforms_to_rule` for
+ * such a piece stays **null** rather than becoming `false`.
+ *
+ * ── A piece that names NO SERIES either (D-58-03) ───────────────────────────
+ *
+ * The bare `Timetable` carries neither a sigla nor a name, so there is no single
+ * series to look inside. The candidates are then the nights of **every** series
+ * whose pipeline declares a rule for that kind, and the three outcomes are the
+ * same three — including `several_candidate_editions` where two series could
+ * both answer, which goes to a person instead of being settled by a tiebreak
+ * nobody declared.
  *
  * ── ⚠ NO PROGRESSIVO IS WRITTEN, AND THERE IS NOWHERE TO WRITE ONE ──────────
  *
@@ -1069,21 +1081,46 @@ export function attachNumberlessPieces(
   }
 
   for (const piece of numberless) {
-    const rule = ruleFor(pipelines, piece.seriesCode, piece.kind);
+    // WHICH SERIES MAY ANSWER FOR THIS PIECE.
+    //
+    // One, where the title named it. **Every series that owns a rule for this
+    // kind**, where the title named none — the bare `Timetable` of D-58-03, which
+    // carries neither a sigla nor a name. Searching them all is not a loosening:
+    // the three outcomes below are unchanged, so a bare title that two series
+    // could both answer for is `several_candidate_editions` and goes to a person,
+    // exactly as it would inside one series. Picking a series by any tiebreak
+    // would be the same harm as picking the nearest night.
+    const searched =
+      piece.seriesCode === null
+        ? [...pipelines.keys()]
+        : [normaliseSeries(piece.seriesCode)];
 
-    // No rule for this kind: nothing to recognise a night by, and that is not an
-    // error. The piece stays an orphan rather than becoming a day taken by
-    // somebody else, which is the whole difference this phase is buying.
-    if (rule === null) continue;
-
-    const window = attachmentWindowDays(piece.seriesCode, piece.kind);
     const candidates: ClassifiedNight[] = [];
+    let anyRule = false;
 
-    for (const night of nightsBySeries.get(normaliseSeries(piece.seriesCode)) ?? []) {
-      const context = contexts.get(night.key);
-      if (context === undefined) continue;
-      if (recognisesEdition(piece.date, rule, context, window)) candidates.push(night);
+    for (const series of searched) {
+      const rule = ruleFor(pipelines, series, piece.kind);
+
+      // No rule for this kind in this series: nothing to recognise a night by.
+      if (rule === null) continue;
+      anyRule = true;
+
+      const window = attachmentWindowDays(series, piece.kind);
+
+      for (const night of nightsBySeries.get(series) ?? []) {
+        const context = contexts.get(night.key);
+        if (context === undefined) continue;
+        if (recognisesEdition(piece.date, rule, context, window)) candidates.push(night);
+      }
     }
+
+    // No rule anywhere for this kind — `flyering` is the measured case (D-58-04),
+    // and it is not an error. The piece stays an orphan rather than becoming a
+    // day taken by somebody else, which is the whole difference this phase is
+    // buying. It is also why the refusal below is reached only where a rule
+    // exists and found nothing: *no rule* and *no night* are different answers
+    // and must not collapse into one.
+    if (!anyRule) continue;
 
     if (candidates.length === 1) {
       outcome.attached.push({ uid: piece.uid, key: candidates[0].key });
@@ -1224,6 +1261,22 @@ function normaliseSeries(seriesCode: string): string {
 }
 
 /**
+ * The series half of a plan key, or `null` where there is no key.
+ *
+ * The inverse of {@link joinKey}, and the **only** reader of a key's shape in
+ * this module. It exists for one caller — the `conforms_to_rule` verdict of a
+ * piece whose title named no series — and it deliberately reads rather than
+ * composes: composing a key from parts is {@link joinKey}'s single job, and a
+ * second composer is how `"<SERIES>-undefined"` gets invented.
+ */
+function seriesOfPlanKey(planKey: string | null): string | null {
+  if (planKey === null) return null;
+  const separator = planKey.lastIndexOf("#");
+  if (separator <= 0) return null;
+  return planKey.slice(0, separator);
+}
+
+/**
  * Reconcile every piece — the ones the file writes and the ones a format owes.
  *
  * A written date always wins and **nothing recomputes it** (D-44-09b part 1). An
@@ -1281,7 +1334,24 @@ function reconcilePieces(
     const carried = piece.key ?? attachedByUid.get(piece.uid) ?? null;
     const planKey = carried !== null && knownPlanKeys.has(carried) ? carried : null;
     const context = planKey === null ? undefined : contexts.get(planKey);
-    const rule = ruleFor(pipelines, piece.seriesCode, piece.kind);
+
+    // WHICH SERIES' RULE THIS PIECE IS HELD AGAINST.
+    //
+    // The one the title named, and where it named none — the bare `Timetable` of
+    // D-58-03 — the one belonging to the night the second pass joined it to.
+    // Deriving it from the join is correct **here and only here**: this feeds
+    // `conforms_to_rule`, which is computed at import, stored and never drawn,
+    // so it is a derived diagnostic by construction. It is emphatically NOT
+    // written back onto `seriesCode`, which stays what the title carried — a
+    // stored copy of a derived value is the pair that disagrees the first time a
+    // night is corrected.
+    //
+    // Where the piece was joined to nothing, `context` is already undefined and
+    // the verdict below is `null` regardless: *we could not work it out* stays a
+    // third answer and never arrives dressed as `false`.
+    const ruleSeries = piece.seriesCode ?? seriesOfPlanKey(planKey);
+    const rule =
+      ruleSeries === null ? null : ruleFor(pipelines, ruleSeries, piece.kind);
 
     if (planKey !== null) {
       const group = groupKey(planKey, piece.kind);
