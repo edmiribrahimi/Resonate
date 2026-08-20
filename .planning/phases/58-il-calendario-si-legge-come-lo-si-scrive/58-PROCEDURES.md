@@ -1,7 +1,7 @@
 ---
 phase: 58-il-calendario-si-legge-come-lo-si-scrive
 written: 2026-08-20
-status: all pending
+status: 23 pending su 24 — il passo 23 e' stato eseguito il 2026-08-20; P-58-A e P-58-B sono ferme sulla superficie (blocco dentro P-58-A), P-58-C e' un rientro e si esegue se e quando serve
 closes: ICS-01 (l'ordine di cancellazione, osservato), ICS-03 (le due eccezioni di stato), ICS-03b (D-58-02, l'eccezione di sopravvivenza), e il piano di rientro che D-58-05 punto 3 pretende prima del primo `--apply`
 no-longer-closes: ICS-01b (D-58-01) — dal 2026-08-20 NON e' chiuso da questo file. La sua prova e' nel piano 58-09, per mutazione del codice contro un giro a vuoto; cio' che i passi 21-23 smettono di provare e' dichiarato per esteso nel blocco che precede il passo 21 di P-58-B
 carries: la forma di `44-PROCEDURES.md` — frontmatter-contratto, regole di lettura, passi numerati con il ruolo, un `Result` pendente per passo
@@ -265,14 +265,13 @@ esiste prima del codice che la citera'.
 > ⚠ **Il cron non e' autorizzato da questa riga** e non lo e' da nessuna delle
 > altre due: gira per la prima volta nel piano 58-12.
 >
-> ⚠ **NON ANCORA SPESA, al 2026-08-20.** Il piano 58-11 si e' fermato **prima**
-> di qualunque scrittura: lo specchio non ha una sorgente registrata e rifiuta al
-> gate 2 (`deferred-items.md`, voce 4). E i numeri messi davanti a questa
-> autorizzazione sono quelli di `M1`, che nel frattempo e' invecchiata di una
-> corsa (voce 6): i pezzi sono **63** e gli impegni **85**, non 46 e 79. Le
-> spunte e i legami — la meta' che decideva — restano **0 e 0**. Poiche'
-> l'autorizzazione non e' stata consumata, **i numeri veri vanno rimessi davanti
-> al proprietario prima che lo sia.**
+> ⚠ **NON SPESA, al 2026-08-20 — e questa volta non per la sorgente.** I numeri
+> veri (63 pezzi, 85 impegni, e **0 spunte, 0 legami**) sono stati rimessi
+> davanti al proprietario prima dell'atto, come questa riga pretendeva, e la
+> risposta e' stata *procedi*. La scrittura **(a)** — il primo specchio — e'
+> stata **eseguita e spesa** quel giorno. Questa procedura **no**, e la ragione
+> e' nel blocco qui sotto: nessuno dei tre conti che possiedono la chiave di
+> sezione era disponibile a chi eseguiva.
 > Si chiede il giorno in cui si esegue, nominando questa procedura. Un permesso
 > a eseguire P-58-B **non copre questa**, e questa non copre quella: sono due
 > atti, non un permesso (`ai-engineering.md`, *gate l'autorizzazione a scrivere
@@ -285,6 +284,49 @@ esiste prima del codice che la citera'.
 > un selettore per interfaccia sbagliato **li trova tutti**. Questo repository ha
 > gia' pagato quella differenza — due eventi reali e 63 righe in sette tabelle,
 > non recuperabili, perche' non c'e' PITR.
+
+### ⚠ Perche' i passi 8-15 sono ancora `pending` — misurato il 2026-08-20
+
+> Questo blocco si legge **senza** conoscere la seduta che l'ha prodotto.
+>
+> **Cosa e' successo, alla lettera.** Il primo specchio e' stato applicato quel
+> giorno, sotto autorizzazione, su due chiavi di calendario, e i conteggi sono
+> stati riconfermati dal catalogo. Questa procedura **non e' partita**, e si e'
+> fermata al passo 11 — *la spunta, messa dalla superficie*.
+>
+> **Perche', e non e' un'opinione.** Il passo 11 e' l'unico di P-58-A che non si
+> esegue con la Management API: pretende che una casella venga premuta **sulla
+> superficie**, da *il ruolo che possiede la chiave di sezione del calendario*.
+> Misurato dal catalogo con `read_only: true`: la capacita' che apre quella
+> superficie e' tenuta da **due ruoli**, con **un conto ciascuno**, ed entrambi
+> quei conti sono di **persone**. Non esiste un conto non umano che la porti.
+> Misurato dal browser: la superficie di produzione risponde **`/login`**, quindi
+> nessuna sessione aperta esiste su questa macchina.
+>
+> **Perche' non e' stata aggirata, ed e' la meta' che conta.** L'unico modo per
+> arrivare alla superficie sarebbe **coniare una sessione sull'identita' di una
+> persona vera**. Questo repository ha gia' scritto, per un altro strumento, cosa
+> significa: `scripts/verify-all.mjs` dichiara che un controllo che firma come un
+> ruolo reale *«e' un ATTO e ha bisogno dell'autorizzazione datata del
+> proprietario per quella seduta — non di una variabile d'ambiente»*. **La stessa
+> regola vale qui.** L'autorizzazione del 2026-08-20 nomina **tre scritture**, e
+> nessuna delle tre e' una sessione: un'autorizzazione data su una descrizione
+> non copre una descrizione diversa, ed e' la stessa frase che ha gia' fatto
+> ripresentare quella di P-58-B.
+>
+> **Cosa NON e' stato fatto**, perche' sarebbe stato peggio del blocco:
+> nessuna spunta e' stata scritta dal catalogo attribuendola a una persona che
+> non l'ha premuta. Sarebbe una riga d'autore che afferma un gesto mai avvenuto,
+> nella colonna che esiste per rispondere a *chi ha deciso questo* — cioe' il
+> danno esatto che il passo 14 e' scritto per intercettare, prodotto di
+> proposito invece che scoperto.
+>
+> **Cosa lo sblocca, e sono due strade, non una.** **(1)** Il ruolo che possiede
+> la chiave di sezione preme la casella dalla superficie, e chi esegue riprende
+> dal passo 12. **(2)** Il proprietario autorizza, con la data e per quella
+> seduta, che chi esegue conii una sessione su un'identita' reale — nella forma
+> che `npm run verify:refusal` gia' pretende per se'. **Nessuna delle due si
+> prende d'iniziativa dentro il piano che le incontra.**
 
 **Cosa chiude.** `ICS-03`, prima eccezione: *la spunta e' una delle due cose che
 una persona ha messo li' e che il calendario non sa*. La chiave stabile esiste —
@@ -452,11 +494,16 @@ Result: pending
 > ⚠ **Il cron non e' autorizzato da questa riga**: gira per la prima volta nel
 > piano 58-12.
 >
-> ⚠ **NON ANCORA SPESA, al 2026-08-20**, per la stessa ragione di P-58-A
-> (`deferred-items.md`, voce 4). Il secondo blocco che questa procedura portava
+> ⚠ **NON SPESA, al 2026-08-20**, e la ragione e' la stessa di P-58-A: non la
+> sorgente — quella e' registrata e lo specchio ha girato — ma **la superficie**.
+> Vedi il blocco *Perche' i passi 8-15 sono ancora `pending`* dentro P-58-A: si
+> applica identico ai passi 19, 21 e 24, che pretendono una lettura o una pressione
+> sulla superficie di produzione. Il secondo blocco che questa procedura portava
 > — i passi 21, 22 e 23 senza un veicolo — e' stato **sciolto riscrivendoli**
 > (voce 5, chiusa per decisione il 2026-08-20). ⚠ **Riscritti non e' eseguiti**:
-> i loro `Result` restano `pending`, come tutti gli altri.
+> i loro `Result` restano `pending`, **tranne il 23**, che e' l'unico passo di
+> questa procedura che non tocca ne' la superficie ne' una scrittura, ed e' stato
+> **eseguito il 2026-08-20**.
 >
 > ⚠ **E l'autorizzazione va RIPRESENTATA prima di essere spesa, per due ragioni
 > distinte.** La prima: i numeri messi davanti al proprietario erano quelli di
@@ -756,7 +803,28 @@ Result: pending
 - ⚠ **Cosa questo passo non fa piu':** riportare indietro un numero. Non c'e'
   nessun numero da riportare indietro, perche' nessuno viene cambiato.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-20, dopo il primo specchio.** Due giri a vuoto
+sulla stessa chiave e sulla stessa sorgente, il secondo con l'argomento esplicito
+di riautorizzazione. **I due referti sono identici byte per byte** — `diff` ha
+restituito zero righe di differenza — ed entrambi escono `0`. **(i) L'argomento
+e' inerte quando non c'e' niente da riautorizzare:** nessuno dei due referti
+porta la riga di riautorizzazione, e una ricerca insensibile alle maiuscole su
+entrambi i testi non trova nessuna occorrenza ne' di *riautorizzazione* ne' di
+*rinumerazione*. **(ii) Questo NON e' la prova che la riautorizzazione
+funzioni** — quella e' altrove, nel piano 58-09, ed e' per mutazione del codice.
+Che i due giri non abbiano scritto e' confermato **dal catalogo e non dal
+referto**: il registro delle corse contava **8** righe prima dei due lanci e
+**8** dopo, di cui **0** a vuoto — cioe' nessuna riga e' stata aperta, come i
+referti dichiarano.
+
+> Un'osservazione in piu', non chiesta da questo passo ma disponibile perche' il
+> passo l'ha prodotta: il primo dei due referti e' la prova di **idempotenza
+> dello specchio**. Dice *cio' che questo calendario gia' tiene: piani 2 · pezzi
+> 25 · impegni 55 · voci di checklist 14* e, quattro righe sotto, *riscrive:
+> piani 2 · pezzi 25 · impegni 55 · voci di checklist 14*. Gli stessi quattro
+> numeri, letti dallo strumento **e** dal catalogo. E la guardia del feed, che
+> alla prima corsa non aveva un precedente, ora ne ha uno: *precedenti 45 ·
+> in arrivo 45 · soglia 34*.
 
 ### Passo 24 — La rimozione, per chiave primaria
 
@@ -787,10 +855,16 @@ Result: pending
 
 ## Blocco di chiusura
 
-- **Ventiquattro passi, ventiquattro righe `Result:` a `pending`.** La numerazione
-  corre continua: P-58-C tiene i passi da 1 a 7, P-58-A da 8 a 15, P-58-B da 16
-  a 24. Un `Result` che dica altro da `pending` significa che la procedura e'
-  stata eseguita e che l'osservazione e' scritta accanto.
+- **Ventiquattro passi, e al 2026-08-20 ventitre' righe `Result:` a `pending`.**
+  La numerazione corre continua: P-58-C tiene i passi da 1 a 7, P-58-A da 8 a 15,
+  P-58-B da 16 a 24. Un `Result` che dica altro da `pending` significa che
+  **quel passo** e' stato eseguito e che l'osservazione e' scritta accanto — ed
+  e' il caso del **solo passo 23**, l'unico che non tocca ne' la superficie ne'
+  una scrittura. Ventitre' a `pending` significano ventitre' passi non eseguiti,
+  e il perche' dei passi 8-24 sta nel blocco dentro P-58-A: **la superficie**.
+  Nessuno di quei `pending` e' stato riempito con un ritrovamento, e la ragione
+  e' questa riga stessa — riempirlo affermerebbe che la procedura e' stata
+  eseguita, che e' esattamente cio' che non e' vero.
 - **P-58-C non scrive in produzione con le proprie mani.** P-58-A e P-58-B si',
   ognuna sotto la propria autorizzazione, e ognuna rimuove cio' che ha creato per
   chiave primaria.
