@@ -143,7 +143,7 @@ Plans:
 - [x] 58-07-PLAN.md — `ICS-02`: la chiave di calendario, chiusa da un `CHECK` e indicizzata *(onda 3)*
 - [x] 58-08-PLAN.md — `ICS-01`/`ICS-03`/`ICS-03b`: lo specchio nel modulo puro, in sottrazione *(onda 4)*
 - [x] 58-09-PLAN.md — lo scrittore che cancella: rifiuti in ordine, istantanea, riaggancio, guardia del progressivo *(onda 5)*
-- [ ] 58-10-PLAN.md — `ICS-09` + `ICS-10a`: la sorgente e' un indirizzo, e la guardia del feed *(onda 6)*
+- [x] 58-10-PLAN.md — `ICS-09` + `ICS-10a`: la sorgente e' un indirizzo, e la guardia del feed *(onda 6)*
 - [ ] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
 - [ ] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
 
