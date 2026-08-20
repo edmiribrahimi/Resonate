@@ -533,8 +533,19 @@ export interface PieceFields {
    * this key into one after the plan rows have been written and read back.
    */
   planKey: string | null;
-  seriesCode: NonNullable<PieceColumn<"series_code">>;
-  number: NonNullable<PieceColumn<"number">>;
+  seriesCode: PieceColumn<"series_code">;
+  /**
+   * The progressivo the **title** carried, or `null` where it carried none.
+   *
+   * ⚠ Loosened from `NonNullable` by `ICS-04`/`ICS-05`, and the null is load
+   * bearing rather than permissive. A piece joined to its night by date knows
+   * *which* night — that is `planKey` — and the progressivo is one join away in
+   * the plan row. Storing it here as well would be a second copy of a value the
+   * database already holds, and the second copy is the one that would be
+   * **derived**: a progressivo is a monotone guard, and the surest way not to
+   * invent one is to have nowhere to write it.
+   */
+  number: PieceColumn<"number">;
   kind: PieceColumn<"kind">;
   partMarker: PieceColumn<"part_marker">;
   date: PieceColumn<"date">;
@@ -952,9 +963,14 @@ function buildAnchorContexts(input: ReconcileInput): Map<string, AnchorContext> 
   const listingDateByPlanKey = new Map<string, CivilDate>();
   for (const piece of input.pieces) {
     if (piece.kind !== "listing") continue;
-    const held = listingDateByPlanKey.get(piece.key);
+    // A listing whose title carried no progressivo has no key of its own yet.
+    // Which night it announces is answered later, by date, and the caller feeds
+    // that answer back in — see `attachedByUid` on this function's input.
+    const planKey = piece.key;
+    if (planKey === null) continue;
+    const held = listingDateByPlanKey.get(planKey);
     if (held === undefined || piece.date < held) {
-      listingDateByPlanKey.set(piece.key, piece.date);
+      listingDateByPlanKey.set(planKey, piece.date);
     }
   }
 
@@ -1089,7 +1105,8 @@ function reconcilePieces(
   const written = [...input.pieces].sort(byWrittenPieceOrder);
 
   for (const piece of written) {
-    const planKey = knownPlanKeys.has(piece.key) ? piece.key : null;
+    const planKey =
+      piece.key !== null && knownPlanKeys.has(piece.key) ? piece.key : null;
     const context = planKey === null ? undefined : contexts.get(planKey);
     const rule = ruleFor(pipelines, piece.seriesCode, piece.kind);
 

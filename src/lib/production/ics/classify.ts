@@ -45,7 +45,12 @@
  * They are tried in this order, and the order matters because a title can look
  * like more than one of them:
  *
- *   1. **canonical piece** — `<Kind> - <SERIES>-<NNN>[ - <part>]`. The kind
+ *   1. **canonical piece** — `<Kind> - <SERIES>-<NNN>[ - <part>]`, and its
+ *      variant `<Kind> - <Name>[ x <Venue>]`, which spells the series as a name
+ *      and carries **no progressivo**. Same separator, same order, same
+ *      convention recorded, so the two are one grammar and not two (D-44-21);
+ *      thirty-one entries of the measured file are the second shape, and before
+ *      it was read every one of them was counted as unreadable. The kind
  *      vocabulary is exactly the six of `PIECE_KIND_LABELS`, matched
  *      case-insensitively **against the label** and never against a free string.
  *   2. **legacy inverted piece** — `<Word> <NNN> - <Kind>`. Same six kinds, no
@@ -137,9 +142,11 @@ import type { IcsEvent } from "./parse";
  */
 export const INCLUSION_RULE = [
   "A title of the form `<Kind> - <SERIES>-<NNN>` enters as a piece of that kind, under the canonical naming convention, joined by the series code it carries. An optional third segment is the per-dj part marker.",
+  "A title of the form `<Kind> - <Name>[ x <Venue>]` — a name where the canonical grammar wants a sigla — enters as a piece of that kind, under the same canonical naming convention, with its series resolved through the alias map and **no progressivo at all**: the title carries none, so the piece carries none, and the night it belongs to is found by the second pass from its date. It is never handed one.",
   "A title of the form `<Word> <NNN> - <Kind>` enters as a piece of that kind, under the legacy naming convention, joined by resolving its leading word through the alias map.",
   "A title of the form `<Word>[ x <Word>] <NNN>`, carrying no kind token, enters as a night, joined by resolving the word after the ` x ` — or the leading word where there is none — through the alias map.",
-  "An entry whose word the alias map does not resolve is recorded as unclassified with the reason `alias_unresolved`, and is never guessed onto the nearest series: the mapping is an abbreviation somebody declares, not a derivation anything computes.",
+  "An entry whose word the alias map does not resolve is recorded as unclassified with the reason `alias_unresolved`, and is never guessed onto the nearest series: the mapping is an abbreviation somebody declares, not a derivation anything computes. This holds for all three of the grammars that carry a word — the night, the legacy piece and the named piece — and in each of them the refusal is reached only where the title is unmistakably ours.",
+  "A piece that carries no progressivo is joined to a night by comparing its date against every candidate night of its series, in the direction its pipeline rule declares. Exactly one candidate joins; none is recorded as `no_candidate_edition`; more than one is recorded as `several_candidate_editions`. **Never the nearest.** The join writes which night, and still no number.",
   "An entry carrying a word the alias map knows, but no recognisable kind and no progressivo, is recorded as unclassified, with its uid and a reason, and is counted. It is never handed a format and a progressivo it does not have — a progressivo is a monotone guard and, once assigned, is already on a poster.",
   "Every other entry enters as a commitment: it occupies a day and nothing more. It is not ours, it carries no format, no series and no number, and the only reason it is imported is so that a day that is taken never shows as free.",
 ] as const;
@@ -167,19 +174,32 @@ export const NIGHT_MIN_MINUTES = 240;
 /**
  * Why an entry could not be placed in one of the first three classes.
  *
- * Four codes, distinct on purpose. *The declaration is missing* and *the title
+ * Six codes, distinct on purpose. *The declaration is missing* and *the title
  * carries no number* are two different pieces of work for whoever reads the
  * import run's summary, and one shared code would hide which.
+ *
+ * The last two arrive together and stay **two**, for the same reason the first
+ * four are four. *No candidate edition* is a calendar that does not hold the
+ * night yet — the piece is early, or the night was moved, and the way out is to
+ * add or correct an entry. *Several candidate editions* is a calendar that holds
+ * two nights a single rule cannot tell apart — the way out is to look at the two
+ * and decide which one the piece announces. One shared code would send both
+ * readers to the wrong place, and this product has no error tracking to correct
+ * them afterwards (`meta-gates.md`).
  */
 export const UNCLASSIFIED_REASONS = [
   /** A word the grammar found, that the alias map does not turn into a series code. */
   "alias_unresolved",
   /** A word the alias map knows, with no kind token and no progressivo after it. */
   "known_word_without_kind_or_number",
-  /** A kind token, with nothing after it that reads as a series code and a number. */
+  /** A kind token, with nothing after it that reads as a series code, a number, or a name. */
   "kind_without_series_and_number",
   /** A progressivo position that is not a whole number. */
   "number_not_readable",
+  /** A piece with no progressivo, whose series holds no night its date can belong to. */
+  "no_candidate_edition",
+  /** A piece with no progressivo, whose series holds more than one night its date fits. */
+  "several_candidate_editions",
 ] as const;
 
 /** Why an entry landed in the fourth class. */
@@ -216,11 +236,34 @@ export interface ClassifiedPiece {
   entryClass: "piece";
   uid: string;
   kind: PieceKind;
-  /** Carried by the title in the canonical grammar; resolved by alias in the legacy one. */
+  /** Carried by the title as a sigla, or resolved from the name it carries instead. */
   seriesCode: string;
-  number: number;
-  /** `seriesCode` + `number`. Identical in shape to a night's, which is the point. */
-  key: string;
+  /**
+   * The progressivo, **or `null` where the title carries none**.
+   *
+   * Nullable since `ICS-04`, and the null is the deliverable rather than a
+   * loosening: `Listing - <Name>` names its series and not its edition, so the
+   * only honest answer is that there is no number here. Which night it belongs
+   * to is answered separately, by date, in {@link attachNumberlessPieces} — and
+   * the answer is stored as *which night*, never as a number.
+   *
+   * The rule the whole phase turns on: **what the title carried is remembered;
+   * what only the join implies is not.** A progressivo is a monotone guard
+   * (`meta-gates.md`) and once assigned it is already on a poster, so the safest
+   * way not to invent one is to have nowhere to write it.
+   */
+  number: number | null;
+  /**
+   * `seriesCode` + `number`, or `null` where there is no number.
+   *
+   * **Where the number is missing the key is missing too**, and that is why this
+   * is a nullable field rather than a string composed defensively: a key built
+   * over an absent number would join to nothing while looking like a join, and
+   * there is exactly one place in this module that composes one — {@link piece}
+   * — which cannot reach it without a number the type system has already
+   * checked.
+   */
+  key: string | null;
   /** The per-dj marker, present only where the title carries a third segment. */
   partMarker: string | null;
   namingConvention: NamingConvention;
@@ -414,7 +457,7 @@ export function classifyEntry(
 ): ClassifiedEntry {
   const title = event.summary.trim();
 
-  const canonical = readCanonicalPiece(event, title);
+  const canonical = readCanonicalPiece(event, title, aliases);
   if (canonical !== null) return canonical;
 
   const legacy = readLegacyPiece(event, title, aliases);
@@ -506,43 +549,86 @@ export function classifyEntries(
 const SEGMENT_SEPARATOR = " - ";
 
 /**
- * `<Kind> - <SERIES>-<NNN>[ - <part>]`.
+ * `<Kind> - <SERIES>-<NNN>[ - <part>]`, **and its variant with a name in the
+ * sigla's place** — `<Kind> - <Name>[ x <Venue>]`.
  *
  * The kind is matched against the six labels, lower-cased, and never against a
  * free string: a title whose first segment is some other word is not a piece of a
  * seventh kind, it is not a piece at all.
  *
- * `null` when the title is not in this grammar. A first segment that *is* a kind
- * with a second segment that does not read as a series code and a number is a
- * different answer — that entry is unclassified, with its own reason, because a
- * kind token is strong evidence the entry is ours and a fallthrough would file it
- * as somebody else's day.
+ * ── ⚠ THE SECOND SEGMENT IS READ TWICE, IN THIS ORDER ───────────────────────
+ *
+ * First as a sigla and a progressivo. Then, only where that fails, as a **name**
+ * — which the alias map turns into a series code exactly as it does for a night.
+ * Thirty-one entries of the measured file arrive on the second reading, and
+ * before it existed every one of them fell on the single branch below and was
+ * counted as unreadable.
+ *
+ * **It stays inside this grammar, and that is a decision (D-44-21).** Same
+ * separator, same order — the kind first — and only the way the series is spelt
+ * differs, so a piece read this way records `canonical` and no third convention
+ * is opened. The diagnostic value D-44-21 defends is not lost: it is already
+ * readable from two columns that exist. A `canonical` piece with a series and no
+ * number is the named variant; with neither is the bare one. Nobody needs a
+ * third word for it, and a third word is how a vocabulary starts drifting from
+ * the `CHECK` that mirrors it.
+ *
+ * ── The three answers, and why none of them is a guess ──────────────────────
+ *
+ * `null` when the title is not in this grammar at all. A first segment that *is*
+ * a kind is strong evidence the entry is ours, so the remaining outcomes are
+ * findings rather than a fallthrough into somebody else's day:
+ *
+ * - the name resolves — a piece, with the series and **no number**;
+ * - the name does not resolve but the shape is unmistakably ours (it carries the
+ *   join word) — `alias_unresolved`, the same refusal a night gets, and **never
+ *   the nearest series**;
+ * - the second segment is neither a sigla nor a name we can recognise —
+ *   `kind_without_series_and_number`, which is the branch that used to catch all
+ *   thirty-one.
  */
-function readCanonicalPiece(event: IcsEvent, title: string): ClassifiedEntry | null {
+function readCanonicalPiece(
+  event: IcsEvent,
+  title: string,
+  aliases: ReadonlyMap<string, string>
+): ClassifiedEntry | null {
   const segments = title.split(SEGMENT_SEPARATOR);
   if (segments.length < 2) return null;
 
   const kind = KIND_BY_LABEL.get(segments[0].trim().toLowerCase());
   if (kind === undefined) return null;
 
-  const reference = readSeriesAndNumber(segments[1]);
-  if (reference === null) {
-    return unclassified(event.uid, "kind_without_series_and_number");
-  }
-  if (reference.number === null) {
-    return unclassified(event.uid, "number_not_readable");
-  }
-
   const partMarker = segments.length > 2 ? segments[2].trim() : "";
+  const marker = partMarker.length > 0 ? partMarker : null;
 
-  return piece(
-    event,
-    kind,
-    reference.seriesCode,
-    reference.number,
-    partMarker.length > 0 ? partMarker : null,
-    CANONICAL_CONVENTION
-  );
+  const reference = readSeriesAndNumber(segments[1]);
+
+  if (reference !== null) {
+    if (reference.number === null) {
+      return unclassified(event.uid, "number_not_readable");
+    }
+
+    return piece(
+      event,
+      kind,
+      reference.seriesCode,
+      reference.number,
+      marker,
+      CANONICAL_CONVENTION
+    );
+  }
+
+  const named = resolveSeriesFromName(segments[1], aliases);
+
+  if (named.seriesCode !== null) {
+    return piece(event, kind, named.seriesCode, null, marker, CANONICAL_CONVENTION);
+  }
+
+  if (named.unmistakable) {
+    return unclassified(event.uid, "alias_unresolved");
+  }
+
+  return unclassified(event.uid, "kind_without_series_and_number");
 }
 
 /**
@@ -619,24 +705,12 @@ function readNight(
     return unclassified(event.uid, "number_not_readable");
   }
 
-  const separated = splitOnJoinWord(head.text);
+  const named = resolveSeriesFromName(head.text, aliases);
 
-  const candidates =
-    separated === null
-      ? [head.text, lastWord(head.text)]
-      : [separated.venueWord, lastWord(separated.venueWord)];
-
-  let seriesCode: string | undefined;
-  for (const candidate of candidates) {
-    if (candidate.length === 0) continue;
-    seriesCode = aliases.get(candidate.toLowerCase());
-    if (seriesCode !== undefined) break;
-  }
-
-  if (seriesCode === undefined) {
+  if (named.seriesCode === null) {
     // Unmistakably our shape, and the declaration does not cover it: a finding,
     // and never the nearest series.
-    if (separated !== null) {
+    if (named.unmistakable) {
       return unclassified(event.uid, "alias_unresolved");
     }
     return null;
@@ -645,10 +719,10 @@ function readNight(
   return {
     entryClass: "night",
     uid: event.uid,
-    seriesCode,
+    seriesCode: named.seriesCode,
     number: head.number,
-    key: joinKey(seriesCode, head.number),
-    venueWord: separated === null ? null : separated.venueWord,
+    key: joinKey(named.seriesCode, head.number),
+    venueWord: named.venueWord,
     startDate: event.startDate,
     startTime: event.startTime,
     endDate: event.endDate,
@@ -660,6 +734,75 @@ function readNight(
 }
 
 // ── The small readers the three grammars share ──────────────────────────────
+
+/** What a name turned into, and how sure we are that the title was ours. */
+interface NameResolution {
+  /** The declared series code, or `null` where the map does not cover the word. */
+  seriesCode: string | null;
+  /**
+   * The title carries the join word, so it is unmistakably ours.
+   *
+   * This is what separates a **finding** from a fallthrough: `<Something> x
+   * <Something>` is the shape this production writes and nobody else does, so a
+   * word the declaration does not cover is a missing declaration and gets
+   * counted. A title without the join word that resolves to nothing is simply
+   * not ours, and is left to the caller's remaining branches.
+   */
+  unmistakable: boolean;
+  /** The word after the join word, or `null` where the title carries none. */
+  venueWord: string | null;
+}
+
+/**
+ * Turn the name a title carries into the series code somebody declared for it.
+ *
+ * **One function, two callers** — {@link readNight} and {@link readCanonicalPiece}
+ * — and that is the point of it existing rather than being written twice. Two
+ * copies of this would be two readings of the same calendar that agree today: the
+ * night `RamaDub x Booze 001` and the piece `Listing - RamaDub x Booze` have to
+ * resolve to the **same** series or the join between them silently produces
+ * nothing, and a join that produces nothing looks exactly like a calendar with
+ * nothing in it.
+ *
+ * Where the title carries the join word, the word **after** it is the one looked
+ * up: two satellites share the progressivo `001` under different series and are
+ * told apart only by that word. Where it does not, the leading text is looked up
+ * whole and then by its last word — two deterministic lookups of a declared
+ * abbreviation, not two guesses.
+ *
+ * The map is an argument here as it is everywhere in this module, and for the
+ * same reason: its values are words for spaces, and this repository is public.
+ */
+function resolveSeriesFromName(
+  text: string,
+  aliases: ReadonlyMap<string, string>
+): NameResolution {
+  const trimmed = text.trim();
+  const separated = splitOnJoinWord(trimmed);
+
+  const candidates =
+    separated === null
+      ? [trimmed, lastWord(trimmed)]
+      : [separated.venueWord, lastWord(separated.venueWord)];
+
+  for (const candidate of candidates) {
+    if (candidate.length === 0) continue;
+    const seriesCode = aliases.get(candidate.toLowerCase());
+    if (seriesCode !== undefined) {
+      return {
+        seriesCode,
+        unmistakable: separated !== null,
+        venueWord: separated === null ? null : separated.venueWord,
+      };
+    }
+  }
+
+  return {
+    seriesCode: null,
+    unmistakable: separated !== null,
+    venueWord: separated === null ? null : separated.venueWord,
+  };
+}
 
 /** A `<SERIES>-<NNN>` reference, taken apart at its last hyphen. */
 interface SeriesReference {
@@ -789,12 +932,21 @@ function unclassified(uid: string, reason: UnclassifiedReason): UnclassifiedEntr
   return { entryClass: "unclassified", uid, reason };
 }
 
-/** Assemble a piece, whichever grammar produced it. One shape, one key. */
+/**
+ * Assemble a piece, whichever grammar produced it. One shape, one key.
+ *
+ * ⚠ **The only place in this module that composes a piece's key**, and the
+ * reason that matters is the branch below: where the title carried no
+ * progressivo the key is `null`, full stop. There is no code path that formats
+ * an absent number into a string, so `"<SERIES>-undefined"` is not a value this
+ * module can produce — which is a stronger statement than a comment forbidding
+ * it, and it is the form the phase asked for.
+ */
 function piece(
   event: IcsEvent,
   kind: PieceKind,
   seriesCode: string,
-  number: number,
+  number: number | null,
   partMarker: string | null,
   namingConvention: NamingConvention
 ): ClassifiedPiece {
@@ -804,7 +956,7 @@ function piece(
     kind,
     seriesCode,
     number,
-    key: joinKey(seriesCode, number),
+    key: number === null ? null : joinKey(seriesCode, number),
     partMarker,
     namingConvention,
     date: event.startDate,
