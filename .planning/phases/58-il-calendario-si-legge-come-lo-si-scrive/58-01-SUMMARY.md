@@ -353,3 +353,12 @@ Verificato voce per voce:
 ---
 *Phase: 58-il-calendario-si-legge-come-lo-si-scrive*
 *Completed: 2026-08-20*
+
+## Self-Check: PASSED
+
+- `scripts/verify-ics-grammar.mjs` — FOUND
+- `scripts/verify-mirror-guards.mjs` — FOUND
+- `.planning/phases/58-il-calendario-si-legge-come-lo-si-scrive/58-01-SUMMARY.md` — FOUND
+- `6f9c6f4` — FOUND
+- `5464ca4` — FOUND
+- `afdf194` — FOUND
