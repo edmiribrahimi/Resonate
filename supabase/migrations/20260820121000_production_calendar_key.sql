@@ -57,9 +57,16 @@
 -- ── NULLABILITY: TRANSITIONAL, AND THE TRANSITION HAS A NAMED CLOSER ─────────
 --
 -- `supabase-data.md`, gate *default sulle righe esistenti*. The tables are
--- already populated — measured on 2026-08-20 (plan 58-02, M1, and plan 58-06's
--- catalogue read): 2 plans, 63 pieces, 85 commitments, 5 import runs. So the
--- question this file MUST answer out loud is what happens to them.
+-- already populated — read from the LIVE CATALOGUE at 2026-08-20T16:00:19Z,
+-- minutes before this file was applied: 2 plans, 63 pieces, 85 commitments, 6
+-- import runs. So the question this file MUST answer out loud is what happens to
+-- them.
+--
+-- (The register held 5 runs when plan 58-02 measured it at 14:52Z the same day;
+-- the sixth arrived in between. The number quoted here is the one read next to
+-- the application rather than the older one carried forward — a count copied
+-- forward has stopped being a measurement, which is the defect this phase has
+-- already corrected once, in `production-calendar.md`.)
 --
 -- The column is born NULLABLE, with the `CHECK` written as *null, or one of the
 -- three*, and no backfill. The reason is honesty before technique: **the rows
