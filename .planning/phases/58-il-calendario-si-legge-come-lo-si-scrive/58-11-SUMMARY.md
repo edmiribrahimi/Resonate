@@ -367,6 +367,16 @@ migration che ha stretto le altre tre **dice** di non aver stretto lui.
 `npm run build` — che qui e' anche il typecheck — esce **`0`**: nessun consumatore
 dipendeva dal ramo nullo.
 
+### E lo specchio legge ancora, misurato DOPO la stretta
+
+Le due prove a vuoto del passo 23 erano state lanciate **prima** della migration.
+Rilanciate **dopo**, entrambe escono `0` e riportano gli stessi quattro numeri —
+`2 · 25 · 55 · 14` su `rsnt`, `0 · 12 · 15 · 0` su `rmdb`. Serviva verificarlo e
+non dedurlo: l'unico scrittore delle tre tabelle e' l'importatore stesso —
+misurato, tre `insert` in un solo file e nessun altro percorso in `src/` — e se
+una di quelle tre non avesse portato la chiave, la stretta l'avrebbe fatta
+fallire al primo `--apply` invece che qui.
+
 ---
 
 ## Task 2 — la parte che non ha girato, e perche'
