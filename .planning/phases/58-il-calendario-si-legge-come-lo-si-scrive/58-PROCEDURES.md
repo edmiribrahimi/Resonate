@@ -2,7 +2,8 @@
 phase: 58-il-calendario-si-legge-come-lo-si-scrive
 written: 2026-08-20
 status: all pending
-closes: ICS-01 (l'ordine di cancellazione, osservato), ICS-01b (D-58-01, il rifiuto sul progressivo), ICS-03 (le due eccezioni di stato), ICS-03b (D-58-02, l'eccezione di sopravvivenza), e il piano di rientro che D-58-05 punto 3 pretende prima del primo `--apply`
+closes: ICS-01 (l'ordine di cancellazione, osservato), ICS-03 (le due eccezioni di stato), ICS-03b (D-58-02, l'eccezione di sopravvivenza), e il piano di rientro che D-58-05 punto 3 pretende prima del primo `--apply`
+no-longer-closes: ICS-01b (D-58-01) — dal 2026-08-20 NON e' chiuso da questo file. La sua prova e' nel piano 58-09, per mutazione del codice contro un giro a vuoto; cio' che i passi 21-23 smettono di provare e' dichiarato per esteso nel blocco che precede il passo 21 di P-58-B
 carries: la forma di `44-PROCEDURES.md` — frontmatter-contratto, regole di lettura, passi numerati con il ruolo, un `Result` pendente per passo
 accounts: tre — il ruolo che possiede la chiave di sezione del calendario, il ruolo che possiede la chiave di annuncio, e chi esegue la procedura; ruoli, mai nomi
 authorisation: P-58-C **legge soltanto**. P-58-A e P-58-B **SCRIVONO IN PRODUZIONE** e ognuna porta la propria autorizzazione datata, che non copre l'altra e non viaggia con essa
@@ -29,12 +30,22 @@ phase_closes: non prima che ogni `Result` qui sotto porti un'osservazione
 > deve dimostrare che l'autore di una spunta non e' cambiato, **si annota
 > l'identificativo, non il nome**, e si scrive *l'autore e' invariato*.
 >
-> **(d) L'unica riga di questo file che contiene quattro cifre di un anno e'
-> `written:` nel frontmatter**, ed e' la data in cui il documento e' stato
-> scritto — non una data di serata. Le date delle tre autorizzazioni si scrivono
-> **il giorno in cui si eseguono**, negli spazi lasciati vuoti apposta. Le
-> migration sono nominate **senza il loro prefisso numerico**, perche' quel
-> prefisso e' una data.
+> **(d) Nessuna data di serata compare in questo file, e la regola e' quella —
+> non il conteggio delle cifre.** Le quattro cifre di un anno compaiono qui in
+> tre posti soli, e tutti e tre dicono *quando qualcuno ha deciso o eseguito
+> qualcosa*, mai *quando si suona*: `written:` nel frontmatter; le date delle
+> tre autorizzazioni, scritte **il giorno in cui si eseguono**, negli spazi
+> lasciati vuoti apposta; e le date delle decisioni registrate nel documento,
+> perche' una decisione senza la sua data e' una decisione che nessuno puo'
+> collocare. Le migration restano nominate **senza il loro prefisso numerico**,
+> perche' quel prefisso e' una data e non ha niente da collocare.
+>
+> ⚠ Questa regola diceva *«l'unica riga con quattro cifre e' `written:`»*, e
+> **il documento non la rispettava piu'** dal momento in cui la prima
+> autorizzazione e' stata datata. Corretta il 2026-08-20 scrivendo cio' che il
+> file fa davvero: una regola che descrive un documento diverso da quello che ha
+> sotto e' peggio di nessuna regola, perche' fa credere che qualcuno stia
+> controllando.
 >
 > **(e) Perche' queste tre e non altre.** Tutto il resto di questa fase ha un
 > comando. Queste tre sono le cose che **nessun comando di questo repository
@@ -417,11 +428,18 @@ Result: pending
 
 > ## ⚠ QUESTA PROCEDURA SCRIVE IN PRODUZIONE
 >
-> Crea un legame fra una riga di calendario e una serata reale, e lancia tre
-> import con `--apply` — uno normale, uno con un file di prova che ha perso una
-> voce, uno con un file di prova che ha cambiato un progressivo. Due di questi
-> tre sono **file di prova costruiti per l'occasione**, e vanno costruiti dal
-> file vero cambiando una cosa sola.
+> Crea un legame fra una riga di calendario e una serata reale, mette in piedi
+> **una riga sonda che la sorgente vera non ha mai portato**, e lancia due
+> import con `--apply` sulla **sorgente vera** — mai su una sua copia alterata.
+>
+> ⚠ **I passi 21, 22 e 23 sono stati RISCRITTI il 2026-08-20**, per decisione
+> del proprietario: strada **(c)** delle tre che `deferred-items.md` voce 5
+> metteva sul tavolo. Come erano scritti pretendevano un file di prova
+> costruito per l'occasione, e l'argomento che faceva entrare un file e' uscito
+> dall'importatore nell'onda 6 (`ICS-09`): l'unica sorgente e' l'indirizzo
+> remoto. **Cosa i tre passi smettono di provare e' dichiarato per esteso nel
+> blocco che li precede**, e non e' una nota a margine: e' l'osservazione che il
+> passo 22 chiamava *la piu' pesante di tutta la procedura*.
 >
 > **Autorizzazione (data): 2026-08-20 — CONCESSA — vale SOLO per P-58-B.**
 > Chiesta ed ottenuta dal proprietario nella seduta del piano 58-11, opzione
@@ -435,10 +453,22 @@ Result: pending
 > piano 58-12.
 >
 > ⚠ **NON ANCORA SPESA, al 2026-08-20**, per la stessa ragione di P-58-A
-> (`deferred-items.md`, voce 4). E questa procedura porta un secondo blocco, suo
-> e indipendente: **i passi 21, 22 e 23 pretendono un file di prova, e
-> l'argomento che lo faceva entrare non esiste piu'** dall'onda 6 (voce 5).
-> Registrare l'indirizzo non li sblocca.
+> (`deferred-items.md`, voce 4). Il secondo blocco che questa procedura portava
+> — i passi 21, 22 e 23 senza un veicolo — e' stato **sciolto riscrivendoli**
+> (voce 5, chiusa per decisione il 2026-08-20). ⚠ **Riscritti non e' eseguiti**:
+> i loro `Result` restano `pending`, come tutti gli altri.
+>
+> ⚠ **E l'autorizzazione va RIPRESENTATA prima di essere spesa, per due ragioni
+> distinte.** La prima: i numeri messi davanti al proprietario erano quelli di
+> `M1`, e fra quella misura e oggi **una scrittura in produzione e' avvenuta**
+> che non l'ha attraversata (voce 6) — i conteggi si rileggono dal catalogo il
+> giorno in cui lo specchio parte, e `M1` non si riusa. La seconda: **la
+> riscrittura cambia cosa questa procedura scrive**. Come era, cambiava una
+> colonna di una riga che esisteva gia'; come e', **inserisce anche una riga
+> sonda** in `production_plan`, che il passo 24 rimuove. E' una scrittura in
+> piu' rispetto a quelle descritte quando l'autorizzazione e' stata chiesta, e
+> un'autorizzazione data su una descrizione non copre una descrizione diversa —
+> e' la stessa regola per cui quella di P-58-A non copre questa.
 > E' **un'autorizzazione diversa** da quella di P-58-A e non ne eredita nulla:
 > P-58-A mette e toglie una spunta su una voce che esiste gia'; **questa crea un
 > legame verso una serata pubblicata** e mette alla prova il rifiuto che
@@ -454,12 +484,20 @@ Result: pending
 > **La rimozione finale e' per CHIAVE PRIMARIA**, dalla lista del passo 18, e
 > mai da un controllo su una pagina.
 
-**Cosa chiude.** `ICS-03` seconda eccezione (il legame **si riaggancia**),
+**Cosa chiude.** `ICS-03` seconda eccezione (il legame **si riaggancia**) e
 `ICS-03b` / D-58-02 (una riga di piano con un legame **non se ne va**, ed e'
-un'eccezione di **sopravvivenza**, distinta dalle due di **stato**), e `ICS-01b`
-/ D-58-01 (il rifiuto che sostituisce la guardia del database sul progressivo,
-perche' uno specchio non fa mai `UPDATE` e il trigger `BEFORE UPDATE OF number`
-smette di scattare).
+un'eccezione di **sopravvivenza**, distinta dalle due di **stato**).
+
+**Cosa NON chiude piu', dal 2026-08-20.** `ICS-01b` / D-58-01 — il rifiuto che
+sostituisce la guardia del database sul progressivo, perche' uno specchio non fa
+mai `UPDATE` e il trigger `BEFORE UPDATE OF number` smette di scattare. Quel
+requisito **e' provato altrove** e non da questa procedura: piano 58-09, per
+mutazione del codice, uscita `2`, categoria `renumber_refused`, zero scritture,
+riautorizzazione registrata nel referto. Quello che questa procedura aggiunge
+sono due osservazioni piu' piccole e vere — che la guardia gira **dentro la
+corsa che scrive** (passo 22) e che l'argomento di riautorizzazione **non
+inventa** una decisione quando non c'e' niente da riautorizzare (passo 23) — e
+una che **non aggiunge piu'**, dichiarata nel blocco qui sotto.
 
 ### Passo 16 — L'autorizzazione, propria e non ereditata
 
@@ -536,63 +574,187 @@ Result: pending
 
 Result: pending
 
-### Passo 21 — `ICS-03b` — il file che ha perso quella voce
+### ⚠ Cosa i passi 21-23 NON provano piu' — dichiarato il 2026-08-20
+
+> Questo blocco si legge **senza** conoscere la storia che l'ha prodotto, ed e'
+> scritto perche' chi arriva qui fra un anno sappia cosa ha in mano e cosa no.
+>
+> **Cosa resta provato.** `ICS-01b` — il rifiuto di rinumerare — e' provato, e
+> lo e' **per mutazione del codice contro un giro a vuoto**: piano 58-09, la
+> mutazione confermata prima di leggerne l'esito, uscita `2`, categoria
+> `renumber_refused`, *nothing was written*, e la riautorizzazione esplicita
+> scritta per esteso nel referto della corsa successiva. E' una prova vera, e
+> nessuno la sta ridimensionando.
+>
+> **Cosa NON e' provato, e non lo sara' da questa procedura.** Che il rifiuto
+> arrivi **prima della cancellazione**, in una corsa che **avrebbe cancellato
+> davvero**. Un giro a vuoto non cancella niente, quindi non puo' dire in quale
+> ordine sarebbero avvenute due cose di cui una non avviene. Era esattamente
+> l'osservazione che il passo 22 dichiarava *la piu' pesante di tutta la
+> procedura*, e **non c'e' piu'**.
+>
+> **Perche' non c'e' piu'.** L'unica sorgente dell'importatore e' l'indirizzo
+> remoto (`ICS-09`, onda 6): l'argomento che faceva entrare un file costruito
+> per l'occasione e' stato tolto, e quella e' una decisione spedita in questa
+> stessa fase, non un difetto. Per far tornare una voce gia' nota con un
+> progressivo diverso bisognerebbe quindi **cambiare un progressivo su una
+> serata vera** — la terza guardia monotona del progetto, quella che questa
+> stessa procedura vieta di spendere, e che non si restituisce: un progressivo
+> assegnato e' gia' su una locandina. **Spendere la cosa che si sta proteggendo
+> per dimostrare che e' protetta non e' una prova: e' il danno.**
+>
+> **Cosa lo riaprirebbe, e sono due condizioni concrete.**
+>
+> 1. **Il giorno in cui una rinumerazione la si vuole davvero.** Prima o poi il
+>    proprietario decidera' di cambiare un progressivo per una ragione sua. In
+>    quel momento la corsa che scrive incontrera' la divergenza **senza che
+>    nessuno l'abbia fabbricata**: il rifiuto scattera' sulla strada vera, prima
+>    della cancellazione, in una corsa che avrebbe cancellato — e l'osservazione
+>    sara' li', a costo zero. **Va colta quel giorno**, annotando il referto
+>    prima di passare l'argomento di riautorizzazione, perche' e' l'unica
+>    occasione in cui questa prova non costa niente. Chi esegue quella
+>    rinumerazione torni qui e riempia il `Result` del passo 22.
+> 2. **Un bersaglio che non sia la produzione.** Una copia dello schema fuori
+>    dalla produzione, e una sorgente che possa divergere **senza pubblicare
+>    nulla**, renderebbero la cancellazione vera su righe che non lo sono. Sono
+>    **due** cose, e servono insieme: un bersaglio finto con la sorgente vera non
+>    puo' divergere, e una sorgente finta contro la produzione cancellerebbe
+>    righe vere. Oggi non esiste ne' l'uno ne' l'altra, e costruirli e' un lavoro
+>    dichiarato, non un ripiego di una seduta.
+>
+> **Due strade sono state guardate e scartate il 2026-08-20**, e si scrivono
+> perche' non vengano riproposte come se fossero nuove. **(a)** Una seconda
+> chiave di calendario verso un indirizzo di prova: farebbe esistere un
+> **secondo calendario pubblicato**, con la stessa esposizione del primo — e un
+> link pubblicato e' leggibile da chiunque lo abbia. **(b)** Un argomento di
+> sola prova che accetti una sorgente locale e rifiuti `--apply`: non
+> eserciterebbe il caso, perche' il caso vive **dentro** un `--apply`.
+
+### Passo 21 — `ICS-03b` — la riga che la sorgente non ha mai portato
 
 **Come:** chi esegue la procedura.
 
-- Costruire un file di prova **identico al file vero tranne una cosa**: **non
-  porta piu'** il `source_uid` della riga legata al passo 19.
-- Lanciare l'import con `--apply` su quel file.
-- Osservare che **la riga di piano c'e' ancora**, letta dal catalogo per
-  `source_uid`, e che porta ancora il suo `linked_party_id`. E' l'eccezione di
-  **sopravvivenza** di D-58-02: una riga con un legame **non si cancella mai**,
-  qualunque cosa dica il file.
-- Osservare che il referto **conta** le righe sopravvissute a un'assenza, e che
-  il conteggio e' `1`. Un'eccezione che sopravvive in silenzio e' un'eccezione
-  non dichiarata, che e' esattamente cio' che `ICS-03` esiste per vietare.
+- ⚠ **Non si costruisce nessun file di prova, e la sorgente vera non si tocca.**
+  L'assenza che questo passo mette alla prova si crea **dal lato del database**,
+  non da quello del calendario: si aggiunge una riga che la sorgente non ha mai
+  portato, invece di togliere dalla sorgente una voce che c'e'. L'assenza che ne
+  risulta e' **vera** e non simulata — il codice incontra la stessa condizione
+  che incontrerebbe se una voce sparisse davvero, e la incontra sullo stesso
+  ramo.
+- Creare **una** riga sonda nella tabella dei piani, con tre proprieta' che non
+  sono di comodo:
+  - la **chiave di calendario sotto prova**. Senza, lo specchio non la vede
+    nemmeno — legge per chiave — e il passo misurerebbe il vuoto;
+  - un identificativo di sorgente che il calendario **non porta e non
+    portera'**: un marcatore riconoscibile a colpo d'occhio, mai qualcosa che
+    somigli a un identificativo vero;
+  - **il progressivo lasciato vuoto**. ⚠ Non e' pigrizia: una riga sonda con un
+    numero entrerebbe nella popolazione della guardia del passo 22 e ne
+    falserebbe la misura. La colonna e' nullabile apposta, e qui la nullabilita'
+    serve.
+  Le colonne obbligatorie che restano si riempiono con valori che **si vedono
+  essere una sonda**.
+- Legare la riga sonda alla **stessa serata gia' esistente** del passo 19.
+  Nessun progressivo si spende, nessuna serata si annuncia, e la serata non
+  viene toccata: il legame vive sul lato del piano, e la chiave esterna verso
+  la serata e' `NO ACTION`.
+- ⚠ **Dichiarare l'artefatto invece di nasconderlo.** Finche' la riga sonda
+  esiste, **compare sulle superfici di produzione del calendario** come una
+  riga in piu'. E' una finestra che si apre qui e si chiude al passo 24, e chi
+  altro potrebbe guardare quelle superfici in questa finestra va avvisato
+  prima, non dopo.
+- Annotare l'identificativo primario e quello di sorgente della riga sonda
+  **nella lista fuori dal repo** del passo 18: e' cio' che il passo 24 rimuovera'
+  per chiave primaria.
+- Lanciare l'import con `--apply` per la chiave sotto prova, **sulla sorgente
+  vera** — la stessa del passo 20, invariata.
+- Osservare che **la riga sonda c'e' ancora**, letta dal catalogo per
+  l'identificativo di sorgente, e che porta ancora il suo legame.
+- Osservare che il referto conta **due** numeri distinti: quante righe non
+  entrano affatto nella rimozione, e — **di quelle** — quante sono
+  *sopravvissute a un'ASSENZA*. Rispetto al referto del passo 20 il primo deve
+  essere salito di uno, e il secondo deve essere passato da `0` a `1`. ⚠ Se il
+  secondo e' rimasto `0`, la riga sonda non porta la chiave di calendario oppure
+  non porta il legame: **quello e' il ritrovamento**, e va scritto invece di
+  riprovare.
 - Osservare che il referto le **conta** e non le **nomina**: nessun
-  identificativo grezzo.
+  identificativo grezzo, nessun titolo.
+- ⚠ Se la riga sonda e' sparita, l'eccezione di sopravvivenza non ha retto e una
+  serata puo' restare senza nessuno che la indichi: scriverlo, andare a
+  `P-58-C`, e trattarlo come un **blocco della fase** — non come
+  un'osservazione da annotare proseguendo.
 
 Result: pending
 
-### Passo 22 — `ICS-01b` — il progressivo che cambia, e il rifiuto
+### Passo 22 — `ICS-01b` — la guardia esercitata dove scrive, e la popolazione su cui gira
 
-**Come:** chi esegue la procedura.
+**Come:** chi esegue la procedura, con la Management API e `read_only: true` per
+la prima meta'.
 
-- Costruire un secondo file di prova **identico al file vero tranne una cosa**:
-  per **lo stesso `source_uid`**, porta un **progressivo diverso**.
-- Lanciare l'import con `--apply` su quel file.
-- Osservare che l'import **rifiuta**, con uscita `2`.
-- Osservare che il rifiuto **nomina la serata e i due numeri** — quello noto e
-  quello in arrivo — perche' un rifiuto che dice solo *no* manda chi legge a
-  cercare cosa e' cambiato.
-- Osservare che **non ha scritto niente**: rileggere dal catalogo i conteggi
-  delle tre tabelle specchiate e confrontarli con quelli letti subito prima. Sono
-  gli stessi. **Questa e' l'osservazione che pesa di piu' di tutta la
-  procedura**: la guardia del progressivo si e' spostata dal database
-  all'applicazione, che e' esattamente dove il commento della migration dice che
-  *non sopravvive al chiamante distratto*. Qui si guarda se sopravvive.
-- ⚠ Se il rifiuto e' arrivato **dopo** la cancellazione, il calendario e' vuoto:
-  andare a `P-58-C`, e scrivere che il rifiuto arriva troppo tardi — un rifiuto
-  che non e' *prima di scrivere* non e' un rifiuto, e' un fallimento.
+- ⚠ **Questo passo non fa piu' scattare il rifiuto**, e la ragione sta nel
+  blocco che precede il passo 21. Far tornare una voce gia' nota con un
+  progressivo diverso significherebbe cambiarlo su una **serata vera**.
+- Contare **prima** della corsa, dal catalogo: quante righe di piano della
+  chiave sotto prova portano un progressivo **non vuoto**. E' il limite
+  superiore della **popolazione** su cui la guardia gira; quella effettiva sono
+  quelle di esse che la sorgente porta ancora, e dopo lo specchio del passo 20
+  le due coincidono salvo le sopravvissute a un'assenza. Scrivere **entrambi** i
+  numeri.
+- ⚠ Se la popolazione e' `0`, questo passo **non prova niente**: una guardia
+  valutata su un insieme vuoto e' un falso verde per costruzione, ed e'
+  esattamente la forma che questo progetto pretende sia distinguibile da un
+  passaggio. In quel caso **fermarsi e scriverlo**, invece di riempire il
+  `Result` con un esito che nessuno si e' guadagnato.
+- Riprendere il referto della corsa del passo 21 — quella con `--apply`, che ha
+  cancellato e riscritto **davvero** — e osservare che non porta ne' un rifiuto
+  ne' la riga di riautorizzazione, e che si e' chiusa con uscita `0`.
+- Scrivere cosa quelle due osservazioni, **insieme**, significano: la guardia ha
+  confrontato la popolazione dei progressivi conservati con quelli arrivati
+  dalla sorgente **dentro la corsa che scrive**, e li ha trovati tutti uguali.
+  Il rifiuto rifiuta la corsa **intera**, quindi una corsa arrivata in fondo e'
+  una corsa in cui **nessuno** di quelli divergeva. Il numero della popolazione
+  e' cio' che rende questa un'osservazione invece di un *non e' successo
+  niente*.
+- ⚠ **Cosa questo passo NON osserva piu':** che il rifiuto arrivi **prima** della
+  cancellazione in una corsa che avrebbe cancellato davvero. Vedi il blocco che
+  precede il passo 21, compreso il giorno in cui quell'osservazione tornera'
+  disponibile a costo zero.
 
 Result: pending
 
-### Passo 23 — `ICS-01b` — la riautorizzazione esplicita
+### Passo 23 — `ICS-01b` — la riautorizzazione, e la prova che NON inventa una decisione
 
 **Come:** chi esegue la procedura.
 
-- Rilanciare **lo stesso file di prova del passo 22**, questa volta con
-  **l'argomento esplicito di riautorizzazione**.
-- Osservare che passa.
-- Osservare che **la riautorizzazione compare nel referto**, per esteso, e che
-  dice quale serata e' stata rinumerata e da quale numero a quale. Una
-  rinumerazione autorizzata e una non autorizzata devono lasciare due tracce
-  diverse: se il referto e' identico a quello di una corsa normale, **quello e'
-  il ritrovamento**.
-- Rileggere dal catalogo il numero della riga: e' quello del file di prova.
-- Riportare il numero al valore del passo 18 rilanciando l'import **con il file
-  vero** e la riautorizzazione, e osservare che ci torna.
+- ⚠ **Questo passo non scrive niente, e non e' un modo di dire.** Entrambe le
+  corse qui sotto sono **a vuoto**, e un giro a vuoto di questo strumento si
+  ferma prima di aprire qualunque scrittura: **non tocca le tabelle specchiate e
+  non apre nemmeno una riga nel registro delle corse**, e il suo referto lo
+  dichiara. Senza una divergenza da riautorizzare l'argomento non ha niente da
+  autorizzare, e un `--apply` in piu' sarebbe rischio speso per niente — senza
+  transazione e senza PITR.
+- Lanciare l'import **senza** `--apply` per la chiave sotto prova, sulla
+  sorgente vera, e conservare il referto.
+- Rilanciarlo identico, **con l'argomento esplicito di riautorizzazione**, e
+  conservare il secondo referto.
+- Confrontare i due e osservare che **nessuno dei due porta la riga di
+  riautorizzazione** e che i conteggi sono gli stessi.
+- ⚠ Se il secondo referto dichiarasse una rinumerazione dove il primo non ne
+  dichiara nessuna, **quello e' il ritrovamento**, ed e' grave in un modo
+  particolare. Quella riga e' scritta per essere *l'unica traccia che ci sara'*
+  di una decisione presa da qualcuno: una traccia che compare **senza la
+  decisione sotto** avvelena la sola fonte diagnostica di questo dominio — lo
+  stesso registro che ha permesso di datare i timbri falsi confrontandoli con
+  l'ora degli import.
+- Scrivere nel `Result` **entrambi** i fatti, perche' il secondo senza il primo
+  si legge come una prova piu' grande di quella che e': **(i)** l'argomento e'
+  inerte quando non c'e' niente da riautorizzare; **(ii)** questo **non** e' la
+  prova che la riautorizzazione funzioni. Quella e' altrove, ed e' una prova per
+  **mutazione del codice** — piano 58-09, mutazione confermata prima di
+  leggerne l'esito, uscita `0`, e la riga di riautorizzazione scritta per esteso
+  nel referto.
+- ⚠ **Cosa questo passo non fa piu':** riportare indietro un numero. Non c'e'
+  nessun numero da riportare indietro, perche' nessuno viene cambiato.
 
 Result: pending
 
@@ -604,6 +766,12 @@ Result: pending
   chiavi primarie della lista catturata al passo 18** e per `source_uid` dove
   gli identificativi sono stati riscritti dallo specchio. Mai da un controllo su
   una pagina, mai per titolo, mai risalendo da un elemento.
+- ⚠ **La riga sonda del passo 21 e' una di quelle**, ed e' l'unica riga che
+  questa procedura ha **creato** invece che cambiato: si rimuove per chiave
+  primaria, dalla stessa lista. Finche' e' li', compare sulle superfici di
+  produzione del calendario. Rileggere dal catalogo che l'identificativo di
+  sorgente della sonda non restituisce piu' nessuna riga, e osservare che il
+  conteggio delle righe di piano della chiave e' tornato a quello del passo 18.
 - Riportare `linked_party_id` al valore registrato al passo 18 — che per la riga
   usata era vuoto.
 - Confermare **da una fonte diversa da quella su cui si e' agito**: se si e'

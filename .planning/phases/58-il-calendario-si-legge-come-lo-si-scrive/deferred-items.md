@@ -142,7 +142,7 @@ Nessuna delle due si costruisce nel piano 58-11.
 
 ---
 
-## 5. `P-58-B` passi 21-23 non hanno piu' un veicolo: il file di prova non entra
+## 5. `P-58-B` passi 21-23 non hanno piu' un veicolo: il file di prova non entra — **CHIUSA PER DECISIONE il 2026-08-20**
 
 - **Trovata:** piano 58-11, task 2, 2026-08-20, leggendo la procedura contro il
   codice invece che contro il piano che l'aveva scritta
@@ -177,9 +177,58 @@ Nessuna delle due si costruisce nel piano 58-11.
   scelta e' del proprietario**, e va fatta prima di dichiarare chiusi `ICS-01b`
   e `ICS-03b` sull'evidenza di una procedura.
 
+### ⇢ Decisione presa il 2026-08-20, nella seduta del piano 58-11
+
+**Strada scelta: (c) — RISCRIVERE i passi 21-23 dichiarando cosa smettono di
+provare.** Decisione del proprietario. I passi sono stati riscritti lo stesso
+giorno in `58-PROCEDURES.md`, e la dichiarazione sta nel blocco che li precede,
+scritto per essere leggibile da chi non conosce questa voce.
+
+**Le altre due sono state scartate, e la ragione dello scarto si scrive perche'
+non vengano riproposte come se fossero nuove:**
+
+- **(a) una seconda chiave di calendario verso un indirizzo di prova** —
+  scartata: farebbe esistere un **secondo calendario pubblicato**, con la stessa
+  esposizione del primo. `D-58-05` punto 1 dice che un link pubblicato e'
+  leggibile da chiunque lo abbia, e che ri-pubblicare invalida il vecchio
+  indirizzo ma non lo toglie dagli occhi di chi l'ha gia' visto. Un secondo
+  indirizzo raddoppia quella superficie per guadagnare una prova.
+- **(b) un argomento di sola prova che accetti una sorgente locale e rifiuti
+  `--apply`** — scartata: **non eserciterebbe il caso**. Il caso che il passo 22
+  chiamava *il piu' pesante di tutta la procedura* e' il rifiuto che arriva
+  **prima della cancellazione**, e la cancellazione vive dentro un `--apply`. Un
+  argomento che rifiuta `--apply` produce l'ennesimo giro a vuoto, che e'
+  esattamente cio' che il piano 58-09 ha gia' fatto.
+
+**Cosa la riscrittura ha prodotto, in una riga per passo:**
+- **21** — l'assenza si crea dal lato del **database** (una riga sonda che la
+  sorgente non ha mai portato), non dal lato del calendario. `ICS-03b` resta
+  esercitabile per intero, e con un'assenza **vera** invece che simulata.
+- **22** — non fa piu' scattare il rifiuto; osserva che la guardia gira **dentro
+  la corsa che scrive**, su una popolazione contata dal catalogo e dichiarata.
+- **23** — non scrive: due giri a vuoto, con e senza l'argomento di
+  riautorizzazione, per osservare che l'argomento **non inventa** la traccia di
+  una decisione che nessuno ha preso.
+
+**Cosa resta perso, e non e' un dettaglio:** che il rifiuto arrivi **prima**
+della cancellazione in una corsa che avrebbe cancellato davvero. Le due
+condizioni che lo riaprirebbero sono nominate nel blocco della procedura — la
+prima e' **il giorno in cui una rinumerazione la si vuole per davvero**, quando
+quell'osservazione sara' disponibile a costo zero e andra' colta.
+
+⚠ **Una conseguenza va portata al proprietario prima che l'autorizzazione sia
+spesa:** la riscrittura **cambia cosa `P-58-B` scrive** — il passo 21 ora
+inserisce una riga sonda, e il passo 24 la rimuove. L'autorizzazione del
+2026-08-20 e' stata data su una descrizione che non la conteneva, e
+un'autorizzazione data su una descrizione non copre una descrizione diversa. E'
+scritto anche nel preambolo della procedura.
+
+**Questa voce e' chiusa.** Non e' piu' un blocco per la fase: quello che resta
+aperto e' la **voce 4**, e non e' questa.
+
 ---
 
-## 6. `M1` e' invecchiata di una corsa: i numeri messi davanti all'autorizzazione non sono piu' quelli
+## 6. `M1` e' invecchiata di una corsa: i numeri messi davanti all'autorizzazione non sono piu' quelli — **la corsa e' SPIEGATA, la prescrizione resta**
 
 - **Trovata:** piano 58-11, task 2, 2026-08-20, rileggendo il catalogo con
   `read_only: true` alle **18:08:54Z** prima di dichiarare bloccato il task 3
@@ -207,3 +256,24 @@ Nessuna delle due si costruisce nel piano 58-11.
 - **Come si chiude:** rileggere i conteggi dal catalogo **il giorno in cui il
   primo specchio parte davvero**, e non riusare `M1`. Una misura d'apertura vale
   fino alla prima scrittura che non l'ha attraversata.
+
+### ⇢ La corsa e' spiegata — dichiarazione del proprietario, 2026-08-20
+
+**Chi ha scritto quella sesta riga: il proprietario, dal proprio Mac, con il
+vecchio importatore, mentre questa fase era in esecuzione.** Dichiarato da lui
+nella seduta del piano 58-11.
+
+**Cosa questo chiude.** La domanda *«esiste una scrittura in produzione che
+nessuno ha autorizzato?»*. La risposta e' **no**: la corsa ha un autore, un
+mezzo e una ragione, ed e' coerente con il fatto letto dal registro — chiave di
+calendario nulla, perche' quella colonna non esisteva ancora quando la corsa e'
+partita. **Non va indagata oltre.**
+
+**Cosa questo NON chiude, ed e' la meta' che conta.** La prescrizione qui sopra
+resta **intera**: i conteggi si rileggono dal catalogo **il giorno in cui lo
+specchio parte davvero**, e **`M1` non si riusa**. Una misura d'apertura vale
+fino alla prima scrittura che non l'ha attraversata — e non importa se quella
+scrittura era legittima: una scrittura autorizzata invecchia una misura
+esattamente quanto una che non lo era. I numeri veri si rimettono davanti al
+proprietario quando la **voce 4** sara' chiusa, insieme alla conseguenza
+registrata nella **voce 5**.
