@@ -134,8 +134,8 @@ e una lettura dei titoli che capisce cosa sta specchiando.
 **Plans:** 12 plans in 9 waves
 
 Plans:
-- [ ] 58-01-PLAN.md — i due gate sintetici (grammatica dei titoli · guardie dello specchio), rossi e non registrati *(onda 0)*
-- [ ] 58-02-PLAN.md — le tre procedure `P-58-A`/`P-58-B`/`P-58-C` e le misure d'apertura, prese prima che lo specchio le cancelli *(onda 0)*
+- [x] 58-01-PLAN.md — i due gate sintetici (grammatica dei titoli · guardie dello specchio), rossi e non registrati *(onda 0)*
+- [x] 58-02-PLAN.md — le tre procedure `P-58-A`/`P-58-B`/`P-58-C` e le misure d'apertura, prese prima che lo specchio le cancelli *(onda 0)*
 - [ ] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
 - [ ] 58-04-PLAN.md — `ICS-06`: le proposte si ricalcolano, e la superficie lo dice *(onda 1)*
 - [ ] 58-05-PLAN.md — `ICS-07`: nessun identificativo grezzo nel referto *(onda 1)*

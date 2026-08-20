@@ -4,7 +4,7 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: Phase 45 context gathered
-last_updated: "2026-08-20T14:12:56.075Z"
+last_updated: "2026-08-20T14:48:41.083Z"
 last_activity: 2026-08-20
 progress:
   total_phases: 51
@@ -30,10 +30,12 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** v1.6 **58** — il calendario e' uno specchio (riscritta il 2026-08-20 dopo una misura: toglie codice invece di aggiungerne; piani da fare)
+**Current Focus:** Phase 58 — il-calendario-si-legge-come-lo-si-scrive
 
 ## Current Position
 
+Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — EXECUTING
+Plan: 1 of 12
 **Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
 `.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
@@ -238,7 +240,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 58
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
