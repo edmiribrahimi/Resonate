@@ -429,6 +429,17 @@ esiste come dato e non esistera' finche' un import non produce righe agganciate
 per quella coppia. Il rifiuto e' la risposta corretta nel frattempo, ed e' cio'
 che 58-03 deve implementare — non un valore preso in prestito.
 
+## Self-Check: PASSED
+
+- `FOUND` `.planning/phases/58-il-calendario-si-legge-come-lo-si-scrive/58-PROCEDURES.md`
+- `FOUND` `.planning/phases/58-il-calendario-si-legge-come-lo-si-scrive/58-02-SUMMARY.md`
+- `FOUND` commit `1d67931`
+- `FOUND` commit `e585964`
+- `/usr/bin/grep -c "Result: pending"` → **24**, pari ai 24 passi
+- `/usr/bin/grep -cE "Result: (done|ok|passed)"` → **0**
+- `/usr/bin/grep -cE "(19|20)[0-9]{2}"` su `58-PROCEDURES.md` → **1**, la riga `written:` del frontmatter
+- `node scripts/verify-persona.mjs` → **7/7 verdi**, uscita `0`
+
 ---
 *Fase: 58-il-calendario-si-legge-come-lo-si-scrive*
 *Piano: 02*
