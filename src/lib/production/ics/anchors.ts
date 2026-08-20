@@ -110,6 +110,7 @@ import type {
   AnchorDirection,
   AnchorKind,
   CivilDate,
+  PieceKind,
   UnresolvedReason,
 } from "./vocabulary";
 
@@ -621,6 +622,208 @@ export function conformsToRule(
 
   for (let episode = 0; episode < episodes; episode += 1) {
     if (addDays(anchor.date, episode) === actualDate) return true;
+  }
+
+  return false;
+}
+
+// ── The inverse question, and the ceiling that bounds it (ICS-05) ───────────
+
+/**
+ * How far a piece may sit from the night it is joined to, in days, per
+ * `(series, kind)` — **and only where somebody measured it.**
+ *
+ * ── Where these numbers come from ───────────────────────────────────────────
+ *
+ * **Measured 2026-08-20**, in two readings, both of the *same* quantity — the
+ * distance in days between a piece and the night it belongs to — and both of the
+ * pair they are recorded against. Neither is borrowed from another pair, because
+ * a window inherited from a neighbouring pair is the invented window this phase
+ * forbids.
+ *
+ *  - **Reading one — the live catalogue** (phase 58, plan 02, measure M2). Every
+ *    piece row holding both a plan reference and a date, read through the
+ *    management API with `read_only`, and the distance taken against its plan's
+ *    date. The sample is **six rows**, not the forty-six the phase expected: of
+ *    forty-six pieces, eight carry a plan and six of those carry a date too. It
+ *    yields the three `RSNT-PRLN` entries below, and it yields **nothing at all**
+ *    for eleven of the fourteen live rules.
+ *
+ *  - **Reading two — the calendar itself** (phase 44), recorded in the rule row's
+ *    own note where it was measured and quoted here rather than re-derived:
+ *    *"All of these listings fall on a Tuesday, but one to two and a half weeks
+ *    ahead, with three distinct anticipations across six editions."* Six
+ *    editions, three anticipations, the widest of them two and a half weeks —
+ *    eighteen days. That is the `RSNT` listing entry, and it is the only entry
+ *    that comes from this reading.
+ *
+ * ── ⚠ WHY THE SECOND READING WAS ADMITTED, WRITTEN DOWN BECAUSE IT IS A CHOICE ─
+ *
+ * M2 reports `RSNT / listing` as unmeasured and prescribes refusal for an
+ * unmeasured pair. Taken alone that is right; taken as the whole answer it
+ * **cannot ever be discharged**, and that is the reason it is not the whole
+ * answer here. M2's instrument is *pieces already joined to a night*. This pair
+ * has none. It will keep having none for exactly as long as the join refuses it,
+ * so "wait for an import to produce rows" describes a measurement that can never
+ * be taken. A criterion nothing can satisfy is not provisional; it is a
+ * permanent refusal wearing a provisional word.
+ *
+ * The second reading measures the same quantity with an instrument that does not
+ * depend on the join — it read the file, six editions of it — and it measures
+ * **this pair**, not a neighbour's. So the pair has a number, the number is
+ * measured, and the entry names which reading produced it. The eleven pairs that
+ * neither reading covers are **absent below, and absence refuses**.
+ *
+ * ── ⚠ A CEILING, NOT A CRITERION — AND THE ASYMMETRY THAT FOLLOWS ───────────
+ *
+ * The criterion is {@link conformsToRule}: the weekday the rule names, counted
+ * from the anchor the rule names. This is a ceiling on top of it, and the
+ * distinction is the one `production-calendar.md` was rewritten to make — *the
+ * pipeline is expressed in weekdays, not in offsets.* The same Tuesday sits four
+ * days before a Saturday night and three before a Friday one; a check that read
+ * the ceiling as the rule would report a conforming night as an error, which has
+ * already happened once on this project and is written down so it does not
+ * happen twice.
+ *
+ * From which the asymmetry in {@link recognisesEdition} follows, and it is not a
+ * loophole:
+ *
+ *  - where the rule **is** derivable there is an exact date to compare against,
+ *    so the criterion decides and a **missing** ceiling changes nothing;
+ *  - where it is **not** derivable there is no exact date — that is what
+ *    `derivable: false` means — so the ceiling is the only thing bounding the
+ *    claim, and a missing one leaves nothing to bound it. There, absence
+ *    refuses.
+ *
+ * ── The eleven pairs with no measurement, named rather than left implicit ────
+ *
+ * `RSNT-PRLN` recap and tonight; `RSNT` livecut, after movie and timetable;
+ * `RMDB` (both venue series) listing, tonight, recap and livecut; `MTNLB`
+ * listing, tonight, recap and livecut. Every one of them is derivable, so every
+ * one of them is decided by the criterion and loses nothing by having no ceiling
+ * — which is also why a **global** maximum was measured, reported as four days,
+ * and declared not adoptable: it would have cut every `next_edition` anchor,
+ * whose scale is one to three months, and authorised at four days eleven pairs
+ * nobody had measured.
+ */
+const ATTACHMENT_WINDOW_DAYS: ReadonlyMap<string, number> = new Map([
+  ["RSNT-PRLN#listing", 4],
+  ["RSNT-PRLN#livecut", 4],
+  ["RSNT-PRLN#timetable", 0],
+  ["RSNT#listing", 18],
+]);
+
+/**
+ * The measured ceiling for one `(series, kind)`, or `null` where there is none.
+ *
+ * `null` is *nobody measured this pair*, and it is deliberately not a large
+ * number: a generous default is a window somebody chose, and this phase's whole
+ * discipline is that the window is measured or it is absent.
+ */
+export function attachmentWindowDays(
+  seriesCode: string,
+  kind: PieceKind
+): number | null {
+  return ATTACHMENT_WINDOW_DAYS.get(`${seriesCode.trim().toUpperCase()}#${kind}`) ?? null;
+}
+
+/**
+ * Whether this night can be the one a piece belongs to — the **inverse** of the
+ * question {@link proposePieceDate} asks.
+ *
+ * ── ⚠ `derivable: false` DOES NOT STOP THIS, AND THAT IS THE POINT OF ICS-05 ─
+ *
+ * `derivable` answers *may I propose a date?* For the night's listing it has no
+ * answer: the anticipation is one to two and a half weeks with three distinct
+ * values across six editions, so many Tuesdays are candidates and no rule picks
+ * one. `ICS-05` asks the other question — *given this Tuesday, which night does
+ * it belong to?* — and there the declared direction (`before`, so the night
+ * **follows** the listing) plus the measured ceiling make the candidate unique.
+ * Nine of the thirty-one unreadable entries are exactly this shape, and a reader
+ * that treated `derivable` as governing recognition would declare all nine
+ * unsolvable.
+ *
+ * ── No second arithmetic ────────────────────────────────────────────────────
+ *
+ * The derivable branch calls {@link conformsToRule} rather than restating it: the
+ * ISO-week clause and the multi-episode window in there are measured six times of
+ * six, and a second copy of them would diverge from the predicate the divergence
+ * report uses. What this function adds is the ceiling and, where there is no
+ * exact date to compare, the weaker claim the rule still makes.
+ *
+ * @param windowDays the measured ceiling for this piece's `(series, kind)`, from
+ *   {@link attachmentWindowDays}. `null` means nobody measured it — permissive
+ *   where the criterion already decided, refusing where it did not
+ */
+export function recognisesEdition(
+  pieceDate: CivilDate,
+  rule: PipelineRule,
+  context: AnchorContext,
+  windowDays: number | null
+): boolean {
+  if (rule.derivable) {
+    if (conformsToRule(pieceDate, rule, context) !== true) return false;
+    if (windowDays === null) return true;
+    return withinDays(pieceDate, context.nightDate, windowDays);
+  }
+
+  // No derivable date exists, so the rule's remaining claim is the testable one:
+  // the piece sits on the weekday the rule names, the anchor lies in the
+  // direction the rule declares, and the night is inside the measured ceiling.
+  if (windowDays === null) return false;
+
+  const anchorDate = anchorDateFor(rule.anchorKind, context);
+  if (anchorDate === null) return false;
+
+  if (rule.anchorWeekday !== null && isoWeekday(pieceDate) !== rule.anchorWeekday) {
+    return false;
+  }
+
+  if (rule.anchorDirection === "before" && !(anchorDate > pieceDate)) return false;
+  if (rule.anchorDirection === "after" && !(anchorDate < pieceDate)) return false;
+  if (
+    rule.anchorDirection === "on" &&
+    isoWeekStart(anchorDate) !== isoWeekStart(pieceDate)
+  ) {
+    return false;
+  }
+
+  return withinDays(pieceDate, context.nightDate, windowDays);
+}
+
+/**
+ * Whether two civil dates are at most `limit` days apart, in either direction.
+ *
+ * Walked on the same primitives as everything else in this module — no epoch, no
+ * instant, no date object — and **bounded by the limit itself**, which is why it
+ * is a predicate rather than a distance: a function that returned a number would
+ * have to walk until it arrived, and the one call site only ever needs to know
+ * whether it arrives in time.
+ */
+function withinDays(from: CivilDate, to: CivilDate, limit: number): boolean {
+  // Both are validated by asking each for its weekday, which refuses a malformed
+  // civil date rather than quietly failing to match one.
+  isoWeekday(from);
+  isoWeekday(to);
+
+  if (!Number.isInteger(limit) || limit < 0) {
+    throw new RangeError(
+      "production/ics/anchors: an attachment window is a whole number of days, " +
+        "zero or more. A negative one would refuse every candidate and a " +
+        "fractional one is an instant creeping back into a calendar that has none."
+    );
+  }
+
+  if (from === to) return true;
+
+  let forward = from;
+  let backward = from;
+
+  for (let step = 0; step < limit; step += 1) {
+    forward = addDays(forward, 1);
+    if (forward === to) return true;
+    backward = addDays(backward, -1);
+    if (backward === to) return true;
   }
 
   return false;

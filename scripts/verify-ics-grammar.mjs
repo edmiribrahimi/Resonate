@@ -63,10 +63,17 @@
  *
  *   GUESSED  il lettore ha attribuito **piu'** di quanto doveva: una serie, un
  *            progressivo o una serata che il titolo non portava. E' il piu'
- *            grave dei due. La riga 4 di `INCLUSION_RULE` lo vieta per nome —
- *            *«never guessed onto the nearest series»* — e la riga 5 dice
- *            perche': un progressivo e' una guardia monotona e, una volta
- *            assegnato, e' gia' su una locandina.
+ *            grave dei due. La riga di `INCLUSION_RULE` che si chiude su
+ *            *«never guessed onto the nearest series»* lo vieta per nome, e
+ *            quella che si chiude su *«a progressivo is a monotone guard»* dice
+ *            perche': una volta assegnato, e' gia' su una locandina.
+ *
+ *            **Le righe si citano per il loro testo e non per il loro
+ *            numero**, dal 2026-08-20: `ICS-04` ne ha inserita una in mezzo
+ *            all'elenco e i tre riferimenti «riga 4» di questo file puntavano
+ *            gia' altrove. Un rimando che scorre in silenzio e' peggio di
+ *            nessun rimando — manda a leggere la regola sbagliata credendo di
+ *            aver controllato.
  *
  * Il conteggio finale e' **per verso**, mai un totale unico.
  *
@@ -288,8 +295,9 @@ function verdettoDi(atteso, misurato) {
   if (rangoMisurato < rangoAtteso) return "MISSED";
 
   // Stesso rango: e' GUESSED se la lettura porta una serie o un numero che
-  // l'attesa non le riconosce — e' l'attribuzione che la riga 4 di
-  // INCLUSION_RULE vieta, con o senza un salto di classe.
+  // l'attesa non le riconosce — e' l'attribuzione che INCLUSION_RULE vieta
+  // dicendo *«never guessed onto the nearest series»*, con o senza un salto di
+  // classe.
   if (serieAttesa === null && misurato.serie !== null) return "GUESSED";
   if (numeroAtteso === null && misurato.numero !== null) return "GUESSED";
   if (serieAttesa !== null && misurato.serie !== null && serieAttesa !== misurato.serie) {
@@ -562,12 +570,17 @@ const FAMIGLIA_B = [
   },
   {
     /*
-     * La finestra massima. Il suo valore lo misura il piano 58-02, per coppia
-     * (serie, tipo); qui la distanza e' di oltre trecento giorni, cioe' fuori da
-     * qualunque finestra che quel calendario possa produrre — le notti di quella
-     * serie distano fra uno e tre mesi. Il caso asserisce il **rifiuto**, non un
-     * numero: finche' la finestra non e' misurata, il rifiuto e' la risposta
-     * corretta, ed e' scritto in `58-CONTEXT.md`.
+     * La finestra massima. Qui la distanza e' di oltre trecento giorni, cioe'
+     * fuori da qualunque finestra che quel calendario possa produrre — le notti
+     * di quella serie distano fra uno e tre mesi. Il caso asserisce il
+     * **rifiuto**, non un numero, e continua a non asserirne uno.
+     *
+     * *(Aggiornamento del 2026-08-20, piano 58-03: la finestra di questa coppia
+     * e' stata misurata e vale diciotto giorni — `anchors.ts`, che ne porta
+     * data, fonte e metodo. A4 sta a undici giorni e si aggancia, questo a
+     * oltre trecento e viene rifiutato. Il numero **non** e' scritto qui: un
+     * caso che ripetesse la soglia diventerebbe un secondo posto dove
+     * cambiarla.)*
      */
     id: "A5",
     requisito: "ICS-05",
@@ -752,6 +765,6 @@ for (const e of indovinati) {
 say("");
 say(`  ICS_GRAMMAR_FAILED — ${mancati.length} MISSED, ${indovinati.length} GUESSED su ${esiti.length} caso/i.`);
 say("  GUESSED e' il piu' grave dei due: un progressivo assegnato e' gia' su una");
-say("  locandina, e INCLUSION_RULE riga 4 vieta l'attribuzione alla serie piu' vicina.");
+say("  locandina, e INCLUSION_RULE vieta per nome l'attribuzione alla serie piu' vicina.");
 say("");
 process.exit(1);
