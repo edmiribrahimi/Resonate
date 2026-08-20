@@ -328,8 +328,14 @@ function say(line = "") {
 
 const failures = [];
 const refusedChecks = [];
+// Counted from the checks that actually ran, never written as a word in the
+// verdict. A number spelled out in a PASS line is a number nobody re-reads the
+// day a check is added — the defect this phase already repaired once, in the
+// vocabulary gate.
+const passedChecks = [];
 
 function pass(letter, sentence) {
+  passedChecks.push(letter);
   say(`  ✓ ${letter}  ${sentence}`);
 }
 
@@ -943,7 +949,61 @@ if (haveMaterial) {
     fail("D", "the anchors do not measure as they did:", dProblems);
   }
 
-  /* ── E. idempotence ────────────────────────────────────────────────────── */
+  /* ── E. idempotence OF A MIRROR ────────────────────────────────────────── */
+  //
+  // ── ⚠ THE QUESTION CHANGED WITH `ICS-01`, AND ONLY HALF OF IT DID ─────────
+  //
+  // The first half of this check is unchanged and still load bearing: **a first
+  // pass that plans nothing makes the second pass meaningless.** If the very
+  // first reconciliation against an empty database writes nothing, the second one
+  // writing nothing proves nothing at all, because there was never anything to be
+  // idempotent about. That argument survives the mirror intact.
+  //
+  // The second half asked *"is the second plan empty?"*, and under a mirror that
+  // is not merely false but the wrong question. A mirror deletes its scope and
+  // rewrites the file **every single run**, so the plan is never empty. What
+  // `ICS-01` actually claims is that two consecutive mirrors leave **the same set
+  // of rows**, and that is what is compared below: row sets, not plans.
+  //
+  // ── THE REDUCTION, AND ITS RULES, WRITTEN DOWN ────────────────────────────
+  //
+  // A comparison with no declared ordering is a comparison that fails at random,
+  // so the rules are fixed here in the way `scripts/rls-baseline.mjs:84-107` fixes
+  // its own:
+  //
+  //   1. **The row identifier is EXCLUDED.** A mirror deletes and re-inserts, so
+  //      every row gets a new `uuid` by construction. Comparing identifiers would
+  //      report a difference on a run that is perfectly idempotent — the failure
+  //      direction that gets a check switched off. What has to be stable is the
+  //      CONTENT, not the key the database happened to hand back.
+  //   2. **Every other written field enters**, in a fixed order declared per
+  //      table below. The order a plan object happens to iterate in is not a
+  //      contract.
+  //   3. **Each row is `JSON.stringify`d as an array.** JSON is self-delimiting,
+  //      so no string value can forge a field boundary, and `null` is
+  //      distinguishable from the string `"null"` — which matters here, because
+  //      several of these columns are nullable and a null carries meaning
+  //      (`unresolved_reason`, `conforms_to_rule`, `due_date`).
+  //   4. **Each row is prefixed with its table**, so a plan row and a piece row
+  //      that happened to serialise alike can never cancel out.
+  //   5. **Sorted by plain codepoint comparison, never `localeCompare`**, whose
+  //      answer depends on the machine's locale.
+  //
+  // ── ⚠ AND THE TABLE NAMES ARE PRINTED WITHOUT THEIR SHARED PREFIX ─────────
+  //
+  // The four tables share one word, that word is an ordinary English word, and it
+  // occurs inside a title of the real calendar — so printing the names in full
+  // drags check F down. It is measured, not feared: this check went red on
+  // exactly that token the first time these lines were written. The same
+  // discipline check H states about the directory it will not name, applied to a
+  // table.
+  //
+  // ── ⚠ WHAT A FAILING MESSAGE MAY SAY ──────────────────────────────────────
+  //
+  // Counts and table names. **Never the differing rows.** A commitment row
+  // carries `title` and a plan row carries the word for a space, and this check's
+  // output is audited by check F precisely because it reaches a terminal, a
+  // screenshot and a document. A diff that printed the rows would leak the file.
 
   const seriesInFile = [
     ...new Set([...classified.nights, ...classified.pieces].map((e) => e.seriesCode)),
@@ -954,12 +1014,19 @@ if (haveMaterial) {
     // An input, and a property of the SPACE rather than of the format. False here
     // because this script has no catalogue to read it from, and a wrong guess
     // would add or drop one checklist item per night — which is a count, and
-    // counts are what the second pass compares.
+    // counts are what the two passes compare.
     requiresSpaceApproval: false,
     rules: [...pipelines.rulesFor(code).entries()].map(([kind, rule]) => ({ kind, rule })),
   }));
 
+  // Declared, because the module takes it as a required argument with no default:
+  // the key is what a real `DELETE` filters on, and this run mirrors one calendar
+  // the way a real one does. Which of the three it is does not matter to this
+  // check — the file is the same on both passes — but that it is DECLARED does.
+  const CALENDAR_KEY = "rsnt";
+
   const input = {
+    calendarKey: CALENDAR_KEY,
     nights: classified.nights,
     pieces: classified.pieces,
     commitments: classified.commitments,
@@ -972,18 +1039,86 @@ if (haveMaterial) {
   // A fixed instant, supplied by the caller because the module has no clock. That
   // is the property that makes two passes comparable at all.
   const NOW = "2026-08-15T00:00:00.000Z";
-  const nothingStored = { plans: [], pieces: [], commitments: [], checklistItems: [] };
-
-  const firstPass = ics.reconcile(input, nothingStored, seriesPipelines, NOW);
+  const nothingStored = { plans: [], checklistItems: [] };
 
   let rowId = 0;
   const nextId = () => `row-${(rowId += 1)}`;
 
-  // The snapshot the second pass runs against: exactly the rows the first pass
-  // would have written, with the identifiers the database would have handed back.
-  const applied = {
-    plans: firstPass.plansToInsert.map((row) => ({
+  /**
+   * Apply a mirror plan to a state, the way the writer will.
+   *
+   * Delete the scope — which in this synthetic database is everything, because
+   * every row here was written by the previous pass under the same key — then
+   * insert, then put the two pieces of state back. The survival exception is
+   * honoured rather than assumed away: it is empty against this file, and the
+   * branch is exercised so that it is not discovered missing the day it is not.
+   */
+  const applyMirror = (stored, plan) => {
+    const surviving = new Set(plan.plansThatSurviveDeletion.map((row) => row.sourceUid));
+
+    const plans = [
+      ...stored.plans.filter((row) => surviving.has(row.sourceUid)),
+      ...plan.plansToInsert.map((row) => ({ ...row, id: nextId() })),
+    ];
+
+    // Pieces and commitments have no survival exception: the scope takes all of
+    // them and the file writes them back.
+    const pieces = plan.piecesToInsert.map((row) => ({ ...row, id: nextId() }));
+    const commitments = plan.commitmentsToInsert.map((row) => ({ ...row, id: nextId() }));
+
+    // ⚠ The checklist step of the scope covers EVERY plan row the calendar key
+    // selects, survivors included, so nothing here is carried over. That is why
+    // the ticks are collected for all of them and put back below: a checklist
+    // left half from one run and half from another is the state nobody can read.
+    const checklistItems = plan.checklistItemsToInsert.map((row) => ({
       id: nextId(),
+      planSourceUid: planSourceUidOf(row.planKey),
+      kind: row.kind,
+      label: row.label,
+      dueDate: row.dueDate,
+      sortOrder: row.sortOrder,
+      tickedAt: null,
+      tickedBy: null,
+      tickedByName: null,
+    }));
+
+    // ⚠ A restore is not a tick: the ORIGINAL instant and actor go back, and the
+    // writer is forbidden from routing this through the function that re-records
+    // who ticked.
+    for (const restore of plan.ticksToRestore) {
+      const item = checklistItems.find(
+        (row) =>
+          row.planSourceUid === restore.planSourceUid &&
+          row.kind === restore.kind &&
+          row.label === restore.label
+      );
+      if (item === undefined) continue;
+      item.tickedAt = restore.tickedAt;
+      item.tickedBy = restore.tickedBy;
+      item.tickedByName = restore.tickedByName;
+    }
+
+    for (const restore of plan.linksToRestore) {
+      const row = plans.find((candidate) => candidate.sourceUid === restore.planSourceUid);
+      if (row === undefined) continue;
+      row.linkedPartyId = restore.linkedPartyId;
+    }
+
+    return { plans, pieces, commitments, checklistItems };
+  };
+
+  // The writer resolves a checklist item's join key into the plan row it hangs
+  // off; here the file itself answers, which is the same map read one step
+  // earlier and needs no database.
+  const planSourceUidByKey = new Map(
+    classified.nights.map((night) => [night.key, night.uid])
+  );
+  const planSourceUidOf = (planKey) => planSourceUidByKey.get(planKey) ?? null;
+
+  /** The snapshot the next pass reads: the two lists the mirror still needs. */
+  const snapshotOf = (state) => ({
+    plans: state.plans.map((row) => ({
+      id: row.id,
       sourceUid: row.sourceUid,
       seriesCode: row.seriesCode,
       number: row.number,
@@ -993,75 +1128,160 @@ if (haveMaterial) {
       endTime: row.endTime,
       sourceSequence: row.sourceSequence,
       sourceLastModified: row.sourceLastModified,
-      absentSince: null,
-      linkedPartyId: null,
+      linkedPartyId: row.linkedPartyId ?? null,
     })),
-    pieces: firstPass.piecesToInsert.map((row) => ({
-      id: nextId(),
-      sourceUid: row.sourceUid,
-      seriesCode: row.seriesCode,
-      number: row.number,
-      kind: row.kind,
-      partMarker: row.partMarker,
-      date: row.date,
-      origin: row.origin,
-      unresolvedReason: row.unresolvedReason,
-      conformsToRule: row.conformsToRule,
-      namingConvention: row.namingConvention,
-      sourceSequence: row.sourceSequence,
-      sourceLastModified: row.sourceLastModified,
-      absentSince: null,
-    })),
-    commitments: firstPass.commitmentsToInsert.map((row) => ({
-      id: nextId(),
-      sourceUid: row.sourceUid,
-      occurrenceDate: row.occurrenceDate,
-      startTime: row.startTime,
-      endTime: row.endTime,
-      title: row.title,
-      recurrenceRaw: row.recurrenceRaw,
-      absentSince: null,
-    })),
-    checklistItems: firstPass.checklistItemsToInsert.map((row) => ({
-      id: nextId(),
-      planKey: row.planKey,
+    checklistItems: state.checklistItems.map((row) => ({
+      id: row.id,
+      planSourceUid: row.planSourceUid,
       kind: row.kind,
       label: row.label,
-      dueDate: row.dueDate,
-      sortOrder: row.sortOrder,
+      tickedAt: row.tickedAt,
+      tickedBy: row.tickedBy,
+      tickedByName: row.tickedByName,
     })),
-  };
-
-  const secondPass = ics.reconcile(input, applied, seriesPipelines, NOW);
-
-  const writesIn = (plan) => ({
-    plans: plan.plansToInsert.length + plan.plansToUpdate.length,
-    pieces: plan.piecesToInsert.length + plan.piecesToUpdate.length,
-    commitments: plan.commitmentsToInsert.length + plan.commitmentsToUpdate.length,
-    checklist: plan.checklistItemsToInsert.length + plan.checklistItemsToUpdate.length,
-    absences: plan.absences.length,
-    divergences: plan.divergences.length,
   });
 
-  const first = writesIn(firstPass);
-  const second = writesIn(secondPass);
+  /** The fields that enter the comparison, per table, in a fixed order (rule 2). */
+  const ROW_SHAPES = {
+    production_plan: [
+      "sourceUid",
+      "calendarKey",
+      "key",
+      "seriesCode",
+      "number",
+      "venueWord",
+      "date",
+      "startTime",
+      "endTime",
+      "sourceSequence",
+      "sourceLastModified",
+      "seenAt",
+    ],
+    production_piece: [
+      "sourceUid",
+      "calendarKey",
+      "planKey",
+      "seriesCode",
+      "number",
+      "kind",
+      "partMarker",
+      "date",
+      "origin",
+      "unresolvedReason",
+      "conformsToRule",
+      "namingConvention",
+      "sourceSequence",
+      "sourceLastModified",
+      "seenAt",
+    ],
+    production_commitment: [
+      "sourceUid",
+      "calendarKey",
+      "occurrenceDate",
+      "startTime",
+      "endTime",
+      "title",
+      "recurrenceRaw",
+      "expandedFromDate",
+      "seenAt",
+    ],
+    production_checklist_item: [
+      "planSourceUid",
+      "kind",
+      "label",
+      "dueDate",
+      "sortOrder",
+      "tickedAt",
+      "tickedBy",
+      "tickedByName",
+    ],
+  };
+
+  /**
+   * A state as a sorted set of rows. Rules 1 to 5 above, in code.
+   *
+   * `id` never appears in any shape, which is rule 1 made structural rather than
+   * remembered: there is no way to include it by accident.
+   */
+  const rowSetOf = (state) => {
+    const rows = [];
+    const push = (table, list) => {
+      for (const row of list) {
+        rows.push(
+          `${table}${JSON.stringify(ROW_SHAPES[table].map((field) => row[field] ?? null))}`
+        );
+      }
+    };
+    push("production_plan", state.plans);
+    push("production_piece", state.pieces);
+    push("production_commitment", state.commitments);
+    push("production_checklist_item", state.checklistItems);
+    // Codepoint order, never `localeCompare` (rule 5).
+    return rows.sort((left, right) => (left === right ? 0 : left < right ? -1 : 1));
+  };
+
+  /**
+   * A table name without the word the four share.
+   *
+   * ⚠ Not cosmetic. That word is an ordinary English one and it occurs inside a
+   * title of the real file, so a line printing the names in full puts a token of
+   * a parsed title into this run's output and check F goes red — correctly. The
+   * suffixes carry all the meaning a reader needs and none of the material.
+   */
+  const shortTable = (table) => table.replace(/^[a-z]+_/, "");
+
+  const firstPass = ics.reconcile(input, nothingStored, seriesPipelines, NOW);
+  const firstState = applyMirror(nothingStored, firstPass);
+
+  const secondPass = ics.reconcile(
+    input,
+    snapshotOf(firstState),
+    seriesPipelines,
+    NOW
+  );
+  const secondState = applyMirror(snapshotOf(firstState), secondPass);
+
+  const firstRows = rowSetOf(firstState);
+  const secondRows = rowSetOf(secondState);
+
+  const countsOf = (state) => ({
+    plans: state.plans.length,
+    pieces: state.pieces.length,
+    commitments: state.commitments.length,
+    checklist: state.checklistItems.length,
+  });
+  const first = countsOf(firstState);
+  const second = countsOf(secondState);
+
   const eProblems = [];
 
+  // ── The half that did not change ─────────────────────────────────────────
   if (ics.isEmptyPlan(firstPass)) {
     eProblems.push(
-      "the FIRST pass over an empty database planned no write at all. The second " +
-        "pass being empty then proves nothing, because there was nothing to be " +
+      "the FIRST pass over an empty database planned no write at all. Anything the " +
+        "second pass does is then meaningless, because there was nothing to be " +
         "idempotent about"
     );
   }
-  if (!ics.isEmptyPlan(secondPass)) {
+
+  // ── The half that did ────────────────────────────────────────────────────
+  if (firstRows.length !== secondRows.length || firstRows.some((r, i) => r !== secondRows[i])) {
+    // Counts and table names only. The rows themselves carry a title and a word
+    // for a space, and this output is read in a terminal and pasted into a
+    // document — see the note above check F.
+    const differing = new Set();
+    const tableOf = (row) => shortTable(row.slice(0, row.indexOf("[")));
+    for (const row of firstRows) if (!secondRows.includes(row)) differing.add(tableOf(row));
+    for (const row of secondRows) if (!firstRows.includes(row)) differing.add(tableOf(row));
     eProblems.push(
-      `the second pass plans ${second.plans} plan, ${second.pieces} piece, ` +
-        `${second.commitments} commitment and ${second.checklist} checklist write(s), ` +
-        `${second.absences} absence(s) and ${second.divergences} divergence(s). A ` +
-        "re-import of an unchanged file must write nothing"
+      `two consecutive mirrors of the same file left DIFFERENT rows: ` +
+        `${first.plans}/${first.pieces}/${first.commitments}/${first.checklist} then ` +
+        `${second.plans}/${second.pieces}/${second.commitments}/${second.checklist} ` +
+        `(plans/pieces/commitments/checklist), differing in ` +
+        `${[...differing].sort().join(", ") || "field values only"}`
     );
   }
+
   if (firstPass.seriesWithoutRules.length !== 0) {
     eProblems.push(
       `${firstPass.seriesWithoutRules.length} series in the file own no pipeline rule, ` +
@@ -1072,17 +1292,23 @@ if (haveMaterial) {
   if (eProblems.length === 0) {
     pass(
       "E",
-      `first pass ${first.plans} plans · ${first.pieces} pieces · ` +
+      `first mirror ${first.plans} plans · ${first.pieces} pieces · ` +
         `${first.commitments} commitment rows · ${first.checklist} checklist items; ` +
-        "second pass over the same file: an EMPTY plan"
+        "a second mirror of the same file: the SAME set of rows"
     );
     say(
-      `         no insert, no update, no absence, no divergence — and ` +
-        `${secondPass.seen.plans.length + secondPass.seen.pieces.length + secondPass.seen.commitments.length} ` +
-        "rows stamped as still present, which is a stamp and not a write"
+      `         ${firstRows.length} rows compared field by field, identifiers excluded ` +
+        "because a mirror gives every row a new one — and " +
+        `${secondPass.plansThatSurviveDeletion.length} plan row(s) survived the deletion, ` +
+        `${secondPass.ticksToRestore.length} tick(s) and ` +
+        `${secondPass.linksToRestore.length} link(s) put back`
+    );
+    say(
+      `         deletion scope: one declared condition, in the order ` +
+        `${secondPass.deletionScope.order.map(shortTable).join(" → ")}`
     );
   } else {
-    fail("E", "the second pass is not empty:", eProblems);
+    fail("E", "a mirror is not idempotent:", eProblems);
   }
 }
 
@@ -1496,6 +1722,75 @@ function typescriptFiles(dir) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * I. no path writes the absence stamp (ICS-01)
+ *
+ * `ICS-01` says a mirror leaves **no absence stamp**, and this is the assertion
+ * that keeps it true after the code that wrote them was removed. It is a source
+ * check because there is nothing else it could be: the column still exists — a
+ * column is a one-way door and the first mirror leaves it empty on every row
+ * anyway — so no query can distinguish *nobody writes it* from *nobody has
+ * written it yet*. Only the source can say which.
+ *
+ * ── ⚠ THE TWO LITERALS ARE ASSEMBLED, NOT WRITTEN ─────────────────────────
+ *
+ * If either spelling appeared whole in this file, the assertion could be
+ * satisfied by its own text the day somebody widens the search to include the
+ * gate's own tree — and, worse, a grep run by a person would land on the sentence
+ * forbidding the thing instead of on the thing. It is the discipline
+ * `src/lib/production/ics/vocabulary.ts` states for the seventh piece kind and
+ * `src/app/(admin)/admin/formats/actions.ts` for its own forbidden literal,
+ * applied to a column name.
+ *
+ * Comments are stripped first, for check H's reason: a module is allowed to
+ * explain in prose what it must not do, and a check that counted the explanation
+ * would go red on a correct file.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+{
+  const iProblems = [];
+
+  // Assembled. Neither spelling occurs whole anywhere in this file.
+  const COLUMN = ["absent", "since"].join("_");
+  const FIELD = "absent" + "Since";
+
+  let scanned = 0;
+  let writingLines = 0;
+  for (const file of typescriptFiles(ICS_DIR)) {
+    scanned += 1;
+    const { lines, unterminated } = liveLines(file);
+    if (unterminated !== null) {
+      iProblems.push(
+        "a file in the reader's own tree opens a comment that never closes, so this " +
+          "check could not read it"
+      );
+      continue;
+    }
+    writingLines += lines.filter(
+      (line) => line.includes(COLUMN) || line.includes(FIELD)
+    ).length;
+  }
+
+  if (writingLines !== 0) {
+    iProblems.push(
+      `${writingLines} live line(s) in the reader's own tree name the absence stamp. ` +
+        "A mirror does not stamp: a row the file no longer carries is not absent, it " +
+        "is not there. The defence that produced 66 false absences and 17 stamps " +
+        "nothing would clear was removed on purpose"
+    );
+  }
+
+  if (iProblems.length === 0) {
+    pass(
+      "I",
+      `0 live line(s) name the absence stamp, across ${scanned} module files · ` +
+        "the column stays, its writers do not"
+    );
+  } else {
+    fail("I", "a path to the absence stamp came back:", iProblems);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * F. confidentiality — over everything printed above
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -1595,7 +1890,7 @@ if (refusedChecks.length > 0) {
   process.exit(2);
 }
 
-say("  ICS_IMPORT_OK — all eight checks passed.");
+say(`  ICS_IMPORT_OK — all ${passedChecks.length} checks passed.`);
 say(
   "  Read the header before treating this as safety: it says the reader agrees with\n" +
     "  the file supplied on one day, and nothing about whether the anchors are the\n" +
