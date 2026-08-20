@@ -40,9 +40,9 @@
  * `github.com/edmiribrahimi/Resonate` is public.
  *
  * So the rule is narrower than "be careful": somebody will paste this run into
- * an issue. It prints **counts, identifiers and reason codes**, and it prints no
- * title, no date, no venue word, no line-up and **not even the name of the file
- * it read** — that name carries a date. A failure is logged with `error.code`
+ * an issue. It prints **counts, digested identifiers and reason codes**, and it
+ * prints no title, no date, no venue word, no line-up and **not even the name of
+ * the file it read** — that name carries a date. A failure is logged with `error.code`
  * and `error.message` and never with PostgREST's third field, the one that
  * carries the entire rejected row: for `production_plan` that row carries the
  * word for a space. Its name is deliberately not written anywhere in this file,
@@ -53,6 +53,39 @@
  * The last thing the run prints is an audit **of its own transcript**, on the
  * model of check F: no token of a parsed title, and no four-digit year, may
  * appear in what this run said.
+ *
+ * ── ⚠ RULE: NO RAW IDENTIFIER REACHES THE TRANSCRIPT ───────────────────────
+ *
+ * **Every line that names a row names it by digest.** No row `id`, no `UID` and
+ * no run identifier is ever interpolated verbatim into anything `say()` prints.
+ * `printableUid()` below is the only way one becomes printable, and it always
+ * answers with `uid#` followed by twelve hexadecimal characters.
+ *
+ * This is a rule and not a repair, and it is general for a measured reason. A
+ * uuid is split at its hyphens into groups of eight, four, four, four and twelve
+ * characters; a four-character group made only of digits clears the token filter
+ * below and can match the year expression the output audit applies to this run's
+ * own transcript. Measured on two hundred thousand random uuids, roughly three
+ * in a thousand carry such a group — so a transcript printing several dozen of
+ * them fails its own audit about one run in six. **The cause is not a date: it
+ * is an identifier that looks like one**, and the audit cannot tell the two
+ * apart.
+ *
+ * **It must not be taught to.** Widening the year rule so that today's
+ * identifier passes is what would let tomorrow's real date pass, and this file
+ * forbids that in its own words where the audit ends: *"Reword the output; never
+ * widen the rule."* The correct answer to a red audit is therefore **another
+ * line to rewrite** — never an exemption list, never an extra branch in the
+ * expression, never a switch that turns the check off.
+ *
+ * And a line added to this transcript later — how many rows were cancelled, how
+ * many re-linked, how many survived, which calendar a row came from — inherits
+ * this rule the moment it is written, not the first time it goes red.
+ *
+ * The digest costs nothing in traceability: it is `sha256` of the identifier cut
+ * to twelve characters, so anybody holding the identifier recomputes it and
+ * correlates. It is one token, and a token of twelve hexadecimal characters is
+ * never read as a year.
  *
  * ── FOUR THINGS IT CANNOT DO, BY CONSTRUCTION ───────────────────────────────
  *
@@ -575,10 +608,20 @@ if (distinctUids !== parsed.events.length) {
  * says so, and some applications derive a UID from the entry's own summary — at
  * which point printing "just the identifier" prints the title.
  *
- * So it is measured rather than assumed: a UID that carries a word of any parsed
- * title is printed as a digest instead, and the substitution is announced. The
- * repair is never an exemption list — that is the argument
- * `scripts/verify-ics-import.mjs:127-147` makes and it travels unchanged.
+ * So no identifier goes out as it stands: **every one is printed as a digest**.
+ * That was once conditional — a UID measured to carry a word of a parsed title
+ * was digested, every other one went out whole — and the conditional left the
+ * other half of the problem standing. An opaque uuid carries no title, but it
+ * can carry a group of four digits that this run's own output audit reads as a
+ * year, and the run then fails on its own identifier. Both halves close the same
+ * way, so the digest is unconditional. The repair is never an exemption list —
+ * that is the argument `scripts/verify-ics-import.mjs:127-147` makes and it
+ * travels unchanged.
+ *
+ * The title measurement stays even though it no longer decides anything: it is
+ * reported as a count, because a UID carrying a title word is a fact about the
+ * FILE, and dropping a finding because the printing decision moved would be
+ * losing it rather than simplifying it.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 function tokensOf(value) {
@@ -595,7 +638,26 @@ for (const event of parsed.events) {
   for (const token of tokensOf(event.summary)) titleTokens.add(token);
 }
 
-let digestedIdentifiers = 0;
+/**
+ * How many identifiers this run printed — **all of them**, since every one is
+ * digested.
+ *
+ * It counted something else before: how many times a verbatim UID had to be
+ * hidden because it carried a word of an entry title. The digest is now
+ * unconditional, so that is no longer what the number means, and a counter whose
+ * name outlives its meaning is a number the next reader reads as the old one.
+ */
+let printedIdentifiers = 0;
+
+/**
+ * How many of those identifiers carry a word of a parsed title.
+ *
+ * It changes nothing about what gets printed — the digest is unconditional — and
+ * it is kept because it is the one thing the substitution used to say about the
+ * FILE: some applications derive a UID from the entry's own summary, and knowing
+ * that this file's do is worth a count that names nothing.
+ */
+let identifiersCarryingATitleWord = 0;
 
 /**
  * The sigle this file uses, filled in once the entries have been classified.
@@ -607,11 +669,18 @@ let digestedIdentifiers = 0;
  */
 let siglaInFile = [];
 
-/** A `UID` in a form that is safe to print, or a stable digest of one. */
+/**
+ * The only printable form of any identifier: a stable digest of it.
+ *
+ * ⚠ There is no branch that returns the argument. That is the point — see the
+ * rule in this file's header. A caller wanting the value verbatim does not have
+ * one here, and must not add one.
+ */
 function printableUid(uid) {
-  const carriesATitleWord = [...tokensOf(uid)].some((token) => titleTokens.has(token));
-  if (!carriesATitleWord) return uid;
-  digestedIdentifiers += 1;
+  printedIdentifiers += 1;
+  if ([...tokensOf(uid)].some((token) => titleTokens.has(token))) {
+    identifiersCarryingATitleWord += 1;
+  }
   return `uid#${createHash("sha256").update(String(uid)).digest("hex").slice(0, 12)}`;
 }
 
@@ -1114,7 +1183,7 @@ if (plan.absences.length > 0) {
   const linked = plan.absences.filter((record) => record.linkedToAnnouncedNight).length;
   for (const record of plan.absences) {
     say(
-      `         ${record.subject}  ${record.id}  ${record.reason}` +
+      `         ${record.subject}  ${printableUid(record.id)}  ${record.reason}` +
         (record.linkedToAnnouncedNight ? "  ⚠ stands behind an announced night" : "")
     );
   }
@@ -1134,12 +1203,18 @@ if (plan.unsupportedRecurrences.length > 0) {
   );
 }
 
-if (digestedIdentifiers > 0) {
+if (printedIdentifiers > 0) {
   say("");
   say(
-    `     ⚠ ${digestedIdentifiers} identifier(s) were printed as a digest instead of ` +
-      "verbatim, because the UID carries a word of an entry title."
+    `     ${printedIdentifiers} identifier(s) above are digests. None is verbatim: no raw ` +
+      "identifier reaches this transcript, by the rule this file's header states."
   );
+  if (identifiersCarryingATitleWord > 0) {
+    say(
+      `     ⚠ ${identifiersCarryingATitleWord} of them carry a word of an entry title, so ` +
+        "printing that UID whole would have printed the title."
+    );
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1206,7 +1281,11 @@ if (opened.error) {
 
 const runId = opened.data.id;
 say("");
-say(`  ── applying ── import run ${runId}`);
+// The run identifier goes out digested like every other one (the rule is in this
+// file's header). It still correlates: the digest is `sha256` of the identifier
+// cut to twelve characters, and the row it names is the newest one of the
+// import-run table, so anybody reading the registry can recompute and match.
+say(`  ── applying ── import run ${printableUid(runId)}`);
 
 /** The catalogue identifiers a plan row needs. The reconciler makes no joins. */
 function catalogueFor(sigla) {
