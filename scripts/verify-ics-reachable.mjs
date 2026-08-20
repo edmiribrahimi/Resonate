@@ -1,17 +1,19 @@
 /**
  * verify-ics-reachable — i moduli del lettore del calendario esistono e si caricano
  *
- * QUELLO CHE ASSERISCE, in una frase: **i sei moduli sotto
- * `src/lib/production/ics/` esistono e il loro barrel si importa**, su qualunque
- * macchina, senza aprire `docs/` e senza toccare un database.
+ * QUELLO CHE ASSERISCE, in una frase: **i sette moduli sotto
+ * `src/lib/production/ics/` esistono, il loro barrel si importa, ed espone ogni
+ * simbolo che un consumatore a runtime chiama per nome** — su qualunque macchina,
+ * senza aprire `docs/` e senza toccare un database.
  *
  * ── PERCHE' ESISTE, e non e' un doppione di `verify:ics` ─────────────────────
  *
  * Reperto **B-2** dell'audit di milestone della v1.5, 2026-08-19.
  *
- * Quei moduli **non hanno alcun importatore statico**. L'unico consumatore e'
- * `scripts/import-production-calendar.mjs`, con un `await import()` il cui
- * percorso e' costruito a runtime:
+ * Quei moduli **non hanno alcun importatore statico**. I consumatori sono **tre**
+ * — `scripts/import-production-calendar.mjs`, `scripts/verify-ics-import.mjs` e
+ * `scripts/verify-ics-grammar.mjs` — e tutti e tre usano un `await import()` il
+ * cui percorso e' costruito a runtime:
  *
  *     ics = await import(join(ICS_DIR, "index.ts"));
  *
@@ -35,8 +37,8 @@
  *
  * ── ESITI ───────────────────────────────────────────────────────────────────
  *
- *   0  i sei file ci sono e il barrel si importa
- *   1  FALLIMENTO — un file manca, o l'import solleva
+ *   0  i sette file ci sono, il barrel si importa, e nessun simbolo atteso manca
+ *   1  FALLIMENTO — un file manca, l'import solleva, o un simbolo non e' esportato
  *
  * **Non esce mai 2.** Non ha precondizioni da cui possa essere rifiutato: se
  * puo' girare, misura. Un controllo senza precondizioni che uscisse «rifiutato»
@@ -52,8 +54,26 @@ import { registerHooks } from "node:module";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ICS_DIR = join(ROOT, "src", "lib", "production", "ics");
 
-/** I moduli attesi. Il barrel per ultimo: e' quello che importa gli altri. */
-const MODULI = ["parse", "unfold", "classify", "reconcile", "vocabulary", "index"];
+/**
+ * I moduli attesi. Il barrel per ultimo: e' quello che importa gli altri.
+ *
+ * ⚠ **Sette, e fino alla fase 58 erano sei.** `anchors` mancava dall'elenco pur
+ * essendo sul disco e importato dal barrel: il controllo A non lo difendeva, e la
+ * sua assenza sarebbe stata scoperta dal controllo B — che dice *«il barrel non
+ * si importa»*, cioe' la diagnosi sbagliata per un file cancellato. Il conteggio
+ * si legge da `MODULI.length` e non si scrive a mano, per la ragione registrata
+ * nel piano 58-07: un numero fisso in una riga verde e' un numero che nessuno
+ * rilegge quando scade.
+ */
+const MODULI = [
+  "parse",
+  "unfold",
+  "classify",
+  "anchors",
+  "reconcile",
+  "vocabulary",
+  "index",
+];
 
 const fallimenti = [];
 const say = (l) => console.log(l);
@@ -96,25 +116,50 @@ registerHooks({
 });
 
 /**
- * Gli otto simboli che `scripts/import-production-calendar.mjs` chiama per nome.
+ * I simboli che i consumatori a runtime chiamano per nome.
  *
- * **Letti dal consumatore, non ricordati.** La prima stesura di questo file ne
+ * **Letti dai consumatori, non ricordati.** La prima stesura di questo file ne
  * aveva inventati tre — `parseCalendar`, `classifyEvent`, `reconcile` — e due su
  * tre non esistevano. Il controllo C li ha bocciati, ed e' esattamente il verso
  * in cui doveva fallire: un elenco inventato che fosse passato per caso avrebbe
  * difeso nomi che nessuno chiama.
  *
- * Presi con: `grep -oE "ics\.[a-zA-Z_]+" scripts/import-production-calendar.mjs`
+ * ⚠ **I consumatori sono TRE, e fino alla fase 58 questo elenco ne leggeva uno.**
+ * `verify-ics-import.mjs` e `verify-ics-grammar.mjs` caricano lo stesso barrel
+ * con lo stesso `import()` costruito a runtime, quindi un simbolo che sparisce li'
+ * e' invisibile a `npm run build` esattamente come lo e' nell'import — ed e' il
+ * reperto B-2 dell'audit v1.5 per intero. Difendere solo i simboli di uno dei tre
+ * lasciava scoperti undici nomi.
+ *
+ * ⚠ **Nessun nome che nessuno chiama.** `MIRROR_DELETION_ORDER` e
+ * `MIRRORED_TABLES`, nati con `ICS-01`, non sono qui: li consumera' lo scrittore
+ * del piano 58-09, e finche' non lo fa aggiungerli sarebbe rifare l'errore che il
+ * paragrafo sopra registra.
+ *
+ * Presi con:
+ * `grep -oE "ics\.[a-zA-Z_]+" scripts/import-production-calendar.mjs scripts/verify-ics-import.mjs scripts/verify-ics-grammar.mjs | sort -u`
  */
 const attesi = [
+  "ANCHOR_DIRECTIONS",
+  "ANCHOR_KINDS",
+  "CALENDAR_KEYS",
   "MAX_INPUT_BYTES",
   "MAX_INPUT_LINES",
+  "PIECE_DATE_ORIGINS",
+  "PIECE_KINDS",
   "PIECE_KIND_LABELS",
+  "UNRESOLVED_REASONS",
+  "VENUE_STAGES",
+  "attachNumberlessPieces",
   "classifyEntries",
+  "conformsToRule",
+  "countFoldedLines",
   "isEmptyPlan",
   "joinKey",
   "parseIcs",
+  "proposePieceDate",
   "reconcile",
+  "unfold",
 ];
 
 if (fallimenti.length > 0) {
@@ -127,18 +172,18 @@ if (fallimenti.length > 0) {
 
     const assenti = attesi.filter((n) => !esportati.includes(n));
     if (assenti.length === 0) {
-      say(`  ✓ C  tutti gli ${attesi.length} simboli che lo script dell'import chiama sono esportati`);
+      say(`  ✓ C  tutti i ${attesi.length} simboli che i tre consumatori chiamano sono esportati`);
     } else {
       say(`  ✗ C  simboli attesi e non esportati: ${assenti.join(", ")}`);
-      say("         scripts/import-production-calendar.mjs li chiama per nome:");
-      say("         un rinominio qui e' un errore a runtime, la' e nient'altro.");
+      say("         import-production-calendar, verify-ics-import e verify-ics-grammar");
+      say("         li chiamano per nome: un rinominio qui e' un errore a runtime, la'.");
       fallimenti.push("C");
     }
   } catch (error) {
     say(`  ✗ B  il barrel non si importa: ${error.message}`);
-    say("         L'unico consumatore di questi moduli e' un import() costruito a");
-    say("         runtime dentro scripts/import-production-calendar.mjs. Se non si");
-    say("         caricano, l'import del calendario e' rotto e nient'altro lo dice.");
+    say("         I consumatori di questi moduli sono tre import() costruiti a");
+    say("         runtime, invisibili al build. Se il barrel non si carica,");
+    say("         l'import del calendario e' rotto e nient'altro lo dice.");
     fallimenti.push("B");
   }
 }

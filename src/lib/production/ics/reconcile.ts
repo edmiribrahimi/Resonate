@@ -718,6 +718,15 @@ export type ChecklistItemInsert = ChecklistItemFields;
  * independently written condition. Two selectors over the same rows is how one of
  * them ends up wider than the other.
  *
+ * ⚠ **And it covers EVERY plan row the key selects, survivors included.** The
+ * survival exception of `ICS-03b` subtracts from step 3, not from this one, and
+ * that is deliberate rather than an oversight: the checklist is regenerated from
+ * the file every run, so leaving one night's items behind would produce a
+ * checklist half from this run and half from a previous one — a state nobody can
+ * read and no report can explain. It is also why
+ * {@link ReconcilePlan.ticksToRestore} collects the ticks of **all** plan rows
+ * and not only the ones being deleted.
+ *
  * **2. `production_piece` before `production_plan`.** Its `plan_id` reference is
  * `NO ACTION`, the default, so deleting a plan row that still has pieces raises a
  * foreign-key violation. The pieces go first or the third step fails.
