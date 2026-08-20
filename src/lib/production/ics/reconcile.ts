@@ -8,13 +8,30 @@
  * copies it on every axis but one, and the exception is the whole reason it
  * exists.
  *
- * `classify.ts` has **no write to withhold**. This one does — six lists of rows
- * that belong in six tables — and it withholds them all. {@link reconcile} opens
- * no connection, takes no client, and returns a {@link ReconcilePlan} that the
- * caller applies. That is what makes a **dry run** possible, and in a repository
- * with no test runner a dry run is the only rehearsal there is: the plan can be
- * counted, printed as codes, and compared with the plan of the previous pass
- * before a single row moves.
+ * `classify.ts` has **no write to withhold**. This one does — and since `ICS-01`
+ * the writes it withholds include **removals**, which is a harder thing to hold
+ * back than an insert. {@link reconcile} opens no connection, takes no client,
+ * and returns a {@link ReconcilePlan} that the caller applies. That is what makes
+ * a **dry run** possible, and in a repository with no test runner a dry run is
+ * the only rehearsal there is: the plan can be counted, printed as codes, and
+ * compared with the plan of the previous pass before a single row moves.
+ *
+ * ── ⚠ THIS MODULE PLANS A MIRROR, AND A MIRROR DELETES (ICS-01) ─────────────
+ *
+ * Until this phase the reconciler produced field-by-field corrections and could
+ * remove nothing. It now produces the plan of a **mirror**: *delete this scope,
+ * in this order, except these rows; write everything the file carries; put these
+ * two pieces of human state back.* {@link ReconcilePlan.deletionScope} is where
+ * that begins, and its docblock carries the deletion order together with the
+ * three foreign-key facts that oblige it — **in this file**, not in a phase
+ * document, because the next person to change the order will be reading this.
+ *
+ * The reason the old shape had to go is measured rather than argued. It defended
+ * three things — ticks, links and proposals — and **only one of the three
+ * existed**: 14 checklist items with **zero** ticked, 2 plan rows with **zero**
+ * linked, 6 proposals. Defending state that was not there broke the one thing
+ * that was: 66 false absences, then 17 stamps nothing would clear, then an
+ * asymmetry between tables that existed only to manage those stamps.
  *
  * The divergence is declared here for the reason
  * `src/app/(admin)/admin/formats/actions.ts:41-51` declares its own: a departure
@@ -31,17 +48,22 @@
  *   (date, title)   both change;
  *   a content hash  changes on EVERY edit, which is the opposite of identity.
  *
- * So the write the caller performs is `ON CONFLICT (source_uid) DO UPDATE`, and a
- * second run is a no-op **by construction** rather than by care (D-44-03). For an
- * expanded recurrence the key is `UID` **plus the occurrence date**, because one
- * `UID` covers many days and a single-column key would collapse a season of
- * occupied Thursdays into one row, leaving every other Thursday looking free.
+ * Under the mirror the caller no longer needs `ON CONFLICT (source_uid) DO UPDATE`
+ * — it deletes the scope and inserts — but the key is **more** load bearing than
+ * it was, not less. It is the identity the two exceptions of `ICS-03` re-attach
+ * on: a tick keys on `(plan source_uid, kind, label)` and a link keys on
+ * `production_plan.source_uid`, because the `uuid` those rows carried is
+ * **generated** and does not survive a delete. For an expanded recurrence the key
+ * is `UID` **plus the occurrence date**, because one `UID` covers many days and a
+ * single-column key would collapse a season of occupied Thursdays into one row,
+ * leaving every other Thursday looking free.
  *
- * Idempotence has one weaker corner and it is named rather than hidden: a
- * **proposal** has no `UID`, because it does not exist in the file. Its identity
- * is `(plan key, kind, date-or-reason)`, and it is honoured **here**, by consulting
- * the snapshot, not by a constraint. A constraint would be stronger; there is
- * none, so this module carries the obligation and says so.
+ * Idempotence used to have a weaker corner, and the mirror removes it rather than
+ * hiding it: a **proposal** has no `UID`, so a previous run's proposal used to be
+ * adopted by consulting the snapshot, by hand, with no constraint behind it.
+ * `ICS-06` says proposals are recomputed every run — they are deleted with the
+ * rest of the scope and written again — so there is nothing left to adopt and no
+ * hand-held obligation to carry.
  *
  * ── ⚠ THE NUMBER IS READ FROM THE FILE AND NEVER GENERATED ──────────────────
  *
@@ -58,24 +80,33 @@
  * that gets ignored the third time it goes red. The prohibition is enforceable
  * precisely because the grep has nothing to find.
  *
- * When a known `UID` arrives carrying a **different** number — or a different
- * series code, which composes the other half of the same sigla — the row enters
- * **neither** update list and a divergence is emitted instead. Plan 44-04's
- * `BEFORE UPDATE` trigger is the second layer, and both exist on purpose: a guard
- * in application code protects the caller who read it, a guard in the database
- * protects the one who did not.
+ * ⚠ **Where the progressivo is guarded now, and it is not here.** A mirror never
+ * issues an `UPDATE`, so plan 44-04's `BEFORE UPDATE OF number` trigger — the
+ * third of this project's monotone guards, made structural — stops firing without
+ * a line of SQL saying so. D-58-01 moves the guard rather than dropping it: the
+ * writer compares the snapshot's progressivi against the arriving ones **before**
+ * deleting anything and refuses the whole run when a known `source_uid` brings a
+ * different number. That refusal is `ICS-01b` and it lives in the writer, which
+ * is the only place left for it; this module emits no divergence for it, because
+ * a run that is going to be refused has no plan worth reporting.
  *
- * ── ⚠ AN ENTRY THAT VANISHES IS REPORTED, NEVER REMOVED ─────────────────────
+ * ── ⚠ AN ENTRY THAT VANISHES IS SIMPLY NOT WRITTEN AGAIN ────────────────────
  *
- * A row present in a previous run and missing from this file goes into
- * {@link ReconcilePlan.absences} with an `absentSince` stamp, and there is no list
- * in this module that removes a row from any table. The reason is not caution: an
- * entry can vanish because its `UID` changed, because the export was partial, or
- * because the wrong file was handed over — and a plan row already linked to an
- * announced night must survive its own absence unconditionally, since taking it
- * away would orphan a night that has tickets on sale. That is exactly the harm
- * D-44-06 separates the two tables to prevent, and
- * {@link AbsenceRecord.linkedToAnnouncedNight} is how the report says it out loud.
+ * This module used to stamp such a row absent and remove nothing. Under the
+ * mirror there is no stamp: the scope is deleted and the file is written back, so
+ * a row the file no longer carries **is not there** — which is a different
+ * sentence from *absent*, and the historical note beside
+ * {@link MIRRORED_TABLES} keeps the difference from being rediscovered the hard
+ * way.
+ *
+ * The one thing that does **not** follow the file out is a plan row standing
+ * behind an announced night. `ICS-03b` (D-58-02) keeps it, unconditionally,
+ * whatever the file says: removing it would orphan a night that may have tickets
+ * on sale, which is exactly the harm D-44-06 separates the two tables to prevent.
+ * That is an exception of **survival** and it is not one of the two exceptions of
+ * **state**: the two of `ICS-03` re-attach after the rewrite, this one never
+ * leaves. The plan carries it as a list of its own so that the report can count
+ * it, and the three are named apart so no reader can fold them into one.
  *
  * ── ⚠ THE IMPORT NEVER WRITES THE ANNOUNCED-NIGHT TABLE ─────────────────────
  *
@@ -90,12 +121,13 @@
  *
  * `SEQUENCE` (observed range 0 to 18, so it genuinely moves) and `LAST-MODIFIED`
  * (present on every entry and maintained rather than copied). Both are stored and
- * neither is interpreted. A **decreasing** `SEQUENCE` for a known `UID` is an
- * anomaly with its own reason code: it is reported, and the file is still
- * mirrored, because the file is the source (D-44-01) and refusing the update would
- * leave the product holding a version nobody can see.
+ * neither is interpreted — and under the mirror **neither is compared**, because
+ * there is no previous value left to compare against: the row carrying it was
+ * deleted before this one was written. They are columns the file fills, kept
+ * because the file fills them and because a run summary that can say *this entry
+ * was revised* is worth the two columns.
  *
- * ── ⚠ WHAT A DIVERGENCE AND A FINDING MAY CARRY ─────────────────────────────
+ * ── ⚠ WHAT A FINDING MAY CARRY ──────────────────────────────────────────────
  *
  * A `UID` and a reason code. **Never a title, never a date, never a word for a
  * space, never a line-up.** These lists are read by whoever is debugging an
@@ -157,10 +189,14 @@
  *
  * ── What a green build does NOT prove ───────────────────────────────────────
  *
- * That a second pass returns an empty plan. {@link isEmptyPlan} makes the claim
- * *checkable*; it does not make it true. It is asserted by
- * `scripts/verify-ics-import.mjs` in plan 44-08, check E, and exercised for real
- * by the dry run of plan 44-10. **Nothing here claims criterion 5 is satisfied.**
+ * That two consecutive mirrors leave the **same set of rows**. That is the claim
+ * `ICS-01` actually makes, and it is a different claim from the one this file
+ * used to make: under the mirror a second pass plans a full delete and a full
+ * rewrite every time, so *"the second plan is empty"* is not merely false, it is
+ * the wrong question. {@link isEmptyPlan} answers a narrower one — *would this
+ * run touch a row at all* — and check **E** of `scripts/verify-ics-import.mjs`
+ * asserts the real one by comparing the two resulting row sets.
+ * **Nothing here claims a criterion of this phase is satisfied.**
  */
 
 import { PIECE_KIND_LABELS } from "./vocabulary";
@@ -207,9 +243,6 @@ type CommitmentColumn<K extends keyof ProductionCommitment> = ProductionCommitme
 type ChecklistColumn<K extends keyof ProductionChecklistItem> = ProductionChecklistItem[K];
 
 // ── The vocabularies this module owns ───────────────────────────────────────
-
-/** Which table a finding is about. Three tables, three answers. */
-export type SubjectTable = "plan" | "piece" | "commitment";
 
 /**
  * The five checklist kinds, mirrored member for member by the `kind` CHECK on
@@ -269,49 +302,88 @@ const PRODUCTION_STEP_ORDER: readonly ProductionStepKind[] = [
 ];
 
 /**
- * Why the file and the product disagree — five reasons, and they stay five.
+ * The three tables this module mirrors. **Three, and the count is the point.**
  *
- * Collapsing them into one *"problem"* is the pattern this project has already
- * paid for once (`meta-gates.md`, the newsletter precedent), and there is no error
- * tracking here to catch a reason that loses its category.
+ * A mirror is a scope of deletion, so the list of what is inside it has to be
+ * written down rather than remembered — and remembering it wrong has a specific
+ * shape here. A phrase counting the calendar's tables at **six** runs through
+ * the comments of this directory, and read as a scope of deletion it is wrong in
+ * the one direction that costs something: two of those six must never be deleted.
+ * The count is not spelled out again here, so that a grep for it lands on the
+ * places that still need correcting rather than on the sentence correcting them.
  *
- * - `number_changed` / `series_changed` — the two halves of a sigla. The row is
- *   **not** updated; a progressivo already assigned is already on a poster.
- * - `sequence_decreased` — a known `UID` whose revision counter went backwards.
- *   Reported; the file is still mirrored.
- * - `announced_night_date_changed` — the file moved a date under a night that has
- *   already been announced. The plan row mirrors the file, the announced night is
- *   untouched by anything here, and the report is what makes somebody look
- *   (D-44-07).
- * - `announced_night_row_absent` — the entry behind an announced night is gone
- *   from this file. The row survives; the report is loud because the cause may be
- *   a partial export.
+ * - `production_pipeline_rule` is **configuration**. The import reads it and has
+ *   never written it. It is also the table whose rows a cascade already took away
+ *   once, in phase 48, when a format was deleted and nobody had enumerated what
+ *   pointed at it.
+ * - `production_import_run` is the **register**, and it is the only diagnostic
+ *   instrument this domain owns: comparing its rows against the timestamps on the
+ *   17 false absence stamps is what dated them. Deleting it would destroy the
+ *   thing that finds the next defect of this kind. Its `calendar_key` column
+ *   therefore stays nullable forever, on purpose — a register that filled in its
+ *   own history to look complete would have started lying about the past it
+ *   exists to keep.
+ *
+ * `production_checklist_item` is not on this list either, and for a third reason:
+ * it carries no `calendar_key` of its own. It is inside the scope **through its
+ * plan row**, which is why the deletion order below opens with it.
  */
-export const DIVERGENCE_REASONS = [
-  "number_changed",
-  "series_changed",
-  "sequence_decreased",
-  "announced_night_date_changed",
-  "announced_night_row_absent",
+export const MIRRORED_TABLES = [
+  "production_plan",
+  "production_piece",
+  "production_commitment",
 ] as const;
 
-/** Why the file and the product disagree. */
-export type DivergenceReason = (typeof DIVERGENCE_REASONS)[number];
+/** One of the three tables a mirror rewrites. */
+export type MirroredTable = (typeof MIRRORED_TABLES)[number];
 
 /**
- * The two ways a row stops corresponding to anything, and neither is a removal.
+ * ── HISTORICAL NOTE — the two absence codes, and why there is now neither ────
  *
- * - `absent_from_file` — it was in a previous export and is not in this one.
+ * Until `ICS-01` this module owned two vocabularies that no longer have a
+ * producer, and one of them encoded a distinction worth keeping the memory of.
+ * Deleting the prose along with the code would lose the reason and the next
+ * reader would reopen the question from scratch, so it is written here instead.
+ *
+ * **The absence vocabulary had two members, and they were two on purpose:**
+ *
+ * - `absent_from_file` — the row was in a previous export and is not in this one.
  * - `no_longer_owed` — a **proposal** the pipeline rules no longer call for. It
- *   was never in the file, so the first reason would be a lie about where it came
- *   from; and a computed date left drawn beside real ones after the rule that
- *   produced it changed is the harm D-44-09b part 3 accepted a cost for, not a
- *   cost to keep paying for free.
+ *   had never been in the file, so the first code would have been a lie about
+ *   where the row came from.
+ *
+ * **Why the distinction no longer has an object.** Both codes answered the same
+ * question — *why is this row still here when nothing corresponds to it?* — and a
+ * mirror never lets that question arise. The row is deleted with its scope and
+ * written again only if the file carries it. **An entry the file does not carry
+ * is not *absent*: it is not there.** There is no row left to explain, so there
+ * is no reason code to choose between.
+ *
+ * The same sentence disposes of the divergence vocabulary and its five members. A
+ * divergence was the file and a stored row disagreeing; delete-and-rewrite leaves
+ * no stored row to disagree with. The one member that named a real hazard rather
+ * than a disagreement — a known `source_uid` arriving with a different
+ * progressivo — did not disappear with it: it became `ICS-01b`, a **refusal of
+ * the whole run** in the writer, which is a stronger answer than a line in a
+ * report nobody has to read (D-58-01).
+ *
+ * **What this cost, and it is measured.** The defence those vocabularies existed
+ * for produced 66 false absences and then 17 stamps that nothing would clear.
+ *
+ * The two columns they wrote — the absence stamp on each of the three tables
+ * above, and the divergence list on the register — are **not** dropped by this
+ * phase: dropping a column is a one-way door taken on an order, and the first
+ * mirror leaves them empty on every row anyway. What this module does is remove
+ * every path that writes them, and a source assertion in
+ * `scripts/verify-ics-import.mjs` holds that shut.
+ *
+ * ⚠ **The absence stamp's column name is deliberately not spelled anywhere in
+ * this file**, not in code and not in the sentence forbidding it, for the reason
+ * `src/app/(admin)/admin/formats/actions.ts:58-63` gives about its own forbidden
+ * literal: *a grep whose only match is the sentence forbidding the thing is a
+ * grep that gets ignored the third time it goes red.* The assertion in the gate
+ * has nothing here to find, and that is what makes it worth running.
  */
-export const ABSENCE_REASONS = ["absent_from_file", "no_longer_owed"] as const;
-
-/** Why a row is marked absent. */
-export type AbsenceReason = (typeof ABSENCE_REASONS)[number];
 
 // ── What the caller hands in ────────────────────────────────────────────────
 
@@ -415,47 +487,14 @@ export interface ExistingPlanRow {
   endTime: PlanColumn<"end_time">;
   sourceSequence: PlanColumn<"source_sequence">;
   sourceLastModified: PlanColumn<"source_last_modified">;
-  absentSince: PlanColumn<"absent_since">;
-  /** Set once the night has been announced. Absence never costs such a row. */
+  /**
+   * Set once the night has been announced, and **the whole of `ICS-03b`**.
+   *
+   * Non-null here means the row never enters the deletion scope, whatever the
+   * file says, and it is also the key half of the link that gets put back on the
+   * rows that do. Both readings are in {@link reconcile}.
+   */
   linkedPartyId: PlanColumn<"linked_party_id">;
-}
-
-/**
- * A `production_piece` row as it stands. `sourceUid` is null for a proposal.
- *
- * ⚠ `seriesCode` **is** a column here, and the asymmetry with the plan row above
- * is deliberate rather than an oversight: a piece names a series code the file
- * WROTE, and an unresolvable code has to survive as evidence instead of being
- * dropped at the door. A plan row names a night that resolved, so it can carry
- * the reference.
- */
-export interface ExistingPieceRow {
-  id: PieceColumn<"id">;
-  sourceUid: PieceColumn<"source_uid">;
-  seriesCode: PieceColumn<"series_code">;
-  number: PieceColumn<"number">;
-  kind: PieceColumn<"kind">;
-  partMarker: PieceColumn<"part_marker">;
-  date: PieceColumn<"date">;
-  origin: PieceColumn<"origin">;
-  unresolvedReason: PieceColumn<"unresolved_reason">;
-  conformsToRule: PieceColumn<"conforms_to_rule">;
-  namingConvention: PieceColumn<"naming_convention">;
-  sourceSequence: PieceColumn<"source_sequence">;
-  sourceLastModified: PieceColumn<"source_last_modified">;
-  absentSince: PieceColumn<"absent_since">;
-}
-
-/** A `production_commitment` row as it stands. One row per occupied day. */
-export interface ExistingCommitmentRow {
-  id: CommitmentColumn<"id">;
-  sourceUid: CommitmentColumn<"source_uid">;
-  occurrenceDate: CommitmentColumn<"occurrence_date">;
-  startTime: CommitmentColumn<"start_time">;
-  endTime: CommitmentColumn<"end_time">;
-  title: CommitmentColumn<"title">;
-  recurrenceRaw: CommitmentColumn<"recurrence_raw">;
-  absentSince: CommitmentColumn<"absent_since">;
 }
 
 /**
@@ -475,11 +514,26 @@ export interface ExistingChecklistItemRow {
   sortOrder: ChecklistColumn<"sort_order">;
 }
 
-/** Everything the database already holds, in one argument. */
+/**
+ * What the database holds that a mirror still has to know about.
+ *
+ * ⚠ **Two lists, where there used to be four, and the shrinkage is the shape of
+ * `ICS-01` rather than an economy.** A reconciler that corrected rows needed the
+ * stored pieces and the stored commitments to know what had moved. A mirror does
+ * not: it deletes them and writes the file back, so *what they used to say* has
+ * no bearing on anything it plans. Asking the caller to read two tables it will
+ * not consult would be a read paid for nothing — and worse, a shape that implies
+ * this module still compares.
+ *
+ * What survives the shrinkage is exactly the state the calendar cannot say:
+ *
+ * - `plans` — for the survival exception of `ICS-03b` and for the link that goes
+ *   back on afterwards. It is also what the writer holds the arriving progressivi
+ *   against before deleting anything (`ICS-01b`, D-58-01).
+ * - `checklistItems` — for the ticks, which are the other exception of `ICS-03`.
+ */
 export interface ExistingSnapshot {
   plans: readonly ExistingPlanRow[];
-  pieces: readonly ExistingPieceRow[];
-  commitments: readonly ExistingCommitmentRow[];
   checklistItems: readonly ExistingChecklistItemRow[];
 }
 
@@ -513,22 +567,6 @@ export interface PlanInsert extends PlanFields {
   seenAt: string;
 }
 
-/**
- * A plan row both have, whose content moved.
- *
- * Emitted **only** when something the file decides actually differs, which is what
- * makes a second pass over an unchanged file produce nothing. `number` is present
- * and is always the value already stored: a row whose number moved never reaches
- * this list.
- */
-export interface PlanUpdate extends PlanFields {
-  id: string;
-  sourceUid: string;
-  key: string;
-  seenAt: string;
-  /** The row had been marked absent and is back. Clearing the stamp is the write. */
-  clearsAbsence: boolean;
-}
 
 /** What a piece row says. */
 export interface PieceFields {
@@ -576,13 +614,6 @@ export interface PieceInsert extends PieceFields {
   seenAt: string;
 }
 
-/** A piece row to correct, addressed by the identifier the snapshot carried. */
-export interface PieceUpdate extends PieceFields {
-  id: string;
-  sourceUid: string | null;
-  seenAt: string;
-  clearsAbsence: boolean;
-}
 
 /** What one occupied day says. */
 export interface CommitmentFields {
@@ -609,13 +640,6 @@ export interface CommitmentInsert extends CommitmentFields {
   seenAt: string;
 }
 
-/** An occupied day to correct. */
-export interface CommitmentUpdate extends CommitmentFields {
-  id: string;
-  sourceUid: string;
-  seenAt: string;
-  clearsAbsence: boolean;
-}
 
 /** What one checklist item says. The first three fields are its unique key. */
 export interface ChecklistItemFields {
@@ -635,84 +659,20 @@ export interface ChecklistItemFields {
 export type ChecklistItemInsert = ChecklistItemFields;
 
 /**
- * An item whose **due date or position** moved.
+ * The whole plan of a mirror. **Returned. Nothing here is applied.**
  *
- * ⚠ It carries no tick and never will. A tick is a person recording that
- * something got done; the import has no opinion about it, and the nearest
- * precedents in this repository are all monotone guards whose reasoning does not
- * travel here.
+ * No field targets the announced-night table.
  *
- * This list exists because lateness is computed from `due_date`
- * (`ticked_at IS NULL AND due_date < current_date`, D-44-15). Without it, moving a
- * listing in the file would leave the checklist chasing the old day — a night
- * reading as late when it is not, or on time when it is not, which is the
- * direction that hides work.
- */
-export interface ChecklistItemUpdate extends ChecklistItemFields {
-  id: string;
-}
-
-/**
- * A row that no longer corresponds to anything in the file.
- *
- * It carries an identifier and a code. No title, no date, no word for a space:
- * this list is a report, and a report is read in a terminal and pasted into a
- * document.
- */
-export interface AbsenceRecord {
-  subject: SubjectTable;
-  id: string;
-  sourceUid: string | null;
-  reason: AbsenceReason;
-  absentSince: string;
-  /**
-   * True when the row stands behind a night that has already been announced.
-   *
-   * The row survives either way — nothing here removes anything — and the flag is
-   * what turns a quiet stamp into something a person is told about.
-   */
-  linkedToAnnouncedNight: boolean;
-}
-
-/** The file and the product disagree. A `UID` and a code, and nothing else. */
-export interface DivergenceRecord {
-  subject: SubjectTable;
-  sourceUid: string;
-  reason: DivergenceReason;
-}
-
-/**
- * The rows that were confirmed present this run, by identifier.
- *
- * A **presence stamp**, not a change: the caller refreshes `last_seen_at` on
- * these and writes nothing else. Kept apart from the update lists precisely so
- * that *"this row is still in the file"* and *"this row moved"* stay two different
- * statements — folding the first into the second would make every pass over an
- * unchanged file look like a pass full of edits.
- */
-export interface SeenRows {
-  plans: string[];
-  pieces: string[];
-  commitments: string[];
-}
-
-/**
- * The whole plan of writes. **Returned. Nothing here is applied.**
- *
- * No field targets the announced-night table, and no field removes a row from any
- * table.
+ * ⚠ **There is no correction list of any name, and that absence is `ICS-01`
+ * itself.** A mirror does not correct rows: it removes a scope and writes the
+ * file back. Adding an update list here would be re-introducing the shape that
+ * produced 66 false absences, one convenience at a time.
  */
 export interface ReconcilePlan {
   plansToInsert: PlanInsert[];
-  plansToUpdate: PlanUpdate[];
   piecesToInsert: PieceInsert[];
-  piecesToUpdate: PieceUpdate[];
   commitmentsToInsert: CommitmentInsert[];
-  commitmentsToUpdate: CommitmentUpdate[];
   checklistItemsToInsert: ChecklistItemInsert[];
-  checklistItemsToUpdate: ChecklistItemUpdate[];
-  absences: AbsenceRecord[];
-  divergences: DivergenceRecord[];
   /** Carried through from the parser, untouched. */
   unsupportedRecurrences: UnsupportedRecurrence[];
   /** Carried through from the classifier, untouched. */
@@ -720,25 +680,34 @@ export interface ReconcilePlan {
   /**
    * Series codes the file uses for which the caller supplied no pipeline rules.
    *
-   * A **standing condition**, not a transition, which is why it is here and not
-   * among the divergences: a night whose series has no rules owes nothing this
-   * module can name, and without this field that would be a silent zero — a
-   * checklist that looks complete because it is empty. A series code is a public
-   * sigla half and names no date and no space.
+   * A **standing condition**, not a transition, which is why it is a field of its
+   * own: a night whose series has no rules owes nothing this module can name, and
+   * without this field that would be a silent zero — a checklist that looks
+   * complete because it is empty. A series code is a public sigla half and names
+   * no date and no space.
    */
   seriesWithoutRules: string[];
-  seen: SeenRows;
 }
 
 /**
- * Whether this plan would write anything at all.
+ * Whether this run would touch a row at all.
  *
- * The exact question plan 44-08's check E asks of a second pass: no insert, no
- * update, no absence, no divergence.
+ * ⚠ **This is a NARROWER question than it used to answer, and the narrowing is
+ * deliberate.** It used to mean *a second pass over an unchanged file writes
+ * nothing*, which under a mirror is not merely false but the wrong question: the
+ * mirror plans a full rewrite every single time, so the plan is never empty on a
+ * file that carries anything. What `ICS-01` actually claims is that two
+ * consecutive mirrors leave the **same set of rows**, and that is asserted by
+ * comparing row sets in check **E** of `scripts/verify-ics-import.mjs` — not by
+ * this predicate.
+ *
+ * What it still answers, and it is worth answering: *would this run write
+ * anything?* A first pass that plans nothing makes any claim about the second
+ * pass meaningless, because there was nothing to be idempotent about. The dry run
+ * prints it for the same reason.
  *
  * Three fields are **deliberately excluded** and each for its own reason.
- * {@link ReconcilePlan.seen} is a presence stamp and is non-empty on every pass
- * over a file that has been imported once. {@link ReconcilePlan.unclassified} and
+ * {@link ReconcilePlan.unclassified} and
  * {@link ReconcilePlan.unsupportedRecurrences} are properties of the file, so they
  * are identical on both passes by definition; counting them would make a file with
  * one unreadable entry permanently unable to settle.
@@ -748,15 +717,9 @@ export interface ReconcilePlan {
 export function isEmptyPlan(plan: ReconcilePlan): boolean {
   return (
     plan.plansToInsert.length === 0 &&
-    plan.plansToUpdate.length === 0 &&
     plan.piecesToInsert.length === 0 &&
-    plan.piecesToUpdate.length === 0 &&
     plan.commitmentsToInsert.length === 0 &&
-    plan.commitmentsToUpdate.length === 0 &&
-    plan.checklistItemsToInsert.length === 0 &&
-    plan.checklistItemsToUpdate.length === 0 &&
-    plan.absences.length === 0 &&
-    plan.divergences.length === 0
+    plan.checklistItemsToInsert.length === 0
   );
 }
 
@@ -781,24 +744,17 @@ export function reconcile(
 ): ReconcilePlan {
   const plan: ReconcilePlan = {
     plansToInsert: [],
-    plansToUpdate: [],
     piecesToInsert: [],
-    piecesToUpdate: [],
     commitmentsToInsert: [],
-    commitmentsToUpdate: [],
     checklistItemsToInsert: [],
-    checklistItemsToUpdate: [],
-    absences: [],
-    divergences: [],
     unsupportedRecurrences: [...input.unsupportedRecurrences],
     unclassified: [...input.unclassified],
     seriesWithoutRules: [],
-    seen: { plans: [], pieces: [], commitments: [] },
   };
 
   const pipelineBySeries = indexPipelines(pipelineRules);
 
-  reconcilePlans(plan, input, existing, now);
+  reconcilePlans(plan, input, now);
 
   // ── The second pass, between the nights and the plan of writes (ICS-05) ───
   //
@@ -837,29 +793,30 @@ export function reconcile(
     attachedByUid,
     now
   );
-  reconcileCommitments(plan, input, existing, now);
-  reconcileChecklist(plan, input, existing, pipelineBySeries, owedByPlan);
+  reconcileCommitments(plan, input, now);
+  reconcileChecklist(plan, input, pipelineBySeries, owedByPlan);
 
   return plan;
 }
 
 // ── Plans ───────────────────────────────────────────────────────────────────
 
-function reconcilePlans(
-  plan: ReconcilePlan,
-  input: ReconcileInput,
-  existing: ExistingSnapshot,
-  now: string
-): void {
-  const stored = new Map<string, ExistingPlanRow>();
-  for (const row of existing.plans) stored.set(row.sourceUid, row);
-
-  const inThisFile = new Set<string>();
-
+/**
+ * Every night the file carries becomes a row. **All of them, every run.**
+ *
+ * There is no comparison against what is stored, because there is nothing stored
+ * to compare against by the time these rows are written: the scope was deleted
+ * first. That is the whole of the simplification `ICS-01` buys — the four
+ * branches this function used to carry (insert, correct, stamp absent, report a
+ * divergence) collapse into one, and the three that vanish are the three that
+ * were wrong.
+ */
+function reconcilePlans(plan: ReconcilePlan, input: ReconcileInput, now: string): void {
   for (const night of input.nights) {
-    inThisFile.add(night.uid);
-
-    const fields: PlanFields = {
+    plan.plansToInsert.push({
+      sourceUid: night.uid,
+      key: night.key,
+      seenAt: now,
       seriesCode: night.seriesCode,
       number: night.number,
       venueWord: night.venueWord,
@@ -868,107 +825,8 @@ function reconcilePlans(
       endTime: night.endTime,
       sourceSequence: night.sequence,
       sourceLastModified: night.lastModified,
-    };
-
-    const previous = stored.get(night.uid);
-
-    if (previous === undefined) {
-      plan.plansToInsert.push({
-        sourceUid: night.uid,
-        key: night.key,
-        seenAt: now,
-        ...fields,
-      });
-      continue;
-    }
-
-    plan.seen.plans.push(previous.id);
-
-    // ── The monotone guard, first, because it decides whether anything is
-    //    written at all. A sigla is a series code and a progressivo together, so
-    //    either half moving is the same event: something already printed would be
-    //    contradicted by this row.
-    let siglaMoved = false;
-
-    if (previous.number !== null && previous.number !== night.number) {
-      plan.divergences.push(divergence("plan", night.uid, "number_changed"));
-      siglaMoved = true;
-    }
-
-    if (previous.seriesCode !== null && previous.seriesCode !== night.seriesCode) {
-      plan.divergences.push(divergence("plan", night.uid, "series_changed"));
-      siglaMoved = true;
-    }
-
-    if (
-      previous.sourceSequence !== null &&
-      night.sequence !== null &&
-      night.sequence < previous.sourceSequence
-    ) {
-      // Reported, and the file is still mirrored: the file is the source, and a
-      // product left holding a version nobody can see is worse than a product
-      // holding a version somebody has been told about.
-      plan.divergences.push(divergence("plan", night.uid, "sequence_decreased"));
-    }
-
-    if (previous.linkedPartyId !== null && previous.date !== night.startDate) {
-      // The plan row mirrors the file; the announced night is untouched by
-      // anything in this module. The report is what makes a person look (D-44-07).
-      plan.divergences.push(
-        divergence("plan", night.uid, "announced_night_date_changed")
-      );
-    }
-
-    if (siglaMoved) continue;
-
-    const clearsAbsence = previous.absentSince !== null;
-
-    if (!clearsAbsence && !planFieldsDiffer(previous, fields)) continue;
-
-    plan.plansToUpdate.push({
-      id: previous.id,
-      sourceUid: night.uid,
-      key: night.key,
-      seenAt: now,
-      clearsAbsence,
-      ...fields,
     });
   }
-
-  for (const row of existing.plans) {
-    if (inThisFile.has(row.sourceUid)) continue;
-    // Already reported by an earlier run. Reporting it again every run would turn
-    // the import summary into noise and would stop a second pass ever settling.
-    if (row.absentSince !== null) continue;
-
-    plan.absences.push({
-      subject: "plan",
-      id: row.id,
-      sourceUid: row.sourceUid,
-      reason: "absent_from_file",
-      absentSince: now,
-      linkedToAnnouncedNight: row.linkedPartyId !== null,
-    });
-
-    if (row.linkedPartyId !== null) {
-      plan.divergences.push(
-        divergence("plan", row.sourceUid, "announced_night_row_absent")
-      );
-    }
-  }
-}
-
-function planFieldsDiffer(previous: ExistingPlanRow, fields: PlanFields): boolean {
-  return (
-    previous.date !== fields.date ||
-    previous.startTime !== fields.startTime ||
-    previous.endTime !== fields.endTime ||
-    previous.venueWord !== fields.venueWord ||
-    previous.seriesCode !== fields.seriesCode ||
-    previous.number !== fields.number ||
-    previous.sourceSequence !== fields.sourceSequence ||
-    previous.sourceLastModified !== fields.sourceLastModified
-  );
 }
 
 // ── Anchors ─────────────────────────────────────────────────────────────────
@@ -1296,30 +1154,19 @@ function reconcilePieces(
   attachedByUid: ReadonlyMap<string, string>,
   now: string
 ): Map<string, OwedPiece[]> {
+  // A piece may join a night this file carries, or one whose plan row is still
+  // standing. The second case is narrow and it is exactly `ICS-03b`: a plan row
+  // behind an announced night stays even when the file stops carrying it, so a
+  // piece that names it still has something to point at.
   const knownPlanKeys = new Set<string>();
   for (const night of input.nights) knownPlanKeys.add(night.key);
   for (const row of existing.plans) {
+    if (row.linkedPartyId === null) continue;
     if (row.seriesCode !== null && row.number !== null) {
       knownPlanKeys.add(joinKey(row.seriesCode, row.number));
     }
   }
 
-  const storedByUid = new Map<string, ExistingPieceRow>();
-  const proposalsByGroup = new Map<string, ExistingPieceRow[]>();
-  for (const row of existing.pieces) {
-    if (row.sourceUid !== null) {
-      storedByUid.set(row.sourceUid, row);
-      continue;
-    }
-    if (row.seriesCode === null || row.number === null) continue;
-    const group = groupKey(joinKey(row.seriesCode, row.number), row.kind);
-    const bucket = proposalsByGroup.get(group);
-    if (bucket === undefined) proposalsByGroup.set(group, [row]);
-    else bucket.push(row);
-  }
-  for (const [, bucket] of proposalsByGroup) bucket.sort(byPieceDate);
-
-  const claimed = new Set<string>();
   const owedByPlan = new Map<string, OwedPiece[]>();
   const writtenByGroup = new Map<string, ClassifiedPiece[]>();
 
@@ -1380,68 +1227,9 @@ function reconcilePieces(
       sourceLastModified: piece.lastModified,
     };
 
-    const previous = storedByUid.get(piece.uid);
-
-    if (previous !== undefined) {
-      plan.seen.pieces.push(previous.id);
-
-      let siglaMoved = false;
-
-      if (previous.number !== null && previous.number !== piece.number) {
-        plan.divergences.push(divergence("piece", piece.uid, "number_changed"));
-        siglaMoved = true;
-      }
-
-      if (previous.seriesCode !== null && previous.seriesCode !== piece.seriesCode) {
-        plan.divergences.push(divergence("piece", piece.uid, "series_changed"));
-        siglaMoved = true;
-      }
-
-      if (
-        previous.sourceSequence !== null &&
-        piece.sequence !== null &&
-        piece.sequence < previous.sourceSequence
-      ) {
-        plan.divergences.push(divergence("piece", piece.uid, "sequence_decreased"));
-      }
-
-      if (siglaMoved) continue;
-
-      const clearsAbsence = previous.absentSince !== null;
-      if (!clearsAbsence && !pieceFieldsDiffer(previous, fields)) continue;
-
-      plan.piecesToUpdate.push({
-        id: previous.id,
-        sourceUid: piece.uid,
-        seenAt: now,
-        clearsAbsence,
-        ...fields,
-      });
-      continue;
-    }
-
-    // No row carries this `UID`. Before creating one, adopt the proposal this
-    // piece has just come to occupy — otherwise the night ends up holding both a
-    // computed date and the written one that supersedes it, which is the doubled
-    // checklist `production_checklist_item`'s unique key exists to prevent, one
-    // table over.
-    const adopted =
-      planKey === null
-        ? undefined
-        : claimNextProposal(proposalsByGroup, claimed, groupKey(planKey, piece.kind));
-
-    if (adopted !== undefined) {
-      plan.seen.pieces.push(adopted.id);
-      plan.piecesToUpdate.push({
-        id: adopted.id,
-        sourceUid: piece.uid,
-        seenAt: now,
-        clearsAbsence: adopted.absentSince !== null,
-        ...fields,
-      });
-      continue;
-    }
-
+    // One branch, where there used to be three. The `UID` is not looked up, no
+    // proposal is adopted and no sigla is compared: the row this piece would have
+    // corrected no longer exists by the time this one is written.
     plan.piecesToInsert.push({ sourceUid: piece.uid, seenAt: now, ...fields });
   }
 
@@ -1477,17 +1265,7 @@ function reconcilePieces(
         const refusal = proposePieceDate(entry.rule, context, 0);
         if (!("unresolved" in refusal)) continue;
 
-        emitProposal(
-          plan,
-          proposalsByGroup,
-          claimed,
-          owedByPlan,
-          night,
-          entry.kind,
-          null,
-          refusal.unresolved,
-          now
-        );
+        emitProposal(plan, owedByPlan, night, entry.kind, null, refusal.unresolved, now);
         continue;
       }
 
@@ -1496,68 +1274,22 @@ function reconcilePieces(
 
         if ("unresolved" in proposal) {
           if (already > 0) break;
-          emitProposal(
-            plan,
-            proposalsByGroup,
-            claimed,
-            owedByPlan,
-            night,
-            entry.kind,
-            null,
-            proposal.unresolved,
-            now
-          );
+          emitProposal(plan, owedByPlan, night, entry.kind, null, proposal.unresolved, now);
           break;
         }
 
-        emitProposal(
-          plan,
-          proposalsByGroup,
-          claimed,
-          owedByPlan,
-          night,
-          entry.kind,
-          proposal.date,
-          null,
-          now
-        );
+        emitProposal(plan, owedByPlan, night, entry.kind, proposal.date, null, now);
       }
     }
   }
 
   plan.seriesWithoutRules = [...seriesMissingRules].sort();
 
-  // ── Rows that no longer correspond to anything ────────────────────────────
-
-  const uidsInThisFile = new Set(input.pieces.map((piece) => piece.uid));
-
-  for (const row of existing.pieces) {
-    if (row.absentSince !== null) continue;
-
-    if (row.sourceUid !== null) {
-      if (uidsInThisFile.has(row.sourceUid)) continue;
-      plan.absences.push({
-        subject: "piece",
-        id: row.id,
-        sourceUid: row.sourceUid,
-        reason: "absent_from_file",
-        absentSince: now,
-        linkedToAnnouncedNight: false,
-      });
-      continue;
-    }
-
-    if (claimed.has(row.id)) continue;
-
-    plan.absences.push({
-      subject: "piece",
-      id: row.id,
-      sourceUid: null,
-      reason: "no_longer_owed",
-      absentSince: now,
-      linkedToAnnouncedNight: false,
-    });
-  }
+  // ⚠ **Nothing follows.** This is where the two loops over rows that no longer
+  // corresponded to anything used to stand — one stamping the file's absences,
+  // one retiring proposals nobody owed any more. A mirror answers both by not
+  // writing the row again, and the historical note beside `MIRRORED_TABLES` keeps
+  // the reason those two loops were once two.
 
   return owedByPlan;
 }
@@ -1581,17 +1313,23 @@ function owedEpisodeCount(rule: PipelineRule, context: AnchorContext): number | 
 }
 
 /**
- * Put one proposed piece in the plan, reusing the row a previous run created for
- * it where there is one.
+ * Put one proposed piece in the plan.
  *
- * A proposal has no `UID`, so this is where its idempotence is honoured: the
- * proposals of a `(plan, kind)` group are consumed in order, and a group whose
- * dates have not moved produces no write at all on a second pass.
+ * ⚠ **A proposal is recomputed every run, and adopted never (`ICS-06`).** It used
+ * to be reused: a proposal has no `UID`, so the previous run's row was matched by
+ * `(plan key, kind)` and consumed in date order, and that hand-held idempotence
+ * was the module's weakest corner — an obligation carried in application code
+ * with no constraint behind it, stated out loud precisely because it could not be
+ * enforced. The mirror deletes those rows with the rest of the scope, so the
+ * corner is gone rather than papered over, and the surface says the dates are
+ * recomputed instead of implying they were decided.
+ *
+ * `emitProposal` therefore survives the subtraction while the claiming helper does
+ * not: proposals still have to be **born**, they just no longer have to be
+ * **re-adopted**.
  */
 function emitProposal(
   plan: ReconcilePlan,
-  proposals: Map<string, ExistingPieceRow[]>,
-  claimed: Set<string>,
   owedByPlan: Map<string, OwedPiece[]>,
   night: ClassifiedNight,
   kind: PieceKind,
@@ -1601,7 +1339,9 @@ function emitProposal(
 ): void {
   recordOwed(owedByPlan, night.key, { kind, date });
 
-  const fields: PieceFields = {
+  plan.piecesToInsert.push({
+    sourceUid: null,
+    seenAt: now,
     planKey: night.key,
     seriesCode: night.seriesCode,
     number: night.number,
@@ -1617,61 +1357,9 @@ function emitProposal(
     namingConvention: "canonical",
     sourceSequence: null,
     sourceLastModified: null,
-  };
-
-  const reused = claimNextProposal(proposals, claimed, groupKey(night.key, kind));
-
-  if (reused === undefined) {
-    plan.piecesToInsert.push({ sourceUid: null, seenAt: now, ...fields });
-    return;
-  }
-
-  plan.seen.pieces.push(reused.id);
-
-  const clearsAbsence = reused.absentSince !== null;
-  if (!clearsAbsence && !pieceFieldsDiffer(reused, fields)) return;
-
-  plan.piecesToUpdate.push({
-    id: reused.id,
-    sourceUid: null,
-    seenAt: now,
-    clearsAbsence,
-    ...fields,
   });
 }
 
-function claimNextProposal(
-  proposals: Map<string, ExistingPieceRow[]>,
-  claimed: Set<string>,
-  group: string
-): ExistingPieceRow | undefined {
-  const bucket = proposals.get(group);
-  if (bucket === undefined) return undefined;
-
-  for (const row of bucket) {
-    if (claimed.has(row.id)) continue;
-    claimed.add(row.id);
-    return row;
-  }
-
-  return undefined;
-}
-
-function pieceFieldsDiffer(previous: ExistingPieceRow, fields: PieceFields): boolean {
-  return (
-    previous.seriesCode !== fields.seriesCode ||
-    previous.number !== fields.number ||
-    previous.kind !== fields.kind ||
-    previous.partMarker !== fields.partMarker ||
-    previous.date !== fields.date ||
-    previous.origin !== fields.origin ||
-    previous.unresolvedReason !== fields.unresolvedReason ||
-    previous.conformsToRule !== fields.conformsToRule ||
-    previous.namingConvention !== fields.namingConvention ||
-    previous.sourceSequence !== fields.sourceSequence ||
-    previous.sourceLastModified !== fields.sourceLastModified
-  );
-}
 
 /**
  * The order pieces of one kind are read in, which is also the order their
@@ -1690,13 +1378,6 @@ function byWrittenPieceOrder(left: ClassifiedPiece, right: ClassifiedPiece): num
   return left.uid < right.uid ? -1 : 1;
 }
 
-/** Proposals of one group, dated first and undated last. */
-function byPieceDate(left: ExistingPieceRow, right: ExistingPieceRow): number {
-  if (left.date === right.date) return left.id < right.id ? -1 : 1;
-  if (left.date === null) return 1;
-  if (right.date === null) return -1;
-  return left.date < right.date ? -1 : 1;
-}
 
 function groupKey(planKey: string, kind: PieceKind): string {
   return `${planKey} ${kind}`;
@@ -1727,68 +1408,21 @@ function recordOwed(
 function reconcileCommitments(
   plan: ReconcilePlan,
   input: ReconcileInput,
-  existing: ExistingSnapshot,
   now: string
 ): void {
-  const stored = new Map<string, ExistingCommitmentRow>();
-  for (const row of existing.commitments) {
-    stored.set(occurrenceKey(row.sourceUid, row.occurrenceDate), row);
-  }
-
-  const producedThisRun = new Set<string>();
-
   for (const commitment of input.commitments) {
     for (const occurrence of occurrencesOf(commitment, input.recurrenceOccurrenceCap)) {
-      const key = occurrenceKey(commitment.uid, occurrence);
-      producedThisRun.add(key);
-
-      const fields: CommitmentFields = {
+      plan.commitmentsToInsert.push({
+        sourceUid: commitment.uid,
+        seenAt: now,
         occurrenceDate: occurrence,
         startTime: commitment.startTime,
         endTime: commitment.endTime,
         title: commitment.title,
         recurrenceRaw: commitment.recurrenceRaw,
         expandedFromDate: occurrence === commitment.date ? null : commitment.date,
-      };
-
-      const previous = stored.get(key);
-
-      if (previous === undefined) {
-        plan.commitmentsToInsert.push({
-          sourceUid: commitment.uid,
-          seenAt: now,
-          ...fields,
-        });
-        continue;
-      }
-
-      plan.seen.commitments.push(previous.id);
-
-      const clearsAbsence = previous.absentSince !== null;
-      if (!clearsAbsence && !commitmentFieldsDiffer(previous, fields)) continue;
-
-      plan.commitmentsToUpdate.push({
-        id: previous.id,
-        sourceUid: commitment.uid,
-        seenAt: now,
-        clearsAbsence,
-        ...fields,
       });
     }
-  }
-
-  for (const row of existing.commitments) {
-    if (row.absentSince !== null) continue;
-    if (producedThisRun.has(occurrenceKey(row.sourceUid, row.occurrenceDate))) continue;
-
-    plan.absences.push({
-      subject: "commitment",
-      id: row.id,
-      sourceUid: row.sourceUid,
-      reason: "absent_from_file",
-      absentSince: now,
-      linkedToAnnouncedNight: false,
-    });
   }
 }
 
@@ -1806,21 +1440,6 @@ function occurrencesOf(
   return [...days].sort();
 }
 
-function occurrenceKey(sourceUid: string, occurrence: CivilDate): string {
-  return `${sourceUid} ${occurrence}`;
-}
-
-function commitmentFieldsDiffer(
-  previous: ExistingCommitmentRow,
-  fields: CommitmentFields
-): boolean {
-  return (
-    previous.startTime !== fields.startTime ||
-    previous.endTime !== fields.endTime ||
-    previous.title !== fields.title ||
-    previous.recurrenceRaw !== fields.recurrenceRaw
-  );
-}
 
 // ── The checklist ───────────────────────────────────────────────────────────
 
@@ -1847,15 +1466,9 @@ function commitmentFieldsDiffer(
 function reconcileChecklist(
   plan: ReconcilePlan,
   input: ReconcileInput,
-  existing: ExistingSnapshot,
   pipelines: PipelineIndex,
   owedByPlan: Map<string, OwedPiece[]>
 ): void {
-  const stored = new Map<string, ExistingChecklistItemRow>();
-  for (const row of existing.checklistItems) {
-    stored.set(checklistKey(row.planKey, row.kind, row.label), row);
-  }
-
   for (const night of input.nights) {
     const owed = owedByPlan.get(night.key) ?? [];
     const seenOfKind = new Map<PieceKind, number>();
@@ -1892,20 +1505,11 @@ function reconcileChecklist(
       });
     }
 
-    for (const item of items) {
-      const previous = stored.get(checklistKey(item.planKey, item.kind, item.label));
-
-      if (previous === undefined) {
-        plan.checklistItemsToInsert.push(item);
-        continue;
-      }
-
-      if (previous.dueDate === item.dueDate && previous.sortOrder === item.sortOrder) {
-        continue;
-      }
-
-      plan.checklistItemsToUpdate.push({ id: previous.id, ...item });
-    }
+    // Every item, every run. The cascade took the old ones away with their plan
+    // row, so there is nothing to compare a due date against — and the ticks that
+    // went with them are put back by their own list, keyed on the file's identity
+    // rather than on the `uuid` the cascade destroyed.
+    for (const item of items) plan.checklistItemsToInsert.push(item);
   }
 }
 
@@ -1913,13 +1517,3 @@ function checklistKey(planKey: string, kind: ChecklistKind, label: string): stri
   return `${planKey} ${kind} ${label}`;
 }
 
-// ── Findings ────────────────────────────────────────────────────────────────
-
-/** A divergence is an identifier and a code. Nothing else may be added here. */
-function divergence(
-  subject: SubjectTable,
-  sourceUid: string,
-  reason: DivergenceReason
-): DivergenceRecord {
-  return { subject, sourceUid, reason };
-}
