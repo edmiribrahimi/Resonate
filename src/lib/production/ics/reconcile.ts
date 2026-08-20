@@ -179,8 +179,14 @@ import type {
   ClassifiedNight,
   ClassifiedPiece,
   UnclassifiedEntry,
+  UnclassifiedReason,
 } from "./classify";
-import { conformsToRule, proposePieceDate } from "./anchors";
+import {
+  attachmentWindowDays,
+  conformsToRule,
+  proposePieceDate,
+  recognisesEdition,
+} from "./anchors";
 import type { AnchorContext, PipelineRule } from "./anchors";
 
 // ── The four column aliases ─────────────────────────────────────────────────
@@ -793,13 +799,42 @@ export function reconcile(
   const pipelineBySeries = indexPipelines(pipelineRules);
 
   reconcilePlans(plan, input, existing, now);
-  const contexts = buildAnchorContexts(input);
+
+  // ── The second pass, between the nights and the plan of writes (ICS-05) ───
+  //
+  // It runs **after** every night has been classified, because a piece with no
+  // progressivo is placed by comparing its date against the nights, and **before**
+  // anything is written, because what it finds decides which plan row a piece
+  // belongs to. Its refusals join the file's own findings rather than a second
+  // list: `no_candidate_edition` and `several_candidate_editions` are unclassified
+  // entries and the run summary already draws those.
+  const attachment = attachNumberlessPieces({
+    nights: input.nights,
+    pieces: input.pieces,
+    pipelines: pipelineRules,
+    creditedArtistCounts: input.creditedArtistCounts,
+  });
+
+  const attachedByUid = new Map<string, string>(
+    attachment.attached.map((found) => [found.uid, found.key])
+  );
+
+  for (const refused of attachment.unclassified) {
+    plan.unclassified.push({
+      entryClass: "unclassified",
+      uid: refused.uid,
+      reason: refused.reason,
+    });
+  }
+
+  const contexts = buildAnchorContexts(input, attachedByUid);
   const owedByPlan = reconcilePieces(
     plan,
     input,
     existing,
     pipelineBySeries,
     contexts,
+    attachedByUid,
     now
   );
   reconcileCommitments(plan, input, existing, now);
@@ -939,6 +974,133 @@ function planFieldsDiffer(previous: ExistingPlanRow, fields: PlanFields): boolea
 // ── Anchors ─────────────────────────────────────────────────────────────────
 
 /**
+ * The three things a set of anchor contexts is built from.
+ *
+ * Narrower than {@link ReconcileInput} on purpose: {@link attachNumberlessPieces}
+ * is exported and pure, and asking a caller for a whole snapshot of the database
+ * so that it could ask a question about four lists would make the impossible
+ * thing — exercising the join without a database — the ordinary thing.
+ * {@link ReconcileInput} satisfies this shape, so there is one builder and not
+ * two.
+ */
+interface AnchorContextInput {
+  nights: readonly ClassifiedNight[];
+  pieces: readonly ClassifiedPiece[];
+  creditedArtistCounts: ReadonlyMap<string, number>;
+}
+
+/** Shared so the default argument allocates nothing per call. */
+const EMPTY_ATTACHMENTS: ReadonlyMap<string, string> = new Map();
+
+/** What {@link attachNumberlessPieces} is asked. Four lists and nothing else. */
+export interface NumberlessAttachmentInput extends AnchorContextInput {
+  pipelines: readonly SeriesPipeline[];
+}
+
+/** One piece and the night it turned out to belong to. */
+export interface NumberlessAttachment {
+  uid: string;
+  /** The night's join key. **Never a progressivo**: the piece is not given one. */
+  key: string;
+}
+
+/** One piece that could not be placed, and which of the two reasons applies. */
+export interface NumberlessRefusal {
+  uid: string;
+  reason: UnclassifiedReason;
+}
+
+/** What the second pass found. Attachments and refusals, kept apart. */
+export interface NumberlessAttachmentOutcome {
+  attached: NumberlessAttachment[];
+  unclassified: NumberlessRefusal[];
+}
+
+/**
+ * The second pass of `ICS-05`: give every piece with no progressivo the night its
+ * **date** says it belongs to, or say why it has none.
+ *
+ * ── ⚠ THREE OUTCOMES, NEVER TWO, AND NEVER "THE NEAREST" ────────────────────
+ *
+ * Exactly one candidate joins. **Zero** is `no_candidate_edition` — the calendar
+ * does not hold that night, so the way out is to add or correct an entry.
+ * **More than one** is `several_candidate_editions` — the calendar holds two
+ * nights a single rule cannot separate, so the way out is for a person to look
+ * at the two. Choosing the closer one would be the same class of harm as
+ * guessing a series: a piece bound to a night that may already have tickets on
+ * sale, decided by a tiebreak nobody declared.
+ *
+ * A piece whose kind has **no rule** is neither joined nor refused. It stays an
+ * orphan, which the schema already allows and which a measured after movie in the
+ * real file already is: refusing it would lose a real piece, and joining it to
+ * the wrong night would be worse.
+ *
+ * ── ⚠ NO PROGRESSIVO IS WRITTEN, AND THERE IS NOWHERE TO WRITE ONE ──────────
+ *
+ * The outcome carries a **night key**, and the piece keeps `number: null` all the
+ * way to its row. What the title carried is remembered; what only the join
+ * implies is not — the plan row holds the progressivo, one join away, and a
+ * second copy of it here would be the derived one. The importer's contract,
+ * *"it never generates a progressivo"*, is still true word for word.
+ *
+ * ── Pure, and exported because purity is only useful if it is reachable ─────
+ *
+ * It takes four lists and returns two, opens nothing and stores nothing, so the
+ * synthetic gate exercises **this** function rather than a reimplementation of
+ * it that agrees today. {@link reconcile} calls the same one.
+ */
+export function attachNumberlessPieces(
+  input: NumberlessAttachmentInput
+): NumberlessAttachmentOutcome {
+  const outcome: NumberlessAttachmentOutcome = { attached: [], unclassified: [] };
+
+  const numberless = input.pieces.filter((piece) => piece.key === null);
+  if (numberless.length === 0) return outcome;
+
+  const pipelines = indexPipelines(input.pipelines);
+  const contexts = buildAnchorContexts(input);
+
+  const nightsBySeries = new Map<string, ClassifiedNight[]>();
+  for (const night of input.nights) {
+    const series = normaliseSeries(night.seriesCode);
+    const bucket = nightsBySeries.get(series);
+    if (bucket === undefined) nightsBySeries.set(series, [night]);
+    else bucket.push(night);
+  }
+
+  for (const piece of numberless) {
+    const rule = ruleFor(pipelines, piece.seriesCode, piece.kind);
+
+    // No rule for this kind: nothing to recognise a night by, and that is not an
+    // error. The piece stays an orphan rather than becoming a day taken by
+    // somebody else, which is the whole difference this phase is buying.
+    if (rule === null) continue;
+
+    const window = attachmentWindowDays(piece.seriesCode, piece.kind);
+    const candidates: ClassifiedNight[] = [];
+
+    for (const night of nightsBySeries.get(normaliseSeries(piece.seriesCode)) ?? []) {
+      const context = contexts.get(night.key);
+      if (context === undefined) continue;
+      if (recognisesEdition(piece.date, rule, context, window)) candidates.push(night);
+    }
+
+    if (candidates.length === 1) {
+      outcome.attached.push({ uid: piece.uid, key: candidates[0].key });
+      continue;
+    }
+
+    outcome.unclassified.push({
+      uid: piece.uid,
+      reason:
+        candidates.length === 0 ? "no_candidate_edition" : "several_candidate_editions",
+    });
+  }
+
+  return outcome;
+}
+
+/**
  * One {@link AnchorContext} per night in **this file**.
  *
  * Only this file, and that is a decision rather than a shortcut: an edition the
@@ -952,7 +1114,10 @@ function planFieldsDiffer(previous: ExistingPlanRow, fields: PlanFields): boolea
  * that has not been assigned, and this module composes none. The surface says it
  * is waiting; the calendar supplies the name when the edition is added.
  */
-function buildAnchorContexts(input: ReconcileInput): Map<string, AnchorContext> {
+function buildAnchorContexts(
+  input: AnchorContextInput,
+  attachedByUid: ReadonlyMap<string, string> = EMPTY_ATTACHMENTS
+): Map<string, AnchorContext> {
   const bySeries = new Map<string, ClassifiedNight[]>();
   for (const night of input.nights) {
     const bucket = bySeries.get(night.seriesCode);
@@ -963,10 +1128,14 @@ function buildAnchorContexts(input: ReconcileInput): Map<string, AnchorContext> 
   const listingDateByPlanKey = new Map<string, CivilDate>();
   for (const piece of input.pieces) {
     if (piece.kind !== "listing") continue;
-    // A listing whose title carried no progressivo has no key of its own yet.
-    // Which night it announces is answered later, by date, and the caller feeds
-    // that answer back in — see `attachedByUid` on this function's input.
-    const planKey = piece.key;
+    // A listing whose title carried no progressivo has no key of its own. Which
+    // night it announces is answered by date, in the second pass, and the answer
+    // arrives here through `attachedByUid` — which is why the caller builds
+    // these contexts twice: once to run the join, once with what it found. The
+    // night's after movie anchors on the **following edition's listing**, and
+    // those listings are precisely the ones with no progressivo, so without this
+    // the anchor would wait for an edition whose listing is sitting in the file.
+    const planKey = piece.key ?? attachedByUid.get(piece.uid) ?? null;
     if (planKey === null) continue;
     const held = listingDateByPlanKey.get(planKey);
     if (held === undefined || piece.date < held) {
@@ -1071,6 +1240,7 @@ function reconcilePieces(
   existing: ExistingSnapshot,
   pipelines: PipelineIndex,
   contexts: Map<string, AnchorContext>,
+  attachedByUid: ReadonlyMap<string, string>,
   now: string
 ): Map<string, OwedPiece[]> {
   const knownPlanKeys = new Set<string>();
@@ -1105,8 +1275,11 @@ function reconcilePieces(
   const written = [...input.pieces].sort(byWrittenPieceOrder);
 
   for (const piece of written) {
-    const planKey =
-      piece.key !== null && knownPlanKeys.has(piece.key) ? piece.key : null;
+    // Two ways a piece knows its night, and only one of them is a number. The
+    // title's own key where it carried a progressivo; the second pass's answer
+    // where it did not. Neither writes a progressivo onto the piece.
+    const carried = piece.key ?? attachedByUid.get(piece.uid) ?? null;
+    const planKey = carried !== null && knownPlanKeys.has(carried) ? carried : null;
     const context = planKey === null ? undefined : contexts.get(planKey);
     const rule = ruleFor(pipelines, piece.seriesCode, piece.kind);
 
