@@ -1285,10 +1285,25 @@ export interface ProductionPlan {
    * night has no progressivo of its own, because a code and a number compose a
    * sigla and an act has no sigla.
    *
-   * Changing a number that is already set is refused in the database by the
-   * `production_plan_refuse_renumber` trigger — including erasing it, since a
-   * null counts as a different value. A progressivo is already on a poster:
-   * append, never renumber.
+   * ⚠ **The guard is now in TWO places, and they defend different callers.**
+   * That is D-58-01, and it is a cost rather than an improvement.
+   *
+   * `production_plan_refuse_renumber` is still installed and still refuses any
+   * change to a number that is already set — including erasing it, since a null
+   * counts as a different value. But it is a `BEFORE UPDATE OF number` trigger,
+   * and **the mirror never updates that column**: it removes the row and inserts
+   * a new one. So for the import the trigger cannot fire, and what stops a
+   * renumbering there is the importer itself, before it removes anything: a
+   * known entry coming back with a different number makes the whole run refuse
+   * and write nothing (`ICS-01b`).
+   *
+   * The trigger keeps defending **every other writer**, which is why it stays.
+   * The half of the defence that moved now lives where that trigger's own
+   * comment says a guard *does not survive the caller that forgot it* — the only
+   * place left for it, with a dated authorisation in writing, which is what
+   * `meta-gates.md` requires before a one-way switch is weakened.
+   *
+   * A progressivo is already on a poster: append, never renumber.
    */
   number: number | null;
   /**
@@ -1314,10 +1329,34 @@ export interface ProductionPlan {
   first_seen_at: string;
   last_seen_at: string;
   /**
-   * ⚠ **Disappearance is not deletion.** An entry present in a previous run and
-   * absent now may be a changed uid, a partial export, or simply the wrong file.
-   * The import stamps this and reports the count; deleting on absence would let
-   * one bad export wipe the archive.
+   * ⚠ **NOTHING WRITES THIS COLUMN ANY MORE.** Read the whole note before using
+   * it for anything: a column with no writer that still looks like state is the
+   * most expensive kind of comment to get wrong.
+   *
+   * It used to say *disappearance is not deletion* — an entry present in a
+   * previous run and absent now might be a changed uid, a partial export or
+   * simply the wrong file, so the import stamped this and reported the count.
+   * **Under a mirror the first half of that is false and the second half is
+   * truer than ever** (`ICS-01`, phase 58).
+   *
+   * False, because what comes from the calendar is now deleted and written back
+   * from the file for one declared calendar: an entry the file no longer carries
+   * is not *absent*, **it is not there**. There is nothing left to stamp.
+   *
+   * Truer, because the danger the stamp existed to name — one bad export wiping
+   * the archive — is exactly the danger a mirror creates. What defends against
+   * it now is not this column but two things that can actually stop a run: the
+   * feed guard, which refuses a calendar that arrives empty or shrunken
+   * (`ICS-10`), and the survival exception, under which a plan row standing
+   * behind an announced night never enters the deletion at all (`ICS-03b`,
+   * D-58-02).
+   *
+   * ⚠ **The column is not dropped, and that is a decision.** Dropping it would
+   * be a one-way door taken for tidiness, and the values already in it are the
+   * record of the 17 false stamps this phase exists because of. It stays, unread
+   * and unwritten, and `scripts/verify-ics-import.mjs` asserts that no line of
+   * the reader writes it — because no query can tell *nobody writes this* from
+   * *nobody has written it yet*.
    */
   absent_since: string | null;
   created_at: string;
@@ -1411,9 +1450,23 @@ export interface ProductionPiece {
    */
   unresolved_reason: UnresolvedReason | null;
   /**
-   * Computed at import, stored, and **never drawn**. It feeds the divergence
-   * report; it does not feed a pixel. Nullable, because *we could not work it
-   * out* is a third answer and must not arrive dressed as `false`.
+   * Computed at import, stored, and **never drawn** — and since phase 58 it is
+   * also **never read**.
+   *
+   * It used to feed the divergence report, which was its only reader. A mirror
+   * does not compare, so that report has no producer any more and this value
+   * goes into its column and stops there. It is still WRITTEN, because it is a
+   * fact about the file worth keeping — *did the date the file wrote match the
+   * rule?* — and losing it would mean losing the one measurement a piece row
+   * carries about the pipeline.
+   *
+   * Saying so is the point of this paragraph: a stored value with no reader is
+   * either evidence somebody decided to keep or a leftover nobody noticed, and
+   * the difference has to be written down or the next reader has to guess.
+   *
+   * Nullable, because *we could not work it out* is a third answer and must not
+   * arrive dressed as `false` — and for the seventh piece kind, which owns no
+   * rule at all, null is the only honest answer (D-58-04).
    */
   conforms_to_rule: boolean | null;
   /**
@@ -1427,6 +1480,16 @@ export interface ProductionPiece {
   source_last_modified: string | null;
   first_seen_at: string;
   last_seen_at: string;
+  /**
+   * ⚠ **NOTHING WRITES THIS COLUMN ANY MORE** —
+   * {@link ProductionPlan.absent_since} carries the whole reason, and this table
+   * is where it cost the most: **17 of these rows were stamped absent by a
+   * defect**, and the stamps did not come off. Under a mirror a piece the file
+   * no longer carries is not absent, it is not there.
+   *
+   * It stayed bare until phase 58. A column that nobody writes and nobody
+   * comments is indistinguishable from one that is simply quiet this week.
+   */
   absent_since: string | null;
   created_at: string;
   updated_at: string;
@@ -1484,6 +1547,17 @@ export interface ProductionCommitment {
   expanded_from: string | null;
   first_seen_at: string;
   last_seen_at: string;
+  /**
+   * ⚠ **NOTHING WRITES THIS COLUMN ANY MORE** —
+   * {@link ProductionPlan.absent_since} carries the whole reason. A day the file
+   * no longer says is taken is a day that is **free**, and the mirror makes it
+   * free by removing the row rather than by marking it.
+   *
+   * ⚠ Which is why the guard that matters for this table is the feed guard
+   * (`ICS-10`): a calendar that arrives empty would otherwise free every day at
+   * once, and this table exists to prevent exactly one failure — a day that
+   * reads as free while it is taken.
+   */
   absent_since: string | null;
   created_at: string;
   updated_at: string;
@@ -1540,17 +1614,27 @@ export interface ProductionImportRun {
    */
   unclassified_count: number | null;
   /**
-   * ⚠ **A divergence carries a uid and a reason code. Never a title, never a
-   * date, never a venue word.**
+   * ⚠ **NOTHING WRITES THIS COLUMN ANY MORE, and the rows already in it stay.**
    *
-   * These are read by whoever is debugging an import, which means they end up in
-   * a terminal, in a screenshot, and — the irreversible one — in a document
-   * under `.planning/`, which is tracked and public. A uid names nothing to
-   * anybody outside the file; a title names an unannounced date.
+   * A divergence was the file and the product disagreeing about a stored row.
+   * **A mirror does not compare**, so it has nothing to disagree about: the
+   * scope is removed and the file is written back (`ICS-01`, phase 58). The
+   * column lost its only producer, and the importer leaves it as it was born
+   * rather than writing an empty list — an empty list reads as *measured, and
+   * none found*, which would be a claim nobody made.
    *
-   * The shape below is DECLARED HERE and is not enforced by the column: `jsonb`
-   * accepts anything. It is written narrow so that the prohibition is visible at
-   * the call site rather than only in a comment.
+   * The historical rows are not cleared, for this table's own reason: the
+   * register is the domain's only diagnostic instrument, and one that tidies its
+   * past has started lying about the thing it exists to keep.
+   *
+   * ⚠ **The prohibition below still binds anything that ever writes here again.**
+   * A finding carries a uid and a reason code — never a title, never a date,
+   * never a venue word — because these are read by whoever is debugging an
+   * import, which means a terminal, a screenshot, and the irreversible one: a
+   * document under `.planning/`, which is tracked and public. The shape is
+   * DECLARED HERE and not enforced by the column, which is `jsonb` and accepts
+   * anything; it is written narrow so the prohibition is visible at the call
+   * site rather than only in a comment.
    */
   divergences: { source_uid: string; reason: string }[] | null;
   unsupported_recurrences: { source_uid: string; reason: string }[] | null;

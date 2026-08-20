@@ -1,0 +1,92 @@
+-- The renumbering trigger keeps its job and loses one caller
+-- Phase 58, Plan 09: ICS-01b, D-58-01
+--
+-- WHY THIS FILE EXISTS, in one sentence. `public.refuse_production_plan_renumber`
+-- still stands, still refuses, and its own comment now describes a world that
+-- ended: it says the importer *leaves `number` out of its conflict update* and
+-- that this trigger is *the backstop for the caller that forgets*. **The
+-- importer no longer performs an update at all.** It is a mirror: it removes the
+-- rows of one declared calendar and writes the file back. The trigger is
+-- `BEFORE UPDATE OF number`, so on that path it cannot fire — and a comment that
+-- describes a guard the caller no longer passes through is worse than no
+-- comment, because it reads as protection.
+--
+-- ⚠ NOTHING IS DROPPED, CREATED OR REDEFINED HERE. The trigger stays installed,
+-- on the same table, with the same timing and the same column list, and it keeps
+-- defending **every other writer** — a Server Action, a console session, a
+-- future job. What changed is not the guard: it is which callers reach it. This
+-- file changes a sentence, and it says so in the only statement it carries.
+--
+-- ── WHY A NEW FILE AND NOT AN EDIT ──────────────────────────────────────────
+--
+-- `supabase-data.md`, gate *migration in avanti*. The file this one corrects —
+-- `20260815120100_production_calendar_access.sql` — is applied to production and
+-- is therefore a historical fact that is not edited. The same discipline is
+-- written out at `20260808000500_staff_role.sql:21-32`, which corrected two
+-- applied files forward rather than rewriting them.
+--
+-- ── WHY IT NEEDS NO `CREATE OR REPLACE`, AND NO TRANSACTION BLOCK ───────────
+--
+-- `COMMENT ON FUNCTION` is idempotent by construction: it sets a value, it does
+-- not append one, and running it twice leaves the same string. There is one
+-- statement, so there is no half-applied state for a `BEGIN; … COMMIT;` to
+-- protect against — and writing one anyway would be cargo-culting a decision
+-- that belongs to the migrations that alter several tables at once.
+--
+-- ⚠ The function's own body is NOT restated. Re-declaring it to change a comment
+-- would put a second copy of a `SECURITY DEFINER` body into the tree, and the
+-- day the two copies differ the tree would carry two answers to *what does this
+-- refuse?*. The signature below is quoted exactly because `COMMENT ON FUNCTION`
+-- resolves by signature, and this function takes none.
+--
+-- ── WHAT THE NEW TEXT SAYS, AND WHY EACH PART IS IN IT ──────────────────────
+--
+--   1. **The trigger is still installed and still refuses.** Somebody reading
+--      the catalogue must not conclude from *the import moved on* that the guard
+--      was removed.
+--   2. **Where the import's own protection lives now**, by name — the importer,
+--      before it removes anything, refusing the whole run when a known entry
+--      comes back with a different progressivo (`ICS-01b`). A comment that said
+--      only *the import no longer passes here* would leave the reader believing
+--      the import is unguarded.
+--   3. **The cost, declared.** The old comment's own sentence — *a guard in the
+--      database survives the caller that forgot it, and a guard in application
+--      code does not* — is still TRUE, and it is now the price of D-58-01 rather
+--      than a promise being broken. It stays in the text as a cost, because the
+--      alternative reading is that somebody found the sentence inconvenient and
+--      deleted it.
+--
+-- ⚠ WHAT THE RAISED MESSAGE CARRIES IS UNCHANGED: the plan row's `id`, and
+-- nothing else. Never a venue word, never a title, never a date. A raised
+-- message reaches a log, a log reaches a screenshot, and this repository is
+-- public. This file does not touch the body, so it cannot change that — the
+-- sentence is here so the property stays written next to the thing it protects.
+--
+-- ── CROSS-DOMAIN NOTE (`meta-gates.md`) ─────────────────────────────────────
+--
+--   * **The monotone guard is WEAKENED for one caller, and this is the paired
+--     written authorisation.** `meta-gates.md` allows a one-way switch to be
+--     made easier to trip only with an explicit authorisation recorded in the
+--     commit. That authorisation is D-58-01, taken by the owner in front of the
+--     measurement, and this file is where it lands in the schema. The
+--     replacement is not weaker in intent — the importer refuses the ENTIRE run,
+--     where the trigger refused one statement — but it is weaker in kind,
+--     because it can be bypassed by a caller that does not run it;
+--   * **RLS, policies and grants: untouched.** No policy is created, dropped or
+--     redefined, no `GRANT` is altered, no function body is replaced;
+--   * **No row is inserted, updated or deleted.** A comment is catalogue
+--     metadata; row counts before and after are read from the live catalogue and
+--     must be identical, and the trigger must still be present and still
+--     `BEFORE UPDATE OF number` — both read from `pg_trigger`, not assumed;
+--   * **`npm run build` proves nothing here.** A build knows nothing about a
+--     comment on a function. The verification is the live catalogue:
+--     `obj_description` carrying the new text.
+
+COMMENT ON FUNCTION public.refuse_production_plan_renumber() IS
+  'STILL INSTALLED, STILL REFUSING: any change to a production_plan.number that is already set — including erasing it, since IS DISTINCT FROM counts a null as a different value. '
+  'WHAT CHANGED IS WHO REACHES IT (D-58-01, phase 58). The importer is now a MIRROR: it deletes the rows of one declared calendar and writes the file back, so it performs no UPDATE of number and this BEFORE UPDATE OF number trigger cannot fire on that path. '
+  'The import''s own protection lives in scripts/import-production-calendar.mjs, BEFORE it removes anything: a source_uid already stored that comes back from the file with a different progressivo makes the whole run refuse, exit 2 and write nothing (ICS-01b). A renumbering somebody wants passes an explicit re-authorisation argument, recorded in that run''s report. '
+  'THE COST IS DECLARED, NOT HIDDEN: a guard in the database survives the caller that forgot it, and a guard in application code does not. That sentence is still true and is now the price of D-58-01, which is the dated written authorisation meta-gates.md requires before a one-way switch is weakened. '
+  'This trigger keeps defending EVERY OTHER WRITER, which is why it stays installed. '
+  'It is NOT a watermark comparison: the archive holds numbers far below party_series.highest_assigned (D-44-08) and a watermark test would refuse the entire past. It does not re-implement bump_series_watermark, which fires on event_parties and is untouched. '
+  'The message names the plan id and nothing else — no venue word, no title, no date — because a raised message reaches a log and this repository is public.';
