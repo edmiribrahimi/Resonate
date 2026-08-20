@@ -105,8 +105,9 @@
  * on sale, which is exactly the harm D-44-06 separates the two tables to prevent.
  * That is an exception of **survival** and it is not one of the two exceptions of
  * **state**: the two of `ICS-03` re-attach after the rewrite, this one never
- * leaves. The plan carries it as a list of its own so that the report can count
- * it, and the three are named apart so no reader can fold them into one.
+ * leaves. It is {@link ReconcilePlan.plansThatSurviveDeletion}, a list of its own
+ * so the report can count it, and the three are named apart so no reader can fold
+ * them into one.
  *
  * ── ⚠ THE IMPORT NEVER WRITES THE ANNOUNCED-NIGHT TABLE ─────────────────────
  *
@@ -200,7 +201,7 @@
  */
 
 import { PIECE_KIND_LABELS } from "./vocabulary";
-import type { CivilDate, PieceKind, UnresolvedReason } from "./vocabulary";
+import type { CalendarKey, CivilDate, PieceKind, UnresolvedReason } from "./vocabulary";
 import type {
   ProductionChecklistItem,
   ProductionCommitment,
@@ -431,6 +432,18 @@ export interface SeriesPipeline {
  * them beyond carrying them to the run summary that a person actually reads.
  */
 export interface ReconcileInput {
+  /**
+   * WHICH CALENDAR this run mirrors. **Required, and there is no default.**
+   *
+   * It is the one condition that selects the rows the mirror deletes, so it is
+   * the single most consequential argument this module takes. It is **declared**
+   * by the caller and never inferred: the owner's snapshots carry the same
+   * calendar-level name, the parser exposes no calendar-level property at all,
+   * and a filename carries a date rather than a scope. A default here would be
+   * the step somebody eventually skips, on the argument that decides what gets
+   * deleted (`ICS-02`, D-58-06).
+   */
+  calendarKey: CalendarKey;
   nights: readonly ClassifiedNight[];
   pieces: readonly ClassifiedPiece[];
   commitments: readonly ClassifiedCommitment[];
@@ -500,18 +513,30 @@ export interface ExistingPlanRow {
 /**
  * A `production_checklist_item` row as it stands.
  *
- * `planKey` is the caller's join of the item's plan row back to a series code and
- * a progressivo; there is no such column, and there does not need to be — the
- * caller already holds both sides.
+ * ⚠ **It is read for exactly one purpose: the ticks.** Everything else about it
+ * is regenerated from the file every run, so the due date and the position are
+ * not here — asking the caller for columns nothing reads would be a read paid for
+ * nothing.
+ *
+ * ⚠ **`planSourceUid`, and not the caller's join key.** The row's own `plan_id`
+ * is a generated `uuid` that does not survive the delete, and the join key is
+ * composed from the sigla, which is **content** the file can change. The identity
+ * is `source_uid`, which is the identity this project already chose and already
+ * wrote down its reasons for. The caller reads it by joining the item's plan row;
+ * that join is the first step of the restore procedure and it happens **before**
+ * anything is deleted.
  */
 export interface ExistingChecklistItemRow {
   id: ChecklistColumn<"id">;
-  /** ⚠ Not a column — the caller's join, as the docblock above says. */
-  planKey: string;
+  /** ⚠ Not a column of this table — `production_plan.source_uid`, joined by the caller. */
+  planSourceUid: string;
   kind: ChecklistColumn<"kind">;
   label: ChecklistColumn<"label">;
-  dueDate: ChecklistColumn<"due_date">;
-  sortOrder: ChecklistColumn<"sort_order">;
+  /** Null on an item nobody has ticked. Such an item carries no state to keep. */
+  tickedAt: ChecklistColumn<"ticked_at">;
+  tickedBy: ChecklistColumn<"ticked_by">;
+  /** ⚠ A person's name. Never printed, never written into a tracked artefact. */
+  tickedByName: ChecklistColumn<"ticked_by_name">;
 }
 
 /**
@@ -565,6 +590,15 @@ export interface PlanInsert extends PlanFields {
   /** `seriesCode` + `number`, normalised. What a piece joins to. */
   key: string;
   seenAt: string;
+  /**
+   * Which calendar this row was mirrored from — see {@link DeletionScope}.
+   *
+   * ⚠ **The same value on every row of one run, and it is the boundary of the
+   * NEXT run's deletion.** A row written without it is a row the next mirror
+   * cannot see to remove; a row written with the wrong one is a row a mirror of a
+   * different calendar will delete.
+   */
+  calendarKey: CalendarKey;
 }
 
 
@@ -612,6 +646,8 @@ export interface PieceFields {
 export interface PieceInsert extends PieceFields {
   sourceUid: string | null;
   seenAt: string;
+  /** Which calendar this row was mirrored from. See {@link PlanInsert.calendarKey}. */
+  calendarKey: CalendarKey;
 }
 
 
@@ -638,6 +674,8 @@ export interface CommitmentFields {
 export interface CommitmentInsert extends CommitmentFields {
   sourceUid: string;
   seenAt: string;
+  /** Which calendar this row was mirrored from. See {@link PlanInsert.calendarKey}. */
+  calendarKey: CalendarKey;
 }
 
 
@@ -658,6 +696,185 @@ export interface ChecklistItemFields {
  */
 export type ChecklistItemInsert = ChecklistItemFields;
 
+// ── The scope of deletion, and the three exceptions ─────────────────────────
+
+/**
+ * The order the four tables are emptied in. **Obligated, not preferred.**
+ *
+ * Each step below is obligated by a foreign key that was read from the
+ * constraints rather than remembered — there are exactly three pointing into the
+ * mirrored tables, and all three are in this list:
+ *
+ * **1. `production_checklist_item` first.** Its `plan_id` reference is
+ * `ON DELETE CASCADE`, and it is the only cascade in the calendar's schema. A
+ * cascade is a write path nobody declared, so it is declared here: deleting a
+ * plan row takes its checklist items away **and the ticks on them**. Emptying
+ * this table explicitly, first, is what makes the number of ticks about to be
+ * lost a number somebody counted instead of a side effect nobody saw. By the
+ * time step 3 runs, the cascade finds nothing left to take.
+ *
+ * ⚠ This table carries no `calendar_key` of its own, so its step is scoped
+ * **through the plan rows the same scope selects** — never by a second,
+ * independently written condition. Two selectors over the same rows is how one of
+ * them ends up wider than the other.
+ *
+ * **2. `production_piece` before `production_plan`.** Its `plan_id` reference is
+ * `NO ACTION`, the default, so deleting a plan row that still has pieces raises a
+ * foreign-key violation. The pieces go first or the third step fails.
+ *
+ * **3. `production_plan`.**
+ *
+ * **4. `production_commitment`, and ⚠ IN ONE `DELETE`.** Its `expanded_from` is a
+ * self-reference, also `NO ACTION`, and `NO ACTION` is checked **at the end of
+ * the statement**: a single statement that carries parent and children away
+ * together passes, while two statements in the wrong order do not. There is no
+ * ordering to get right inside this step — there is a rule not to split it.
+ *
+ * The table is independent of the first three, which is why it can come last; it
+ * comes last rather than first only so the three that constrain each other stay
+ * adjacent and readable.
+ */
+export const MIRROR_DELETION_ORDER = [
+  "production_checklist_item",
+  "production_piece",
+  "production_plan",
+  "production_commitment",
+] as const;
+
+/** One step of {@link MIRROR_DELETION_ORDER}. */
+export type MirrorDeletionStep = (typeof MIRROR_DELETION_ORDER)[number];
+
+/**
+ * What the mirror removes before it writes anything.
+ *
+ * ⚠ **The calendar key is the ONLY condition that selects.** It is not a filter
+ * the caller applies to a list of identifiers this module computed; it is the
+ * `WHERE` itself. The direction of the mistake is the reason: a condition that
+ * selects too widely deletes **more** than it should, and this project has
+ * already paid for that once — a selector that walked up a page until it matched
+ * every delete control took two real events and, by cascade, 63 rows across seven
+ * tables, none of them recoverable. A narrow condition that is wrong finds
+ * nothing.
+ *
+ * The one thing that narrows it further is
+ * {@link ReconcilePlan.plansThatSurviveDeletion}, and narrowing is the safe
+ * direction. It is **not** repeated here as a second list of identifiers: two
+ * spellings of one fact is how the two start to differ.
+ */
+export interface DeletionScope {
+  /** The single declared condition of every statement in {@link DeletionScope.order}. */
+  calendarKey: CalendarKey;
+  /** {@link MIRROR_DELETION_ORDER}, carried here so an executor cannot invent its own. */
+  order: readonly MirrorDeletionStep[];
+}
+
+/**
+ * A plan row that is **not deleted**, whatever the file says (`ICS-03b`, D-58-02).
+ *
+ * ⚠ **This is an exception of SURVIVAL, and it is not one of the two exceptions
+ * of STATE.** The distinction is the whole reason it has a list of its own:
+ *
+ * - the two of `ICS-03` — {@link ChecklistTickRestore} and
+ *   {@link AnnouncedNightLinkRestore} — describe state that **goes away and comes
+ *   back**, re-attached afterwards by the file's own identity;
+ * - this one describes a row that **never leaves**.
+ *
+ * Folding them together would make this the third undeclared exception that
+ * `ICS-03` exists to forbid. The reason is written in the importer's contract and
+ * survives the mirror word for word: removing such a row would orphan a night
+ * that may have tickets on sale.
+ *
+ * ⚠ **A surviving row is also skipped by the insert list**, and the consequence
+ * has to be read rather than discovered: `production_plan.source_uid` is unique,
+ * so a row that stays and is written again is a constraint violation that fails
+ * the whole run. What follows is that **a plan row standing behind an announced
+ * night stops mirroring the file** — a date moved in the calendar under an
+ * announced night no longer reaches that row. That narrows D-44-07, which used to
+ * report the move and mirror it anyway, and the narrowing is deliberate: mirroring
+ * it now would mean deleting and rewriting the one row whose disappearance orphans
+ * a night with tickets on sale, across a gap that holds no transaction.
+ */
+export interface SurvivingPlanRow {
+  id: string;
+  sourceUid: string;
+  /**
+   * True when this file no longer carries the entry.
+   *
+   * ⚠ **This is the flag the report counts** (D-58-02). A row surviving while the
+   * file still carries it is the frozen case above; a row surviving an **absence**
+   * is the one that says somebody should look, because the cause may be a partial
+   * export or the wrong file.
+   */
+  absentFromFile: boolean;
+}
+
+/**
+ * A tick to put back — the first of the two exceptions of state (`ICS-03`).
+ *
+ * ⚠ **The key is the file's, not the database's.** `production_checklist_item`'s
+ * own unique key is `(plan_id, kind, label)` and `plan_id` is a **generated**
+ * `uuid`: it does not survive a delete. `source_uid` does, because the file
+ * maintains it across edits and the project has already written down why the
+ * alternatives do not — a title changes when the owner renames a night,
+ * `(date, title)` changes twice over, and a content digest changes on **every**
+ * edit, which is the opposite of an identity.
+ *
+ * ⚠ **A RESTORE IS NOT A TICK.** The three fields below are the **originals**,
+ * carried through untouched, and the caller must not write them through
+ * `record_checklist_tick`: that function re-records who ticked, so a restore run
+ * through it would attribute every tick in the calendar to whoever launched the
+ * import.
+ *
+ * ⚠ `tickedByName` is a **person's name**. It travels in memory, to its column,
+ * and nowhere else — not into a report, not into a terminal, and above all not
+ * into a tracked artefact. Artefacts name roles.
+ */
+export interface ChecklistTickRestore {
+  /** The plan row's identity as the file spells it. */
+  planSourceUid: string;
+  kind: ChecklistKind;
+  label: string;
+  /** The original instant. Not now. */
+  tickedAt: NonNullable<ChecklistColumn<"ticked_at">>;
+  /** The original actor. Not the caller. */
+  tickedBy: ChecklistColumn<"ticked_by">;
+  /** ⚠ The original name. Never printed. */
+  tickedByName: ChecklistColumn<"ticked_by_name">;
+}
+
+/**
+ * A link to put back — the second of the two exceptions of state (`ICS-03`).
+ *
+ * Keyed on `production_plan.source_uid` for {@link ChecklistTickRestore}'s reason:
+ * the row's `id` is generated and does not survive the rewrite.
+ *
+ * ⚠ **Every linked row appears here, including the ones that survive the
+ * deletion** — so this list and {@link SurvivingPlanRow} overlap rather than
+ * partition, and the overlap is on purpose. It is the only copy of the link that
+ * exists across a delete with no transaction behind it, and it is what keeps a
+ * later narrowing of `ICS-03b` from dropping a link in silence.
+ */
+export interface AnnouncedNightLinkRestore {
+  planSourceUid: string;
+  linkedPartyId: NonNullable<PlanColumn<"linked_party_id">>;
+}
+
+/* ── ⚠ ICS-03 IS THE BOUNDARY, AND IT HAS TO BE DEFENDED IN TIME ─────────────
+ *
+ * The two restore lists above are exhaustive **today**, and that is a fact about
+ * today rather than a property of the design. Every piece of human state that
+ * comes after them — a note somebody types, an assignment, an attachment, a
+ * decision recorded against a night — **either enters that list by a written
+ * decision, or the first import deletes it and nobody notices.**
+ *
+ * The failure is silent by construction: a mirror cannot report what it was never
+ * told to keep. So a column added to any of the three mirrored tables, or to
+ * `production_checklist_item`, is a question with exactly two acceptable answers
+ * — *the file owns it*, or *it goes in a restore list*. There is no third answer,
+ * and *"we will decide later"* resolves to the first one by default, silently, on
+ * the next run.
+ * ────────────────────────────────────────────────────────────────────────── */
+
 /**
  * The whole plan of a mirror. **Returned. Nothing here is applied.**
  *
@@ -669,10 +886,24 @@ export type ChecklistItemInsert = ChecklistItemFields;
  * produced 66 false absences, one convenience at a time.
  */
 export interface ReconcilePlan {
+  /** (1) What comes out, and in which order. Read this before anything else. */
+  deletionScope: DeletionScope;
+  /** (2) Everything the file carries, each row stamped with the calendar key. */
   plansToInsert: PlanInsert[];
   piecesToInsert: PieceInsert[];
   commitmentsToInsert: CommitmentInsert[];
   checklistItemsToInsert: ChecklistItemInsert[];
+  /**
+   * (3) The exception of SURVIVAL — rows that never leave (`ICS-03b`, D-58-02).
+   *
+   * ⚠ Not one of the two below, and named apart so it cannot be read as one.
+   * These rows are subtracted from the deletion **and** from the insert list.
+   */
+  plansThatSurviveDeletion: SurvivingPlanRow[];
+  /** (4a) The first exception of STATE — goes away, comes back (`ICS-03`). */
+  ticksToRestore: ChecklistTickRestore[];
+  /** (4b) The second exception of STATE — goes away, comes back (`ICS-03`). */
+  linksToRestore: AnnouncedNightLinkRestore[];
   /** Carried through from the parser, untouched. */
   unsupportedRecurrences: UnsupportedRecurrence[];
   /** Carried through from the classifier, untouched. */
@@ -706,7 +937,14 @@ export interface ReconcilePlan {
  * pass meaningless, because there was nothing to be idempotent about. The dry run
  * prints it for the same reason.
  *
- * Three fields are **deliberately excluded** and each for its own reason.
+ * ⚠ **{@link ReconcilePlan.deletionScope} is NOT counted, and it is the exclusion
+ * that most needs saying.** The scope is a **condition**, not a list of rows: this
+ * module holds no connection, so it cannot know how many rows the key names — nor
+ * whether it names any. Counting it would turn *"this run writes nothing"* into
+ * *"this run does something"* on every single call, which is a predicate that has
+ * stopped measuring.
+ *
+ * Three more fields are **deliberately excluded** and each for its own reason.
  * {@link ReconcilePlan.unclassified} and
  * {@link ReconcilePlan.unsupportedRecurrences} are properties of the file, so they
  * are identical on both passes by definition; counting them would make a file with
@@ -743,10 +981,17 @@ export function reconcile(
   now: string
 ): ReconcilePlan {
   const plan: ReconcilePlan = {
+    deletionScope: {
+      calendarKey: input.calendarKey,
+      order: MIRROR_DELETION_ORDER,
+    },
     plansToInsert: [],
     piecesToInsert: [],
     commitmentsToInsert: [],
     checklistItemsToInsert: [],
+    plansThatSurviveDeletion: [],
+    ticksToRestore: [],
+    linksToRestore: [],
     unsupportedRecurrences: [...input.unsupportedRecurrences],
     unclassified: [...input.unclassified],
     seriesWithoutRules: [],
@@ -754,7 +999,13 @@ export function reconcile(
 
   const pipelineBySeries = indexPipelines(pipelineRules);
 
-  reconcilePlans(plan, input, now);
+  // ⚠ The three exceptions are decided FIRST, because the two that follow read
+  // them: a night whose plan row survives is not written again, and a tick whose
+  // plan row survives was never taken away.
+  const survivors = collectSurvivors(plan, input, existing);
+  collectStateToRestore(plan, existing);
+
+  reconcilePlans(plan, input, survivors, now);
 
   // ── The second pass, between the nights and the plan of writes (ICS-05) ───
   //
@@ -799,6 +1050,84 @@ export function reconcile(
   return plan;
 }
 
+// ── The three exceptions ────────────────────────────────────────────────────
+
+/**
+ * Which plan rows never enter the deletion (`ICS-03b`, D-58-02).
+ *
+ * The rule has one clause and no conditions attached to it: **a link means the
+ * row stays.** Whether the file still carries the entry changes only what the
+ * report says about it, never whether it survives.
+ *
+ * @returns the `source_uid`s that survive, which the insert path must skip
+ */
+function collectSurvivors(
+  plan: ReconcilePlan,
+  input: ReconcileInput,
+  existing: ExistingSnapshot
+): ReadonlySet<string> {
+  const inThisFile = new Set(input.nights.map((night) => night.uid));
+  const survivors = new Set<string>();
+
+  for (const row of existing.plans) {
+    if (row.linkedPartyId === null) continue;
+    survivors.add(row.sourceUid);
+    plan.plansThatSurviveDeletion.push({
+      id: row.id,
+      sourceUid: row.sourceUid,
+      absentFromFile: !inThisFile.has(row.sourceUid),
+    });
+  }
+
+  return survivors;
+}
+
+/**
+ * The two exceptions of state (`ICS-03`), collected **before** anything is
+ * deleted.
+ *
+ * ⚠ **Every piece of state, not only the pieces that look endangered**, and the
+ * over-collection is deliberate. Under `ICS-03b` a linked plan row never enters
+ * the deletion, so re-attaching its link lands on a row that never lost it, and
+ * a tick on such a row was never taken away by the cascade either. Both restores
+ * are therefore no-ops **today**, and both are emitted anyway, for two reasons
+ * that are worth the redundant write:
+ *
+ * 1. These lists are the **only copy** of that state that exists across the
+ *    delete. The importer writes them out before touching anything, because
+ *    between the delete and the rewrite there is no transaction and no
+ *    point-in-time recovery in this project — if the run dies in the middle, this
+ *    is what is left.
+ * 2. Narrowing `ICS-03b` later — deciding that a linked row the file still
+ *    carries should be rewritten after all — must not silently drop the link.
+ *    A restore path that only exists for the cases somebody remembered is the
+ *    hole `ICS-03` is written to forbid.
+ *
+ * An item nobody has ticked carries no state and is not collected: it is
+ * recreated from the file like everything else.
+ */
+function collectStateToRestore(plan: ReconcilePlan, existing: ExistingSnapshot): void {
+  for (const row of existing.plans) {
+    if (row.linkedPartyId === null) continue;
+    plan.linksToRestore.push({
+      planSourceUid: row.sourceUid,
+      linkedPartyId: row.linkedPartyId,
+    });
+  }
+
+  for (const item of existing.checklistItems) {
+    if (item.tickedAt === null) continue;
+    plan.ticksToRestore.push({
+      planSourceUid: item.planSourceUid,
+      kind: item.kind,
+      label: item.label,
+      tickedAt: item.tickedAt,
+      tickedBy: item.tickedBy,
+      tickedByName: item.tickedByName,
+    });
+  }
+}
+
 // ── Plans ───────────────────────────────────────────────────────────────────
 
 /**
@@ -810,13 +1139,26 @@ export function reconcile(
  * branches this function used to carry (insert, correct, stamp absent, report a
  * divergence) collapse into one, and the three that vanish are the three that
  * were wrong.
+ *
+ * ⚠ **One night is skipped, and it is the one whose row survived.**
+ * `production_plan.source_uid` is unique, so writing a row that was never deleted
+ * would raise a constraint violation and fail the whole run — see
+ * {@link SurvivingPlanRow} for what that costs and why it is still the right way
+ * round.
  */
-function reconcilePlans(plan: ReconcilePlan, input: ReconcileInput, now: string): void {
+function reconcilePlans(
+  plan: ReconcilePlan,
+  input: ReconcileInput,
+  survivors: ReadonlySet<string>,
+  now: string
+): void {
   for (const night of input.nights) {
+    if (survivors.has(night.uid)) continue;
     plan.plansToInsert.push({
       sourceUid: night.uid,
       key: night.key,
       seenAt: now,
+      calendarKey: plan.deletionScope.calendarKey,
       seriesCode: night.seriesCode,
       number: night.number,
       venueWord: night.venueWord,
@@ -1230,7 +1572,15 @@ function reconcilePieces(
     // One branch, where there used to be three. The `UID` is not looked up, no
     // proposal is adopted and no sigla is compared: the row this piece would have
     // corrected no longer exists by the time this one is written.
-    plan.piecesToInsert.push({ sourceUid: piece.uid, seenAt: now, ...fields });
+    plan.piecesToInsert.push({
+      sourceUid: piece.uid,
+      seenAt: now,
+      // Read from the scope rather than taken as an argument, so the key a row is
+      // written with and the key the next mirror deletes by are one value and not
+      // two that agree today.
+      calendarKey: plan.deletionScope.calendarKey,
+      ...fields,
+    });
   }
 
   // ── The pieces a format owes and the file does not carry ──────────────────
@@ -1342,6 +1692,7 @@ function emitProposal(
   plan.piecesToInsert.push({
     sourceUid: null,
     seenAt: now,
+    calendarKey: plan.deletionScope.calendarKey,
     planKey: night.key,
     seriesCode: night.seriesCode,
     number: night.number,
@@ -1415,6 +1766,7 @@ function reconcileCommitments(
       plan.commitmentsToInsert.push({
         sourceUid: commitment.uid,
         seenAt: now,
+        calendarKey: plan.deletionScope.calendarKey,
         occurrenceDate: occurrence,
         startTime: commitment.startTime,
         endTime: commitment.endTime,
