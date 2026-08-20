@@ -127,6 +127,32 @@ esisteva solo per gestirle.
 | **ICS-10** | Lo specchio **gira da solo**, e le sue due guardie sono la ragione per cui e' accettabile: **(a)** un feed vuoto o drasticamente piu' piccolo del precedente fa **rifiutare** senza cancellare niente; **(b)** l'esito e l'ora dell'**ultimo specchio riuscito per chiave** sono **visibili su una superficie**, e un fallimento e' distinguibile da «non e' ancora girato». Il percorso e' autenticato. *(D-58-05; questo progetto non ha error tracking, quindi un log non e' un effetto osservabile.)* |
 | **ICS-10b** | Il cron gira **sulla piattaforma**, il che **rovescia meta' di `D-44-26`**: il `.ics` transita da un server. Le cinque difese che sostituiscono la superficie che non esisteva sono **requisiti**, non intenzioni — il corpo del feed non si stampa mai, nessuna persistenza ne' cache, errori **per categoria senza riecheggiare il contenuto**, il link registrato come segreto **host compreso**, e **nessun controllo di caricamento** sulla superficie (l'altra meta' di `D-44-26` non cade). Un controllo sul sorgente prova la prima, o non esiste. *(D-58-07.)* |
 
+**Goal:** cio' che viene dal calendario si cancella e si riscrive dal file, per
+quel calendario — con due sole eccezioni di stato nominate, una di sopravvivenza,
+e una lettura dei titoli che capisce cosa sta specchiando.
+
+**Plans:** 12 plans in 9 waves
+
+Plans:
+- [ ] 58-01-PLAN.md — i due gate sintetici (grammatica dei titoli · guardie dello specchio), rossi e non registrati *(onda 0)*
+- [ ] 58-02-PLAN.md — le tre procedure `P-58-A`/`P-58-B`/`P-58-C` e le misure d'apertura, prese prima che lo specchio le cancelli *(onda 0)*
+- [ ] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
+- [ ] 58-04-PLAN.md — `ICS-06`: le proposte si ricalcolano, e la superficie lo dice *(onda 1)*
+- [ ] 58-05-PLAN.md — `ICS-07`: nessun identificativo grezzo nel referto *(onda 1)*
+- [ ] 58-06-PLAN.md — `ICS-08` + `ICS-08b`: la timetable e' un pezzo, il volantinaggio e' il settimo tipo *(onda 2)*
+- [ ] 58-07-PLAN.md — `ICS-02`: la chiave di calendario, chiusa da un `CHECK` e indicizzata *(onda 3)*
+- [ ] 58-08-PLAN.md — `ICS-01`/`ICS-03`/`ICS-03b`: lo specchio nel modulo puro, in sottrazione *(onda 4)*
+- [ ] 58-09-PLAN.md — lo scrittore che cancella: rifiuti in ordine, istantanea, riaggancio, guardia del progressivo *(onda 5)*
+- [ ] 58-10-PLAN.md — `ICS-09` + `ICS-10a`: la sorgente e' un indirizzo, e la guardia del feed *(onda 6)*
+- [ ] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
+- [ ] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
+
+> **L'ordine delle onde non e' libero.** La lettura dei titoli va **prima** dello
+> specchio (uno specchio che capisce il 70% del file cancellerebbe e
+> riscriverebbe il 70% del file); `P-58-C` si scrive **prima** del primo
+> `--apply`; il primo specchio gira **a mano** prima che il cron lo faccia girare
+> senza nessuno che guardi.
+
 > **Questa fase toglie codice al centro e ne aggiunge ai bordi.** Spariscono le
 > assenze, le divergenze, l'asimmetria fra tabelle e i 17 timbri falsi — che non
 > esisterebbero. Resta la lettura dei titoli, che serve comunque: **uno specchio
