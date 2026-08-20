@@ -92,23 +92,59 @@
  *   1. **It writes nothing unless `--apply` is passed.** A dry run is the
  *      DEFAULT. A tool that writes production when invoked with no arguments is
  *      a tool that will one day be invoked with no arguments.
- *   2. **It removes nothing, ever.** There is no removal statement in this file
- *      and no list that could carry one. An entry missing from the file gets an
- *      `absent_since` stamp and a reported count. A partial export, a renamed
- *      `UID` or the wrong file must not wipe the archive, and a plan row already
- *      standing behind an announced night survives absence unconditionally,
- *      because removing it would orphan a night with tickets on sale.
+ *   2. **It removes the scope of ONE declared calendar, and nothing outside
+ *      it — and a row standing behind an announced night it does not remove at
+ *      all.**
+ *
+ *      This point used to open *it removes nothing, ever*. **That half is now
+ *      false**, and it is rewritten here rather than deleted, because the
+ *      reason it was true is the reason its replacement has to be narrow. What
+ *      comes from the calendar is a MIRROR: it is deleted and written back from
+ *      the file, for that calendar. The **only** condition that selects is the
+ *      declared calendar key, and the direction of the mistake is why — a wide
+ *      selector that is wrong deletes MORE, a narrow one that is wrong finds
+ *      nothing. This repository has already paid for the first direction once.
+ *
+ *      **The second half of the old sentence stands, word for word.** A plan
+ *      row already standing behind an announced night survives
+ *      unconditionally, whatever the file says, because removing it would
+ *      orphan a night with tickets on sale (`ICS-03b`, D-58-02). And a partial
+ *      export or the wrong file must still not wipe the archive — that is now
+ *      the feed guard's job (`ICS-10`) rather than an absence stamp's, because
+ *      under a mirror an entry the file no longer carries is not *absent*: it
+ *      is not there.
  *   3. **It never touches the announced-night table** — `event_parties`, named
  *      here once, in the sentence forbidding it, and nowhere else. Announcing a
  *      night is a separate, deliberate act (D-44-06), and that single bridge is
  *      what makes renumbering structurally impossible rather than merely
  *      forbidden.
- *   4. **It never generates a progressivo.** No counter, no arithmetic on a
- *      stored number, no query for the highest one. A known `UID` arriving with
- *      a different number is reported as a divergence and written to no row —
- *      and the update payload built below carries no `number` field at all. The
- *      trigger `refuse_production_plan_renumber` from plan 44-04 is the second
- *      layer, the one that survives a caller who forgot this one.
+ *   4. **It never generates a progressivo — and the SECOND LAYER moved into
+ *      this file, which is a cost and not an improvement.**
+ *
+ *      The first half is unchanged and stays absolute: no counter, no
+ *      arithmetic on a stored number, no query for the highest one. A number is
+ *      read from the file or it does not exist.
+ *
+ *      The second half is where D-58-01 changed the world. The trigger
+ *      `refuse_production_plan_renumber` is `BEFORE UPDATE OF number`, and **a
+ *      mirror never performs an `UPDATE` of that column**: it deletes the row
+ *      and inserts a new one. The third one-way switch of this project would
+ *      therefore have stopped existing for this path without a single line of
+ *      SQL saying so. In its place, and BEFORE anything is deleted, this script
+ *      holds the progressivi that arrive against the ones it just read: a
+ *      `source_uid` already known that comes back with a different number makes
+ *      the whole run REFUSE, exit `2`, and write nothing (`ICS-01b`).
+ *
+ *      ⚠ **The cost is declared rather than hidden.** The protection now lives
+ *      in application code — precisely where that trigger's own comment says a
+ *      guard *does not survive the caller that forgot it*. It is the only place
+ *      left for it to live, and D-58-01 is the dated, written authorisation
+ *      `meta-gates.md` requires for weakening a monotone guard. The trigger
+ *      **stays installed** and still defends every other writer.
+ *
+ *      A renumbering somebody actually wants goes through an explicit
+ *      re-authorisation argument, and the re-authorisation is recorded in the
+ *      report: a progressivo is already on a poster.
  *
  * ── THE ALIAS MAP IS READ FROM THE DATABASE, NEVER FROM SOURCE ──────────────
  *
@@ -170,15 +206,58 @@
  * That is also why this script's name is not written into that file at all: a
  * name mentioned in a list is one edit away from being a name in the list.
  *
+ * ── ⚠ THE ORDER OF THE REFUSALS IS A CONTRACT, NOT A STYLE ─────────────────
+ *
+ * `scripts/verify-mirror-guards.mjs` (plan 58-01) was written **before** this
+ * code and fixes the order the checks run in. It is not a preference:
+ *
+ *      1. the arguments            — a flag that does not exist, or two that
+ *                                    contradict each other
+ *      2. the calendar key         — absent → `missing_calendar_key`;
+ *                                    outside the closed vocabulary →
+ *                                    `unknown_calendar_key`
+ *      3. the registered source    — no address registered for that key →
+ *                                    `missing_feed_source`
+ *      4. the database credentials
+ *
+ * With the credentials first — which is where they used to be — all three of
+ * the cases above answer `missing_credential`, and the gate stops measuring
+ * what it says it measures.
+ *
+ * ⚠ **And the second half of the contract, without which case 3 stops being
+ * hermetic: the environment FILE on disk is read INSIDE step 4, never at the
+ * top.** Read at the top, case 3 would say different things on different
+ * machines — green where an address happens to be configured locally, red
+ * everywhere else. A check whose verdict depends on what is on the launcher's
+ * disk is not a check, it is a survey. The registered source is therefore
+ * looked up in the PROCESS ENVIRONMENT only, which is also where D-58-05 says
+ * it must live: on the deployment platform, never in a file in this tree.
+ *
  * ── ARGUMENTS ───────────────────────────────────────────────────────────────
  *
  *   `--dry-run`         print the plan and write nothing. **THE DEFAULT.**
  *   `--apply`           perform the writes. Must be passed explicitly.
+ *   `--calendar <key>`  WHICH CALENDAR this run mirrors. **Required, always,
+ *                       and there is no default** — it is the single condition
+ *                       of every `DELETE` below, and a default is exactly the
+ *                       step somebody eventually skips. Validated against the
+ *                       closed vocabulary the database also holds as a `CHECK`.
  *   `--file <path>`     one snapshot, by path. Overrides the search.
  *   `--docs-dir <dir>`  where to search for the newest `.ics`. Defaults to
  *                       `docs/` beside this repository. The directory name
  *                       carries no date; a snapshot's file name does, which is
  *                       why the search prints neither.
+ *   `--reauthorise-renumbering`
+ *                       allow a known entry to come back with a different
+ *                       progressivo. Without it, that is a refusal. Its use is
+ *                       recorded in the report, because a progressivo is
+ *                       already on a poster.
+ *   `--adopt-unkeyed-rows`
+ *                       ONE-OFF. The rows written before the calendar key
+ *                       existed carry none, so no mirror can see them. This
+ *                       gives them the declared key before the deletion runs,
+ *                       and reports how many it took. Without it a key-less row
+ *                       is not touched at all, which is the safe direction.
  *   `--help`
  *
  * ── EXIT CODES ──────────────────────────────────────────────────────────────
@@ -204,10 +283,11 @@
  *   more.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { registerHooks } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -291,14 +371,32 @@ function refuse(category, message) {
  * Exit 1, and the message says what had already been written, because an import
  * that quietly did half its job and one a person can see did half its job are
  * different things — the migration says so at `:558-562`.
+ *
+ * ⚠ **The advice this used to print is gone, and it was wrong under a mirror.**
+ * It told the reader to go round again as a dry run first, on the argument that
+ * the reconciler was keyed on the file's own identifiers and so a second pass
+ * would plan only the part the first had not finished. *(The sentence is
+ * described rather than quoted: a grep whose only match is the line saying the
+ * line is gone is a grep that gets ignored.)*
+ *
+ * Under a mirror "partway" no longer means *some rows corrected*: it can mean
+ * **the calendar removed and not written back**, and a second pass plans
+ * everything because there is nothing left to compare against. There is no
+ * transaction across that gap and no point-in-time recovery in this project.
+ *
+ * So the only honest thing to print is the way back in, and there is exactly
+ * one: **`P-58-C`**, in this phase's procedures. Its first step is *do not
+ * re-run*.
  */
 function failPartway(category, message, written) {
   say("");
   say(`  FAILED [${category}] — ${redact(message)}`);
   say("");
   say(`  ⚠ ${written} write step(s) had already completed and STAY WRITTEN.`);
-  say("    Re-run with --dry-run first: the reconciler is keyed on the file's own");
-  say("    UIDs, so a second pass plans only what the first did not finish.");
+  say("    A mirror that stops partway can have removed a calendar and not put it");
+  say("    back. There is no transaction across that gap and no point-in-time");
+  say("    recovery here, so DO NOT re-run: follow P-58-C, the recovery procedure");
+  say("    in this phase's procedures. Its first step is not re-running.");
   if (auditReady) auditOwnOutput();
   say("");
   process.exit(1);
@@ -309,7 +407,21 @@ function failPartway(category, message, written) {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 function parseArguments(argv) {
-  const options = { apply: false, dryRunAsked: false, file: null, docsDir: null, help: false };
+  const options = {
+    apply: false,
+    dryRunAsked: false,
+    /**
+     * WHICH CALENDAR. `null` until somebody says so — see the refusal order in
+     * this file's header. There is deliberately no fallback of any kind here:
+     * the value ends up as the single condition of four `DELETE` statements.
+     */
+    calendar: null,
+    file: null,
+    docsDir: null,
+    reauthoriseRenumbering: false,
+    adoptUnkeyedRows: false,
+    help: false,
+  };
   const unknown = [];
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -321,7 +433,12 @@ function parseArguments(argv) {
     // must not mean two different things.
     else if (argument === "--dry-run") options.dryRunAsked = true;
     else if (argument === "--help" || argument === "-h") options.help = true;
-    else if (argument === "--file") {
+    else if (argument === "--reauthorise-renumbering") options.reauthoriseRenumbering = true;
+    else if (argument === "--adopt-unkeyed-rows") options.adoptUnkeyedRows = true;
+    else if (argument === "--calendar") {
+      i += 1;
+      options.calendar = argv[i] ?? null;
+    } else if (argument === "--file") {
       i += 1;
       options.file = argv[i] ?? null;
     } else if (argument === "--docs-dir") {
@@ -358,10 +475,15 @@ say("calendar import — into the six tables, in counts");
 say("");
 
 if (options.help) {
-  say("  --dry-run         print the plan and write nothing. THE DEFAULT.");
-  say("  --apply           perform the writes. Must be passed explicitly.");
-  say("  --file <path>     one snapshot, by path.");
-  say("  --docs-dir <dir>  where to search for the newest snapshot.");
+  say("  --dry-run          print the plan and write nothing. THE DEFAULT.");
+  say("  --apply            perform the writes. Must be passed explicitly.");
+  say("  --calendar <key>   WHICH calendar this run mirrors. REQUIRED, no default.");
+  say("  --file <path>      one snapshot, by path.");
+  say("  --docs-dir <dir>   where to search for the newest snapshot.");
+  say("  --reauthorise-renumbering");
+  say("                     allow a known entry back with a different progressivo.");
+  say("  --adopt-unkeyed-rows");
+  say("                     ONE-OFF: give the declared key to the rows that predate it.");
   say("");
   say("  0 = completed · 1 = FAILED partway · 2 = REFUSED, nothing was written.");
   say("");
@@ -396,95 +518,6 @@ if (options.apply) {
   say("  MODE: dry run (the default). NOTHING WILL BE WRITTEN.");
 }
 say("");
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Gate 1 — credentials, BEFORE the file is opened
- *
- * First on purpose. A refusal that has already read the material is a refusal
- * that did work it did not need to do, and the discipline this script is asked
- * for is *never a partial run*: if the run cannot finish, it does not start.
- * ──────────────────────────────────────────────────────────────────────────── */
-
-function loadEnvironment() {
-  const envFile = join(ROOT, ".env.local");
-  if (existsSync(envFile)) {
-    try {
-      process.loadEnvFile(envFile);
-    } catch (error) {
-      refuse("env_unreadable", `.env.local exists but could not be parsed: ${error.message}`);
-    }
-  }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  const missing = [];
-  if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-  if (!serviceKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (missing.length > 0) {
-    refuse(
-      "missing_credential",
-      `missing environment variable(s): ${missing.join(", ")}. Set them in ` +
-        ".env.local (gitignored) or in the environment. This script talks to one " +
-        "database and will not invent a second way to reach it."
-    );
-  }
-
-  registerSecret(serviceKey);
-  try {
-    registerSecret(new URL(url).hostname.split(".")[0]);
-  } catch {
-    refuse("bad_credential", "NEXT_PUBLIC_SUPABASE_URL is not a URL.");
-  }
-  registerSecret(url);
-
-  return { url, serviceKey };
-}
-
-const credentials = loadEnvironment();
-say("  ✓ credentials present (never printed, and redacted from every line above and below)");
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Gate 2 — the material
- * ──────────────────────────────────────────────────────────────────────────── */
-
-/**
- * The newest `.ics` snapshot, or `null`.
- *
- * The **path is returned and never printed**: a snapshot is named after the day
- * it was taken, so its file name is a date, and a date is the first thing this
- * script may not say out loud.
- */
-function findMaterial(docsDir) {
-  if (!existsSync(docsDir) || !statSync(docsDir).isDirectory()) return null;
-
-  const snapshots = readdirSync(docsDir)
-    .filter((name) => name.toLowerCase().endsWith(".ics"))
-    .sort();
-
-  if (snapshots.length === 0) return null;
-  return join(docsDir, snapshots[snapshots.length - 1]);
-}
-
-const docsDir = options.docsDir ?? join(ROOT, "docs");
-let materialPath = options.file;
-
-if (materialPath === null) {
-  materialPath = findMaterial(docsDir);
-  if (materialPath === null) {
-    refuse(
-      "no_material",
-      "the snapshot directory holds no .ics file. That directory is gitignored, is " +
-        "never deployed and is never cloned, so the calendar lives only on the " +
-        "owner's machine — which makes this the expected state everywhere else. " +
-        "Pass --file or --docs-dir to point at it."
-    );
-  }
-} else if (!existsSync(materialPath)) {
-  refuse("no_material", "the path given to --file does not exist.");
-}
-
 /* ────────────────────────────────────────────────────────────────────────────
  * The module — read, never re-implemented
  *
@@ -493,6 +526,13 @@ if (materialPath === null) {
  * else. It changes how the modules are FOUND, never what they DO — which is the
  * property that lets this script drive the same code the product imports, rather
  * than a second reader that agrees with it today.
+ *
+ * ⚠ **This block sits BEFORE the credentials now, and the move is the refusal
+ * order of this file's header.** The calendar key has to be checked against the
+ * closed vocabulary, that vocabulary is exported by the module, and step 2 comes
+ * before step 4. Nothing is lost by moving it: every module behind this barrel
+ * is pure — no client, no filesystem, no clock — so importing it reads nothing
+ * and reaches nothing.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 registerHooks({
@@ -538,6 +578,212 @@ try {
     `the shared calendar reader could not be imported: ${error.message}. This ` +
       "script drives that module rather than re-implementing it."
   );
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Gate 1 — WHICH CALENDAR, validated against the closed vocabulary
+ *
+ * ⚠ **This is the most consequential argument this script takes**, because the
+ * value ends up as the single condition of four `DELETE` statements. So it is
+ * checked against the vocabulary the module exports — the same three words the
+ * database holds as a `CHECK` — **before it can reach a query**, and a value
+ * outside it is a refusal rather than a filter applied later.
+ *
+ * **No default, ever.** A default is exactly the step somebody eventually skips,
+ * and on this argument skipping it means mirroring the wrong calendar: deleting
+ * one and leaving the other written twice.
+ *
+ * The refusal names the argument and the three admissible keys, and it may:
+ * they come from the format sigle, which are printed on materials, and D-58-06
+ * closes the vocabulary with the rule that no key may ever name a space.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+if (options.calendar === null) {
+  refuse(
+    "missing_calendar_key",
+    "no --calendar was given. This run would have to know which calendar it is " +
+      "mirroring before it could remove anything, and there is deliberately no " +
+      `default. Pass --calendar with one of: ${ics.CALENDAR_KEYS.join(", ")}.`
+  );
+}
+
+if (!ics.CALENDAR_KEYS.includes(options.calendar)) {
+  // The value the caller typed is NOT echoed. It is a free-form string from
+  // outside this process, it is about to be reported as bad, and echoing it
+  // would put somebody else's text into a transcript this file promises to keep
+  // clean. The three good answers are enough to act on.
+  refuse(
+    "unknown_calendar_key",
+    "the value given to --calendar is not one of the three keys this project " +
+      `declares. The vocabulary is closed and is: ${ics.CALENDAR_KEYS.join(", ")}. ` +
+      "Adding a calendar is a declared migration, never a free value — because " +
+      "this argument becomes the condition of a removal."
+  );
+}
+
+/** The declared scope of this run. From here down it is never re-derived. */
+const calendarKey = options.calendar;
+
+say(`  CALENDAR: ${calendarKey} — the single condition of every removal below.`);
+say("");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Gate 2 — the registered source for that calendar
+ *
+ * ⚠ **Read from the PROCESS ENVIRONMENT ONLY, never from a file on disk**, and
+ * that is the second half of the refusal-order contract in this file's header.
+ * A source resolved from `.env.local` would make this gate answer differently on
+ * different machines, which turns a check into a survey.
+ *
+ * It is also where D-58-05 puts it: a published calendar link is readable by
+ * anybody holding it and carries unannounced dates, spaces under negotiation and
+ * line-ups, so it lives in a deployment-platform variable — never in this tree,
+ * never in `.planning/`, never in a report and never in a log.
+ *
+ * **What this gate does today, and what it deliberately does not.** It asserts
+ * that a source is REGISTERED for the declared key, and registers the value as a
+ * secret so no line can print it. **Fetching from it is plan 58-10's** (`ICS-09`
+ * / `ICS-10`, with the feed guard). Until then the bytes still come from a file
+ * on disk, and the report says so rather than letting a reader assume otherwise.
+ *
+ * ⚠ **`--file` does not bypass this.** The file argument says where the bytes
+ * come from; the registration says that this deployment mirrors this calendar at
+ * all. A key nobody registered is a key naming a calendar this deployment does
+ * not own, and running a removal for it is the failure the whole gate exists
+ * against.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The environment variable that registers the address of one calendar.
+ *
+ * The NAME is derived from the key, which is public; the VALUE never is. There
+ * is no map literal here on purpose: a map would be a second spelling of the
+ * closed vocabulary, and two spellings of one fact are how the two start to
+ * differ.
+ */
+function feedSourceVariable(key) {
+  return `PRODUCTION_CALENDAR_FEED_${key.toUpperCase()}`;
+}
+
+const feedSourceVariableName = feedSourceVariable(calendarKey);
+const feedSource = process.env[feedSourceVariableName] ?? null;
+
+if (feedSource === null || feedSource.trim() === "") {
+  refuse(
+    "missing_feed_source",
+    `no source is registered for this calendar. Set ${feedSourceVariableName} in the ` +
+      "environment of whatever runs this — never in a file in this tree, and never " +
+      "in a tracked document: the address is readable by anybody holding it and " +
+      "the calendar behind it carries unannounced dates, spaces under negotiation " +
+      "and line-ups."
+  );
+}
+
+// Registered before anything else can print: the address is a secret in the
+// exact sense this file's redaction list means, and an error body written by
+// somebody else can echo back what it was sent.
+registerSecret(feedSource);
+say("  ✓ a source is registered for this calendar (never printed, redacted everywhere)");
+say("    ⚠ reading FROM it is plan 58-10's. This run still takes its bytes from disk.");
+say("");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Gate 3 — credentials, BEFORE the file is opened
+ *
+ * ⚠ **Third now, and it used to be first.** The move is the refusal order this
+ * file's header states and `scripts/verify-mirror-guards.mjs` fixes: with the
+ * credentials first, all three cases above answer `missing_credential` and the
+ * gate measures the wrong thing.
+ *
+ * It still comes before the material. A refusal that has already read the
+ * material is a refusal that did work it did not need to do, and the discipline
+ * this script is asked for is *never a partial run*: if the run cannot finish,
+ * it does not start.
+ *
+ * ⚠ **The environment FILE is read INSIDE this function**, never at the top of
+ * the script. That is the second half of the contract: read at the top, gate 2's
+ * verdict would depend on what happens to be on the launcher's disk.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+function loadEnvironment() {
+  const envFile = join(ROOT, ".env.local");
+  if (existsSync(envFile)) {
+    try {
+      process.loadEnvFile(envFile);
+    } catch (error) {
+      refuse("env_unreadable", `.env.local exists but could not be parsed: ${error.message}`);
+    }
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const missing = [];
+  if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+  if (!serviceKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (missing.length > 0) {
+    refuse(
+      "missing_credential",
+      `missing environment variable(s): ${missing.join(", ")}. Set them in ` +
+        ".env.local (gitignored) or in the environment. This script talks to one " +
+        "database and will not invent a second way to reach it."
+    );
+  }
+
+  registerSecret(serviceKey);
+  try {
+    registerSecret(new URL(url).hostname.split(".")[0]);
+  } catch {
+    refuse("bad_credential", "NEXT_PUBLIC_SUPABASE_URL is not a URL.");
+  }
+  registerSecret(url);
+
+  return { url, serviceKey };
+}
+
+const credentials = loadEnvironment();
+say("  ✓ credentials present (never printed, and redacted from every line above and below)");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Gate 4 — the material
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The newest `.ics` snapshot, or `null`.
+ *
+ * The **path is returned and never printed**: a snapshot is named after the day
+ * it was taken, so its file name is a date, and a date is the first thing this
+ * script may not say out loud.
+ */
+function findMaterial(docsDir) {
+  if (!existsSync(docsDir) || !statSync(docsDir).isDirectory()) return null;
+
+  const snapshots = readdirSync(docsDir)
+    .filter((name) => name.toLowerCase().endsWith(".ics"))
+    .sort();
+
+  if (snapshots.length === 0) return null;
+  return join(docsDir, snapshots[snapshots.length - 1]);
+}
+
+const docsDir = options.docsDir ?? join(ROOT, "docs");
+let materialPath = options.file;
+
+if (materialPath === null) {
+  materialPath = findMaterial(docsDir);
+  if (materialPath === null) {
+    refuse(
+      "no_material",
+      "the snapshot directory holds no .ics file. That directory is gitignored, is " +
+        "never deployed and is never cloned, so the calendar lives only on the " +
+        "owner's machine — which makes this the expected state everywhere else. " +
+        "Pass --file or --docs-dir to point at it."
+    );
+  }
+} else if (!existsSync(materialPath)) {
+  refuse("no_material", "the path given to --file does not exist.");
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1108,6 +1354,11 @@ const now = new Date().toISOString();
 
 const plan = ics.reconcile(
   {
+    // The declared scope, handed to the module that plans the removal. It is the
+    // SAME value that stamps every inserted row, so the key a row is written
+    // with and the key the next mirror deletes it by are one value rather than
+    // two that agree today.
+    calendarKey,
     nights: classified.nights,
     pieces: classified.pieces,
     commitments: classified.commitments,
@@ -1218,6 +1469,118 @@ if (printedIdentifiers > 0) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * The snapshot — written OUTSIDE this process, BEFORE anything is removed
+ *
+ * ⚠ **This is not bookkeeping, and it is the step most likely to look like it.**
+ * Between the removal and the rewrite there is **no transaction** — the client
+ * this script uses opens none — and this project has **no point-in-time
+ * recovery**. `production_checklist_item` hangs off `production_plan` with
+ * `ON DELETE CASCADE`, so the removal takes the ticks with it. If the process
+ * dies in that gap, the file below is the only copy of the human state that
+ * exists anywhere. `P-58-C` step 3 goes looking for exactly this file, and the
+ * worst finding that procedure can make is that it is not there.
+ *
+ * WHAT IT HOLDS: the two restore lists of `ICS-03` — the ticks with their
+ * original instant and actor, keyed by the plan's own `source_uid`, and the
+ * links keyed the same way — plus the **entire content** of the rows the run is
+ * about to remove. Everything, not the fields that look endangered: a restore
+ * that only covers the cases somebody remembered is the hole `ICS-03` exists to
+ * forbid.
+ *
+ * ⚠ WHERE IT MAY BE WRITTEN, and why it is checked rather than trusted. One of
+ * the fields is `ticked_by_name`, **a person's name**, and the production
+ * calendar's migration forbids it reaching anything under `.planning/` or the
+ * repository at all — this repository is public and a publication is
+ * irreversible. So the path is put to `git check-ignore` and the run **refuses**
+ * unless git itself answers that it is ignored. The chosen directory sits inside
+ * the material directory, which is not merely listed in `.gitignore` but held
+ * there mechanically by check **F** of `npm run verify:persona` — that check
+ * requires both that the directory is ignored and that nothing inside it is
+ * already tracked, since a `.gitignore` does not remove from the index what is
+ * already in it.
+ *
+ * ⚠ There is deliberately **no argument** for this path. An argument would be a
+ * way to aim a file carrying a person's name at a tracked directory, and the
+ * fixed location is also what lets `P-58-C` say where to look.
+ *
+ * ⚠ THE REPORT SAYS WHERE AND HOW MANY, NEVER WHAT. No name, no title, no
+ * identifier. The file name is not printed either: it carries the run's own
+ * clock, and the audit at the foot of this run reads every line for a year.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const SNAPSHOT_DIR = join(ROOT, "docs", ".mirror-snapshots");
+
+/**
+ * Refuses unless git itself says the path is ignored.
+ *
+ * `git check-ignore` exits `0` when the path is ignored, `1` when it is not and
+ * `128` on an error — so anything other than `0` is a refusal. Asking git is the
+ * point: reading `.gitignore` and reasoning about it here would be a second
+ * implementation of a rule git already owns, and the two would disagree on the
+ * day somebody adds a negation.
+ */
+function refuseUnlessIgnored(path) {
+  const answer = spawnSync("git", ["check-ignore", "-q", "--", path], { cwd: ROOT });
+  if (answer.error) {
+    refuse(
+      "snapshot_path_unverifiable",
+      `git could not be asked whether the snapshot path is ignored: ${answer.error.message}. ` +
+        "The snapshot carries a person's name, so an unverified path is not written to."
+    );
+  }
+  if (answer.status !== 0) {
+    refuse(
+      "snapshot_path_not_ignored",
+      "the directory this run would write its snapshot into is NOT ignored by git. " +
+        "That snapshot carries a person's name and the whole content of the rows " +
+        "about to be removed, and this repository is public: a publication does not " +
+        "come back. Nothing was written, including the snapshot."
+    );
+  }
+}
+
+/**
+ * Writes the snapshot and returns how many rows it holds.
+ *
+ * @returns the counts, for the report — never the content
+ */
+function writeSnapshotBeforeRemoving(payload) {
+  const fileName = `mirror-${calendarKey}-${Date.now()}.json`;
+  const target = join(SNAPSHOT_DIR, fileName);
+
+  // Checked BEFORE the directory is created, and on the file itself: a check on
+  // the parent would pass while a negation rule further down un-ignored the
+  // child.
+  refuseUnlessIgnored(target);
+
+  try {
+    mkdirSync(SNAPSHOT_DIR, { recursive: true });
+    writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  } catch (error) {
+    refuse(
+      "snapshot_unwritable",
+      `the snapshot could not be written: ${error.message}. Nothing has been ` +
+        "removed — a mirror that cannot take its snapshot does not start."
+    );
+  }
+
+  return {
+    // Relative, so the line carries no home directory and no user name. If this
+    // ever trips the output audit on an ordinary word, the repair prescribed by
+    // this file is to SAY LESS — print only the counts — and never to widen the
+    // audit's rule.
+    where: relative(ROOT, SNAPSHOT_DIR),
+    rows:
+      payload.ticks.length +
+      payload.links.length +
+      payload.rows.plans.length +
+      payload.rows.pieces.length +
+      payload.rows.commitments.length +
+      payload.rows.checklistItems.length,
+  };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Stage 6 — the dry run stops here
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -1246,6 +1609,30 @@ if (!options.apply) {
  * Order matters and it is the order of the foreign keys: the run row, then the
  * plans (which pieces and checklist items point at), then everything else.
  * ──────────────────────────────────────────────────────────────────────────── */
+
+// FIRST, and before any statement of any kind. See the block that defines it:
+// there is no transaction across the removal and no point-in-time recovery, so
+// this file is the only copy of the human state that will exist if the process
+// dies partway.
+const snapshot = writeSnapshotBeforeRemoving({
+  calendarKey,
+  ticks: plan.ticksToRestore,
+  links: plan.linksToRestore,
+  rows: {
+    plans: planRows,
+    pieces: pieceRows,
+    commitments: commitmentRows,
+    checklistItems: checklistRows,
+  },
+});
+
+say("");
+say(
+  `  ── snapshot ── ${snapshot.rows} row(s) written to ${snapshot.where}/ before anything ` +
+    "is touched."
+);
+say("     git confirms that directory is ignored. Its contents are NEVER printed:");
+say("     one field is a person's name. P-58-C step 3 is what reads it.");
 
 let completedSteps = 0;
 
