@@ -1465,8 +1465,66 @@ function ruleFor(
   return null;
 }
 
+/**
+ * The one spelling of a series this module keys on — and the one place that
+ * **refuses** rather than crashes when what arrives is not a series at all.
+ *
+ * ── WHY A RUNTIME REFUSAL AND NOT A TIGHTER TYPE ────────────────────────────
+ *
+ * ⚠ **The type already said `string`, and a `null` arrived anyway.** Measured
+ * 2026-08-20 against the live feed: a bare `TypeError: Cannot read properties of
+ * null (reading 'trim')`, thrown from {@link indexPipelines}, exit `1`, after the
+ * report had already printed everything a reader would skim.
+ *
+ * Tightening the signature would add nothing, because the caller that broke it
+ * is not typechecked: `scripts/import-production-calendar.mjs` is `.mjs`, it
+ * builds its `SeriesPipeline[]` by hand and hands it across the module boundary
+ * where no compiler is looking. A stricter type is a promise the breaker never
+ * reads. A refusal is the only thing it can actually meet — so this function is
+ * made **impossible to break silently**, not impossible to call wrongly.
+ *
+ * The bare `TypeError` was itself a silent failure in the precise sense of
+ * `meta-gates.md`: no category, nothing distinguishing it from any other null
+ * dereference in the run, and no observable effect naming what a person should
+ * repair — in a project with no error tracking at all.
+ *
+ * ── TWO FAILURES, TWO SENTENCES ─────────────────────────────────────────────
+ *
+ * Same device and same reason as the load-time assertions in `./classify`. A
+ * non-string and a blank string are different mistakes with different repairs,
+ * and one message covering both would be the collapsed-catch pattern this
+ * codebase refuses everywhere else.
+ *
+ * ⚠ Neither branch may become a default. `?? ""` here would invent a series
+ * spelled *empty string*, seat it as a live key in the pipeline `Map`, and let
+ * every series-less entry inherit that bucket's rules — a piece measured against
+ * another series' anchors, stored as a `conforms_to_rule` verdict nobody
+ * re-derives. That is strictly worse than the crash it would have hidden.
+ */
 function normaliseSeries(seriesCode: string): string {
-  return seriesCode.trim().toUpperCase();
+  if (typeof seriesCode !== "string") {
+    throw new TypeError(
+      "production/ics/reconcile: normaliseSeries was handed something that is not " +
+        "a string, so a series pipeline was built for an entry that names no " +
+        "series. Since ICS-04/ICS-05 a piece may legitimately carry no series — " +
+        "such a piece has no pipeline by definition and must be filtered out " +
+        "where the sigla list is built, never normalised into one here."
+    );
+  }
+
+  const normalised = seriesCode.trim().toUpperCase();
+
+  if (normalised.length === 0) {
+    throw new RangeError(
+      "production/ics/reconcile: normaliseSeries was handed a blank series code. " +
+        "An empty sigla would become a real key in the pipeline index, and every " +
+        "entry reaching it would be measured against whatever rules happened to " +
+        "land in that bucket. A series with no name is a finding for a person, " +
+        "not a bucket."
+    );
+  }
+
+  return normalised;
 }
 
 /**

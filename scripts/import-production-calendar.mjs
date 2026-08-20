@@ -1760,8 +1760,38 @@ say(
  * Stage 5 — the plan of writes
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The sigle this file names — and **only** the ones it names.
+ *
+ * ⚠ THE `null` IS FILTERED HERE, AND IT IS NOT A REPAIR: IT IS A CASE THAT DOES
+ * NOT BELONG IN THIS LIST. Since `ICS-04`/`ICS-05` a piece may legitimately
+ * carry `seriesCode === null` — the bare title that names no series, which
+ * `reconcile` joins to a night by date in its second pass. A piece without a
+ * series **has no series pipeline, by definition**: there is no sigla to build a
+ * `SeriesPipeline` for, and `reconcile` already searches every pipeline for such
+ * a piece rather than one (`reconcile.ts`, *WHICH SERIES MAY ANSWER FOR THIS
+ * PIECE*). Letting the null through built a pipeline whose `seriesCode` was
+ * `null` and `indexPipelines` died on it with a bare `TypeError` — measured
+ * 2026-08-20 against the live feed, 16 of 17 pieces on one calendar and 8 of 8
+ * on another. No synthetic gate could have caught it: it needs a real feed.
+ *
+ * ⚠ **`??` and `|| ""` are forbidden here**, and this is the reason spelled out
+ * so nobody re-adds one as a one-line tidy-up: an empty-string sigla would
+ * become a live key in the pipeline `Map`, and every series-less piece in the
+ * file would then inherit that one bucket's rules. A piece measured against
+ * another series' anchors is a wrong `conforms_to_rule` stored on a row, which
+ * is worse than the crash it replaced.
+ *
+ * The filter also keeps the null out of `auditOwnOutput`'s `publicTokens`, where
+ * it is a third harm rather than the same one twice: a `null` there is either a
+ * throw inside the leak check or the literal word *null* allow-listed out of it.
+ */
 siglaInFile = [
-  ...new Set([...classified.nights, ...classified.pieces].map((entry) => entry.seriesCode)),
+  ...new Set(
+    [...classified.nights, ...classified.pieces]
+      .map((entry) => entry.seriesCode)
+      .filter((code) => code !== null)
+  ),
 ].sort();
 
 const seriesPipelines = siglaInFile.map((sigla) => ({
