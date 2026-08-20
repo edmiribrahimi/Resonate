@@ -136,9 +136,9 @@ e una lettura dei titoli che capisce cosa sta specchiando.
 Plans:
 - [x] 58-01-PLAN.md — i due gate sintetici (grammatica dei titoli · guardie dello specchio), rossi e non registrati *(onda 0)*
 - [x] 58-02-PLAN.md — le tre procedure `P-58-A`/`P-58-B`/`P-58-C` e le misure d'apertura, prese prima che lo specchio le cancelli *(onda 0)*
-- [ ] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
-- [ ] 58-04-PLAN.md — `ICS-06`: le proposte si ricalcolano, e la superficie lo dice *(onda 1)*
-- [ ] 58-05-PLAN.md — `ICS-07`: nessun identificativo grezzo nel referto *(onda 1)*
+- [x] 58-03-PLAN.md — `ICS-04` + `ICS-05`: un nome dove va la sigla, e il numero che si trova *(onda 1)*
+- [x] 58-04-PLAN.md — `ICS-06`: le proposte si ricalcolano, e la superficie lo dice *(onda 1)*
+- [x] 58-05-PLAN.md — `ICS-07`: nessun identificativo grezzo nel referto *(onda 1)*
 - [ ] 58-06-PLAN.md — `ICS-08` + `ICS-08b`: la timetable e' un pezzo, il volantinaggio e' il settimo tipo *(onda 2)*
 - [ ] 58-07-PLAN.md — `ICS-02`: la chiave di calendario, chiusa da un `CHECK` e indicizzata *(onda 3)*
 - [ ] 58-08-PLAN.md — `ICS-01`/`ICS-03`/`ICS-03b`: lo specchio nel modulo puro, in sottrazione *(onda 4)*
