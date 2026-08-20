@@ -139,9 +139,16 @@ registerHooks({
  * lasciava scoperti undici nomi.
  *
  * ⚠ **Nessun nome che nessuno chiama.** `MIRROR_DELETION_ORDER` e
- * `MIRRORED_TABLES`, nati con `ICS-01`, non sono qui: li consumera' lo scrittore
- * del piano 58-09, e finche' non lo fa aggiungerli sarebbe rifare l'errore che il
- * paragrafo sopra registra.
+ * `MIRRORED_TABLES`, nati con `ICS-01`, **continuano a non essere qui**, e la
+ * ragione e' cambiata: il piano 58-09 li consuma davvero, ma **dentro il piano
+ * che il riconciliatore restituisce** — mai per nome dal barrel. Un simbolo che
+ * viaggia dentro un oggetto non e' un simbolo che un rinominio spezza qui, e
+ * metterlo in questo elenco difenderebbe un nome che nessuno scrive.
+ *
+ * ⚠ **I tre della guardia del feed invece ci sono, dal piano 58-10**, perche' li'
+ * l'importatore li chiama per nome: `mirrorGuard`, `mirrorShrinkMargin` e
+ * `MIRROR_SHRINK_FLOOR`. E' il caso opposto al precedente, ed e' la ragione per
+ * cui l'elenco si rilegge dai consumatori invece di ricordarlo.
  *
  * Presi con:
  * `grep -oE "ics\.[a-zA-Z_]+" scripts/import-production-calendar.mjs scripts/verify-ics-import.mjs scripts/verify-ics-grammar.mjs | sort -u`
@@ -152,6 +159,7 @@ const attesi = [
   "CALENDAR_KEYS",
   "MAX_INPUT_BYTES",
   "MAX_INPUT_LINES",
+  "MIRROR_SHRINK_FLOOR",
   "PIECE_DATE_ORIGINS",
   "PIECE_KINDS",
   "PIECE_KIND_LABELS",
@@ -163,6 +171,8 @@ const attesi = [
   "countFoldedLines",
   "isEmptyPlan",
   "joinKey",
+  "mirrorGuard",
+  "mirrorShrinkMargin",
   "parseIcs",
   "proposePieceDate",
   "reconcile",
