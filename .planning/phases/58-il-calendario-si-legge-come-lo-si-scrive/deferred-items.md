@@ -102,7 +102,7 @@ Nessuna delle due si costruisce nel piano 58-11.
 
 ---
 
-## 4. Lo specchio non ha una sorgente registrata: la prima corsa non e' potuta partire
+## 4. Lo specchio non ha una sorgente registrata: la prima corsa non e' potuta partire — **CHIUSA il 2026-08-20**
 
 - **Trovata:** piano 58-11, task 2, 2026-08-20, lanciando la prova a vuoto
 - **Il fatto, alla lettera.** `node scripts/import-production-calendar.mjs
@@ -139,6 +139,26 @@ Nessuna delle due si costruisce nel piano 58-11.
 - **Conseguenza a valle, misurata.** Senza il primo specchio, il passaggio una
   tantum sulle righe senza chiave non avviene, quindi la stretta a `NOT NULL`
   del task 3 **non ha la sua precondizione** — vedi il numero nella voce 5.
+
+### ⇢ Chiusa il 2026-08-20: la sorgente e' registrata, e la corsa parte
+
+**Il proprietario ha pubblicato il calendario e registrato gli indirizzi**, fuori
+dall'albero del repo, in un file d'ambiente caricato dal profilo della shell.
+**Tre chiavi: `rsnt`, `rmdb`, `mtnlb`.** Ne' l'indirizzo ne' il suo host
+compaiono qui, nel repo, in un referto o in un log — e' il punto 1 di `D-58-05` e
+la difesa 4 di `D-58-07`.
+
+**Una conseguenza operativa va scritta perche' non venga riscoperta ogni volta.**
+Il gate 2 legge quella variabile **solo** da `process.env` e mai da `.env.local`,
+per costruzione — una sorgente risolta da un file su disco trasformerebbe un
+controllo in un sondaggio. Quindi chi lancia la corsa a mano deve **caricare
+l'ambiente esplicitamente prima**, e una shell che non l'ha caricato riceve il
+rifiuto `missing_feed_source` con uscita `2`, che e' il comportamento corretto e
+non un difetto da riparare.
+
+**Cosa la chiusura ha immediatamente prodotto:** il primo lancio contro il
+calendario vero ha trovato un difetto che nessun gate sintetico poteva prendere —
+vedi la **voce 7**. E' il valore della corsa presidiata, misurato al primo giro.
 
 ---
 
@@ -277,3 +297,157 @@ scrittura era legittima: una scrittura autorizzata invecchia una misura
 esattamente quanto una che non lo era. I numeri veri si rimettono davanti al
 proprietario quando la **voce 4** sara' chiusa, insieme alla conseguenza
 registrata nella **voce 5**.
+## 7. Il pezzo senza serie rompeva l'indice delle pipeline — **TROVATA E RIPARATA il 2026-08-20**
+
+- **Trovata:** piano 58-11, lanciando la prova a vuoto contro il calendario vero
+  subito dopo la chiusura della voce 4
+- **Il fatto, alla lettera.** `TypeError: Cannot read properties of null (reading
+  'trim')`, da `normaliseSeries` per il tramite di `indexPipelines`, uscita `1`,
+  **dopo** che il referto aveva gia' stampato tutto fino ai conteggi di cio' che
+  il calendario tiene. Un crash nudo, in coda a un referto che sembrava sano.
+- **La causa, letta dal codice e poi confermata per misura.** La lista delle
+  sigle si costruiva dall'insieme dei codici di serie di notti **e** pezzi.
+  Dall'onda 2 (`ICS-04`/`ICS-05`) un pezzo puo' legittimamente non nominare
+  alcuna serie — il titolo nudo, che il riconciliatore aggancia per data nel
+  secondo passaggio. Quel nullo entrava nella lista, diventava una
+  `SeriesPipeline` senza codice, e moriva sull'indice.
+- **La diagnosi, non assunta.** Un contatore temporaneo ha separato le due
+  sorgenti prima di riparare: **le notti danno zero nulli**, i pezzi li danno
+  quasi tutti — 16 su 17 su una chiave, 8 su 8 su un'altra. Il contatore e' stato
+  rimosso.
+- **Perche' nessun gate poteva prenderlo, e non e' una scusa.** E' un difetto
+  **d'integrazione fra l'onda 2 e l'onda 4**, non un errore di uno dei due piani
+  presi da soli: il file sintetico su cui girano i controlli non ha mai portato
+  un pezzo senza serie. Serviva un feed vivo — cioe' **esattamente la corsa
+  presidiata che l'ordine di questa fase esiste per imporre**, prima che il cron
+  la facesse per primo senza nessuno che guardasse.
+- **Riparata in due punti che fanno cose diverse**, nello stesso commit:
+  **(a)** dove la lista si costruisce, il nullo e' **escluso** — un pezzo senza
+  serie non ha una pipeline di serie per definizione, e il riconciliatore gia' lo
+  cerca su tutte le pipeline invece che su una; **(b)** dove il crash e'
+  avvenuto, `normaliseSeries` **rifiuta con categoria** invece di crollare nudo.
+- **Rifiuto in esecuzione e non stretta del tipo — dichiarato, con la ragione.**
+  Il tipo diceva **gia'** `string`, e il nullo e' arrivato lo stesso: il
+  chiamante che l'ha rotto e' lo script `.mjs`, che nessun compilatore guarda.
+  Un tipo piu' stretto sarebbe una promessa che chi rompe non legge. Il rifiuto
+  e' l'unica cosa che quel chiamante puo' incontrare davvero.
+- **Perche' un crash nudo era un fallimento silenzioso**, nel senso preciso di
+  `meta-gates.md`: nessuna categoria, niente che lo distinguesse da qualunque
+  altro dereferenziamento nullo, nessun effetto osservabile che dicesse a una
+  persona **cosa** riparare — in un progetto senza error tracking.
+- **Cosa NON e' stato fatto, ed e' la meta' che conta.** Nessun `?? ""` e nessun
+  `if (!x) return ""`. Una sigla vuota sarebbe diventata una **chiave viva** nella
+  mappa delle pipeline, e ogni pezzo senza serie avrebbe ereditato le regole di
+  quel secchio: un pezzo misurato contro le ancore di un'altra serie, con il
+  verdetto **scritto su una riga** e mai piu' ricalcolato. Peggio del crash che
+  avrebbe nascosto.
+- **Gli altri chiamanti verificati, uno per uno.** Ogni altro punto che tratta il
+  codice di serie come stringa legge una **notte**, il cui codice e' non-nullo per
+  tipo e misurato non-nullo in tutte le corse. I due punti che vedono un pezzo
+  guardavano gia' il nullo esplicitamente. **Nessun altro punto da riparare.**
+- **Un terzo danno, evitato dalla stessa riparazione.** La lista delle sigle
+  alimenta anche l'elenco dei termini pubblici dell'audit d'uscita. Un nullo li'
+  e' o un'eccezione dentro il controllo delle fughe, o la parola *null*
+  ammessa fra i termini innocui. Non e' lo stesso danno due volte.
+
+---
+
+## 8. Lo snapshot su disco e i feed vivi non sono lo stesso calendario
+
+- **Trovata:** piano 58-11, 2026-08-20, confrontando cio' che i tre feed portano
+  con cio' che il gate sintetico legge
+- **Il fatto, in due numeri.** I tre feed vivi portano oggi **63 voci** in tutto.
+  Lo snapshot su disco che `verify:ics` legge ne porta **92**, ed e' datato
+  **cinque giorni prima**. Sono due popolazioni diverse, misurate lo stesso
+  giorno.
+- **Perche' non e' automaticamente un allarme.** In quei cinque giorni il
+  catalogo si e' mosso per decisione: un format e' stato **cancellato** il
+  2026-08-20 con la sua serie, le sue date e i suoi pezzi di pipeline. Il
+  catalogo che la corsa legge oggi dichiara **4 format e 5 serie**. Una parte del
+  divario e' quindi la conseguenza corretta di una decisione, non una perdita.
+- **Perche' non e' automaticamente niente.** Nessuna misura oggi separa *«voci
+  uscite per decisione»* da *«voci che i feed pubblicati non coprono»*. Ed e' una
+  distinzione che pesa: lo specchio scrive in produzione **solo cio' che i feed
+  portano**, quindi una voce che lo snapshot ha e nessun feed porta e'
+  semplicemente una voce che il prodotto non avra'. Il referto stesso chiama
+  un'assenza *«a finding, not a tidy-up»*.
+- **Una conseguenza sul gate.** `verify:ics` continuera' a dichiarare verde su
+  uno snapshot che il calendario vero non e' piu'. Il gate lo dichiara di se'
+  — *concorda con il file fornito un giorno* — ma finora snapshot e sorgente
+  erano la stessa cosa, e da `ICS-09` non lo sono piu'. **Un gate che misura un
+  file che nessuno specchia e' un verde che non copre lo specchio.**
+- **Non riparata perche':** decidere quale delle due sia la fonte e' una
+  decisione del proprietario — e' lui che pubblica i feed ed e' lui che esporta
+  lo snapshot. Un piano non sceglie per lui quale calendario e' il calendario.
+- **Come si chiude:** il proprietario dichiara se i tre feed coprono l'intero
+  calendario di produzione. **Se si'**, lo snapshot va riesportato dai feed prima
+  di rileggere il gate, oppure il gate va ripuntato. **Se no**, mancano una o piu'
+  chiavi di calendario — e ognuna e' una migrazione dichiarata, mai un valore
+  libero.
+
+---
+
+## 9. Il confronto delle non classificate chiesto dal task 2 non ha un veicolo
+
+- **Trovata:** piano 58-11, 2026-08-20, provando a eseguire il confronto che il
+  task 2 pretende
+- **Il fatto.** Il task 2 chiede che *«il numero delle voci non classificate sia
+  calato rispetto alla misura d'apertura»*, e che il SUMMARY porti **entrambi i
+  numeri**. La misura d'apertura vale **31 non classificate su 92 voci**, ed e'
+  stata presa nell'onda 1 leggendo il file su disco. La misura di oggi vale **2
+  su 63 voci**, e viene dai tre feed vivi. **Le due popolazioni non coincidono**
+  (voce 8), quindi il confronto come scritto non e' eseguibile.
+- **Perche' non si aggira rileggendo lo snapshot.** L'unica sorgente ammessa
+  dall'importatore e' l'indirizzo remoto: `--file` e' stato chiuso da `ICS-09`, e
+  farlo tornare per ottenere un numero confrontabile sarebbe la reversione di una
+  decisione spedita in questa stessa fase. E' la stessa forma della voce 5.
+- **Cosa si puo' dire con onesta', e non e' poco.** Il motivo dominante della
+  misura d'apertura era `kind_without_series_and_number` — undici casi di prova
+  lo registrarono nell'onda 1. Oggi quel motivo produce **2 voci su 63**, ed e'
+  l'unico motivo rimasto. In quota: da **34%** a **3%**. Il criterio del task e'
+  soddisfatto nella sostanza; **non lo e' nella forma che chiedeva**, e la
+  differenza va scritta invece che arrotondata.
+- **Non riparata perche':** riscrivere un criterio d'accettazione dentro il piano
+  che lo incontra e' la stessa cosa che allargare un'esenzione per far passare un
+  rosso.
+- **Come si chiude:** il proprietario decide se il criterio del task 2 si riscrive
+  sulla popolazione dei feed — dichiarando che il numero d'apertura resta come
+  fatto storico e non come termine di paragone — oppure se la voce 8 va chiusa
+  prima, riportando snapshot e feed a essere lo stesso calendario.
+
+---
+
+## 10. `mtnlb` rifiuta a ogni corsa, ed e' il codice che ha ragione
+
+- **Trovata:** piano 58-11, 2026-08-20, lanciando la prova a vuoto sulla terza
+  chiave
+- **Il fatto, alla lettera.** `--dry-run --calendar mtnlb` rifiuta con uscita
+  `2`, categoria `feed_empty`, e chiude con *NOTHING WAS WRITTEN. The import did
+  not happen; this is not an empty plan.* Il feed risponde, e' ben formato, e non
+  porta **nessuna voce**.
+- **Perche' e' il comportamento giusto.** «Feed vuoto» e «export sbagliato» sono
+  **indistinguibili dal lato di chi legge**, e la guardia rifiuta invece di
+  specchiare il vuoto — che significherebbe cancellare tutto cio' che quella
+  chiave tiene. Nessun argomento autorizza un feed vuoto, ed e' corretto cosi'.
+- **Perche' e' comunque un problema, e non del codice.** MotionLab **non ha
+  alcuna data in calendario**: lo spazio non e' acquisito, e il format ha
+  un'attesa invece di una cadenza. Il feed sara' vuoto **finche' quella
+  situazione dura**, cioe' potenzialmente per mesi. Quindi il cron del piano
+  58-12, se gira sulle tre chiavi, uscira' `2` su una di esse **ogni notte**.
+- **Perche' conta in questo progetto in particolare.** Non esiste error tracking:
+  nessun errore di produzione raggiunge un essere umano da solo. Un rosso
+  ricorrente e atteso e' peggio di nessun rosso — **e' il rumore che insegna a
+  ignorare il canale**, e il giorno in cui `rsnt` rifiutera' per una ragione vera
+  quel rifiuto sara' indistinguibile dal rumore di sempre.
+- **Non riparata perche':** e' il cron a doverlo gestire, e il cron non e'
+  autorizzato ne' costruito qui. Aggiungere ora una scorciatoia — una chiave
+  esclusa a mano, o un feed vuoto tollerato — sarebbe una guardia allentata per
+  comodita', dentro il piano che non la governa.
+- **Come si chiude, ed e' del piano 58-12:** un format **senza date dichiarate**
+  non e' la stessa cosa di un feed che ha smesso di rispondere. La distinzione va
+  fatta **prima** della corsa e per dichiarazione — quali chiavi il cron specchia
+  oggi — non dentro la guardia, che deve continuare a rifiutare tutto cio' che
+  non sa spiegare.
+
+---
+
