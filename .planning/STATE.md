@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: Phase 45 context gathered
-last_updated: "2026-08-20T14:48:41.083Z"
+stopped_at: "58-11 chiuso parzialmente: specchio applicato e colonna stretta; P-58-A e P-58-B ferme sulla superficie"
+last_updated: "2026-08-20T21:03:42.577Z"
 last_activity: 2026-08-20
 progress:
   total_phases: 51
   completed_phases: 47
   total_plans: 348
-  completed_plans: 338
+  completed_plans: 349
   percent: 92
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — EXECUTING
-Plan: 1 of 12
+Plan: 12 of 12 (undici chiusi; il 58-11 e' chiuso PARZIALMENTE — vedi sotto)
 **Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
 `.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
@@ -240,7 +240,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Executing Phase 58
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -390,6 +390,11 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 37]: D-37-33 — l'aggregato di `retryOutlook` pende verso `may_help`: fra dire «smetti di provare» a chi poteva ancora essere raggiunto e invitare un tentativo inutile, venue-secrecy.md ha gia' dichiarato quale delle due costa di piu'
 - [Phase 37]: D-37-34 — i riportabili del cron sono un `Record` TOTALE sull'unione, non una lista di tre nomi: una lista risponde per oggi e non dice niente sul prossimo membro
 - [Phase 37]: D-37-35 — `updateVenue` tipizza anche i due rifiuti del gate, non solo i due del database: il bottone e' disegnato per ogni organizer mentre la scrittura pretende lo stato approvato, quindi quel rifiuto e' raggiungibile con una pressione ordinaria
+- [Phase 58]: L'autorizzazione del 2026-08-20 e' stata **SPESA alle 20:46Z** per il primo specchio, con i numeri veri rimessi davanti al proprietario invece di `M1`, invecchiata di una corsa
+- [Phase 58]: `mtnlb` non si specchia finche' MotionLab non ha date — `feed_empty` e' il rifiuto giusto, e il rumore che produrra' su un cron notturno e' del piano 58-12
+- [Phase 58]: I due `--apply` si lanciano **di fila**: lo specchio `rsnt` con il passaggio una tantum rivendica anche i pezzi di RamaDub, e solo lo specchio `rmdb` li rimette
+- [Phase 58]: `production_import_run` resta nullabile **per sempre** — il registro non si cancella mai, e riempirne le righe storiche lo renderebbe una fonte che afferma cio' che non e' avvenuto
+- [Phase 58]: Nessuna spunta scritta dal catalogo attribuendola a chi non l'ha premuta, e nessun `Result` bloccato riempito con un ritrovamento: un `Result` non-`pending` **afferma** che la procedura e' stata eseguita
 
 ## Accumulated Context
 
@@ -415,13 +420,15 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ()
 
-- **[Fase 58, 2026-08-20] Lo specchio non ha una sorgente registrata: la prima corsa non e' potuta partire, e la fase si ferma a 10 piani su 12.** `node scripts/import-production-calendar.mjs --dry-run --calendar rsnt` rifiuta al gate 2, uscita `2`, categoria `missing_feed_source`, e chiude con *NOTHING WAS WRITTEN. The import did not happen; this is not an empty plan.* Non e' un difetto: il piano 58-10 ha chiuso `--file` e `--docs-dir` (`ICS-09`) e ha reso l'indirizzo registrato l'**unica** via per cui dei byte raggiungono la corsa — `readFileSync` e' uscito dagli import. E' una **lacuna d'ordine della fase**: l'onda 6 ha chiuso la strada del file, l'onda 7 doveva percorrere quella nuova, e nessuna delle due ha registrato l'indirizzo.
+- **[Fase 58, 2026-08-20 — RISOLTO] Lo specchio non aveva una sorgente registrata.** Il proprietario ha pubblicato i calendari e registrato i tre indirizzi **fuori dall'albero del repo**, in un file d'ambiente caricato dal profilo della shell. Conseguenza operativa da non riscoprire ogni volta: il gate 2 legge quella variabile **solo** da `process.env` e mai da `.env.local`, per costruzione — chi lancia la corsa a mano deve caricare l'ambiente **prima**, e una shell che non l'ha caricato riceve `missing_feed_source` con uscita `2`, che e' il comportamento corretto. Ne' l'indirizzo ne' il suo host compaiono nel repo, in un referto o in un log.
 
-  **Chi puo' chiuderlo, e non e' un passaggio tecnico.** Solo il proprietario: il calendario va **pubblicato** e il suo indirizzo registrato in `PRODUCTION_CALENDAR_FEED_RSNT` nell'ambiente di chi lancia la corsa, e su Vercel prima che il cron di 58-12 esista. Schemi accettati `https:` o `webcal:`; l'indirizzo **non entra in questo albero** e non finisce in un documento tracciato. **La pubblicazione e' essa stessa un atto di dominio** (`D-58-05` punto 1): quel link e' leggibile da chiunque lo abbia e porta date non annunciate, sedi in trattativa e line-up; ri-pubblicare invalida il vecchio indirizzo ma non lo toglie dagli occhi di chi l'ha gia' visto.
+- **[Fase 58, 2026-08-20] Il primo specchio E' GIRATO, presidiato — e la fase resta aperta su una porta diversa: la superficie.** Autorizzazione **spesa alle 20:46Z**, opzione `autorizza-tutte-e-tre`, con i numeri veri rimessi davanti al proprietario prima dell'atto (63 pezzi e 85 impegni, non 46 e 79; **0 spunte e 0 legami**, che e' la meta' che decideva). Due `--apply` di fila — `rsnt` con il passaggio una tantum, poi `rmdb` — entrambi uscita `0`, **150 righe senza chiave adottate**, conteggi riconfermati **dal catalogo** e non dal referto. `mtnlb` **non** e' stato lanciato: rifiuta `feed_empty` perche' il format non ha date, e il codice ha ragione. La colonna di scopo e' `NOT NULL` sulle tre tabelle specchiate (migration `20260820205137`); `production_import_run` resta nullabile per sempre, con la ragione scritta in una sezione propria.
 
-  **Cosa NON riparte da solo il giorno in cui l'indirizzo esiste.** L'autorizzazione a scrivere in produzione del 2026-08-20 (opzione `autorizza-tutte-e-tre`) **non e' stata spesa** — nessun `--apply` e' partito, nessuna riga di produzione e' stata toccata, 24 `Result` su 24 restano `pending`. Prima di spenderla vanno rimessi davanti al proprietario **due** fatti: (a) i conteggi riletti dal catalogo **quel giorno**, perche' `M1` e' invecchiata di una corsa e non si riusa; (b) il fatto che `P-58-B`, riscritta, ora **inserisce** una riga sonda invece di cambiarne una esistente — l'autorizzazione fu data su una descrizione che non lo conteneva.
+  **Cosa resta fermo, e non e' piu' una questione di sorgente.** `P-58-A` interamente e `P-58-B` tranne il passo 23: **ventitre' `Result` su ventiquattro restano `pending`**. Il passo 11 pretende una casella premuta **sulla superficie**, e la capacita' che la apre e' tenuta da **due ruoli con un conto ciascuno, entrambi di persone** (misurato dal catalogo); la superficie di produzione risponde **`/login`** (misurato dal browser). L'unica via sarebbe **coniare una sessione su un'identita' vera**, che questo repo dichiara gia' essere **un ATTO bisognoso di un'autorizzazione datata per quella seduta** — e quella del 2026-08-20 nomina tre scritture, nessuna delle quali e' una sessione.
 
-  **Piani fermi:** `58-11` (task 2 al passo 1, task 3 senza precondizione — 150 righe con chiave di calendario ancora nulla) e `58-12`, che dipende da lui. Voci aperte in `.planning/phases/58-il-calendario-si-legge-come-lo-si-scrive/deferred-items.md`: la **4** e' il blocco; la **3** (assenza dello strumento di ripristino dall'istantanea di `P-58-C`) e' decisa e assegnata a 58-12, con soglia alla **prima spunta o primo legame**, non alla prima corsa del cron.
+  **Chi puo' chiuderlo — due strade, e la scelta e' del proprietario.** **(1)** Il ruolo che possiede la chiave di sezione preme la casella dalla superficie e lo dice; chi esegue riprende dal passo 12. **(2)** Il proprietario autorizza, con la data e per quella seduta, che chi esegue conii una sessione su un'identita' reale, nella forma che `npm run verify:refusal` gia' pretende per se'. La seconda sblocca anche ogni futura esecuzione presidiata; la prima no.
+
+  **Conseguenza:** `ICS-03` e `ICS-03b` non sono chiusi dall'evidenza di una procedura, e la fase non chiude finche' non lo sono. `ICS-01`, `ICS-02` e `ICS-07` **sono** chiusi da questo piano. `ICS-01b` era gia' provato nel 58-09, per mutazione del codice, e non dipende da questo blocco. Il piano **58-12** (il cron) **non e' bloccato** da questa voce: ora puo' girare senza essere la prima esecuzione dello specchio, che era l'unica ragione dell'ordine. Voci aperte in `deferred-items.md`: **3** (lo strumento del passo 5 di `P-58-C`), **8** e **9** (snapshot contro feed), **10** (il rumore di `mtnlb` sul cron), **11** (questa), **12** (`verify:touch-targets` gia' rosso prima).
 
 - **[Fase 42, 2026-08-18] DEROGA DEL PROPRIETARIO: il cancello d'ordine e' stato scavalcato, e il criterio 3 non e' piu' chiudibile.** Le onde 3-8 sono state eseguite con la riga 3m di `42-PROCEDURES.md` a `pending`. La riga era il primo *prima* che questo progetto avrebbe mai avuto per il comportamento della porta; non essendo stata presa mentre lo scanner era non convertito, **non e' piu' prendibile**. Decisione del proprietario, con il costo enunciato prima della scelta e l'alternativa (seduta di laboratorio con 3m e 3n appaiati) disponibile e non presa. Registrata in `DEF-42-04`, nel blocco di deroga di `42-PROCEDURES.md` riga 3m e nel commit. **Cio' che la deroga NON copre:** alla prima porta reale, correzioni di comportamento mai esercitate (fasi 31 e 39) e una superficie ridipinta gireranno insieme, e questo repository non ha error tracking.
 
@@ -507,8 +514,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-17T16:02:46.308Z
-**Stopped at:** Phase 45 context gathered
+**Last session:** 2026-08-20T21:03:42.572Z
+**Stopped at:** 58-11 chiuso parzialmente: specchio applicato e colonna stretta; P-58-A e P-58-B ferme sulla superficie
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 

@@ -144,7 +144,8 @@ Plans:
 - [x] 58-08-PLAN.md — `ICS-01`/`ICS-03`/`ICS-03b`: lo specchio nel modulo puro, in sottrazione *(onda 4)*
 - [x] 58-09-PLAN.md — lo scrittore che cancella: rifiuti in ordine, istantanea, riaggancio, guardia del progressivo *(onda 5)*
 - [x] 58-10-PLAN.md — `ICS-09` + `ICS-10a`: la sorgente e' un indirizzo, e la guardia del feed *(onda 6)*
-- [ ] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
+- [x] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
+  > ⚠ **Chiuso PARZIALMENTE il 2026-08-20, e la `[x]` dice cosa e' stato fatto, non che tutto lo sia stato.** Lo specchio ha girato presidiato su due chiavi (`rsnt` con il passaggio una tantum, poi `rmdb`), i conteggi sono stati riconfermati **dal catalogo**, e la chiave di calendario e' `NOT NULL` sulle tre tabelle specchiate. **`P-58-A` e `P-58-B` non sono state eseguite**: ventitre' `Result` su ventiquattro restano `pending`, perche' il passo 11 pretende una casella premuta **sulla superficie** e chi esegue non ha un conto che la apra (`deferred-items.md` voce 11). **`ICS-03` e `ICS-03b` restano aperti**; `ICS-01`, `ICS-02` e `ICS-07` sono chiusi.
 - [ ] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
 
 > **L'ordine delle onde non e' libero.** La lettura dei titoli va **prima** dello

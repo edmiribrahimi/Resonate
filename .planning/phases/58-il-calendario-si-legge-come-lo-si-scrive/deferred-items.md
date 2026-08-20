@@ -451,3 +451,68 @@ registrata nella **voce 5**.
 
 ---
 
+## 11. La superficie non e' raggiungibile da chi esegue: `P-58-A` e `P-58-B` restano ferme
+
+- **Trovata:** piano 58-11, 2026-08-20, subito dopo il primo specchio, provando
+  a eseguire il passo 11 di `P-58-A`
+- **Il fatto, misurato in due letture indipendenti.** Dal catalogo con
+  `read_only: true`: la capacita' che apre la superficie del calendario e'
+  tenuta da **due ruoli**, con **un conto ciascuno**, ed entrambi quei conti
+  sono di **persone**. Non esiste un conto non umano che la porti. Dal browser:
+  la superficie di produzione risponde **`/login`**, quindi nessuna sessione
+  aperta esiste su questa macchina.
+- **Cosa blocca, passo per passo.** `P-58-A` interamente, perche' il passo 11 —
+  *la spunta, messa dalla superficie* — e' il primo che non si esegue con la
+  Management API, e i passi 12, 14 e 15 leggono cio' che l'11 avrebbe scritto.
+  Di `P-58-B`, i passi 19, 21 e 24, che pretendono una lettura o una pressione
+  sulla superficie. **Il passo 23 non e' bloccato ed e' stato eseguito**: e'
+  l'unico che non tocca ne' la superficie ne' una scrittura.
+- **Perche' non e' stata aggirata, ed e' la meta' che conta.** L'unica via
+  sarebbe **coniare una sessione sull'identita' di una persona vera**. Questo
+  repository lo ha gia' scritto per un altro strumento: `scripts/verify-all.mjs`
+  dichiara che un controllo che firma come un ruolo reale *«e' un ATTO e ha
+  bisogno dell'autorizzazione datata del proprietario per quella seduta — non di
+  una variabile d'ambiente»*. L'autorizzazione del 2026-08-20 nomina **tre
+  scritture**, e nessuna delle tre e' una sessione.
+- **Cosa non e' stato fatto di proposito.** Nessuna spunta scritta dal catalogo
+  attribuendola a chi non l'ha premuta. Sarebbe una riga d'autore che afferma un
+  gesto mai avvenuto, nella colonna che esiste per rispondere a *chi ha deciso
+  questo*: il danno esatto che il passo 14 e' scritto per intercettare, prodotto
+  di proposito invece che scoperto. E nessun `Result` e' stato riempito con un
+  ritrovamento, perche' il blocco di chiusura del file dice che un `Result`
+  diverso da `pending` **afferma che la procedura e' stata eseguita**.
+- **Cosa la chiude — due strade, e la scelta e' del proprietario.**
+  **(1)** Il ruolo che possiede la chiave di sezione preme la casella dalla
+  superficie e lo dice; chi esegue riprende dal passo 12. E' la strada che non
+  costa niente a nessuno. **(2)** Il proprietario autorizza, con la data e per
+  quella seduta, che chi esegue conii una sessione su un'identita' reale, nella
+  forma che `npm run verify:refusal` gia' pretende per se'. La seconda sblocca
+  anche ogni futura esecuzione presidiata; la prima no.
+- **Conseguenza a valle.** `ICS-03` e `ICS-03b` non sono chiusi
+  dall'evidenza di una procedura, e la fase non chiude finche' non lo sono.
+  `ICS-01b` **e' comunque provato altrove** — piano 58-09, per mutazione del
+  codice — e non dipende da questa voce.
+
+---
+
+## 12. `verify:touch-targets` era gia' rosso prima di questo piano
+
+- **Trovata:** piano 58-11, task 3, 2026-08-20, lanciando `npm run verify` dopo
+  la stretta a `NOT NULL`
+- **Il fatto.** `npm run verify` esce **1**: `verify:touch-targets` segnala
+  **due** elementi in un componente del menu drink che non dichiarano l'altezza
+  minima di 44px. Gli altri **ventitre'** controlli passano, compresi tutti
+  quelli del calendario e dello specchio.
+- **Perche' non e' di questo piano.** Il file non e' stato toccato qui: l'ultimo
+  commit che lo modifica e' della fase 47, e questo piano ha cambiato solo una
+  migration e quattro dichiarazioni di tipo. Il rosso **precede** il piano.
+- **Non riparata perche':** la regola di perimetro vieta di riparare cio' che non
+  si e' rotto qui, e il gate stesso lo scrive in fondo al proprio referto:
+  *«Fix the ELEMENT, not this gate»* — allargare un'esenzione per far passare un
+  rosso e' il manomettere che quel gate esiste per intercettare.
+- **Come si chiude:** i due controlli portano l'altezza minima, oppure diventano
+  un'eccezione dichiarata come la decima gia' registrata nel gate — che e'
+  un'eccezione di accessibilita' decisa dal proprietario, non un'esenzione
+  allargata.
+
+---
