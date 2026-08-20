@@ -1134,29 +1134,107 @@ if (classified.unclassified.length > 0) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Stage 4 — the snapshot of what the six tables already hold
+ * Stage 4 — what the declared calendar already holds
+ *
+ * ⚠ **Every read below is SCOPED, and that is the difference between a mirror
+ * and the reconciler that used to live here.** A run that read every row would
+ * hold the other calendar's rows in the same lists it uses to decide what to
+ * remove, to hold the arriving progressivi against, and to write a snapshot of.
+ * Reading the whole table and narrowing afterwards would put the boundary in
+ * JavaScript, where the next edit can lose it; the boundary belongs in the
+ * `WHERE`.
+ *
+ * ⚠ **The key-less rows are read by a SEPARATE statement**, and only when the
+ * one-off argument is present. That separation is the whole design: the rows
+ * that predate the column are not attributable to a calendar by anybody, so the
+ * default is that a mirror cannot see them at all — which is the safe direction,
+ * because a row a mirror cannot see is a row it cannot remove. The second read's
+ * own length is the number the report prints.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const planRows = await readAll(
-  "production_plan",
-  "id, source_uid, series_id, number, venue_word, date, start_time, end_time, source_sequence, source_last_modified, absent_since, linked_party_id",
-  "plan table"
-);
-const pieceRows = await readAll(
-  "production_piece",
-  "id, source_uid, plan_id, series_code, number, kind, part_marker, date, origin, unresolved_reason, conforms_to_rule, naming_convention, source_sequence, source_last_modified, absent_since",
-  "piece table"
-);
-const commitmentRows = await readAll(
+const PLAN_COLUMNS =
+  "id, source_uid, series_id, number, venue_word, date, start_time, end_time, source_sequence, source_last_modified, linked_party_id, calendar_key";
+
+/**
+ * One scoped read plus, when the one-off argument is present, the read of the
+ * rows that carry no key at all.
+ *
+ * ⚠ The two conditions are never combined into one expression. *Equal to this
+ * key* and *has no key* are different questions, one of them is a transition
+ * that ends in plan 58-11, and keeping them apart is what lets the second be
+ * counted, reported, and eventually deleted along with the argument that
+ * enables it.
+ */
+async function readScoped(table, columns, label) {
+  const keyed = await db.from(table).select(columns).eq("calendar_key", calendarKey);
+  if (keyed.error) {
+    refuse("catalogue_unreadable", `reading the ${label} failed — ${describe(keyed.error)}`);
+  }
+
+  if (!options.adoptUnkeyedRows) return { rows: keyed.data ?? [], unkeyed: 0 };
+
+  const keyless = await db.from(table).select(columns).is("calendar_key", null);
+  if (keyless.error) {
+    refuse(
+      "catalogue_unreadable",
+      `reading the key-less part of the ${label} failed — ${describe(keyless.error)}`
+    );
+  }
+
+  return {
+    rows: [...(keyed.data ?? []), ...(keyless.data ?? [])],
+    unkeyed: (keyless.data ?? []).length,
+  };
+}
+
+const planRead = await readScoped("production_plan", PLAN_COLUMNS, "plan table");
+const pieceRead = await readScoped("production_piece", "id, calendar_key", "piece table");
+const commitmentRead = await readScoped(
   "production_commitment",
-  "id, source_uid, occurrence_date, start_time, end_time, title, recurrence_raw, absent_since",
+  "id, calendar_key",
   "commitment table"
 );
-const checklistRows = await readAll(
-  "production_checklist_item",
-  "id, plan_id, kind, label, due_date, sort_order",
-  "checklist table"
-);
+
+const planRows = planRead.rows;
+
+/**
+ * ⚠ **Two columns from the pieces and two from the commitments, where there used
+ * to be fifteen and eight.**
+ *
+ * A reconciler read those rows to work out what had moved. A mirror does not
+ * compare them: it removes them and writes the file back, so what they used to
+ * say has no bearing on anything it plans. What is still read is what the
+ * snapshot has to be able to give back — and for these two tables that is
+ * *which rows went away*, since everything else about them comes from the file
+ * that is about to be written again.
+ *
+ * The module says the same thing in its own shape: what it is handed carries two
+ * lists where it used to carry four.
+ */
+const pieceRows = pieceRead.rows;
+const commitmentRows = commitmentRead.rows;
+
+/**
+ * The plan rows this run's scope selects, by identifier.
+ *
+ * ⚠ Used for the checklist — which carries **no calendar key of its own** and is
+ * therefore scoped **through these plan rows**, never by a second condition
+ * written separately. Two selectors over the same rows is how one of them ends
+ * up wider than the other.
+ */
+const scopedPlanIds = planRows.map((row) => row.id);
+
+let checklistRows = [];
+if (scopedPlanIds.length > 0) {
+  const read = await db
+    .from("production_checklist_item")
+    .select("id, plan_id, kind, label, ticked_at, ticked_by, ticked_by_name")
+    .in("plan_id", scopedPlanIds);
+  if (read.error) {
+    refuse("catalogue_unreadable", `reading the checklist failed — ${describe(read.error)}`);
+  }
+  checklistRows = read.data ?? [];
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * ⚠ A STORED NIGHT NAMES ITS SERIES BY REFERENCE, NOT BY SPELLING
@@ -1182,7 +1260,25 @@ function siglaOf(row) {
   return siglaBySeriesId.get(row.series_id) ?? null;
 }
 
-/** A stored night's join key, from the sigla resolved above and its progressivo. */
+// The two ways a stored night ends up without a resolvable sigla, kept apart on
+// purpose. Neither stops a mirror — it writes the file back regardless — but a
+// night whose series the catalogue cannot answer for is a finding about the
+// CATALOGUE, and a mirror that stayed silent about it would be dropping the one
+// thing it did learn from the rows it is about to remove.
+const planRowsWithoutSeries = planRows.filter((row) => row.series_id === null).length;
+const planRowsWithUnresolvedSeries = planRows.filter(
+  (row) => row.series_id !== null && siglaOf(row) === null
+).length;
+
+/**
+ * A stored night's join key, from the sigla resolved above and its progressivo.
+ *
+ * ⚠ **Not an identity, and it is worth keeping the two words apart.** The key is
+ * composed from CONTENT the file can change, so it is used only where a join to
+ * a night is meant — the line-up count below, and placing a piece after the
+ * rows have been written. Anything that has to survive the removal is keyed on
+ * `source_uid` instead.
+ */
 function planKeyOf(row) {
   const sigla = siglaOf(row);
   if (sigla === null || row.number === null) return null;
@@ -1195,12 +1291,14 @@ for (const row of planRows) {
   if (key !== null) planKeyById.set(row.id, key);
 }
 
-// The two ways a stored night ends up without a key, kept apart on purpose.
-const planRowsWithoutSeries = planRows.filter((row) => row.series_id === null).length;
-const planRowsWithUnresolvedSeries = planRows.filter(
-  (row) => row.series_id !== null && siglaOf(row) === null
-).length;
+/** The stable identity of a plan row: the one the file maintains across edits. */
+const planSourceUidById = new Map(planRows.map((row) => [row.id, row.source_uid]));
 
+/**
+ * What the module is given: **two lists**, and the shrinkage is the shape of
+ * `ICS-01` rather than an economy. A mirror does not compare, so it is not asked
+ * for the stored pieces and the stored commitments.
+ */
 const existing = {
   plans: planRows.map((row) => ({
     id: row.id,
@@ -1214,60 +1312,60 @@ const existing = {
     endTime: row.end_time,
     sourceSequence: row.source_sequence,
     sourceLastModified: row.source_last_modified,
-    absentSince: row.absent_since,
     linkedPartyId: row.linked_party_id,
   })),
-  pieces: pieceRows.map((row) => ({
-    id: row.id,
-    sourceUid: row.source_uid,
-    seriesCode: row.series_code,
-    number: row.number,
-    kind: row.kind,
-    partMarker: row.part_marker,
-    date: row.date,
-    origin: row.origin,
-    unresolvedReason: row.unresolved_reason,
-    conformsToRule: row.conforms_to_rule,
-    namingConvention: row.naming_convention,
-    sourceSequence: row.source_sequence,
-    sourceLastModified: row.source_last_modified,
-    absentSince: row.absent_since,
-  })),
-  commitments: commitmentRows.map((row) => ({
-    id: row.id,
-    sourceUid: row.source_uid,
-    occurrenceDate: row.occurrence_date,
-    startTime: row.start_time,
-    endTime: row.end_time,
-    title: row.title,
-    recurrenceRaw: row.recurrence_raw,
-    absentSince: row.absent_since,
-  })),
   checklistItems: checklistRows
-    .filter((row) => planKeyById.has(row.plan_id))
+    // A row whose plan this run did not read cannot be keyed to a `source_uid`,
+    // and a restore keyed on nothing is a restore that lands anywhere. It cannot
+    // happen given the read above; the filter is here so that it stays that way
+    // if somebody widens the read.
+    .filter((row) => planSourceUidById.has(row.plan_id))
     .map((row) => ({
       id: row.id,
-      planKey: planKeyById.get(row.plan_id),
+      // ⚠ Not a column of this table. Joined here, BEFORE anything is removed —
+      // which is the first step of the restore procedure.
+      planSourceUid: planSourceUidById.get(row.plan_id),
       kind: row.kind,
       label: row.label,
-      dueDate: row.due_date,
-      sortOrder: row.sort_order,
+      tickedAt: row.ticked_at,
+      tickedBy: row.ticked_by,
+      // ⚠ A person's name. It travels in memory, to the snapshot in the ignored
+      // directory, and back to its own column. Nowhere else — never a line of
+      // this transcript, never a tracked document.
+      tickedByName: row.ticked_by_name,
     })),
 };
 
-const checklistRowsWithoutKey = checklistRows.length - existing.checklistItems.length;
+const unkeyedRowsAdopted = planRead.unkeyed + pieceRead.unkeyed + commitmentRead.unkeyed;
+const tickedItems = existing.checklistItems.filter((item) => item.tickedAt !== null).length;
+const linkedNights = planRows.filter((row) => row.linked_party_id !== null).length;
 
 say("");
-say("  ── what the six tables already hold ──────────────────────────────────");
+say("  ── what this calendar already holds ──────────────────────────────────");
 say(
   `     plans ${planRows.length} · pieces ${pieceRows.length} · ` +
     `commitments ${commitmentRows.length} · checklist items ${checklistRows.length}`
 );
-if (planRowsWithoutSeries > 0) {
+say(
+  `     ${tickedItems} of those items carry a tick, and ${linkedNights} night(s) stand ` +
+    "behind an announced one."
+);
+
+if (options.adoptUnkeyedRows) {
+  say("");
   say(
-    `     ⚠ ${planRowsWithoutSeries} stored night(s) carry no series at all, so they ` +
-      "cannot be keyed and are not compared."
+    `     ⚠ ONE-OFF: --adopt-unkeyed-rows took in ${unkeyedRowsAdopted} row(s) that carry no ` +
+      "calendar key at all — the rows written before the column existed."
   );
+  say("       They are attributed to the calendar named above, which is a CLAIM somebody");
+  say("       is making and not a fact the rows carry. Without this argument they are");
+  say("       not read, not counted and not touched.");
+} else {
+  say("     Rows carrying no calendar key are not read, and cannot be touched.");
+}
+
+if (planRowsWithoutSeries > 0) {
+  say(`     ⚠ ${planRowsWithoutSeries} stored night(s) carry no series at all.`);
 }
 if (planRowsWithUnresolvedSeries > 0) {
   // Its own count and its own sentence. This one is not a night nobody classified
@@ -1275,16 +1373,10 @@ if (planRowsWithUnresolvedSeries > 0) {
   // repair is in the catalogue rather than in the file.
   say(
     `     ⚠ ${planRowsWithUnresolvedSeries} stored night(s) name a series this run's ` +
-      "catalogue could not resolve. They are not compared, and their pieces and"
-  );
-  say("       checklist cannot be placed. That is a finding, not a tidy-up.");
-}
-if (checklistRowsWithoutKey > 0) {
-  say(
-    `     ⚠ ${checklistRowsWithoutKey} checklist item(s) hang off a night with no ` +
-      "resolvable series or no progressivo, so they cannot be keyed and are not compared."
+      "catalogue could not resolve. That is a finding, not a tidy-up."
   );
 }
+
 
 /**
  * How many artists are credited on each night, by join key.
@@ -1373,38 +1465,61 @@ const plan = ics.reconcile(
 );
 
 say("");
-say("  ── the plan of writes ────────────────────────────────────────────────");
+say("  ── the plan of this mirror ───────────────────────────────────────────");
 say(
-  `     plans        insert ${plan.plansToInsert.length}  ·  update ${plan.plansToUpdate.length}`
+  `     removal scope: ONE declared condition — the calendar named above — in the ` +
+    "order"
+);
+say(`       ${plan.deletionScope.order.map((step) => step.replace("production_", "")).join(" → ")}`);
+say(
+  "     The order is obligated by the foreign keys, not preferred: the last step is " +
+    "ONE statement, because a self-reference is checked at the end of a statement."
 );
 say(
-  `     pieces       insert ${plan.piecesToInsert.length}  ·  update ${plan.piecesToUpdate.length}`
+  `     writes back  plans ${plan.plansToInsert.length} · pieces ${plan.piecesToInsert.length} · ` +
+    `commitments ${plan.commitmentsToInsert.length} · checklist items ${plan.checklistItemsToInsert.length}`
 );
 say(
-  `     commitments  insert ${plan.commitmentsToInsert.length}  ·  update ${plan.commitmentsToUpdate.length}`
+  `     ${plan.plansThatSurviveDeletion.length} night row(s) do NOT enter the removal at ` +
+    "all: they stand behind an announced night, and removing one would orphan a"
 );
+say("       night that may have tickets on sale. They are not written again either.");
+
+const survivorsAbsentFromFile = plan.plansThatSurviveDeletion.filter(
+  (row) => row.absentFromFile
+).length;
 say(
-  `     checklist    insert ${plan.checklistItemsToInsert.length}  ·  update ${plan.checklistItemsToUpdate.length}`
+  `     of those, ${survivorsAbsentFromFile} survived an ABSENCE — the file no longer ` +
+    "carries the entry. That number is the one to look at: the cause may be a"
 );
+say("       partial export or the wrong file, and it is a finding, not a tidy-up.");
+
 say(
-  `     absences ${plan.absences.length} (stamped, never removed) · ` +
-    `divergences ${plan.divergences.length} · seen ${plan.seen.plans.length + plan.seen.pieces.length + plan.seen.commitments.length}`
+  `     puts back    ${plan.ticksToRestore.length} tick(s) and ${plan.linksToRestore.length} ` +
+    "link(s), with their ORIGINAL actor and instant. A restore is not an act."
 );
 say(
   `     announced-night rows written: 0, and there is no path in this file that could.`
 );
-say(`     rows removed: 0, and there is no path in this file that could.`);
 
 const proposals = plan.piecesToInsert.filter((row) => row.sourceUid === null).length;
 say(
-  `     of the piece inserts, ${proposals} are PROPOSALS — a date the rule placed, not ` +
-    "one the file wrote."
+  `     of the piece writes, ${proposals} are PROPOSALS — a date the rule placed, not ` +
+    "one the file wrote. ⚠ A mirror RECOMPUTES them every run: they are not"
 );
+say("       decisions somebody took once, and nothing about them survives a mirror.");
 
 say(
   `     space-approval checklist items: 0, and that is a CONFIGURATION GAP rather than ` +
     "a measured zero — nothing stores which spaces must approve."
 );
+
+say("");
+say("     ⚠ These counts are what this run BELIEVES it will do. The confirming count");
+say("       is asked of the catalogue, which is a different instrument from the one");
+say("       that caused the effect — it is a step of P-58-C and of plan 58-11, and");
+say("       deliberately not of this code. A measure taken with the tool that produced");
+say("       the effect is an echo.");
 
 if (plan.seriesWithoutRules.length > 0) {
   say("");
@@ -1416,42 +1531,115 @@ if (plan.seriesWithoutRules.length > 0) {
   say("       code is a public sigla half, so it is safe to name here.");
 }
 
-if (plan.divergences.length > 0) {
-  say("");
-  say("     divergences — the file and the product disagree. Identifier and code only:");
-  for (const record of plan.divergences) {
-    say(`         ${record.subject}  ${printableUid(record.sourceUid)}  ${record.reason}`);
-  }
-  say(
-    "       A row whose progressivo or series code moved enters NEITHER update list. " +
-      "It is reported and written nowhere; the trigger is the second layer."
-  );
-}
-
-if (plan.absences.length > 0) {
-  say("");
-  say("     absences — an entry the file no longer carries. The row STAYS:");
-  const linked = plan.absences.filter((record) => record.linkedToAnnouncedNight).length;
-  for (const record of plan.absences) {
-    say(
-      `         ${record.subject}  ${printableUid(record.id)}  ${record.reason}` +
-        (record.linkedToAnnouncedNight ? "  ⚠ stands behind an announced night" : "")
-    );
-  }
-  if (linked > 0) {
-    say(
-      `       ${linked} of them stand behind a night that has been announced. Removing ` +
-        "such a row would orphan a night with tickets on sale, so nothing does."
-    );
-  }
-}
-
 if (plan.unsupportedRecurrences.length > 0) {
   say("");
   say(
     `     ${plan.unsupportedRecurrences.length} recurrence(s) this reader does not expand. ` +
       "Each keeps its own day and none is guessed at."
   );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * The guard of the progressivo — `ICS-01b`, D-58-01
+ *
+ * ⚠ **This is the third one-way switch of the project, and it now lives here.**
+ * `production_plan_refuse_renumber` is `BEFORE UPDATE OF number`; a mirror
+ * deletes and inserts, so that trigger never fires on this path. It **stays
+ * installed** and still defends every other writer — what moved is the defence
+ * of THIS caller, and D-58-01 is the dated authorisation for the move.
+ *
+ * ⚠ **It runs BEFORE anything is removed, and it refuses the WHOLE run.** Not
+ * the row: a file in which one known entry came back renumbered is a file
+ * somebody should look at before any of it is mirrored. Exit `2`, and nothing —
+ * not even the snapshot — has been written.
+ *
+ * ⚠ **What it may name.** The sigla and the two progressivi, which are exactly
+ * what is printed on a poster and therefore already public. Never the title of
+ * the entry, never a date, never the identifier verbatim.
+ *
+ * A renumbering somebody actually wants passes an explicit argument, and the
+ * report records that it was used — because the trace of a decision to renumber
+ * has to outlive the terminal it was taken in.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const storedNumberByUid = new Map(
+  existing.plans
+    .filter((row) => row.number !== null)
+    .map((row) => [row.sourceUid, { number: row.number, seriesCode: row.seriesCode }])
+);
+
+/**
+ * The FORMAT half of a sigla, and the venue half deliberately dropped.
+ *
+ * ⚠ **This is a conflict between two written rules, resolved the restrictive
+ * way and recorded here rather than quietly picked** (`meta-gates.md`).
+ *
+ * The plan of this work says a refused renumbering must name the night in a
+ * publishable form — *the sigla and the progressivo, which are on a poster*. But
+ * a sigla has two halves and only the first is unconditionally public: the
+ * per-venue half is an abbreviation of a SPACE, and the migration that closed the
+ * calendar-key vocabulary refuses those halves in as many words, because a space
+ * under negotiation named in a report is named in every copy of that report and
+ * this repository is public.
+ *
+ * ⚠ And it is not theoretical here: printing the whole sigla made this run's own
+ * output audit go red on **one token**, correctly, on a run that leaked nothing
+ * else — the venue half of a sigla also occurs inside an entry title. The repair
+ * this file prescribes for that is *say less*, never widen the rule, so the venue
+ * half is dropped.
+ *
+ * What is left names the night well enough to act on: the format half — the same
+ * vocabulary as the calendar key, which the same migration calls publishable —
+ * the two progressivi, and the digest of the entry's own identifier, which is
+ * the only printable form of an identifier in this file and correlates for
+ * anybody holding the calendar.
+ */
+function formatHalfOf(seriesCode) {
+  if (typeof seriesCode !== "string" || seriesCode === "") return "a series";
+  const [formatHalf] = seriesCode.split("-");
+  return formatHalf;
+}
+
+const renumberings = [];
+for (const night of classified.nights) {
+  const stored = storedNumberByUid.get(night.uid);
+  if (stored === undefined) continue;
+  if (stored.number === night.number) continue;
+  renumberings.push({
+    // The stored sigla when the catalogue could resolve it, otherwise the one the
+    // file writes — reduced to its format half by the block above.
+    formatHalf: formatHalfOf(stored.seriesCode ?? night.seriesCode),
+    uid: night.uid,
+    from: stored.number,
+    to: night.number,
+  });
+}
+
+if (renumberings.length > 0) {
+  const listed = renumberings
+    .map(
+      (change) =>
+        `${change.formatHalf} #${change.from} → #${change.to} (${printableUid(change.uid)})`
+    )
+    .join(" · ");
+
+  if (!options.reauthoriseRenumbering) {
+    refuse(
+      "renumber_refused",
+      `${renumberings.length} night(s) already held come back from the file carrying a ` +
+        `different progressivo: ${listed}. A progressivo that has been given out is ` +
+        "already on a poster — append, never renumber. NOTHING has been removed and " +
+        "nothing has been put down. If this is meant, pass " +
+        "--reauthorise-renumbering, and know that the choice is kept in this report."
+    );
+  }
+
+  say("");
+  say(
+    `     ⚠ ${renumberings.length} RENUMBERING(S) RE-AUTHORISED by explicit argument: ${listed}`
+  );
+  say("       A progressivo that is already on a poster is being changed. This line is");
+  say("       the record of that decision, and it is the only one there will be.");
 }
 
 if (printedIdentifiers > 0) {
@@ -1604,16 +1792,17 @@ if (!options.apply) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Stage 7 — the writes
+ * Stage 7 — the mirror: snapshot, adopt, remove, write back, re-attach
  *
- * Order matters and it is the order of the foreign keys: the run row, then the
- * plans (which pieces and checklist items point at), then everything else.
+ * ⚠ **There is no transaction around any of this.** The client this script uses
+ * opens none, and this project has no point-in-time recovery. Every step below
+ * is ordered so that the state between two of them is a state somebody can come
+ * back from — and the way back is `P-58-C`, not a second run.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 // FIRST, and before any statement of any kind. See the block that defines it:
-// there is no transaction across the removal and no point-in-time recovery, so
-// this file is the only copy of the human state that will exist if the process
-// dies partway.
+// there is no transaction across the removal, so this file is the only copy of
+// the human state that will exist if the process dies partway.
 const snapshot = writeSnapshotBeforeRemoving({
   calendarKey,
   ticks: plan.ticksToRestore,
@@ -1648,6 +1837,7 @@ async function step(category, action) {
 const opened = await db
   .from("production_import_run")
   .insert({
+    calendar_key: calendarKey,
     file_byte_size: byteSize,
     entries_seen: parsed.events.length,
     entries_by_class: {
@@ -1674,7 +1864,111 @@ say("");
 // import-run table, so anybody reading the registry can recompute and match.
 say(`  ── applying ── import run ${printableUid(runId)}`);
 
-/** The catalogue identifiers a plan row needs. The reconciler makes no joins. */
+/* ── The one-off adoption (`ICS-02`, the closing half of a declared transition) ─
+ *
+ * ⚠ **The rows that predate the key are ADOPTED, not selected by a second
+ * condition.** They are given the declared key first, and from that instant they
+ * are inside the scope like everything else — which is what lets every removal
+ * below carry ONE condition. A `DELETE` with an *or has no key* branch would be
+ * a second, independently written selector over the same rows, and two selectors
+ * is how one of them ends up wider than the other.
+ *
+ * ⚠ This is an `UPDATE` of `calendar_key` alone. It does not touch `number`, so
+ * the renumbering trigger — which is `BEFORE UPDATE OF number` — is not
+ * involved, and no monotone guard is crossed here.
+ *
+ * The claim it makes is a person's, taken with the argument. Plan 58-11 is where
+ * that person stands in front of it.
+ */
+if (options.adoptUnkeyedRows && unkeyedRowsAdopted > 0) {
+  for (const table of ["production_plan", "production_piece", "production_commitment"]) {
+    await step("adopt_unkeyed", () =>
+      db.from(table).update({ calendar_key: calendarKey }).is("calendar_key", null)
+    );
+  }
+  say(
+    `     ${unkeyedRowsAdopted} key-less row(s) adopted into this calendar. That closes the ` +
+      "transition the column was born in, for these rows, once."
+  );
+}
+
+/* ── The removal, in the order the foreign keys obligate ────────────────────
+ *
+ * The order is not preferred, it is forced, and each step says by what:
+ *
+ *   1. the checklist — its reference is the ONLY `ON DELETE CASCADE` in this
+ *      schema. Emptying it explicitly, first, makes the number of ticks that go
+ *      away a number somebody counted instead of a side effect nobody saw. It
+ *      carries no key of its own, so it is scoped THROUGH the plan rows this run
+ *      already read — the same rows, not a second condition;
+ *   2. the pieces before the nights — that reference is `NO ACTION`, so removing
+ *      a night that still has pieces raises a violation;
+ *   3. the nights;
+ *   4. the occupied days, in ONE statement — the self-reference is `NO ACTION`
+ *      and `NO ACTION` is checked at the END of a statement, so one statement
+ *      that carries parent and children away together passes while two in the
+ *      wrong order do not.
+ *
+ * ⚠ **The direction of the mistake is the design.** A condition that is too wide
+ * removes MORE than it should — this repository has paid for that direction once,
+ * 63 rows across seven tables — and a narrow condition that is wrong finds
+ * nothing.
+ */
+
+const survivingPlanIds = new Set(plan.plansThatSurviveDeletion.map((row) => row.id));
+const planIdsToRemove = scopedPlanIds.filter((id) => !survivingPlanIds.has(id));
+
+if (scopedPlanIds.length > 0) {
+  // Every item the scope selects, survivors INCLUDED — the survival exception
+  // subtracts from step 3, not from this one. Leaving one night's items behind
+  // would produce a checklist half from this run and half from a previous one,
+  // which is a state nobody can read and no report can explain. It is also why
+  // the ticks of ALL nights were collected, not only the ones being removed.
+  await step("remove_checklist", () =>
+    db.from("production_checklist_item").delete().in("plan_id", scopedPlanIds)
+  );
+}
+
+await step("remove_pieces", () =>
+  db.from("production_piece").delete().eq("calendar_key", calendarKey)
+);
+
+if (planIdsToRemove.length > 0) {
+  // TWO conditions, and the second one only ever NARROWS. `calendar_key` is the
+  // declared scope; the identifier list is the survival exception of `ICS-03b`
+  // expressed positively, and it is also the by-primary-key discipline that
+  // `ai-engineering.md` requires of anything that removes production rows. If the
+  // two ever disagreed, their intersection is the smaller set — which is the only
+  // direction in which disagreement is safe.
+  await step("remove_plans", () =>
+    db
+      .from("production_plan")
+      .delete()
+      .eq("calendar_key", calendarKey)
+      .in("id", planIdsToRemove)
+  );
+}
+
+// ONE statement. Splitting it is the mistake this comment exists to prevent.
+await step("remove_commitments", () =>
+  db.from("production_commitment").delete().eq("calendar_key", calendarKey)
+);
+
+say(
+  `     removed: ${scopedPlanIds.length} night(s)' checklist · pieces · ` +
+    `${planIdsToRemove.length} night(s) · occupied days — ` +
+    `${plan.plansThatSurviveDeletion.length} night(s) untouched by ICS-03b.`
+);
+
+/* ── The write-back ─────────────────────────────────────────────────────────
+ *
+ * Plain inserts, not upserts, and the change is deliberate. An upsert made sense
+ * against rows that were still there; against a scope that was just emptied a
+ * conflict would mean the removal did not do what it said, and that is a finding
+ * to raise rather than a state to merge into.
+ */
+
+/** The catalogue identifiers a plan row needs. The module makes no joins. */
 function catalogueFor(sigla) {
   return catalogueBySigla.get(sigla) ?? { seriesId: null, formatId: null };
 }
@@ -1684,8 +1978,8 @@ if (plan.plansToInsert.length > 0) {
     const catalogue = catalogueFor(row.seriesCode);
     return {
       source_uid: row.sourceUid,
-      // Written HERE and only here: this is the number the file assigned, on a
-      // row that does not yet exist. No update payload below carries this column.
+      // Written HERE and only here: the number the file assigned, on a row that
+      // does not exist yet. Nothing below updates this column, ever.
       number: row.number,
       venue_word: row.venueWord,
       date: row.date,
@@ -1695,6 +1989,10 @@ if (plan.plansToInsert.length > 0) {
       source_last_modified: row.sourceLastModified,
       format_id: catalogue.formatId,
       series_id: catalogue.seriesId,
+      // Read off the row the module stamped, never passed separately: the key a
+      // row is written with and the key the next mirror removes it by are ONE
+      // value, not two that agree today.
+      calendar_key: row.calendarKey,
       // `venue_id` and `venue_stage` stay null on purpose. Which space a night
       // happens in, and whether it is acquired, is a person's judgement recorded
       // in writing (`venue-acquisition.md`) — an import that inferred it from a
@@ -1702,47 +2000,24 @@ if (plan.plansToInsert.length > 0) {
       last_seen_at: row.seenAt,
     };
   });
-  await step("plan_insert", () =>
-    db.from("production_plan").upsert(rows, { onConflict: "source_uid" })
-  );
+  await step("write_plans", () => db.from("production_plan").insert(rows));
 }
 
-for (const row of plan.plansToUpdate) {
-  const payload = {
-    // The REFERENCE, resolved from the sigla the file writes — never the sigla
-    // itself. A row only reaches this list when its sigla did NOT move, so this
-    // is the value already stored, except on the one row that had none: that one
-    // gets its series, which is a repair rather than a renumbering.
-    series_id: catalogueFor(row.seriesCode).seriesId,
-    venue_word: row.venueWord,
-    date: row.date,
-    start_time: row.startTime,
-    end_time: row.endTime,
-    source_sequence: row.sourceSequence,
-    source_last_modified: row.sourceLastModified,
-    last_seen_at: row.seenAt,
-    updated_at: row.seenAt,
-  };
-  // ⚠ No progressivo here, and its absence is the point. `PlanUpdate` carries
-  // the value already stored, so writing it would be a no-op — until the day it
-  // is not, and that day is the one the guard exists for.
-  if (row.clearsAbsence) payload.absent_since = null;
-  await step("plan_update", () =>
-    db.from("production_plan").update(payload).eq("id", row.id)
-  );
-}
-
-// Re-read the plans, so that pieces and checklist items point at the identifiers
-// the database actually handed back rather than at ones this process guessed.
-const appliedPlans = await readAll(
+// Read back, so that pieces and checklist items point at the identifiers the
+// database actually handed out rather than at ones this process guessed. The
+// read carries the scope, and it is what places the pieces of a SURVIVING night
+// too — that row was never removed and never rewritten, but its pieces were.
+const appliedPlans = await readScoped(
   "production_plan",
-  "id, series_id, number",
+  "id, series_id, number, source_uid, calendar_key",
   "plan table"
 );
 const planIdByKey = new Map();
-for (const row of appliedPlans) {
+const planIdBySourceUid = new Map();
+for (const row of appliedPlans.rows) {
   const key = planKeyOf(row);
   if (key !== null) planIdByKey.set(key, row.id);
+  planIdBySourceUid.set(row.source_uid, row.id);
 }
 
 function pieceRowFor(row) {
@@ -1760,36 +2035,20 @@ function pieceRowFor(row) {
     naming_convention: row.namingConvention,
     source_sequence: row.sourceSequence,
     source_last_modified: row.sourceLastModified,
+    calendar_key: row.calendarKey,
     last_seen_at: row.seenAt,
   };
 }
 
-// Split on purpose. A proposal has no `UID` because it does not exist in the
-// file, and Postgres allows many nulls in a unique column — so an upsert keyed
-// on that column would insert a second copy of every proposal on every run. The
-// reconciler honours a proposal's idempotence against the snapshot instead, and
-// this split is the half of that bargain the caller owes.
-const writtenPieces = plan.piecesToInsert.filter((row) => row.sourceUid !== null);
-const proposedPieces = plan.piecesToInsert.filter((row) => row.sourceUid === null);
-
-if (writtenPieces.length > 0) {
-  await step("piece_insert", () =>
-    db
-      .from("production_piece")
-      .upsert(writtenPieces.map(pieceRowFor), { onConflict: "source_uid" })
-  );
-}
-if (proposedPieces.length > 0) {
-  await step("piece_propose", () =>
-    db.from("production_piece").insert(proposedPieces.map(pieceRowFor))
-  );
-}
-
-for (const row of plan.piecesToUpdate) {
-  const payload = { ...pieceRowFor(row), updated_at: row.seenAt };
-  if (row.clearsAbsence) payload.absent_since = null;
-  await step("piece_update", () =>
-    db.from("production_piece").update(payload).eq("id", row.id)
+if (plan.piecesToInsert.length > 0) {
+  // ⚠ One statement for written pieces and proposals together, where there used
+  // to be two. The split existed because an upsert keyed on `source_uid` would
+  // duplicate a proposal on every run — a proposal has no `UID`, and Postgres
+  // allows many nulls in a unique column. With the scope emptied first there is
+  // no upsert and therefore no split: a proposal is simply a row the file did not
+  // write, recomputed this run like every other one.
+  await step("write_pieces", () =>
+    db.from("production_piece").insert(plan.piecesToInsert.map(pieceRowFor))
   );
 }
 
@@ -1801,29 +2060,10 @@ if (plan.commitmentsToInsert.length > 0) {
     end_time: row.endTime,
     title: row.title,
     recurrence_raw: row.recurrenceRaw,
+    calendar_key: row.calendarKey,
     last_seen_at: row.seenAt,
   }));
-  await step("commitment_insert", () =>
-    db
-      .from("production_commitment")
-      .upsert(rows, { onConflict: "source_uid,occurrence_date" })
-  );
-}
-
-for (const row of plan.commitmentsToUpdate) {
-  const payload = {
-    occurrence_date: row.occurrenceDate,
-    start_time: row.startTime,
-    end_time: row.endTime,
-    title: row.title,
-    recurrence_raw: row.recurrenceRaw,
-    last_seen_at: row.seenAt,
-    updated_at: row.seenAt,
-  };
-  if (row.clearsAbsence) payload.absent_since = null;
-  await step("commitment_update", () =>
-    db.from("production_commitment").update(payload).eq("id", row.id)
-  );
+  await step("write_commitments", () => db.from("production_commitment").insert(rows));
 }
 
 // An expanded occurrence points back at the entry it came from. Resolved after
@@ -1831,19 +2071,19 @@ for (const row of plan.commitmentsToUpdate) {
 // unique key — never by matching a title.
 const expansions = plan.commitmentsToInsert.filter((row) => row.expandedFromDate !== null);
 if (expansions.length > 0) {
-  const appliedCommitments = await readAll(
+  const applied = await readScoped(
     "production_commitment",
-    "id, source_uid, occurrence_date",
+    "id, source_uid, occurrence_date, calendar_key",
     "commitment table"
   );
   const commitmentIdByKey = new Map(
-    appliedCommitments.map((row) => [`${row.source_uid}|${row.occurrence_date}`, row.id])
+    applied.rows.map((row) => [`${row.source_uid}|${row.occurrence_date}`, row.id])
   );
   for (const row of expansions) {
     const parentId = commitmentIdByKey.get(`${row.sourceUid}|${row.expandedFromDate}`);
     const childId = commitmentIdByKey.get(`${row.sourceUid}|${row.occurrenceDate}`);
     if (parentId === undefined || childId === undefined || parentId === childId) continue;
-    await step("commitment_link", () =>
+    await step("link_expansion", () =>
       db.from("production_commitment").update({ expanded_from: parentId }).eq("id", childId)
     );
   }
@@ -1869,66 +2109,92 @@ if (plan.checklistItemsToInsert.length > 0) {
   }
 
   if (rows.length > 0) {
-    // `ignoreDuplicates` and not a merge: a re-import may neither duplicate an
-    // item nor reopen a ticked one. The tick belongs to whoever did the work.
-    await step("checklist_insert", () =>
-      db
-        .from("production_checklist_item")
-        .upsert(rows, { onConflict: "plan_id,kind,label", ignoreDuplicates: true })
+    await step("write_checklist", () =>
+      db.from("production_checklist_item").insert(rows)
     );
   }
 }
 
-for (const row of plan.checklistItemsToUpdate) {
-  // Only the due date and the position. This payload carries no tick and never
-  // will: a tick is a person recording that something got done.
-  await step("checklist_update", () =>
+/* ── The re-attachment — the two exceptions of state (`ICS-03`) ─────────────
+ *
+ * ⚠ **A RESTORE IS NOT AN ACT.** The ticks go back with their ORIGINAL instant
+ * and their ORIGINAL actor, written straight to their columns with the service
+ * client. They do **not** go through the tick-recording function, which
+ * re-records who ticked on every call, by a decision that function's own
+ * migration states — running a restore through it would attribute every tick in
+ * the calendar to whoever launched this import.
+ *
+ * ⚠ **Keyed on what survives.** A plan row's `id` is generated and did not
+ * survive the removal, so both restores key on `source_uid`, and the ticks on
+ * `(source_uid, kind, label)` — the item's own unique key with its generated
+ * half swapped for the stable one.
+ */
+
+let linksRestored = 0;
+for (const link of plan.linksToRestore) {
+  const planId = planIdBySourceUid.get(link.planSourceUid);
+  if (planId === undefined) {
+    // Not silent, and not fatal: the row is gone and the link cannot be put
+    // anywhere. It is the finding `P-58-C` exists for.
+    say(
+      "     ⚠ a link could not be put back: this run wrote no night with that identity. " +
+        "The snapshot still holds it."
+    );
+    continue;
+  }
+  await step("restore_link", () =>
+    db
+      .from("production_plan")
+      .update({ linked_party_id: link.linkedPartyId })
+      .eq("id", planId)
+  );
+  linksRestored += 1;
+}
+
+let ticksRestored = 0;
+let ticksUnplaced = 0;
+for (const tick of plan.ticksToRestore) {
+  const planId = planIdBySourceUid.get(tick.planSourceUid);
+  if (planId === undefined) {
+    ticksUnplaced += 1;
+    continue;
+  }
+  await step("restore_tick", () =>
     db
       .from("production_checklist_item")
-      .update({ due_date: row.dueDate, sort_order: row.sortOrder })
-      .eq("id", row.id)
+      .update({
+        // The originals. Not now, and not whoever is running this.
+        ticked_at: tick.tickedAt,
+        ticked_by: tick.tickedBy,
+        ticked_by_name: tick.tickedByName,
+      })
+      .eq("plan_id", planId)
+      .eq("kind", tick.kind)
+      .eq("label", tick.label)
+  );
+  ticksRestored += 1;
+}
+
+say(
+  `     put back: ${ticksRestored} tick(s) and ${linksRestored} link(s), with the original ` +
+    "actor and instant."
+);
+if (ticksUnplaced > 0) {
+  say(
+    `     ⚠ ${ticksUnplaced} tick(s) name a night this run did not write. They stay in the ` +
+      "snapshot and nowhere else. That is a finding."
   );
 }
 
-// Absences: a stamp, on the row, by its own identifier. Nothing is removed.
-const absenceTable = {
-  plan: "production_plan",
-  piece: "production_piece",
-  commitment: "production_commitment",
-};
-for (const record of plan.absences) {
-  await step("absence_stamp", () =>
-    db
-      .from(absenceTable[record.subject])
-      .update({ absent_since: record.absentSince })
-      .eq("id", record.id)
-  );
-}
-
-// The presence stamp, kept apart from the updates so that *still there* and
-// *moved* stay two different statements.
-const seenGroups = [
-  ["production_plan", plan.seen.plans],
-  ["production_piece", plan.seen.pieces],
-  ["production_commitment", plan.seen.commitments],
-];
-for (const [table, ids] of seenGroups) {
-  if (ids.length === 0) continue;
-  await step("presence_stamp", () =>
-    db.from(table).update({ last_seen_at: now }).in("id", ids)
-  );
-}
-
-// The run row is closed last, with the findings as identifiers and reason codes.
+// The run row is closed last, with the findings that survive a mirror: the
+// recurrences this reader does not expand. The divergence list has no producer
+// any more — a mirror does not compare, so it has nothing to disagree about —
+// and the column is left as it was born rather than written with an empty list
+// that would read as *measured and none found*.
 const closed = await db
   .from("production_import_run")
   .update({
     finished_at: new Date().toISOString(),
-    divergences: plan.divergences.map((record) => ({
-      subject: record.subject,
-      source_uid: record.sourceUid,
-      reason: record.reason,
-    })),
     unsupported_recurrences: plan.unsupportedRecurrences.map((record) => ({
       source_uid: record.uid,
       reason: record.reason,
@@ -1942,8 +2208,8 @@ if (closed.error) {
 
 say("");
 say(`  ${completedSteps} write step(s) completed. The import-run row is closed.`);
-say("  Run again with --dry-run: the plan must be empty. If it is not, that is a");
-say("  finding, and re-running until it looks right is not an answer.");
+say("  ⚠ These are the counts this run BELIEVES. Confirm them from the catalogue,");
+say("  which is a different instrument from the one that caused the effect.");
 
 // Same rule as the dry run's, with one difference that has to stay visible: the
 // writes above have ALREADY happened. So the exit code is 1 and never 2 — the
