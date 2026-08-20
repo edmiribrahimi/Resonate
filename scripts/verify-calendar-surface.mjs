@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 /**
- * verify-calendar-surface.mjs — the ten assertions of `44-UI-SPEC.md` §15, run
- * as a command instead of remembered.
+ * verify-calendar-surface.mjs — the eleven assertions this surface answers to,
+ * run as a command instead of remembered.
  *
  * WHAT IT ASSERTS, in one sentence: **the calendar surface's files agree with
- * the ten string-level rules the UI contract wrote down, and with nothing
+ * the eleven string-level rules written down for them, and with nothing
  * else.**
+ *
+ * ── TEN OF THEM ARE §15's, AND ONE IS NOT ──────────────────────────────────
+ *
+ * U1 … U10 are `44-UI-SPEC.md` §15, whole. **U11 is not**: it belongs to
+ * `ICS-06`, it arrived with the mirror, and §15 was written before the mirror
+ * existed. The count and the provenance are both kept here rather than
+ * flattened into *the eleven of §15*, because a check folded into a contract
+ * it was never in is a check nobody can trace back to a decision — and this
+ * phase exists partly to repair prose that stopped being true.
  *
  * ── WHAT A GREEN DOES NOT MEAN (cosa un verde NON significa) ────────────────
  *
@@ -31,8 +40,9 @@
  *
  * ── THE SCOPE, AND WHY IT IS TWO DIRECTORIES AND NOT `src/` ────────────────
  *
- * §15 scopes every one of the ten to the calendar surface's files **and to
- * nothing else**. Widening the scan would redden files that never agreed to
+ * §15 scopes every one of its ten to the calendar surface's files **and to
+ * nothing else**, and U11 takes the same scope for the same reason. Widening
+ * the scan would redden files that never agreed to
  * these rules, and a gate that goes red on a correct tree is a gate somebody
  * disables. The two directories are the measured `(work)` convention: route
  * files inside the nested group, every other module one level out
@@ -109,6 +119,9 @@ const EXTENSIONS = new Set([".ts", ".tsx"]);
 /** The one file allowed to render a piece's date — U5's whole subject. */
 const PIECE_DATE_FILE = "PieceDate.tsx";
 
+/** The file that owes ICS-06's declaration — U11's whole subject. */
+const PIECES_SECTION_FILE = "PiecesSection.tsx";
+
 /** A refusal is not a failure: it means the measurement did not happen. */
 function refuse(message) {
   console.log("");
@@ -143,6 +156,29 @@ const REVERSED_E = String.fromCodePoint(0x0258);
 /** The brand, with a normal `e`. U8 requires the transform on its element. */
 const BRAND = "re:sonate";
 
+/**
+ * The emphasis marker U6 forbids outside two facts, and U11 forbids on one
+ * sentence. Assembled once, for both, for the reason DEF-41-01 states.
+ */
+const EMPHASIS_MARKER = "tone=" + '"' + "emphasis" + '"';
+
+/**
+ * The name of the constant that carries ICS-06's declaration — ASSEMBLED FROM
+ * ITS PIECES, NEVER WRITTEN OUT.
+ *
+ * U9's discipline, adopted for its reason and not for its shape. U11's whole
+ * question is *does this identifier occur inside the section's live source*,
+ * and this file is one widened `SCOPE` entry away from being read as source
+ * itself. A check whose only match is its own search term reports a green
+ * about nothing, and `41-GAP-REVIEW-4.md` CR-01 is the receipt for how that
+ * ends. `verify-refusal.mjs:30-40` builds its five write verbs the same way
+ * and says the same thing about why.
+ */
+const PROPOSALS_DECLARATION = "PROPOSALS" + "_" + "RECOMPUTED";
+
+/** The origin a proposal carries in the union and in the column. */
+const PROPOSED_ORIGIN = "propos" + "ed";
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Reading the surface
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -164,7 +200,7 @@ for (const dir of SCOPE) {
   if (!existsSync(abs)) {
     refuse(
       `the scope directory ${dir} is not on disk.\n` +
-        "       §15's ten assertions are scoped to it, so nothing was measured. Either the\n" +
+        "       Every assertion this gate makes is scoped to it, so nothing was measured. Either the\n" +
         "       surface moved and this list moves with it in the same commit, or the surface\n" +
         "       was deleted and this gate goes with it."
     );
@@ -195,8 +231,8 @@ for (const abs of files) {
       `${relative(ROOT, abs)} opens a ${unterminated.kind} comment on line ` +
         `${unterminated.lineNo} that never closes.\n` +
         "       This gate cannot tell that file's comments from its code, so it measured\n" +
-        "       nothing about it — and a green covering nine files while claiming ten is a\n" +
-        "       green that lied by omission."
+        "       nothing about it — and a green covering every file but this one, while claiming\n" +
+        "       the whole surface, is a green that lied by omission."
     );
   }
   surface.push({
@@ -249,7 +285,7 @@ function argumentsFrom(text, open) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The ten checks
+ * The eleven checks — U1 … U10 from §15, U11 from ICS-06
  *
  * Each returns `{ id, title, note, failures: [{ rel, line, detail }] }`.
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -473,7 +509,10 @@ const EMPHASIS_EARNED = ["Late", "Diverged"];
 
 function u6() {
   const failures = [];
-  const marker = "tone=" + '"' + "emphasis" + '"';
+  // Assembled at the top of this file, and shared with U11 — the two checks
+  // ask opposite questions about the same marker and must not drift apart on
+  // how it is spelled.
+  const marker = EMPHASIS_MARKER;
   for (const file of surface) {
     for (const at of indicesOf(file.joined, marker)) {
       // The element and its children, to the end of the third line: every
@@ -731,14 +770,149 @@ function u10() {
   };
 }
 
+/* ── U11 ────────────────────────────────────────────────────────────────────
+ *
+ * ICS-06, AND IT IS NOT ONE OF §15's TEN. §15 was written before the mirror
+ * existed; this one arrives with it, and the distinction is kept in the prose
+ * above rather than smoothed away, because a check silently folded into a
+ * contract it was never in is a check nobody can trace back to a decision.
+ *
+ * WHAT IT ASSERTS. A proposal is not stored so it can be looked up later: it
+ * is worked out again from the pipeline rules on every import, so a row can
+ * change or stop being there with nobody having touched it. That is
+ * acceptable — `58-CONTEXT.md` accepts it explicitly — **only if it is said**,
+ * because a change nobody announced is a change somebody will later swear was
+ * never made. This repository has no error tracking, so the sentence on the
+ * screen is the whole of the observable effect.
+ *
+ * TWO ASSERTIONS, TWO SEPARATE FAILURES, and never one line saying *the
+ * declaration is wrong*. They have opposite repairs:
+ *
+ *   (a) it exists AND is conditioned on the rows. An unconditional sentence
+ *       would appear over a list holding no proposal at all, which is a
+ *       sentence saying something false — worse than none, because it is
+ *       believed. The condition must be DERIVED from the rows, exactly as
+ *       `lineupDependent` already is: a prop would let a caller declare *no
+ *       proposals here* over a list full of them, and the sentence meant to
+ *       keep a recomputation honest would become the thing hiding it.
+ *   (b) it spends NO emphasis. U6 reserves that for `Late` and `Diverged`;
+ *       a proposal is the majority case on this surface, and a caution on the
+ *       majority is a caution on nothing (§5.3). U6 would redden too, but on
+ *       a different question — U6 asks *who spent it*, U11 asks *did this
+ *       sentence*.
+ *
+ * WHAT IT DOES NOT PROVE, stated rather than discovered: that a reader takes
+ * the sentence to mean what it says. That is a judgement, it belongs to a
+ * person, and it has a written procedure with a role — `44-PROCEDURES.md` P2,
+ * to be re-run with this sentence present.
+ */
+function u11() {
+  const id = "U11";
+  const title =
+    "the recomputation is declared once, conditioned on the rows, without emphasis";
+  const note =
+    "ICS-06 — a proposal that reads as settled is a decision taken from a misunderstanding";
+
+  const file = surface.find((f) => f.name === PIECES_SECTION_FILE);
+  if (file === undefined) {
+    // Not a refusal: the scope directory is on disk and was measured. The
+    // section that owes the sentence simply is not in it, and a surface with
+    // no place to say this is a surface that does not say it.
+    return {
+      id,
+      title,
+      note,
+      failures: [
+        {
+          rel: PIECES_SECTION_FILE,
+          line: 0,
+          detail: "the file that owes the declaration is not on this surface",
+        },
+      ],
+    };
+  }
+
+  const failures = [];
+  const declared = new RegExp("const\\s+" + PROPOSALS_DECLARATION + "\\b").test(
+    file.joined
+  );
+  const occurrences = indicesOf(file.joined, PROPOSALS_DECLARATION);
+  const renders = occurrences.filter(
+    (at) => !/const\s+$/.test(file.joined.slice(Math.max(0, at - 8), at))
+  );
+
+  if (!declared) {
+    failures.push({
+      rel: file.rel,
+      line: 1,
+      detail: "no declaration that proposals are recomputed",
+    });
+  } else if (renders.length === 0) {
+    failures.push({
+      rel: file.rel,
+      line: lineOf(file, occurrences[0]),
+      detail: "the declaration is written and never drawn",
+    });
+  }
+
+  // The guard: a constant assigned from a predicate over the rows that names
+  // the proposed origin. Read this way rather than by looking for a ternary
+  // alone, because a ternary on anything at all would satisfy the shape while
+  // failing the requirement.
+  let guard = null;
+  const derivation = new RegExp(
+    "const\\s+([A-Za-z0-9_]+)\\s*=\\s*pieces\\.some\\(",
+    "g"
+  );
+  let match = derivation.exec(file.joined);
+  while (match !== null) {
+    const open = match.index + match[0].length - 1;
+    if (argumentsFrom(file.joined, open).includes(PROPOSED_ORIGIN)) {
+      guard = match[1];
+    }
+    match = derivation.exec(file.joined);
+  }
+
+  for (const at of renders) {
+    const line = lineOf(file, at);
+
+    const before = file.joined.slice(Math.max(0, at - 400), at);
+    const lastGuard = guard === null ? -1 : before.lastIndexOf(guard);
+    const conditioned =
+      lastGuard !== -1 && before.indexOf("?", lastGuard) !== -1;
+    if (!conditioned) {
+      failures.push({
+        rel: file.rel,
+        line,
+        detail:
+          "the declaration is drawn without a condition derived from the rows",
+      });
+    }
+
+    const around = file.joined.slice(Math.max(0, at - 300), at + 300);
+    if (around.includes(EMPHASIS_MARKER)) {
+      failures.push({
+        rel: file.rel,
+        line,
+        detail:
+          "the declaration spends emphasis, which U6 reserves for Late and Diverged",
+      });
+    }
+  }
+
+  return { id, title, note, failures };
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
  * The run
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const CHECKS = [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10];
+const CHECKS = [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11];
 
 console.log("");
-console.log("verify-calendar-surface — the ten assertions of 44-UI-SPEC.md §15");
+console.log(
+  `verify-calendar-surface — ${CHECKS.length} assertions: U1…U10 from 44-UI-SPEC.md §15, U11 from ICS-06`
+);
 console.log("");
 console.log(`  scope:  ${SCOPE.join("  ·  ")}`);
 console.log(`  files:  ${surface.length}, comments blanked by scripts/lib/comments.mjs`);
@@ -767,7 +941,9 @@ if (failed.length > 0) {
   process.exit(1);
 }
 
-console.log("  CALENDAR_SURFACE_OK — 10 check(s) passed.");
+// Counted from the array rather than written down: a figure typed beside a
+// list is a figure that stops matching it the next time somebody appends.
+console.log(`  CALENDAR_SURFACE_OK — ${results.length} check(s) passed.`);
 console.log(
   "\n  Read the header before treating this as verification. These are string assertions\n" +
     "  over source files: none of them renders an element, none proves the surface is\n" +
