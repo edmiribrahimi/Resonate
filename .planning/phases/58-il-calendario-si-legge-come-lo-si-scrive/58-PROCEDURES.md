@@ -242,7 +242,17 @@ esiste prima del codice che la citera'.
 > produzione (`production_calendar.sql:648-661`) porta via le voci di checklist
 > **e le loro spunte** insieme al piano.
 >
-> **Autorizzazione (data): ______________ — vale SOLO per P-58-A.**
+> **Autorizzazione (data): 2026-08-20 — CONCESSA — vale SOLO per P-58-A.**
+> Chiesta ed ottenuta dal proprietario nella seduta del piano 58-11, opzione
+> **`autorizza-tutte-e-tre`**: le tre scritture sono state presentate una per
+> una — **(a)** il primo specchio con `--apply` e il passaggio una tantum sulle
+> righe senza chiave, **(b)** questa procedura, **(c)** `P-58-B` — con davanti i
+> numeri di `M1` (2 piani, 46 pezzi, 79 impegni, 14 voci di checklist; **zero
+> spunte e zero legami**) e il costo dichiarato: **nessun PITR, nessuna
+> transazione, cascata su `production_checklist_item`**. Il proprietario ha
+> risposto con quei numeri davanti.
+> ⚠ **Il cron non e' autorizzato da questa riga** e non lo e' da nessuna delle
+> altre due: gira per la prima volta nel piano 58-12.
 > Si chiede il giorno in cui si esegue, nominando questa procedura. Un permesso
 > a eseguire P-58-B **non copre questa**, e questa non copre quella: sono due
 > atti, non un permesso (`ai-engineering.md`, *gate l'autorizzazione a scrivere
@@ -404,7 +414,16 @@ Result: pending
 > tre sono **file di prova costruiti per l'occasione**, e vanno costruiti dal
 > file vero cambiando una cosa sola.
 >
-> **Autorizzazione (data): ______________ — vale SOLO per P-58-B.**
+> **Autorizzazione (data): 2026-08-20 — CONCESSA — vale SOLO per P-58-B.**
+> Chiesta ed ottenuta dal proprietario nella seduta del piano 58-11, opzione
+> **`autorizza-tutte-e-tre`**, e **nominata separatamente da quella di P-58-A**:
+> le tre scritture — **(a)** il primo specchio, **(b)** `P-58-A`, **(c)** questa
+> procedura — sono state presentate una per una, con davanti i numeri di `M1`
+> (2 piani, 46 pezzi, 79 impegni, 14 voci di checklist; **zero spunte e zero
+> legami**) e il costo dichiarato: **nessun PITR, nessuna transazione, cascata su
+> `production_checklist_item`**.
+> ⚠ **Il cron non e' autorizzato da questa riga**: gira per la prima volta nel
+> piano 58-12.
 > E' **un'autorizzazione diversa** da quella di P-58-A e non ne eredita nulla:
 > P-58-A mette e toglie una spunta su una voce che esiste gia'; **questa crea un
 > legame verso una serata pubblicata** e mette alla prova il rifiuto che
