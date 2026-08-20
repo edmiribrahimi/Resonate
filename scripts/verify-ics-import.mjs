@@ -188,9 +188,26 @@ import { liveLines } from "./lib/comments.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ICS_DIR = join(ROOT, "src", "lib", "production", "ics");
 const PRODUCTION_DIR = join(ROOT, "src", "lib", "production");
+/*
+ * Every migration whose CHECK vocabularies check G holds against the TypeScript.
+ *
+ * A file missing from this list is a CHECK the gate cannot see, and the failure
+ * is one-directional and silent in the worse direction: the gate would keep
+ * reporting the OLD list as the database's list, so a member the TypeScript
+ * declares and the database now accepts would still be reported as unmirrored —
+ * or, worse, a member the database accepts and the TypeScript lacks would go
+ * unreported entirely, because the CHECK carrying it was never read.
+ *
+ * Ordered by application, and appended to. Adding a migration that widens or
+ * narrows a mirrored vocabulary means adding it here in the same commit.
+ */
 const MIGRATIONS = [
   "supabase/migrations/20260815120000_production_calendar.sql",
   "supabase/migrations/20260815120100_production_calendar_access.sql",
+  // Plan 58-06 (D-58-04): the seventh piece kind, on the two lists that mirror
+  // `PIECE_KINDS`. Without this line check G reads a `CHECK` that has been
+  // superseded and reports the seventh member as unmirrored.
+  "supabase/migrations/20260820120000_production_piece_flyering.sql",
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -607,9 +624,14 @@ if (haveMaterial) {
         "in a public repository"
     );
   }
-  if (unknownKinds.length !== 0 || kindVocabulary.size !== 6) {
+  // Seven since 2026-08-20 (D-58-04, plan 58-06). This number and the one in the
+  // seventh-kind check below are DIFFERENT NUMBERS ABOUT DIFFERENT THINGS: this
+  // one counts the kinds the vocabulary declares, that one counts entries
+  // carrying the word that names the kind which still does not exist. Moving one
+  // is not a reason to move the other.
+  if (unknownKinds.length !== 0 || kindVocabulary.size !== 7) {
     bProblems.push(
-      `the kind vocabulary is not exactly the six: ${kindVocabulary.size} declared, ` +
+      `the kind vocabulary is not exactly the seven: ${kindVocabulary.size} declared, ` +
         `${unknownKinds.length} seen that it does not contain`
     );
   }
