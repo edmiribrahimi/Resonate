@@ -3,6 +3,104 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.16.0] - 2026-08-20
+
+### Changed — `production-calendar.md` riallineato alle ancore misurate sul calendario
+
+Rimisurato evento per evento sui quattro calendari pubblicati, non ricordato.
+**Quattro valori dichiarati erano sbagliati**, e uno di essi portava la nota
+«quattro ancore su quattro conformi» — cioe' affermava di essere stato
+verificato.
+
+| Ancora | Diceva | Misurato |
+|---|---|---|
+| Listing RamaDub | martedi' (−2) | **mercoledi' (−1)** |
+| LiveCut RamaDub | lunedi' (+4) | **martedi' (+5)** |
+| LiveCut della notte | mar, mer, gio | **mer e gio — nessun martedi'** |
+| Listing della notte | «mar» (sotto-specificato) | **mar della settimana precedente** (−11/−10) |
+
+### Added — quattro ancore di pre-produzione che il modulo non nominava
+
+`Deadline Venue`, `Deadline DJ Booking`, `Visuals Ref` e `Visuals`. La prima
+cade a **−22 giorni** su un satellite: un piano che comincia dal listing
+comincia con tre settimane di ritardo. Aggiunto anche `Flyering` (giovedi',
+−9/−8 sulla notte), che non era mai stato registrato.
+
+### Added — la notte puo' essere in due atti, su due sedi
+
+Decisione del proprietario, confermata il 2026-08-20. Una serata puo' aprirsi
+alle 16:00 in uno spazio e proseguire dalle 22:00 in un altro. Trascina
+timetable in due blocchi, LiveCut in due gruppi, due trattative, due orari
+limite e **due rivelazioni** — mentre `venue_reveal_sent` e' una guardia sola.
+Le sedi **non sono nominate**: nessuna delle due e' acquisita, e il repo e'
+pubblico (`venue-acquisition.md`, gate *uno spazio non acquisito non si nomina*).
+
+### Changed — `Gate un podcast per dj` → `Gate un LiveCut per slot`
+
+Le puntate si contano sulla **timetable**, non sulla line-up: un b2b e' due
+artisti e una puntata. Il gate precedente, applicato alla notte in calendario,
+avrebbe preteso sei puntate dove ne escono cinque.
+
+### Added — due gate sul contratto col calendario
+
+- **`Gate ogni voce porta la sua chiave`** — la prima riga della nota lega il
+  pezzo alla serata; un pezzo senza chiave non e' un pezzo della pipeline.
+- **`Gate il feed non e' il calendario`** — il prodotto legge l'ICS pubblicato,
+  che puo' divergere dal client. Le difese si scrivono nell'import.
+
+### Added — `Gate la timetable copre l'intera serata`
+
+Gli slot devono arrivare a `DTEND`. Situazione che lo fa scattare, trovata il
+2026-08-20: due notti avevano la coda scoperta — un'ora su una, due sull'altra.
+
+### Corretto — la rotazione
+
+Diceva «corre a due, Booze → Muro». Le due sole date satellite sono **entrambe
+allo stesso locale** (`001` e `002`). Tolta la riga Perlone dalla tabella dei
+giorni: le sue date esistono, la sua pipeline non e' scritta, e descriverla
+sarebbe il *derivato non verificato* che il modulo vieta altrove.
+
+### Scenario di carico
+
+`production-calendar.md` **non ha `paths:`** e non si carica da solo: lo
+scenario e' una consultazione manuale.
+
+- **Innesco:** viene chiesto quando esce il listing di un satellite, oppure una
+  data viene spostata.
+- **Deve scattare:** *ancora, non conteggio* (l'after movie segue il listing
+  dell'edizione seguente), *un LiveCut per slot*, *la timetable copre l'intera
+  serata*, e — se la serata e' su due sedi — il rimando a `legal-compliance.md`
+  e alla doppia rivelazione.
+- **Deve NON scattare:** nessuna citazione della sigla ritirata ne' del format
+  cancellato, e nessun nome di sede non acquisita.
+- **Prova negativa:** rispondere «il listing esce martedi'» per un satellite e'
+  ora un errore verificabile contro il calendario. Era la risposta che questo
+  file prescriveva fino a oggi.
+
+### Misura — il caso peggiore del context budget e' cambiato
+
+`verify:persona` verde 7/7. Ma il controllo E riporta un caso peggiore diverso
+da quello registrato in `ai-engineering.md`: non piu'
+`src/app/(admin)/admin/scanner/ScannerClient.tsx` (10.622 token, margine 1.378)
+ma **`src/app/(public)/events/EventTabs.tsx` — 11.318 token, margine 682**, con
+`CLAUDE.md` + `meta-gates` + `nextjs-architecture` + `ticketing-payments` +
+`venue-secrecy`.
+
+**Non e' causato da questa modifica**: `production-calendar.md` non ha `paths:`
+e non entra in nessun caso peggiore. E' un cambio preesistente, e il gate dice
+che quando il caso peggiore cambia file **e' il progetto che si e' spostato**.
+Il margine si e' dimezzato: la prossima aggiunta di prosa a uno di quei cinque
+file va pesata, non improvvisata.
+
+### Debito segnalato, non colmato
+
+Il changelog **salta le modifiche del 2026-08-20** gia' presenti nei moduli — la
+cancellazione di un format dal catalogo (`CAT-01`) e il colore di RamaDub. Sono
+entrate in `production-calendar.md`, `brand-visual-system.md`,
+`sound-manifesto.md` e `venue-acquisition.md` senza una voce qui, contro il gate
+*when modifying CLAUDE.md or any rules module: bump the version and write the
+changelog entry in the same commit*. Registrato perche' resti visibile.
+
 ## [1.15.0] - 2026-08-15
 
 ### Added — `LiveCut` e `Podcast` sono due formati diversi, e uno non esiste ancora
