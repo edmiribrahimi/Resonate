@@ -33,11 +33,29 @@ import { LockClosedIcon } from "@/components/ui/Icons";
  * - **Show the address.** It shows the hint, never the location
  *   (`venue-secrecy.md`, gate *percorsi enumerati*: this is exit #2 of the
  *   page). The prose around the hint must not narrow it either — a hint made
- *   precise by its caption is a reveal with extra steps.
- * - **Promise an email.** The mail is a NOTIFICATION, not the reveal (D-37-05):
- *   the page opens at the instant of the window, the mail leaves on the next
- *   useful run of a once-a-day cron, and the two can be hours apart. "You will
- *   receive the address by email at the window" would be false by construction.
+ *   precise by its caption is a reveal with extra steps. **Since 2026-08-22
+ *   this is heavier than it was**: the page around this dialog no longer shows
+ *   a secret night's address to anybody, ever, so the hint is the LAST thing a
+ *   public surface says about where the night happens. A hint that identifies
+ *   the place is not a reveal with extra steps any more — it is the reveal.
+ * - **Promise an email it cannot keep.** The old rule here was *never promise
+ *   an email*, because the page opened at the window and the mail followed hours
+ *   later on a once-a-day cron (D-37-05). **The page no longer opens**, so the
+ *   sentence that would be false by construction is now the opposite one: *"the
+ *   address opens on this page"*. What replaced it says where the address
+ *   actually goes — the buyer's own ticket, and the mail — and says it without
+ *   attaching an hour to the mail, because that part has not changed and the
+ *   cron still runs when it runs.
+ *
+ * ── The copy below was REWRITTEN on 2026-08-22, and not restyled ─────────────
+ *
+ * Three sentences in it had become false the moment the page's reveal ladder was
+ * removed: *"the address appears straight away"*, *"you will see the address
+ * here N hours before the night starts"*, and *"the address opens on this
+ * page"*. A dialog whose whole job is to say WHO gets the address and WHEN, left
+ * saying it wrongly, is worse than a stale code comment: it sends somebody to
+ * wait on a surface that will never show them anything, and they find out at the
+ * door.
  *
  * ── The shell is no longer in this file (plan 41.2-16) ───────────────────────
  *
@@ -124,7 +142,6 @@ interface SecretVenueDialogProps {
   isApproved: boolean;
   /** The EFFECTIVE window, already resolved by the server. Never the raw column. */
   revealHours: number;
-  revealOnPurchase: boolean;
 }
 
 export default function SecretVenueDialog({
@@ -132,7 +149,6 @@ export default function SecretVenueDialog({
   isAuthenticated,
   isApproved,
   revealHours,
-  revealOnPurchase,
 }: SecretVenueDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -175,48 +191,41 @@ export default function SecretVenueDialog({
                 <>
                   <ul className="list-disc list-inside space-y-1">
                     {/*
-                      Level 1 — a ticket or an RSVP, at once.
+                      ONE ROAD NOW, AND IT LEAVES THIS PAGE.
 
-                      The two are NOT symmetric, and the asymmetry is the
-                      reason this is one conditional bullet and not a tidy
-                      pair: a ticket unlocks immediately only when the night
-                      has `venue_reveal_on_purchase` set, while an RSVP
-                      unlocks regardless of that flag (D-37-10) — because an
-                      RSVP is not a purchase, and the reveal cron mails an
-                      RSVP holder without consulting the flag either.
-                    */}
-                    {revealOnPurchase ? (
-                      <li>
-                        Buy a ticket, or confirm your RSVP — the address appears
-                        straight away
-                      </li>
-                    ) : (
-                      <li>
-                        Confirm your RSVP and the address appears straight away.
-                        On this night a ticket alone does not: ticket holders
-                        wait for the window like everyone else
-                      </li>
-                    )}
-                    {/*
-                      Level 2 — the widening of phase 37 (D-37-02). An
-                      approved member reaches the address WITHOUT buying
-                      anything. This bullet is why the old list was wrong:
-                      it offered "buy a ticket to unlock immediately" as if
-                      buying were the only road, which stopped being true.
+                      The two bullets that stood here — a ticket or an RSVP
+                      unlocking "straight away", and an approved member seeing
+                      the address "here" at the window — described the page's
+                      own reveal ladder, which was removed on 2026-08-22. Both
+                      are gone rather than reworded, because there is no
+                      remaining version of either that is true of THIS surface.
+
+                      `revealOnPurchase` went with them. It used to split the
+                      first bullet in two, and it no longer moves a pixel on any
+                      public surface, so the prop was removed rather than left
+                      arriving and deciding nothing.
                     */}
                     <li>
-                      Or buy nothing at all: as an approved member you will see
-                      the address here {revealHours} hours before the night
-                      starts — sooner, if we reveal it by hand
+                      Buy a ticket. The venue appears on your ticket as soon as
+                      it is revealed — {revealHours} hours before the night
+                      starts, or sooner if we reveal it by hand
+                    </li>
+                    <li>
+                      On an RSVP night, confirm your RSVP: we email you the
+                      venue when it is revealed
                     </li>
                   </ul>
                   {/*
-                    No promise of an email, on purpose (D-37-05). The mail is a
-                    notification that follows the page, not the reveal itself.
+                    The sentence that closes the dialog, and the one line in this
+                    file a future edit is most likely to get wrong. It has to say
+                    that this page is NOT where the address arrives — otherwise a
+                    reader keeps checking a page that will never change — without
+                    attaching an hour to the mail, which nothing here can promise.
                   */}
                   <p className="text-xs">
-                    The address opens on this page. Any email is a notification
-                    that follows it, and it can arrive hours later.
+                    The venue never appears on this page — not before the night,
+                    not after it. It reaches the people who are coming: on their
+                    ticket, and by email.
                   </p>
                 </>
               )}
