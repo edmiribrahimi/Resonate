@@ -230,7 +230,7 @@ universale.
 | Access & Gating | `src/lib/rbac/**`, `src/lib/supabase/**`, `src/middleware.ts`, `src/app/api/auth/**`, `src/app/(auth)/**`, `src/app/(admin)/**`, `src/app/api/drinks/**` |
 | Ticketing & Payments | `src/lib/sumup.ts`, `src/lib/apple-wallet.ts`, `src/app/api/webhooks/**`, `src/app/api/cron/**`, `src/app/api/tickets/**`, `src/lib/guest-list/**`, `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/(public)/events/**`, `src/app/**/sales/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` |
 | Check-in & Offline | `src/lib/offline/**`, `src/app/api/tickets/checkin/**`, `src/app/api/membership/**`, `src/utils/qr.ts`, `src/utils/haptics.ts`, `src/app/**/scanner/**`, `src/components/scanner/**`, `src/app/(admin)/door/**` |
-| Venue Secrecy | `src/lib/venue-reveal/**`, `src/app/api/cron/venue-reveal/**`, `src/emails/venue-reveal.tsx`, `src/app/(public)/events/**`, `src/app/**/venues/**`, `src/components/venues/**`, `src/components/events/**` |
+| Venue Secrecy | `src/lib/venue-reveal/**`, `src/app/api/cron/venue-reveal/**`, `src/emails/venue-reveal.tsx`, `src/app/(public)/events/**`, `src/app/(public)/tickets/**`, `src/app/**/venues/**`, `src/components/venues/**`, `src/components/events/**` |
 | Supabase & Data | `supabase/**`, `src/types/database.ts` |
 | Next.js Architecture | `src/app/(public)/**`, `src/app/(members)/**`, `src/app/(admin)/**`, `src/app/(auth)/**`, `src/app/*.tsx`, `src/app/*.ts`, `src/components/**` |
 | Comms & Analytics | `src/emails/**`, `src/lib/email.ts`, `src/lib/analytics/**`, `src/lib/posthog/**`, `src/app/api/newsletter/**` |

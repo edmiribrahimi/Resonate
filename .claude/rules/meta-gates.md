@@ -54,7 +54,7 @@ Quando piu' moduli coprono lo stesso file, vince il **piu' specifico**.
 | `src/app/api/cron/**` (gli altri) | ticketing-payments | comms-analytics, time-and-scheduling |
 | `src/utils/formatTime.ts`, `vercel.json` | time-and-scheduling | ticketing-payments |
 | `src/components/media/**`, `src/app/**/media/**`, `src/app/(public)/gallery/**` | media-and-storage | venue-secrecy, access-gating |
-| `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/**/sales/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` | ticketing-payments | access-gating, nextjs-architecture |
+| `src/app/**/tickets/**`, `src/app/**/drinks/**`, `src/app/**/sales/**`, `src/app/**/payment/**`, `src/app/**/guest-list/**` | ticketing-payments | access-gating, nextjs-architecture, venue-secrecy (dal 2026-08-22: la pagina del biglietto porta il venue) |
 | `src/app/(public)/events/**` | venue-secrecy | ticketing-payments, nextjs-architecture |
 | `src/lib/offline/**` | checkin-offline | supabase-data |
 | `src/app/api/tickets/checkin/**` | checkin-offline | ticketing-payments |
@@ -96,8 +96,10 @@ re:sonate ha tre interruttori **a senso unico**. Per ognuno, una modifica puo'
 solo renderli piu' difficili da far scattare, mai piu' facili — salvo
 autorizzazione esplicita documentata nel commit:
 
-- **`venue_reveal_sent`** — una volta partita la mail, il venue e' pubblico.
-  Non esiste un annullamento.
+- **`venue_reveal_sent`** — una volta partita la mail, il venue e' **noto a chi
+  ha comprato**. Non esiste un annullamento. Dal 2026-08-22 *pubblico* e' la
+  parola sbagliata, e la correzione e' la regola: la rivelazione non mette
+  l'indirizzo su una superficie aperta a chiunque, in nessun momento.
 - **Lo stato di un pagamento verso `completed`** — la riconciliazione puo'
   correggere in avanti, non far finta che un incasso non sia avvenuto.
 - **La numerazione di serie di un format** — un progressivo assegnato e' gia'

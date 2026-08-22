@@ -3,6 +3,63 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.17.0] - 2026-08-22
+
+### Changed — `venue-secrecy.md`: la rivelazione non rende pubblico, rende noto a chi ha comprato
+
+Decisione del proprietario, 2026-08-22, confermata con tre domande di verifica.
+Il gate *autorizzazione per destinatario* e' riscritto: **i tre livelli della
+pagina spariscono tutti e tre**, livello 2 compreso — che il 2026-08-10 era
+l'allargamento esplicito della fase 37. Il paragrafo superato e' **citato, non
+cancellato**, con la ragione per cui e' stato ripreso: il costo con cui era
+stato preso.
+
+La nuova regola in una riga: **una superficie aperta a chiunque non mostra mai
+l'indirizzo di una serata segreta**, nemmeno a serata finita; l'indirizzo
+raggiunge il titolare sul proprio biglietto e per mail.
+
+**Verso della modifica: stringe due superfici, non ne allarga nessuna** — la
+sola direzione che la guardia monotona di `meta-gates.md` consente senza
+autorizzazione, e questa ce l'ha comunque.
+
+### Added — `src/app/(public)/tickets/**` nei `paths:` di `venue-secrecy.md`
+
+Il gate dichiarava questa omissione invece di tacerla: *«fuori dai `paths:` di
+questo modulo, e dichiarato invece che taciuto: `(public)/tickets/[id]/page.tsx`,
+dove il gate non si carica»*. Da oggi la pagina del biglietto **decide** sul
+venue, quindi il gate deve caricarsi dove la decisione si prende — `gate un gate
+deve poter caricarsi`, `ai-engineering.md`.
+
+Aggiornati insieme, nello stesso commit: la riga dell'indice in `CLAUDE.md`
+(controllo B), e la colonna supplementare della riga `tickets` nella tabella di
+`meta-gates.md`, che ora nomina `venue-secrecy`.
+
+### Changed — la guardia monotona di `meta-gates.md` usava la parola sbagliata
+
+Diceva *«una volta partita la mail, il venue e' pubblico»*. **Pubblico e'
+esattamente cio' che non e'**, ed era la parola da cui la pagina pubblica aveva
+dedotto di poter rivelare dopo il cron.
+
+### Context budget rimisurato
+
+Caso peggiore invariato — `src/app/(public)/events/EventTabs.tsx`, 5 file
+caricati — **41.970 byte ≈ 11.658 token** su un tetto di 12.000, margine 342.
+Prima di questa modifica: 11.318. La prosa aggiunta al gate riscritto e' stata
+**tagliata due volte** per rientrare: descrizione via, regole intatte, come
+`gate context budget` prescrive. Il tetto non e' stato alzato.
+
+### Scenario di caricamento (gate *eval, in un repo senza test*)
+
+File reale: `src/app/(public)/tickets/[id]/page.tsx`. Moduli attesi:
+`CLAUDE.md`, `meta-gates`, `ticketing-payments` (primario), `access-gating`,
+`nextjs-architecture`, **`venue-secrecy`** (nuovo). Modifica-tipo che deve far
+scattare un gate: togliere `venueVisibleToHolder` dal render del venue, o
+riportare `displayVenue` a leggere `party.venue_text` senza predicato -> *gate
+percorsi enumerati* e *gate default chiuso*, **piu' `npm run
+verify:venue-surfaces` che esce 1**. Provato per mutazione: sette mutazioni,
+sette uccise, con l'applicazione della mutazione asserita prima di leggerne
+l'esito (`gate prova per mutazione`).
+
 ## [1.16.0] - 2026-08-20
 
 ### Changed — `production-calendar.md` riallineato alle ancore misurate sul calendario
