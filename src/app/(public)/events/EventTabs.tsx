@@ -10,7 +10,7 @@ import { MapPinIcon, LockClosedIcon } from "@/components/ui/Icons";
 import FormatMarker from "@/components/formats/FormatMarker";
 
 /**
- * One venue marker on one card — four fields, and the two that are missing are
+ * One venue marker on one card — TWO fields, and the four that are missing are
  * the point of this docblock.
  *
  * THIS FILE IS `"use client"`, so every field declared here is serialised into
@@ -19,29 +19,37 @@ import FormatMarker from "@/components/formats/FormatMarker";
  * is `nextjs-architecture.md`, gate *segreti nel bundle*: everything in a client
  * component ends up in the browser.
  *
- * Until this phase this interface also declared the street address and the Maps
- * link of the venue. Nothing in `src/` ever rendered either of them — the only
- * rendering of a venue on this page is the `venue_secret ? "Secret Venue" :
- * venue_name ?? venue_text` below — so they were dead props that travelled
- * anyway, readable by anyone who opened `/events` and looked at the document
- * rather than at the page. Removing them changes NO PIXEL; it changes what
- * leaves the server.
+ * ── The sentence above used to be here already, and the file leaked anyway ──
  *
- * Their names are deliberately not written out here: an automatic check counts
- * occurrences in this file and expects none, and a prose mention would satisfy
- * a reader while defeating the check.
+ * That is the part worth keeping, because a comment that states a principle and
+ * stops short of applying it is worse than no comment: it tells the next reader
+ * the place is guarded. Until 2026-08-22 this interface declared the night's
+ * FREE VENUE TEXT, the venue's NAME and the SECRECY HINT alongside the flag —
+ * so on a secret night all three crossed to the browser, and the one line below
+ * that refuses to print them refused a PIXEL, not a payload. No pixel rendered
+ * them, which is exactly why a check that reads render sites could not see it.
+ *
+ * A guard written HERE can never close that. The only field that cannot be read
+ * out of the document is the field that was never built, and the only place it
+ * can fail to be built is the server. So the verdict is taken in
+ * `(public)/events/page.tsx` and `venue_label` is its RESULT: `null` on a secret
+ * night, because on a secret night there is nothing this surface may say.
+ *
+ * The removed names are deliberately not written out here: an automatic check
+ * counts occurrences in this file and expects none, and a prose mention would
+ * satisfy a reader while defeating the check.
  *
  * The rule for the next person, who will want to show an address here: it does
- * not get declared ahead of a renderer. It comes from
- * `public.venue_for_parties`, through the same per-night entitlement check the
- * name already goes through, and it arrives in the same commit as the thing
- * that displays it. A field added "for when we need it" is already published.
+ * not get declared ahead of a renderer, and it does not arrive raw with a guard
+ * on this side of the boundary. It is decided on the server — through the same
+ * per-night entitlement check the label already goes through — and it arrives in
+ * the same commit as the thing that displays it. A field added "for when we
+ * need it" is already published.
  */
 interface VenueInfo {
-  venue_name: string | null;
-  venue_text: string | null;
+  /** Already decided by the server. `null` on a secret night. */
+  venue_label: string | null;
   venue_secret: boolean;
-  venue_secret_hint: string | null;
 }
 
 /**
@@ -337,7 +345,7 @@ function EventList({
                       {v.venue_secret ? (
                         <><LockClosedIcon /> Secret Venue</>
                       ) : (
-                        <><MapPinIcon /> {v.venue_name ?? v.venue_text}</>
+                        <><MapPinIcon /> {v.venue_label}</>
                       )}
                     </span>
                   ))}

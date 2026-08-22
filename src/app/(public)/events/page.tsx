@@ -31,31 +31,61 @@ import FormatFilterRow from "./FormatFilterRow";
 export const dynamic = "force-dynamic";
 
 /**
- * One venue marker on one card, and NO ADDRESS — which is a security boundary,
- * not a trimmed payload.
+ * One venue marker on one card: A LABEL AND A LOCK, and nothing a secret night
+ * can be found by.
+ *
+ * ── The rule this shape obeys ───────────────────────────────────────────────
  *
  * This shape is handed to `EventTabs`, a `"use client"` component, so every
- * field here is serialised into the RSC payload and travels to every visitor,
- * SECRET NIGHTS INCLUDED, whether or not anything renders it. Until this phase
- * it also carried the street address and the Maps link of the venue, which no
- * surface in `src/` ever rendered: two dead props, readable by anyone who
- * opened `/events` and looked at the document instead of the page.
+ * field declared here is serialised into the RSC payload and travels to every
+ * visitor, for every night on the page, SECRET NIGHTS INCLUDED — whether or not
+ * anything renders it. A guard written in the client component decides a PIXEL;
+ * it does not decide what left the server, and the document is where a person
+ * looks when the page will not tell them.
  *
- * Those two names are deliberately not spelled out anywhere in this file: an
- * automatic check counts their occurrences and expects none, and a mention in
- * prose would read fine to a human while quietly defeating the check.
+ * So the only defence that works at this boundary is arithmetic: a field that
+ * is never built cannot be read. The reveal verdict for this surface is taken
+ * in `transformEvent`, and what crosses is its RESULT.
  *
- * The rule the next person needs, because they will be tempted: if the list one
- * day has to show the address of a NON-secret night, it comes from
- * `public.venue_for_parties` like the name does — through the entitlement check
- * — and it is added here only once something actually renders it. A field
- * declared "for when we need it" is already published.
+ * ── What used to cross, and did not need to ─────────────────────────────────
+ *
+ * Three things left over four removals, all of them invisible on the page:
+ *
+ *   1. the street address and the Maps link of the venue, which no surface in
+ *      `src/` ever rendered — dead props that travelled anyway;
+ *   2. the night's FREE VENUE TEXT, on secret nights too. Nothing rendered it
+ *      there, which is exactly why no check that looks at render sites could
+ *      see it, and why it outlived a whole phase spent on this rule;
+ *   3. the venue's NAME on a secret night, for an ENTITLED reader — the name
+ *      comes from `public.venue_for_parties`, which answers a secret night to a
+ *      ticket holder, so a signed-in holder's document named the place this same
+ *      page calls secret;
+ *   4. the SECRECY HINT, which had no reader in `EventTabs` at all and is shown
+ *      on the night's own page only to somebody with a session.
+ *
+ * The names of the removed fields are deliberately not spelled out anywhere in
+ * this file: an automatic check counts their occurrences and expects none, and
+ * a mention in prose would read fine to a human while quietly defeating it.
+ *
+ * ── The rule the next person needs, because they will be tempted ────────────
+ *
+ * If the list one day has to say more about a NON-secret night, the extra value
+ * is DECIDED ON THE SERVER and arrives already resolved, in the same commit as
+ * the thing that displays it. Not the raw column plus a guard over there: over
+ * there is a browser. A field declared "for when we need it" is already
+ * published.
  */
 interface VenueInfo {
-  venue_name: string | null;
-  venue_text: string | null;
+  /**
+   * What a visitor may read, already chosen. `null` on a secret night — the
+   * marker is the lock, and no string accompanies it.
+   */
+  venue_label: string | null;
+  /**
+   * Normalised FAIL-CLOSED where this is built: anything that is not a stored
+   * `false` is `true` here.
+   */
   venue_secret: boolean;
-  venue_secret_hint: string | null;
 }
 
 /**
@@ -272,7 +302,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     // than hoped for. It is built below.
     const query = supabase
       .from("events")
-      .select("slug, title, date, venue_secret, lineup, is_published, event_parties(id, date, venue_text, sort_order, venue_secret, venue_secret_hint, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
+      .select("slug, title, date, venue_secret, lineup, is_published, event_parties(id, date, venue_text, sort_order, venue_secret, lineup, format_id, series_id, formats(name, slug, color), party_series!event_parties_series_id_fkey(name))")
       .order("date", { ascending: true });
 
     if (!canSeeDrafts) {
@@ -382,7 +412,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         venue_secret: boolean;
         lineup: string[] | null;
         is_published: boolean;
-        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; venue_secret_hint: string | null; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
+        event_parties: { id: string; date: string; venue_text: string | null; sort_order: number; venue_secret: boolean; lineup: string[] | null; format_id: string | null; series_id: string | null; formats: { name: string; slug: string; color: string } | { name: string; slug: string; color: string }[] | null; party_series: { name: string } | { name: string }[] | null }[];
       };
       const parties = evt.event_parties ?? [];
       const sortedDates = parties.map((p) => p.date).sort();
@@ -397,18 +427,68 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         // The name arrives from the entitlement decision, never from a join this
         // page performed itself. `undefined` — the night is not in the result —
         // means NO TITLE, which is the same answer as "no venue recorded" as far
-        // as this card is concerned: `venue_secret` below decides what stands in
-        // its place, and it is the STORED FLAG, not a computed verdict (D-36-11).
+        // as this card is concerned: the secrecy flag below decides what stands
+        // in its place, and it is the STORED FLAG, not a computed verdict
+        // (D-36-11).
         const venueName = venueNames.get(p.id) ?? null;
+
+        // ── THE NORMALISATION, AND ITS DIRECTION IS THE DECISION ────────────
+        //
+        // `!== false` and not `?? false`. The two differ on exactly one input —
+        // a secrecy flag that arrives NEITHER `true` NOR `false` — and they give
+        // that input opposite answers: `?? false` calls an unknown night PUBLIC,
+        // this calls it SECRET.
+        //
+        // Until 2026-08-22 this line was the first form, and it was the wrong
+        // way round for an irreversible act: a null column, a partial embed or a
+        // shape PostgREST answered differently than the cast here claims would
+        // have OPENED a venue rather than closed it. `venue-secrecy.md`'s
+        // *default chiuso* gate and `meta-gates.md`'s monotone-guard rule both
+        // point the same way — a change may only make a reveal HARDER — so this
+        // is a tightening, which is the permitted direction.
+        //
+        // It also stops the raw flag being read more than once in this loop. A
+        // second raw read is how the loose form comes back: the normalisation
+        // has one home here, and every branch below asks THIS name.
+        const nightIsSecret = p.venue_secret !== false;
+
         const key = venueName ?? p.venue_text ?? "";
-        if (!key && !p.venue_secret) continue;
+        if (!key && !nightIsSecret) continue;
         if (key && seen.has(key)) continue;
         if (key) seen.add(key);
+
+        // ── ONE DECIDED STRING, CHOSEN HERE AND NOT IN THE BROWSER ──────────
+        //
+        // `venue_label` is what a visitor may read, ALREADY RESOLVED — the same
+        // construction `formats[].name` uses a few lines below, and for the same
+        // reason: a client component cannot pick the wider value if the wider
+        // value never leaves this function.
+        //
+        // On a secret night it is `null`, and that is not a hidden render — it
+        // is an ABSENT FIELD. What travelled here before was the night's free
+        // venue text, on every night on the page, secret ones included, because
+        // the branch that refused to print it lived in `EventTabs` and a branch
+        // in a client component refuses a PIXEL, never a PAYLOAD. Nothing
+        // rendered it on a secret night, which is precisely why no render-site
+        // check could see it — and it was readable by anybody who opened
+        // `/events` and looked at the document instead of the page.
+        //
+        // The name went the same road and was worse camouflaged: it comes from
+        // `public.venue_for_parties`, which answers a SECRET night's venue to an
+        // ENTITLED caller — a ticket holder, a night past its window. So a
+        // signed-in holder's copy of this list carried the venue's real name for
+        // a night the same page says is secret. The owner's rule of 2026-08-22
+        // is about the SURFACE and not about the reader: this list is open to
+        // anybody, so nothing that names the place leaves the server for it,
+        // however entitled the person asking happens to be.
+        //
+        // The hint left with them. It had no reader in `EventTabs` at all, and
+        // the surface that DOES show it requires a session first — so shipping
+        // it unconditionally here handed a session-less visitor something the
+        // night's own page refuses them.
         venues.push({
-          venue_name: venueName,
-          venue_text: p.venue_text ?? null,
-          venue_secret: p.venue_secret ?? false,
-          venue_secret_hint: p.venue_secret_hint ?? null,
+          venue_label: nightIsSecret ? null : venueName ?? p.venue_text ?? null,
+          venue_secret: nightIsSecret,
         });
       }
 
