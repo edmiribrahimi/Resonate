@@ -58,10 +58,35 @@
  * good.
  *
  * **A finding carries a `uid` or a line index and a reason code, and never a
- * `SUMMARY`.** A summary is an unannounced date, a space under negotiation or a
+ * `SUMMARY` — and since this reader reads notes, never a `DESCRIPTION`
+ * either.** A summary is an unannounced date, a space under negotiation or a
  * line-up; the same text in a log, a toast or — worst — a tracked document is
  * irreversible (`44-RESEARCH.md` Pitfall 10). Every field of every finding below
  * is an identifier, a property name or a code.
+ *
+ * ── ⚠ THE NOTE IS READ, AND THAT IS THE MOST CONFIDENTIAL THING HERE ────────
+ *
+ * {@link IcsEvent.description} carries `DESCRIPTION`, unfolded and unescaped. It
+ * is read because four questions downstream are answered by it and were being
+ * derived, or not answered at all: **which night** a piece announces, the
+ * **progressivo** of a night whose title carries none, **who is playing**, and —
+ * from that line-up — **how many LiveCuts are owed** (`production-calendar.md`,
+ * gate *un podcast per dj*).
+ *
+ * Measured on the two live feeds, 2026-08-22: **54 notes**, and the first line of
+ * **54 of them** is a reference to a night in the grammar the classifier already
+ * reads for a night's own title, followed by a comma and that night's date. The
+ * remaining lines are the line-up. So the note is not a new grammar bolted on —
+ * it is the same grammar, written in a second place, and the second place is the
+ * one that carries the number.
+ *
+ * **Reading it raises the confidentiality cost of this module and does not
+ * lower it.** A title is one line; a note is several and it names people. Two
+ * mechanical checks are extended in the same commit as this reading rather than
+ * after it — the importer's own output audit and check F of
+ * `scripts/verify-ics-import.mjs` — and both now build their residual token set
+ * from the summary **and** the note. Nothing else changed about the rule above:
+ * a finding still carries an identifier and a code.
  *
  * ── Pure by design ──────────────────────────────────────────────────────────
  *
@@ -134,6 +159,26 @@ export interface IcsEvent {
   uid: string;
   /** The title, with its RFC 5545 escapes resolved. Never logged, never echoed. */
   summary: string;
+  /**
+   * The entry's note — `DESCRIPTION` — unfolded and with its escapes resolved.
+   * `""` where the entry carries none.
+   *
+   * ⚠ **The most confidential field this record has, by some distance**, and the
+   * reason it is read at all is in the module docblock. A title is one line
+   * somebody wrote for themselves; a note is several, and the measured ones carry
+   * the name of whoever is playing and at what hour. **Never logged, never
+   * echoed, never written to a tracked document**, and — unlike
+   * {@link ClassifiedCommitment.title} in the classifier — there is no column
+   * anywhere that stores it: it is read, one line of it is interpreted, and the
+   * rest is dropped when this record goes out of scope.
+   *
+   * Two mechanical checks stand behind that sentence rather than the sentence
+   * standing alone: the importer's own output audit and check F of
+   * `scripts/verify-ics-import.mjs` both build their residual token set from
+   * **the summary and this field**, so a note word that reaches a terminal turns
+   * one of them red.
+   */
+  description: string;
   /** `YYYY-MM-DD`, sliced from `DTSTART`. No instant, no zone. */
   startDate: CivilDate;
   /** `HH:MM`, sliced from `DTSTART`. */
@@ -475,6 +520,7 @@ interface EventDraft {
   beganAt: number;
   uid: string | null;
   summary: string | null;
+  description: string | null;
   dtstart: string | null;
   dtstartTzid: string | null;
   dtend: string | null;
@@ -490,6 +536,7 @@ function emptyDraft(beganAt: number): EventDraft {
     beganAt,
     uid: null,
     summary: null,
+    description: null,
     dtstart: null,
     dtstartTzid: null,
     dtend: null,
@@ -598,6 +645,24 @@ export function parseIcs(text: string): ParseResult {
       case "SUMMARY":
         draft.summary = unescapeText(property.value);
         break;
+      // The note. Read exactly as the title is — the same `unescapeText`, over a
+      // value the module-wide `unfold` has **already rejoined** before this loop
+      // ever saw it, which is why there is no second unfolder here and must not
+      // be. A note is the one property in this file that is routinely folded: the
+      // measured feeds carry ten continuation lines inside notes and none
+      // anywhere else, so a reader that skipped the unfolding would truncate
+      // mid-value — and a truncated note does not fail to be read, it *almost*
+      // reads, which is the failure shape `./unfold` names for the title.
+      //
+      // The escapes matter more here than they do on a title, and that is
+      // measured too: every one of the 54 notes in the two live feeds carries at
+      // least one escape sequence, because a note is multi-line and RFC 5545
+      // writes a line break as `\n`. Without the resolution this value is one
+      // line with two-character litter in it, and the line the classifier reads
+      // is the whole note instead of its first line.
+      case "DESCRIPTION":
+        draft.description = unescapeText(property.value);
+        break;
       case "DTSTART":
         draft.dtstart = property.value;
         draft.dtstartTzid = property.params.TZID ?? null;
@@ -615,10 +680,28 @@ export function parseIcs(text: string): ParseResult {
         draft.rrule = property.value;
         break;
       default:
-        // Every other property — `DTSTAMP`, `DESCRIPTION`, `CREATED`, and the
-        // rest — is not read. Not reading a property this pipeline has no
-        // question for is not a silent failure: nothing downstream asks for it,
-        // so nothing downstream can quietly get a wrong answer.
+        // Every other property — `DTSTAMP`, `CREATED`, `LOCATION`, and the rest
+        // — is not read.
+        //
+        // ⚠ **This comment used to name `DESCRIPTION` among them, and the
+        // sentence it gave was true when it was written and false by the time it
+        // was corrected.** It read: *nothing downstream asks for it, so nothing
+        // downstream can quietly get a wrong answer.* Downstream then grew four
+        // questions the note answers — which night a piece announces, the
+        // progressivo of a night whose title carries none, who is playing, and
+        // how many LiveCuts that line-up owes — and went on answering three of
+        // them by derivation and the fourth not at all, while this comment
+        // asserted there was no question to answer. A comment describing a
+        // contract that has stopped holding is worse than no comment: it is read
+        // as a measurement and it stops anybody re-measuring.
+        //
+        // So the rule the comment states is kept and the list it states it over
+        // is now correct: a property is left unread while **and only while**
+        // nothing downstream asks for it. `LOCATION` is the one to watch — it is
+        // where an address would live, and reading it would pull a venue into
+        // this process for a question nobody has asked. The day somebody does,
+        // this branch shrinks again and this paragraph is what tells them the
+        // shrinking is the deliberate part.
         break;
     }
   }
@@ -697,6 +780,7 @@ function finishEvent(draft: EventDraft, result: ParseResult): void {
   result.events.push({
     uid: draft.uid,
     summary: draft.summary ?? "",
+    description: draft.description ?? "",
     startDate: start.date,
     startTime: start.time,
     endDate: end.date,

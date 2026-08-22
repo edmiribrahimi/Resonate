@@ -1114,9 +1114,20 @@ function tokensOf(value) {
   );
 }
 
+/**
+ * Every word this file's entries carry — **titles and notes both**.
+ *
+ * ⚠ The note half was added the day the parser started reading `DESCRIPTION`,
+ * and it went in first: a reader that reads notes before its redaction knows
+ * about notes is a reader that can print one. The measured notes carry the name
+ * of whoever is playing and the hour they play, so a UID derived from one is the
+ * same leak as a UID derived from a title — and there is no argument for
+ * measuring one and not the other.
+ */
 const titleTokens = new Set();
 for (const event of parsed.events) {
   for (const token of tokensOf(event.summary)) titleTokens.add(token);
+  for (const token of tokensOf(event.description)) titleTokens.add(token);
 }
 
 /**
@@ -2721,10 +2732,18 @@ process.exit(clean ? 0 : 1);
 /* ────────────────────────────────────────────────────────────────────────────
  * The audit of this run's own output
  *
- * Every parsed title, stripped of the tokens that are already public, must leave
- * no token that occurs in the transcript — and no four-digit year may appear in
- * it either. Same device as check F of `verify-ics-import.mjs`, same reason: the
- * claim *this printed no material* is worth having only when it is measured.
+ * Every parsed title **and every parsed note**, stripped of the tokens that are
+ * already public, must leave no token that occurs in the transcript — and no
+ * four-digit year may appear in it either. Same device as check F of
+ * `verify-ics-import.mjs`, same reason: the claim *this printed no material* is
+ * worth having only when it is measured.
+ *
+ * ⚠ **The note half is the condition under which reading notes is admissible at
+ * all**, not a refinement of it. A note carries the name of whoever is playing on
+ * a date that has not been announced (`sound-manifesto.md`: *chi suona a una data
+ * non ancora comunicata non si scrive qui e non si scrive nel repo*), and this
+ * repository is public, so a note word in a transcript that gets pasted into a
+ * tracked document is irreversible. It went in with the reading, in one commit.
  *
  * There is deliberately no exemption list. When it goes red on a coincidence the
  * repair is to SAY LESS, never to widen the rule. **It has already gone red once
@@ -2753,11 +2772,20 @@ function auditOwnOutput() {
 
   const residual = new Set();
   for (const event of parsed.events) {
-    let remainder = event.summary;
-    for (const token of publicTokens) {
-      remainder = remainder.split(new RegExp(escapeForRegex(token), "gi")).join(" ");
+    // ⚠ TITLE **AND** NOTE. The note half landed in the same commit as the
+    // parser's reading of `DESCRIPTION`, and the ordering is the whole point: a
+    // note names whoever is playing and at what hour, so extending the reading
+    // without extending this audit would have made the claim *this printed no
+    // material* stop covering the material most worth covering. The audit is not
+    // the primary control — no path prints a note — but it is the half that is
+    // measured rather than asserted.
+    for (const source of [event.summary, event.description]) {
+      let remainder = source;
+      for (const token of publicTokens) {
+        remainder = remainder.split(new RegExp(escapeForRegex(token), "gi")).join(" ");
+      }
+      for (const token of tokensOf(remainder)) residual.add(token);
     }
-    for (const token of tokensOf(remainder)) residual.add(token);
   }
 
   const printed = tokensOf(transcript.join("\n"));

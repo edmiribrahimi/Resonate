@@ -111,9 +111,13 @@
  *   E. **Idempotence.** `reconcile` twice: once against nothing, then against the
  *      rows the first pass would have written. The second plan must be empty.
  *      This is criterion 5's only automated evidence.
- *   F. **Confidentiality, over this run's own output.** Every parsed title,
- *      stripped of the public tokens, must leave no token that occurs anywhere in
- *      the transcript — and no four-digit year may appear in it either.
+ *   F. **Confidentiality, over this run's own output.** Every parsed title **and
+ *      every parsed note**, stripped of the public tokens, must leave no token
+ *      that occurs anywhere in the transcript — and no four-digit year may
+ *      appear in it either. The note half arrived with the parser's reading of
+ *      `DESCRIPTION` and in the same commit: a note names whoever is playing on a
+ *      date nobody has announced, so it is the half most worth measuring and the
+ *      one this check would have been silently missing.
  *   G. **The SQL mirror.** Six declared vocabularies, each member present in a
  *      `CHECK` constraint, and no `CHECK` vocabulary carrying a member the
  *      TypeScript does not.
@@ -1818,13 +1822,22 @@ function tokensOf(text) {
       ...FORMAT_NAMES,
     ];
 
+    // ⚠ TITLE **AND** NOTE, since the parser reads `DESCRIPTION`. A note carries
+    // the name of whoever is playing and the hour they play — strictly more
+    // confidential than a title, which is one line somebody wrote for themselves
+    // — so auditing the title alone would leave this check named after a
+    // guarantee it had stopped giving. The two go through the same stripping and
+    // land in the same residual set: F is one question, asked over everything the
+    // file carried.
     const residual = new Set();
     for (const event of parsed.events) {
-      let remainder = event.summary;
-      for (const token of publicTokens) {
-        remainder = remainder.split(new RegExp(escapeForRegex(token), "gi")).join(" ");
+      for (const source of [event.summary, event.description]) {
+        let remainder = source;
+        for (const token of publicTokens) {
+          remainder = remainder.split(new RegExp(escapeForRegex(token), "gi")).join(" ");
+        }
+        for (const token of tokensOf(remainder)) residual.add(token);
       }
-      for (const token of tokensOf(remainder)) residual.add(token);
     }
 
     const printed = tokensOf(transcript.join("\n"));
@@ -1851,10 +1864,19 @@ function tokensOf(text) {
     }
 
     if (fProblems.length === 0) {
+      // The two counts are printed apart because they measure different
+      // populations of the same file, and this snapshot makes the difference
+      // visible rather than academic: it carries a note on a small minority of
+      // its entries while the live feeds carry one on nearly all of theirs
+      // (deferred item 8 — the snapshot and the feeds are not the same
+      // calendar). A single figure would read as *the notes were audited* on a
+      // day when there was almost nothing to audit.
+      const noted = parsed.events.filter((event) => event.description.length > 0).length;
       pass(
         "F",
-        `${residual.size} residual token(s) across ${parsed.events.length} titles, ` +
-          `0 of them in the ${printed.size} tokens this run printed · 0 four-digit years`
+        `${residual.size} residual token(s) across ${parsed.events.length} titles and ` +
+          `${noted} note(s), 0 of them in the ${printed.size} tokens this run printed · ` +
+          "0 four-digit years"
       );
     } else {
       fail("F", "this run's own output carries material:", fProblems);

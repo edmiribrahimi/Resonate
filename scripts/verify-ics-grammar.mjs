@@ -205,11 +205,21 @@ let contatoreUid = 0;
  * Un record gia' validato dal parser: date civili, titolo con gli escape
  * risolti. Nessun `Date` viene costruito, qui come nei moduli.
  */
-function evento(titolo, giorno, { inizio = "11:00", fine = "11:30", minuti = 30, giornoFine = giorno } = {}) {
+function evento(
+  titolo,
+  giorno,
+  { inizio = "11:00", fine = "11:30", minuti = 30, giornoFine = giorno, nota = "" } = {}
+) {
   contatoreUid += 1;
   return {
     uid: `sintetico-${contatoreUid}`,
     summary: titolo,
+    // La nota. Vuota per difetto, perche' la stragrande maggioranza dei casi di
+    // questo gate misura la grammatica del TITOLO e una nota vuota e' esattamente
+    // cio' che quei casi vogliono dire: nessuna seconda dichiarazione. I casi che
+    // misurano la nota la passano, e la passano **inventata**, come tutto il resto
+    // dei dati sintetici qui — nessun valore di questo file viene dal calendario.
+    description: nota,
     startDate: giorno,
     startTime: inizio,
     endDate: giornoFine,
