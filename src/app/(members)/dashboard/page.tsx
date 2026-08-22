@@ -509,6 +509,49 @@ export default async function DashboardPage({
                   </p>
                 </div>
 
+                {/*
+                  ── IL BIGLIETTO DI UN `pending`, 2026-08-22 ─────────────────
+
+                  Questo ramo e' quello che un membro non ancora approvato
+                  vede, e la lista «My Tickets» sta nell'altro. Ma un `pending`
+                  **puo' comprare** — `purchaseTicket` rifiuta solo un
+                  `rejected` — quindi fino a oggi esisteva un percorso in cui
+                  qualcuno aveva un biglietto e **nessuna superficie di lista
+                  dove trovarlo**: gli restava la mail, che e' esattamente
+                  l'artefatto che puo' non arrivare mai in silenzio.
+
+                  Di norma il webhook approva al pagamento riuscito e la
+                  persona finisce nell'altro ramo. Di norma. Se
+                  quell'aggiornamento non va a buon fine — nessuno se ne
+                  accorge, questo progetto non ha error tracking — la persona
+                  resta qui, e senza questa scheda resta senza niente.
+
+                  **Non e' un allargamento**: `/tickets` legge
+                  `.eq("user_id", user.id)` sotto la policy che gia' esiste, e
+                  mostra a una persona i propri biglietti. E **non e' un
+                  cancello nuovo su `status`** — anzi ne toglie l'effetto, che
+                  e' la direzione che la roadmap della v1.6 chiede.
+
+                  `isPendingOrRejected` NON e' toccato, e un `rejected` vedra'
+                  questa scheda come un `pending`: e' voluto. Un rifiutato che
+                  avesse comprato prima del rifiuto ha comunque un biglietto
+                  pagato, e nascondergli la pagina non glielo toglie — lo
+                  lascerebbe solo senza modo di aprirlo. Chi puo' entrare lo
+                  decide la porta, non questa scheda.
+                */}
+                <Card>
+                  <p className="mb-3 text-sm text-muted">
+                    Bought a ticket? It is on your tickets page — you never need
+                    to open the email.
+                  </p>
+                  <Link
+                    href="/tickets"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
+                  >
+                    Your tickets →
+                  </Link>
+                </Card>
+
                 {/* Discover events link */}
                 <Card>
                   <p className="mb-3 text-sm text-muted">
@@ -564,6 +607,21 @@ export default async function DashboardPage({
                 {isMemberRole && (
                 <div>
                   <SectionHeading>My Tickets</SectionHeading>
+                  {/*
+                    Aggiunta il 2026-08-22, e dice una cosa sola: la mail non
+                    serve. E' la stessa frase che porta `/tickets`, qui perche'
+                    questa e' la superficie su cui un membro approvato arriva per
+                    prima e l'abitudine da togliere e' «cerco la mail».
+
+                    Non promette un account: dice dove sta il biglietto. Il
+                    vincolo dell'acquisto da ospite e' del proprietario,
+                    2026-08-22, e una frase che presupponesse una sessione
+                    diventerebbe falsa per una parte dei compratori.
+                  */}
+                  <p className="mb-3 text-sm text-muted">
+                    Your tickets live here. You never need to open the email —
+                    showing the QR code from the ticket is enough.
+                  </p>
                   {sortedTickets.length === 0 ? (
                     <Card>
                       <p className="text-sm text-muted/60">No tickets yet</p>

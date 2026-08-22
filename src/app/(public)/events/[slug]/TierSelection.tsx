@@ -471,8 +471,31 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       </Button>
 
       {/*
-        Converted one wave earlier as spine by plan 41.2-10 and NOT opened here.
-        The conditional and all three props are byte-identical either side.
+        ── IL BIGLIETTO SMETTE DI DIPENDERE DALLA POSTA, 2026-08-22 ────────────
+
+        Il difetto: alla conferma della carta il pannello si chiudeva **da solo**
+        dopo due secondi e mezzo e questa pagina si ricaricava. Il biglietto lo
+        crea il webhook del fornitore, che arriva quando arriva — quindi al
+        momento del ricaricamento poteva non esistere ancora, la pagina non
+        diceva niente, e **l'unico artefatto rimasto era una mail**. Una mail che
+        il fornitore puo' accettare e non consegnare mai, in silenzio: il
+        percorso e' scritto per intero in `src/lib/email.ts`.
+
+        La riparazione e' un quarto prop e nient'altro. Passandolo, il pannello
+        smette di chiudersi da solo e offre l'indirizzo dove il biglietto sta;
+        `onClose` e `onPaymentComplete` restano **le stesse due funzioni**, e chi
+        preme «Stay on this page» ottiene il comportamento di prima, ricaricamento
+        incluso.
+
+        LA FRASE NON PROMETTE UN ACCOUNT. Il proprietario ha posto il 2026-08-22
+        il vincolo dell'acquisto da ospite: una frase che dicesse «nel tuo
+        account» diventerebbe falsa per una parte dei compratori, e una frase
+        falsa su una superficie di biglietteria e' peggio di nessuna frase. Dice
+        dove sta il biglietto e che la mail non serve.
+
+        NIENTE ALTRO E' CAMBIATO: nessuna transizione di stato, nessun importo,
+        nessun codice sconto, nessuna chiave di idempotenza, nessun percorso di
+        webhook. `handlePurchase` sopra non ha una riga diversa.
       */}
       {checkoutId && (
         <SumUpCheckoutModal
@@ -481,6 +504,12 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
           onPaymentComplete={() => {
             setCheckoutId(null);
             window.location.reload();
+          }}
+          successOutcome={{
+            message:
+              "Your ticket will be on the tickets page. You never need to open the email — showing the QR code from there is enough.",
+            href: "/tickets",
+            label: "Open my tickets",
           }}
         />
       )}

@@ -1454,6 +1454,28 @@ export default async function EventDetailPage({
                   <p className="text-sm font-medium text-sem-done mb-3">
                     You have a ticket for this
                   </p>
+                  {/*
+                    ── UNA FRASE, AGGIUNTA IL 2026-08-22 ────────────────────────
+
+                    E' l'unica modifica di questo file in questo lavoro, ed e'
+                    additiva: nessuna condizione, nessuna lettura, nessun
+                    predicato di rivelazione e nessuna colonna e' toccata. La
+                    riga sopra e il link sotto sono quelli che c'erano.
+
+                    Serve perche' questa e' la superficie su cui atterra chi ha
+                    ripreso un acquisto interrotto: quel percorso ricarica la
+                    pagina della serata, e fino a oggi nessuno gli diceva che il
+                    biglietto non sta nella posta. Detto qui, arriva anche a lui
+                    senza toccare il file che decide se un acquisto riprende.
+
+                    Non promette un account — vincolo del proprietario del
+                    2026-08-22 sull'acquisto da ospite — e non nomina nessuna
+                    sede: dice dove sta il biglietto e che la mail non serve.
+                  */}
+                  <p className="text-xs text-muted mb-3">
+                    You never need to open the email — showing the QR code from
+                    the ticket is enough.
+                  </p>
                   <Link
                     href={`/tickets/${party.userTicket.id}`}
                     className={`inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
