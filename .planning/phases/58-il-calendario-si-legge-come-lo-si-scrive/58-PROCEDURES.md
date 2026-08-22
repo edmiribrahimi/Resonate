@@ -190,6 +190,24 @@ Result: pending
 - **Il referto non stampa il contenuto dell'istantanea**, che e' materiale:
   contiene un nome di persona.
 
+> **⇢ Lo strumento esiste dal 2026-08-22** (riparazione 58-14, voce 3 delle
+> differite): `npm run restore:mirror-snapshot -- --from <percorso> --calendar
+> <chiave>`, che **e' un giro a vuoto finche' non gli si passa `--apply`**.
+> Legge l'istantanea per percorso, ne verifica l'istante contro la riga di
+> registro rimasta aperta, e riscrive **solo** le due eccezioni di stato con
+> l'attore e l'istante originali, **per chiave primaria**.
+>
+> **Questo non trasforma il passo in un passo eseguito.** Nessuna corsa di quello
+> strumento ha mai rimesso una spunta vera: e' un atto, scrive righe di
+> produzione, e pretende un'autorizzazione datata propria che non esiste. Il
+> `Result` qui sotto resta pendente per quello, e non per assenza di strumento.
+>
+> **⚠ Due condizioni che il passo 3 deve verificare prima di arrivare qui.** Lo
+> strumento **rifiuta** un'istantanea che non porta il proprio istante — quelle
+> scritte prima del 2026-08-22 non ce l'hanno — e **rifiuta** un percorso che git
+> non conferma ignorato. Entrambi i rifiuti escono `2`, cioe' *nulla e' stato
+> scritto*, con una categoria propria.
+
 Result: pending
 
 ### Passo 6 — La riconferma, dalla stessa fonte del passo 2

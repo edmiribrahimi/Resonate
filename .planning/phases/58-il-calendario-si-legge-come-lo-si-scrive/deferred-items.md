@@ -50,7 +50,7 @@ trovate**, e non riparate. Ognuna porta chi l'ha vista e quando.
 
 ---
 
-## 3. `P-58-C` passo 5 non ha ancora uno strumento: il ripristino DALL'ISTANTANEA
+## 3. `P-58-C` passo 5 non ha ancora uno strumento: il ripristino DALL'ISTANTANEA — **COSTRUITA il 2026-08-22, NON ESERCITATA**
 
 - **Trovata:** piano 58-09, task 2, 2026-08-20
 - **Il fatto:** il piano 58-09 costruisce due cose che sembrano la stessa e non
@@ -99,6 +99,137 @@ argomento — con la cascata su `production_checklist_item` e senza PITR.
    sono `> 0` e lo strumento del punto 1 non esiste ancora.
 
 Nessuna delle due si costruisce nel piano 58-11.
+
+### ⇢ Costruita il 2026-08-22, riparazione 58-14 — e cosa NON e' chiuso
+
+**Le due cose assegnate esistono. La terza — che funzionino — no**, ed e' la
+distinzione fra un `Result` scritto e un `Result` osservato.
+
+#### 1. Lo strumento del passo 5
+
+`scripts/restore-mirror-snapshot.mjs` (`npm run restore:mirror-snapshot`), e
+rispetta il contratto che questa voce aveva scritto in anticipo:
+
+| Cosa chiedeva la voce 3 | Come e' fatto |
+|---|---|
+| un argomento esplicito che legge un'istantanea **per percorso** | `--from <percorso>`, obbligatorio, nessun default, nessuna ricerca automatica |
+| **verifica l'ora** contro la corsa interrotta | l'istante si legge **dentro** l'istantanea, e si confronta con la riga di registro che ha `finished_at` nullo. Il nome del file non conta come ora |
+| **solo** le due eccezioni di stato | due `UPDATE` su due colonne. Nessun `INSERT`, e **zero `DELETE` in tutto il processo** |
+| `ticked_by` e `ticked_at` originali | scritti dritti sulle colonne, mai attraverso `record_checklist_tick` |
+| **per chiave primaria** | ogni scrittura e' `WHERE id = ‹uuid›`. Le condizioni larghe stanno solo dentro **letture**, e servono a risolvere quell'`id` |
+
+**Tre proprieta' che la voce non aveva chiesto e che sono state aggiunte perche'
+*un ripristino non e' un atto* le implica:**
+
+1. **Non sovrascrive niente di posteriore allo schianto.** Una casella gia'
+   spuntata al momento del rientro non viene toccata — quell'istante e' piu'
+   recente dell'istantanea e l'ha prodotto una persona. Un legame gia' posato e
+   **diverso** da quello dell'istantanea non viene toccato: e' un ritrovamento,
+   e diventa un conteggio.
+2. **Il percorso dev'essere ignorato da git**, chiesto a git e non dedotto da
+   `.gitignore`. Non protegge il file — quello esiste gia' — ma rifiuta di
+   **usare** una copia che sta dove lo scrittore si sarebbe rifiutato di
+   scriverla, e un'istantanea in una directory tracciata e' un ritrovamento per
+   conto proprio.
+3. **Il referto misura se stesso.** In coda gira un controllo che prende ogni
+   stringa dell'istantanea e asserisce che nessun suo token compaia in cio' che
+   e' uscito. **E' andato rosso alla prima corsa su un'istantanea vera** — 848
+   token nell'origine, uno stampato — e la riparazione e' stata **dire meno**,
+   mai allargare la regola.
+
+**Non e' un argomento dell'importatore, come questa voce lo aveva scritto**, ed
+e' una scelta di dominio:
+
+- l'importatore **rifiuta se non c'e' una sorgente registrata** — e' il terzo
+  passo del suo ordine dei rifiuti, con un caso di gate che lo protegge. Un
+  rientro deve poter girare **proprio quando la sorgente non risponde**, che e'
+  fra le ragioni piu' probabili per cui una corsa e' morta a meta';
+- un rientro **non ha niente a che fare con il feed**: dargli un lettore di
+  calendari sarebbe un'esposizione in piu' che non serve a niente (difesa 1 di
+  D-58-07);
+- il processo del rientro **non contiene nessun `DELETE`**. Zero. Condividere un
+  processo con un cancellatore e' essere a una distrazione dal cancellare.
+
+**⚠ Una conseguenza che va detta: le istantanee scritte prima del 2026-08-22 non
+sono ripristinabili.** Non portano il campo dell'ora, e questo strumento le
+**rifiuta** invece di fidarsi del nome del file. Non e' una perdita — quelle sul
+disco vengono da corse **arrivate in fondo**, quindi non sono materiale di
+rientro — ma e' un limite che si vede solo se scritto.
+
+#### 2. La guardia della corsa non presidiata
+
+`unattendedMirrorGuard` in `src/lib/production/ics/guard.ts`, applicata
+nell'importatore **dopo il piano e prima di qualunque scrittura**, nemmeno
+l'istantanea. Categoria propria — `unattended_state_at_risk` — e uscita `2`.
+
+**Il meccanismo, e perche' quello.** L'attendibilita' e' **un'evidenza, mai una
+dichiarazione**: si legge dal terminale interattivo del processo, che un cron,
+una funzione serverless e un lavoro di CI non hanno per costruzione e non possono
+procurarsi modificandosi. **Non esiste alcun `--attended`**, perche' e'
+esattamente il meccanismo che questa voce vietava — *«un meccanismo che si puo'
+passare per abitudine non e' una guardia»*: un argomento che zittisce una
+guardia finisce in un alias di shell. `--unattended` esiste e va **nel verso che
+restringe soltanto**, quindi digitarlo per abitudine e' innocuo, e serve a chi
+vuole esercitare a mano la strada del cron.
+
+Su un giro a vuoto **referta invece di rifiutare**: li' non c'e' niente da
+proteggere, e cio' che serve a una persona e' sapere in anticipo cosa
+risponderebbe la strada non presidiata.
+
+**Resta armata finche' `MIRROR_RESTORE_PATH_VERIFIED` vale `false`** — e vale
+`false`, perche' quel valore non misura *«il codice esiste»* ma *«qualcuno l'ha
+visto rimettere una spunta vera»*.
+
+#### 3. La prova, e cio' che NON e' provato
+
+`verify-mirror-guards.mjs` guadagna due famiglie: **U0-U11** sul predicato della
+corsa non presidiata, **R5-R14** sui dieci rifiuti del rientro. Provate **per
+mutazione quattro volte**, con la mutazione asserita applicata **prima** di
+leggerne l'esito:
+
+| mutazione | esito |
+|---|---|
+| la guardia smette di contare `1` come stato presente | rossi U5, U6, U10, U11 |
+| la dichiarazione che restringe diventa una che allarga | rosso U3 |
+| il rifiuto sull'ora dell'istantanea disattivato | rosso R12 |
+| il rifiuto sul percorso non ignorato disattivato | rosso R7 |
+
+**Due casi sono dichiarati rimandati e non simulati:**
+
+- **R15 — il rientro che rimette DAVVERO una spunta.** Ha bisogno di un database
+  davanti, e soprattutto **e' un atto**: scrive righe di produzione e pretende
+  un'autorizzazione datata propria, che al 2026-08-22 non esiste. Simularlo
+  sarebbe la cosa peggiore che quel gate possa fare — farebbe credere esercitato
+  l'unico percorso che sta fra una corsa morta a meta' e la perdita dell'unico
+  dato che nessun feed sa ricostruire.
+- **R16 — il rifiuto della guardia sull'importatore, da capo a fondo.** Il
+  predicato e' misurato; il **cablaggio** no, perche' l'importatore rifiuta prima
+  su sorgente e credenziali — che e' esattamente il contratto che il caso R3
+  protegge. Serve una sorgente registrata.
+
+**E un limite del cablaggio, scritto qui invece che lasciato da scoprire:**
+quando la guardia puo' rispondere, **il feed e' gia' stato letto**. I suoi
+conteggi vivono nel database, il client che li legge nasce dopo la lettura della
+sorgente. Un rifiuto non scrive niente, ma ha tirato dentro al processo date non
+annunciate per una corsa che non scrivera'. Il rimedio e' spostare la lettura del
+feed dopo la lettura dello scopo, cioe' riordinare i gate dell'importatore — che
+hanno un contratto e un gate propri, e non si riordinano qui.
+
+#### 4. Cosa questo sblocca, e cosa no
+
+- **La voce 13, punto 1 (`RSNT`)** aveva due strade: la guardia, **oppure**
+  l'accettazione datata del rischio. La guardia adesso c'e'. **Non basta da
+  sola** per una rilettura: quella e' presidiata, quindi la guardia la ammette —
+  cio' che la rilettura di `RSNT` chiede resta l'autorizzazione a cancellare e
+  riscrivere **con una spunta viva**, ed e' una decisione del proprietario, non
+  un effetto di questo codice.
+- **`P-58-C` non cambia stato.** I suoi `Result` restano pendenti: lo strumento
+  del passo 5 esiste, e un passo con uno strumento resta un passo non eseguito.
+
+**Come si chiude del tutto:** un esercizio datato del rientro, con l'attore e
+l'istante originali **riletti dal catalogo** — che e' uno strumento diverso da
+quello che ha prodotto l'effetto — e `MIRROR_RESTORE_PATH_VERIFIED` girato a
+`true` nello stesso atto, insieme al caso `U11` del gate.
 
 ---
 
