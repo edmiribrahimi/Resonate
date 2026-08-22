@@ -572,3 +572,53 @@ I conteggi post-specchio di questo piano restano validi come misura del
 2026-08-20. Il quadro del 2026-08-22, con la diagnostica completa, la
 corrispondenza derivata e la parte che nessun alias ripara, e' la **voce 13** di
 `deferred-items.md`.
+
+---
+
+## Secondo poscritto, stesso giorno — la riparazione E' STATA APPLICATA
+
+*Il poscritto qui sopra si chiude con «misurata ma NON applicata». Poche ore
+dopo il proprietario ha speso l'autorizzazione, e questo secondo poscritto e' il
+seguito che il primo non poteva avere.*
+
+**Cosa e' cambiato fra i due.** Il proprietario e' stato messo davanti a tre
+fatti — la spunta viva dentro il perimetro che lo specchio cancella, lo strumento
+di rientro costruito e **mai esercitato**, e l'offerta di una copia preventiva —
+e ha risposto **«procedi e basta»**. La copia e' stata presa comunque, fuori
+dall'albero del repo; l'istantanea che l'importatore scrive prima di cancellare
+e' rimasta la rete vera.
+
+**Le tre cose fatte, in ordine.**
+
+1. **Gli alias**, ri-derivati dai feed **con il lettore delle note attivo** — la
+   misura del primo poscritto era stata presa senza. Due dichiarazioni scritte
+   per chiave primaria, `1 → 3` serie con alias. Le parole non stanno in nessun
+   file: sono parole per spazi, e questo repo e' pubblico.
+2. **La line-up**, entrata con una migration — e con la correzione di dominio del
+   proprietario che la accompagna: **un LiveCut si conta dagli SLOT, mai dai
+   nomi**. Voce **17** di `deferred-items.md`.
+3. **I due specchi**, `rsnt` e poi subito `rmdb`, letti per intero a vuoto prima.
+   `mtnlb` **non e' stato lanciato**: rifiuta `feed_empty`, ed e' il codice ad
+   avere ragione (voce 10).
+
+**Il numero del punto 1 di questo poscritto, dopo.** *«Quasi ogni scheda porta
+giorno preso, comprese sette che sono nostre»* — quelle sette sono entrate. Le
+serate in produzione passano da **2 a 11**, gli impegni da **70 a 60**, e le voci
+non classificate dei due feed da 4 a **1**. L'unica rimasta e' la voce **16**: una
+voce la cui nota nomina se stessa e dichiara un'altra data, che il codice rifiuta
+di promuovere e che solo il proprietario puo' correggere — **sul calendario**,
+non qui.
+
+**La spunta.** Letta dal catalogo **prima** e **dopo**, con `read_only: true`.
+E' tornata con **lo stesso autore e lo stesso istante**; l'unica cosa cambiata e'
+l'identificatore della riga, che e' generato e non sopravvive alla rimozione —
+il riaggancio chiave su `(source_uid, tipo, etichetta)`, ed e' esattamente cio'
+che ha funzionato. **Questo non dice nulla sul rientro dall'istantanea:** `R15`
+resta il caso non esercitato, e una corsa che arriva in fondo non e' una prova
+del percorso che esiste per quando non ci arriva.
+
+**Un ritrovamento nuovo, registrato come voce 20.** L'evidenza di presidio che la
+guardia legge — un terminale interattivo — e' stata **prodotta da chi eseguiva**,
+allocando una pseudo-tty, perche' la sessione non ne aveva una. Il presidio era
+vero; l'evidenza no. Un terminale si alloca con una riga, e una riga si mette in
+uno script che un giorno lancera' un cron.

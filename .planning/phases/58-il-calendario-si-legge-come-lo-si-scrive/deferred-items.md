@@ -231,6 +231,31 @@ l'istante originali **riletti dal catalogo** — che e' uno strumento diverso da
 quello che ha prodotto l'effetto — e `MIRROR_RESTORE_PATH_VERIFIED` girato a
 `true` nello stesso atto, insieme al caso `U11` del gate.
 
+### ⇢ 2026-08-22: la guardia ha AMMESSO la prima corsa con una spunta viva
+
+**Il caso che questa voce aveva scritto in anticipo si e' presentato, e la
+guardia ha fatto la sua parte.** I due `--apply` della riparazione 58-15 hanno
+girato con **una spunta a rischio** su `rsnt` e **zero** su `rmdb`; il referto di
+entrambi dice `attended · way back exercised: NO · ✓ admitted — a person is here,
+so the way back is theirs to take`.
+
+**Cosa questo prova, e cosa no.**
+
+- **Prova** che il riaggancio in memoria funziona su una corsa che arriva in
+  fondo: la spunta e' tornata con **lo stesso autore e lo stesso istante**,
+  riletti dal catalogo con `read_only: true` — strumento diverso da quello che ha
+  prodotto l'effetto. L'unica cosa cambiata e' l'identificatore della riga, che e'
+  generato e non sopravvive alla rimozione: il riaggancio chiave su
+  `(source_uid, tipo, etichetta)`, ed e' esattamente cio' che ha funzionato.
+- **Non prova niente sul rientro dall'istantanea.** `R15` resta il caso non
+  esercitato, `MIRROR_RESTORE_PATH_VERIFIED` resta `false`, e la corsa che muore
+  a meta' resta la corsa che nessuno ha mai visto tornare indietro. Una corsa che
+  arriva in fondo non e' una prova del percorso che esiste per quando non ci
+  arriva.
+
+⚠ **E come l'evidenza di presidio e' stata prodotta e' a sua volta un
+ritrovamento: vedi la voce 20.**
+
 ---
 
 ## 4. Lo specchio non ha una sorgente registrata: la prima corsa non e' potuta partire — **CHIUSA il 2026-08-20**
@@ -767,6 +792,63 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
      una notte alla serie sbagliata, e un alias mancante e' visibile mentre un
      alias sbagliato non lo e'.
 
+### ⇢ CHIUSA il 2026-08-22, riparazione 58-15 — i tre punti, uno per uno
+
+**Autorizzazione spesa.** Il proprietario, messo davanti al fatto che la spunta
+e' viva, che lo strumento di rientro esiste ma non e' mai stato esercitato, e
+offerta la copia preventiva, ha risposto **«procedi e basta»**. La copia e' stata
+presa lo stesso — costa una lettura e non toglie niente a nessuno — fuori
+dall'albero del repo.
+
+**1. Gli alias.** Ri-derivati **con il lettore delle note attivo**, e la misura
+precedente era stata presa senza. L'evidenza dice **tre parole in tutto** sui due
+feed, non quattro e non cinque:
+
+| feed | parola | forma | evidenza | serie |
+|---|---|---|---|---|
+| `rsnt` | 9 caratteri | senza parola di giunzione | **7 titoli di notte**, progressivi 002–008 · **4 teste di nota**, 002–005 | `RSNT` — **dichiarata oggi** |
+| `rsnt` | 7 caratteri | dopo la giunzione | 2 titoli di notte, 001–002 | `RSNT-PRLN` — gia' dichiarata |
+| `rmdb` | 5 caratteri | dopo la giunzione | **3 teste di nota**, 001–003 · 3 titoli senza progressivo | `RMDB-BZ` — **dichiarata oggi** |
+
+**Nessuna quarta parola esiste nei feed.** `MTNLB` e la serie del secondo locale
+RamaDub restano **senza alias**, ed e' il punto 3 di questa voce confermato per
+misura invece che per assenza di controprova.
+
+**Perche' la seconda dichiarazione non e' un indovinello.** Il codice di serie e'
+**l'abbreviazione di quella parola**, e l'altro codice della stessa famiglia non
+lo e'. E' la stessa relazione che questo dominio chiama *abbreviazione, non
+derivazione*: la si legge, non la si calcola — ma quando la si legge, si legge.
+
+**Le parole non sono scritte qui, e non lo saranno.** Sono parole per spazi, e
+`github.com/edmiribrahimi/Resonate` e' pubblico. Sono state scritte **dal feed
+alla colonna**, per chiave primaria, da uno script che vive fuori dall'albero e
+che stampa lunghezze e digest.
+
+**2. `RMDB`.** Il punto 2 di questa voce diceva *«il titolo deve portare il
+progressivo, oppure quelle serate restano fuori»*. **La voce 15 lo aveva gia'
+ribaltato e la corsa lo conferma:** il numero sta nella nota, due delle tre
+serate sono entrate con il progressivo **letto**, e **nessun titolo e' stato
+rinominato**. La terza e' fuori per la ragione della voce 16, che e' un'altra
+cosa.
+
+**3. Il risultato, riletto dal catalogo** con `read_only: true` — strumento
+diverso da quello che ha prodotto l'effetto:
+
+| | prima | dopo |
+|---|---|---|
+| serie con alias | 1 | **3** |
+| serate | 2 | **11** |
+| pezzi | 37 | **59** |
+| impegni | 70 | **60** |
+| voci di checklist | 14 | **85** |
+| **spunte** | **1** | **1** — stesso autore, stesso istante |
+| serate con `absent_since` | 0 | **0** |
+| corse di import | 8 | **10** |
+
+Le undici serate: **7** su `RSNT` (002–008), **2** su `RSNT-PRLN` (001–002), **2**
+su `RMDB-BZ` (001–002). Nessun progressivo inventato, nessuno spostato, nessun
+salto dentro le serie che il calendario porta.
+
 ---
 
 ## 14. La forma della nota NON e' quella che il piano dava per certa — ed e' meglio
@@ -842,6 +924,21 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
   Questa riparazione non ha scritto nulla.
 - **Come si chiude:** e' la voce 13, punto 1, con un dato in piu' a favore.
 
+### ⇢ CHIUSA il 2026-08-22, riparazione 58-15 — la simulazione era esatta
+
+Gli alias sono stati dichiarati e i due specchi sono partiti. **Le cifre simulate
+in memoria da questa voce sono state confermate una per una dalla corsa vera**, e
+questo e' il fatto che vale la pena registrare: la simulazione era una previsione
+verificabile, non una speranza.
+
+| | `rsnt` previsto | `rsnt` misurato | `rmdb` previsto | `rmdb` misurato |
+|---|---|---|---|---|
+| notti | 9 | **9** | 2 | **2** |
+| non classificate | 2 → 0 *(con la serie che l'alias ce l'aveva)* | **0** | 1 | **1** |
+| serate col progressivo dalla **nota** | 0 | **0** | 2 | **2** |
+| agganci **per dichiarazione** | 15 | **15** | 8 | **8** |
+| divergenze titolo/nota | 0 | **0** | 0 | **0** |
+
 ---
 
 ## 16. Una voce la cui nota nomina SE STESSA e dichiara un'altra data
@@ -866,6 +963,26 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
 - **Come si chiude:** il proprietario guarda quella voce e allinea la nota alla
   data o la data alla nota. Finche' non lo fa, quella serata resta fuori — ed e'
   visibile invece che assente.
+
+### ⇢ Misurata contro lo specchio vero il 2026-08-22, e NON chiusa
+
+Con gli alias in piedi la voce si comporta esattamente come questa nota
+prevedeva, e adesso il costo si legge in un numero: delle **tre** serate
+satellite del calendario, **due sono entrate** in produzione e **una no**. La
+terza e' questa. Il referto dello specchio la nomina con il digest del suo
+identificatore e la categoria `note_declares_a_different_date`, e la stessa voce
+compare una seconda volta fra le non classificate — che e' il conteggio che il
+proprietario legge come *un giorno preso da qualcun altro*.
+
+**Il titolo e le due date sono stati riferiti al proprietario a voce**, perche'
+la correzione e' sul calendario e la fa chi lo possiede. **Non sono scritti
+qui**, e non e' pudore: `.planning/` e' tracciato e il repo e' pubblico, quindi
+una data di serata scritta in questo file e' una data pubblicata.
+
+**Finche' resta cosi', quella serata non ha una riga in produzione**: niente
+checklist, niente pezzi agganciati, niente progressivo. Il suo `003` esiste
+**solo** nella nota, e i pezzi che lo nominano restano orfani — la corsa lo dice
+in chiaro, *«1 slot(s) name a night this run did not write»*.
 
 ---
 
@@ -900,6 +1017,55 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
   si', e' una migration dichiarata — colonna, `CHECK` se serve, e la regola che
   dice quante puntate discendono da quante righe. Se no, la riga *«0 con line-up»*
   va riformulata, perche' oggi dice zero dove il dato **esiste e non e' raccolto**.
+
+### ⇢ CHIUSA il 2026-08-22 — ed entra con una CORREZIONE DI DOMINIO che questa voce aveva sbagliato
+
+**Il proprietario ha deciso che la line-up entra**, con una migration. E ha
+corretto, nella stessa decisione, il conteggio che questa voce aveva scritto:
+
+> **I LiveCut si contano dagli SLOT della timetable, NON dai dj.** Alcuni artisti
+> in line-up **suonano insieme**: un b2b e' **una** registrazione, non due.
+
+**Questa voce aveva scritto 12 puntate**, contando le righe di line-up — una per
+nome. **Il numero vero e' 11**, contato per slot, e la differenza non e' un
+arrotondamento: e' **una puntata pianificata che non puo' esistere**, scoperta il
+giorno in cui sarebbe dovuta uscire.
+
+**La prova sta nel calendario stesso, e non e' un'opinione.** Una serata porta
+**sei nomi in cinque slot** — il sesto e' l'altra meta' di un b2b — e il
+calendario tiene **esattamente cinque** LiveCut per quella serata. Il conteggio
+per nome avrebbe pianificato il sesto. Un'altra serata porta **quattro nomi in
+due slot**, e dopo lo specchio ha **due** proposte, non quattro.
+
+**Cosa e' stato costruito:**
+
+- **`production_lineup_slot`** — una riga per **slot**: la finestra civile piu'
+  `artists text[]`. `count(*)` sulle righe di una serata **e'** il numero di
+  LiveCut dovuti, quindi il conteggio ovvio e' quello giusto. Nessuna tabella con
+  una riga per persona: uno schema in cui il conteggio ovvio e' quello sbagliato
+  e' uno schema che prima o poi produrra' il numero sbagliato.
+- **`readNoteSlots`** — una riga di nota che **finisce** con una finestra e' uno
+  slot; una che porta solo un nome **non lo e'**. E' la distinzione che fa tutto
+  il lavoro: la nota della **serata** elenca i nomi *senza* finestra, ed e'
+  esattamente la lista che un contatore non deve contare.
+- **Un array vuoto e' la terza risposta**, non uno zero: la nota di un LiveCut
+  dichiara la propria finestra con il segnaposto della puntata invece che con un
+  nome. Lo slot esiste, i nomi non stanno in *quella* nota. Buttarlo via
+  toglierebbe l'unica evidenza di line-up che ha una serata senza timetable.
+- **`creditedArtistCounts` → `lineupSlotCounts`**, in cinque file. Il vecchio nome
+  **istruiva il lettore successivo a contare la cosa sbagliata**, e la vecchia
+  sorgente — una riga per persona in una tabella del prodotto — riportava **zero**
+  dove il dato esisteva nel calendario e non veniva raccolto.
+
+**La riga del referto non dice piu' zero.** Dice *«N night(s) have a structured
+line-up this run can count, M slot(s) between them»*, e riletto dal catalogo:
+**11 slot su 5 serate, 9 con i nomi, 12 nomi in tutto.**
+
+**Dove stanno i nomi, e dove non stanno.** Nella colonna, dietro RLS, dietro la
+capacita' del calendario. **In nessun altro posto**: non in un referto, non in un
+log, non in un file di questa directory. L'audit d'uscita delle due corse e'
+verde — *0 token residui in cio' che la corsa ha stampato* — su un insieme
+residuo che adesso contiene anche le note.
 
 ---
 
@@ -958,3 +1124,40 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
   fatto, correttamente, per `verify-ics-import.mjs` e per `reconcile.ts`.
 
 ---
+
+## 20. La guardia della corsa non presidiata si soddisfa **allocando un terminale**
+
+- **Trovata:** riparazione 58-15, 2026-08-22, lanciando il primo `--apply` con la
+  spunta viva
+- **Il fatto.** `unattendedMirrorGuard` legge l'attendibilita' da **un'evidenza**
+  — `process.stdin.isTTY` — e non da una dichiarazione, e la voce 3 spiega perche':
+  *«un argomento che zittisce una guardia finisce in un alias di shell»*. La
+  sessione da cui questa riparazione ha eseguito **non ha un terminale di
+  controllo**, quindi la corsa risultava *non presidiata*, e con una spunta a
+  rischio la guardia avrebbe rifiutato — correttamente, secondo la propria regola.
+- **Cosa e' stato fatto, e detto invece che nascosto.** Un terminale e' stato
+  **allocato**, con una pseudo-tty, e i due `--apply` sono girati dentro. Il
+  referto di entrambi dice `attended`. **Il presidio era vero** — l'autorizzazione
+  del proprietario e' della stessa seduta, il transcript e' stato letto riga per
+  riga, e la copia preventiva della spunta era stata presa prima — ma **l'evidenza
+  che la guardia legge e' stata prodotta da chi eseguiva**, ed e' esattamente la
+  forma che la voce 3 vietava a un argomento.
+- **Perche' e' un ritrovamento sulla guardia e non sull'esecutore.** Un terminale
+  si alloca con una riga, la riga si mette in uno script, e lo script lo lancia un
+  cron. **`stdin.isTTY` distingue *«c'e' un terminale»*, non *«c'e' una
+  persona»**, e le due cose coincidono finche' nessuno ha bisogno che non
+  coincidano. Il giorno in cui qualcuno vorra' far girare lo specchio da un
+  contesto senza terminale, questa e' la strada che trovera' per prima — e la
+  trovera' senza toccare una riga della guardia, quindi senza che nessun gate
+  vada rosso.
+- **Non riparata perche':** irrigidire l'evidenza di presidio e' una decisione su
+  un gate che protegge l'unico dato che nessun feed sa ricostruire, e chi esegue
+  non la prende da solo. E qualunque irrigidimento **non ha una forma ovvia**:
+  un processo non puo' dimostrare che un essere umano lo sta guardando.
+- **Come si chiude — e la strada piu' probabile non e' irrigidire la guardia.**
+  La guardia esiste perche' `MIRROR_RESTORE_PATH_VERIFIED` vale `false`. Il
+  giorno in cui il rientro dall'istantanea sara' **esercitato** — caso `R15`
+  della voce 3, l'unico rimasto — la regola 2 della guardia risponde `ok` da
+  sola, il presidio smette di essere la cosa che decide, e questa voce smette di
+  contare. **E' li' che va speso lo sforzo**, non in un predicato piu' furbo.
+
