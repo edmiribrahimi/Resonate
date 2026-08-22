@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { render } from "@react-email/render";
 import { getResend } from "@/lib/email";
+import { recordBatchSend } from "@/lib/email-delivery/ledger";
 import { VenueRevealEmail } from "@/emails/venue-reveal";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
 
@@ -260,8 +261,25 @@ export interface VenueRevealOptions {
   createdBefore?: string;
 }
 
-/** One person, and the rows that entitle them. */
-type Recipient = { name: string; ticketIds: string[]; rsvpIds: string[] };
+/**
+ * One person, and the rows that entitle them.
+ *
+ * `userId` was added on 2026-08-22 and carries exactly one job: it is what the
+ * delivery ledger records, so that a reveal the provider did not deliver can be
+ * put in front of whoever runs the night **with a name attached**. It is not
+ * used to send, to deduplicate or to decide entitlement — the key for all three
+ * remains the e-mail address, unchanged.
+ *
+ * It is nullable because the rows it comes from are: `tickets.user_id` and
+ * `rsvps.user_id` are nullable columns, and a person whose profile could not be
+ * resolved is skipped before ever reaching here.
+ */
+type Recipient = {
+  name: string;
+  userId: string | null;
+  ticketIds: string[];
+  rsvpIds: string[];
+};
 
 /**
  * The three queries and the deduplication — the part that must have exactly one
@@ -396,9 +414,19 @@ async function collectRecipients(
 
   const emailMap = new Map<string, Recipient>();
 
-  const upsert = (email: string, fullName: string | null): Recipient => {
+  // `userId` follows the same first-writer-wins rule the name already followed:
+  // the map is keyed by ADDRESS, and if two accounts ever shared one the mail
+  // would be one mail — so the ledger row is one row, attributed to the account
+  // that appeared first. Deliberately not a list: the question this column
+  // answers is *who do I go and tell*, and one person is the answer.
+  const upsert = (
+    email: string,
+    fullName: string | null,
+    userId: string | null
+  ): Recipient => {
     const existing = emailMap.get(email) || {
       name: fullName || "Member",
+      userId,
       ticketIds: [],
       rsvpIds: [],
     };
@@ -412,13 +440,15 @@ async function collectRecipients(
   for (const ticket of [...(tickets.data || []), ...(masterTickets.data || [])]) {
     const profile = ticket.user_id ? profiloDi.get(ticket.user_id) : undefined;
     if (!profile) continue;
-    upsert(profile.email, profile.full_name).ticketIds.push(ticket.id);
+    upsert(profile.email, profile.full_name, ticket.user_id).ticketIds.push(
+      ticket.id
+    );
   }
 
   for (const rsvp of rsvps.data || []) {
     const profile = rsvp.user_id ? profiloDi.get(rsvp.user_id) : undefined;
     if (!profile) continue;
-    upsert(profile.email, profile.full_name).rsvpIds.push(rsvp.id);
+    upsert(profile.email, profile.full_name, rsvp.user_id).rsvpIds.push(rsvp.id);
   }
 
   return { recipients: emailMap, unavailable: false };
@@ -660,7 +690,8 @@ export async function revealPartyVenue(
   const attemptGroup = async (
     group: Array<[string, Recipient]>
   ): Promise<
-    { delivered: true } | { delivered: false; outlook: FailingOutlook }
+    | { delivered: true; messageIds: string[] }
+    | { delivered: false; outlook: FailingOutlook }
   > => {
     let rendered = false;
     try {
@@ -691,7 +722,7 @@ export async function revealPartyVenue(
       // caught throws and then did `totalSent += emails.length`, so a rate
       // limit or a rejected domain was counted as delivered. Both arms are
       // checked here, and neither counts unless the address really left.
-      const { error } = await resend.batch.send(emails);
+      const { data, error } = await resend.batch.send(emails);
 
       if (error) {
         const outlook = classifyProviderRefusal(error.name);
@@ -701,7 +732,20 @@ export async function revealPartyVenue(
         );
         return { delivered: false, outlook };
       }
-      return { delivered: true };
+      // ── The provider's receipts, carried out so the send can be VERIFIED ────
+      //
+      // Added 2026-08-22, and it changes nothing about the send: `data.data` is
+      // the array of `{ id }` the provider returns for the messages it accepted,
+      // in the order they were given (`CreateBatchSuccessResponse`,
+      // `resend@6.9.2`). Handing them to the caller is what lets a reveal enter
+      // the delivery ledger and be asked about later.
+      //
+      // **Acceptance is not delivery, and that is the whole point.** The
+      // provider's suppression list answers `error: null` with a regular id and
+      // never delivers, so this array being full says only that the request was
+      // taken — which is precisely why the ids have to travel somewhere they can
+      // be checked instead of being discarded here.
+      return { delivered: true, messageIds: (data?.data ?? []).map((m) => m.id) };
     } catch (err) {
       const outlook: FailingOutlook = rendered ? "may_help" : "same_answer";
       console.error(
@@ -729,10 +773,41 @@ export async function revealPartyVenue(
    * smaller.
    */
   const recordDelivered = async (
-    group: Array<[string, Recipient]>
+    group: Array<[string, Recipient]>,
+    messageIds: string[]
   ): Promise<void> => {
     recipientsSent += group.length;
     await markBatchReached(supabase, party.id, group);
+
+    // ── The ledger, written AFTER the marking and never before it ────────────
+    //
+    // Order matters and is deliberate. `venue_reveal_sent` is the one-way guard
+    // that decides who gets mailed next time; this is a record of what happened.
+    // Writing the record first would put a database call the marking does not
+    // need between the send and the guard, on the one path in this product where
+    // a missed guard means a duplicate publication of an address.
+    //
+    // ⚠️ **This is the whole of what this change does to the reveal.** Nothing
+    // above decides WHEN the reveal fires, nothing touches `venue_reveal_sent`
+    // or `venue_reveal_email_sent`, and no retry is introduced: a row here is
+    // not a second reveal, it is a note about the first one.
+    //
+    // `recordBatchSend` never throws and never blocks. If it returns `false`
+    // these people simply have no row, and the night's panel will say so as
+    // "no send recorded" — which is a distinct state from "not delivered", and
+    // the honest one.
+    await recordBatchSend(
+      messageIds,
+      group.map(([, data]) => ({
+        category: "venue_reveal" as const,
+        userId: data.userId,
+        // Deliberately NOT a ticket: a person entitled to this mail may hold
+        // two tickets (the night's and the event-level one) or none at all (an
+        // RSVP). The night is the only key that is always exactly one.
+        ticketId: null,
+        partyId: party.id,
+      }))
+    );
   };
 
   /** `null` while nothing has failed. See {@link worseOutlook}. */
@@ -747,7 +822,7 @@ export async function revealPartyVenue(
 
     const attempt = await attemptGroup(batch);
     if (attempt.delivered) {
-      await recordDelivered(batch);
+      await recordDelivered(batch, attempt.messageIds);
       continue;
     }
 
@@ -768,7 +843,7 @@ export async function revealPartyVenue(
         const single = [one];
         const singleAttempt = await attemptGroup(single);
         if (singleAttempt.delivered) {
-          await recordDelivered(single);
+          await recordDelivered(single, singleAttempt.messageIds);
         } else {
           recipientsFailed += 1;
           // The single's own verdict, not the batch's. The batch was refused
