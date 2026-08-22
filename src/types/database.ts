@@ -16,6 +16,16 @@ import type {
 // TypeScript caller, so they are defined once in `@/lib/capabilities/keys`,
 // which imports nothing, and are read from here.
 import type { CapabilityKey } from "@/lib/capabilities/keys";
+// La quinta importazione, stessa direzione invertita e stessa ragione. Il
+// vocabolario chiuso delle categorie di messaggio e quello degli esiti di
+// consegna sono condivisi da un `CHECK` in SQL, dal mittente, dal cron di
+// riconciliazione e dalla superficie admin, quindi vivono una volta sola in
+// `@/lib/email-delivery/categories`, che non importa niente, e si leggono da
+// qui.
+import type {
+  DeliveryOutcome,
+  EmailCategory,
+} from "@/lib/email-delivery/categories";
 // The third import, same inverted direction. The register's two vocabularies are
 // shared by a SQL `CHECK`, a stored procedure's arguments and every TypeScript
 // caller, so they are defined once in `@/lib/membership/acts`, which imports
@@ -489,6 +499,36 @@ export interface Ticket {
   checked_in: boolean;
   checked_in_at: string | null;
   checked_in_by: string | null;
+  created_at: string;
+}
+
+/**
+ * Una riga del registro degli invii — `public.email_deliveries`, migration
+ * `20260822130000_email_delivery_ledger.sql`.
+ *
+ * `category` e `outcome` NON sono ridichiarati qui come stringhe libere: sono
+ * importati da `@/lib/email-delivery/categories`, che non importa niente, per la
+ * stessa ragione invertita delle quattro importazioni in testa a questo file. Il
+ * `CHECK` in migration e' invisibile a `tsc`, quindi una seconda copia delle
+ * parole sarebbe una seconda verita' che nessuno confronta.
+ *
+ * **`recipient` non esiste, ed e' una decisione.** L'indirizzo del destinatario
+ * non si conserva: e' gia' su `profiles` e si risolve da `user_id`. Vedi la
+ * migration, sezione «cosa non c'e' qui dentro».
+ */
+export interface EmailDelivery {
+  id: string;
+  /** L'identificativo del fornitore: una presa in carico, non una consegna. */
+  provider_message_id: string;
+  category: EmailCategory;
+  user_id: string | null;
+  ticket_id: string | null;
+  outcome: DeliveryOutcome;
+  /** La parola grezza del fornitore. Puo' valere `suppressed`, che l'unione di tipi dell'SDK 6.9.2 non contiene. */
+  provider_last_event: string | null;
+  check_attempts: number;
+  checked_at: string | null;
+  check_failure: string | null;
   created_at: string;
 }
 
