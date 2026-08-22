@@ -35,6 +35,7 @@
     "verify:mirror-guards": "node scripts/verify-mirror-guards.mjs",
     "verify": "node scripts/verify-all.mjs",
     "import:calendar": "node scripts/import-production-calendar.mjs",
+    "restore:mirror-snapshot": "node scripts/restore-mirror-snapshot.mjs",
     "seed:spaces": "node scripts/seed-production-spaces.mjs",
     "baseline:rls": "node scripts/rls-baseline.mjs",
     "baseline:container": "node scripts/rls-baseline-container.mjs",

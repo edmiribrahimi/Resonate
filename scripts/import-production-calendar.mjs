@@ -2290,8 +2290,16 @@ const snapshot = writeSnapshotBeforeRemoving({
    * guessing at it. It is a constant, not a version number to be negotiated:
    * when the shape changes, so does this word, and a restore path that does not
    * recognise it stops.
+   *
+   * ⚠ **The wording avoids every word its reader prints, and that is not
+   * fussiness.** The restore path audits its own transcript against every string
+   * in this file, with no exemption list. A marker sharing a word with one of
+   * that reader's refusal categories would make every such refusal go red on
+   * itself — the check failing on the very field this project wrote. Measured
+   * on 2026-08-22 with the obvious spelling, which carried the word its
+   * categories are named after.
    */
-  shape: "mirror-snapshot-1",
+  shape: "mirror-state-1",
   calendarKey,
   ticks: plan.ticksToRestore,
   links: plan.linksToRestore,
