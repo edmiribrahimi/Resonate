@@ -516,3 +516,124 @@ registrata nella **voce 5**.
   allargata.
 
 ---
+
+## 13. La lacuna degli alias e' misurata e NON riparata: la prima spunta e' arrivata prima
+
+- **Trovata:** riparazione 58-13, 2026-08-22, leggendo il catalogo con
+  `read_only: true` e classificando i due feed vivi **in memoria**, senza
+  scrivere nulla
+- **Autorizzazione:** il proprietario ha autorizzato il 2026-08-22 *compilare gli
+  alias mancanti e rileggere i calendari*. **L'autorizzazione non e' stata
+  spesa**, per la ragione del punto 3 qui sotto.
+
+### 1. La lacuna, confermata dall'evidenza invece che per somiglianza
+
+Cinque serie in catalogo, **una sola** porta un `ics_alias`, ed e' quella di
+`RSNT-PRLN`. L'ipotesi da cui la riparazione partiva e' verificata.
+
+Classificando i feed vivi con la mappa di oggi:
+
+| chiave | notti | pezzi | impegni | non classificate |
+|---|---|---|---|---|
+| `rsnt` | 2 | 17 | 24 | 2 — entrambe `kind_without_series_and_number` |
+| `rmdb` | 0 | 12 | 15 | 0 |
+
+Le **sette** voci che il proprietario vede come *giorni presi da altri* pur
+essendo nostre hanno, su `rsnt`, la forma di notte con la parola del format in
+testa e i progressivi **002–008**. Le due non classificate sono due pezzi la cui
+seconda posizione porta la stessa parola.
+
+### 2. La corrispondenza derivata, e la parte che un alias non ripara
+
+Simulata **in memoria**, sugli stessi feed, con quattro mappe candidate:
+
+| mappa | `rsnt` notti · non class. | `rmdb` notti · non class. |
+|---|---|---|
+| oggi | 2 · 2 | 0 · 0 |
+| **+ parola del format `RSNT`** | **9 · 0** | 0 · 0 |
+| + anche `RMDB-BZ` | 9 · 0 | **0 · 3** |
+| + anche `RMDB-MR` | 9 · 0 | **0 · 3** |
+| + la parola del format `RMDB` | 9 · 0 | **0 · 3** |
+
+**Il format `RSNT` e' una lacuna di alias, e si ripara con un alias.** Notti da 2
+a 9, impegni da 24 a 17, non classificate da 2 a 0, progressivi **002–008** letti
+dal titolo — nessuno inventato, nessuno sceso, e la serie `RSNT-PRLN` conserva la
+propria numerazione separata, 001 e 002.
+
+**Il format `RMDB` NON e' una lacuna di alias, ed e' il ritrovamento.** Le sue
+tre serate stanno nel calendario **senza progressivo**: la grammatica della notte
+e' `<Parola>[ x <Parola>] <NNN>` e quel `<NNN>` non c'e'. Nessuna delle tre mappe
+candidate produce **una sola** notte `RMDB`; tutte e tre spostano quelle voci da
+*giorno preso* a **non classificata**, cioe' fanno salire le non classificate da
+0 a 3 — una condizione d'arresto dichiarata.
+
+E il codice ha ragione a rifiutare: attaccare un numero a quelle voci sarebbe
+**inventare un progressivo**, che e' una guardia monotona (`meta-gates.md`). La
+riparazione di `RMDB` non e' una scrittura sul database — e' una decisione di
+produzione: **il titolo deve portare il progressivo**, oppure quelle serate
+restano fuori. Non e' un atto che chi esegue possa compiere.
+
+### 3. Perche' nulla e' stato scritto: la prima spunta esiste
+
+Il catalogo, letto con `read_only: true` prima di ogni atto:
+
+| | valore | soglia d'arresto |
+|---|---|---|
+| piani | 2 | — |
+| pezzi | 37 | — |
+| impegni | 70 | — |
+| voci di checklist | 14 | — |
+| **spunte** | **1** | **> 0 ⇒ arresto** |
+| legami | 0 | > 0 |
+| piani con `absent_since` | 0 | > 0 |
+| corse di import | 8 | — |
+
+**La spunta e' stata premuta il 2026-08-20 alle 21:36:38Z**, da un'identita' vera
+e con un nome registrato, su una voce di tipo `piece` di un piano della serie
+`RSNT-PRLN`, sotto la chiave di calendario `rsnt` — cioe' **dentro** il perimetro
+che lo specchio `rsnt` cancella.
+
+La voce **3** di questo stesso file aveva scritto la condizione in anticipo, e la
+condizione si e' avverata alla lettera:
+
+> *«Il momento in cui lo strumento diventa necessario non e' la prima corsa del
+> cron: e' la prima spunta o il primo legame.»*
+
+E il modulo dello specchio lo dice di se stesso, in prosa:
+
+> *«fra il DELETE e il REWRITE non c'e' transazione e non c'e' point-in-time
+> recovery in questo progetto — se la corsa muore a meta', queste liste sono
+> tutto quello che resta.»*
+
+Il riaggancio in memoria esiste e riaggancia su `source_uid` + tipo + etichetta,
+quindi una corsa che arriva in fondo rimette la spunta. **Una corsa che muore a
+meta' la perde**, e il percorso di ripristino dall'istantanea **non ha ancora uno
+strumento** — e' la voce 3, assegnata al piano 58-12 e non costruita.
+
+Quella spunta e' oggi **l'unico dato dell'intero sistema di produzione che nessun
+feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
+
+### 4. Le due assunzioni dell'autorizzazione, entrambe invalidate
+
+1. *«zero spunte e zero legami esistono oggi»* — **falsa**: una spunta esiste, ed
+   e' posteriore ai numeri su cui l'autorizzazione era stata chiesta.
+2. *«compilare gli alias fara' salire le notti»* — **vera per `RSNT`, falsa per
+   `RMDB`**, e per una ragione che nessuna scrittura sul database rimuove.
+
+- **Non riparata perche':** due assunzioni invalidate su due sono lo *STOP e
+  ripianifica* di `CLAUDE.md`, e cancellare-e-riscrivere con una spunta viva e' un
+  rischio che l'autorizzazione del 2026-08-22 non copre — perche' e' stata chiesta
+  su un catalogo che non aveva ancora spunte.
+- **Come si chiude, e sono tre cose distinte:**
+  1. **`RSNT`** — la guardia della voce 3, punto 2 (rifiuto della corsa non
+     presidiata con spunte `> 0`) **oppure** l'accettazione esplicita, datata, del
+     rischio di perdere quella spunta se la corsa muore. Poi l'alias e i due
+     `--apply`. La misura dice che l'effetto e' esattamente quello atteso.
+  2. **`RMDB`** — decisione di produzione: il titolo delle serate porta il
+     progressivo, o quelle tre restano fuori. Nessun alias la sostituisce.
+  3. **`MTNLB` e `RMDB-MR`** — **zero occorrenze** nei due feed vivi. Nessuna
+     evidenza, quindi nessun alias: una corrispondenza senza misura attaccherebbe
+     una notte alla serie sbagliata, e un alias mancante e' visibile mentre un
+     alias sbagliato non lo e'.
+
+---

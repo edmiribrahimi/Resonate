@@ -541,3 +541,34 @@ un rosso che c'era prima.
 *Fase 58, piano 11. Non contiene nessuna sede, nessuna data di serata, nessuna
 line-up, nessun nome di persona, nessun indirizzo di calendario e nessun
 identificativo grezzo. `re:sonate` si scrive con la e normale.*
+
+---
+
+## Poscritto del 2026-08-22 — cio' che lo specchio ha reso visibile, e la spunta arrivata dopo
+
+*Aggiunto in coda, senza toccare nulla di quanto sopra: la storia del 2026-08-20
+resta quella che era. Questo poscritto registra due fatti misurati due giorni
+dopo, di cui uno cambia il rischio di ogni specchio futuro.*
+
+**1. Lo specchio non ha rotto niente, e ha reso visibile una lacuna che c'era
+gia'.** Il proprietario ha osservato sulla superficie che quasi ogni scheda porta
+*«giorno preso»*, comprese sette che sono nostre produzioni. La causa e' quella
+che il referto di questo piano stampava gia' allora, e che nessuno aveva letto
+come un difetto: **`1 series carrying an ics_alias`** su cinque serie. Le due
+schede che hanno preso la forma di una serata sono le due della sola serie che
+un alias ce l'ha.
+
+**2. La riparazione e' misurata ma NON e' stata applicata**, perche' il catalogo
+riletto il 2026-08-22 con `read_only: true` porta **una spunta** — premuta il
+**2026-08-20 alle 21:36:38Z**, cioe' **dopo** l'ultimo `--apply` di questo piano,
+da un'identita' vera, su un piano dentro il perimetro della chiave `rsnt`.
+
+E' la condizione che la voce **3** di `deferred-items.md` aveva scritto in
+anticipo — *«diventa grave alla prima spunta»* — e che questo stesso piano aveva
+lasciato al 58-12 come punto 3 della propria lista. **Il punto 3 non e' piu' un
+lavoro futuro: e' un prerequisito.**
+
+I conteggi post-specchio di questo piano restano validi come misura del
+2026-08-20. Il quadro del 2026-08-22, con la diagnostica completa, la
+corrispondenza derivata e la parte che nessun alias ripara, e' la **voce 13** di
+`deferred-items.md`.
