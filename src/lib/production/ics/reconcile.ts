@@ -927,6 +927,19 @@ export interface ReconcilePlan {
    * no date and no space.
    */
   seriesWithoutRules: string[];
+  /**
+   * How the second pass placed the pieces that carry no progressivo.
+   *
+   * Two counts and never one total, because they are two different qualities of
+   * answer: `declared` is a night the **calendar named**, in the entry's note;
+   * `window` is a night a **pipeline rule worked out** from the piece's date, and
+   * working it out has two ways to fail that saying it does not.
+   *
+   * It exists so a run can report how much of its own join is derivation. Before
+   * notes were read every one of these was `window`, and nobody could have said
+   * so — an absent measurement reads exactly like a measurement of zero.
+   */
+  numberlessAttachmentsBySource: { declared: number; window: number };
 }
 
 /**
@@ -1004,6 +1017,7 @@ export function reconcile(
     unsupportedRecurrences: [...input.unsupportedRecurrences],
     unclassified: [...input.unclassified],
     seriesWithoutRules: [],
+    numberlessAttachmentsBySource: { declared: 0, window: 0 },
   };
 
   const pipelineBySeries = indexPipelines(pipelineRules);
@@ -1034,6 +1048,10 @@ export function reconcile(
   const attachedByUid = new Map<string, string>(
     attachment.attached.map((found) => [found.uid, found.key])
   );
+
+  for (const found of attachment.attached) {
+    plan.numberlessAttachmentsBySource[found.source] += 1;
+  }
 
   for (const refused of attachment.unclassified) {
     plan.unclassified.push({

@@ -1483,6 +1483,114 @@ say(
     `${classified.durationDisagreements.length} duration disagreement(s)`
 );
 
+/* ── what the NOTES said, and what they did not ───────────────────────────────
+ *
+ * Four counts, and they are four because they answer four different questions
+ * about the same property. Rolling them into *"notes read"* would hide the two
+ * that matter most: how many nights owe their progressivo to a note rather than
+ * to a title, and how many lines this run **saw and refused to read**.
+ *
+ * ⚠ Every one of them is a COUNT. A note names whoever is playing on a date
+ * nobody has announced, so nothing here prints a word of one — and the output
+ * audit at the bottom is what measures that rather than this comment asserting
+ * it.
+ */
+const entriesWithNote = parsed.events.filter((event) => event.description.length > 0);
+const notesRead = entriesWithNote.filter(
+  (event) => ics.readNoteDeclaration(event.description) !== null
+).length;
+const nightsNumberedByNote = classified.nights.filter(
+  (night) => night.numberSource === "note"
+).length;
+const piecesWithDeclaredNight = classified.pieces.filter(
+  (piece) => piece.declaredNightKey !== null
+).length;
+// Lines after the first, across every note. Counted so that *the line-up is not
+// read* is a number somebody can see instead of an absence nobody notices.
+const lineupLinesUnread = entriesWithNote.reduce((total, event) => {
+  const lines = event.description.split("\n").filter((line) => line.trim().length > 0);
+  return total + Math.max(0, lines.length - 1);
+}, 0);
+
+say("");
+say("  ── what the notes said ───────────────────────────────────────────────");
+say(
+  `     ${entriesWithNote.length} entr(y/ies) carry a note · ${notesRead} read as ` +
+    `<word> <NNN>, <date> · ${entriesWithNote.length - notesRead} declared UNREAD ` +
+    "(left to the title alone, never guessed)"
+);
+say(
+  `     ${nightsNumberedByNote} night(s) take their progressivo from a note rather than ` +
+    `a title · ${piecesWithDeclaredNight} piece(s) arrive already naming their night`
+);
+say(
+  `     ${classified.noteDisagreements.length} entr(y/ies) whose note contradicts their ` +
+    "title — the TITLE stands, and the contradiction is counted, never corrected"
+);
+if (classified.noteDisagreements.length > 0) {
+  for (const finding of classified.noteDisagreements) {
+    say(`         ${printableUid(finding.uid)}  ${finding.reason}`);
+  }
+}
+/* ── the calendar contradicting ITSELF ────────────────────────────────────────
+ *
+ * An entry whose note names **this very entry** — the note's leading word is the
+ * title, character for character — and then declares a date the entry does not
+ * sit on. One of them exists in the measured feeds.
+ *
+ * It is not the same thing as a note naming some other night, which is what
+ * every piece's note does and is entirely normal. It is the calendar disagreeing
+ * with itself in two places, and the way out is for a person to look at the
+ * entry: either it was moved and the note was not, or the note was corrected and
+ * the entry was not.
+ *
+ * ⚠ **It is counted here because otherwise it is silent.** The reader's refusal
+ * to promote such an entry to a night is correct — attaching a night to a day
+ * its own note contradicts is exactly the guess this module never makes — but
+ * the consequence is that the entry falls quietly among the days taken by
+ * somebody else, and a correct refusal that nobody is told about is the failure
+ * shape `meta-gates.md` names first. There is no error tracking in this product,
+ * so the observable effect has to be a line in this report.
+ *
+ * A COUNT, not a list of entries: the identifier is available through the digest
+ * below, and the date itself is the one thing this script may never say.
+ */
+const notesContradictingTheirOwnDate = entriesWithNote.filter((event) => {
+  const declaration = ics.readNoteDeclaration(event.description);
+  if (declaration === null) return false;
+  if (declaration.head.trim().toLowerCase() !== event.summary.trim().toLowerCase()) {
+    return false;
+  }
+  const date = event.startDate;
+  return (
+    Number(date.slice(5, 7)) !== declaration.month ||
+    Number(date.slice(8, 10)) !== declaration.day
+  );
+});
+
+if (notesContradictingTheirOwnDate.length > 0) {
+  say("");
+  say(
+    `     ⚠ ${notesContradictingTheirOwnDate.length} entr(y/ies) carry a note that names ` +
+      "THIS entry and then declares a different date."
+  );
+  say("       The calendar disagrees with itself in two places. This run does NOT pick one:");
+  say("       it leaves the entry where its title alone put it, which is visible and");
+  say("       correctable. Either the entry was moved and the note was not, or the other");
+  say("       way round — and only a person looking at it can say which.");
+  for (const event of notesContradictingTheirOwnDate) {
+    say(`         ${printableUid(event.uid)}  note_declares_a_different_date`);
+  }
+}
+
+say(
+  `     ${lineupLinesUnread} further note line(s) — the line-up — were seen and NOT read: ` +
+    "no table in this schema holds one, and a reader that parsed it would pull the"
+);
+say(
+  "       names of people playing unannounced dates into this process for no destination."
+);
+
 if (classified.aliasUnresolved.length > 0) {
   say("");
   say("     ⚠ THE REPAIR IS NOT IN THIS SCRIPT and is not in any file.");
@@ -1496,7 +1604,7 @@ if (classified.aliasUnresolved.length > 0) {
 
 if (classified.unclassified.length > 0) {
   say("");
-  say("     entries nobody may guess at — identifier and reason code, never a title:");
+  say("     entries nobody is allowed to guess at — identifier and reason code, never a title:");
   for (const entry of classified.unclassified) {
     say(`         ${printableUid(entry.uid)}  ${entry.reason}`);
   }
@@ -1882,14 +1990,14 @@ say(
   `     ${plan.plansThatSurviveDeletion.length} night row(s) do NOT enter the removal at ` +
     "all: they stand behind an announced night, and removing one would orphan a"
 );
-say("       night that may have tickets on sale. They are not written again either.");
+say("       night that could have tickets on sale. They are not written again either.");
 
 const survivorsAbsentFromFile = plan.plansThatSurviveDeletion.filter(
   (row) => row.absentFromFile
 ).length;
 say(
   `     of those, ${survivorsAbsentFromFile} survived an ABSENCE — the file no longer ` +
-    "carries the entry. That number is the one to look at: the cause may be a"
+    "carries the entry. That number is the one to look at: the cause could be a"
 );
 say("       partial export or the wrong file, and it is a finding, not a tidy-up.");
 
@@ -1936,6 +2044,31 @@ if (plan.unsupportedRecurrences.length > 0) {
     `     ${plan.unsupportedRecurrences.length} recurrence(s) this reader does not expand. ` +
       "Each keeps its own day and none is guessed at."
   );
+}
+
+/* ── how much of this join is derivation ──────────────────────────────────────
+ *
+ * Printed as two numbers rather than one, because *the calendar said which
+ * night* and *a rule worked out which night* are not the same claim. The second
+ * is the one with two ways to be wrong, and it is the one this run should want
+ * to see shrinking.
+ */
+{
+  const bySource = plan.numberlessAttachmentsBySource;
+  say("");
+  say(
+    `     pieces with no progressivo, placed: ${bySource.declared} by the night their ` +
+      `NOTE names · ${bySource.window} by a date window`
+  );
+  if (bySource.declared === 0 && bySource.window > 0) {
+    // Not a failure. It is the state the calendar is in when no note names a
+    // night this file also carries — and saying so is cheaper than letting a
+    // reader conclude the note path is broken.
+    say(
+      "       none was placed by declaration: either the notes name no night this file " +
+        "carries, or the words they use have no alias yet."
+    );
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -2794,9 +2927,10 @@ function auditOwnOutput() {
 
   say("");
   if (leaked.length === 0 && years.length === 0) {
+    const noted = parsed.events.filter((event) => event.description.length > 0).length;
     say(
-      `  ✓ output audit: ${residual.size} residual title token(s), 0 of them in what this ` +
-        "run printed · 0 four-digit years"
+      `  ✓ output audit: ${residual.size} residual token(s) across ${parsed.events.length} ` +
+        `titles and ${noted} note(s), 0 of them in what this run printed · 0 four-digit years`
     );
     return true;
   }
@@ -2808,7 +2942,8 @@ function auditOwnOutput() {
   say("  ✗ OUTPUT AUDIT FAILED — this run's own output carries material.");
   if (leaked.length > 0) {
     say(
-      `    ${leaked.length} of ${residual.size} residual title token(s) occur above. They are ` +
+      `    ${leaked.length} of ${residual.size} residual token(s) of a title or a note occur ` +
+        "above. They are " +
         "deliberately not listed: printing them to report them would perform the leak."
     );
   }
