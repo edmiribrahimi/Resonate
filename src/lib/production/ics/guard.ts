@@ -199,3 +199,207 @@ export function mirrorGuard({ previousEntries, currentEntries }: MirrorGuardInpu
 
   return arriving < mirrorShrinkMargin(previousEntries) ? "feed_shrank" : "ok";
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE SECOND GUARD — the run nobody is watching
+ *
+ * WHAT IT ANSWERS, in one sentence: **may a run that no person is watching
+ * delete a calendar, when that calendar holds state a half-dead run could not
+ * put back?**
+ *
+ * ── WHY IT EXISTS, AND WHY THE DATE MATTERS ─────────────────────────────────
+ *
+ * The deferred item that asks for this wrote its own trigger condition in
+ * advance: *«the moment the restore tool becomes necessary is not the cron's
+ * first run — it is the first tick or the first link»*. On 2026-08-20 a tick was
+ * pressed, by a real identity, on a plan row inside the scope one calendar's
+ * mirror deletes. The condition it named came true, so the guard it asked for
+ * stops being a precaution and becomes a requirement.
+ *
+ * What makes that one row different from every other row in the six mirrored
+ * tables is that **no feed can rebuild it**. A night, a piece, a commitment and
+ * a checklist item are all re-derivable from the calendar: delete them and the
+ * next successful mirror writes them back. A tick is not in the calendar. The
+ * calendar does not record who ticked a box, and nothing else does either.
+ *
+ * ── ⚠ WHAT «ATTENDED» MEANS, AND WHY IT IS NOT AN ARGUMENT ──────────────────
+ *
+ * The obvious mechanism is a flag — `--attended` — and it is the wrong one, for
+ * the reason the request itself states: **a mechanism that can be passed out of
+ * habit is not a guard.** A flag that silences a guard is a flag that ends up in
+ * a shell alias, in a runbook, in the one command everybody copies.
+ *
+ * So attendance is **evidence, never a claim**, and the evidence is a property
+ * of how the process was launched rather than a word somebody typed:
+ *
+ *   * an **interactive terminal** — a cron entry, a serverless invocation and a
+ *     CI job all lack one by construction, and none of the three can acquire one
+ *     by being edited. Nothing in a scheduled invocation can assert attendance,
+ *     because there is nothing to assert *with*;
+ *   * and the caller has **not declared itself unattended**. That declaration
+ *     exists and travels the other way: it can only ever make this guard fire.
+ *     A flag that only narrows is a flag that is harmless to type by habit, and
+ *     it is what lets a person exercise the cron's own path from a terminal.
+ *
+ * **Which stream is consulted, and why it is stdin.** Attendance is read from
+ * the input stream and deliberately not from the output one. An operator who
+ * pipes the transcript to a file — which this phase's procedures ask them to do
+ * — still has a terminal on stdin and is plainly watching; judging them by
+ * stdout would classify the most careful invocation as the least supervised.
+ *
+ * ── ⚠ THE DIRECTION OF THE ERROR ────────────────────────────────────────────
+ *
+ * Every branch below errs toward **unattended**, which is the refusing side. An
+ * attended run misread as unattended costs a person one flag and one evening. An
+ * unattended run misread as attended costs a tick that exists nowhere else, in a
+ * project with no point-in-time recovery and no error tracking to say it went.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The two conditions a run can be in. A closed vocabulary, like every other one
+ * in this directory.
+ */
+export const RUN_SUPERVISIONS = ["attended", "unattended"] as const;
+
+export type RunSupervision = (typeof RUN_SUPERVISIONS)[number];
+
+/**
+ * What is known about how this process was launched.
+ *
+ * ⚠ **Both fields are evidence, not intent.** Neither is a request to be treated
+ * one way or the other: the first is a property of the process's own streams,
+ * the second is a declaration that can only ever narrow.
+ */
+export type SupervisionEvidence = {
+  /**
+   * True when the launching process has an interactive terminal on its input
+   * stream — in Node, `process.stdin.isTTY`.
+   *
+   * It is passed in rather than read here because this module reaches nothing:
+   * claim (a) of `./index` holds, and it is what lets the gate exercise both
+   * branches on any machine.
+   */
+  interactiveTerminal: boolean;
+  /**
+   * True when the caller has said, explicitly, that nobody is watching.
+   *
+   * ⚠ **There is no field for the opposite.** A caller cannot declare itself
+   * attended, and that asymmetry is the whole design: see the header.
+   */
+  declaredUnattended: boolean;
+};
+
+/**
+ * Attended or not — decided from evidence, and never from a claim.
+ *
+ * ⚠ **Total: no input makes it throw, and every input that is not exactly the
+ * attended shape answers `unattended`.** A predicate that threw would surface as
+ * an uncaught error inside the very process it exists to restrain.
+ */
+export function runSupervision({
+  interactiveTerminal,
+  declaredUnattended,
+}: SupervisionEvidence): RunSupervision {
+  if (declaredUnattended === true) return "unattended";
+  return interactiveTerminal === true ? "attended" : "unattended";
+}
+
+/**
+ * Whether the restore path of `P-58-C` step 5 has been **exercised**, as a value
+ * rather than as a sentence.
+ *
+ * ⚠ **`false`, and «the code exists» is not what this flag measures.** The tool
+ * exists: `scripts/restore-mirror-snapshot.mjs` reads a snapshot by path, checks
+ * its instant against the interrupted run, and puts the two exceptions of state
+ * back by primary key with their original actor and instant. What has never
+ * happened is a run of it **against a real database**, because exercising it is
+ * an act — it writes production rows — and an act needs its own dated
+ * authorisation, which as of 2026-08-22 does not exist.
+ *
+ * The distinction is the same one `58-PROCEDURES.md` makes about a pending
+ * `Result`: a procedure that has not been executed is not a procedure that
+ * passed. A restore path nobody has ever seen work is exactly as trustworthy as
+ * a gate nobody has ever seen go red.
+ *
+ * ⚠ **Flipping it is a decision with a shape.** It becomes `true` when a run of
+ * that script has put a real tick back, with the original actor and instant
+ * confirmed **from the catalogue** — a different instrument from the one that
+ * caused the effect — and that observation is written down with its date.
+ * `scripts/verify-mirror-guards.mjs` asserts the shipped value, so flipping it
+ * without touching the gate turns the gate red: the friction is deliberate.
+ */
+export const MIRROR_RESTORE_PATH_VERIFIED = false;
+
+/**
+ * The two things this guard can answer.
+ *
+ * `unattended_state_at_risk` is kept apart from the feed guard's verdicts rather
+ * than folded in with them, because it sends a reader somewhere else entirely:
+ * the feed verdicts are about what arrived, this one is about what is already
+ * held, and only this one is answered by a person taking the run into their own
+ * hands.
+ */
+export const UNATTENDED_GUARD_VERDICTS = ["ok", "unattended_state_at_risk"] as const;
+
+export type UnattendedGuardVerdict = (typeof UNATTENDED_GUARD_VERDICTS)[number];
+
+export type UnattendedMirrorGuardInput = {
+  /** Decided by {@link runSupervision} from evidence, never taken as a claim. */
+  supervision: RunSupervision;
+  /**
+   * How many ticks the declared scope holds — the first exception of state of
+   * `ICS-03`, counted before anything is removed.
+   *
+   * ⚠ A **count**, like every other argument in this module, and for the reason
+   * this file's first header gives: the list itself carries a person's name.
+   */
+  ticksAtRisk: number;
+  /** How many links the declared scope holds — the second exception of state. */
+  linksAtRisk: number;
+  /**
+   * Whether the restore path has been exercised. Callers pass
+   * {@link MIRROR_RESTORE_PATH_VERIFIED}.
+   *
+   * It is a parameter and not a direct read so that both branches are
+   * exercisable without editing the module the gate is measuring.
+   */
+  restorePathVerified: boolean;
+};
+
+/**
+ * May a run nobody is watching delete this calendar?
+ *
+ * The rules, each with its reason beside it:
+ *
+ *   1. **attended → `ok`.** This guard restrains the unattended case and nothing
+ *      else. A person at a terminal is who `P-58-C` is written for, and refusing
+ *      them would block the one run that can recover from itself — which is what
+ *      this phase's own first mirror was.
+ *   2. **restore path exercised → `ok`.** The refusal exists because a half-dead
+ *      run loses a tick *irrecoverably*. Once the way back has been seen to
+ *      work, the loss is recoverable and the refusal has nothing left to protect.
+ *   3. **nothing at risk → `ok`.** Zero ticks and zero links means a half-dead
+ *      run loses only rows the next successful mirror writes back from the file.
+ *      That was true of this project until 2026-08-20 and is the state the
+ *      deferred item measured before deciding to wait.
+ *   4. **anything at risk → `unattended_state_at_risk`.**
+ *
+ * ⚠ **Total, and a count it cannot read counts as at risk.** A count that is not
+ * a finite number at or above zero is treated as state present, because the
+ * alternative — treating an unreadable count as *nothing there* — turns a failed
+ * measurement into permission to delete.
+ */
+export function unattendedMirrorGuard({
+  supervision,
+  ticksAtRisk,
+  linksAtRisk,
+  restorePathVerified,
+}: UnattendedMirrorGuardInput): UnattendedGuardVerdict {
+  if (supervision === "attended") return "ok";
+  if (restorePathVerified === true) return "ok";
+
+  const atRisk = (count: number): boolean => !Number.isFinite(count) || count > 0;
+  if (atRisk(ticksAtRisk) || atRisk(linksAtRisk)) return "unattended_state_at_risk";
+
+  return "ok";
+}
