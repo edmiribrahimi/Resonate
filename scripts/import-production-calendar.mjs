@@ -280,6 +280,12 @@
  *                       progressivo. Without it, that is a refusal. Its use is
  *                       recorded in the report, because a progressivo is
  *                       already on a poster.
+ *   `--unattended`      DECLARE THAT NOBODY IS WATCHING. It only ever narrows:
+ *                       it can make the second guard refuse and can never make
+ *                       it admit. There is deliberately **no `--attended`** —
+ *                       attendance is read from this process's own input stream,
+ *                       because a mechanism that can be passed out of habit is
+ *                       not a guard. See `src/lib/production/ics/guard.ts`.
  *   `--adopt-unkeyed-rows`
  *                       ONE-OFF. The rows written before the calendar key
  *                       existed carry none, so no mirror can see them. This
@@ -460,6 +466,18 @@ function parseArguments(argv) {
     acceptShrink: false,
     reauthoriseRenumbering: false,
     adoptUnkeyedRows: false,
+    /**
+     * The caller declaring that NOBODY IS WATCHING this run.
+     *
+     * ⚠ **It only ever narrows, and there is deliberately no opposite of it.**
+     * Attendance is not a claim a caller may make: it is read from the process's
+     * own input stream, which a scheduled invocation cannot acquire by being
+     * edited. A `--attended` would be a flag that silences a guard, and a flag
+     * that silences a guard ends up in a shell alias. This one can only make the
+     * guard fire, so typing it out of habit is harmless — which is what lets a
+     * person exercise the unattended path from a terminal on purpose.
+     */
+    unattended: false,
     help: false,
   };
   const unknown = [];
@@ -476,6 +494,7 @@ function parseArguments(argv) {
     else if (argument === "--reauthorise-renumbering") options.reauthoriseRenumbering = true;
     else if (argument === "--adopt-unkeyed-rows") options.adoptUnkeyedRows = true;
     else if (argument === "--accept-shrink") options.acceptShrink = true;
+    else if (argument === "--unattended") options.unattended = true;
     else if (argument === "--calendar") {
       i += 1;
       options.calendar = argv[i] ?? null;
@@ -519,6 +538,8 @@ if (options.help) {
   say("                     allow a known entry back with a different progressivo.");
   say("  --adopt-unkeyed-rows");
   say("                     ONE-OFF: give the declared key to the rows that predate it.");
+  say("  --unattended       declare that nobody is watching. It can only REFUSE more,");
+  say("                     never less, and there is no opposite of it.");
   say("");
   say("  0 = completed · 1 = FAILED partway · 2 = REFUSED, nothing was written.");
   say("");
@@ -2024,6 +2045,88 @@ if (printedIdentifiers > 0) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * The guard of the unattended run — deferred item 3, point 2
+ *
+ * ⚠ **It runs HERE: after the plan is built and before ANYTHING is written**,
+ * not even the snapshot. Exit `2`, which in this repository means nothing was
+ * written, so nothing failed.
+ *
+ * WHAT IT PROTECTS, and it is one row rather than a category. Every row in the
+ * six mirrored tables is re-derivable from the calendar: delete it and the next
+ * successful mirror puts it back. **A tick is not.** The calendar does not
+ * record who ticked a box, so a tick is the only state in this system that a
+ * half-dead run loses for good — with no transaction across the gap and no
+ * point-in-time recovery behind it.
+ *
+ * On 2026-08-20 the first one was pressed, inside a scope a mirror deletes. The
+ * deferred item that asked for this guard had named that exact moment as its
+ * trigger, in advance, while the count was still zero.
+ *
+ * ⚠ **The counts come from the plan and are not counted a second time here.**
+ * `ticksToRestore` and `linksToRestore` ARE the two exceptions of state of
+ * `ICS-03` — collected by the module that owns the definition, before any
+ * removal. Counting them again in this file would be a second spelling of one
+ * fact, which is how two spellings start to differ.
+ *
+ * ⚠ **A dry run does not refuse, it REPORTS.** Nothing is written on that path,
+ * so there is nothing to protect; what a person needs there is to know what the
+ * unattended path would answer, before they hand this calendar to one.
+ *
+ * ── ⚠ THE LIMIT OF WHERE THIS SITS, STATED RATHER THAN LEFT TO BE FOUND ─────
+ *
+ * By the time this guard can answer, **the feed has already been read**: its
+ * counts live in the database, the client that reads them is created after the
+ * source is fetched, and the fetch happens at gate 4. So a refusal here has
+ * pulled unannounced dates into this process for a run that will write nothing.
+ * That is a narrower harm than a deletion and it is not nothing, and the repair
+ * — moving the fetch after the scope read — is a restructuring of this file's
+ * gate order, which has its own contract and its own gate. It is not undertaken
+ * here, and it is written down instead of being discovered later.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const supervision = ics.runSupervision({
+  // `process.stdin.isTTY` is `undefined` rather than `false` when there is no
+  // terminal, so the comparison is explicit: the predicate is total, and this
+  // side of the boundary should not depend on that.
+  interactiveTerminal: process.stdin.isTTY === true,
+  declaredUnattended: options.unattended,
+});
+
+const unattendedVerdict = ics.unattendedMirrorGuard({
+  supervision,
+  ticksAtRisk: plan.ticksToRestore.length,
+  linksAtRisk: plan.linksToRestore.length,
+  restorePathVerified: ics.MIRROR_RESTORE_PATH_VERIFIED,
+});
+
+say("");
+say("  ── the second guard ──────────────────────────────────────────────────");
+say(
+  `     ${supervision} · at stake ${plan.ticksToRestore.length} + ${plan.linksToRestore.length} ` +
+    `· way back exercised: ${ics.MIRROR_RESTORE_PATH_VERIFIED ? "yes" : "NO"}`
+);
+
+if (unattendedVerdict !== "ok" && options.apply) {
+  refuse(
+    "unattended_state_at_risk",
+    "nobody is watching this one, and what it would delete holds state no calendar " +
+      "can rebuild: the file does not say who ticked a box. There is no transaction " +
+      "across the gap and no way back that has ever been exercised. Nothing was " +
+      "removed. Two ways forward, and they are different decisions: run it where a " +
+      "person can see it, or exercise the way back once and record that it worked."
+  );
+}
+
+if (unattendedVerdict !== "ok") {
+  say("     ⚠ an unwatched run would REFUSE here. This one writes nothing anyway.");
+} else if (supervision === "attended") {
+  say("     ✓ admitted — a person is here, so the way back is theirs to take.");
+} else {
+  say("     ✓ admitted — nothing at stake that a second pass could not put back.");
+}
+say("");
+
+/* ────────────────────────────────────────────────────────────────────────────
  * The snapshot — written OUTSIDE this process, BEFORE anything is removed
  *
  * ⚠ **This is not bookkeeping, and it is the step most likely to look like it.**
@@ -2171,6 +2274,24 @@ if (!options.apply) {
 // there is no transaction across the removal, so this file is the only copy of
 // the human state that will exist if the process dies partway.
 const snapshot = writeSnapshotBeforeRemoving({
+  /**
+   * ⚠ **THE SNAPSHOT CARRIES ITS OWN INSTANT, and the file name does not count
+   * as one.** `P-58-C` step 3 has to check this snapshot against the run that
+   * died — an older one belongs to a different pass, and restoring from it puts
+   * back ticks that were deliberately removed in between. A name can be typed,
+   * copied, renamed by an archiver or produced by a clock nobody controls; the
+   * only instant worth checking is one written inside by the process that took
+   * it. Without this field the restore path refuses, which is the direction that
+   * costs a person an evening rather than a tick.
+   */
+  takenAt: new Date().toISOString(),
+  /**
+   * What shape this file is, so a reader can refuse an unknown one instead of
+   * guessing at it. It is a constant, not a version number to be negotiated:
+   * when the shape changes, so does this word, and a restore path that does not
+   * recognise it stops.
+   */
+  shape: "mirror-snapshot-1",
   calendarKey,
   ticks: plan.ticksToRestore,
   links: plan.linksToRestore,
