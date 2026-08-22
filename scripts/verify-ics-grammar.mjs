@@ -233,8 +233,8 @@ function evento(
 }
 
 /** Una serata: blocco serale e lungo, cosi' che nessun avviso di durata scatti. */
-function serata(titolo, giorno) {
-  return evento(titolo, giorno, { inizio: "18:00", fine: "22:00", minuti: 240 });
+function serata(titolo, giorno, extra = {}) {
+  return evento(titolo, giorno, { inizio: "18:00", fine: "22:00", minuti: 240, ...extra });
 }
 
 /** Una regola di pipeline, nella forma che `production_pipeline_rule` memorizza. */
@@ -262,8 +262,8 @@ function pipeline(seriesCode, regole) {
  * mano: cosi' il caso asserisce anche la **forma** della chiave, che e' l'unica
  * cosa su cui il join fra una notte e i suoi pezzi si regge.
  */
-function attacco(seriesCode, numero) {
-  return `attach:${joinKey(seriesCode, numero)}`;
+function attacco(seriesCode, numero, provenienza = "window") {
+  return `attach:${joinKey(seriesCode, numero)}@${provenienza}`;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -279,7 +279,12 @@ function attacco(seriesCode, numero) {
 const RANGHI = { commitment: 0, unclassified: 1, piece: 2, night: 2, attach: 3 };
 
 function rango(descrittore) {
-  return RANGHI[descrittore.split(":")[0]] ?? 0;
+  // Il descrittore porta ora anche la PROVENIENZA, dopo una chiocciola —
+  // `night@note`, `attach:RSNT#2@declared`. Il rango misura **quanto** una
+  // lettura attribuisce, e la provenienza non cambia quel quanto: si taglia
+  // prima della chiocciola, altrimenti ogni descrittore con provenienza cade su
+  // `?? 0` e viene pesato come un giorno di qualcun altro.
+  return RANGHI[descrittore.split("@")[0].split(":")[0]] ?? 0;
 }
 
 /**
@@ -329,7 +334,17 @@ function letturaDi(voce) {
     };
   }
   if (voce.entryClass === "night") {
-    return { descrittore: "night", serie: voce.seriesCode ?? null, numero: voce.number ?? null };
+    // La PROVENIENZA del numero entra nel descrittore. Un caso che pretende
+    // `night@note` e misura `night@title` va rosso pur avendo la stessa serie e
+    // lo stesso progressivo — ed e' la distinzione che porta tutto il peso: un
+    // numero letto dal titolo e' cio' che si faceva gia', un numero letto dalla
+    // nota e' la cosa nuova, e un gate che li confondesse resterebbe verde il
+    // giorno in cui la nota smettesse di essere letta.
+    return {
+      descrittore: `night@${voce.numberSource}`,
+      serie: voce.seriesCode ?? null,
+      numero: voce.number ?? null,
+    };
   }
   if (voce.entryClass === "unclassified") {
     return { descrittore: `unclassified:${voce.reason}`, serie: null, numero: null };
@@ -394,7 +409,7 @@ const FAMIGLIA_A = [
     titolo: "RamaDub x Booze 001",
     giorno: "2031-01-09",
     serata: true,
-    attesa: "night",
+    attesa: "night@title",
     serie: "RMDB-BZ",
     numero: 1,
   },
@@ -485,6 +500,144 @@ const FAMIGLIA_A = [
     titolo: "Listing - RamaDub x Segnaposto",
     giorno: "2031-01-21",
     attesa: "unclassified:alias_unresolved",
+    serie: null,
+    numero: null,
+  },
+
+  /* ── LA NOTA — il progressivo che il titolo non porta e la nota dichiara ──
+   *
+   * ⚠ **Le note qui sotto sono INVENTATE, come tutto il resto del file.** Nessun
+   * valore viene dal calendario: le date stanno nel 2031, i nomi che compaiono
+   * dopo la prima riga non esistono, e non c'e' **nessuna line-up** — perche' il
+   * lettore non legge oltre la prima riga e un caso che ne portasse una
+   * scriverebbe in un repository pubblico esattamente cio' che
+   * `sound-manifesto.md` vieta di scriverci.
+   *
+   * La forma della prima riga e' quella misurata sui feed vivi il 2026-08-22:
+   *
+   *     <Parola>[ x <Parola>] <NNN>, <giorno-settimana> <giorno> <mese>
+   *
+   * e la precedenza che i casi asseriscono e' quella del docblock di
+   * `classify.ts`: **il titolo dichiara, la nota riempie il silenzio.**
+   *
+   * ⚠ **Dove la nota non e' letta, l'esito atteso NON e' `commitment`.** Queste
+   * quattro attese furono scritte cosi' la prima volta e il gate le boccio' —
+   * correttamente, ed e' il verso utile del suo verdetto. Un titolo come
+   * `<Format> x <Locale>` porta una parola che la mappa alias conosce, quindi la
+   * lettura lo dichiara `known_word_without_kind_or_number`: **nostro e
+   * illeggibile, contato**, invece che il giorno di qualcun altro. Che sia
+   * questa la caduta e non l'altra e' una proprieta' che vale la pena asserire,
+   * perche' e' l'unica che tiene una voce visibile su una superficie.
+   *
+   * Sul calendario vero quelle stesse voci cadono oggi fra i **commitment**, e la
+   * ragione non e' la grammatica: e' che per quei locali **non esiste un alias**
+   * (voce differita 13). Il caso sintetico e il feed vivo dicono cose diverse
+   * perche' misurano mappe diverse, e questa nota esiste perche' la differenza
+   * non venga riscoperta come un difetto.
+   */
+  {
+    id: "N1",
+    requisito: "nota",
+    etichetta: "titolo senza progressivo, nota che lo dichiara: e' una notte, e il numero e' letto",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Booze 001, Thursday 9 Jan",
+    serata: true,
+    attesa: "night@note",
+    serie: "RMDB-BZ",
+    numero: 1,
+  },
+  {
+    id: "N2",
+    requisito: "nota",
+    etichetta: "la nota dichiara un'ALTRA data: non e' questa la serata",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Booze 001, Thursday 23 Jan",
+    serata: true,
+    attesa: "unclassified:known_word_without_kind_or_number",
+    serie: null,
+    numero: null,
+  },
+  {
+    id: "N3",
+    requisito: "nota",
+    etichetta: "la nota parla di un'altra serata: non promuove questa voce",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Muro 001, Thursday 9 Jan",
+    serata: true,
+    attesa: "unclassified:known_word_without_kind_or_number",
+    serie: null,
+    numero: null,
+  },
+  {
+    id: "N4",
+    requisito: "nota",
+    etichetta: "forma nostra nella nota, parola che l'alias non risolve: si rifiuta",
+    titolo: "RamaDub x Segnaposto",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Segnaposto 001, Thursday 9 Jan",
+    serata: true,
+    attesa: "unclassified:alias_unresolved",
+    serie: null,
+    numero: null,
+  },
+  {
+    id: "N5",
+    requisito: "nota",
+    etichetta: "nota senza virgola: dichiarata non letta, e non cambia nulla",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Booze 001 Thursday 9 Jan",
+    serata: true,
+    attesa: "unclassified:known_word_without_kind_or_number",
+    serie: null,
+    numero: null,
+  },
+  {
+    id: "N6",
+    requisito: "nota",
+    etichetta: "mese fuori dal lessico: dichiarata non letta, mai indovinata",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Booze 001, giovedi 9 gennaio",
+    serata: true,
+    attesa: "unclassified:known_word_without_kind_or_number",
+    serie: null,
+    numero: null,
+  },
+  {
+    /*
+     * LA PRECEDENZA, misurata invece che dichiarata.
+     *
+     * Il titolo porta `001`, la nota dichiara `002` per la stessa voce. La
+     * lettura tiene **il titolo**, e la divergenza esce come segnalazione in
+     * `ClassificationResult.noteDisagreements` — mai come correzione. Leggere un
+     * numero che il titolo non portava e' **accodare**; cambiarne uno che il
+     * titolo portava e' **rinumerare**, ed e' la terza guardia monotona di
+     * questo progetto.
+     */
+    id: "N7",
+    requisito: "nota",
+    etichetta: "titolo e nota discordi sul progressivo: vince il titolo",
+    titolo: "RamaDub x Booze 001",
+    giorno: "2031-01-09",
+    nota: "RamaDub x Booze 002, Thursday 9 Jan",
+    serata: true,
+    attesa: "night@title",
+    serie: "RMDB-BZ",
+    numero: 1,
+  },
+  {
+    id: "N8",
+    requisito: "nota",
+    etichetta: "controprova: nessuna nota, e la lettura del titolo resta quella di prima",
+    titolo: "RamaDub x Booze",
+    giorno: "2031-01-09",
+    nota: "",
+    serata: true,
+    attesa: "unclassified:known_word_without_kind_or_number",
     serie: null,
     numero: null,
   },
@@ -654,6 +807,78 @@ const FAMIGLIA_B = [
     serie: "RSNT",
     numero: null,
   },
+  /* ── LA NOTA nella seconda passata — dichiarato batte indovinato ─────────
+   *
+   * Stessa avvertenza dei casi N: note **inventate**, prima riga soltanto,
+   * nessuna line-up.
+   */
+  {
+    /*
+     * IL CASO DECISIVO. La finestra e la nota risponderebbero **cose diverse**,
+     * e il caso pretende che risponda la nota.
+     *
+     * Il listing sta a due giorni dalla prima serata e a sedici dalla seconda,
+     * quindi la finestra sceglierebbe la prima. La nota dichiara la **seconda**.
+     * Un aggancio `RMDB-BZ#1` qui non sarebbe «quasi giusto»: sarebbe un pezzo
+     * appeso alla serata sbagliata da un calcolo, mentre il calendario aveva
+     * scritto quale.
+     */
+    id: "D1",
+    requisito: "nota",
+    etichetta: "la nota nomina una serata diversa da quella che la finestra sceglierebbe",
+    notti: [
+      ["RamaDub x Booze 001", "2031-01-09"],
+      ["RamaDub x Booze 002", "2031-01-23"],
+    ],
+    pipelines: [pipeline("RMDB-BZ", [REGOLA_LISTING])],
+    titolo: "Listing - RamaDub x Booze",
+    giorno: "2031-01-07",
+    nota: "RamaDub x Booze 002, Thursday 23 Jan",
+    attesa: attacco("RMDB-BZ", 2, "declared"),
+    serie: undefined,
+    numero: undefined,
+  },
+  {
+    /*
+     * La serata dichiarata NON e' nel file. Non e' un rifiuto proprio: si torna
+     * alla finestra, che per una serata che il calendario non tiene risponde
+     * `no_candidate_edition` — un codice solo per una situazione sola, invece di
+     * un secondo membro aggiunto a un vocabolario che un `CHECK` SQL rispecchia.
+     */
+    id: "D2",
+    requisito: "nota",
+    etichetta: "serata dichiarata assente dal file: si ricade sulla finestra, che dichiara",
+    notti: [["RamaDub x Muro 001", "2031-02-06"]],
+    pipelines: [pipeline("RMDB-MR", [REGOLA_LISTING])],
+    titolo: "Listing - RamaDub x Muro",
+    giorno: "2031-01-14",
+    nota: "RamaDub x Muro 009, Thursday 16 Jan",
+    attesa: "unclassified:no_candidate_edition",
+    serie: null,
+    numero: null,
+  },
+  {
+    /*
+     * Controprova della provenienza: **nessuna nota**, e l'aggancio resta quello
+     * della finestra. Senza questo caso un difetto che marcasse `declared` ogni
+     * aggancio passerebbe inosservato.
+     */
+    id: "D3",
+    requisito: "nota",
+    etichetta: "nessuna nota: aggancia la finestra, e il referto lo dice",
+    notti: [
+      ["RamaDub x Booze 001", "2031-01-09"],
+      ["RamaDub x Booze 002", "2031-01-23"],
+    ],
+    pipelines: [pipeline("RMDB-BZ", [REGOLA_LISTING])],
+    titolo: "Listing - RamaDub x Booze",
+    giorno: "2031-01-07",
+    nota: "",
+    attesa: attacco("RMDB-BZ", 1, "window"),
+    serie: undefined,
+    numero: undefined,
+  },
+
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -661,12 +886,17 @@ const FAMIGLIA_B = [
  * ──────────────────────────────────────────────────────────────────────────── */
 
 for (const caso of FAMIGLIA_A) {
-  const record = caso.serata ? serata(caso.titolo, caso.giorno) : evento(caso.titolo, caso.giorno);
+  const opzioni = { nota: caso.nota ?? "" };
+  const record = caso.serata
+    ? serata(caso.titolo, caso.giorno, opzioni)
+    : evento(caso.titolo, caso.giorno, opzioni);
   registra(caso, letturaDi(classifyEntry(record, ALIAS)));
 }
 
 for (const caso of FAMIGLIA_B) {
-  const notti = caso.notti.map(([titolo, giorno]) => classifyEntry(serata(titolo, giorno), ALIAS));
+  const notti = caso.notti.map(([titolo, giorno, nota]) =>
+    classifyEntry(serata(titolo, giorno, { nota: nota ?? "" }), ALIAS)
+  );
   const nonNotti = notti.filter((n) => n.entryClass !== "night");
   if (nonNotti.length > 0) {
     // Le notti di uno scenario sono materiale di costruzione, non il caso: se
@@ -677,7 +907,7 @@ for (const caso of FAMIGLIA_B) {
     continue;
   }
 
-  const record = evento(caso.titolo, caso.giorno);
+  const record = evento(caso.titolo, caso.giorno, { nota: caso.nota ?? "" });
   const voce = classifyEntry(record, ALIAS);
   const lettura = letturaDi(voce);
 
@@ -704,7 +934,17 @@ for (const caso of FAMIGLIA_B) {
 
   const agganciato = (esito.attached ?? []).find((a) => a.uid === voce.uid);
   if (agganciato !== undefined) {
-    registra(caso, { descrittore: `attach:${agganciato.key}`, serie: lettura.serie, numero: lettura.numero });
+    // La PROVENIENZA entra nel descrittore, quindi nel verdetto. Un caso che
+    // pretende `attach:…@declared` e misura `attach:…@window` va rosso pur
+    // avendo agganciato la notte giusta — che e' esattamente cio' che serve:
+    // le due strade danno oggi la stessa risposta su queste forme, e un gate
+    // che non le distinguesse resterebbe verde il giorno in cui la lettura
+    // della nota smettesse di funzionare.
+    registra(caso, {
+      descrittore: `attach:${agganciato.key}@${agganciato.source}`,
+      serie: lettura.serie,
+      numero: lettura.numero,
+    });
     continue;
   }
 

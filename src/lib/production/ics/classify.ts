@@ -1,6 +1,81 @@
 /**
- * What an entry in the production calendar **is** — decided from its title, by
- * three declared grammars, into exactly four classes.
+ * What an entry in the production calendar **is** — decided from its title and,
+ * where the title is silent, from its note, into exactly four classes.
+ *
+ * ── ⚠ THE NOTE IS A DECLARED SOURCE, AND THE TITLE IS THE OTHER ─────────────
+ *
+ * Until 2026-08-22 this module read titles and nothing else, and `./parse`
+ * carried a comment saying no question downstream needed anything more. Four
+ * questions did, and three of them were being answered by derivation:
+ *
+ *   1. **which night a piece announces** — derived by comparing the piece's date
+ *      against every candidate night's pipeline window, with two ways to fail
+ *      (`no_candidate_edition`, `several_candidate_editions`);
+ *   2. **the progressivo of a night** — looked for in the title only, so a night
+ *      whose title does not carry one was not a night at all;
+ *   3. **who is playing** — not answered anywhere;
+ *   4. **how many LiveCuts that line-up owes** — which descends from 3
+ *      (`production-calendar.md`, gate *un podcast per dj*).
+ *
+ * Measured on the two live feeds, 2026-08-22 — **54 notes**, and the first line
+ * of every one of them is:
+ *
+ *     <Parola>[ x <Parola>] <NNN>, <giorno-settimana> <giorno> <mese>
+ *
+ * which is **the night grammar of {@link readNight}, followed by that night's
+ * date**. So the note is not a fourth grammar: it is the third one, written in a
+ * second place — and the second place is the one that carries the number.
+ *
+ * ── ⚠ THE PRECEDENCE, WRITTEN HERE SO NOBODY HAS TO INFER IT ────────────────
+ *
+ *     **THE TITLE DECLARES. THE NOTE FILLS SILENCE.**
+ *
+ * Where the title carries a value, that value stands. Where the title carries
+ * none and the note declares one, the note's is read. Where **both** declare and
+ * they differ, the title still stands and the divergence becomes a finding,
+ * counted in {@link ClassificationResult.noteDisagreements} — never a silent
+ * correction and never a silent overwrite.
+ *
+ * It is not symmetric, and the asymmetry is the argument. Reading a number the
+ * title lacked is **appending**; changing a number the title carried is
+ * **renumbering** — the third of this project's monotone guards, and a
+ * progressivo that has been given out is already on a poster (`meta-gates.md`).
+ * A source that can only add cannot renumber. One that can also replace could do
+ * it without anybody editing the thing they actually look at, which is the title.
+ *
+ * `scripts/verify-ics-grammar.mjs` holds the rule rather than this paragraph
+ * holding it alone: case `N7` gives a title and a note that disagree about a
+ * progressivo and asserts the title's, and reversing the precedence was applied
+ * and measured — the case goes red, and it goes red as `GUESSED`, which is the
+ * graver of that gate's two verdicts.
+ *
+ * ── ⚠ ONE LINE OF THE NOTE IS READ. THE REST IS DELIBERATELY NOT ────────────
+ *
+ * The lines after the first are the **line-up** — 52 of them across the two
+ * feeds. They are not read here, and the reason is not that they are hard:
+ * **the schema has nowhere to keep them.** `production_plan` has no such column,
+ * and neither has any other mirrored table; the only `lineup` columns in the
+ * catalogue belong to the product's own night tables, which this import may
+ * never touch (D-44-06, and check H of `scripts/verify-ics-import.mjs` measures
+ * that it does not).
+ *
+ * So the line-up is **declared unread**, which is a third answer and the honest
+ * one. Inventing a column for it here would be a migration written inside a
+ * reader, with a contract nobody has agreed; parsing it into a value that goes
+ * nowhere would be reading a line-up into this process for no purpose, which is
+ * the one thing a module handling this material should not do for free.
+ * `production_pipeline_rule.episodes_from_lineup` is `true` on exactly one rule
+ * and there is still nothing for it to count — that gap is now **located**
+ * rather than merely open.
+ *
+ * ── ⚠ THE NOTE IS THE MOST CONFIDENTIAL TEXT THIS MODULE TOUCHES ────────────
+ *
+ * It names whoever is playing, on a date that may not have been announced
+ * (`sound-manifesto.md`: *chi suona a una data non ancora comunicata non si
+ * scrive qui e non si scrive nel repo*). **No finding below carries a word of
+ * one**, exactly as none carries a word of a title, and no column stores one:
+ * {@link ClassifiedCommitment.title} remains the single field in this module
+ * that carries text out of the file, and it is a title, not a note.
  *
  * ── Pure by design ──────────────────────────────────────────────────────────
  *
@@ -149,6 +224,10 @@ export const INCLUSION_RULE = [
   "A title that is **nothing but** a kind — the bare `Timetable` — enters as a piece of that kind with **neither a series nor a progressivo**, because the title carries neither, and the night it belongs to is found by the second pass from its date. Where the piece names no series the candidates are the nights of **every** series whose pipeline declares a rule for that kind, and the three outcomes are the same three: one joins, none is `no_candidate_edition`, more than one is `several_candidate_editions`. It is never a day taken by somebody else — that outcome has no channel of its own on the import summary, so a piece of ours read that way disappears in silence.",
   "A piece whose **kind has no pipeline rule at all** — `flyering`, the seventh kind (D-58-04) — is neither joined nor refused. It enters as a piece, with its series resolved through the alias map where the title names one and no progressivo either way, and it stays an **orphan**: `plan_id` empty, and `conforms_to_rule` **null** rather than `false`, because *we could not work it out* is a third answer and must not arrive dressed as a refusal. No rule is invented for it — nobody has measured an anchor, and an invented one would be an offset written where a rule belongs. An orphan piece is a state the schema provides for, and a visible orphan is what this decision buys.",
   "A piece that carries no progressivo is joined to a night by comparing its date against every candidate night of its series, in the direction its pipeline rule declares. Exactly one candidate joins; none is recorded as `no_candidate_edition`; more than one is recorded as `several_candidate_editions`. **Never the nearest.** The join writes which night, and still no number.",
+  "A title of the form `<Word>[ x <Word>]` carrying no kind token and **no progressivo**, whose note declares one — the note's first line being `<Word>[ x <Word>] <NNN>, <that night's date>` — enters as a night with the progressivo **the note declares**, under three conditions that all hold or none of it does: the note's leading word resolves through the alias map, the note's leading word is the title itself, and the date the note declares is this entry's own date. The third condition is what keeps a piece from being read as the night it announces: a piece's note names its night, whose date is not the piece's. The number is **read, never invented**, and where the title carries one the title's stands.",
+  "A piece carrying no progressivo whose note names the night it announces is joined to **that** night rather than to the one a date window proposes. The declared night is recorded as *which night*, never as a number: what the title carried is remembered, what only the note implies is remembered as an attachment, and the piece's own `number` stays null. Where the declared night is not in the file, the date window answers instead, and its answer for a night the calendar does not hold is `no_candidate_edition` — which is the true thing to say.",
+  "A note whose first line does not read as `<Word>[ x <Word>] <NNN>, <date>` — no comma, no trailing number, or a month this reader's lexicon does not carry — is **declared unread**. It changes nothing: the entry is classified from its title exactly as it was before notes were read at all. A note read wrongly hands an entry a series or a progressivo it does not have; a note left unread leaves the entry where the title alone put it, which is visible and correctable.",
+  "Every line of a note after the first is the line-up, and is **not read**: the schema has nowhere to keep one, and a reader that parsed it would be pulling the names of people playing unannounced dates into this process for no destination.",
   "An entry carrying a word the alias map knows, but no recognisable kind and no progressivo, is recorded as unclassified, with its uid and a reason, and is counted. It is never handed a format and a progressivo it does not have — a progressivo is a monotone guard and, once assigned, is already on a poster.",
   "Every other entry enters as a commitment: it occupies a day and nothing more. It is not ours, it carries no format, no series and no number, and the only reason it is imported is so that a day that is taken never shows as free.",
 ] as const;
@@ -224,6 +303,20 @@ export interface ClassifiedNight {
    * nowhere else. It is not a finding and it never reaches a log.
    */
   venueWord: string | null;
+  /**
+   * Where {@link ClassifiedNight.number} was read from.
+   *
+   * `title` is every night whose own title ends in a progressivo. `note` is a
+   * night whose title carries none and whose note declares one — the three
+   * satellites of the measured feeds, which until 2026-08-22 were not nights at
+   * all but days taken by somebody else.
+   *
+   * It is a **fact for the run report to count**, not a column: nothing in
+   * `./reconcile` maps it, and `production_plan` has no field for it. A report
+   * that cannot say *three of these numbers came from a note* is a report that
+   * hides where a value came from the first time one is wrong.
+   */
+  numberSource: "title" | "note";
   startDate: CivilDate;
   startTime: CivilTime;
   endDate: CivilDate;
@@ -283,6 +376,24 @@ export interface ClassifiedPiece {
    * checked.
    */
   key: string | null;
+  /**
+   * The night this piece's **note** says it announces, as a join key — or `null`
+   * where the note declares none.
+   *
+   * ⚠ **This is *which night*, and it is never a progressivo.** The rule the
+   * phase before this one turned on holds here word for word: what the title
+   * carried is remembered, what only a second source implies is remembered as an
+   * attachment and not as a number. {@link ClassifiedPiece.number} stays `null`
+   * on every piece whose title carried none, whatever the note says, and there
+   * is no path in this module that copies one into the other — {@link piece},
+   * the single place a piece is assembled, takes no note at all.
+   *
+   * It is consulted by `attachNumberlessPieces` **before** the date window — a
+   * night the calendar declares beats a night a rule proposes — and where the
+   * declared night is not in the file the window answers instead, which for a
+   * night the calendar does not hold is `no_candidate_edition`.
+   */
+  declaredNightKey: string | null;
   /** The per-dj marker, present only where the title carries a third segment. */
   partMarker: string | null;
   namingConvention: NamingConvention;
@@ -345,6 +456,25 @@ export interface DurationFinding {
 }
 
 /**
+ * The title declared one thing and the note declared another. Uid and code only.
+ *
+ * Two codes, and they must stay two. *The numbers differ* is a calendar somebody
+ * edited in one place and not the other, and the way out is to look at the entry
+ * and decide which is right. *The series differ* is rarer and worse: a piece
+ * filed under one format whose note names a night of another, which is a piece
+ * about to be joined to the wrong series entirely. One shared code would send
+ * both readers to the wrong place, and this product has no error tracking to
+ * correct them afterwards (`meta-gates.md`).
+ *
+ * **In neither case does the note win.** The title stands and the divergence is
+ * counted — see the precedence paragraph in the module docblock.
+ */
+export interface NoteFinding {
+  uid: string;
+  reason: "note_number_disagrees_with_title" | "note_series_disagrees_with_title";
+}
+
+/**
  * Four classes and two finding lists, kept apart.
  *
  * `unclassified` is the **class** list: everything that landed in the fourth
@@ -359,6 +489,13 @@ export interface ClassificationResult {
   unclassified: UnclassifiedEntry[];
   aliasUnresolved: AliasFinding[];
   durationDisagreements: DurationFinding[];
+  /**
+   * Entries whose title and note declare different things. A **third** finding
+   * list rather than a widening of either of the two above, for the same reason
+   * those two are two: an unresolved alias, a block of the wrong shape and a
+   * note contradicting its title are three different pieces of work.
+   */
+  noteDisagreements: NoteFinding[];
 }
 
 /**
@@ -477,16 +614,22 @@ export function classifyEntry(
   const title = event.summary.trim();
 
   const canonical = readCanonicalPiece(event, title, aliases);
-  if (canonical !== null) return canonical;
+  if (canonical !== null) return withDeclaredNight(canonical, event, aliases);
 
   const legacy = readLegacyPiece(event, title, aliases);
-  if (legacy !== null) return legacy;
+  if (legacy !== null) return withDeclaredNight(legacy, event, aliases);
 
   const night = readNight(event, title, aliases);
   if (night !== null) return night;
 
   const bare = readBareKind(event, title);
-  if (bare !== null) return bare;
+  if (bare !== null) return withDeclaredNight(bare, event, aliases);
+
+  // Fifth, and only here: the title is silent, so the note may speak. It cannot
+  // take an entry from any grammar above — see {@link readNightFromNote} for why
+  // running last is what makes its three conditions sufficient.
+  const declaredNight = readNightFromNote(event, title, aliases);
+  if (declaredNight !== null) return declaredNight;
 
   // Nothing matched a grammar. An entry that still carries a word the
   // declaration knows is **recorded and counted**, never guessed: guessing hands
@@ -525,6 +668,7 @@ export function classifyEntries(
     unclassified: [],
     aliasUnresolved: [],
     durationDisagreements: [],
+    noteDisagreements: [],
   };
 
   for (const event of events) {
@@ -560,9 +704,41 @@ export function classifyEntries(
         });
       }
     }
+
+    // After the grammar, like the duration signal above, and deciding nothing
+    // for the same reason: the title stands, and this only says somebody should
+    // look at the two.
+    const disagreement = noteDisagreement(event, entry, aliases);
+    if (disagreement !== null) {
+      result.noteDisagreements.push({ uid: event.uid, reason: disagreement });
+    }
   }
 
   return result;
+}
+
+/**
+ * Hand a piece the night its note names, where it has no number of its own.
+ *
+ * ⚠ **It fills {@link ClassifiedPiece.declaredNightKey} and nothing else.** A
+ * piece that already carries a progressivo needs no attachment — its own key is
+ * the join — and a piece that does not is still not given one: the field holds
+ * *which night*, and the piece's `number` stays `null` all the way to its row.
+ * There is no assignment in this module from a note to a number, which is a
+ * stronger statement than a comment forbidding one.
+ */
+function withDeclaredNight(
+  entry: ClassifiedEntry,
+  event: IcsEvent,
+  aliases: ReadonlyMap<string, string>
+): ClassifiedEntry {
+  if (entry.entryClass !== "piece") return entry;
+  if (entry.key !== null) return entry;
+
+  const declared = declaredNightKeyOf(event, aliases);
+  if (declared === null) return entry;
+
+  return { ...entry, declaredNightKey: declared };
 }
 
 // ── The three grammars ──────────────────────────────────────────────────────
@@ -795,6 +971,9 @@ function readNight(
     number: head.number,
     key: joinKey(named.seriesCode, head.number),
     venueWord: named.venueWord,
+    // The title carried the number, so the title is where it came from — and a
+    // note that disagrees does not change that, it produces a finding.
+    numberSource: "title",
     startDate: event.startDate,
     startTime: event.startTime,
     endDate: event.endDate,
@@ -803,6 +982,294 @@ function readNight(
     sequence: event.sequence,
     lastModified: event.lastModified,
   };
+}
+
+// ── The note, read for exactly one thing ────────────────────────────────────
+
+/**
+ * What a note's first line declared. Never text that names anybody.
+ *
+ * {@link NoteDeclaration.head} is a word the alias map is about to resolve — the
+ * same word a night's own title carries, and the same lookup — so it lives here
+ * for one call and reaches no finding, no log and no column, exactly as the
+ * night's does.
+ */
+export interface NoteDeclaration {
+  /** The reference's leading text: everything before the progressivo. */
+  head: string;
+  /** The progressivo the note declares **for the night**. Read, never invented. */
+  number: number;
+  /** The declared day of the month, 1–31. */
+  day: number;
+  /** The declared month, 1–12. */
+  month: number;
+}
+
+/**
+ * The month words this reader knows, in order, lower-cased.
+ *
+ * ⚠ **English only, and that is a measurement rather than a preference.** All 54
+ * notes in the two live feeds spell their month in English — 45 unambiguously
+ * and 9 on a prefix the two languages happen to share — and **none** in Italian.
+ * It matches what `brand-visual-system.md` requires of anything published (gate
+ * *lingua dei materiali*: `Thursday 18 Sept`, month abbreviated, no ordinals).
+ *
+ * A month this list does not carry makes the note **unread**, not guessed, and
+ * the entry falls back to what its title alone said. That is the direction of
+ * error this whole module is built around, and case `N6` of
+ * `scripts/verify-ics-grammar.mjs` holds it: a note whose month is Italian
+ * changes nothing.
+ *
+ * Matched by **prefix**, because the file abbreviates, and spelling out four
+ * fixed abbreviations alongside twelve full words would be two lists of one
+ * fact. A prefix shorter than three characters is refused, so a stray `M` cannot
+ * become March.
+ */
+const MONTH_WORDS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+] as const;
+
+/** The month a word names, 1-based, or `null`. Prefix match, three characters minimum. */
+function monthOf(word: string): number | null {
+  const cleaned = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (cleaned.length < 3) return null;
+
+  let found: number | null = null;
+  for (let index = 0; index < MONTH_WORDS.length; index += 1) {
+    if (!MONTH_WORDS[index].startsWith(cleaned)) continue;
+    // Two months sharing a prefix would make this a guess, so it is refused
+    // instead. No pair of the twelve does today; the branch exists so the claim
+    // is enforced rather than believed.
+    if (found !== null) return null;
+    found = index + 1;
+  }
+  return found;
+}
+
+/**
+ * Read a note's first line as *which night, and when*.
+ *
+ * ── The shape, measured before it was written ───────────────────────────────
+ *
+ *     <Parola>[ x <Parola>] <NNN>, <giorno-settimana> <giorno> <mese>
+ *
+ * 54 of 54 notes in the two live feeds, 2026-08-22. The left half is exactly the
+ * grammar {@link readNight} reads off a night's own title; the right half is that
+ * night's date, and **it carries no year**. That absence is why the date answers
+ * only *is this the entry's own day* — a question the entry's own `DTSTART`
+ * supplies the year for — and never dates anything.
+ *
+ * ── What makes it `null`, and why `null` is a good answer ───────────────────
+ *
+ * No first line, no comma, nothing that reads as `<text> <NNN>` before it, or a
+ * month outside {@link MONTH_WORDS}. Three of the measured notes are like this
+ * and they belong to entries that are not ours at all — somebody else's diary
+ * text, which is exactly the population a reader would least like to invent a
+ * series for.
+ *
+ * ⚠ **Only the first line is looked at.** Everything after it is the line-up,
+ * and the module docblock says why it stays unread.
+ */
+export function readNoteDeclaration(description: string): NoteDeclaration | null {
+  if (description.length === 0) return null;
+
+  const first = description.split("\n").find((line) => line.trim().length > 0);
+  if (first === undefined) return null;
+
+  const comma = first.indexOf(",");
+  if (comma < 1) return null;
+
+  const reference = splitTrailingNumber(first.slice(0, comma));
+  if (reference === null || reference.number === null) return null;
+
+  let day: number | null = null;
+  let month: number | null = null;
+
+  for (const token of first.slice(comma + 1).split(/\s+/)) {
+    const cleaned = token.replace(/[^0-9A-Za-z]/g, "");
+    if (cleaned.length === 0) continue;
+
+    // A day is a token that is nothing but one or two digits. `18th` is not one
+    // — the file does not write ordinals (`brand-visual-system.md`) — and a
+    // token this reader cannot place leaves `day` unset, which makes the note
+    // unread rather than half-read.
+    if (day === null && /^\d{1,2}$/.test(cleaned)) {
+      const value = Number(cleaned);
+      if (value >= 1 && value <= 31) {
+        day = value;
+        continue;
+      }
+    }
+
+    if (month === null) {
+      const named = monthOf(cleaned);
+      if (named !== null) month = named;
+    }
+  }
+
+  if (day === null || month === null) return null;
+
+  return { head: reference.text, number: reference.number, day, month };
+}
+
+/** Whether a declared day and month are the civil date this entry itself falls on. */
+function declaresOwnDate(declaration: NoteDeclaration, date: CivilDate): boolean {
+  if (date.length !== 10) return false;
+  return (
+    Number(date.slice(5, 7)) === declaration.month &&
+    Number(date.slice(8, 10)) === declaration.day
+  );
+}
+
+/**
+ * `<Parola>[ x <Parola>]` in the title, `<Parola>[ x <Parola>] <NNN>` in the
+ * note — a night whose progressivo lives in the second place and not the first.
+ *
+ * ── Why this is the fifth reader and not the first ──────────────────────────
+ *
+ * It runs after all four title grammars, so it cannot take an entry from any of
+ * them, and that ordering is what makes the three conditions below sufficient
+ * rather than merely suggestive. By the time execution reaches here the title
+ * has already been shown to carry **no kind token** — otherwise
+ * {@link readCanonicalPiece}, {@link readLegacyPiece} or {@link readBareKind}
+ * would own it — and **no trailing progressivo**, otherwise {@link readNight}
+ * would.
+ *
+ * ── The three conditions, and each one is doing work ────────────────────────
+ *
+ *   1. **The note's word resolves through the alias map.** The same map, the
+ *      same abbreviation-not-derivation rule, and the same refusal: a word the
+ *      declaration does not cover is never attached to the nearest series.
+ *   2. **The note's word is the title.** The note is describing *this* entry and
+ *      not some other one — which is what separates a night from everything else
+ *      whose note happens to mention a night.
+ *   3. **The declared date is this entry's own date.** Condition 2 alone is not
+ *      enough: a satellite's same-day piece carries a note whose leading word
+ *      matches too. Measured, this condition holds for five entries per feed
+ *      while only three are nights — and the other two are same-day pieces the
+ *      canonical grammar has already claimed before execution arrives here.
+ *
+ * All three, or none of it. Cases `N2`, `N3` and `N4` of
+ * `scripts/verify-ics-grammar.mjs` remove one condition each and assert that the
+ * promotion does not happen.
+ */
+function readNightFromNote(
+  event: IcsEvent,
+  title: string,
+  aliases: ReadonlyMap<string, string>
+): ClassifiedEntry | null {
+  const declaration = readNoteDeclaration(event.description);
+  if (declaration === null) return null;
+
+  // Condition 2, first because it is the cheapest and the most specific.
+  if (declaration.head.trim().toLowerCase() !== title.trim().toLowerCase()) return null;
+
+  // Condition 3.
+  if (!declaresOwnDate(declaration, event.startDate)) return null;
+
+  // Condition 1.
+  const named = resolveSeriesFromName(declaration.head, aliases);
+  if (named.seriesCode === null) {
+    // Unmistakably ours — the note wrote our own night grammar and the title is
+    // that same word — and the declaration does not cover it. The same finding a
+    // night's own title gets, and never the nearest series.
+    if (named.unmistakable) return unclassified(event.uid, "alias_unresolved");
+    return null;
+  }
+
+  return {
+    entryClass: "night",
+    uid: event.uid,
+    seriesCode: named.seriesCode,
+    number: declaration.number,
+    key: joinKey(named.seriesCode, declaration.number),
+    venueWord: named.venueWord,
+    numberSource: "note",
+    startDate: event.startDate,
+    startTime: event.startTime,
+    endDate: event.endDate,
+    endTime: event.endTime,
+    durationMinutes: event.durationMinutes,
+    sequence: event.sequence,
+    lastModified: event.lastModified,
+  };
+}
+
+/**
+ * The night a piece's note says it announces, as a join key, or `null`.
+ *
+ * Unlike {@link readNightFromNote} this asks for **no** agreement between the
+ * note and the title, and it must not: the whole point of a piece's note is that
+ * it names a *different* entry — the night — on a *different* date. The only
+ * condition is the one that is never relaxed anywhere in this module: the word
+ * resolves through the alias map, or there is no answer.
+ */
+function declaredNightKeyOf(
+  event: IcsEvent,
+  aliases: ReadonlyMap<string, string>
+): string | null {
+  const declaration = readNoteDeclaration(event.description);
+  if (declaration === null) return null;
+
+  const named = resolveSeriesFromName(declaration.head, aliases);
+  if (named.seriesCode === null) return null;
+
+  return joinKey(named.seriesCode, declaration.number);
+}
+
+/**
+ * Whether the title and the note declare different things about the same entry.
+ *
+ * **Computed after the grammars have already decided, and it decides nothing** —
+ * the same discipline, and the same reason, as {@link durationDisagreement}. The
+ * title stands either way; this only says that somebody should look.
+ *
+ * `null` where there is nothing to compare: no readable note, or a title that
+ * declared no number of its own, which is the ordinary case and not a finding.
+ */
+export function noteDisagreement(
+  event: IcsEvent,
+  entry: ClassifiedEntry,
+  aliases: ReadonlyMap<string, string>
+): NoteFinding["reason"] | null {
+  const declaration = readNoteDeclaration(event.description);
+  if (declaration === null) return null;
+
+  // Where the number came from the note there is nothing to disagree with: the
+  // title was silent, which is the case the note exists to fill.
+  if (entry.entryClass === "night" && entry.numberSource === "note") return null;
+
+  const declared =
+    entry.entryClass === "night" || entry.entryClass === "piece"
+      ? { series: entry.seriesCode, number: entry.number }
+      : null;
+  if (declared === null || declared.number === null) return null;
+
+  if (declared.number !== declaration.number) {
+    return "note_number_disagrees_with_title";
+  }
+
+  if (declared.series === null) return null;
+
+  const named = resolveSeriesFromName(declaration.head, aliases);
+  if (named.seriesCode === null) return null;
+
+  if (named.seriesCode.trim().toUpperCase() !== declared.series.trim().toUpperCase()) {
+    return "note_series_disagrees_with_title";
+  }
+
+  return null;
 }
 
 // ── The small readers the three grammars share ──────────────────────────────
@@ -1030,6 +1497,11 @@ function piece(
     number,
     key:
       seriesCode === null || number === null ? null : joinKey(seriesCode, number),
+    // Filled in afterwards, by `withDeclaredNight`, and only where the key above
+    // is null. This constructor takes no note and cannot: it is the one place a
+    // piece is assembled, and keeping the note out of it is what makes *no note
+    // becomes a number* a property of the code rather than a promise.
+    declaredNightKey: null,
     partMarker,
     namingConvention,
     date: event.startDate,

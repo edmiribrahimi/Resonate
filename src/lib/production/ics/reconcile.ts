@@ -1211,6 +1211,18 @@ export interface NumberlessAttachment {
   uid: string;
   /** The night's join key. **Never a progressivo**: the piece is not given one. */
   key: string;
+  /**
+   * How the night was found: `declared` when the entry's note named it,
+   * `window` when a pipeline rule proposed it from the piece's date.
+   *
+   * The two are not the same quality of answer and the report must not print
+   * them as one. A declared night is what the calendar **says**; a windowed
+   * night is what a rule **works out**, and working it out has two ways to fail
+   * that saying it does not. A run that cannot distinguish them cannot tell
+   * anybody how much of its join is derivation — which is the question this whole
+   * change was about.
+   */
+  source: "declared" | "window";
 }
 
 /** One piece that could not be placed, and which of the two reasons applies. */
@@ -1246,6 +1258,29 @@ export interface NumberlessAttachmentOutcome {
  * of every `flyering` piece — no anchor has been measured for the seventh kind,
  * so no rule row exists for it and none is invented, and `conforms_to_rule` for
  * such a piece stays **null** rather than becoming `false`.
+ *
+ * ── ⚠ THE DECLARED NIGHT COMES FIRST, AND THE WINDOW IS THE FALLBACK ───────
+ *
+ * Since 2026-08-22 a piece may arrive already knowing which night it announces,
+ * because its **note said so** and the classifier resolved the word through the
+ * alias map ({@link ClassifiedPiece.declaredNightKey}). Where it does, and where
+ * this file carries that night, the attachment is made from the declaration and
+ * the window below is not consulted at all.
+ *
+ * That is not a shortcut, it is a different quality of answer. The window asks
+ * *which night could this date belong to* and has two ways to be wrong that the
+ * calendar's own sentence does not: it can find nothing because the anchor
+ * edition is not in the file, and it can find two because a single rule cannot
+ * separate them. Both were being reported as findings against entries whose notes
+ * had carried the answer all along.
+ *
+ * A declared night the file does not carry falls **through** to the window rather
+ * than being refused, and the window's verdict for it is `no_candidate_edition` —
+ * one code for one situation, instead of a second member added to a vocabulary a
+ * SQL `CHECK` mirrors.
+ *
+ * {@link NumberlessAttachment.source} records which of the two answered, so the
+ * run report can say how much of its join is derivation.
  *
  * ── A piece that names NO SERIES either (D-58-03) ───────────────────────────
  *
@@ -1289,7 +1324,38 @@ export function attachNumberlessPieces(
     else bucket.push(night);
   }
 
+  /** Every night this file carries, by join key — for the declared path below. */
+  const nightsByKey = new Set(input.nights.map((night) => night.key));
+
   for (const piece of numberless) {
+    // ── ⚠ A NIGHT THE CALENDAR DECLARES BEATS A NIGHT A RULE PROPOSES ───────
+    //
+    // The entry's note names the night it announces, in the same grammar a
+    // night's own title uses, and the classifier has already resolved that word
+    // through the alias map. Where it did, there is nothing left to work out: the
+    // window below exists to answer *which night* from a date, and the calendar
+    // has answered it in words.
+    //
+    // It is checked against the nights **this file carries**, and the miss is a
+    // fall-through rather than a refusal. A declared night the file does not hold
+    // is exactly the state `no_candidate_edition` describes, and letting the
+    // window reach that conclusion keeps one code for one situation instead of
+    // opening a second that means the same thing. The vocabulary of
+    // `UNCLASSIFIED_REASONS` is mirrored by a SQL `CHECK`, so a new member is a
+    // migration — and a migration is not the right price for a synonym.
+    //
+    // ⚠ **No progressivo is written here either.** The attachment is a key, and
+    // the piece's `number` stays null: what the title carried is remembered, what
+    // a note implies is remembered as *which night*.
+    if (piece.declaredNightKey !== null && nightsByKey.has(piece.declaredNightKey)) {
+      outcome.attached.push({
+        uid: piece.uid,
+        key: piece.declaredNightKey,
+        source: "declared",
+      });
+      continue;
+    }
+
     // WHICH SERIES MAY ANSWER FOR THIS PIECE.
     //
     // One, where the title named it. **Every series that owns a rule for this
@@ -1332,7 +1398,7 @@ export function attachNumberlessPieces(
     if (!anyRule) continue;
 
     if (candidates.length === 1) {
-      outcome.attached.push({ uid: piece.uid, key: candidates[0].key });
+      outcome.attached.push({ uid: piece.uid, key: candidates[0].key, source: "window" });
       continue;
     }
 
