@@ -23,6 +23,9 @@ provides:
   - "src/types/database.ts — le tre colonne perdono `| null`, e i commenti smettono di annunciare una transizione gia' chiusa"
   - "P-58-B passo 23 ESEGUITO: l'argomento di riautorizzazione e' inerte quando non c'e' niente da riautorizzare"
   - "Il blocco dichiarato che dice perche' P-58-A e P-58-B restano ferme, e le due strade che le sbloccano"
+  - "2026-08-22 — P-58-A e P-58-B ESEGUITE: 17 Result su 24 con un osservazione, i 7 pendenti tutti e soli quelli di P-58-C"
+  - "ICS-03 e ICS-03b chiusi dall evidenza di una procedura: la spunta riagganciata per chiave stabile, il legame e la riga sonda sopravvissuti"
+  - "Voce 21 delle differite: lo specchio riaggancia le spunte e NON gli annullamenti, e la guardia della corsa non presidiata legge la stessa lista"
 affects: [58-12]
 
 # Tech tracking
@@ -54,8 +57,8 @@ key-decisions:
   - "Nessun Result bloccato e' stato riempito con un ritrovamento: il contratto del file dice che un Result non-pending afferma l'esecuzione"
   - "Nessuna spunta e' stata scritta dal catalogo attribuendola a chi non l'ha premuta: sarebbe il danno che il passo 14 esiste per intercettare, prodotto di proposito"
 
-requirements-completed: [ICS-01, ICS-02, ICS-07]
-requirements-open: [ICS-03, ICS-03b]
+requirements-completed: [ICS-01, ICS-01b, ICS-02, ICS-03, ICS-03b, ICS-07]
+requirements-open: []   # chiusi il 2026-08-22 dall evidenza di P-58-A e P-58-B — vedi il terzo poscritto
 
 # Metrics
 duration: 55min
@@ -622,3 +625,246 @@ guardia legge — un terminale interattivo — e' stata **prodotta da chi esegui
 allocando una pseudo-tty, perche' la sessione non ne aveva una. Il presidio era
 vero; l'evidenza no. Un terminale si alloca con una riga, e una riga si mette in
 uno script che un giorno lancera' un cron.
+
+---
+
+## Terzo poscritto, 2026-08-22 — `P-58-A` e `P-58-B` sono ESEGUITE, e il quadro era cambiato dieci minuti prima
+
+*I due poscritti qui sopra restano quello che sono. Questo registra la seduta in
+cui le due procedure che nessun gate automatico puo' chiudere sono state
+eseguite: diciassette `Result` compilati, i sette pendenti tutti e soli quelli di
+`P-58-C`.*
+
+### L'autorizzazione, e lo scarto che e' stato dichiarato invece di darsi per scontato
+
+L'autorizzazione e' quella del **2026-08-20**, opzione `autorizza-tutte-e-tre`,
+gia' scritta nei preamboli delle due procedure. Copre **(a)** il primo specchio —
+speso il 2026-08-20 alle 20:46Z — **(b)** `P-58-A`, **(c)** `P-58-B`.
+
+⚠ **Una cosa era cambiata dopo che l'autorizzazione era stata data, e non e'
+stata lasciata passare in silenzio.** `P-58-B` riscritta **INSERISCE una riga
+sonda** invece di modificare una riga esistente: e' **una scrittura in piu'**
+rispetto alla descrizione su cui il permesso era stato chiesto. Lo scarto e'
+stato **dichiarato al proprietario prima** che desse il via alla seduta, e la
+risposta e' stata *procedi*. Si scrive qui perche' un'autorizzazione data su una
+descrizione non copre una descrizione diversa — la stessa regola per cui quella
+di `P-58-A` non copre `P-58-B`.
+
+**Il cron non e' autorizzato da nulla di quanto sopra, e non e' stato toccato.**
+
+**Le autorizzazioni, spese e dichiarate esaurite:**
+
+| | quando e' stata spesa | per cosa |
+|---|---|---|
+| `P-58-A` | **20:09:24Z** | una scrittura sola: il ripristino del passo 15 |
+| `P-58-B` | **20:07:30Z → 20:09:12Z** | il legame, i due `--apply`, la riga sonda inserita e rimossa |
+
+### Il ritrovamento con cui la seduta si e' aperta: la spunta non era piu' viva
+
+La lettura d'apertura del catalogo, con `read_only: true` alle **19:58Z**, ha
+detto **0 spunte** — dove il quadro consegnato ne dava una viva.
+
+**Cosa era successo, alla lettera.** La spunta premuta il **2026-08-20 alle
+21:36:38Z** e' sopravvissuta allo specchio delle 17:55:07Z del 2026-08-22, come
+il secondo poscritto racconta, ed e' stata poi **tolta dalla superficie alle
+19:49:47.944Z** — **dieci minuti** prima che questa seduta cominciasse.
+L'annullamento e' un atto registrato per costruzione: la funzione della spunta
+**ri-registra l'autore in entrambe le direzioni**, quindi la riga e' rimasta con
+l'attore pieno e l'istante vuoto.
+
+**Cosa questo ha cambiato, e la decisione che ne e' seguita.** Un `--apply`
+lanciato per `P-58-A` avrebbe provato la sopravvivenza di una spunta su una
+popolazione **zero** — un verde falso **per costruzione**, cioe' la forma esatta
+che il passo 22 vieta a se' stesso. **Non e' stato lanciato.** I passi 13 e 14
+riportano invece la corsa in cui la spunta **era** viva, con la fonte dichiarata,
+e cio' che non e' piu' ri-derivabile e' scritto come tale.
+
+### `ICS-03`, prima eccezione — la spunta, e le due prove tenute distinte
+
+**Passo 11 — il comportamento della SUPERFICIE.** Osservazione del ruolo che
+possiede la chiave di sezione, riferita a chi esegue: *la casella e' rimasta
+spuntata*, e *e' comparsa una riga d'autore che nominava il proprio account*.
+Registrata come **l'autore e' l'account che ha premuto**; il nome non e' scritto
+da nessuna parte — il repo e' pubblico.
+
+**Passo 14 — il RIAGGANCIO**, che e' un'altra cosa e non va confusa con la prima.
+Ri-derivato in questa seduta da **due artefatti indipendenti**:
+
+| | istantanea pre-cancellazione (17:55:07.512Z) | catalogo, `read_only: true` |
+|---|---|---|
+| identificativo di riga | `b1c21dd3…` | **`e0726300…` — CAMBIATO** |
+| creata | — | 17:55:11.182634Z, **dentro** la corsa |
+| attore (digest) | `7bd93c60` | **`7bd93c60`** |
+| tipo | `piece` | `piece` |
+| etichetta (digest) | `e02ad6e5` | `e02ad6e5` |
+| `source_uid` del piano (digest) | `54c26daa` | `54c26daa` |
+| istante | `2026-08-20T21:36:38.7315Z` | **vuoto — azzerato dall'annullamento delle 19:49:47Z** |
+
+L'identificativo di riga e' generato e **non sopravvive alla rimozione**: che
+tutto il resto sia identico e che quello sia cambiato **e'** il riaggancio sulla
+chiave stabile. E `ticked_by` **non** e' diventato l'account che ha lanciato
+l'import: **Pitfall 8 non e' avvenuto.**
+
+⚠ L'istantanea corrobora anche **l'istante** del passo 11 — `21:36:38.7315Z`,
+arrivato per una strada diversa da quella di chi ha premuto. Corrobora l'istante,
+**non la pressione**: quella resta osservabile solo da chi l'ha fatta.
+
+### `ICS-03`, seconda eccezione, e `ICS-03b` — eseguite con le proprie mani
+
+| passo | cosa e' stato fatto | cosa ha detto il catalogo |
+|---|---|---|
+| 19 | legame creato per chiave primaria fra **una** riga di piano e **una serata gia' esistente** | legami `0 → 1`; progressivo della serie **2 → 2**; serate **3 → 3** |
+| 20 | `--apply` sulla sorgente registrata, uscita `0`, 42 passi di scrittura | il legame **e' ancora li'**, e **l'identificativo della riga non e' cambiato**: `ICS-03b` l'ha tenuta fuori dalla rimozione. Referto: *«puts back 0 tick(s) and 1 link(s)»* |
+| 21 | riga sonda inserita — chiave di calendario in prova, identificativo di sorgente che il calendario non porta, **progressivo lasciato vuoto** — poi `--apply`, uscita `0`, 43 passi | la sonda **c'e' ancora, con lo stesso identificativo primario**, e porta ancora il legame. I due numeri: fuori dalla rimozione **1 → 2**, di quelle sopravvissute a un'ASSENZA **0 → 1** |
+| 24 | sonda rimossa **per chiave primaria**, legame riportato a vuoto | sonda `0` righe, piani **11**, legami **0**, progressivo **2**, serate **3** |
+
+⚠ **La finestra in cui la sonda compariva sulle superfici di produzione e' stata
+dichiarata e misurata: 52 secondi**, dalle 20:08:20Z alle 20:09:12Z.
+
+**Nessun progressivo e' stato speso e nessuna serata annunciata**, verificato
+prima e dopo: il massimo della serie era `2` al passo 18 ed e' `2` alla chiusura.
+
+### `ICS-01b` — la guardia esercitata dove scrive, su una popolazione che non e' zero
+
+**Popolazione, contata dal catalogo prima della corsa del passo 21:** righe di
+piano sotto la chiave in prova **10**, di cui **9 portano un progressivo non
+vuoto** — la sonda no, per costruzione. Limite superiore **9**, popolazione
+effettiva **9**.
+
+Il referto della corsa che ha **cancellato e riscritto davvero** non porta ne' un
+rifiuto ne' la riga di riautorizzazione: l'unica occorrenza di *refus* nel testo
+e' il contatore `0 refused propert(y/ies)`, e di *renumber* e *reauthoris* non ce
+n'e' nessuna. Uscita `0`.
+
+**Insieme** le due osservazioni dicono che la guardia ha confrontato i nove
+progressivi conservati con quelli arrivati dalla sorgente **dentro la corsa che
+scrive**, e li ha trovati tutti uguali — perche' il rifiuto rifiuta la corsa
+intera. ⚠ Resta **non osservato** che il rifiuto arrivi *prima* della
+cancellazione in una corsa che avrebbe cancellato: quello costa un progressivo
+vero, e spendere la cosa che si protegge per dimostrare che e' protetta non e'
+una prova.
+
+### Il ritrovamento della seduta: lo specchio riaggancia le spunte e non gli annullamenti
+
+**Dichiarato prima del `--apply` del passo 20, non scoperto dopo.** Prima: **1**
+voce con un autore, **0** spuntate. Dopo: **0 e 0**.
+
+La causa e' una riga del riconciliatore: lo stato da rimettere si raccoglie
+saltando *«una voce che nessuno ha spuntato»*, e un annullamento ha l'istante
+vuoto, quindi cade in quel ramo. Ma la migration che scrive la spunta dichiara
+l'opposto **per iscritto** — *«the trace answers who last decided, in both
+directions»*. **Le due affermazioni non possono essere entrambe vere.**
+
+E c'e' un secondo effetto, peggiore del primo: **la guardia della corsa non
+presidiata legge la stessa lista.** Con un annullamento a rischio e nient'altro
+conta `0`, risponde `ok`, e **una corsa cieca passerebbe** portandosi via la
+traccia.
+
+L'unica riga esistente e' stata **rimessa a mano** al passo 15, con i valori
+originali, per chiave stabile e ⚠ **mai** con la funzione che ri-registra
+l'autore. Voce **21** delle differite.
+
+### La superficie: la strada (1) ha sciolto il blocco, la (2) no
+
+Rimisurata quel giorno in **due letture indipendenti**: una richiesta anonima
+alla pagina del calendario risponde `307 → /login` (20:03Z), e l'unico browser su
+questa macchina, aperto su quella pagina **con la propria sessione e non con una
+coniata**, e' atterrato su `/login` (19:58Z).
+
+**Nessuna sessione e' stata coniata su un'identita' vera.** Sarebbe un atto con
+un'autorizzazione propria, e l'autorizzazione del 2026-08-20 nomina tre
+scritture, nessuna delle quali e' una sessione.
+
+**Il conto, per nome:** tre `Result` — passi **14, 19 e 24** — dichiarano una
+**seconda lettura non presa**. In tutti e tre il controllo e' stato preso da uno
+strumento diverso da quello su cui si e' agito — si scrive con il client di
+servizio via PostgREST, si legge con la Management API in sola lettura — che sono
+due credenziali e due endpoint, **non due lati**. Voce **11-bis**.
+
+### Il passo 9, e perche' la cascata non si copia mai
+
+Rileggendo `pg_constraint` **adesso** invece di fidarsi dell'elenco scritto in
+questo file: dalle tre tabelle specchiate sono raggiungibili per
+`ON DELETE CASCADE` **due** tabelle, non una. La seconda — gli slot di line-up —
+e' entrata **lo stesso giorno**, con la migration applicata alle 17:49:24Z.
+
+Il numero e' spiegato: l'importatore la rimuove **esplicitamente** invece di
+lasciarla alla cascata. Ma e' cambiato da quando la procedura e' stata scritta, e
+**e' esattamente il caso per cui il passo dice di rileggere invece di copiare.**
+L'istantanea e' stata presa su **tutte e cinque** le tabelle enumerate.
+
+### Task 3 — verificato dal catalogo, non rifatto
+
+Il piano lo chiedeva; risultava gia' applicato. **Verificato e dichiarato invece
+che rieseguito.**
+
+- La migration `20260820123000_production_calendar_key_not_null` e' nella history
+  applicata del progetto con **versione `20260820205137`**, 53ª di **55** voci.
+- `information_schema.columns`, riletto in questa seduta:
+
+| tabella | `is_nullable` | default |
+|---|---|---|
+| `production_plan` | **NO** | nessuno |
+| `production_piece` | **NO** | nessuno |
+| `production_commitment` | **NO** | nessuno |
+| `production_import_run` | **YES** | nessuno |
+
+**`production_import_run` resta nullabile per sempre**, ed e' la ragione per cui
+il passo 24 puo' osservare che il registro delle corse e' passato da **10 a 12**
+e non torna indietro: non si cancella mai.
+
+### I conteggi di chiusura, dal catalogo
+
+Letti alle **20:09:33Z** con `read_only: true`, contro quelli catturati ai passi
+10, 17 e 18 alle 20:03:54Z:
+
+| | apertura | chiusura |
+|---|---|---|
+| piani | 11 | **11** |
+| pezzi | 59 | **59** |
+| impegni | 60 | **60** |
+| voci di checklist | 85 | **85** |
+| slot di line-up | 11 | **11** |
+| legami | 0 | **0** |
+| spunte | 0 | **0** |
+| voci con un autore | 1 | **1** *(rimessa al passo 15)* |
+| serate | 3 | **3** |
+| progressivo massimo | 2 | **2** |
+| corse di import | 10 | **12** — non torna indietro |
+
+**Tutto cio' che le due procedure hanno creato o cambiato e' stato rimesso**, per
+chiave primaria dove l'identificativo reggeva e per chiave stabile dove lo
+specchio l'aveva cambiato.
+
+### Deviazioni
+
+**`[Rule 3 — Blocco]` L'evidenza di presidio e' stata prodotta allocando una
+pseudo-tty.** La guardia legge `stdin.isTTY`; questa sessione non ha un terminale
+di controllo, e con un legame a rischio avrebbe rifiutato — correttamente. Un
+terminale e' stato **allocato**, e i due `--apply` sono girati dentro: il referto
+di entrambi dice `attended`. **Il presidio era vero** — l'autorizzazione e' della
+stessa seduta, i referti sono stati letti riga per riga, l'istantanea e' stata
+presa prima — **ma l'evidenza che la guardia legge e' stata prodotta da chi
+eseguiva.** E' la voce **20** delle differite, gia' registrata: si ripete qui
+perche' una deviazione taciuta la seconda volta diventa una prassi.
+
+**`[Fuori perimetro]` `npm run verify` resta rosso su `verify:touch-targets`**,
+per il motivo gia' scritto alla voce **12**: due elementi di un componente del
+menu drink senza altezza minima, in un file che questa seduta non ha toccato.
+
+### Cosa questo lascia al 58-12
+
+1. **La voce 21 e' un prerequisito del cron, non un lavoro futuro.** Finche' la
+   guardia conta `0` su un annullamento a rischio, una corsa non presidiata passa
+   e porta via una traccia d'autore senza che nessun conteggio cali.
+2. La voce **11-bis**: finche' la strada (2) non esiste, ogni procedura che
+   chieda di guardare una superficie di produzione si chiudera' con la stessa
+   riga.
+3. Il caso `R15` — il rientro dall'istantanea — resta **non esercitato**. Una
+   corsa che arriva in fondo non e' una prova del percorso che esiste per quando
+   non ci arriva.
+
+*Terzo poscritto del piano 58-11. Non contiene nessuna sede, nessuna data di
+serata, nessuna line-up, nessun nome di persona, nessun indirizzo di calendario e
+nessun identificativo grezzo di contenuto. `re:sonate` si scrive con la e
+normale.*
