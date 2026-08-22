@@ -1161,3 +1161,77 @@ residuo che adesso contiene anche le note.
   sola, il presidio smette di essere la cosa che decide, e questa voce smette di
   contare. **E' li' che va speso lo sforzo**, non in un predicato piu' furbo.
 
+
+---
+
+## 21. Lo specchio riaggancia le spunte e **non** gli annullamenti: meta' della traccia d'autore non e' un'eccezione di stato
+
+- **Trovata:** piano 58-11, esecuzione di `P-58-A` e `P-58-B`, 2026-08-22,
+  eseguendo il passo 20 dopo averne dichiarato il rischio al passo 10
+- **Il fatto, misurato e non dedotto.** Prima del `--apply` del passo 20 il
+  catalogo portava **1** voce di checklist con un autore e **0** spuntate; dopo,
+  **0 e 0**. La riga non era spuntata: portava l'**annullamento** di una spunta
+  — attore e nome pieni, istante vuoto — messo dalla superficie alle 19:49:47Z
+  di quel giorno.
+- **La causa, per ispezione e in una riga.** Il riaggancio raccoglie lo stato da
+  rimettere con un filtro solo: *una voce che nessuno ha spuntato non porta
+  stato e non viene raccolta*. Un annullamento ha l'istante vuoto, quindi cade
+  esattamente in quel ramo — e sparisce con la rimozione, che porta via l'intera
+  checklist dello scopo.
+- **Perche' non e' un dettaglio, ed e' la meta' che conta.** La migration che
+  scrive la spunta dichiara il contrario **per iscritto**: *«THE TICK IS
+  REVERSIBLE: `p_ticked = false` clears `ticked_at` and re-records the author, so
+  the trace answers who last decided, in both directions»*. Cioe' il prodotto
+  dichiara che l'annullamento **e' un atto con un autore**, e lo specchio ne
+  conserva una direzione sola. Le due affermazioni non possono essere entrambe
+  vere, e finche' lo sono e' il documento a mentire, non il codice.
+- **Cosa costa oggi, misurato.** Una riga. E' l'unico annullamento che esista in
+  produzione, ed e' stato **rimesso a mano** al passo 15 con i valori originali,
+  per chiave stabile e **mai** con la funzione che ri-registra l'autore. Il
+  costo cresce con l'uso della superficie, non con il tempo: ogni casella tolta
+  e poi specchiata perde il proprio *chi l'ha tolta*, in silenzio e senza che
+  nessun conteggio del referto cali — il referto conta **spunte**, e un
+  annullamento per lui vale zero prima e zero dopo.
+- **E c'e' un secondo effetto, piu' sgradevole del primo.** La **guardia della
+  corsa non presidiata** legge la stessa lista: *«at stake N + M»*. Con un
+  annullamento a rischio e nient'altro, `N` vale `0`, la guardia risponde `ok` e
+  **una corsa non presidiata passerebbe** portandosi via la traccia. La guardia
+  esiste per proteggere *«l'unico dato che nessun feed sa ricostruire»*, e il
+  calendario non sa chi ha tolto una casella allo stesso modo in cui non sa chi
+  ne ha messa una.
+- **Non riparata perche':** la regola di perimetro. Il filtro sta nel
+  riconciliatore, che questo piano non tocca — e sceglierne un altro non e' una
+  correzione ovvia ma **una decisione**: raccogliere ogni voce che porta un
+  attore fa entrare nel percorso di rientro righe che oggi non ci entrano, e
+  cambia cosa significa *stato* per lo specchio. Va decisa dove vive quella
+  definizione, non dentro l'esecuzione di una procedura.
+- **Come si chiude:** o il riconciliatore raccoglie **anche** le voci con un
+  attore e nessun istante — e allora la guardia le conta, e la riparazione e'
+  una sola — oppure il prodotto smette di dichiarare l'annullamento un atto, e
+  la frase della migration si corregge. **Una delle due, non nessuna:** oggi il
+  repo afferma una cosa e ne fa un'altra.
+
+---
+
+## 11-bis. La superficie: la strada (1) ha sciolto il blocco, la (2) resta aperta e conta ancora
+
+- **Aggiornamento della voce 11**, piano 58-11, 2026-08-22
+- **Cosa si e' chiuso.** La **strada (1)** — il ruolo che possiede la chiave di
+  sezione preme la casella e lo riferisce — e' stata percorsa: il passo 11 di
+  `P-58-A` porta le sue due osservazioni, e `P-58-A` e `P-58-B` sono eseguite per
+  intero. `ICS-03` e `ICS-03b` hanno l'evidenza di una procedura.
+- **Cosa NON si e' chiuso, e va detto invece che arrotondato.** La superficie
+  **resta irraggiungibile da chi esegue**, rimisurata quel giorno in due letture
+  indipendenti: una richiesta anonima alla pagina del calendario risponde
+  `307 → /login`, e l'unico browser su questa macchina, aperto su quella pagina
+  con la propria sessione, e' atterrato su `/login`. Nessuna sessione e' stata
+  coniata: sarebbe un atto con un'autorizzazione propria, e nessuno l'ha data.
+- **Cosa questo lascia scoperto, per nome.** Tre `Result` — passi 14, 19 e 24 —
+  dichiarano una **seconda lettura non presa**. In tutti e tre il contatore di
+  controllo vorrebbe la superficie perche' l'azione e' passata dal catalogo; e'
+  stato preso da uno strumento diverso ma dallo stesso lato — si scrive con il
+  client di servizio, si legge con la Management API in sola lettura. Sono due
+  credenziali e due endpoint, **non** due lati.
+- **Perche' conta ancora.** La strada (2) sblocca **ogni futura esecuzione
+  presidiata**, non solo questa: finche' non esiste, ogni procedura che chieda di
+  guardare una superficie di produzione si chiudera' con la stessa riga.
