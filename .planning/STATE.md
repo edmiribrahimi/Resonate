@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "58-11 chiuso parzialmente: specchio applicato e colonna stretta; P-58-A e P-58-B ferme sulla superficie"
-last_updated: "2026-08-20T21:03:42.577Z"
-last_activity: 2026-08-20
+stopped_at: "58-11 CHIUSO: P-58-A e P-58-B eseguite (17 Result su 24), ICS-03 e ICS-03b chiusi dall'evidenza di una procedura; i 7 pendenti sono tutti e soli quelli di P-58-C"
+last_updated: "2026-08-22T20:18:38.000Z"
+last_activity: 2026-08-22
 progress:
   total_phases: 51
   completed_phases: 47
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — EXECUTING
-Plan: 12 of 12 (undici chiusi; il 58-11 e' chiuso PARZIALMENTE — vedi sotto)
+Plan: 12 of 12 (il 58-11 e' CHIUSO dal 2026-08-22: le due procedure sono eseguite e ICS-03 / ICS-03b hanno l'evidenza che nessun gate automatico poteva dare. Resta il 58-12, il cron)
 **Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
 `.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
@@ -340,6 +340,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - Undoing a check-in requires a **supervising capability** — door-only assignment cannot undo (Phase 35)
 - Venue reveal stays scheduled **plus** a manual path for master and organizer, confirmed and recorded (Phase 37)
 - The interface stays **English only** — no translation work this milestone
+- [Fase 58, 2026-08-22]: `P-58-A` e `P-58-B` eseguite. La spunta del passo 11 e' stata premuta **dalla superficie** dal ruolo che possiede la chiave di sezione, e le sue due osservazioni sono registrate come sue — mai come una lettura del catalogo, e mai con un nome. **Nessuna sessione e' stata coniata su un'identita' vera**: la superficie resta irraggiungibile da chi esegue, e i tre `Result` che ne pagano il conto lo dichiarano invece di arrotondarlo.
+- [Fase 58, 2026-08-22]: **la spunta non era piu' viva quando la seduta e' cominciata** — tolta dalla superficie dieci minuti prima. Nessun `--apply` e' stato lanciato per `P-58-A`: avrebbe provato una sopravvivenza su una popolazione **zero**, che e' un verde falso per costruzione. L'evidenza dei passi 13 e 14 e' la corsa in cui la spunta **era** viva, con la fonte dichiarata.
 - [Phase 36]: Il baseline `pre-36` e' catturato su entrambi i bersagli **prima** che
   esista un file di migration di fase 36 — la precondizione e' asserita da un comando
   incatenato alla cattura, non dichiarata a memoria. Figure di partenza: 72 policy,
@@ -514,8 +516,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-20T21:03:42.572Z
-**Stopped at:** 58-11 chiuso parzialmente: specchio applicato e colonna stretta; P-58-A e P-58-B ferme sulla superficie
+**Last session:** 2026-08-22T20:18:38.000Z
+**Stopped at:** 58-11 CHIUSO: P-58-A e P-58-B eseguite (17 Result su 24), ICS-03 e ICS-03b chiusi dall'evidenza di una procedura; i 7 pendenti sono tutti e soli quelli di P-58-C
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
