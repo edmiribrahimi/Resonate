@@ -83,6 +83,15 @@ export interface DeliveryRecordInput {
   userId?: string | null;
   /** Il biglietto di cui questo messaggio e' la copia di cortesia, se c'e'. */
   ticketId?: string | null;
+  /**
+   * La serata a cui l'invio appartiene, per i messaggi che ne hanno una.
+   *
+   * Vale per `venue_reveal` e `event_reminder` e per nient'altro. E' la sola
+   * chiave con cui una rivelazione non consegnata si attribuisce alla propria
+   * notte, perche' chi la riceve puo' non avere nessun biglietto — una
+   * prenotazione non lo e' — o averne due.
+   */
+  partyId?: string | null;
 }
 
 /**
@@ -104,6 +113,7 @@ export async function recordSend(
         category: input.category,
         user_id: input.userId ?? null,
         ticket_id: input.ticketId ?? null,
+        party_id: input.partyId ?? null,
         outcome: "unverified" satisfies DeliveryOutcome,
       });
 
@@ -122,6 +132,108 @@ export async function recordSend(
   } catch (unexpected) {
     console.error(
       `[email.ledger.record_threw] category=${input.category} ${
+        unexpected instanceof Error ? unexpected.message : "non-Error thrown"
+      }`
+    );
+    return false;
+  }
+}
+
+/**
+ * Registra un LOTTO di invii riusciti, un identificativo per destinatario.
+ * **Non lancia.** Restituisce se le righe ci sono.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * PERCHE' QUESTA FUNZIONE ESISTE INVECE DI FAR PASSARE I DUE PERCORSI DA
+ * `sendEmail`
+ * ═════════════════════════════════════════════════════════════════════════════
+ *
+ * La domanda giusta era *«perche' la rivelazione del venue e i promemoria non
+ * chiamano `sendEmail` come gli altri undici call site?»*, e la risposta e'
+ * misurata, non stilistica: **quei due percorsi non spediscono un messaggio,
+ * spediscono un lotto.** `resend.batch.send(emails)` manda fino a **cento**
+ * messaggi in **una** richiesta; `sendEmail` avvolge `emails.send`, che ne manda
+ * uno.
+ *
+ * Convertirli avrebbe voluto dire trasformare una richiesta in cento. Tre
+ * conseguenze, e la prima e' quella che decide:
+ *
+ *   1. **Sulla rivelazione sarebbe stata una modifica a un atto irreversibile.**
+ *      `reveal-party-venue.ts` degrada a invii singoli **solo
+ *      quando il lotto viene rifiutato**, e il suo docblock dichiara che quel
+ *      ripiego moltiplica per cento le richieste e rende il limite di frequenza
+ *      del fornitore un esito plausibile *del ripiego stesso*. Renderlo la
+ *      strada normale avrebbe reso quel rischio permanente, su un percorso dove
+ *      un destinatario mancato **non sa dove andare**.
+ *   2. Il cron ha un budget di tempo di parete. Cento richieste dove ne serviva
+ *      una, moltiplicate per le serate della finestra, e' una corsa che muore a
+ *      meta' — e le serate dopo quella restano senza indirizzo.
+ *   3. La deduplicazione, il ripiego, la marcatura per lotto e il verdetto sul
+ *      ritentativo sono quattro comportamenti gia' scritti e verificati sopra
+ *      quel lotto. Riscriverli attorno a `sendEmail` sarebbe stato riscrivere
+ *      la parte Critical per uniformare la parte contabile.
+ *
+ * **Quindi il meccanismo d'invio non si tocca, e cambia solo cio' che si sa
+ * dopo.** Il fornitore restituisce un identificativo **per messaggio**, nello
+ * stesso ordine in cui li ha ricevuti (`CreateBatchSuccessResponse.data` e' un
+ * array di `{ id }`, `resend@6.9.2`), e da li' in poi ogni riga finisce nella
+ * **stessa** tabella, con gli **stessi** quattro esiti e la **stessa**
+ * riconciliazione via GET degli altri undici messaggi.
+ *
+ * ── L'ordine e' un'assunzione, quindi si verifica invece di fidarsi ──────────
+ *
+ * L'attribuzione riposa su una sola cosa: che l'i-esimo identificativo
+ * appartenga all'i-esimo destinatario. Se le due lunghezze non coincidono
+ * **non si scrive niente** e si logga con una categoria propria. Attribuire un
+ * esito alla persona sbagliata sarebbe peggio di non attribuirlo: farebbe
+ * apparire «consegnata» su chi non ha ricevuto, che e' esattamente la bugia che
+ * tutta questa infrastruttura esiste per togliere. Meno righe, tutte vere.
+ */
+export async function recordBatchSend(
+  providerMessageIds: string[],
+  rows: DeliveryRecordInput[]
+): Promise<boolean> {
+  if (rows.length === 0) return true;
+
+  const category = rows[0]?.category ?? "unknown-category";
+
+  if (providerMessageIds.length !== rows.length) {
+    // NON e' un errore di scrittura: e' un'assunzione caduta. Categoria propria
+    // perche' chi legge i log deve distinguere «il fornitore ha risposto in un
+    // modo che non so attribuire» da «non ho potuto scrivere».
+    console.error(
+      `[email.ledger.batch_length_mismatch] category=${category} ` +
+        `ids=${providerMessageIds.length} recipients=${rows.length} — ` +
+        `nothing recorded, attribution would have been a guess`
+    );
+    return false;
+  }
+
+  try {
+    const { error } = await getServiceClient()
+      .from("email_deliveries")
+      .insert(
+        rows.map((input, i) => ({
+          provider_message_id: providerMessageIds[i],
+          category: input.category,
+          user_id: input.userId ?? null,
+          ticket_id: input.ticketId ?? null,
+          party_id: input.partyId ?? null,
+          outcome: "unverified" satisfies DeliveryOutcome,
+        }))
+      );
+
+    if (error) {
+      console.error(
+        `[email.ledger.batch_record_failed] category=${category} ` +
+          `${rows.length} rows ${redactDbError(error)}`
+      );
+      return false;
+    }
+    return true;
+  } catch (unexpected) {
+    console.error(
+      `[email.ledger.batch_record_threw] category=${category} ${
         unexpected instanceof Error ? unexpected.message : "non-Error thrown"
       }`
     );
@@ -177,11 +289,22 @@ const EMPTY_REPORT = (): ReconcileReport => ({
  * non lo accorcia. Quello che garantisce e' che la finestra **finisca** invece
  * di durare per sempre.
  *
- * @param scope `all` per la spazzata; una lista di `ticket_id` per la lettura a
- *              richiesta, che non deve pagare la coda di tutto il prodotto.
+ * @param scope `all` per la spazzata; una lista di `ticket_id` o una serata per
+ *              la lettura a richiesta, che non deve pagare la coda di tutto il
+ *              prodotto.
+ *
+ *              `night` esiste per la superficie della rivelazione, e la sua
+ *              urgenza e' la stessa dell'altra ma piu' stretta: chi organizza
+ *              apre quella pagina **il giorno della serata**, per sapere se
+ *              l'indirizzo e' uscito. Un verdetto che arriva domani mattina
+ *              arriva quando non c'e' piu' niente da fare. E' ristretta alla
+ *              coppia serata + categoria, quindi non paga la coda del prodotto.
  */
 export async function reconcileDeliveries(
-  scope: { kind: "all"; limit: number } | { kind: "tickets"; ticketIds: string[] }
+  scope:
+    | { kind: "all"; limit: number }
+    | { kind: "tickets"; ticketIds: string[] }
+    | { kind: "night"; partyId: string; category: EmailCategory }
 ): Promise<ReconcileReport> {
   const report = EMPTY_REPORT();
 
@@ -213,7 +336,22 @@ export async function reconcileDeliveries(
     created_at: string;
   }> = [];
 
-  if (scope.kind === "all") {
+  if (scope.kind === "night") {
+    const { data, error } = await baseQuery()
+      .eq("party_id", scope.partyId)
+      .eq("category", scope.category);
+    if (error) {
+      // Stessa distinzione della spazzata: «non ho potuto leggere la coda» non
+      // e' «la coda e' vuota». Sulla superficie della rivelazione la differenza
+      // e' fra *nessuno e' rimasto senza indirizzo* e *non lo sappiamo*, e
+      // `venue-secrecy.md` (gate default chiuso) dice che uno stato
+      // indeterminabile non e' uno stato vuoto.
+      console.error(`[email.ledger.queue_unreadable] ${redactDbError(error)}`);
+      report.queueUnreadable = true;
+      return report;
+    }
+    rows.push(...(data ?? []));
+  } else if (scope.kind === "all") {
     const { data, error } = await baseQuery().limit(scope.limit);
     if (error) {
       // NON e' «zero righe da verificare». La coda non si e' potuta leggere, e le
@@ -346,7 +484,18 @@ export interface TicketDeliveryMark {
  * assenza sarebbe la bugia esatta che questo file esiste per togliere.
  */
 export async function readTicketDeliveryMarks(
-  ticketIds: string[]
+  ticketIds: string[],
+  /**
+   * Quale dei messaggi legati a un biglietto. **Obbligatoria**, e prima non
+   * esisteva: la categoria era scritta dentro la query.
+   *
+   * Un valore predefinito qui sarebbe stato la trappola che il resto di questo
+   * modulo evita. Con `event_reminder` che ora vive nello stesso registro, un
+   * chiamante che dimenticasse il parametro leggerebbe **la conferma** e la
+   * disegnerebbe sotto l'etichetta del promemoria — un segno giusto attaccato
+   * alla domanda sbagliata, che e' peggio di nessun segno perche' si crede.
+   */
+  category: EmailCategory
 ): Promise<Map<string, TicketDeliveryMark>> {
   const marks = new Map<string, TicketDeliveryMark>();
   if (ticketIds.length === 0) return marks;
@@ -360,7 +509,7 @@ export async function readTicketDeliveryMarks(
     const { data, error } = await supabase
       .from("email_deliveries")
       .select("ticket_id, outcome, provider_last_event, check_failure, created_at")
-      .eq("category", "ticket_confirmation")
+      .eq("category", category)
       .in("ticket_id", ticketIds.slice(i, i + 100))
       .order("created_at", { ascending: false });
 
@@ -392,4 +541,122 @@ export async function readTicketDeliveryMarks(
   }
 
   return marks;
+}
+
+/**
+ * Una mancata consegna su una serata, come chi organizza deve leggerla.
+ *
+ * ⚠️ **Questa forma non contiene, e non deve mai contenere, l'indirizzo del
+ * venue.** Ne' quello del destinatario. Porta un identificativo di persona, un
+ * esito e una frase fissa scritta in `classifyProviderEvent` — e quelle frasi
+ * parlano del **fornitore**, mai del contenuto del messaggio. Aggiungere qui il
+ * luogo per «rendere il messaggio piu' utile» sarebbe far uscire un indirizzo
+ * segreto da un percorso d'errore, che e' il modo piu' stupido di perdere una
+ * sede: `venue-secrecy.md`, gate *contenuto verso destinatario*.
+ */
+export interface NightDeliveryFailure {
+  /** Chi. Il nome si risolve dal chiamante, che ha gia' i profili in mano. */
+  userId: string | null;
+  /** `undelivered` oppure `unknown`. Le consegnate non arrivano fin qui. */
+  outcome: Extract<DeliveryOutcome, "undelivered" | "unknown">;
+  /** La frase da mostrare, senza gergo del fornitore e senza il luogo. */
+  reason: string;
+  /** La parola grezza del fornitore, per chi deve andare a fondo. */
+  providerLastEvent: string | null;
+}
+
+/** L'esito di una lettura per serata. `unreadable` NON e' «nessun problema». */
+export interface NightDeliveryReport {
+  /** Quante righe di registro esistono per questa serata e categoria. */
+  recorded: number;
+  /** Quante sono ancora senza verdetto. Non sono un problema: sono un'attesa. */
+  stillUnverified: number;
+  /** Le sole che richiedono che qualcuno faccia qualcosa. */
+  failures: NightDeliveryFailure[];
+  /**
+   * La lettura e' fallita.
+   *
+   * Tenuto separato da `failures: []` di proposito, e la ragione e' la stessa
+   * che `countVenueRevealRecipients` porta gia' per il conteggio dei
+   * destinatari: **uno stato indeterminabile non e' uno stato vuoto**
+   * (`venue-secrecy.md`, gate *default chiuso*). Una superficie che disegnasse
+   * «nessuno e' rimasto senza indirizzo» su una lettura fallita direbbe una
+   * cosa falsa nel dominio in cui una cosa falsa costa una persona davanti a
+   * una porta chiusa.
+   */
+  unreadable: boolean;
+}
+
+/**
+ * Chi, su questa serata, **non** ha ricevuto il messaggio di questa categoria.
+ *
+ * ── Perche' una lettura per serata e non per biglietto ───────────────────────
+ *
+ * Perche' i destinatari di una rivelazione non sono biglietti. Sono persone, e
+ * l'unione dedotta da `collectRecipients` mette insieme chi ha un biglietto di
+ * serata, chi ha un biglietto di evento e **chi ha una prenotazione, che non ha
+ * nessun biglietto**. Una lettura per `ticket_id` avrebbe quindi mostrato meno
+ * persone di quante sono rimaste senza indirizzo — e in questo dominio la
+ * direzione dell'errore e' tutto.
+ *
+ * ── Perche' `unknown` sta accanto a `undelivered` e non accanto alle riuscite ─
+ *
+ * `unknown` vuol dire *abbiamo chiesto e non abbiamo una risposta utilizzabile*.
+ * Su una conferma di biglietto e' una sfumatura; qui e' una persona di cui non
+ * si puo' escludere che non sappia dove andare, e l'unico trattamento onesto e'
+ * metterla davanti a chi puo' rimediare. Restano invece **fuori** le
+ * `unverified`, che sono contate a parte: sono un'attesa, non un problema, e
+ * confonderle sarebbe il rumore che nasconde le righe che contano.
+ */
+export async function readNightDeliveryFailures(
+  partyId: string,
+  category: EmailCategory
+): Promise<NightDeliveryReport> {
+  const report: NightDeliveryReport = {
+    recorded: 0,
+    stillUnverified: 0,
+    failures: [],
+    unreadable: false,
+  };
+
+  const { data, error } = await getServiceClient()
+    .from("email_deliveries")
+    // Nessuna colonna di contenuto viene chiesta, perche' nessuna esiste: la
+    // tabella non conserva ne' il corpo del messaggio ne' l'indirizzo di posta
+    // del destinatario. Vedi `20260822130000_email_delivery_ledger.sql`.
+    .select("user_id, outcome, provider_last_event, check_failure")
+    .eq("party_id", partyId)
+    .eq("category", category);
+
+  if (error) {
+    console.error(
+      `[email.ledger.night_marks_unreadable] category=${category} ${redactDbError(error)}`
+    );
+    report.unreadable = true;
+    return report;
+  }
+
+  for (const row of data ?? []) {
+    report.recorded += 1;
+    const outcome = row.outcome as DeliveryOutcome;
+
+    if (outcome === "delivered") continue;
+    if (outcome === "unverified") {
+      report.stillUnverified += 1;
+      continue;
+    }
+
+    const verdict = classifyProviderEvent(row.provider_last_event);
+    report.failures.push({
+      userId: row.user_id ?? null,
+      outcome,
+      reason:
+        outcome === "unknown" && row.check_failure
+          ? "Asked the provider and got no usable answer."
+          : verdict.reason,
+      providerLastEvent: row.provider_last_event ?? null,
+    });
+  }
+
+  return report;
 }

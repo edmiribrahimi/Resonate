@@ -364,7 +364,14 @@ export default async function TicketTiersPage({ params }: PageProps) {
   // ed e' uno stato disegnato qui sotto.
   const ticketIdsPerConsegna = (soldTickets ?? []).map((t: { id: string }) => t.id);
   await reconcileDeliveries({ kind: "tickets", ticketIds: ticketIdsPerConsegna });
-  const consegneDi = await readTicketDeliveryMarks(ticketIdsPerConsegna);
+  // La categoria e' esplicita da quando il registro ne contiene undici: il
+  // promemoria della serata vive nella stessa tabella e sullo stesso biglietto,
+  // e un lettore senza categoria disegnerebbe un esito giusto sotto la domanda
+  // sbagliata.
+  const consegneDi = await readTicketDeliveryMarks(
+    ticketIdsPerConsegna,
+    "ticket_confirmation"
+  );
 
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
