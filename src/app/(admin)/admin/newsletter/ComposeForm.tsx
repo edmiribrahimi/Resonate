@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createAndSendBroadcast } from "./actions";
+import {
+  createAndSendBroadcast,
+  type BroadcastDispatchReport,
+} from "./actions";
 import FailureNotice, { type NoticeKind } from "./FailureNotice";
 import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/Typography";
@@ -56,9 +59,20 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
     null
   );
   const [showPreview, setShowPreview] = useState(false);
+  /**
+   * Cosa il fornitore ha detto del lotto, dopo che gli e' stato chiesto.
+   *
+   * Prima qui non c'era niente: l'invio riuscito svuotava i campi e chiamava
+   * `onSent()`, e «nessun errore» era tutto cio' che chi premeva otteneva. E'
+   * la stessa assunzione che `src/lib/email.ts` faceva sui messaggi singoli e
+   * che si e' rivelata falsa il 2026-08-22 — **la risposta d'invio e' una
+   * ricevuta di presa in carico, non un esito.**
+   */
+  const [dispatch, setDispatch] = useState<BroadcastDispatchReport | null>(null);
 
   const handleSend = () => {
     setFailure(null);
+    setDispatch(null);
     if (!subject.trim() || !htmlContent.trim()) {
       setInputError("Subject and content are required");
       return;
@@ -73,6 +87,7 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
         }
         setSubject("");
         setHtmlContent("");
+        setDispatch(result.data);
         onSent();
       } catch (err) {
         setFailure({
@@ -113,6 +128,54 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
       {failure && (
         <div className="mb-4">
           <FailureNotice kind={failure.kind} detail={failure.detail} />
+        </div>
+      )}
+
+      {/*
+        ── L'ESITO DEL LOTTO, COME VOLUME ──────────────────────────────────────
+
+        Un volume e non una riga per iscritto, ed e' una scelta e non un ripiego:
+        `broadcasts` non restituisce un identificativo per messaggio, quindi su
+        questo percorso un esito per persona **non esiste da chiedere** — e se
+        anche esistesse, un elenco per destinatario su una lista lunga e' rumore
+        che insegna a ignorare il canale (`comms-analytics.md`).
+
+        Quattro stati, che non si collassano. Quello che conta e' `draft`: un
+        lotto accettato e rimasto bozza e' una newsletter che nessuno ha
+        ricevuto, e prima di questa verifica era indistinguibile da un invio
+        riuscito.
+      */}
+      {dispatch && (
+        <div className="mb-4">
+          {dispatch.dispatch === "draft" ? (
+            <p role="alert" className="text-sm font-medium text-sem-crit">
+              The provider accepted the send and the broadcast is still a draft
+              — nobody has received it. Check it in the provider dashboard
+              before writing it again; sending twice is worse than sending late.
+            </p>
+          ) : dispatch.dispatch === "unknown" ? (
+            <p role="alert" className="text-sm text-sem-warn">
+              The send was accepted, and asking the provider what became of it
+              gave no usable answer
+              {dispatch.providerStatus
+                ? ` (it reported "${dispatch.providerStatus}")`
+                : ""}
+              . Do not send it again before looking: it may well have gone out.
+            </p>
+          ) : (
+            <p role="status" className="text-sm text-muted">
+              {dispatch.dispatch === "sent"
+                ? "Sent"
+                : "Queued by the provider"}
+              {dispatch.audienceSize === null
+                ? " — the subscriber count could not be read, so the volume is unknown."
+                : dispatch.audienceSize === 1
+                  ? " to 1 subscriber."
+                  : ` to ${dispatch.audienceSize} subscribers.`}{" "}
+              Per-recipient delivery is not available on this path — see the
+              broadcast list for its status.
+            </p>
+          )}
         </div>
       )}
 
