@@ -304,7 +304,26 @@ export async function reconcileDeliveries(
   scope:
     | { kind: "all"; limit: number }
     | { kind: "tickets"; ticketIds: string[] }
-    | { kind: "night"; partyId: string; category: EmailCategory }
+    | {
+        kind: "night";
+        partyId: string;
+        category: EmailCategory;
+        /**
+         * Quante righe al massimo interrogare in questa passata.
+         *
+         * C'e' un tetto qui e non sullo scopo `tickets` perche' i due paghino
+         * cose diverse: una serata puo' avere 300 destinatari, e ogni riga
+         * ancora senza esito e' **una GET verso il fornitore, in sequenza**. Su
+         * una superficie che qualcuno apre col telefono la sera della serata,
+         * trecento chiamate sono una pagina che non arriva — cioe' l'effetto
+         * osservabile che non si osserva.
+         *
+         * Le righe sono ordinate dalla piu' vecchia, quindi le passate
+         * successive avanzano invece di rifare le stesse; e la spazzata
+         * notturna prende comunque il resto.
+         */
+        limit: number;
+      }
 ): Promise<ReconcileReport> {
   const report = EMPTY_REPORT();
 
@@ -339,7 +358,8 @@ export async function reconcileDeliveries(
   if (scope.kind === "night") {
     const { data, error } = await baseQuery()
       .eq("party_id", scope.partyId)
-      .eq("category", scope.category);
+      .eq("category", scope.category)
+      .limit(scope.limit);
     if (error) {
       // Stessa distinzione della spazzata: «non ho potuto leggere la coda» non
       // e' «la coda e' vuota». Sulla superficie della rivelazione la differenza

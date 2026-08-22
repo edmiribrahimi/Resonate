@@ -5,6 +5,10 @@ import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import {
+  readNightDeliveryFailures,
+  reconcileDeliveries,
+} from "@/lib/email-delivery/ledger";
+import {
   countVenueRevealRecipients,
   revealPartyVenue,
   type VenueRevealFailureKind,
@@ -329,6 +333,73 @@ export interface VenueRevealLastAct {
 const TRACE_LIMIT = 50;
 
 /**
+ * Chi, di questa serata, **non ha ricevuto l'indirizzo** — e quindi non sa dove
+ * andare.
+ *
+ * ⚠️ **Questa forma non porta il luogo, e non deve mai portarlo.** Non il nome
+ * della sede, non l'indirizzo, non un indizio. Porta un nome di persona e una
+ * frase che parla del **fornitore di posta** — «l'indirizzo e' in lista di
+ * soppressione», «il messaggio e' rimbalzato» — e nient'altro.
+ *
+ * ── Il conflitto fra due gate, risolto e dichiarato ──────────────────────────
+ *
+ * `meta-gates.md` chiede che un fallimento abbia un **effetto osservabile**, e
+ * `venue-secrecy.md` vieta che l'indirizzo esca da un percorso che non sia la
+ * rivelazione. Un messaggio d'errore utile del tipo *«Tizio non ha ricevuto
+ * l'indirizzo di <sede>»* soddisferebbe il primo violando il secondo, su una
+ * pagina che qualcuno puo' avere aperta accanto a qualcun altro.
+ *
+ * **Vince il secondo**, e la cosa da dire e' comunque tutta qui: chi organizza
+ * la serata sa gia' dove si tiene — e' la persona che ha premuto il bottone.
+ * Cio' che non sa, e che nessuna superficie gli diceva, e' **chi non lo sa**.
+ */
+export interface VenueRevealMissedRecipient {
+  /**
+   * Come chiamare quella persona.
+   *
+   * Stessa risoluzione della superficie dei venduti — nome completo, altrimenti
+   * l'indirizzo di posta, altrimenti `Unknown`. Il registro degli invii **non
+   * conserva** l'indirizzo di posta: si risolve qui da `user_id`, che e' la
+   * scelta dichiarata in `20260822130000_email_delivery_ledger.sql`.
+   */
+  name: string;
+  /** `undelivered` e' un verdetto; `unknown` e' *qualcuno deve guardare*. */
+  outcome: "undelivered" | "unknown";
+  /** La causa, in una riga, **senza il luogo**. */
+  reason: string;
+}
+
+/**
+ * Cosa si sa del recapito delle mail di rivelazione di questa serata.
+ *
+ * Esiste perche' `tickets.venue_reveal_sent` risponde a una domanda diversa da
+ * quella che sembra: si alza quando il fornitore **accetta** il lotto, e la
+ * lista di soppressione del fornitore accetta e non consegna. Una persona con
+ * l'indirizzo soppresso risulta quindi **raggiunta per sempre** — la guardia e'
+ * a senso unico — e non ricevera' mai l'indirizzo.
+ *
+ * Questo blocco non tocca quella guardia. Le mette accanto il fatto.
+ */
+export interface VenueRevealDeliveryReport {
+  /** Quanti invii di rivelazione sono registrati per questa serata. */
+  recorded: number;
+  /** Quanti aspettano ancora un verdetto dal fornitore. Non sono un problema. */
+  stillUnverified: number;
+  /** Le persone che qualcuno deve raggiungere per un'altra strada. */
+  missed: VenueRevealMissedRecipient[];
+  /**
+   * Il registro non si e' potuto leggere.
+   *
+   * Tenuto distinto da `missed: []`, e per la ragione che questo dominio ripete
+   * ovunque: **uno stato indeterminabile non e' uno stato vuoto**
+   * (`venue-secrecy.md`, gate *default chiuso*). Disegnare «nessuno e' rimasto
+   * senza indirizzo» su una lettura fallita e' la bugia che costa una persona
+   * davanti a una porta.
+   */
+  unreadable: boolean;
+}
+
+/**
  * What the three-state button reads (D-37-19), and what the confirmation counts
  * (D-37-16).
  */
@@ -369,6 +440,15 @@ export type VenueRevealStateResult =
        * It costs nothing extra: it is the same read, with its `limit` widened.
        */
       acts: VenueRevealLastAct[];
+      /**
+       * Chi non ha ricevuto l'indirizzo — vedi
+       * {@link VenueRevealDeliveryReport}.
+       *
+       * Sta **dentro** questo risultato e non in una lettura a parte perche' il
+       * pannello lo ridisegna dopo ogni atto, e una seconda chiamata sarebbe
+       * una seconda occasione di disaccordo sullo stesso fatto.
+       */
+      delivery: VenueRevealDeliveryReport;
     }
   | { ok: false; reason: VenueRevealRefusal };
 
@@ -567,6 +647,8 @@ export async function getVenueRevealState(
     act: row.act,
   }));
 
+  const delivery = await readDeliveryReport(client, partyId);
+
   return {
     ok: true,
     revealedAt,
@@ -580,6 +662,111 @@ export async function getVenueRevealState(
     // already the database's.
     lastAct: acts.length > 0 ? acts[0] : null,
     acts,
+    delivery,
+  };
+}
+
+/**
+ * Quante righe di registro questa lettura interroga al fornitore, per volta.
+ *
+ * Ogni riga ancora senza esito e' **una GET in sequenza**. Una serata in target
+ * sta fra 150 e 300 persone (`community-membership.md`), e trecento chiamate
+ * dentro il render di una pagina sono una pagina che non arriva — cioe' un
+ * effetto osservabile che nessuno osserva. Le righe sono ordinate dalla piu'
+ * vecchia, quindi un secondo caricamento avanza; e la spazzata notturna
+ * (`/api/cron/reconcile-email-deliveries`) prende comunque il resto.
+ */
+const DELIVERY_CHECKS_PER_READ = 100;
+
+/**
+ * Chiede l'esito delle rivelazioni di questa serata e traduce le mancate
+ * consegne in nomi.
+ *
+ * ── Perche' si chiede QUI e non solo nel cron ────────────────────────────────
+ *
+ * Il cron gira alle 11:00 di Torino. Chi organizza apre questa pagina **il
+ * giorno della serata** per sapere se l'indirizzo e' uscito, e un verdetto che
+ * arriva domani mattina arriva quando non c'e' piu' niente da fare. E' la stessa
+ * ragione, con la stessa forma, della superficie dei biglietti venduti.
+ *
+ * ── Cosa questa funzione NON fa ──────────────────────────────────────────────
+ *
+ * **Non spedisce niente e non rispedisce niente.** E' una GET verso il fornitore
+ * della posta e un `UPDATE` per riga sul registro degli invii. Non tocca
+ * `venue_reveal_sent`, non tocca `venue_reveal_email_sent`, non tocca la serata.
+ * Un ritentativo non passa da qui: non esiste.
+ *
+ * **Non lancia.** Una lettura fallita torna `unreadable: true`, che il pannello
+ * disegna come *non lo sappiamo* — mai come *nessun problema*.
+ */
+async function readDeliveryReport(
+  client: RevealClient,
+  partyId: string
+): Promise<VenueRevealDeliveryReport> {
+  await reconcileDeliveries({
+    kind: "night",
+    partyId,
+    category: "venue_reveal",
+    limit: DELIVERY_CHECKS_PER_READ,
+  });
+
+  const report = await readNightDeliveryFailures(partyId, "venue_reveal");
+
+  if (report.unreadable) {
+    return { recorded: 0, stillUnverified: 0, missed: [], unreadable: true };
+  }
+
+  // I nomi si risolvono adesso, da `user_id`, perche' il registro **non
+  // conserva** l'indirizzo di posta del destinatario: e' la scelta dichiarata
+  // nella migration che l'ha creato (`legal-compliance.md`, gate *i dati dei
+  // soci non sono i dati del prodotto*).
+  const userIds = [
+    ...new Set(
+      report.failures
+        .map((f) => f.userId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const nomeDi = new Map<string, string>();
+
+  // A blocchi di 100 come ogni altra lettura di profili in questo prodotto: 300
+  // uuid in un `in()` sono ~11 KB di URL, sopra il tetto di piu' di un proxy.
+  for (let i = 0; i < userIds.length; i += 100) {
+    const { data, error } = await client
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", userIds.slice(i, i + 100));
+
+    if (error) {
+      // Categoria propria, e MAI `details`: su questa tabella la riga che
+      // l'errore porta con se' e' l'indirizzo di un membro. Il nome non
+      // risolto degrada a `Unknown` invece di far sparire la riga: **una
+      // persona senza indirizzo va mostrata anche se non sappiamo come si
+      // chiama.**
+      console.error(
+        `[venue_reveal.delivery_names_unreadable] night ${partyId}: ` +
+          `${error.code ?? "unknown"} — ${error.message}`
+      );
+      break;
+    }
+
+    for (const p of data ?? []) {
+      nomeDi.set(p.id, p.full_name || p.email || "Unknown");
+    }
+  }
+
+  return {
+    recorded: report.recorded,
+    stillUnverified: report.stillUnverified,
+    missed: report.failures.map((f) => ({
+      name: (f.userId && nomeDi.get(f.userId)) || "Unknown",
+      outcome: f.outcome,
+      // La frase viene da `classifyProviderEvent`, che parla del fornitore. Non
+      // si concatena niente che riguardi la serata: vedi il tipo.
+      reason: f.reason,
+    })),
+    unreadable: false,
   };
 }
 

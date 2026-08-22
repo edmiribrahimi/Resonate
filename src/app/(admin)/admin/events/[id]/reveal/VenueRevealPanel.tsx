@@ -7,6 +7,7 @@ import RevealVenueDialog, {
 } from "@/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog";
 import {
   getVenueRevealState,
+  type VenueRevealDeliveryReport,
   type VenueRevealLastAct,
   type VenueRevealStateResult,
 } from "@/app/(admin)/admin/events/[id]/reveal/actions";
@@ -342,6 +343,22 @@ export default function VenueRevealPanel({
       </div>
 
       {/*
+        ⚠️ CHI NON HA RICEVUTO L'INDIRIZZO.
+
+        Sta qui, sotto il bottone e sopra la traccia, perche' e' un referto su
+        mail **gia' partite**: il bottone parla di cio' che si puo' ancora fare,
+        la traccia di chi ha fatto cosa, e questo blocco di cosa e' successo in
+        mezzo.
+
+        Non porta mai il luogo. Vedi `VenueRevealMissedRecipient` in
+        `actions.ts`, dove il conflitto fra «rendere il fallimento osservabile»
+        e «non far uscire l'indirizzo» e' risolto e dichiarato.
+      */}
+      {panel.phase === "ready" && state !== null && (
+        <VenueRevealDelivery report={state.delivery} revealed={revealed} />
+      )}
+
+      {/*
         The phase travels, not a boolean. An unread trace and an empty one are
         different facts and the list must not print the same sentence for both —
         see the component.
@@ -461,6 +478,159 @@ function VenueRevealTrace({
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Chi non ha ricevuto l'indirizzo — l'effetto osservabile della mancata
+ * consegna, sulla superficie di chi organizza la serata.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * IL DIFETTO CHE QUESTO BLOCCO RENDE VISIBILE
+ * ═════════════════════════════════════════════════════════════════════════════
+ *
+ * `tickets.venue_reveal_sent` e `rsvps.venue_reveal_sent` si alzano quando il
+ * fornitore **accetta** il lotto. La sua lista di soppressione accetta e **non
+ * consegna**: risposta `200`, `error` nullo, identificativo regolare, e il
+ * messaggio non arriva a nessuno. Un indirizzo ci finisce dopo un rimbalzo duro,
+ * che puo' nascere da **un refuso scritto una volta sola**.
+ *
+ * Conseguenza esatta, prima di questo blocco: quella persona risulta
+ * **raggiunta per sempre** — la guardia e' a senso unico e non si riabbassa —
+ * il bottone dice *«Revealed»*, il conteggio dei mancanti dice zero, e la
+ * persona **non sa dove andare**. Lo scopre la sera stessa, davanti a un
+ * indirizzo che non ha.
+ *
+ * `venue-secrecy.md` mette questo caso alla pari con l'errore opposto:
+ * **arrivare tardi e' grave quanto arrivare in anticipo.** E la decisione del
+ * proprietario del 2026-08-22 sull'acquisto da ospite lo aggrava, perche' per
+ * chi compra senza registrarsi quella mail e' **l'unica** strada verso
+ * l'indirizzo.
+ *
+ * Questo blocco **non ripara** la guardia — non deve: renderla riabbassabile
+ * sarebbe rendere la rivelazione piu' facile da far scattare. Le mette accanto
+ * il fatto, con un nome, cosi' che chi organizza possa raggiungere quella
+ * persona per un'altra strada.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * ⚠️ COSA QUESTO BLOCCO NON PUO' MAI CONTENERE
+ * ═════════════════════════════════════════════════════════════════════════════
+ *
+ * **Il luogo.** Non il nome della sede, non l'indirizzo, non un indizio, in
+ * nessuna delle frasi, nemmeno per rendere il messaggio piu' utile. Chi legge
+ * questa pagina l'indirizzo lo sa gia' — e' la persona che preme il bottone.
+ * Cio' che non sapeva e' **chi non lo sa**, ed e' l'unica cosa che serve.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════
+ * CINQUE STATI, CHE NON SI COLLASSANO
+ * ═════════════════════════════════════════════════════════════════════════════
+ *
+ *   lettura fallita   -> non lo sappiamo. **Non** «nessun problema».
+ *   nessun invio      -> la serata risulta rivelata e non c'e' nessuna riga:
+ *   registrato           le rivelazioni partite prima del 2026-08-22 stanno
+ *                        tutte qui, ed e' corretto — di quelle non si sa niente.
+ *   mancate consegne  -> rosso, con il nome, la causa, e cosa fare.
+ *   ancora in verifica-> il fornitore non ha ancora deciso. Non e' un problema.
+ *   tutte consegnate  -> una riga sola, sobria. Su un atto irreversibile la
+ *                        conferma vale quanto l'allarme.
+ *
+ * Il colore non e' l'unico canale: ogni stato porta la sua parola.
+ */
+function VenueRevealDelivery({
+  report,
+  revealed,
+}: {
+  readonly report: VenueRevealDeliveryReport;
+  readonly revealed: boolean;
+}) {
+  if (report.unreadable) {
+    return (
+      <p role="alert" className="mt-4 text-xs text-sem-warn">
+        The delivery record for this night could not be read, so it is not known
+        whether the address mails arrived. That is not the same as nobody having
+        a problem. Treat it as unverified until this page can read it.
+      </p>
+    );
+  }
+
+  if (report.recorded === 0) {
+    // Prima della riparazione del 2026-08-22 la rivelazione non registrava
+    // niente. Una serata rivelata allora ha zero righe, e dirlo e' l'unica
+    // risposta onesta: silenzio qui verrebbe letto come «e' andato tutto bene».
+    if (!revealed) return null;
+    return (
+      <p className="mt-4 text-xs text-muted">
+        No address mail is recorded for this night, so whether it arrived is
+        unknown — which is not the same as undelivered. Reveals sent before the
+        delivery record existed all read this way.
+      </p>
+    );
+  }
+
+  if (report.missed.length === 0) {
+    if (report.stillUnverified > 0) {
+      return (
+        <p className="mt-4 text-xs text-muted">
+          {report.stillUnverified === 1
+            ? "1 address mail is still being confirmed by the provider."
+            : `${report.stillUnverified} address mails are still being confirmed by the provider.`}{" "}
+          Nothing has come back as undelivered.
+        </p>
+      );
+    }
+    return (
+      <p className="mt-4 text-xs text-muted">
+        {report.recorded === 1
+          ? "The address mail was delivered."
+          : `All ${report.recorded} address mails were delivered.`}
+      </p>
+    );
+  }
+
+  return (
+    <div role="alert" className="mt-4 border-t border-line pt-4">
+      <p className="text-sm font-semibold text-sem-crit">
+        {report.missed.length === 1
+          ? "1 person did not get the address by mail"
+          : `${report.missed.length} people did not get the address by mail`}
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        They are marked as reached, and pressing the button again will not mail
+        them: the provider accepted the message and then did not deliver it.
+        Reach them another way before the doors open.
+      </p>
+      <ul className="mt-3 space-y-2">
+        {report.missed.map((person, i) => (
+          // La chiave include l'indice perche' due persone senza nome
+          // risolvibile leggono entrambe `Unknown`, e una chiave duplicata
+          // farebbe sparire una riga — cioe' una persona.
+          <li key={`${person.name}-${i}`} className="text-xs">
+            <span className="font-medium text-ink normal-case">
+              {person.name}
+            </span>{" "}
+            <span
+              className={
+                person.outcome === "undelivered"
+                  ? "text-sem-crit"
+                  : "text-sem-warn"
+              }
+            >
+              {person.outcome === "undelivered"
+                ? "— not delivered."
+                : "— outcome unknown, treat as possibly not delivered."}
+            </span>{" "}
+            <span className="text-muted">{person.reason}</span>
+          </li>
+        ))}
+      </ul>
+      {report.stillUnverified > 0 && (
+        <p className="mt-3 text-xs text-muted">
+          {report.stillUnverified === 1
+            ? "1 more is still being confirmed."
+            : `${report.stillUnverified} more are still being confirmed.`}
+        </p>
       )}
     </div>
   );
