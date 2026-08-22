@@ -35,11 +35,14 @@
  *     `41.2-08-FINDINGS.md` §1, and it is **outside the owner's three-surface
  *     rule** — so this gate does not pretend to have closed it. Check C names it
  *     out loud on every run rather than letting a green imply otherwise.
- *   - It does NOT cover the EVENTS LIST PAYLOAD. `(public)/events/page.tsx`
- *     hands the same column to `EventTabs`, a `"use client"` component, for
- *     secret nights included — so it is serialised into the document of a page
- *     anybody can open, whether or not a pixel renders it. No pixel does, so a
- *     render-site check cannot see it. Check D names it on every run.
+ *   - It does NOT prove a PAYLOAD is safe by proving a RENDER is guarded. Those
+ *     are different measurements, and this gate learned the difference the
+ *     expensive way: for a whole phase checks A-C were green while
+ *     `(public)/events/page.tsx` handed the night's free venue text to
+ *     `EventTabs`, a `"use client"` component, on secret nights too. No pixel
+ *     rendered it, so no render-site check could see it, and it was readable
+ *     from view-source by anybody. **Check E is that lesson**, and it looks at
+ *     the boundary rather than at the paint.
  *   - It does NOT cover the DATABASE. `public.venue_for_parties` still answers a
  *     secret night's address to an entitled caller over PostgREST. That is the
  *     boundary, it is wider than every surface above it, and wider is the safe
@@ -48,7 +51,7 @@
  *   - It does NOT cover MEDIA. A photograph that frames the sign carries the
  *     same information down a road with no predicate on it at all.
  *
- * ── THE FOUR CHECKS ─────────────────────────────────────────────────────────
+ * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
  *
  *   A. The predicate's TRUTH TABLE, executed. `mayShowVenueOnPublicSurface`
  *      answers `false` for a secret night under every combination of reveal
@@ -60,14 +63,19 @@
  *      surfaces that render a venue field import it rather than restating it.
  *   C. NO UNGATED RENDER on the two surfaces: every venue-bearing expression in
  *      the two page files sits inside a branch that names the surface's gate.
- *   D. The two exits this gate cannot see are PRINTED on every run.
+ *   D. The exits this gate cannot see are PRINTED on every run.
+ *   E. NO SECRET VENUE IN A PAYLOAD. Every `"use client"` file under
+ *      `src/app/(public)/` is swept for the raw venue column names, and the two
+ *      server files that build a client boundary are asserted to take the
+ *      secrecy term — and the SESSION term — where the value is BUILT rather
+ *      than where it is painted.
  *
  * Exit codes follow the repository's convention: `0 = passed · 1 = failed ·
  * 2 = refused`. A refusal is not a failure — it means the measurement did not
  * happen.
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
@@ -339,11 +347,222 @@ if (!/export const dynamic = "force-dynamic"/.test(ticketSrc)) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * CHECK E — no secret venue in a PAYLOAD
+ *
+ * WHY THIS CHECK EXISTS, and it is worth the paragraph because the failure it
+ * catches is the one that got past every other check in this file.
+ *
+ * A `"use client"` component does not receive its props: it receives a COPY of
+ * them, serialised into the document that the server sent. Every field declared
+ * on that boundary travels, for every row, WHETHER OR NOT ANYTHING RENDERS IT —
+ * `nextjs-architecture.md`, gate *segreti nel bundle*. So a guard written inside
+ * the client component decides a PIXEL and decides nothing at all about what
+ * left the server, and a reader who opens view-source never meets that guard.
+ *
+ * Checks A-C measure render sites. They were green, for a whole phase, while
+ * `(public)/events/page.tsx` handed the night's free venue text — and the venue
+ * NAME, which `public.venue_for_parties` answers to an entitled holder even on a
+ * secret night — to `EventTabs` on every night on the page. Nothing rendered
+ * either on a secret night, which is precisely why nothing could see it.
+ *
+ * WHAT IT MEASURES, said precisely so a green is not over-read:
+ *
+ *   E1. A SWEEP. Every `"use client"` file under `src/app/(public)/` is read and
+ *       the raw venue column names are counted in it. Zero, everywhere. This is
+ *       the only part of this file that can see a NEW component in a file nobody
+ *       thought to list here — which is the blind spot check C names in its own
+ *       docblock. It counts occurrences in PROSE too, deliberately: the
+ *       docblocks on both sides of this boundary avoid spelling the removed
+ *       names for exactly this reason, and a comment that mentions one would
+ *       read fine to a human while turning the count into noise.
+ *   E2. THE SERVER SIDE of the events-list boundary: the object handed across
+ *       carries the DECIDED label and the flag, and the label is built under the
+ *       secrecy term rather than filtered afterwards.
+ *   E3. THE NORMALISATION'S DIRECTION. `?? false` — *unknown means public* — must
+ *       not return next to the secrecy flag on that page. It was there until
+ *       2026-08-22 and it was the wrong way round for an irreversible act.
+ *   E4. THE HINT'S SESSION TERM, on the night's own page. The hint is shown only
+ *       to a signed-in reader; the branch that says so lives in a client
+ *       component, so the value must not be BUILT for a reader with no session.
+ *
+ * What it does NOT measure: whether a value that legitimately crosses is safe.
+ * `venue_label` on a NON-secret night is the venue's real name, and it is meant
+ * to be — the posters print it.
+ *
+ * ── PROVED BY MUTATION, 2026-08-22 ──────────────────────────────────────────
+ *
+ * A check nobody has seen go red is a check nobody has seen work. Six mutations
+ * were applied to the tree, one at a time; each was RE-READ FROM DISK AND
+ * ASSERTED PRESENT BEFORE THE GATE WAS RUN — a mutation run that skips that step
+ * cannot tell *the gate caught it* from *the edit never landed*, and the second
+ * reads exactly like the first — and each was reverted by writing the saved
+ * bytes back, never by a git command that discards a working tree.
+ *
+ *   M1   `EventTabs` re-declares the night's free venue text   → E1, exit 1
+ *   M1b  a NEW client component under `(public)` names the hint → E1, exit 1
+ *   M2   the list hands the raw columns across again            → E2, exit 1
+ *   M3a  the normalisation is restated in a second form         → E3, exit 1
+ *   M3b  `?? false` returns — *unknown means public*            → E3, exit 1
+ *   M4   the hint is built for a reader with no session         → E4, exit 1
+ *
+ * M1b is the one that matters most: it is a file that appears in no list in this
+ * script, and it is the blind spot check C names in its own docblock. Afterwards
+ * the tree was compared byte-for-byte with its starting state and the gate was
+ * green again — the control, without which six reds prove only that the script
+ * can fail.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The raw column names that may not appear in a public client component, in any
+ * form. `venue_name` is on the list although no column is called that: it is the
+ * prop the events list used to declare, and a name that leaked once is a name
+ * that must not come back by habit.
+ */
+const RAW_VENUE_NAMES = [
+  "venue_text",
+  "venue_name",
+  "venue_secret_hint",
+  "google_maps_url",
+];
+
+const PUBLIC_TREE = join(ROOT, "src/app/(public)");
+
+function collectSources(dir, acc = []) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return acc;
+  }
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) collectSources(full, acc);
+    else if (/\.(ts|tsx)$/.test(entry.name)) acc.push(full);
+  }
+  return acc;
+}
+
+/**
+ * A directive, not a mention. `"use client"` is only a directive when it is the
+ * first statement of the file, so only the opening lines are consulted — a
+ * docblock three hundred lines down that QUOTES the directive (several in this
+ * repository do) must not turn a server component into a client one here.
+ */
+function isClientComponent(source) {
+  const head = source.split("\n").slice(0, 3).join("\n");
+  return /^\s*["']use client["']/m.test(head);
+}
+
+const clientFiles = collectSources(PUBLIC_TREE).filter((file) => {
+  const source = read(file);
+  return source !== null && isClientComponent(source);
+});
+
+if (clientFiles.length === 0) {
+  console.error(
+    "REFUSED — no `\"use client\"` file was found under src/app/(public). Either the\n" +
+      "tree moved or the sweep is looking in the wrong place; it did not measure zero,\n" +
+      "it measured nothing."
+  );
+  process.exit(2);
+}
+
+for (const file of clientFiles) {
+  const source = read(file);
+  const relative = file.slice(ROOT.length + 1);
+
+  for (const name of RAW_VENUE_NAMES) {
+    const occurrences =
+      (source.match(new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`, "g")) || [])
+        .length;
+    if (occurrences > 0) {
+      fail(
+        "E1",
+        `${relative} is a "use client" component and names \`${name}\` ${occurrences}×. ` +
+          "Everything declared on a client boundary is serialised into the document of " +
+          "the page, for every row, whether or not a pixel renders it — so a guard in " +
+          "that component cannot close this. Decide it on the server and send the result."
+      );
+    }
+  }
+
+  // The venues table's own address column, matched as a DECLARED FIELD rather
+  // than as a word: `address` appears in prose across this repository meaning a
+  // URL, and counting those would drown the signal.
+  if (/^\s*address\??\s*:\s*string/m.test(source)) {
+    fail(
+      "E1",
+      `${relative} is a "use client" component and declares an \`address\` field. ` +
+        "The venue's street address does not cross a client boundary on a public surface."
+    );
+  }
+}
+
+const LIST_PAGE = join(ROOT, "src/app/(public)/events/page.tsx");
+const listPageSrc = read(LIST_PAGE);
+
+if (listPageSrc === null) {
+  console.error("REFUSED — the events list page is absent from the tree.");
+  process.exit(2);
+}
+
+const LIST_PAYLOAD = "venue_label: nightIsSecret ? null :";
+if ((listPageSrc.split(LIST_PAYLOAD).length - 1) !== 1) {
+  fail(
+    "E2",
+    "on the events list page the marker handed to EventTabs is not built as " +
+      `\`${LIST_PAYLOAD} …\`. Either the secrecy term was dropped from the ` +
+      "construction, or the label was renamed — in which case rename it here too, " +
+      "deliberately, and say why in the commit. What must not happen is a raw column " +
+      "crossing with the decision left on the far side."
+  );
+}
+
+const LIST_NORMALISATION = "const nightIsSecret = p.venue_secret !== false;";
+if ((listPageSrc.split(LIST_NORMALISATION).length - 1) !== 1) {
+  fail(
+    "E3",
+    "on the events list page the secrecy flag is not normalised exactly once as " +
+      `\`${LIST_NORMALISATION}\`. The normalisation has one home so that a second ` +
+      "raw read cannot reintroduce the loose form beside it."
+  );
+}
+
+if (/venue_secret\s*\?\?\s*false/.test(listPageSrc)) {
+  fail(
+    "E3",
+    "the events list page normalises the secrecy flag with `?? false` — *unknown " +
+      "means public*. That is the wrong way round for an irreversible act and it is " +
+      "the exact form removed on 2026-08-22: a null column, a partial embed or a shape " +
+      "PostgREST answered differently would OPEN a venue. `venue-secrecy.md` *default " +
+      "chiuso*: the fallback is the secret."
+  );
+}
+
+const DETAIL_PAGE = join(ROOT, "src/app/(public)/events/[slug]/page.tsx");
+const detailSrc = read(DETAIL_PAGE);
+
+if (detailSrc === null) {
+  console.error("REFUSED — the night's own page is absent from the tree.");
+  process.exit(2);
+}
+
+if (!/venueOnPublicSurface\s*\|\|\s*!isAuthenticated/.test(detailSrc)) {
+  fail(
+    "E4",
+    "on the night's page the hint handed to `SecretVenueDialog` is built without a " +
+      "session term. The dialog prints it under `hint && isAuthenticated`, which is " +
+      "correct about the pixel and powerless about the payload: a `\"use client\"` " +
+      "component receives the string in the document, so a reader with no session — " +
+      "the very reader that branch refuses — can read it from view-source."
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * CHECK D — the exits this gate cannot see, printed every run
  * ──────────────────────────────────────────────────────────────────────────── */
 
 const WALLET = "src/app/api/tickets/[id]/wallet/route.ts";
-const LIST = "src/app/(public)/events/page.tsx";
 
 const walletSrc = read(join(ROOT, WALLET));
 if (walletSrc && /venue:\s*party\?\.venue_text/.test(walletSrc)) {
@@ -356,24 +575,14 @@ if (walletSrc && /venue:\s*party\?\.venue_text/.test(walletSrc)) {
   );
 }
 
-const listSrc = read(join(ROOT, LIST));
-if (listSrc && /venue_text:\s*p\.venue_text/.test(listSrc)) {
-  notes.push(
-    `${LIST} hands the night's free venue text to EventTabs, a "use client" component, ` +
-      "for every night on the page — secret ones included. No pixel renders it on a " +
-      "secret night, so it is invisible to a render-site check, but it is serialised " +
-      "into the document of a page anybody can open. Covered by the owner's rule and " +
-      "NOT closed here."
-  );
-}
-
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 console.log("venue surfaces — the owner's rule of 2026-08-22, measured\n");
 console.log("  A  the predicate's truth table, executed from the source on disk");
 console.log("  B  one home for each predicate, and both surfaces import it");
 console.log("  C  no ungated venue render on either surface");
-console.log("  D  the exits this gate cannot see\n");
+console.log("  D  the exits this gate cannot see");
+console.log("  E  no secret venue in a payload — the sweep, and the two boundaries\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
@@ -390,6 +599,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("PASSED — no public surface renders a secret night's venue, and the");
+console.log("PASSED — no public surface renders a secret night's venue, nothing that");
+console.log("         names the place crosses a public client boundary for one, and the");
 console.log("         holder's ticket renders it only once the reveal has fired.");
 process.exit(0);
