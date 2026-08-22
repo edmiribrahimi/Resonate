@@ -373,6 +373,24 @@ export default async function TicketTiersPage({ params }: PageProps) {
     "ticket_confirmation"
   );
 
+  // Il promemoria del giorno prima, dallo stesso registro e sugli stessi
+  // biglietti. La riconciliazione qui sopra li ha gia' coperti: e' ristretta per
+  // `ticket_id` e non per categoria, quindi le righe del promemoria hanno gia'
+  // il loro verdetto.
+  //
+  // ── Perche' il promemoria si disegna SOLO quando e' andato storto ──────────
+  //
+  // La conferma parte all'acquisto: ogni biglietto venduto ne ha una, e
+  // l'assenza di una riga e' un'informazione («non lo sappiamo»). Il promemoria
+  // parte **24 ore prima della serata**: la stragrande maggioranza dei
+  // biglietti, quasi sempre, non ne ha ancora uno — e non e' un problema, e'
+  // presto. Disegnare «nessun promemoria registrato» su ogni riga sarebbe
+  // rumore su ogni riga, e il rumore nasconde l'unica riga che conta.
+  const promemoriaDi = await readTicketDeliveryMarks(
+    ticketIdsPerConsegna,
+    "event_reminder"
+  );
+
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
     const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -606,6 +624,49 @@ export default async function TicketTiersPage({ params }: PageProps) {
                             Email sent — outcome not settled yet.
                           </p>
                         );
+                      })()}
+                      {/*
+                        ── IL PROMEMORIA, CHE PARLA SOLO QUANDO E' ANDATO STORTO
+
+                        Stesso registro, stesso biglietto, categoria diversa —
+                        e una regola di disegno diversa, per una ragione di
+                        tempo e non di stile.
+
+                        La conferma esiste per ogni biglietto venduto, quindi
+                        l'assenza di una sua riga e' un fatto da dire. Il
+                        promemoria parte **24 ore prima della serata**: fino a
+                        quel momento non esiste per nessuno, ed e' normale.
+                        Quattro stati qui sarebbero quattro righe su ogni
+                        biglietto tutti i giorni tranne uno — cioe' rumore, e
+                        il rumore nasconde l'unica riga che conta.
+
+                        Restano quindi i due che chiedono qualcosa a un essere
+                        umano. `delivered`, `unverified` e l'assenza non
+                        disegnano niente.
+                      */}
+                      {(() => {
+                        const promemoria = promemoriaDi.get(ticket.id);
+                        if (!promemoria) return null;
+
+                        if (promemoria.outcome === "undelivered") {
+                          return (
+                            <p className="mt-1 text-xs font-medium text-sem-crit">
+                              Reminder NOT delivered — {promemoria.reason} They
+                              may not know the night is tomorrow.
+                            </p>
+                          );
+                        }
+
+                        if (promemoria.outcome === "unknown") {
+                          return (
+                            <p className="mt-1 text-xs text-sem-warn">
+                              Reminder outcome unknown — {promemoria.reason}{" "}
+                              Treat it as possibly not delivered.
+                            </p>
+                          );
+                        }
+
+                        return null;
                       })()}
                     </div>
                     {/* The money mark — D-41.1-13. It used to sit in the meta

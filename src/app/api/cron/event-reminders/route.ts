@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getResend } from "@/lib/email";
+import { recordBatchSend } from "@/lib/email-delivery/ledger";
 import { EventReminderEmail } from "@/emails/event-reminder";
 import { render } from "@react-email/render";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
 import { partyStartInstant, zonedDateString } from "@/utils/datetime";
+
+/**
+ * Una persona, e le righe che le danno titolo a un promemoria.
+ *
+ * Nominato invece di restare un tipo anonimo dentro il `Map` per una ragione che
+ * il compilatore ha mostrato subito: con la forma scritta a mano su ogni ramo,
+ * `emailMap.get(...) ?? { … }` produce un'unione di due tipi d'array e
+ * `push` ne intersecava i parametri fino a `never`. Un nome, e i due rami
+ * parlano della stessa cosa.
+ *
+ * `userId` e' aggiunto il 2026-08-22 e serve a una cosa sola: e' cio' che il
+ * registro degli invii registra, cosi' che un promemoria non consegnato abbia un
+ * nome sulla superficie di chi lavora la serata. **Non partecipa all'invio ne'
+ * alla deduplicazione**, che restano sull'indirizzo di posta come prima.
+ */
+type Destinatario = {
+  name: string;
+  userId: string | null;
+  ticketIds: string[];
+  rsvpIds: string[];
+};
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -142,18 +164,16 @@ export async function GET(request: Request) {
     }
 
     // Deduplicate by email
-    const emailMap = new Map<
-      string,
-      { name: string; ticketIds: string[]; rsvpIds: string[] }
-    >();
+    const emailMap = new Map<string, Destinatario>();
 
     // Una riga il cui `user_id` non ha profilo viene saltata, non contata: meno
     // mail, non piu'.
     for (const ticket of tickets || []) {
       const profile = ticket.user_id ? profiloDi.get(ticket.user_id) : undefined;
       if (!profile) continue;
-      const existing = emailMap.get(profile.email) || {
+      const existing: Destinatario = emailMap.get(profile.email) ?? {
         name: profile.full_name || "Member",
+        userId: ticket.user_id ?? null,
         ticketIds: [],
         rsvpIds: [],
       };
@@ -164,8 +184,9 @@ export async function GET(request: Request) {
     for (const rsvp of rsvps || []) {
       const profile = rsvp.user_id ? profiloDi.get(rsvp.user_id) : undefined;
       if (!profile) continue;
-      const existing = emailMap.get(profile.email) || {
+      const existing: Destinatario = emailMap.get(profile.email) ?? {
         name: profile.full_name || "Member",
+        userId: rsvp.user_id ?? null,
         ticketIds: [],
         rsvpIds: [],
       };
@@ -222,7 +243,9 @@ export async function GET(request: Request) {
       // `src/lib/venue-reveal/reveal-party-venue.ts`, che il rifiuto del
       // provider lo legge da sempre.
       try {
-        const { error: sendError } = await resend.batch.send(emails);
+        const { data: sendData, error: sendError } = await resend.batch.send(
+          emails
+        );
         if (sendError) {
           console.error(
             `[event_reminders.batch_rejected] night ${party.id}, ${emails.length} destinatari: ` +
@@ -235,6 +258,40 @@ export async function GET(request: Request) {
             inviatiTicketIds.push(...d.ticketIds);
             inviatiRsvpIds.push(...d.rsvpIds);
           }
+
+          // ── Il registro degli invii, e perche' NON si passa da `sendEmail` ──
+          //
+          // Questo percorso spedisce **a lotti**: fino a cento messaggi in una
+          // richiesta. `sendEmail` ne manda uno per chiamata, quindi convertirlo
+          // avrebbe trasformato una richiesta in cento dentro un cron con un
+          // budget di tempo di parete — e una corsa che muore a meta' toglie il
+          // promemoria alle serate dopo quella. La ragione per esteso e' nel
+          // docblock di `recordBatchSend`.
+          //
+          // Il meccanismo d'invio quindi non cambia. Cambia solo che gli
+          // identificativi che il fornitore restituisce vengono conservati
+          // invece che scartati, cosi' l'esito si puo' **chiedere** — perche'
+          // «accettato» non e' «consegnato».
+          //
+          // Non lancia e non e' dentro un ramo che decide qualcosa: un registro
+          // fallito non deve trasformare un promemoria partito in un errore.
+          await recordBatchSend(
+            (sendData?.data ?? []).map((m) => m.id),
+            batch.map(([, d]) => ({
+              category: "event_reminder" as const,
+              userId: d.userId,
+              // Il biglietto **solo quando ce n'e' esattamente uno**. Il
+              // promemoria e' per persona, non per biglietto: verificato sul
+              // catalogo di produzione il 2026-08-22, `public.tickets` non ha
+              // alcun vincolo `UNIQUE (event_id, user_id)`, quindi una persona
+              // puo' averne due per la stessa serata e riceverne comunque una
+              // mail sola. Scegliere «il primo» attribuirebbe l'esito a un
+              // biglietto e lo negherebbe all'altro — un segno arbitrario, che
+              // e' peggio di nessun segno perche' si crede.
+              ticketId: d.ticketIds.length === 1 ? d.ticketIds[0] : null,
+              partyId: party.id,
+            }))
+          );
         }
       } catch (err) {
         console.error(
