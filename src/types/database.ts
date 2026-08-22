@@ -523,6 +523,15 @@ export interface EmailDelivery {
   category: EmailCategory;
   user_id: string | null;
   ticket_id: string | null;
+  /**
+   * La serata a cui l'invio appartiene, per i messaggi che ne hanno una.
+   *
+   * Esiste perche' `ticket_id` non basta ad attribuire una rivelazione del
+   * venue: chi la riceve puo' non avere **nessun** biglietto (una prenotazione)
+   * o averne **due** (quello della serata e quello di evento). Non porta
+   * contenuto — vedi `20260822180000_email_ledger_night_paths.sql`.
+   */
+  party_id: string | null;
   outcome: DeliveryOutcome;
   /** La parola grezza del fornitore. Puo' valere `suppressed`, che l'unione di tipi dell'SDK 6.9.2 non contiene. */
   provider_last_event: string | null;

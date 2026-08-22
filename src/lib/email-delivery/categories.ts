@@ -65,6 +65,21 @@ export const EMAIL_CATEGORIES = [
   "refund_approved",
   /** L'esito negativo di una richiesta di rimborso. */
   "refund_rejected",
+  /**
+   * La mail che porta l'indirizzo di una serata segreta.
+   *
+   * **La piu' grave delle undici quando non arriva**, e in un verso che
+   * sorprende: `venue-secrecy.md` dice che **arrivare tardi e' grave quanto
+   * arrivare in anticipo**, nella direzione opposta — se non arriva, l'ospite
+   * non sa dove andare, e lo scopre la sera stessa.
+   *
+   * Non arriva dal mittente comune: questo percorso spedisce **a lotti** e si
+   * registra con {@link recordBatchSend}. La ragione e' nel docblock di quella
+   * funzione.
+   */
+  "venue_reveal",
+  /** Il promemoria del giorno prima. Anche questo spedito a lotti. */
+  "event_reminder",
 ] as const;
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
@@ -79,6 +94,12 @@ export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
  *
  * Nominate qui e non dedotte dal nome del template, perche' la ragione per cui
  * queste due contano di piu' e' di dominio e non lessicale.
+ *
+ * **`venue_reveal` non e' qui, e l'assenza e' deliberata.** Il suo mancato
+ * recapito costa **prima** della porta, non alla porta: chi non riceve
+ * l'indirizzo non ci arriva affatto. E' un costo maggiore, non minore — e per
+ * questo ha una superficie propria, quella di chi organizza la serata, invece
+ * di essere raccolto sotto un nome che parla di code all'ingresso.
  */
 export const AT_THE_DOOR_CATEGORIES: readonly EmailCategory[] = [
   "ticket_confirmation",
