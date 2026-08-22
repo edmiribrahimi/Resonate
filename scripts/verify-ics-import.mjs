@@ -796,7 +796,7 @@ if (haveMaterial) {
       // Read from `party_credits` by the runner. This script opens no connection,
       // so it is not knowable here — and `null` is *not yet knowable*, which is a
       // different answer from zero and produces a different refusal.
-      creditedArtistCount: null,
+      lineupSlotCount: null,
     };
   };
 
@@ -1036,7 +1036,7 @@ if (haveMaterial) {
     commitments: classified.commitments,
     unclassified: classified.unclassified,
     unsupportedRecurrences: parsed.unsupportedRecurrences,
-    creditedArtistCounts: new Map(),
+    lineupSlotCounts: new Map(),
     recurrenceOccurrenceCap: 200,
   };
 

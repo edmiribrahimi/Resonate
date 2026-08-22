@@ -1721,6 +1721,59 @@ export interface ProductionChecklistItem {
 }
 
 /**
+ * ONE SLOT OF ONE NIGHT'S TIMETABLE: a civil window, and who plays inside it.
+ *
+ * ⚠ **THE SLOT IS THE UNIT, AND THE COUNT THAT MATTERS IS `count(*)` OVER THESE
+ * ROWS.** A LiveCut is the recording of a *set*, so two artists playing back to
+ * back are **one** recording. Counting names over-counts: measured on the live
+ * calendar on 2026-08-22, one night carries six names in five slots and another
+ * four in two, and the calendar holds exactly five LiveCut entries for the
+ * first. `ProductionPipelineRule.episodes_from_lineup` reads this table, and it
+ * reads it by the row.
+ *
+ * Mirrored from the calendar and scoped **through its plan row**, exactly as
+ * {@link ProductionChecklistItem} is — there is no `calendar_key` here, and its
+ * absence is a decision: a mirror whose boundary is written twice has two
+ * boundaries.
+ */
+export interface ProductionLineupSlot {
+  id: string;
+  /**
+   * ⚠ `ON DELETE CASCADE`. The mirror's removal of a night takes its slots with
+   * it, which is why the snapshot taken before that removal covers this table.
+   * Unlike a tick, a slot is **not** human state: the next run rebuilds it from
+   * the feed, so the restore path does not put slots back and does not need to.
+   */
+  plan_id: string;
+  /**
+   * Which entry's note declared this slot — the night itself, its timetable, or
+   * the LiveCut of the set. Not a key: a column that can point at either of two
+   * tables points at neither.
+   */
+  source_uid: string;
+  /** `HH:MM`, the calendar's own civil clock. */
+  start_time: CivilTime;
+  /** ⚠ May be **earlier** than {@link start_time}: a night runs 22:00 to 06:00. */
+  end_time: CivilTime;
+  /**
+   * Who plays it. One name, several — a b2b is one slot with two — or **none**.
+   *
+   * ⚠ Empty is a **third answer**, not a zero: a LiveCut's own note declares its
+   * window with a part marker instead of a name, so the slot is real and the
+   * names are simply not in that note.
+   *
+   * ⚠ These are people playing on dates that may not have been announced. The
+   * name is authorised **in the database** and stops there — not in a PLAN, a
+   * SUMMARY, a report line, a log, or anything else under `.planning/`, which is
+   * tracked and public.
+   */
+  artists: string[];
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * One obligation: *this format owes a piece of this kind, and it falls on this
  * weekday relative to this anchor.*
  *

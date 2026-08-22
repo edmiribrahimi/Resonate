@@ -377,14 +377,19 @@ export interface AnchorContext {
    */
   nextEditionLabel: string | null;
   /**
-   * How many artists are credited on the night, or `null` when that is not yet
-   * knowable.
+   * How many **slots** the night's timetable declares, or `null` when that is
+   * not yet knowable.
    *
-   * Measured, and the reason no constant will do: one archived edition of the
-   * night carries two LiveCuts rather than three. The count descends from the
-   * line-up, so changing the line-up changes the plan of publication.
+   * ⚠ **A SLOT, NOT A NAME.** Two artists playing back to back are one set and
+   * therefore one LiveCut; counting the people plans an episode nobody owes.
+   * Measured on the live calendar 2026-08-22 — six names in five slots on one
+   * night, four names in two on another.
+   *
+   * Measured too, and the reason no constant will do: one archived edition of
+   * the night carries two LiveCuts rather than three. The count descends from
+   * the line-up, so changing the line-up changes the plan of publication.
    */
-  creditedArtistCount: number | null;
+  lineupSlotCount: number | null;
 }
 
 /** A resolved anchor, or the named reason it could not be resolved. */
@@ -574,7 +579,7 @@ export function proposePieceDate(
 function knownEpisodeCount(rule: PipelineRule, context: AnchorContext): number | null {
   if (rule.episodesFromLineup) {
     if (rule.episodeCount !== null) return rule.episodeCount;
-    return context.creditedArtistCount;
+    return context.lineupSlotCount;
   }
   return rule.episodeCount ?? 1;
 }

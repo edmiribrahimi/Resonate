@@ -6,7 +6,7 @@
  *
  * WHAT IT DOES, in one sentence: **it reads one calendar from the address
  * registered for it in the environment, drives `src/lib/production/ics/` to
- * parse, classify and reconcile it against what the six production tables
+ * parse, classify and reconcile it against what the seven production tables
  * already hold, prints the resulting plan of writes as counts, and — only when
  * `--apply` is passed explicitly — performs those writes.**
  *
@@ -525,7 +525,7 @@ const { options, unknown } = parseArguments(process.argv.slice(2));
  */
 
 say("");
-say("calendar import — into the six tables, in counts");
+say("calendar import — into the seven tables, in counts");
 say("");
 
 if (options.help) {
@@ -569,7 +569,7 @@ if (options.apply && options.dryRunAsked) {
 // The mode is stated BEFORE anything else happens, so that a scrollback read
 // later cannot be ambiguous about which run it was.
 if (options.apply) {
-  say("  MODE: --apply  ⚠ THIS RUN WRITES to the six tables.");
+  say("  MODE: --apply  ⚠ THIS RUN WRITES to the seven tables.");
 } else {
   say("  MODE: dry run (the default). NOTHING WILL BE WRITTEN.");
 }
@@ -1196,7 +1196,7 @@ try {
  *
  * `access-gating.md`, gate *service role*, requires that every new use be
  * justified in writing and that no untrusted input reach it. The justification:
- * the six production tables carry **no write policy at all** (D-44-22), exactly
+ * the seven production tables carry **no write policy at all** (D-44-22), exactly
  * as the catalogue tables do not (`formats/actions.ts:17-22`), so a cookie
  * client is refused for everybody and this is not a preference — it is the only
  * client that can write these rows.
@@ -1339,7 +1339,7 @@ say("");
  * One read, and a **label** that is not the table's own name.
  *
  * The label exists for one reason and it is worth stating rather than looking
- * arbitrary: every one of the six tables is named with a prefix that is also an
+ * arbitrary: every one of the seven tables is named with a prefix that is also an
  * ordinary word inside an entry title, so a refusal quoting the table verbatim
  * fails the output audit on a run that leaked nothing. There is exactly one
  * table behind each label, they are listed at every call site in code, and a
@@ -1505,11 +1505,101 @@ const nightsNumberedByNote = classified.nights.filter(
 const piecesWithDeclaredNight = classified.pieces.filter(
   (piece) => piece.declaredNightKey !== null
 ).length;
-// Lines after the first, across every note. Counted so that *the line-up is not
-// read* is a number somebody can see instead of an absence nobody notices.
-const lineupLinesUnread = entriesWithNote.reduce((total, event) => {
+/* ── THE LINE-UP, READ BY THE SLOT ────────────────────────────────────────────
+ *
+ * Owner's decision, 2026-08-22: the line-up stops being declared unread. The
+ * same decision carried the correction that shapes this block:
+ *
+ *     A LIVECUT IS COUNTED FROM THE SLOTS, NEVER FROM THE NAMES. A B2B IS ONE
+ *     RECORDING, NOT TWO.
+ *
+ * So a slot is a note line that **ends in a window**, and a note line that is a
+ * bare name is deliberately NOT one — a night's own note lists its people
+ * without windows, and those are exactly the lines a counter must not count.
+ * Measured on this run's own feeds: one night carries six names in five slots.
+ *
+ * ⚠ **A slot is gathered from whichever note declares it, and merged by window.**
+ * The same slot is routinely written twice — once by a timetable that names who
+ * plays it, once by the LiveCut of that set which names only its part — and they
+ * are one slot. The named version wins; the count is unaffected either way.
+ *
+ * ⚠ **Nothing below prints a name.** The slot values carry people playing on
+ * dates nobody has announced. They reach a column and stop there; every line
+ * this block says is a count, and the audit at the foot of this run is what
+ * measures that rather than this comment asserting it.
+ */
+const eventByUid = new Map(parsed.events.map((event) => [event.uid, event]));
+
+/** night join key → Map<"start|end", { slot, sourceUid }>. Merged by window. */
+const lineupSlotsByNight = new Map();
+
+function gatherSlots(nightKey, uid) {
+  if (nightKey === null || nightKey === undefined) return;
+  const event = eventByUid.get(uid);
+  if (event === undefined) return;
+
+  const slots = ics.readNoteSlots(event.description);
+  if (slots.length === 0) return;
+
+  if (!lineupSlotsByNight.has(nightKey)) lineupSlotsByNight.set(nightKey, new Map());
+  const windows = lineupSlotsByNight.get(nightKey);
+
+  for (const slot of slots) {
+    const window = `${slot.startTime}|${slot.endTime}`;
+    const already = windows.get(window);
+    if (already !== undefined) {
+      // Only ever FILLS IN. A note that names the players beats one that only
+      // declared the window; two notes that both name them are left as the first
+      // said, because picking between them here would be the guess this reader
+      // never makes.
+      if (already.slot.artists.length === 0 && slot.artists.length > 0) {
+        windows.set(window, { slot, sourceUid: event.uid });
+      }
+      continue;
+    }
+    windows.set(window, { slot, sourceUid: event.uid });
+  }
+}
+
+for (const night of classified.nights) gatherSlots(night.key, night.uid);
+for (const piece of classified.pieces) {
+  const declared =
+    piece.declaredNightKey !== null
+      ? piece.declaredNightKey
+      : piece.seriesCode !== null && piece.number !== null
+        ? ics.joinKey(piece.seriesCode, piece.number)
+        : null;
+  gatherSlots(declared, piece.uid);
+}
+
+/**
+ * The count the LiveCut rule reads: **rows of the slot table**, per night.
+ *
+ * ⚠ It used to be `party_credits`, one row per person, and this run reported
+ * `0 night(s)` because nothing has ever filled that table — a zero where the
+ * data existed and was not being collected. Both halves are fixed here: the
+ * source is the calendar's own notes, and the unit is the slot.
+ */
+const lineupSlotCounts = new Map();
+for (const [nightKey, windows] of lineupSlotsByNight) {
+  lineupSlotCounts.set(nightKey, windows.size);
+}
+
+const lineupSlotTotal = [...lineupSlotsByNight.values()].reduce(
+  (total, windows) => total + windows.size,
+  0
+);
+const lineupSlotsNamed = [...lineupSlotsByNight.values()].reduce(
+  (total, windows) =>
+    total + [...windows.values()].filter((held) => held.slot.artists.length > 0).length,
+  0
+);
+// Note lines that are neither the declaration nor a slot: bare names, without a
+// window. Counted so that *they are not episodes* is a number somebody can see.
+const lineupLinesWithoutWindow = entriesWithNote.reduce((total, event) => {
   const lines = event.description.split("\n").filter((line) => line.trim().length > 0);
-  return total + Math.max(0, lines.length - 1);
+  const slots = ics.readNoteSlots(event.description).length;
+  return total + Math.max(0, lines.length - 1 - slots);
 }, 0);
 
 say("");
@@ -1583,12 +1673,24 @@ if (notesContradictingTheirOwnDate.length > 0) {
   }
 }
 
+say("");
+say("  ── the line-up, by the slot ──────────────────────────────────────────");
 say(
-  `     ${lineupLinesUnread} further note line(s) — the line-up — were seen and NOT read: ` +
-    "no table in this schema holds one, and a reader that parsed it would pull the"
+  `     ${lineupSlotsByNight.size} night(s) declare a line-up · ${lineupSlotTotal} slot(s) · ` +
+    `${lineupSlotsNamed} of them name who plays`
 );
 say(
-  "       names of people playing unannounced dates into this process for no destination."
+  "     ⚠ ONE LIVECUT PER SLOT, NEVER PER NAME. Two artists back to back are one set,"
+);
+say(
+  "       so counting the people plans an episode nobody owes. A slot that names nobody"
+);
+say(
+  "       still counts: its window was declared, only its names were not."
+);
+say(
+  `     ${lineupLinesWithoutWindow} further note line(s) are names WITHOUT a window and are ` +
+    "deliberately not slots."
 );
 
 if (classified.aliasUnresolved.length > 0) {
@@ -1711,6 +1813,37 @@ if (scopedPlanIds.length > 0) {
     refuse("catalogue_unreadable", `reading the checklist failed — ${describe(read.error)}`);
   }
   checklistRows = read.data ?? [];
+}
+
+/**
+ * The slots already stored for the nights in scope.
+ *
+ * ⚠ **Read for ONE reason: the snapshot.** Like the checklist, this table
+ * carries no calendar key of its own and hangs off the plan row with a cascade,
+ * so the removal below takes its rows away — and a snapshot that did not cover
+ * them would be a copy of something other than what got removed
+ * (`ai-engineering.md`, gate *un'istantanea prima copre cio' che si tocca*).
+ *
+ * ⚠ **These rows carry people's names, and they are never printed.** They go
+ * into the snapshot file — the same one that already carries `ticked_by_name`,
+ * written only to a directory git itself confirms is ignored — and into no line
+ * this run says. Unlike a tick, a slot is not human state: the write-back below
+ * rebuilds it from the feed, which is why the restore path does not put slots
+ * back and does not need to.
+ */
+let lineupSlotRows = [];
+if (scopedPlanIds.length > 0) {
+  const read = await db
+    .from("production_lineup_slot")
+    .select("id, plan_id, source_uid, start_time, end_time, artists, sort_order")
+    .in("plan_id", scopedPlanIds);
+  if (read.error) {
+    refuse(
+      "catalogue_unreadable",
+      `reading the stored line-up failed — ${describe(read.error)}`
+    );
+  }
+  lineupSlotRows = read.data ?? [];
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1855,45 +1988,36 @@ if (planRowsWithUnresolvedSeries > 0) {
 }
 
 
-/**
- * How many artists are credited on each night, by join key.
+/* ── WHERE THE EPISODE COUNT COMES FROM, AND WHERE IT USED TO ────────────────
  *
- * Read from the **structured** line-up and never from the communicated text. A
- * key that is missing is *not yet knowable*, which is a different answer from
- * zero: it produces `depends_on_lineup` rather than a figure, so a night whose
- * line-up nobody has entered does not silently get told it owes no episodes
- * (D-44-13, OBS-03).
+ * It comes from {@link lineupSlotCounts}, built far above out of this run's own
+ * notes, one entry per **slot**. It is not rebuilt here.
+ *
+ * ⚠ **It used to come from `party_credits`, joined through
+ * `production_plan.linked_party_id`, ONE ROW PER PERSON.** Two things were wrong
+ * with that and only one of them was visible:
+ *
+ *   1. **Visible.** That table holds zero rows and no plan row carries a link,
+ *      so this line reported `0 night(s) have a structured line-up` — a zero
+ *      where the data existed, in the calendar, and was simply not being
+ *      collected. A zero that means *not collected* is the third answer arriving
+ *      dressed as a measurement, which this file forbids everywhere else.
+ *   2. **Invisible, and worse.** It counted **people**. A LiveCut is the
+ *      recording of a set, and two artists playing back to back are one set —
+ *      so a night with six names in five slots would have been told it owes six
+ *      episodes. The sixth cannot exist, and nobody would have found out until
+ *      the day it was due. Corrected by the owner on 2026-08-22; the field is
+ *      called `lineupSlotCounts` now so the name stops instructing the next
+ *      reader to count the wrong thing.
+ *
+ * A night missing from the map is *not yet knowable*, which is a different
+ * answer from zero: it produces `depends_on_lineup` rather than a figure, so a
+ * night whose line-up nobody has written does not silently get told it owes no
+ * episodes (D-44-13, OBS-03).
  */
-const creditedArtistCounts = new Map();
-const linkedPartyIds = planRows
-  .filter((row) => row.linked_party_id !== null && planKeyById.has(row.id))
-  .map((row) => row.linked_party_id);
-
-if (linkedPartyIds.length > 0) {
-  const { data, error } = await db
-    .from("party_credits")
-    .select("party_id")
-    .in("party_id", linkedPartyIds);
-  if (error) {
-    refuse("catalogue_unreadable", `reading party_credits failed — ${describe(error)}`);
-  }
-
-  const countByParty = new Map();
-  for (const credit of data ?? []) {
-    countByParty.set(credit.party_id, (countByParty.get(credit.party_id) ?? 0) + 1);
-  }
-  for (const row of planRows) {
-    if (row.linked_party_id === null) continue;
-    const key = planKeyById.get(row.id);
-    if (key === undefined) continue;
-    if (!countByParty.has(row.linked_party_id)) continue;
-    creditedArtistCounts.set(key, countByParty.get(row.linked_party_id));
-  }
-}
-
 say(
-  `     ${creditedArtistCounts.size} night(s) have a structured line-up this run can count. ` +
-    "The rest are not-yet-knowable, which is not zero."
+  `     ${lineupSlotCounts.size} night(s) have a structured line-up this run can count, ` +
+    `${lineupSlotTotal} slot(s) between them. The rest are not-yet-knowable, which is not zero.`
 );
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1963,7 +2087,7 @@ const plan = ics.reconcile(
     commitments: classified.commitments,
     unclassified: classified.unclassified,
     unsupportedRecurrences: parsed.unsupportedRecurrences,
-    creditedArtistCounts,
+    lineupSlotCounts,
     recurrenceOccurrenceCap: RECURRENCE_OCCURRENCE_CAP,
   },
   existing,
@@ -2378,7 +2502,8 @@ function writeSnapshotBeforeRemoving(payload) {
       payload.rows.plans.length +
       payload.rows.pieces.length +
       payload.rows.commitments.length +
-      payload.rows.checklistItems.length,
+      payload.rows.checklistItems.length +
+      payload.rows.lineupSlots.length,
   };
 }
 
@@ -2452,6 +2577,19 @@ const snapshot = writeSnapshotBeforeRemoving({
     pieces: pieceRows,
     commitments: commitmentRows,
     checklistItems: checklistRows,
+    /**
+     * ⚠ **Added 2026-08-22, and the shape marker above deliberately did NOT
+     * change.** That marker names the contract the RESTORE path reads — the
+     * instant, the ticks and the links — and that contract is untouched: the
+     * restore path does not look at `rows` at all. Bumping it would have made
+     * every snapshot taken today unreadable by the only tool that can put a tick
+     * back, which is the direction that costs a person the one row nothing else
+     * can rebuild.
+     *
+     * These rows are here because the removal takes them, not because anything
+     * gives them back: a slot is rebuilt from the feed on the next run.
+     */
+    lineupSlots: lineupSlotRows,
   },
 });
 
@@ -2566,6 +2704,15 @@ if (scopedPlanIds.length > 0) {
   // the ticks of ALL nights were collected, not only the ones being removed.
   await step("remove_checklist", () =>
     db.from("production_checklist_item").delete().in("plan_id", scopedPlanIds)
+  );
+
+  // The line-up, by the same selector and for the same reason. The cascade on
+  // `plan_id` would take these rows anyway when a night goes — but the survivors
+  // of `ICS-03b` do not go, and leaving their slots behind would produce a
+  // line-up half from this run and half from a previous one. Explicit, so the
+  // number is one somebody counted rather than a side effect nobody saw.
+  await step("remove_lineup", () =>
+    db.from("production_lineup_slot").delete().in("plan_id", scopedPlanIds)
   );
 }
 
@@ -2753,6 +2900,58 @@ if (plan.checklistItemsToInsert.length > 0) {
       db.from("production_checklist_item").insert(rows)
     );
   }
+}
+
+/* ── the line-up, written back BY THE SLOT ───────────────────────────────────
+ *
+ * ⚠ **One row per slot, and the array is where several people go.** A b2b is one
+ * set and therefore one LiveCut, so the schema that stores it has to make the
+ * obvious count — `count(*)` — the right count. A table with one row per person
+ * would have made the wrong count the easy one.
+ *
+ * ⚠ **This is the only place in this script where a person's name is written
+ * anywhere.** It goes into a column behind row-level security. Nothing about
+ * these rows is printed: the line below is a count, and a failure is reported by
+ * `error.code` and `error.message` and never by PostgREST's third field, which
+ * carries the whole rejected row.
+ */
+const lineupRowsToWrite = [];
+for (const [nightKey, windows] of lineupSlotsByNight) {
+  const planId = planIdByKey.get(nightKey);
+  if (planId === undefined) continue;
+  let order = 0;
+  for (const held of [...windows.values()].sort((a, b) =>
+    a.slot.startTime.localeCompare(b.slot.startTime)
+  )) {
+    lineupRowsToWrite.push({
+      plan_id: planId,
+      source_uid: held.sourceUid,
+      start_time: held.slot.startTime,
+      end_time: held.slot.endTime,
+      artists: held.slot.artists,
+      sort_order: order,
+    });
+    order += 1;
+  }
+}
+
+const lineupUnplaced = lineupSlotTotal - lineupRowsToWrite.length;
+if (lineupUnplaced > 0) {
+  say(
+    `     ⚠ ${lineupUnplaced} slot(s) name a night this run did not write, so they were ` +
+      "not created. That is a finding, not a tidy-up."
+  );
+}
+
+if (lineupRowsToWrite.length > 0) {
+  await step("write_lineup", () =>
+    db.from("production_lineup_slot").insert(lineupRowsToWrite)
+  );
+  say(
+    `     line-up: ${lineupRowsToWrite.length} slot(s) written across ` +
+      `${new Set(lineupRowsToWrite.map((row) => row.plan_id)).size} night(s). ` +
+      "One LiveCut is owed per slot, never per name."
+  );
 }
 
 /* ── The re-attachment — the two exceptions of state (`ICS-03`) ─────────────

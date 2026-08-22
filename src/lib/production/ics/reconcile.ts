@@ -450,14 +450,21 @@ export interface ReconcileInput {
   unclassified: readonly UnclassifiedEntry[];
   unsupportedRecurrences: readonly UnsupportedRecurrence[];
   /**
-   * How many artists are credited on each night, by join key.
+   * How many **SLOTS** each night's timetable declares, by join key.
    *
-   * Read from `party_credits` — the **structured** line-up — and never from the
-   * communicated text. A key that is missing is *not yet knowable*, which is a
-   * different answer from zero and produces `depends_on_lineup` rather than a
-   * figure (D-44-13, OBS-03).
+   * ⚠ **SLOTS, NOT NAMES, and the difference is the owner's correction of
+   * 2026-08-22.** A LiveCut is the recording of a *set*, so two artists playing
+   * back to back produce **one** episode. Counting names over-counts: measured
+   * on the live calendar, one night carries six names in five slots and the
+   * calendar holds exactly five LiveCut entries for it. This field used to be
+   * called `creditedArtistCounts` and was filled from `party_credits`, one row
+   * per person — the name said what to count and it was the wrong thing.
+   *
+   * A key that is missing is *not yet knowable*, which is a different answer
+   * from zero and produces `depends_on_lineup` rather than a figure (D-44-13,
+   * OBS-03).
    */
-  creditedArtistCounts: ReadonlyMap<string, number>;
+  lineupSlotCounts: ReadonlyMap<string, number>;
   /**
    * The largest number of occurrences one recurring commitment may expand into.
    *
@@ -1042,7 +1049,7 @@ export function reconcile(
     nights: input.nights,
     pieces: input.pieces,
     pipelines: pipelineRules,
-    creditedArtistCounts: input.creditedArtistCounts,
+    lineupSlotCounts: input.lineupSlotCounts,
   });
 
   const attachedByUid = new Map<string, string>(
@@ -1213,7 +1220,7 @@ function reconcilePlans(
 interface AnchorContextInput {
   nights: readonly ClassifiedNight[];
   pieces: readonly ClassifiedPiece[];
-  creditedArtistCounts: ReadonlyMap<string, number>;
+  lineupSlotCounts: ReadonlyMap<string, number>;
 }
 
 /** Shared so the default argument allocates nothing per call. */
@@ -1491,7 +1498,7 @@ function buildAnchorContexts(
             : listingDateByPlanKey.get(following.key) ?? null,
         nextEditionLabel:
           following === null ? null : sigla(following.seriesCode, following.number),
-        creditedArtistCount: input.creditedArtistCounts.get(night.key) ?? null,
+        lineupSlotCount: input.lineupSlotCounts.get(night.key) ?? null,
       });
     }
   }
@@ -1808,7 +1815,7 @@ function reconcilePieces(
 function owedEpisodeCount(rule: PipelineRule, context: AnchorContext): number | null {
   if (rule.episodesFromLineup) {
     if (rule.episodeCount !== null) return rule.episodeCount;
-    return context.creditedArtistCount;
+    return context.lineupSlotCount;
   }
   return rule.episodeCount ?? 1;
 }

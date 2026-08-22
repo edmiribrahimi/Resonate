@@ -49,33 +49,40 @@
  * and measured — the case goes red, and it goes red as `GUESSED`, which is the
  * graver of that gate's two verdicts.
  *
- * ── ⚠ ONE LINE OF THE NOTE IS READ. THE REST IS DELIBERATELY NOT ────────────
+ * ── ⚠ THE REST OF THE NOTE IS THE LINE-UP, AND IT IS READ BY THE SLOT ───────
  *
- * The lines after the first are the **line-up** — 52 of them across the two
- * feeds. They are not read here, and the reason is not that they are hard:
- * **the schema has nowhere to keep them.** `production_plan` has no such column,
- * and neither has any other mirrored table; the only `lineup` columns in the
- * catalogue belong to the product's own night tables, which this import may
- * never touch (D-44-06, and check H of `scripts/verify-ics-import.mjs` measures
- * that it does not).
+ * The lines after the first used to be **declared unread**, and the reason given
+ * was true when it was written: the schema had nowhere to keep them. The owner
+ * closed that on 2026-08-22 — the line-up enters the mirror, with a table of its
+ * own — and the same decision carried a **correction of domain that outranks the
+ * gate as it is written today**:
  *
- * So the line-up is **declared unread**, which is a third answer and the honest
- * one. Inventing a column for it here would be a migration written inside a
- * reader, with a contract nobody has agreed; parsing it into a value that goes
- * nowhere would be reading a line-up into this process for no purpose, which is
- * the one thing a module handling this material should not do for free.
- * `production_pipeline_rule.episodes_from_lineup` is `true` on exactly one rule
- * and there is still nothing for it to count — that gap is now **located**
- * rather than merely open.
+ *     **A LIVECUT IS COUNTED FROM THE SLOTS OF A TIMETABLE, NEVER FROM THE
+ *     NAMES IN IT. Artists play together — a b2b is ONE recording, not two.**
+ *
+ * `production-calendar.md` says *un podcast per dj*, and counting names is what
+ * that sentence reads like. It over-counts: measured on the live feeds, one
+ * night carries **six names in five slots** and another **four names in two**,
+ * and the calendar holds exactly five LiveCut entries for the first — so the
+ * name count would have planned a sixth episode that cannot exist. A piece
+ * planned that nobody owes is a hole discovered on the day it was due.
+ *
+ * So the unit this module returns is the **slot**: an interval, and one or more
+ * artists inside it. {@link readNoteSlots} is the whole of it, and the count a
+ * caller wants is `slots.length` — never a sum over the names.
  *
  * ── ⚠ THE NOTE IS THE MOST CONFIDENTIAL TEXT THIS MODULE TOUCHES ────────────
  *
  * It names whoever is playing, on a date that may not have been announced
  * (`sound-manifesto.md`: *chi suona a una data non ancora comunicata non si
  * scrive qui e non si scrive nel repo*). **No finding below carries a word of
- * one**, exactly as none carries a word of a title, and no column stores one:
- * {@link ClassifiedCommitment.title} remains the single field in this module
- * that carries text out of the file, and it is a title, not a note.
+ * one**, exactly as none carries a word of a title.
+ *
+ * ⚠ **{@link readNoteSlots} is the one function here that returns a name**, and
+ * the rule that makes it admissible is narrow and has to stay narrow: its value
+ * goes to a **column**, behind row-level security, and nowhere else. It reaches
+ * no finding, no report line, no log and no file. A caller that prints a slot's
+ * artists has published a line-up, and this repository is public.
  *
  * ── Pure by design ──────────────────────────────────────────────────────────
  *
@@ -1130,6 +1137,136 @@ function declaresOwnDate(declaration: NoteDeclaration, date: CivilDate): boolean
     Number(date.slice(5, 7)) === declaration.month &&
     Number(date.slice(8, 10)) === declaration.day
   );
+}
+
+/**
+ * ONE SLOT OF A TIMETABLE: a window, and the people who play inside it.
+ *
+ * ⚠ **The slot is the unit, and it is the unit because of what is counted from
+ * it.** `production_pipeline_rule.episodes_from_lineup` is `true` on exactly one
+ * rule, the LiveCut, and a LiveCut is the recording of a **set** — so two people
+ * playing back to back produce **one** recording, not two. Counting the names
+ * plans an episode nobody owes; counting the slots plans what exists.
+ *
+ * {@link artists} may be **empty**, and that is a third answer rather than a
+ * zero. A LiveCut's own note declares its window with a part marker instead of a
+ * name (`pt2 19:30-22:00`): the slot is real, the names are simply not in *that*
+ * note. Dropping it would throw away the only evidence a night without a
+ * timetable has, and inventing a name for it is the thing this whole module
+ * refuses to do.
+ */
+export interface LineupSlot {
+  /** When the slot starts, `HH:MM`, exactly as {@link CivilTime} elsewhere. */
+  startTime: CivilTime;
+  /** When it ends. May be **before** the start: a night crosses midnight. */
+  endTime: CivilTime;
+  /**
+   * Who plays it. One name, several, or none.
+   *
+   * ⚠ **The one value in this module that is a person's name.** It goes to a
+   * column behind row-level security and nowhere else — no finding, no report
+   * line, no log, no file. See the module docblock.
+   */
+  artists: readonly string[];
+}
+
+/** `HH:MM-HH:MM` at the END of a line. Anchored, so a stray time inside prose is not one. */
+const SLOT_WINDOW = /(\d{1,2}):(\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}):(\d{2})\s*$/;
+
+/**
+ * What joins two artists inside ONE slot.
+ *
+ * `b2b` and `vs` are **measured** on the live feeds — two occurrences and one.
+ * `b<n>b` is admitted as the family the first belongs to rather than as a second
+ * literal, and the extrapolation is safe in the only direction that matters:
+ * **this list changes how many NAMES a slot carries and never how many SLOTS
+ * exist.** A connector this list misses collapses two names into one string —
+ * a name written wrong, which somebody reading the row sees — while the episode
+ * count, which nobody re-reads, stays right.
+ */
+const SLOT_CONNECTORS = /\s+(?:b\d+b|vs)\s+/i;
+
+/**
+ * A LiveCut part marker — `pt1`, `pt2` — and NOT a person.
+ *
+ * It is the same token the canonical piece grammar already reads as a part, and
+ * it arrives here because a LiveCut's note declares the window of the set it
+ * records. Left in, it would become an artist called `pt2`, and that name would
+ * be written to a column.
+ */
+const PART_MARKER = /^pt\d+$/i;
+
+/** `H:MM` and `HH:MM` both arrive; the column takes one shape. */
+function padTime(hours: string, minutes: string): CivilTime {
+  return `${hours.padStart(2, "0")}:${minutes}`;
+}
+
+/**
+ * Read a note's line-up as SLOTS.
+ *
+ * ── What is a slot and what is not ──────────────────────────────────────────
+ *
+ * A line that **ends** in `HH:MM-HH:MM` is a slot. Everything else is not, and
+ * the biggest population of "everything else" is deliberate: a night's own note
+ * lists its line-up as bare **names, without windows**, and those are exactly
+ * the lines a counter must not count. Measured on the live feeds, one night's
+ * note carries six names while its timetable carries five slots — the sixth is
+ * the other half of a b2b — so a reader that took the night's own list would
+ * plan one LiveCut too many.
+ *
+ * The first line is not special-cased: a declaration ends in a month word and
+ * cannot match the window, so one rule does the work of two.
+ *
+ * ── Deduplication, and why the named one wins ───────────────────────────────
+ *
+ * Two notes can declare the same window — a timetable naming who plays it, and
+ * the LiveCut of that set naming only its part. They are **one** slot. Within a
+ * single note the first occurrence stands, and a later one only ever fills in
+ * artists the first did not carry; across notes the merge is the caller's,
+ * because only the caller knows which night a note is talking about.
+ *
+ * ⚠ **Nothing here returns a finding, and that is on purpose.** A malformed
+ * line-up line is a line that is not a slot, and a note that carries none yields
+ * an empty list — which the caller reports as *not yet knowable*, never as zero.
+ */
+export function readNoteSlots(description: string): LineupSlot[] {
+  if (description.length === 0) return [];
+
+  const slots: LineupSlot[] = [];
+  const seen = new Map<string, number>();
+
+  for (const rawLine of description.split("\n")) {
+    const line = rawLine.trim();
+    if (line.length === 0) continue;
+
+    const window = SLOT_WINDOW.exec(line);
+    if (window === null) continue;
+
+    const startTime = padTime(window[1], window[2]);
+    const endTime = padTime(window[3], window[4]);
+    if (Number(window[1]) > 23 || Number(window[3]) > 23) continue;
+    if (Number(window[2]) > 59 || Number(window[4]) > 59) continue;
+
+    const body = line.slice(0, window.index).trim().replace(/[,;:\u2013\u2014-]+$/, "").trim();
+    const artists = body
+      .split(SLOT_CONNECTORS)
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0 && !PART_MARKER.test(name));
+
+    const key = `${startTime}|${endTime}`;
+    const already = seen.get(key);
+    if (already !== undefined) {
+      if (slots[already].artists.length === 0 && artists.length > 0) {
+        slots[already] = { startTime, endTime, artists };
+      }
+      continue;
+    }
+
+    seen.set(key, slots.length);
+    slots.push({ startTime, endTime, artists });
+  }
+
+  return slots;
 }
 
 /**

@@ -99,7 +99,7 @@
  *            pieces,                // ClassifiedPiece[] — si esaminano quelli senza numero
  *            nights,                // ClassifiedNight[]
  *            pipelines,             // SeriesPipeline[]
- *            creditedArtistCounts,  // ReadonlyMap<string, number>
+ *            lineupSlotCounts,  // ReadonlyMap<string, number>
  *          }) => {
  *            attached:     { uid: string, key: string }[],   // key = joinKey della notte
  *            unclassified: { uid: string, reason: string }[] // no_candidate_edition
@@ -929,7 +929,7 @@ for (const caso of FAMIGLIA_B) {
     pieces: [voce],
     nights: notti,
     pipelines: caso.pipelines,
-    creditedArtistCounts: new Map(),
+    lineupSlotCounts: new Map(),
   });
 
   const agganciato = (esito.attached ?? []).find((a) => a.uid === voce.uid);
