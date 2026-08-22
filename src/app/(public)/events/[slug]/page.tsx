@@ -1226,7 +1226,32 @@ export default async function EventDetailPage({
           // carry the hint FOR: a secret night past its window. So the hint is
           // taken straight from the night, and it is the LAST thing this page
           // may say about where it happens.
-          const venueHint = venueOnPublicSurface ? null : party.venue_secret_hint;
+          //
+          // ── AND THE SESSION TERM IS TAKEN HERE, NOT IN THE DIALOG ──────────
+          //
+          // `SecretVenueDialog` prints the hint under `hint && isAuthenticated`,
+          // and that branch is correct about the PIXEL and powerless about the
+          // PAYLOAD: the dialog is a `"use client"` component, so a hint handed
+          // to it is serialised into the document of this page for a reader with
+          // no session at all — the very reader the branch over there exists to
+          // refuse. It is readable from view-source without opening the dialog.
+          //
+          // The same shape as the events list, closed on 2026-08-22 in the same
+          // batch: a guard on the far side of the boundary decides what is
+          // painted, never what was sent. So the term is applied where the value
+          // is built, and the dialog keeps its own — one of the two is what a
+          // person reads and the other is what stops the string leaving, and
+          // neither is redundant with the other.
+          //
+          // A hint is not an address, and this is deliberately not treated as if
+          // it were: `venue-secrecy.md` requires a hint not to identify the place
+          // on its own. What is being restored is the product's own decision —
+          // the hint is for somebody who signed in — which the payload was
+          // quietly overriding.
+          const venueHint =
+            venueOnPublicSurface || !isAuthenticated
+              ? null
+              : party.venue_secret_hint;
 
           // The second verdict, and it stays. `undefined` here is a REFUSAL and
           // not a gap: `public.venue_for_parties` returns a night with its venue
