@@ -768,3 +768,193 @@ feed sa ricostruire**: il calendario non registra chi ha spuntato una casella.
      alias sbagliato non lo e'.
 
 ---
+
+## 14. La forma della nota NON e' quella che il piano dava per certa — ed e' meglio
+
+- **Trovata:** riparazione 58-14, 2026-08-22, misurando i tre feed vivi prima di
+  scrivere una riga di lettore
+- **Il piano diceva:** la nota porta `<SIGLA CON PROGRESSIVO>, <data>` — cioe' la
+  sigla di serie, quella che sta sulle locandine.
+- **La misura dice altro.** Su 54 note nei due feed vivi, **zero** portano una
+  sigla. Tutte e 54 portano, come prima riga:
+
+      <Parola>[ x <Parola>] <NNN>, <giorno-settimana> <giorno> <mese>
+
+  che e' **la grammatica della notte gia' implementata**, seguita dalla data di
+  quella serata. La nota non e' una quarta grammatica: e' la terza, scritta in un
+  secondo posto — e il secondo posto e' quello che porta il numero.
+- **Perche' conta piu' di una precisazione.** Un lettore scritto sulla forma
+  attesa avrebbe cercato un trattino fra maiuscole e non avrebbe trovato niente,
+  su 54 note su 54, **restituendo zero senza segnalare nulla**. E' la ragione per
+  cui il primo passo era misurare e non progettare.
+- **Conseguenza sulla riservatezza:** la nota **non porta l'anno**. La data
+  dichiarata serve quindi solo a rispondere *«e' il giorno di questa voce?»*, con
+  l'anno preso dal `DTSTART` della voce stessa, e non data mai niente.
+- **Non e' una voce aperta:** e' chiusa, ed e' qui perche' il prossimo che legge
+  il piano non ricostruisca la forma sbagliata credendola verificata.
+
+---
+
+## 15. La lettura della nota funziona; **la lacuna degli alias la blocca a valle**
+
+- **Trovata:** riparazione 58-14, 2026-08-22, corse a vuoto sui tre feed
+- **Il fatto, in due colonne.** Con la mappa alias **di oggi**, la lettura delle
+  note e' completa e non produce nulla:
+
+  | | `rsnt` | `rmdb` |
+  |---|---|---|
+  | voci con nota | 30 | 27 |
+  | note lette | 27 | 27 |
+  | note dichiarate NON lette | 3 | 0 |
+  | serate col progressivo dalla nota | **0** | **0** |
+  | pezzi che nominano gia' la propria serata | **0** | **0** |
+
+  Le note si leggono tutte. Nessuna produce un aggancio, perche' la parola che
+  portano **non ha un alias**: quattro serie su cinque non ne hanno uno (voce 13).
+
+- **Che cosa produrrebbe, con gli alias in piedi.** Simulato **in memoria**, con
+  sigle **sintetiche** — non decido io quale parola appartiene a quale serie, ed
+  e' esattamente cio' che `alias_unresolved` esiste per chiedere:
+
+  | | `rsnt` | `rmdb` |
+  |---|---|---|
+  | notti | 0 → **7** *(+ le 2 gia' lette dalla serie che l'alias ce l'ha = 9, che concorda con la voce 13)* | 0 → **2** |
+  | impegni | 24 → 17 | 13 → 12 |
+  | non classificate | 4 → 2 | 2 → 1 |
+  | serate col progressivo dalla **nota** | 0 | **2** |
+  | agganci **per dichiarazione** · per finestra | **15** · 1 | **8** · 0 |
+  | divergenze titolo/nota | 0 | 0 |
+
+- **⚠ E qui c'e' il ribaltamento della voce 13.** Quella voce aveva misurato che
+  **nessuna** mappa alias produce una sola notte `RMDB`, perche' i titoli di
+  quelle serate non portano il progressivo, e aveva concluso — correttamente, per
+  quello che si poteva leggere allora — che *«la riparazione non e' una scrittura
+  sul database: e' una decisione di produzione, il titolo deve portare il
+  progressivo, oppure quelle serate restano fuori»*.
+
+  **Leggendo la nota, la conclusione cambia: il numero c'e' gia', e sta nella
+  nota.** Due delle tre diventano serate col progressivo **letto**, non inventato.
+  Nessun titolo va rinominato, e nessun progressivo si sposta — che era il
+  rischio che aveva fatto scartare l'altra strada.
+
+- **Non chiusa perche':** compilare gli alias e' una scrittura in produzione, e
+  la voce 13 resta valida per intero sul punto che conta — **la spunta viva**.
+  Questa riparazione non ha scritto nulla.
+- **Come si chiude:** e' la voce 13, punto 1, con un dato in piu' a favore.
+
+---
+
+## 16. Una voce la cui nota nomina SE STESSA e dichiara un'altra data
+
+- **Trovata:** riparazione 58-14, 2026-08-22, sul feed `rmdb`
+- **Il fatto.** Delle tre serate satellite, **due** superano le tre condizioni
+  della promozione a notte. La terza cade sulla condizione della data: la sua nota
+  nomina **questa stessa voce** — la parola in testa e' il titolo, carattere per
+  carattere — e poi dichiara **un giorno diverso** da quello su cui la voce sta.
+- **Il calendario si contraddice in due punti**, e non c'e' modo di sapere da qui
+  quale dei due sia quello giusto: o la voce e' stata spostata e la nota no, o la
+  nota e' stata corretta e la voce no.
+- **Il codice fa la cosa giusta e non promuove.** Attaccare una serata a un giorno
+  che la sua stessa nota smentisce e' precisamente l'indovinare che questo modulo
+  non fa mai.
+- **Ma il rifiuto era silenzioso**, e ora non lo e': il referto porta una riga
+  dedicata con il conteggio e il digest dell'identificatore. Non esiste error
+  tracking in questo prodotto, quindi un rifiuto corretto di cui nessuno viene
+  informato e' il fallimento silenzioso che `meta-gates.md` nomina per primo.
+- **Non riparata perche':** e' una correzione **sul calendario**, non sul codice,
+  e la fa chi possiede quel calendario.
+- **Come si chiude:** il proprietario guarda quella voce e allinea la nota alla
+  data o la data alla nota. Finche' non lo fa, quella serata resta fuori — ed e'
+  visibile invece che assente.
+
+---
+
+## 17. La line-up si legge, e **non c'e' dove metterla**
+
+- **Trovata:** riparazione 58-14, 2026-08-22, leggendo il catalogo con
+  `read_only: true` **prima** di scrivere il codice che l'avrebbe usata
+- **Il fatto.** Le righe successive alla prima, nelle note, sono la line-up: **52
+  righe** in tutto sui due feed. Nel catalogo **non esiste una colonna che possa
+  tenerle**: `production_plan` non ce l'ha, e nessuna delle altre tabelle
+  specchiate. Le uniche colonne `lineup` del catalogo stanno sulle tabelle delle
+  serate **del prodotto**, che l'import non tocca e non puo' toccare (D-44-06,
+  controllo H di `verify-ics-import.mjs`).
+- **Quindi la line-up e' dichiarata NON LETTA**, che e' la terza risposta e quella
+  onesta. Non inventata una colonna dentro un lettore, non analizzata in un valore
+  che non va da nessuna parte: leggere nomi di persone che suonano su date non
+  annunciate senza una destinazione e' l'unica cosa che un modulo che tratta
+  questo materiale non deve fare gratis.
+- **Il referto conta le righe non lette**, perche' un'assenza che nessuno nota non
+  e' una decisione.
+- **Il conto che ne discenderebbe, misurato lo stesso.** Con gli alias in piedi
+  (voce 15): `rsnt` line-up leggibile su **2 serate su 7**, **10 righe** in tutto;
+  `rmdb` su **2 su 2**, **2 righe**. Una puntata per dj
+  (`production-calendar.md`, gate *un podcast per dj*) fa **12 puntate di LiveCut
+  dovute** — contro le **0** che il referto dichiara oggi, con la riga *«0 night(s)
+  have a structured line-up this run can count»*.
+- **Non riparata perche':** una migration nuova ha un contratto suo, e
+  `production_pipeline_rule.episodes_from_lineup` e' `true` su **una** regola che
+  oggi non ha nulla da contare. La lacuna non e' piu' aperta e basta: e'
+  **localizzata**.
+- **Come si chiude:** il proprietario decide se la line-up entra nello specchio. Se
+  si', e' una migration dichiarata — colonna, `CHECK` se serve, e la regola che
+  dice quante puntate discendono da quante righe. Se no, la riga *«0 con line-up»*
+  va riformulata, perche' oggi dice zero dove il dato **esiste e non e' raccolto**.
+
+---
+
+## 18. L'audit d'uscita e' andato ROSSO appena le note sono entrate, ed e' la sua ragione d'essere
+
+- **Trovata:** riparazione 58-14, 2026-08-22, prima corsa a vuoto su `rsnt` dopo
+  aver esteso l'insieme residuo alle note
+- **Il fatto.** L'insieme residuo di `rsnt` passa da **23** token (solo titoli) a
+  **53** (titoli e note), e due di quei token compaiono in cio' che la corsa
+  stampa. Uscita `IMPORT_DRY_RUN_WITH_LEAKED_OUTPUT`.
+- **Riparato come la dottrina del file prescrive — DIRE MENO.** Tre righe
+  riformulate, nessuna regola allargata, nessuna lista di esenzioni. Il token in
+  collisione non e' scritto qui e non e' stato stampato da nessun controllo: dirlo
+  per riportarlo sarebbe compiere la fuga.
+- **Perche' resta una voce aperta.** Una nota e' **prosa**, un titolo e' un nome.
+  L'insieme residuo delle note contiene inevitabilmente parole inglesi ordinarie —
+  fra cui i **nomi dei mesi**, che sono la *grammatica* della nota e non il suo
+  materiale, esattamente come `Listing` e' grammatica di un titolo. Oggi i mesi
+  **non** sono fra i `publicTokens` che l'audit toglie prima di misurare.
+- **Il rischio, che e' il solito di questo progetto:** un rosso ricorrente e atteso
+  e' peggio di nessun rosso — e' il rumore che insegna a ignorare il canale, e il
+  giorno in cui la fuga sara' vera sara' indistinguibile dal rumore.
+- **Non riparata perche':** togliere i dodici nomi dei mesi e i sette dei giorni
+  della settimana **prima** del calcolo del residuo e' difendibile — non e'
+  un'esenzione arbitraria, e nessuno dei diciannove potra' mai essere il nome di
+  una persona o di uno spazio — **ma e' una decisione su un gate di
+  riservatezza**, e `CLAUDE.md` dice che il codice critico si presenta prima di
+  toccarlo. Chi esegue non la prende da solo.
+- **Come si chiude:** il proprietario decide. **(a)** I mesi e i giorni della
+  settimana diventano `publicTokens`, con la ragione scritta accanto; oppure
+  **(b)** si continua a riformulare a ogni collisione, accettando che accada, e
+  allora vale la pena dirlo nel file invece di riscoprirlo ogni volta.
+
+---
+
+## 19. Un errore di processo di chi ha eseguito, registrato invece che taciuto
+
+- **Trovata:** riparazione 58-14, 2026-08-22, dall'esecutore su se stesso
+- **Il fatto.** Per annullare una **mutazione di prova** su `classify.ts` e' stato
+  usato `git checkout -- <file>` su un file che conteneva **lavoro non ancora
+  committato**. Il comando ha fatto quello che fa: ha riportato il file all'ultimo
+  commit, cancellando insieme alla mutazione anche tutta la lettura della nota
+  scritta fino a quel punto. Nessuna copia di sicurezza esisteva.
+- **Costo:** il modulo e' stato riscritto per intero. Nessuna perdita permanente —
+  i gate hanno poi confermato lo stesso comportamento, 29 casi su 29 — ma il
+  rischio corso era la perdita silenziosa di un'ora di lavoro non verificabile da
+  nessun controllo.
+- **Perche' e' registrato.** La regola esisteva gia' ed e' scritta nero su bianco
+  fra i comandi vietati dell'esecutore: *«git checkout -- . o git restore . —
+  ripristini indiscriminati dell'albero di lavoro che scartano file»*. La forma
+  su singolo file e' ammessa **solo** per scartare modifiche a un file che non
+  contiene altro lavoro, e quella condizione non era stata verificata.
+- **Come non ricapita:** una mutazione si annulla dalla **copia presa prima di
+  applicarla**, mai da un comando che riporta a un commit. La copia costa una
+  riga e va presa nello stesso passo che applica la mutazione — come e' stato
+  fatto, correttamente, per `verify-ics-import.mjs` e per `reconcile.ts`.
+
+---
