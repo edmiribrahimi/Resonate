@@ -1,7 +1,7 @@
 ---
 phase: 58-il-calendario-si-legge-come-lo-si-scrive
 written: 2026-08-20
-status: 23 pending su 24 — il passo 23 e' stato eseguito il 2026-08-20; P-58-A e P-58-B sono ferme sulla superficie (blocco dentro P-58-A), P-58-C e' un rientro e si esegue se e quando serve
+status: 7 pending su 24 — dal 2026-08-22 P-58-A e P-58-B sono ESEGUITE per intero (passi 8-24) e i sette pendenti sono tutti e soli quelli di P-58-C, che e' un rientro e si esegue se e quando serve. Due dei diciassette Result compilati portano un ritrovamento invece di un passaggio: il passo 10 (la spunta non era piu' viva) e il passo 9 (la cascata raggiunge due tabelle, non una)
 closes: ICS-01 (l'ordine di cancellazione, osservato), ICS-03 (le due eccezioni di stato), ICS-03b (D-58-02, l'eccezione di sopravvivenza), e il piano di rientro che D-58-05 punto 3 pretende prima del primo `--apply`
 no-longer-closes: ICS-01b (D-58-01) — dal 2026-08-20 NON e' chiuso da questo file. La sua prova e' nel piano 58-09, per mutazione del codice contro un giro a vuoto; cio' che i passi 21-23 smettono di provare e' dichiarato per esteso nel blocco che precede il passo 21 di P-58-B
 carries: la forma di `44-PROCEDURES.md` — frontmatter-contratto, regole di lettura, passi numerati con il ruolo, un `Result` pendente per passo
@@ -31,19 +31,25 @@ phase_closes: non prima che ogni `Result` qui sotto porti un'osservazione
 > l'identificativo, non il nome**, e si scrive *l'autore e' invariato*.
 >
 > **(d) Nessuna data di serata compare in questo file, e la regola e' quella —
-> non il conteggio delle cifre.** Le quattro cifre di un anno compaiono qui in
-> tre posti soli, e tutti e tre dicono *quando qualcuno ha deciso o eseguito
-> qualcosa*, mai *quando si suona*: `written:` nel frontmatter; le date delle
-> tre autorizzazioni, scritte **il giorno in cui si eseguono**, negli spazi
-> lasciati vuoti apposta; e le date delle decisioni registrate nel documento,
+> non il conteggio delle cifre.** Le quattro cifre di un anno compaiono qui solo
+> dove dicono **quando qualcuno ha deciso o eseguito qualcosa**, mai *quando si
+> suona*: `written:` nel frontmatter; le date delle autorizzazioni, scritte **il
+> giorno in cui si spendono**; le date delle decisioni registrate nel documento,
 > perche' una decisione senza la sua data e' una decisione che nessuno puo'
-> collocare. Le migration restano nominate **senza il loro prefisso numerico**,
-> perche' quel prefisso e' una data e non ha niente da collocare.
+> collocare; e — dal 2026-08-22 — **gli istanti dentro i `Result`**, che sono
+> l'ora di orologio di un passo eseguito e sono cio' che rende un'osservazione
+> confermabile da una seconda persona. Le migration restano nominate **senza il
+> loro prefisso numerico**, perche' quel prefisso e' una data e non ha niente da
+> collocare.
 >
-> ⚠ Questa regola diceva *«l'unica riga con quattro cifre e' `written:`»*, e
-> **il documento non la rispettava piu'** dal momento in cui la prima
-> autorizzazione e' stata datata. Corretta il 2026-08-20 scrivendo cio' che il
-> file fa davvero: una regola che descrive un documento diverso da quello che ha
+> ⚠ **Questa regola e' stata riscritta due volte, e la seconda per la stessa
+> ragione della prima.** Diceva *«l'unica riga con quattro cifre e' `written:`»*
+> e il documento non la rispettava piu' dal momento in cui la prima
+> autorizzazione e' stata datata; corretta il 2026-08-20, e' diventata *«in tre
+> posti soli»* — un **conteggio**, che ha smesso di essere vero il giorno in cui
+> i `Result` si sono riempiti di istanti. Riscritta il 2026-08-22 come
+> **criterio** invece che come conteggio: un criterio non invecchia quando il
+> documento cresce. Una regola che descrive un documento diverso da quello che ha
 > sotto e' peggio di nessuna regola, perche' fa credere che qualcuno stia
 > controllando.
 >
@@ -283,6 +289,13 @@ esiste prima del codice che la citera'.
 > ⚠ **Il cron non e' autorizzato da questa riga** e non lo e' da nessuna delle
 > altre due: gira per la prima volta nel piano 58-12.
 >
+> ⚠ **SPESA il 2026-08-22 alle 20:09:24Z**, e per una scrittura sola: il
+> ripristino del passo 15, che rimette la traccia d'autore che il primo `--apply`
+> del passo 20 aveva portato via. **Il `--apply` che porta l'evidenza dei passi
+> 13 e 14 non e' di questa procedura**: e' quello delle 17:55:07Z dello stesso
+> giorno, girato sotto l'autorizzazione della riparazione 58-15. Il paragrafo qui
+> sotto descrive lo stato del 2026-08-20 e resta come storia.
+>
 > ⚠ **NON SPESA, al 2026-08-20 — e questa volta non per la sorgente.** I numeri
 > veri (63 pezzi, 85 impegni, e **0 spunte, 0 legami**) sono stati rimessi
 > davanti al proprietario prima dell'atto, come questa riga pretendeva, e la
@@ -303,8 +316,21 @@ esiste prima del codice che la citera'.
 > gia' pagato quella differenza — due eventi reali e 63 righe in sette tabelle,
 > non recuperabili, perche' non c'e' PITR.
 
-### ⚠ Perche' i passi 8-15 sono ancora `pending` — misurato il 2026-08-20
+### ⚠ Perche' i passi 8-15 ERANO `pending` — misurato il 2026-08-20, superato il 2026-08-22
 
+> **SUPERATO. Questo blocco resta perche' e' la storia di come il blocco si e'
+> sciolto, non perche' descriva lo stato: al 2026-08-22 i passi 8-15 sono
+> ESEGUITI e i loro `Result` portano un'osservazione.** Si e' sciolto per la
+> **strada (1)** delle due che questo blocco stesso metteva sul tavolo — il ruolo
+> che possiede la chiave di sezione ha premuto la casella e ha riferito le due
+> osservazioni — e **non** per la strada (2): nessuna sessione e' stata coniata
+> su un'identita' vera, e la superficie **resta irraggiungibile da chi esegue**,
+> rimisurata il 2026-08-22 alle 19:58Z e alle 20:03Z. Cio' che quella strada
+> avrebbe sbloccato in piu' — le **seconde letture** dei passi 14, 19 e 24, che
+> il contatore di controllo vorrebbe prendere da una superficie invece che da un
+> secondo strumento — e' esattamente cio' che quei tre `Result` dichiarano di non
+> aver preso.
+>
 > Questo blocco si legge **senza** conoscere la seduta che l'ha prodotto.
 >
 > **Cosa e' successo, alla lettera.** Il primo specchio e' stato applicato quel
@@ -369,7 +395,7 @@ muore in mezzo, il rientro e' `P-58-C`, e va letto **prima** di cominciare.
   sopravvivenza di una spunta contro il vecchio import non risponde a niente.
 - Annotare l'ora di orologio. Una precondizione letta ieri e' un ricordo.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:05:35Z.** L'autorizzazione del 2026-08-20, opzione `autorizza-tutte-e-tre`, e' scritta nel preambolo qui sopra e **nomina questa procedura**. ⚠ **Non e' stata spesa PER INTERO da questa procedura, e va detto invece che arrotondato:** il `--apply` che porta l'evidenza dei passi 13 e 14 e' quello delle **17:55:07Z del 2026-08-22**, girato sotto l'autorizzazione della riparazione 58-15 (*«procedi e basta»*), non sotto questa. Cio' che questa seduta ha eseguito con le proprie mani sono i passi 9, 10, 12, 14 e 15, e l'unica scrittura e' il ripristino del passo 15. **Il deploy sotto prova porta i commit di questa fase**, verificato adesso e non ricordato: l'ultimo commit che tocca l'importatore e il riconciliatore e' `6e2ee19`, l'argomento di riautorizzazione compare **4** volte nell'importatore, e il rifiuto sul progressivo esiste nel catalogo come trigger `production_plan_refuse_renumber`, `BEFORE UPDATE OF number ... FOR EACH ROW`, letto da `pg_trigger` con `read_only: true`. Ora di orologio: **2026-08-22T20:05:35Z**.
 
 ### Passo 9 — La cascata, enumerata rileggendo i vincoli
 
@@ -389,7 +415,7 @@ Result: pending
   diverso da quello che questa fase si aspetta, **quello e' il ritrovamento** e
   va scritto prima di procedere.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:05:35Z**, rileggendo `pg_constraint` con `read_only: true` invece di copiare l'elenco da questo file. Dalle tre tabelle specchiate sono raggiungibili per `ON DELETE CASCADE` **due** tabelle: le voci di checklist e gli **slot di line-up**. ⚠ **Due e non una, ed e' il ritrovamento che questo passo chiede di scrivere prima di procedere:** la fase si aspettava la sola checklist, e la seconda tabella e' entrata **oggi**, con la migration della line-up applicata alle 17:49:24Z. Il numero e' spiegato e non e' un buco — l'importatore la rimuove **esplicitamente** invece di lasciarla alla cascata, *«cosi' il numero e' uno che qualcuno ha contato invece di un effetto collaterale che nessuno ha visto»* — ma e' **cambiato** da quando questo file e' stato scritto, e questo `Result` e' il posto dove si registra. Le altre chiavi esterne che partono dalle tre tabelle **escono** e non cascano: verso le serie, i format, le sedi e le serate, tutte `NO ACTION`. Istantanea presa su **tutte e cinque** le tabelle enumerate — le tre specchiate piu' le due della cascata — nella directory ignorata dal repo, e `git check-ignore` conferma che lo e'. Il suo contenuto non e' stampato da nessuna parte: una colonna e' il nome di una persona.
 
 ### Passo 10 — Gli identificativi, catturati al momento
 
@@ -404,7 +430,7 @@ Result: pending
 - Registrare **il conteggio** nel `Result`; gli identificativi restano fuori dal
   repo.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:03:54Z**, con la Management API e `read_only: true`, **prima** di qualunque scrittura di questa seduta. Catturate **85** voci di checklist con il loro stato di spunta: **0 spuntate**, e **1 che porta un autore senza istante**. Gli identificativi restano fuori dal repo; qui c'e' solo il conteggio. ⚠ **Quello 0 e' il ritrovamento del passo, e si scrive qui invece di essere aggirato: la spunta del passo 11 non era piu' viva quando questa seduta e' cominciata.** E' stata **tolta dalla superficie alle 19:49:47.944Z**, dieci minuti prima, e l'annullamento e' un atto registrato per costruzione: la funzione della spunta **ri-registra l'autore in entrambe le direzioni**, quindi la riga resta con l'autore pieno e l'istante vuoto. Conseguenza operativa, dichiarata prima di agire e non scoperta dopo: un `--apply` lanciato oggi avrebbe provato la sopravvivenza di una spunta su una popolazione **zero**, che e' un verde falso **per costruzione** — la stessa forma che il passo 22 vieta a se' stesso. Per questo i passi 13 e 14 riportano la corsa in cui la spunta **era** viva, invece di fabbricarne una nuova.
 
 ### Passo 11 — La spunta, messa dalla superficie
 
@@ -418,7 +444,7 @@ Result: pending
   Registrare l'osservazione come *l'autore e' l'account che ha premuto*, **senza
   scrivere il nome**.
 
-Result: pending
+Result: **ESEGUITO dal ruolo che possiede la chiave di sezione del calendario, e riferito a chi esegue il 2026-08-22.** Le due osservazioni sono **sue**, non una lettura del catalogo: **la casella e' rimasta spuntata**, e **e' comparsa una riga d'autore che nominava il proprio account**. Si registra come il passo prescrive — *l'autore e' l'account che ha premuto* — e **il nome non si scrive**. La spunta e' quella premuta il **2026-08-20 alle 21:36:38Z**, su una voce di tipo `piece` di un piano dentro il perimetro della chiave in prova. ⚠ **Corroborazione indipendente dell'ISTANTE, e non della pressione:** l'istantanea che l'importatore ha scritto **prima** della cancellazione, alle 17:55:07.512Z del 2026-08-22, porta un'unica spunta con istante **2026-08-20T21:36:38.7315Z** — lo stesso istante, arrivato per un'altra strada. Il **comportamento della superficie** resta osservabile solo da chi ha premuto: chi esegue non ha una sessione, ed e' misurato ai passi 14 e 19.
 
 ### Passo 12 — La spunta, letta dal catalogo
 
@@ -431,7 +457,7 @@ Result: pending
   **come fatto di esistenza**, non come valore: *la voce e' identificabile per
   la sua chiave stabile*, senza riportarne il contenuto.
 
-Result: pending
+Result: **OSSERVAZIONE DEL 2026-08-22, e la sua fonte va dichiarata perche' non e' quella che il passo prescrive.** La lettura *prima* della corsa e' stata presa dal catalogo con `read_only: true` da chi eseguiva la riparazione 58-15 quel giorno, ed e' registrata nel secondo poscritto del SUMMARY del piano 58-11. ⚠ **Oggi non e' piu' ri-eseguibile:** l'annullamento delle 19:49:47.944Z ha azzerato l'istante, e l'istante originale **non e' piu' nel catalogo**. Cio' che resta ri-derivabile, e che questa seduta ha ri-derivato: l'istantanea pre-cancellazione delle 17:55:07.512Z porta quella voce con il suo istante e il suo attore. **L'attore e' annotato per digest — `7bd93c60` — e mai per nome**, come il contratto (c) di questo file impone. La chiave stabile della voce esiste **come fatto**: la voce e' identificabile per `(source_uid del piano, kind, label)`, dove `kind` e' `piece` e gli altri due sono annotati per digest — `54c26daa` e `e02ad6e5` — e mai per valore.
 
 ### Passo 13 — L'import, con `--apply`
 
@@ -446,7 +472,7 @@ Result: pending
   righe nuove.
 - Se la corsa muore, **andare a `P-58-C`** e scrivere qui che ci si e' andati.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22 alle 17:55:07Z — e non da questa seduta:** la corsa e' quella della riparazione 58-15, ed e' l'unica in cui la spunta era viva. Letta **dal catalogo** e non dal referto: la riga del registro delle corse dice `dry_run = false`, chiave in prova, aperta alle **17:55:07.612Z** e **chiusa** alle 17:55:11.406Z, 45 voci lette, **0 non classificate**. La riga e' chiusa, quindi la corsa non e' morta e `P-58-C` non e' stata imboccata. ⚠ **Perche' questa seduta non ne ha lanciata una propria:** al passo 10 la popolazione delle spunte era **0**, e una corsa lanciata oggi non avrebbe avuto niente da riagganciare. I due `--apply` che questa seduta **ha** lanciato sono quelli dei passi 20 e 21, che esercitano lo stesso percorso sull'altra eccezione di stato. ⚠ **E il primo dei due ha prodotto un ritrovamento che riguarda proprio questo passo:** le voci che portano un autore sono passate da **1 a 0**. La traccia dell'annullamento — autore **senza** istante — e' stata portata via dalla rimozione e **non** rimessa dal riaggancio, che raccoglie solo le voci con un istante. La migration dichiara l'annullamento un atto *«in entrambe le direzioni»*; per lo specchio **non e' un'eccezione di stato**. Voce 21 delle differite; rimessa a mano al passo 15.
 
 ### Passo 14 — La rilettura, per la chiave stabile
 
@@ -462,7 +488,7 @@ Result: pending
 - Osservare inoltre che la casella e' ancora spuntata **sulla superficie**, non
   solo nel catalogo: sono due letture e vanno registrate separatamente.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22 alle 20:03Z, e ri-derivato da questa seduta invece che ereditato.** Letto dal catalogo con `read_only: true`: la voce che oggi porta l'autore e' una riga **creata alle 17:55:11.182634Z**, cioe' **dentro** la corsa del passo 13 — e porta **lo stesso attore** dell'istantanea presa *prima* della cancellazione: digest `7bd93c60` da entrambe le parti, che sono due artefatti indipendenti. Stessa `kind` (`piece`), stessa etichetta (digest `e02ad6e5`), stesso `source_uid` di piano (digest `54c26daa`), `sort_order` 0, `due_date` presente. **L'unica cosa cambiata e' l'identificativo della riga**: `b1c21dd3…` nell'istantanea, `e0726300…` nel catalogo dopo — generato, e non sopravvive alla rimozione. E' esattamente cio' che rende il riaggancio **per chiave stabile** l'unica strada, e il motivo per cui questo passo vieta `plan_id`. ⚠ `ticked_by` **non** e' diventato l'account che ha lanciato l'import: e' rimasto quello di chi ha premuto. **Pitfall 8 non e' avvenuto.** ⚠ **La seconda lettura, quella sulla superficie, NON e' stata presa, e questo e' cio' che e' successo invece:** la pagina del calendario di produzione risponde `307 → /login` a una richiesta anonima, misurato alle 20:03Z, e l'unico browser su questa macchina — aperto su quella pagina alle 19:58Z con la propria sessione, non con una coniata — e' atterrato su `/login`. E' la voce 11 delle differite, **rimisurata oggi** e non ricordata. L'istante che questa lettura avrebbe confrontato non e' comunque piu' nel catalogo, per l'annullamento delle 19:49:47.944Z.
 
 ### Passo 15 — Il ripristino, per chiave primaria
 
@@ -480,7 +506,7 @@ Result: pending
   superficie.
 - Dichiarare l'autorizzazione del passo 8 **esaurita**, con l'ora.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22 alle 20:09:24Z.** Lo stato registrato al passo 10 era **0 voci spuntate** e **1 voce che porta un autore senza istante**. Dopo il primo `--apply` di questa seduta il catalogo diceva **0 e 0**: la traccia dell'annullamento era stata portata via, **come dichiarato prima di lanciare**. E' stata **rimessa**, non ri-registrata: istante, attore e nome riscritti con i valori **originali** catturati al passo 10. ⚠ **Mai con `record_checklist_tick`**, che ri-registra l'autore a ogni chiamata e avrebbe attribuito l'annullamento a chi ha lanciato l'import — Pitfall 8 prodotto dal rientro. Il bersaglio e' stato trovato **per la chiave stabile** — `source_uid` del piano piu' `kind` piu' `label` — perche' gli `id` erano cambiati: 1 riga di piano trovata, 1 voce aggiornata, e l'identificativo della voce risulta **CAMBIATO** rispetto a quello del passo 10, che e' la conferma di aver cercato la cosa giusta nel posto giusto. Attore identico per digest (`7bd93c60`). **Conteggio di controllo da uno strumento diverso da quello su cui si e' agito:** si e' scritto con il client di servizio via PostgREST, si e' letto con la Management API e `read_only: true` — voci di checklist **85**, spuntate **0**, con un autore **1**, cioe' esattamente lo stato del passo 10. ⚠ La lettura dalla superficie, che il passo preferirebbe come terza fonte, non e' disponibile: vedi il passo 14. **L'autorizzazione del passo 8 e' ESAURITA alle 20:09:24Z**: questo ripristino e' l'unica scrittura che questa procedura ha fatto con le proprie mani.
 
 ---
 
@@ -511,6 +537,17 @@ Result: pending
 > `production_checklist_item`**.
 > ⚠ **Il cron non e' autorizzato da questa riga**: gira per la prima volta nel
 > piano 58-12.
+>
+> ⚠ **SPESA il 2026-08-22, fra le 20:07:30Z e le 20:09:12Z**, e dichiarata
+> **esaurita** al passo 24 con quell'ora. Le scritture che ha coperto sono
+> quattro e tutte annotate nei rispettivi `Result`: il legame creato (passo 19),
+> i due `--apply` sulla sorgente registrata (passi 20 e 21), la riga sonda
+> inserita e poi rimossa per chiave primaria (passi 21 e 24). ⚠ **Lo scarto che
+> il paragrafo piu' sotto pretendeva fosse ripresentato lo E' STATO**: che questa
+> procedura riscritta *inserisca* una riga sonda invece di cambiarne una
+> esistente e' stato dichiarato al proprietario **prima** che desse il via, e la
+> risposta e' stata *procedi*. I due paragrafi qui sotto descrivono lo stato del
+> 2026-08-20 e restano come storia.
 >
 > ⚠ **NON SPESA, al 2026-08-20**, e la ragione e' la stessa di P-58-A: non la
 > sorgente — quella e' registrata e lo specchio ha girato — ma **la superficie**.
@@ -574,7 +611,7 @@ una che **non aggiunge piu'**, dichiarata nel blocco qui sotto.
   rifiuto sul progressivo e l'argomento di riautorizzazione.
 - Annotare l'ora di orologio.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:05:35Z.** L'autorizzazione e' quella del 2026-08-20, opzione `autorizza-tutte-e-tre`, scritta nel preambolo qui sopra, ed e' **diversa da quella di `P-58-A`**: non ne eredita nulla e non la copre. L'una mette e toglie una spunta su una voce che esiste gia'; questa **crea un legame** verso una serata pubblicata e mette alla prova il rifiuto che protegge un progressivo. ⚠ **Lo scarto che il preambolo pretendeva fosse ripresentato lo E' STATO:** che questa procedura riscritta **INSERISCA una riga sonda** invece di cambiarne una esistente e' stato dichiarato al proprietario **prima** che desse il via alla seduta del 2026-08-22, e la risposta e' stata *procedi*. Si scrive qui invece di darlo per scontato in silenzio: un'autorizzazione data su una descrizione non copre una descrizione diversa, ed e' la stessa regola per cui quella di `P-58-A` non copre questa. ⚠ **Il cron non e' autorizzato da questa riga e non e' stato toccato**: e' il piano 58-12. Deploy sotto prova: come al passo 8 — `6e2ee19` sull'importatore e sul riconciliatore, il rifiuto sul progressivo presente nel catalogo come trigger `BEFORE UPDATE OF number`, l'argomento di riautorizzazione presente **4** volte nell'importatore. Ora di orologio: **2026-08-22T20:05:35Z**.
 
 ### Passo 17 — La cascata, enumerata rileggendo i vincoli
 
@@ -591,7 +628,7 @@ Result: pending
 - Prendere l'istantanea su **tutte** le tabelle enumerate, nella directory
   ignorata dal repo.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:05:35Z**, rileggendo `pg_constraint` **da capo** e non riusando l'elenco del passo 9 — che pero' e' della stessa seduta, e questo si dichiara invece di lasciarlo dedurre: le due letture distano minuti e non ha potuto passarci una migration in mezzo. **Due** tabelle raggiungibili per `ON DELETE CASCADE`, le stesse del passo 9. **Le chiavi esterne che puntano VERSO L'ESTERNO, enumerate:** dalla riga di piano partono il legame verso la serata, il format, la serie e la sede, e **tutte e quattro sono `NO ACTION`**. Osservazione: cancellare la riga di piano **non tocca la serata** — la lascia senza nessuno che la indichi, ed e' esattamente la ragione per cui esiste D-58-02. Misurato di nuovo al passo 24: rimossa la riga sonda che portava un legame, le serate restano **3**, cioe' il numero del passo 18. Istantanea presa su **tutte e cinque** le tabelle enumerate, nella directory ignorata dal repo — `git check-ignore` lo conferma — con i conteggi **11 · 59 · 60 · 85 · 11**.
 
 ### Passo 18 — Gli identificativi, catturati al momento della creazione
 
@@ -606,7 +643,7 @@ Result: pending
 - Registrare i **conteggi** nel `Result`; gli identificativi restano fuori dal
   repo.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, alle 20:03:54Z**, con la Management API e `read_only: true`, **prima** di qualunque scrittura. Catturate **11** righe di piano — **9** sotto la chiave in prova, **2** sotto l'altra — con identificativo, identificativo di sorgente, progressivo e legame di ognuna. **Tutte e 11 portano un progressivo; nessuna porta un legame (`0`).** Catturati anche l'identificativo della serata a cui il legame verra' fatto e il progressivo corrente della sua serie: **le serate esistenti sono 3**, tutte nella stessa serie, e **il progressivo massimo di quella serie e' 2**. Gli identificativi restano fuori dal repo: qui ci sono solo i conteggi.
 
 ### Passo 19 — Il legame, creato
 
@@ -621,7 +658,7 @@ Result: pending
   della serie e confrontarlo con quello del passo 18. Se e' salito, **fermarsi**:
   questa procedura non doveva spenderlo, e un progressivo non si restituisce.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22 alle 20:07:30Z.** Il legame e' stato creato fra **una** riga di piano sotto la chiave in prova e **una serata gia' esistente** fra le 3 del passo 18 — **per chiave primaria**, con un predicato che pretendeva che il legame fosse ancora vuoto: 1 riga toccata, mai piu' di una, mai per titolo. Gli identificativi delle due righe stanno nella lista fuori dal repo. ⚠ **La riga di piano scelta NON e' quella che porta la traccia d'autore del passo 10**, cosi' che le due osservazioni restino indipendenti. **Dal catalogo**, con `read_only: true`: le righe di piano con un legame passano da **0 a 1**, e il legame e' esattamente quello atteso. ⚠ **La seconda lettura, quella dalla superficie, non e' stata presa, e questo e' cio' che e' successo invece:** la pagina del calendario di produzione risponde `307 → /login` a una richiesta anonima, e l'unico browser disponibile su questa macchina — con la propria sessione, non con una coniata — e' atterrato su `/login` alle 19:58Z. Voce 11 delle differite, rimisurata oggi. **Nessun progressivo e' stato speso:** il massimo della serie era **2** al passo 18 ed e' **2** dopo il legame, e le serate restano **3**. Il progressivo della riga di piano toccata e' rimasto quello di prima, verificato dentro la stessa scrittura.
 
 ### Passo 20 — Il primo import, con il file vero
 
@@ -637,7 +674,7 @@ Result: pending
   senza nessuno che la indichi: scriverlo, andare a `P-58-C`, e trattarlo come un
   blocco della fase — non come un'osservazione da annotare e proseguire.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22, dalle 20:07:47Z alle 20:07:52Z**, con `--apply` sulla chiave in prova e sulla **sorgente registrata** — l'unica che l'importatore accetta da `ICS-09`, quindi *il file vero* per costruzione e non per scelta. Uscita **`0`**, **42** passi di scrittura, riga del registro **chiusa**. **Dal catalogo**, con `read_only: true`: il legame e' **ancora li'**, sulla riga di piano identificata per `source_uid` — e **l'identificativo della riga non e' cambiato**, perche' `ICS-03b` l'ha tenuta **fuori** dalla rimozione invece di cancellarla e riscriverla. Il referto **conta** i legami e non li nomina: *«puts back 0 tick(s) and 1 link(s), with their ORIGINAL actor and instant»*, e in fondo *«put back: 0 tick(s) and 1 link(s)»*. Le righe che non entrano affatto nella rimozione passano da **0 a 1**; le sopravvissute a un'ASSENZA restano **0**, che e' corretto — la sorgente porta ancora quella voce. ⚠ **E qui e' avvenuto il ritrovamento dichiarato PRIMA della corsa, non scoperto dopo:** le voci di checklist che portano un autore sono passate da **1 a 0**. La traccia dell'annullamento e' stata portata via dalla rimozione e **non** rimessa dal riaggancio, che raccoglie solo cio' che ha un istante. Rimessa a mano al passo 15, con i valori originali. Voce 21 delle differite.
 
 ### ⚠ Cosa i passi 21-23 NON provano piu' — dichiarato il 2026-08-20
 
@@ -749,7 +786,7 @@ Result: pending
   `P-58-C`, e trattarlo come un **blocco della fase** — non come
   un'osservazione da annotare proseguendo.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22.** **Riga sonda inserita alle 20:08:20Z**, con le tre proprieta' che il passo pretende, nessuna delle quali di comodo: la **chiave di calendario sotto prova**, senza la quale lo specchio non la vedrebbe nemmeno; un **identificativo di sorgente che il calendario non porta e non portera'**, riconoscibile a colpo d'occhio come una sonda e mai somigliante a un identificativo vero; e **il progressivo lasciato vuoto** — verificato dentro la stessa scrittura — cosi' che non entri nella popolazione della guardia del passo 22 e non ne falsi la misura. Le colonne obbligatorie rimaste sono state riempite con valori che **si vedono** essere una sonda. La sonda e' stata legata alla **stessa serata gia' esistente** del passo 19: nessun progressivo speso, nessuna serata annunciata, la serata non toccata — il legame vive sul lato del piano e la chiave esterna verso la serata e' `NO ACTION`. ⚠ **L'artefatto e' stato dichiarato invece che nascosto:** fra le 20:08:20Z e le 20:09:12Z una riga in piu' compariva sulle superfici di produzione del calendario. La finestra e' durata **52 secondi**, ed e' l'unica persona che tiene una sessione su quelle superfici a poterla aver vista. Identificativo primario e identificativo di sorgente annotati nella lista fuori dal repo. **Import lanciato con `--apply` sulla stessa sorgente invariata del passo 20**, dalle 20:08:26Z alle 20:08:31Z, uscita **`0`**, **43** passi di scrittura. **Dal catalogo**: la riga sonda **c'e' ancora**, cercata per il suo identificativo di sorgente, **con lo stesso identificativo primario** con cui era stata inserita — quindi non riscritta, ma tenuta fuori — e **porta ancora il suo legame**. I due numeri del referto, confrontati con quelli del passo 20: le righe che non entrano nella rimozione **1 → 2**, e — **di quelle** — le sopravvissute a un'ASSENZA **0 → 1**. Il referto le **conta e non le nomina**: la stringa marcatore della sonda non compare da nessuna parte nel testo, e l'unico identificativo stampato e' un **digest** della corsa (`uid#…`).
 
 ### Passo 22 — `ICS-01b` — la guardia esercitata dove scrive, e la popolazione su cui gira
 
@@ -785,7 +822,7 @@ la prima meta'.
   precede il passo 21, compreso il giorno in cui quell'osservazione tornera'
   disponibile a costo zero.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22.** **Popolazione, contata dal catalogo PRIMA della corsa del passo 21, con `read_only: true`:** righe di piano sotto la chiave in prova **10**, di cui **9 portano un progressivo non vuoto** — la sonda no, per costruzione. **Nove** e' il limite superiore; la popolazione **effettiva** e' anch'essa **9**, perche' dopo lo specchio del passo 20 la sorgente porta ancora tutte e nove quelle voci: il referto riscrive **8** righe di piano piu' la sopravvissuta di `ICS-03b`, che e' una delle nove. ⚠ **La popolazione non e' `0`**, quindi questo passo non e' un verde falso per costruzione, e i due numeri sono scritti entrambi come il passo pretende. Ripreso il referto della corsa del passo 21 — quella con `--apply`, che ha **cancellato e riscritto davvero** —: **non porta ne' un rifiuto ne' la riga di riautorizzazione**. L'unica occorrenza di *refus* in tutto il testo e' il contatore `0 refused propert(y/ies)`, che e' una conta e non un rifiuto; di *renumber* e di *reauthoris* non ce n'e' **nessuna**. La corsa e' uscita **`0`**. **Cosa le due osservazioni significano insieme:** il rifiuto rifiuta la corsa **intera**, quindi una corsa arrivata in fondo e' una corsa in cui **nessuno** dei nove progressivi conservati divergeva da quello arrivato dalla sorgente — e il confronto e' avvenuto **dentro la corsa che scrive**, non in un giro a vuoto. Il numero **nove** e' cio' che rende questa un'osservazione invece di un *non e' successo niente*. ⚠ **Cosa questo passo NON osserva:** che il rifiuto arrivi **prima** della cancellazione in una corsa che avrebbe cancellato davvero. Vedi il blocco che precede il passo 21.
 
 ### Passo 23 — `ICS-01b` — la riautorizzazione, e la prova che NON inventa una decisione
 
@@ -867,22 +904,35 @@ referti dichiarano.
   in coda e non si rinumera. Si scrive che e' salito e perche'.
 - Dichiarare l'autorizzazione del passo 16 **esaurita**, con l'ora.
 
-Result: pending
+Result: **ESEGUITO il 2026-08-22 alle 20:09:12Z.** Rimosso **solo** cio' che questa procedura ha creato o cambiato. **La riga sonda del passo 21** — l'unica che questa procedura abbia **creato** invece che cambiato — rimossa **per chiave primaria**, dalla lista catturata fuori dal repo: **1 riga**. Mai da un controllo su una pagina, mai per titolo, mai risalendo da un elemento. **Dal catalogo**: l'identificativo di sorgente della sonda **non restituisce piu' nessuna riga** (`0`), e le righe di piano sono tornate a **11** — il numero del passo 18 — di cui **9** sotto la chiave in prova. Il legame riportato al valore registrato al passo 18, che per la riga usata era **vuoto**: 1 riga, per chiave primaria, con il progressivo di quella riga non toccato; le righe con un legame sono tornate a **0**. **Conferma da uno strumento diverso da quello su cui si e' agito:** si e' scritto con il client di servizio via PostgREST e si e' letto con la Management API e `read_only: true` — due credenziali, due percorsi e due endpoint. ⚠ La lettura dalla superficie, che il passo preferirebbe, **non e' disponibile**: vedi il passo 19. **Il progressivo della serie e' quello del passo 18 — `2` — e non e' salito**, e le serate restano **3**: nessuna e' stata annunciata e nessun progressivo speso, quindi non c'e' niente che questa procedura debba dichiarare di non poter riportare indietro. **Conteggi di chiusura, letti alle 20:09:33Z:** piani **11**, pezzi **59**, impegni **60**, voci di checklist **85**, slot di line-up **11** — identici a quelli dell'istantanea del passo 17. Il registro delle corse e' passato da **10 a 12** e **non torna indietro**: non si cancella mai, ed e' la ragione per cui la sua colonna di scopo resta nullabile. **L'autorizzazione del passo 16 e' ESAURITA alle 20:09:12Z.**
 
 ---
 
 ## Blocco di chiusura
 
-- **Ventiquattro passi, e al 2026-08-20 ventitre' righe `Result:` a `pending`.**
+- **Ventiquattro passi, e al 2026-08-22 sette righe `Result:` a `pending`.**
   La numerazione corre continua: P-58-C tiene i passi da 1 a 7, P-58-A da 8 a 15,
   P-58-B da 16 a 24. Un `Result` che dica altro da `pending` significa che
-  **quel passo** e' stato eseguito e che l'osservazione e' scritta accanto — ed
-  e' il caso del **solo passo 23**, l'unico che non tocca ne' la superficie ne'
-  una scrittura. Ventitre' a `pending` significano ventitre' passi non eseguiti,
-  e il perche' dei passi 8-24 sta nel blocco dentro P-58-A: **la superficie**.
-  Nessuno di quei `pending` e' stato riempito con un ritrovamento, e la ragione
-  e' questa riga stessa — riempirlo affermerebbe che la procedura e' stata
-  eseguita, che e' esattamente cio' che non e' vero.
+  **quel passo** e' stato eseguito e che l'osservazione e' scritta accanto. I
+  sette pendenti sono **tutti e soli** quelli di `P-58-C`, e devono esserlo: e'
+  un **rientro**, e un `Result` compilato senza che l'incidente sia avvenuto
+  sarebbe una spunta che nessuno si e' guadagnato.
+- **Due dei diciassette `Result` compilati portano un RITROVAMENTO invece di un
+  passaggio, ed e' il modo giusto di leggerli.** Il passo 10 dice che la spunta
+  del passo 11 **non era piu' viva** quando la seduta e' cominciata — tolta dalla
+  superficie dieci minuti prima — e che per questo i passi 13 e 14 riportano la
+  corsa in cui **era** viva invece di fabbricarne una nuova su una popolazione
+  zero. Il passo 9 dice che la cascata raggiunge **due** tabelle e non una,
+  perche' una migration del giorno stesso ne ha aggiunta una. Nessuno dei due e'
+  stato aggirato riprovando finche' passasse.
+- **Tre `Result` dichiarano una lettura CHE NON E' STATA PRESA** — i passi 14, 19
+  e 24, dove il contatore di controllo vorrebbe una seconda fonte che sia la
+  **superficie**. La superficie risponde `/login` a chi esegue, e l'unica strada
+  per aprirla sarebbe coniare una sessione su un'identita' vera, che e' un atto
+  con un'autorizzazione propria che nessuno ha dato. In tutti e tre i casi la
+  conferma e' stata presa da uno **strumento diverso** — si scrive con il client
+  di servizio, si legge con la Management API in sola lettura — e cio' che manca
+  e' scritto invece di essere arrotondato.
 - **P-58-C non scrive in produzione con le proprie mani.** P-58-A e P-58-B si',
   ognuna sotto la propria autorizzazione, e ognuna rimuove cio' che ha creato per
   chiave primaria.
