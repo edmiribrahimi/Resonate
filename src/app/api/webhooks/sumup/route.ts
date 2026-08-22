@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         // Fire-and-forget: send approval email
         const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/login`;
         render(MemberApprovedEmail({ memberName: updatedProfile.full_name || "Member", loginUrl }))
-          .then((html) => sendEmail({ to: updatedProfile.email, subject: "Welcome to Resonate - You're Approved!", html }))
+          .then((html) => sendEmail({ to: updatedProfile.email, subject: "Welcome to Resonate - You're Approved!", html, category: "member_approved", userId: purchase.user_id }))
           .catch((err) => console.error("Webhook: approval email failed (non-blocking)", err));
       }
 
@@ -162,10 +162,32 @@ export async function POST(request: Request) {
           );
 
           // Send email with inline QR code attachment
+          // ── L'INVIO PIU' IMPORTANTE DEL PRODOTTO, E ORA E' VERIFICABILE ─────
+          //
+          // Fino al 2026-08-22 questa chiamata poteva tornare «riuscita» per un
+          // messaggio che il fornitore non avrebbe mai consegnato: la sua lista
+          // di soppressione accetta la chiamata, restituisce `error` nullo e un
+          // identificativo regolare, e salta la consegna. Il percorso completo,
+          // con le fonti, e' in `src/lib/email.ts`.
+          //
+          // `ticketId` e' cio' che rende il fatto OSSERVABILE: la superficie
+          // admin dei venduti lo usa per attaccare l'esito alla riga del
+          // biglietto, e chi lavora la serata vede «email not delivered» prima
+          // che la persona si presenti all'ingresso senza sapere di avere un
+          // biglietto.
+          //
+          // NIENTE ALTRO IN QUESTO BLOCCO E' CAMBIATO. Nessuna transizione di
+          // stato, nessun importo, nessuna chiave di idempotenza, nessun ordine
+          // di chiamata: le tre proprieta' aggiunte all'oggetto sono l'intera
+          // modifica, e l'invio resta dentro il `try` che gia' garantisce che un
+          // fallimento della posta non faccia fallire il webhook.
           await sendEmail({
             to: profile.email,
             subject: `Your ticket for ${event.title}`,
             html,
+            category: "ticket_confirmation",
+            userId: purchase.user_id,
+            ticketId,
             attachments: [
               {
                 content: qrBuffer.toString("base64"),

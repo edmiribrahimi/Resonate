@@ -64,8 +64,17 @@ async function sendApprovalEmail(email: string, fullName: string) {
   );
   await sendEmail({
     to: email,
+    // La categoria e' obbligatoria dal 2026-08-22 — vedi `src/lib/email.ts`.
+    // Questi quattro messaggi NON portano `userId`: gli helper ricevono un
+    // indirizzo e un nome, non un identificativo, e allargarne la firma
+    // toccherebbe sei chiamanti per un dato che nessuna superficie legge oggi.
+    // La conseguenza, dichiarata invece che scoperta: una loro riga si diagnostica
+    // dalla categoria e dall'identificativo del fornitore, non risalendo alla
+    // persona. I due messaggi che contano ALLA PORTA — la conferma del biglietto
+    // e l'invito da guest list — sono invece agganciati al loro biglietto.
     subject: "Welcome to Resonate - You're Approved!",
     html,
+    category: "member_approved",
   });
 }
 
@@ -110,6 +119,7 @@ async function sendReadmissionEmail(email: string, fullName: string) {
     // `comms-analytics.md`, gate *template in italiano*.
     subject: "Il tuo accesso a re:sonate è di nuovo attivo",
     html,
+    category: "member_reactivated",
   });
 }
 
@@ -145,6 +155,7 @@ async function sendAccountInvitation(
     // goes out from `noreply@` like every other transactional message.
     subject: "Il tuo account re:sonate è pronto",
     html,
+    category: "account_invitation",
   });
 }
 
@@ -156,6 +167,7 @@ async function sendRejectionEmail(email: string, fullName: string) {
     to: email,
     subject: "Update on Your Resonate Membership",
     html,
+    category: "member_rejected",
   });
 }
 

@@ -104,6 +104,8 @@ export async function rsvpToParty(partyId: string, eventId: string) {
           to: profile.email,
           subject: `You're in for ${event.title}`,
           html,
+          category: "rsvp_confirmation",
+          userId: user.id,
         });
       }
     } catch (emailError) {

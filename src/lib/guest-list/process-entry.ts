@@ -108,10 +108,25 @@ async function sendGuestInvitation(
   );
 
   // Send email with inline QR code attachment (same pattern as ticket-confirmation webhook)
+  //
+  // ── Perche' questo invio porta `ticketId` e non solo la categoria ───────────
+  //
+  // E' uno dei DUE messaggi il cui mancato recapito si paga alla porta: porta un
+  // QR, e chi lo riceve non ha comprato niente, quindi non ha nemmeno il
+  // riscontro di un pagamento a dirgli che qualcosa doveva arrivare. Agganciarlo
+  // al biglietto e' cio' che permette alla superficie admin dei venduti di
+  // mostrare, riga per riga, se l'invito e' arrivato.
+  //
+  // `userId` NON viene passato, e non e' una dimenticanza: questa funzione riceve
+  // la voce della guest list, non l'identificativo dell'account, che a questo
+  // punto del percorso puo' anche essere appena stato creato dal ramo accanto. Il
+  // biglietto lo porta con se' e la risalita, quando serve, passa di li'.
   await sendEmail({
     to: entry.email!,
     subject: `You're invited to ${eventDetails.title}`,
     html,
+    category: "guest_invitation",
+    ticketId,
     attachments: [
       {
         content: qrBuffer.toString("base64"),

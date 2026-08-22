@@ -382,6 +382,12 @@ export async function approveRefund(refundId: string) {
           to: requesterProfile.email,
           subject: `Refund approved for ${eventData.title}`,
           html,
+          // La categoria e' obbligatoria dal 2026-08-22: e' cio' che rende
+          // questo invio verificabile invece che assunto riuscito. Nessun
+          // importo, nessuno stato e nessun percorso di rimborso e' toccato —
+          // questa e' l'unica riga aggiunta al blocco.
+          category: "refund_approved",
+          userId: refund.requested_by,
         });
       }
     } catch (emailError) {
@@ -467,6 +473,8 @@ export async function rejectRefund(refundId: string, adminNote?: string) {
             to: requesterProfile.email,
             subject: `Refund update for ${eventData.title}`,
             html,
+            category: "refund_rejected",
+            userId: refund.requested_by,
           });
         }
       }
