@@ -373,6 +373,16 @@ const OFFLINE = [
       "file and a missing credential send a reader to look in different places",
   ],
   [
+    "verify:venue-surfaces", true,
+    "2026-08-22 — the owner's three-surface rule for a secret venue. It runs " +
+      "everywhere and never refuses: it reads two page files and EXECUTES the " +
+      "predicate module's own source, so it needs no server, no credential and no " +
+      "gitignored material. Its own header lists what a green does NOT mean, and " +
+      "the two exits it cannot see — the wallet pass and the events-list payload — " +
+      "are printed on every run, pass or fail, so a green cannot be read as " +
+      "\"no address can reach anybody\"",
+  ],
+  [
     "verify:touch-targets", true,
     "Phase 41 — G5. Plan 41-11 was permitted to end by deleting this gate " +
       "rather than shipping one that reddened on correct code. It did not: the " +
