@@ -16,6 +16,10 @@ import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
 
 import { redactDbError } from "@/lib/errors/redact";
+import {
+  readTicketDeliveryMarks,
+  reconcileDeliveries,
+} from "@/lib/email-delivery/ledger";
 /**
  * Ticket tiers, discount codes, sold tickets and pending refunds — the two
  * former pages, collapsed into one (D-34-05).
@@ -329,6 +333,39 @@ export default async function TicketTiersPage({ params }: PageProps) {
     ticketBuyerMap.set(t.id, profile?.full_name || profile?.email || "Unknown");
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // L'ESITO DELLA CONFERMA — SI CHIEDE, NON SI ASSUME
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // Aggiunto il 2026-08-22. `sendEmail` poteva tornare «riuscito» per un
+  // messaggio che il fornitore non avrebbe mai consegnato: la sua lista di
+  // soppressione accetta la chiamata, restituisce `error` nullo e un
+  // identificativo regolare, e salta la consegna. Un indirizzo ci finisce dopo
+  // un rimbalzo duro — che puo' nascere da un refuso scritto una volta sola — e
+  // da li' in poi ogni biglietto sparisce in silenzio.
+  //
+  // ── PERCHE' LA RICONCILIAZIONE GIRA QUI E NON SOLO NEL CRON ────────────────
+  //
+  // Il cron gira alle 11:00 di Torino. Un biglietto comprato alle 19:00 per una
+  // serata che apre alle 22:00 non ha una notte davanti: un verdetto che arriva
+  // domani mattina arriva dopo la fila. Qui il verdetto si chiede **quando
+  // qualcuno lo sta guardando**, che e' il solo momento in cui serve.
+  //
+  // ── COSA QUESTA CHIAMATA E' E COSA NON E' ──────────────────────────────────
+  //
+  // E' una GET verso il fornitore della posta e un `UPDATE` per riga sul
+  // registro. **Non spedisce niente**, non rispedisce niente, non tocca ne'
+  // biglietti ne' denaro, ed e' idempotente: rieseguirla riscrive lo stesso
+  // verdetto. E' ristretta ai biglietti di questa serata e alle sole righe
+  // ancora senza esito, quindi una superficie gia' riconciliata non paga niente.
+  //
+  // Non lancia: `reconcileDeliveries` cattura le proprie cause e le conta. Un
+  // fornitore irraggiungibile lascia le righe a «not verified», che e' la verita'
+  // ed e' uno stato disegnato qui sotto.
+  const ticketIdsPerConsegna = (soldTickets ?? []).map((t: { id: string }) => t.id);
+  await reconcileDeliveries({ kind: "tickets", ticketIds: ticketIdsPerConsegna });
+  const consegneDi = await readTicketDeliveryMarks(ticketIdsPerConsegna);
+
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
     const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -496,6 +533,73 @@ export default async function TicketTiersPage({ params }: PageProps) {
                       <p className="text-xs text-muted">
                         {tier?.name}
                       </p>
+                      {/*
+                        ── IL SEGNO, E I QUATTRO STATI CHE NON SI COLLASSANO ───
+
+                        `meta-gates.md`: questo progetto non ha error tracking,
+                        quindi un log non e' un effetto osservabile. Questa riga
+                        e' l'effetto osservabile — la sola cosa che, quando la
+                        conferma di un biglietto non arriva, lo dice a un essere
+                        umano prima che la persona si presenti all'ingresso.
+
+                        Quattro stati e non due, e ognuno ha la sua frase:
+
+                          consegnata      -> nulla. Un segno su ogni riga
+                                             sarebbe rumore, e il rumore
+                                             nasconde l'unica riga che conta.
+                          NON consegnata  -> rosso, con la causa e con cosa
+                                             fare.
+                          non verificata  -> il fornitore non ha ancora deciso.
+                                             Non e' un problema.
+                          nessun invio    -> non lo sappiamo, e non e' la stessa
+                             registrato      cosa di «non consegnata». Ci
+                                             finisce un biglietto emesso prima
+                                             che il registro esistesse, o uno la
+                                             cui registrazione e' fallita.
+
+                        Il colore non e' l'unico canale: ogni stato porta la sua
+                        parola.
+                      */}
+                      {(() => {
+                        const consegna = consegneDi.get(ticket.id);
+
+                        if (!consegna) {
+                          return (
+                            <p className="mt-1 text-xs text-muted">
+                              Email: no send recorded — the outcome is unknown,
+                              which is not the same as undelivered. Assume they
+                              may not have it.
+                            </p>
+                          );
+                        }
+
+                        if (consegna.outcome === "delivered") return null;
+
+                        if (consegna.outcome === "undelivered") {
+                          return (
+                            <p className="mt-1 text-xs font-medium text-sem-crit">
+                              Email NOT delivered — {consegna.reason} Tell them
+                              their ticket is on the tickets page; the QR code
+                              there is what gets them in.
+                            </p>
+                          );
+                        }
+
+                        if (consegna.outcome === "unknown") {
+                          return (
+                            <p className="mt-1 text-xs text-sem-warn">
+                              Email outcome unknown — {consegna.reason} Treat it
+                              as possibly not delivered.
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <p className="mt-1 text-xs text-muted">
+                            Email sent — outcome not settled yet.
+                          </p>
+                        );
+                      })()}
                     </div>
                     {/* The money mark — D-41.1-13. It used to sit in the meta
                         line beside the tier name, at the recessed ink. */}
