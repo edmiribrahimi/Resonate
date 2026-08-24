@@ -1089,7 +1089,11 @@ if (haveMaterial) {
     // ⚠ A restore is not a tick: the ORIGINAL instant and actor go back, and the
     // writer is forbidden from routing this through the function that re-records
     // who ticked.
-    for (const restore of plan.ticksToRestore) {
+    //
+    // ⚠ And it covers BOTH directions. An untick is a row with an actor and a
+    // null instant, so the assignment below writes that null back on purpose:
+    // putting the actor back without it would be putting back half a trace.
+    for (const restore of plan.decisionsToRestore) {
       const item = checklistItems.find(
         (row) =>
           row.planSourceUid === restore.planSourceUid &&
@@ -1304,7 +1308,7 @@ if (haveMaterial) {
       `         ${firstRows.length} rows compared field by field, identifiers excluded ` +
         "because a mirror gives every row a new one — and " +
         `${secondPass.plansThatSurviveDeletion.length} plan row(s) survived the deletion, ` +
-        `${secondPass.ticksToRestore.length} tick(s) and ` +
+        `${secondPass.decisionsToRestore.length} checklist decision(s) and ` +
         `${secondPass.linksToRestore.length} link(s) put back`
     );
     say(

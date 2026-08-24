@@ -222,6 +222,12 @@ export function mirrorGuard({ previousEntries, currentEntries }: MirrorGuardInpu
  * next successful mirror writes them back. A tick is not in the calendar. The
  * calendar does not record who ticked a box, and nothing else does either.
  *
+ * ⚠ **And it does not record who UN-ticked one either — the same fact, missed
+ * for two days.** A tick and an untick are one trace read in two directions; the
+ * untick simply has no instant, because clearing the instant is HOW an untick is
+ * written. This guard therefore counts **decisions**, and its argument is named
+ * for what it counts rather than for the direction somebody had in mind.
+ *
  * ── ⚠ WHAT «ATTENDED» MEANS, AND WHY IT IS NOT AN ARGUMENT ──────────────────
  *
  * The obvious mechanism is a flag — `--attended` — and it is the wrong one, for
@@ -347,13 +353,30 @@ export type UnattendedMirrorGuardInput = {
   /** Decided by {@link runSupervision} from evidence, never taken as a claim. */
   supervision: RunSupervision;
   /**
-   * How many ticks the declared scope holds — the first exception of state of
-   * `ICS-03`, counted before anything is removed.
+   * How many checklist DECISIONS the declared scope holds — the first exception
+   * of state of `ICS-03`, counted before anything is removed.
+   *
+   * ⚠ **DECISIONS, and it used to say ticks. The rename is the repair, not a
+   * tidy-up.** A checklist row carries a decision in either direction: ticked
+   * carries an actor and an instant, un-ticked carries an actor and no instant,
+   * and the migration that writes both says so in prose — the trace *answers who
+   * last decided, in both directions*. While this argument meant *ticks*, a
+   * scope holding one untick and no tick counted `0`, this guard answered `ok`,
+   * and an unwatched run would have taken that trace away **without a single
+   * number in the report going down**. Measured: on 2026-08-24 the catalogue held
+   * exactly that shape — 0 ticked, 1 un-ticked, inside a scope a mirror deletes.
+   *
+   * ⚠ **It counts what would be LOST, which is a different question from what is
+   * ticked**, and the two are kept from drifting by having one producer: the
+   * caller passes the length of the same list the writer puts back
+   * (`ReconcilePlan.decisionsToRestore`). A run that would not restore something
+   * has to be a run this predicate refuses; two lists built in two places is how
+   * that stops being true.
    *
    * ⚠ A **count**, like every other argument in this module, and for the reason
    * this file's first header gives: the list itself carries a person's name.
    */
-  ticksAtRisk: number;
+  decisionsAtRisk: number;
   /** How many links the declared scope holds — the second exception of state. */
   linksAtRisk: number;
   /**
@@ -378,10 +401,16 @@ export type UnattendedMirrorGuardInput = {
  *   2. **restore path exercised → `ok`.** The refusal exists because a half-dead
  *      run loses a tick *irrecoverably*. Once the way back has been seen to
  *      work, the loss is recoverable and the refusal has nothing left to protect.
- *   3. **nothing at risk → `ok`.** Zero ticks and zero links means a half-dead
- *      run loses only rows the next successful mirror writes back from the file.
- *      That was true of this project until 2026-08-20 and is the state the
- *      deferred item measured before deciding to wait.
+ *   3. **nothing at risk → `ok`.** Zero decisions and zero links means a
+ *      half-dead run loses only rows the next successful mirror writes back from
+ *      the file. That was true of this project until 2026-08-20 and is the state
+ *      the deferred item measured before deciding to wait.
+ *
+ *      ⚠ **Zero DECISIONS, never zero ticks.** An un-ticked box is a decision
+ *      with an author and no instant, and the calendar rebuilds it exactly as
+ *      well as it rebuilds a tick: not at all. Reading rule 3 as *nothing is
+ *      ticked* is what made this guard answer `ok` over a trace it exists to
+ *      protect.
  *   4. **anything at risk → `unattended_state_at_risk`.**
  *
  * ⚠ **Total, and a count it cannot read counts as at risk.** A count that is not
@@ -391,7 +420,7 @@ export type UnattendedMirrorGuardInput = {
  */
 export function unattendedMirrorGuard({
   supervision,
-  ticksAtRisk,
+  decisionsAtRisk,
   linksAtRisk,
   restorePathVerified,
 }: UnattendedMirrorGuardInput): UnattendedGuardVerdict {
@@ -399,7 +428,7 @@ export function unattendedMirrorGuard({
   if (restorePathVerified === true) return "ok";
 
   const atRisk = (count: number): boolean => !Number.isFinite(count) || count > 0;
-  if (atRisk(ticksAtRisk) || atRisk(linksAtRisk)) return "unattended_state_at_risk";
+  if (atRisk(decisionsAtRisk) || atRisk(linksAtRisk)) return "unattended_state_at_risk";
 
   return "ok";
 }

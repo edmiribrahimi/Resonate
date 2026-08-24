@@ -539,8 +539,28 @@ export interface ExistingChecklistItemRow {
   planSourceUid: string;
   kind: ChecklistColumn<"kind">;
   label: ChecklistColumn<"label">;
-  /** Null on an item nobody has ticked. Such an item carries no state to keep. */
+  /**
+   * ⚠ **Null does NOT mean *nobody decided*, and reading it that way is the
+   * defect this file now records.**
+   *
+   * `record_checklist_tick` writes `ticked_at = NULL` on an UNTICK and re-records
+   * the actor in the same statement, by a decision its own migration states in
+   * prose: *the trace answers who last decided, in both directions*. A null
+   * instant beside a non-null actor is therefore not an absence of data — it is
+   * the SHAPE an untick has, and the only shape it has, because an untick has no
+   * instant of its own anywhere in this schema.
+   *
+   * What means *nobody has ever decided here* is the absence of an **actor**.
+   *
+   * Measured: a collector that filtered on this column alone carried zero of the
+   * unticks across a mirror, and the calendar cannot rebuild one — it does not
+   * record who un-ticked a box any more than it records who ticked one.
+   */
   tickedAt: ChecklistColumn<"ticked_at">;
+  /**
+   * Who decided last, in **either** direction. Null only on an item nobody has
+   * ever touched, which is the one shape that carries no state to keep.
+   */
   tickedBy: ChecklistColumn<"ticked_by">;
   /** ⚠ A person's name. Never printed, never written into a tracked artefact. */
   tickedByName: ChecklistColumn<"ticked_by_name">;
@@ -731,8 +751,8 @@ export type ChecklistItemInsert = ChecklistItemFields;
  * the file every run, so leaving one night's items behind would produce a
  * checklist half from this run and half from a previous one — a state nobody can
  * read and no report can explain. It is also why
- * {@link ReconcilePlan.ticksToRestore} collects the ticks of **all** plan rows
- * and not only the ones being deleted.
+ * {@link ReconcilePlan.decisionsToRestore} collects the decisions of **all** plan
+ * rows and not only the ones being deleted.
  *
  * **2. `production_piece` before `production_plan`.** Its `plan_id` reference is
  * `NO ACTION`, the default, so deleting a plan row that still has pieces raises a
@@ -790,7 +810,7 @@ export interface DeletionScope {
  * ⚠ **This is an exception of SURVIVAL, and it is not one of the two exceptions
  * of STATE.** The distinction is the whole reason it has a list of its own:
  *
- * - the two of `ICS-03` — {@link ChecklistTickRestore} and
+ * - the two of `ICS-03` — {@link ChecklistDecisionRestore} and
  *   {@link AnnouncedNightLinkRestore} — describe state that **goes away and comes
  *   back**, re-attached afterwards by the file's own identity;
  * - this one describes a row that **never leaves**.
@@ -825,7 +845,69 @@ export interface SurvivingPlanRow {
 }
 
 /**
- * A tick to put back — the first of the two exceptions of state (`ICS-03`).
+ * WHICH SPELLING of the two restore lists a snapshot file carries.
+ *
+ * ⚠ **A word, not a version to be negotiated**, and it lives here rather than in
+ * either script because two scripts write it and read it: the importer stamps a
+ * file with {@link MIRROR_SNAPSHOT_SHAPE}, and the restore path admits every
+ * spelling in {@link MIRROR_SNAPSHOT_SHAPES_READABLE}. Two copies of one word is
+ * how a writer and a reader start disagreeing about a file that holds the only
+ * copy of a person's decision.
+ *
+ * **Why it moved, once.** `mirror-state-1` carried a list called `ticks` and it
+ * held only the rows with an instant. This one carries `decisions` and holds
+ * both directions. The FIELDS are the same — the plan's `source_uid`, the item's
+ * kind and label, the three trace columns — so the change is one of **meaning**,
+ * and a reader that guessed would be right about one file and wrong about the
+ * other.
+ *
+ * **Why the old one stays readable.** The snapshots already on disk are the way
+ * back for a run that died before the rename. Refusing them to buy a tidier name
+ * would cost exactly the row nothing else can rebuild, which is the direction
+ * this project does not accept errors in.
+ *
+ * ⚠ **The value shares no word with the restore path's refusal categories.** That
+ * script audits its own transcript against every string in the snapshot with no
+ * exemption list, so a marker spelled like a category would make every refusal of
+ * that family go red on itself. Measured once, with the obvious spelling.
+ */
+export const MIRROR_SNAPSHOT_SHAPE = "mirror-state-2";
+
+/**
+ * Every spelling the restore path admits, newest first.
+ *
+ * ⚠ It is a list because a way back that only reads today's files is a way back
+ * for the runs that have not died yet.
+ */
+export const MIRROR_SNAPSHOT_SHAPES_READABLE = ["mirror-state-2", "mirror-state-1"] as const;
+
+/**
+ * The two directions a checklist decision can point in. A closed vocabulary,
+ * like every other one in this directory: a reader branches on both or the
+ * compiler says so.
+ *
+ * ⚠ **Both are acts, and that is the whole of what this vocabulary buys.** The
+ * migration behind `record_checklist_tick` says so in prose — *the author is
+ * re-recorded in BOTH directions, which is what makes the untick an act rather
+ * than an erasure* — and until this type existed the code said otherwise by
+ * omission. A word for the second direction is what keeps the next filter from
+ * being written against a column instead of against a shape.
+ */
+export const CHECKLIST_DECISIONS = ["ticked", "unticked"] as const;
+
+export type ChecklistDecision = (typeof CHECKLIST_DECISIONS)[number];
+
+/**
+ * A checklist DECISION to put back — the first of the two exceptions of state
+ * (`ICS-03`).
+ *
+ * ⚠ **It used to be called a tick, and the name was the defect.** A mirror
+ * collected the rows carrying an instant and nothing else, so an untick — full
+ * actor, null instant — fell through the one filter and left with the removal.
+ * Measured on 2026-08-22 across a real `--apply`: one row carrying an author
+ * went from 1 to 0. The repair is this type, not a wider filter: the direction
+ * is now a **field**, so a reader has to answer *which way* rather than *is
+ * there an instant*.
  *
  * ⚠ **The key is the file's, not the database's.** `production_checklist_item`'s
  * own unique key is `(plan_id, kind, label)` and `plan_id` is a **generated**
@@ -845,14 +927,27 @@ export interface SurvivingPlanRow {
  * and nowhere else — not into a report, not into a terminal, and above all not
  * into a tracked artefact. Artefacts name roles.
  */
-export interface ChecklistTickRestore {
+export interface ChecklistDecisionRestore {
   /** The plan row's identity as the file spells it. */
   planSourceUid: string;
   kind: ChecklistKind;
   label: string;
-  /** The original instant. Not now. */
-  tickedAt: NonNullable<ChecklistColumn<"ticked_at">>;
-  /** The original actor. Not the caller. */
+  /**
+   * Which way the last decision went.
+   *
+   * ⚠ **The invariant, established in exactly one place** — the collector below,
+   * and nowhere else: `decision === "unticked"` **if and only if** `tickedAt` is
+   * null. It is written as a field rather than left to be derived at each use
+   * because deriving it at each use is what produced the defect: three readers
+   * asked the column a question it does not answer.
+   */
+  decision: ChecklistDecision;
+  /**
+   * The original instant, and **null on an untick** — which is not a missing
+   * value but the value that direction has. Never now.
+   */
+  tickedAt: ChecklistColumn<"ticked_at">;
+  /** The original actor. Not the caller. Non-null in both directions. */
   tickedBy: ChecklistColumn<"ticked_by">;
   /** ⚠ The original name. Never printed. */
   tickedByName: ChecklistColumn<"ticked_by_name">;
@@ -861,7 +956,7 @@ export interface ChecklistTickRestore {
 /**
  * A link to put back — the second of the two exceptions of state (`ICS-03`).
  *
- * Keyed on `production_plan.source_uid` for {@link ChecklistTickRestore}'s reason:
+ * Keyed on `production_plan.source_uid` for {@link ChecklistDecisionRestore}'s reason:
  * the row's `id` is generated and does not survive the rewrite.
  *
  * ⚠ **Every linked row appears here, including the ones that survive the
@@ -916,8 +1011,18 @@ export interface ReconcilePlan {
    * These rows are subtracted from the deletion **and** from the insert list.
    */
   plansThatSurviveDeletion: SurvivingPlanRow[];
-  /** (4a) The first exception of STATE — goes away, comes back (`ICS-03`). */
-  ticksToRestore: ChecklistTickRestore[];
+  /**
+   * (4a) The first exception of STATE — goes away, comes back (`ICS-03`).
+   *
+   * ⚠ **ONE LIST, TWO READERS, and the singleness is a requirement rather than
+   * a tidiness.** The writer puts these rows back after the rewrite; the
+   * unattended guard counts them to decide whether an unwatched run may delete
+   * at all. Those two questions have to be answered off the same list, because
+   * a run that would not put something back must be a run the guard refuses —
+   * and while the collector held ticks only, the guard counted `0` with a trace
+   * about to be lost and answered `ok`.
+   */
+  decisionsToRestore: ChecklistDecisionRestore[];
   /** (4b) The second exception of STATE — goes away, comes back (`ICS-03`). */
   linksToRestore: AnnouncedNightLinkRestore[];
   /** Carried through from the parser, untouched. */
@@ -1019,7 +1124,7 @@ export function reconcile(
     commitmentsToInsert: [],
     checklistItemsToInsert: [],
     plansThatSurviveDeletion: [],
-    ticksToRestore: [],
+    decisionsToRestore: [],
     linksToRestore: [],
     unsupportedRecurrences: [...input.unsupportedRecurrences],
     unclassified: [...input.unclassified],
@@ -1137,8 +1242,18 @@ function collectSurvivors(
  *    A restore path that only exists for the cases somebody remembered is the
  *    hole `ICS-03` is written to forbid.
  *
- * An item nobody has ticked carries no state and is not collected: it is
- * recreated from the file like everything else.
+ * ⚠ **WHAT COUNTS AS STATE HERE: an ACTOR, not an instant.** An item nobody has
+ * ever touched carries no state and is not collected — it is recreated from the
+ * file like everything else. An item somebody UN-ticked carries an actor and no
+ * instant, and it is state: the calendar cannot say who un-ticked a box any more
+ * than it can say who ticked one, so a mirror that dropped it would destroy the
+ * same irreplaceable thing in the other direction. It did, once, measurably.
+ *
+ * The condition is therefore written against **any** of the three trace columns
+ * rather than against `ticked_at`, and it errs the only way it can afford to: a
+ * row carrying a name and nothing else is collected too. Over-collecting costs
+ * an `UPDATE` that writes what was already there; under-collecting costs a row
+ * nothing can rebuild.
  */
 function collectStateToRestore(plan: ReconcilePlan, existing: ExistingSnapshot): void {
   for (const row of existing.plans) {
@@ -1150,11 +1265,18 @@ function collectStateToRestore(plan: ReconcilePlan, existing: ExistingSnapshot):
   }
 
   for (const item of existing.checklistItems) {
-    if (item.tickedAt === null) continue;
-    plan.ticksToRestore.push({
+    const carriesTrace =
+      item.tickedAt !== null || item.tickedBy !== null || item.tickedByName !== null;
+    if (!carriesTrace) continue;
+
+    plan.decisionsToRestore.push({
       planSourceUid: item.planSourceUid,
       kind: item.kind,
       label: item.label,
+      // The one place the invariant of `ChecklistDecisionRestore.decision` is
+      // established. Every other reader takes the field and asks nothing of the
+      // column.
+      decision: item.tickedAt !== null ? "ticked" : "unticked",
       tickedAt: item.tickedAt,
       tickedBy: item.tickedBy,
       tickedByName: item.tickedByName,

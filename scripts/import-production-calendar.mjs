@@ -1947,7 +1947,22 @@ const existing = {
 };
 
 const unkeyedRowsAdopted = planRead.unkeyed + pieceRead.unkeyed + commitmentRead.unkeyed;
+/*
+ * ⚠ TWO COUNTS, NOT ONE, AND THE SECOND ONE IS WHY THIS PLAN EXISTS.
+ *
+ * A checklist row carries a decision in either direction. Ticked: an actor and
+ * an instant. UN-ticked: an actor and NO instant, because clearing the instant
+ * is how an untick is written — `record_checklist_tick` says so in one statement
+ * and its migration says so in prose. So a single count of *items that carry a
+ * tick* reports zero over a calendar that holds a person's decision, and that is
+ * exactly what it did: measured 0 and 1 on 2026-08-24.
+ *
+ * Neither number names anybody. They are counts.
+ */
 const tickedItems = existing.checklistItems.filter((item) => item.tickedAt !== null).length;
+const untickedItems = existing.checklistItems.filter(
+  (item) => item.tickedAt === null && (item.tickedBy !== null || item.tickedByName !== null)
+).length;
 const linkedNights = planRows.filter((row) => row.linked_party_id !== null).length;
 
 say("");
@@ -1957,8 +1972,9 @@ say(
     `commitments ${commitmentRows.length} · checklist items ${checklistRows.length}`
 );
 say(
-  `     ${tickedItems} of those items carry a tick, and ${linkedNights} night(s) stand ` +
-    "behind an announced one."
+  `     ${tickedItems} of those items carry a tick and ${untickedItems} carry an UNTICK — ` +
+    `both are decisions with an author. ${linkedNights} night(s) stand behind an ` +
+    "announced one."
 );
 
 if (options.adoptUnkeyedRows) {
@@ -2126,9 +2142,18 @@ say(
 say("       partial export or the wrong file, and it is a finding, not a tidy-up.");
 
 say(
-  `     puts back    ${plan.ticksToRestore.length} tick(s) and ${plan.linksToRestore.length} ` +
-    "link(s), with their ORIGINAL actor and instant. A restore is not an act."
+  `     puts back    ${plan.decisionsToRestore.length} checklist decision(s) and ` +
+    `${plan.linksToRestore.length} link(s), with their ORIGINAL actor and instant. ` +
+    "A restore is not an act."
 );
+{
+  const backTicked = plan.decisionsToRestore.filter((row) => row.decision === "ticked").length;
+  say(
+    `       of those decisions, ${backTicked} are ticks and ` +
+      `${plan.decisionsToRestore.length - backTicked} are UNTICKS. An untick has an ` +
+      "author and no instant, and no feed can rebuild either one."
+  );
+}
 say(
   `     announced-night rows written: 0, and there is no path in this file that could.`
 );
@@ -2331,10 +2356,18 @@ if (printedIdentifiers > 0) {
  * trigger, in advance, while the count was still zero.
  *
  * ⚠ **The counts come from the plan and are not counted a second time here.**
- * `ticksToRestore` and `linksToRestore` ARE the two exceptions of state of
+ * `decisionsToRestore` and `linksToRestore` ARE the two exceptions of state of
  * `ICS-03` — collected by the module that owns the definition, before any
  * removal. Counting them again in this file would be a second spelling of one
  * fact, which is how two spellings start to differ.
+ *
+ * ⚠ **And the first of those two lists used to be narrower than this guard
+ * needed, which is the defect this run's shape now forbids.** It held the rows
+ * carrying an INSTANT, so a scope with one untick and no tick was counted `0`,
+ * this guard answered `ok`, and an unwatched run would have deleted a person's
+ * decision with no number in this report going down. One list, two readers: the
+ * writer puts back exactly what the guard counted, and a run that would not put
+ * something back is a run this guard refuses.
  *
  * ⚠ **A dry run does not refuse, it REPORTS.** Nothing is written on that path,
  * so there is nothing to protect; what a person needs there is to know what the
@@ -2362,7 +2395,7 @@ const supervision = ics.runSupervision({
 
 const unattendedVerdict = ics.unattendedMirrorGuard({
   supervision,
-  ticksAtRisk: plan.ticksToRestore.length,
+  decisionsAtRisk: plan.decisionsToRestore.length,
   linksAtRisk: plan.linksToRestore.length,
   restorePathVerified: ics.MIRROR_RESTORE_PATH_VERIFIED,
 });
@@ -2370,15 +2403,17 @@ const unattendedVerdict = ics.unattendedMirrorGuard({
 say("");
 say("  ── the second guard ──────────────────────────────────────────────────");
 say(
-  `     ${supervision} · at stake ${plan.ticksToRestore.length} + ${plan.linksToRestore.length} ` +
-    `· way back exercised: ${ics.MIRROR_RESTORE_PATH_VERIFIED ? "yes" : "NO"}`
+  `     ${supervision} · at stake ${plan.decisionsToRestore.length} decision(s) + ` +
+    `${plan.linksToRestore.length} link(s) · way back exercised: ` +
+    `${ics.MIRROR_RESTORE_PATH_VERIFIED ? "yes" : "NO"}`
 );
 
 if (unattendedVerdict !== "ok" && options.apply) {
   refuse(
     "unattended_state_at_risk",
     "nobody is watching this one, and what it would delete holds state no calendar " +
-      "can rebuild: the file does not say who ticked a box. There is no transaction " +
+      "can rebuild: the file does not say who ticked a box, nor who un-ticked one. " +
+      "There is no transaction " +
       "across the gap and no way back that has ever been exercised. Nothing was " +
       "removed. Two ways forward, and they are different decisions: run it where a " +
       "person can see it, or exercise the way back once and record that it worked."
@@ -2568,9 +2603,26 @@ const snapshot = writeSnapshotBeforeRemoving({
    * on 2026-08-22 with the obvious spelling, which carried the word its
    * categories are named after.
    */
-  shape: "mirror-state-1",
+  shape: ics.MIRROR_SNAPSHOT_SHAPE,
   calendarKey,
-  ticks: plan.ticksToRestore,
+  /**
+   * ⚠ **`decisions`, and it used to be `ticks` — the rename is why the shape
+   * marker moved for the first time.**
+   *
+   * The reader's field contract is untouched: an entry still carries the plan's
+   * `source_uid`, the item's `kind` and `label`, and the three trace columns. What
+   * changed is **which rows are in the list** — an untick travels now, with its
+   * author and a null instant — and that is a change of MEANING rather than of
+   * shape. A reader that took the old name to mean *the ticks* would be right
+   * about a `mirror-state-1` file and wrong about this one, so the two files say
+   * which they are.
+   *
+   * ⚠ **And the old marker stays readable.** `restore-mirror-snapshot.mjs`
+   * accepts both and reads whichever field is present: the snapshots already on
+   * disk are the way back for a run that died before today, and making them
+   * unreadable to buy a name would cost the one row nothing else can rebuild.
+   */
+  decisions: plan.decisionsToRestore,
   links: plan.linksToRestore,
   rows: {
     plans: planRows,
@@ -2960,8 +3012,11 @@ if (lineupRowsToWrite.length > 0) {
  * and their ORIGINAL actor, written straight to their columns with the service
  * client. They do **not** go through the tick-recording function, which
  * re-records who ticked on every call, by a decision that function's own
- * migration states — running a restore through it would attribute every tick in
- * the calendar to whoever launched this import.
+ * migration states — running a restore through it would attribute every decision
+ * in the calendar to whoever launched this import. And it could not express an
+ * untick's restore at all: that function takes a direction and writes `now()` or
+ * `NULL` accordingly, so it would put back the direction and lose the actor's
+ * identity in the same statement.
  *
  * ⚠ **Keyed on what survives.** A plan row's `id` is generated and did not
  * survive the removal, so both restores key on `source_uid`, and the ticks on
@@ -2990,38 +3045,46 @@ for (const link of plan.linksToRestore) {
   linksRestored += 1;
 }
 
-let ticksRestored = 0;
-let ticksUnplaced = 0;
-for (const tick of plan.ticksToRestore) {
-  const planId = planIdBySourceUid.get(tick.planSourceUid);
+let decisionsRestored = 0;
+let decisionsUnplaced = 0;
+let unticksRestored = 0;
+for (const decision of plan.decisionsToRestore) {
+  const planId = planIdBySourceUid.get(decision.planSourceUid);
   if (planId === undefined) {
-    ticksUnplaced += 1;
+    decisionsUnplaced += 1;
     continue;
   }
-  await step("restore_tick", () =>
+  await step("restore_decision", () =>
     db
       .from("production_checklist_item")
       .update({
         // The originals. Not now, and not whoever is running this.
-        ticked_at: tick.tickedAt,
-        ticked_by: tick.tickedBy,
-        ticked_by_name: tick.tickedByName,
+        //
+        // ⚠ `ticked_at` is NULL on an untick, and writing that null is the whole
+        // restore of that direction: the row comes out of the rewrite with all
+        // three columns empty, so putting the actor back without the null would
+        // be putting back half a trace. The two columns below carry the half the
+        // calendar cannot rebuild; this one carries which way the person decided.
+        ticked_at: decision.tickedAt,
+        ticked_by: decision.tickedBy,
+        ticked_by_name: decision.tickedByName,
       })
       .eq("plan_id", planId)
-      .eq("kind", tick.kind)
-      .eq("label", tick.label)
+      .eq("kind", decision.kind)
+      .eq("label", decision.label)
   );
-  ticksRestored += 1;
+  decisionsRestored += 1;
+  if (decision.decision === "unticked") unticksRestored += 1;
 }
 
 say(
-  `     put back: ${ticksRestored} tick(s) and ${linksRestored} link(s), with the original ` +
-    "actor and instant."
+  `     put back: ${decisionsRestored} checklist decision(s) — of which ${unticksRestored} ` +
+    `UNTICK(s) — and ${linksRestored} link(s), with the original actor and instant.`
 );
-if (ticksUnplaced > 0) {
+if (decisionsUnplaced > 0) {
   say(
-    `     ⚠ ${ticksUnplaced} tick(s) name a night this run did not write. They stay in the ` +
-      "snapshot and nowhere else. That is a finding."
+    `     ⚠ ${decisionsUnplaced} decision(s) name a night this run did not write. They stay ` +
+      "in the snapshot and nowhere else. That is a finding."
   );
 }
 

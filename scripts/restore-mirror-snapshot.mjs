@@ -190,7 +190,19 @@ const ICS_DIR = join(ROOT, "src", "lib", "production", "ics");
  * Misurato il 2026-08-22 con la grafia ovvia, che portava proprio la parola con
  * cui quelle categorie iniziano.
  */
-const FORMA_ATTESA = "mirror-state-1";
+/*
+ * ⚠ **Il valore non si scrive piu' qui.** Lo scrittore e questo lettore devono
+ * dire la stessa parola, e due copie di una parola sono due cose che divergono —
+ * su un file che porta l'unica copia della decisione di una persona. La parola
+ * vive in `src/lib/production/ics/reconcile.ts`, insieme al tipo che descrive
+ * cosa quella lista contiene, e si legge da `ics` piu' sotto.
+ *
+ * **Le forme lette sono PIU' DI UNA, e non e' permissivita'.** La forma corrente
+ * porta le decisioni in entrambe le direzioni; quella precedente portava le sole
+ * spunte, sotto un altro nome di campo. Le istantanee gia' su disco sono la via
+ * di ritorno delle corse morte prima del cambio: rifiutarle per avere un nome
+ * piu' pulito costerebbe proprio la riga che nient'altro sa ricostruire.
+ */
 
 /**
  * Quanto puo' distare l'istantanea dall'apertura della corsa che ha
@@ -490,7 +502,18 @@ if (istantanea === null || typeof istantanea !== "object" || Array.isArray(istan
   rifiuta("snapshot_incomplete", "il file non ha la forma di un'istantanea.");
 }
 
-if (istantanea.shape !== FORMA_ATTESA) {
+const FORME_LETTE = ics.MIRROR_SNAPSHOT_SHAPES_READABLE;
+
+if (!Array.isArray(FORME_LETTE) || FORME_LETTE.length === 0) {
+  rifiuta(
+    "reader_unavailable",
+    "il modulo condiviso non dichiara quali forme di istantanea si leggono. Senza " +
+      "quell'elenco questo lettore starebbe indovinando la forma di un file che porta " +
+      "il nome di una persona."
+  );
+}
+
+if (!FORME_LETTE.includes(istantanea.shape)) {
   rifiuta(
     "snapshot_shape_unknown",
     // ⚠ Nessuna data in questa frase, e non e' una svista: il controllo in coda
@@ -518,7 +541,34 @@ if (!Number.isFinite(presoIl)) {
   );
 }
 
-const spunte = Array.isArray(istantanea.ticks) ? istantanea.ticks : null;
+/*
+ * ⚠ **DUE NOMI DI CAMPO, UNA LISTA, E LA DIREZIONE SI DERIVA QUI UNA VOLTA SOLA.**
+ *
+ * La forma corrente scrive `decisions` e porta entrambe le direzioni; la
+ * precedente scriveva `ticks` e portava le sole spunte. Le voci hanno gli stessi
+ * campi in tutte e due, quindi la conversione e' il nome della lista e nient'altro.
+ *
+ * La direzione **non si legge dal file**: si deriva dall'istante, che e' il dato
+ * che la porta. Un annullamento e' una voce con l'attore pieno e `ticked_at`
+ * nullo — non un dato mancante, ma la forma che quella direzione ha, perche'
+ * azzerare l'istante e' il modo in cui un annullamento viene scritto. Derivarla
+ * qui invece di fidarsi di un campo scritto altrove e' cio' che rende leggibili
+ * le due forme con un ramo solo.
+ */
+const listaDecisioni = Array.isArray(istantanea.decisions)
+  ? istantanea.decisions
+  : Array.isArray(istantanea.ticks)
+    ? istantanea.ticks
+    : null;
+
+const spunte =
+  listaDecisioni === null
+    ? null
+    : listaDecisioni.map((voce) => ({
+        ...voce,
+        direzione: voce?.tickedAt === null || voce?.tickedAt === undefined ? "annullata" : "spuntata",
+      }));
+
 const legami = Array.isArray(istantanea.links) ? istantanea.links : null;
 
 if (spunte === null || legami === null) {
@@ -543,7 +593,13 @@ if (istantanea.calendarKey !== chiaveDichiarata) {
 }
 
 di("  ── l'istantanea ──────────────────────────────────────────────────────");
+const annullamentiNellIstantanea = spunte.filter((v) => v.direzione === "annullata").length;
 di(`     porta ${spunte.length} + ${legami.length} da rimettere, e il proprio istante.`);
+di(
+  `     delle prime, ${annullamentiNellIstantanea} sono ANNULLAMENTI: attore pieno e nessun ` +
+    "istante. Il calendario non sa chi ha tolto una casella piu' di quanto sappia"
+);
+di("       chi ne ha messa una.");
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Passo 5 — le credenziali, e il file d'ambiente si legge QUI
@@ -799,6 +855,7 @@ for (const legame of legami) {
 }
 
 let spunteRimesse = 0;
+let annullamentiRimessi = 0;
 let spunteGiaAPosto = 0;
 let spunteSenzaVoce = 0;
 
@@ -811,7 +868,10 @@ for (const spunta of spunte) {
   // chiave unica della voce con la meta' generata scambiata con quella stabile.
   const voce = await db
     .from("production_checklist_item")
-    .select("id, ticked_at")
+    // `ticked_by` si legge insieme all'istante perche' e' l'unica cosa che
+    // distingue *nessuno ha mai deciso qui* da *qualcuno ha tolto la casella*:
+    // un annullamento non ha un istante, quindi l'istante da solo non risponde.
+    .select("id, ticked_at, ticked_by")
     .eq("plan_id", riga.id)
     .eq("kind", spunta.kind)
     .eq("label", spunta.label)
@@ -837,6 +897,19 @@ for (const spunta of spunte) {
     continue;
   }
 
+  if (spunta.direzione === "annullata" && voce.data[0].ticked_by !== null) {
+    // ⚠ **Un annullamento non scavalca MAI una traccia gia' presente**, e la
+    // ragione e' che non puo' sapere di essere il piu' recente: un annullamento
+    // non porta un istante, quindi due annullamenti sulla stessa casella sono
+    // indistinguibili per ordine. Se la riga porta gia' un attore con l'istante
+    // nullo, o e' questo stesso — e riscriverlo non aggiunge niente — o e' uno
+    // posteriore allo schianto, e riscriverlo cancellerebbe chi ha deciso dopo.
+    // Fra i due esiti possibili di un dubbio, questo file sceglie sempre di non
+    // toccare.
+    spunteGiaAPosto += 1;
+    continue;
+  }
+
   await passo("restore_tick", () =>
     db
       .from("production_checklist_item")
@@ -850,11 +923,15 @@ for (const spunta of spunte) {
       .eq("id", voce.data[0].id)
   );
   spunteRimesse += 1;
+  if (spunta.direzione === "annullata") annullamentiRimessi += 1;
 }
 
 di("");
 di("  ── rimesso ───────────────────────────────────────────────────────────");
-di(`     ${spunteRimesse} + ${legamiRimessi}, con l'attore e l'istante ORIGINALI.`);
+di(
+  `     ${spunteRimesse} + ${legamiRimessi}, con l'attore e l'istante ORIGINALI — e ` +
+    `${annullamentiRimessi} delle prime sono ANNULLAMENTI.`
+);
 di(
   `     gia' a posto e non toccati: ${spunteGiaAPosto} + ${legamiGiaAPosto} · in conflitto e ` +
     `non toccati: ${legamiInConflitto} · senza voce davanti: ${spunteSenzaVoce}`
