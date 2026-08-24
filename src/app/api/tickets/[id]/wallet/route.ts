@@ -29,10 +29,17 @@ export async function GET(
   }
 
   // Fetch ticket with joins
+  // La select NON chiede alcuna colonna del luogo, e l'assenza e' la decisione:
+  // il pass non porta mai l'indirizzo (proprietario, 2026-08-24), quindi qui non
+  // si legge cio' che non si serializza. Un campo che nessuno usa ma che la
+  // query continua a chiedere e' un invito a rimetterlo sul pass — che e' un
+  // file che il prodotto non puo' piu' raggiungere. Vedi il docblock di
+  // `src/lib/apple-wallet.ts` e il controllo F di
+  // `scripts/verify-venue-surfaces.mjs`, che misura questa lista di colonne.
   const { data: ticket } = await supabase
     .from("tickets")
     .select(
-      "id, party_id, event_id, ticket_tiers(name), events(title, date, slug), event_parties(title, date, time, end_time, venue_text)"
+      "id, party_id, event_id, ticket_tiers(name), events(title, date, slug), event_parties(title, date, time, end_time)"
     )
     .eq("id", ticketId)
     .eq("user_id", user.id)
@@ -53,7 +60,6 @@ export async function GET(
     date: string;
     time: string;
     end_time: string | null;
-    venue_text: string | null;
   } | null;
 
   const qrValue = generateTicketToken(ticket.id);
@@ -67,7 +73,6 @@ export async function GET(
       date: party?.date ?? event.date,
       time: party?.time ?? "",
       endTime: party?.end_time ?? null,
-      venue: party?.venue_text ?? null,
       qrValue,
       eventSlug: event.slug,
     });
