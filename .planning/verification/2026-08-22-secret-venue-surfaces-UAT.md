@@ -6,8 +6,14 @@ surfaces:
   - src/app/(public)/events/[slug]/page.tsx
   - src/app/(public)/tickets/[id]/page.tsx
   - src/app/(public)/events/page.tsx
+  - src/lib/apple-wallet.ts
+  - src/app/api/tickets/[id]/wallet/route.ts
 predicate: src/lib/venue-reveal/venue-disclosure.ts
 mechanical-gate: npm run verify:venue-surfaces
+appendices:
+  - date: 2026-08-24
+    decision: il pass Wallet non porta mai l'indirizzo
+    cells: W1-W5
 ---
 
 # Il venue segreto sulle superfici pubbliche — procedura manuale
@@ -36,6 +42,13 @@ mechanical-gate: npm run verify:venue-surfaces
 > **Questo file e' pubblico** (`.planning/` e' tracciato). Nessun indirizzo,
 > nessun nome di sede, nessuna data di serata compare sotto: dove serve un
 > esempio si usa un segnaposto.
+>
+> **Dal 2026-08-24 questo documento copre QUATTRO superfici, non tre.** In coda
+> c'e' l'**appendice del pass Wallet** — celle **W1-W5** — aggiunta quando il
+> proprietario ha deciso che *il pass non porta mai l'indirizzo*. Non e' una
+> quarta riga della tabella qui sotto, ed e' importante che non lo sia: le tre
+> superfici hanno un **prima** e un **dopo** la rivelazione, il pass **non ne ha
+> nessuno dei due**. Le sue celle si leggono con un criterio diverso, scritto la'.
 
 ## Cosa si sta verificando
 
@@ -205,3 +218,117 @@ celle 7-9, **con quale strumento** si e' guardato il sorgente. Una cella del
 sorgente letta da Elements e' una cella non eseguita, e la nota e' l'unico modo
 per accorgersene dopo. **Una procedura eseguita e non registrata non e'
 distinguibile da una non eseguita.**
+
+---
+
+# Appendice — il pass Apple Wallet (2026-08-24)
+
+> **La decisione.** Proprietario, 2026-08-24: *«il pass non porta mai
+> l'indirizzo»*. **Mai** — non «dopo la rivelazione».
+>
+> **La ragione, ed e' la stessa cosa che rende diverse queste celle.** Un pass
+> **esce dal prodotto**: e' firmato, scaricato, aggiunto a un dispositivo e da li'
+> sincronizzato sugli altri dispositivi di chi lo possiede. **Non esiste un
+> percorso di revoca** — nessun cron, nessuna migration e nessuna riga scritta
+> dopo puo' disfare un campo gia' scritto su un file che sta su un telefono
+> (`41.2-08-FINDINGS.md` §1.1). Un pass **non si aggiorna a ritroso**: quindi un
+> termine di segretezza qui proteggerebbe l'istante dell'emissione e nient'altro.
+>
+> **Era la quarta superficie**, e non era coperta dalla regola del 2026-08-22:
+> stesso titolare, altro medium. La rotta riselezionava la colonna del luogo per
+> conto suo, e la sua interrogazione **non portava affatto la spunta di
+> segretezza** — sguarnita per costruzione, non per dimenticanza.
+
+## Il criterio con cui si leggono queste cinque celle — e si ROVESCIA
+
+Nel resto del documento una serata **non segreta** che mostra l'indirizzo e' la
+cella di controllo: se e' rossa, *la riparazione e' troppo stretta*.
+
+**Qui e' l'opposto, ed e' il punto piu' facile da sbagliare di tutta questa
+appendice.** Il pass non porta il luogo **su nessuna serata**, segreta o no. Una
+serata non segreta il cui pass mostrasse la sede sarebbe **rossa**, non verde. La
+regola non ha un termine da valutare, quindi non ha un caso in cui si allenta.
+
+## Lo strumento, e uno dei due e' quello sbagliato
+
+- **Sbagliato: aprire il pass nell'app Wallet e guardarlo.** L'app dipinge i
+  campi che decide di dipingere. Le **due strade che non sono testo** — le
+  coordinate che accendono il pass sulla schermata di blocco, e il dizionario
+  semantico che legge il sistema operativo — **non hanno alcun pixel**. E' la
+  cella 1 con un altro nome, ed e' la stessa lezione delle celle 7-9 qui sopra:
+  il pannello Elements mostra cio' che e' stato dipinto, non cio' che e' stato
+  spedito. **Una cella qui sotto guardata dall'app Wallet non e' stata eseguita.**
+
+- **Giusto: aprire il file.** Un `.pkpass` e' un archivio zip, e il suo contenuto
+  dichiarato sta in `pass.json`. Si legge senza installare nulla:
+
+  ```bash
+  D=$(mktemp -d)                                  # FUORI dal repo, che e' pubblico
+  curl -s -b "<cookie-di-sessione>" \
+       "<indirizzo>/api/tickets/<id-del-biglietto>/wallet" -o "$D/p.pkpass"
+
+  unzip -p "$D/p.pkpass" pass.json | python3 -m json.tool   # cosa c'e' davvero
+
+  # le tre risposte attese, tutte 0:
+  unzip -p "$D/p.pkpass" pass.json | grep -c 'PROVA-VIA-SEGNAPOSTO'
+  unzip -p "$D/p.pkpass" pass.json | grep -cE '"locations"|"beacons"|"semantics"'
+  unzip -p "$D/p.pkpass" pass.json | grep -ci 'venue'
+
+  rm -rf "$D"                                     # il pass di prova non si conserva
+  ```
+
+  Il file di prova si scarica in una directory temporanea **fuori dal
+  repository** e si cancella: un `.pkpass` e' materiale di produzione, e questo
+  repo e' pubblico.
+
+## Il caso in cui queste celle RIFIUTANO invece di essere verdi
+
+Il pass si genera solo se i certificati Apple sono configurati; altrimenti la
+rotta risponde **503** e non produce alcun file. Un 503 **non e' una cella
+verde**: e' un rifiuto, e va registrato come tale. Una cella che non ha prodotto
+un pass non ha misurato che il pass non porta il luogo — non ha misurato niente.
+
+## Le cinque celle
+
+Preparazione: la stessa serata di prova del corpo del documento — `venue_secret =
+true`, `venue_text` valorizzato con `PROVA-VIA-SEGNAPOSTO`, una `venues`
+collegata con nome e indirizzo segnaposto, un biglietto pagato intestato
+all'account di prova. **Nessuna scrittura in produzione**, e le righe si rimuovono
+**per chiave primaria** sulla lista catturata alla creazione.
+
+| # | Ruolo | Azione | Esito osservabile |
+|---|---|---|---|
+| **W1** | **titolare del biglietto**, serata **segreta**, **prima** della rivelazione | scarica il pass e apre `pass.json` | **zero** occorrenze di `PROVA-VIA-SEGNAPOSTO`, **zero** della parola che nomina la sede in qualunque chiave, **nessuna** chiave `locations`, `beacons` o `semantics`. Ci sono e si vedono: il **codice a barre**, la **data**, l'**orario**, il **nome della serata** e il **tier** |
+| **W2** | **titolare del biglietto**, stessa serata, **dopo** la rivelazione | rigenera il pass e riapre `pass.json` | **identico a W1.** E' **la cella che dimostra il «mai»**: sulle altre superfici la rivelazione cambia la risposta, qui non la cambia. Ripetere con **entrambe le leve** del tempo — la serata portata dentro la finestra, e `venue_revealed_at` valorizzato — perche' se se ne prova una sola se ne e' provata una sola |
+| **W3** | **titolare del biglietto**, serata **NON segreta** (`venue_secret = false`) | scarica il pass e apre `pass.json` | **ancora nessun luogo.** E' la cella rovesciata: qui una sede che comparisse sarebbe **rossa**. Confrontare con la cella 6 del corpo, dove sulla **pagina del biglietto** lo stesso titolare la vede — e' lo stesso lettore, lo stesso biglietto, e due medium con due regole, perche' uno dei due si puo' correggere domani e l'altro no |
+| **W4** | **titolare del biglietto**, serata segreta, **senza `party_id`** (pass di evento) | scarica il pass e apre `pass.json` | come W1. E' il ramo che il codice tratta a parte (`"Event Pass"`), e una riparazione che coprisse solo il ramo con la festa lascerebbe questo aperto |
+| **W5** | **titolare del biglietto**, qualunque serata, **certificati non configurati** | chiede il pass | **503**, nessun file. **Cella RIFIUTATA, non verde** — e va scritto «rifiutata», perche' un rifiuto registrato come verde e' il modo in cui questa appendice smette di misurare senza che nessuno se ne accorga |
+
+## Cosa questa appendice NON copre, e non finge di coprire
+
+1. **I pass gia' emessi.** Un pass scaricato **prima** del 2026-08-24 porta il
+   campo di allora, sul telefono di chi ce l'ha, **per sempre**. Non esiste una
+   cella che lo verifichi perche' non esiste un'azione che lo cambi: e' la
+   ragione per cui la regola e' «mai» e non «da adesso in poi», e va **detto**,
+   non lasciato dedurre.
+
+2. **Il testo libero dei titoli.** Il pass stampa il **nome della serata** e
+   quello della **festa**, ed entrambi sono testo che una persona ha scritto in
+   un form. Se qualcuno ci scrive dentro un posto, quel posto finisce sul pass
+   e viaggia sulla stessa strada irreversibile — e **nessun predicato di questo
+   repository puo' vederlo**. `npm run verify:venue-surfaces` lo stampa a ogni
+   giro, nel controllo D. Non e' un difetto da riparare nel codice: e' un fatto
+   da sapere quando si da' un nome a una serata il cui posto deve restare segreto.
+
+3. **La sostanza del biglietto.** Questa modifica cambia **cosa il pass mostra**,
+   non **cosa vale**. Il QR, la firma, la verifica alla porta e la coda offline
+   non sono toccati, e la validita' si controlla **allo scan** — mai presunta
+   dall'esistenza di un pass (`ticketing-payments.md`, *gate pass Wallet*).
+
+## Registrazione
+
+Con la data: chi ha eseguito, **con quale strumento** ha guardato il pass — e una
+cella guardata dall'app Wallet e' una cella non eseguita — quale leva del tempo
+per ogni giro di W2, e l'esito di ognuna delle cinque celle, **compreso il
+rifiuto**, se i certificati non erano configurati. **Una procedura eseguita e non
+registrata non e' distinguibile da una non eseguita.**
