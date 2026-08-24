@@ -3,6 +3,45 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.19.0] - 2026-08-24
+
+### Changed — il tetto del context budget passa da 12.000 a 15.000 token
+
+**Decisione del proprietario**, presa il 2026-08-24 con il costo enunciato
+prima della scelta. Non e' una via ordinaria e **non si eredita**: una seconda
+volta va chiesta di nuovo.
+
+**Perche' la decisione e' stata posta.** Il caso peggiore misurato — cinque file
+caricati su `src/app/**` di biglietteria (`CLAUDE.md`, `meta-gates`,
+`nextjs-architecture`, `ticketing-payments`, `venue-secrecy`) — era arrivato a
+**11.933 token su 12.000: margine 67**. Due lavori di questa giornata avevano
+gia' potato la prosa per rientrare, e la regola successiva non ci sarebbe stata.
+
+**Perche' 15.000 e non un numero tondo qualsiasi.** Il tetto originale era
+derivato, non scelto: ~1,5x il caso peggiore di allora, e la proprieta' che
+comprava era **un modulo ordinario di margine**. I cinque file del caso peggiore
+pesano oggi in media ~2.400 token l'uno, quindi 15.000 restituisce poco piu' di
+un modulo ordinario — **la stessa distanza del 2026-08-04, non una di piu'**.
+
+**Il docblock e' stato riscritto, non lasciato.** Diceva testualmente *«non
+alzare questo numero»*: una riga che vieta cio' che il codice fa e' peggio di
+nessuna riga, ed e' il difetto che questa stessa persona vieta altrove. Ora
+porta chi ha deciso, quando, il costo dichiarato, e la derivazione del nuovo
+valore.
+
+**Cosa NON e' cambiato.** La correzione di prima scelta resta restringere i
+`paths:` o accorciare la prosa, e la priorita' resta quella di
+`ai-engineering.md`: se il budget stringe **si taglia la descrizione, non la
+regola**.
+
+**Scenario di carico e scatto.** File reale nello scope: qualunque superficie di
+biglietteria sotto `src/app/**/tickets/**`. Moduli attesi: i cinque sopra.
+Il controllo **E** misura il caso peggiore su tutti i file e fallisce se supera
+il tetto; provato per mutazione portando il tetto a 11.000, che lo fa scattare
+sul caso misurato, poi ripristinato.
+
+**Verifica:** `npm run verify:persona` 7/7, caso peggiore 11.933 su 15.000.
+
 ## [1.18.0] - 2026-08-24
 
 ### Changed — `ticketing-payments.md`: il pass Wallet ha una regola sul CONTENUTO, non solo sulla validita'
