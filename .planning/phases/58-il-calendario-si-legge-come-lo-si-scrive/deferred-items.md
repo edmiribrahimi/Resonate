@@ -1164,7 +1164,7 @@ residuo che adesso contiene anche le note.
 
 ---
 
-## 21. Lo specchio riaggancia le spunte e **non** gli annullamenti: meta' della traccia d'autore non e' un'eccezione di stato
+## 21. Lo specchio riaggancia le spunte e **non** gli annullamenti: meta' della traccia d'autore non e' un'eccezione di stato — **CHIUSA il 2026-08-24**
 
 - **Trovata:** piano 58-11, esecuzione di `P-58-A` e `P-58-B`, 2026-08-22,
   eseguendo il passo 20 dopo averne dichiarato il rischio al passo 10
@@ -1210,6 +1210,171 @@ residuo che adesso contiene anche le note.
   una sola — oppure il prodotto smette di dichiarare l'annullamento un atto, e
   la frase della migration si corregge. **Una delle due, non nessuna:** oggi il
   repo afferma una cosa e ne fa un'altra.
+
+### ⇢ CHIUSA il 2026-08-24, riparazione 58-16 — strada scelta: la prima
+
+**Il riconciliatore raccoglie anche le voci con un attore e nessun istante, e la
+guardia le conta.** E' la prima delle due strade che questa voce nominava: il
+prodotto continua a dichiarare l'annullamento un atto, e adesso lo specchio lo
+tratta come tale invece di smentirlo in silenzio.
+
+#### 1. La misura d'apertura, presa PRIMA di riparare
+
+Dal catalogo con `read_only: true`, sull'intera tabella e per chiave di
+calendario:
+
+| forma della riga | quante |
+|---|---|
+| con istante (una spunta) | **0** |
+| **con attore e senza istante (un annullamento)** | **1** |
+| con il solo nome e nient'altro | 0 |
+| nessuna traccia — nessuno l'ha mai toccata | 84 |
+| **totale voci di checklist** | **85** |
+
+L'unica traccia viva sta sotto la chiave `rsnt`, cioe' **dentro** lo scopo che
+uno specchio di quella chiave cancella. Legami: **0**. E la funzione di spunta,
+riletta dal catalogo e non dal file, conferma le due meta' del contratto: una
+sola istruzione per entrambe le direzioni, e l'attore ri-registrato in tutte e
+due.
+
+Zero righe portano un istante senza attore, il che dice quale delle due colonne
+e' la discriminante: **l'attore**, mai l'istante.
+
+#### 2. Il difetto riprodotto e rimisurato sulla sorgente vera
+
+Stessa corsa a vuoto, stessa chiave, una sola differenza — il raccoglitore
+riportato alla forma che aveva prima, **asserito mutato sul disco** e ripristinato
+dai byte salvati:
+
+| | referto |
+|---|---|
+| **con il raccoglitore di prima** | `puts back 0` · `at stake 0 decision(s) + 0 link(s)` · `✓ admitted — nothing at stake that a second pass could not put back` |
+| **dopo la riparazione** | `puts back 1 — 0 ticks, 1 UNTICK` · `at stake 1 decision(s) + 0 link(s)` · `⚠ an unwatched run would REFUSE here` |
+
+La riga di sinistra e' cio' che il cron del piano 58-12 avrebbe incontrato la
+prima notte: **ammesso, su una traccia che sarebbe sparita.**
+
+#### 3. Cosa e' cambiato, e perche' in quella forma
+
+- **L'assenza di istante e' diventata una FORMA.** `ChecklistDecisionRestore`
+  porta `decision: "ticked" | "unticked"`, e l'invariante *«annullata se e solo
+  se l'istante e' nullo»* si stabilisce in **un punto solo** — il raccoglitore.
+  Tre lettori avevano interrogato una colonna su una domanda a cui non risponde;
+  adesso chiedono la direzione a un campo che la porta.
+- **La condizione guarda l'attore.** Cio' che significa *nessuno ha mai deciso
+  qui* e' l'assenza di un attore, non l'assenza di un istante. La condizione
+  copre tutte e tre le colonne di traccia e sbaglia verso il raccogliere:
+  raccogliere di piu' costa una scrittura che rimette cio' che c'era gia',
+  raccogliere di meno costa una riga che nulla ricostruisce.
+- **La guardia conta cio' che si perderebbe.** `ticksAtRisk` e' diventato
+  `decisionsAtRisk`, e riceve la **lunghezza della stessa lista** che lo
+  scrittore rimette. Non sono due predicati: sono due letture di **una fonte**,
+  ed e' la proprieta' che tiene insieme la regola *«una corsa che non
+  rimetterebbe qualcosa dev'essere una corsa che la guardia rifiuta»*.
+- **Il referto separa le due direzioni** in ogni punto in cui prima ne nominava
+  una sola. Un conteggio che diceva *«N of those items carry a tick»* diceva zero
+  su un calendario che tiene la decisione di una persona.
+
+#### 4. Il gate, e cosa la mutazione ha provato
+
+`verify-mirror-guards.mjs` guadagna la famiglia **3-bis**, `U12`-`U16`, che e' la
+meta' che i casi `U5`-`U11` non potevano coprire: quelli misurano un predicato che
+riceve due numeri, e **sono stati verdi per tutto il tempo in cui il conteggio era
+cieco**. I nuovi chiamano il riconciliatore su righe costruite nel file e passano
+alla guardia `plan.decisionsToRestore.length`, mai un numero scritto a mano.
+
+Quattro mutazioni, ognuna **asserita applicata sul disco prima di leggerne
+l'esito** e ripristinata **dai byte salvati** con lo sha riconfrontato — mai
+`git checkout`:
+
+| mutazione | esito |
+|---|---|
+| il raccoglitore torna a guardare il solo istante | rossi `U12`, `U15` |
+| il raccoglitore raccoglie tutto | rossi `U14`, `U16` |
+| la direzione e' sempre «spuntata» | rosso `U12` |
+| la guardia guarda solo i legami | rossi `U5`, `U10`, `U11`, `U15` |
+
+La prima e' esattamente il codice di prima: **il gate lo prende**.
+
+#### 5. L'istantanea cambia forma, e le vecchie restano leggibili
+
+Il campo si chiama `decisions` e il marcatore e' passato a `mirror-state-2`,
+**per la prima volta**. I campi di una voce sono gli stessi; a cambiare e' *quali
+righe* ci sono dentro, che e' un cambio di **significato** — e un lettore che
+indovinasse avrebbe ragione su un file e torto sull'altro.
+
+Il rientro accetta **entrambi** i marcatori e deriva la direzione dall'istante,
+con un ramo solo. Le istantanee gia' su disco sono la via di ritorno delle corse
+morte prima del cambio: renderle illeggibili per avere un nome piu' pulito
+costerebbe proprio la riga che nient'altro sa ricostruire.
+
+E il rientro guadagna una regola che prima non gli serviva: **un annullamento non
+scavalca mai una traccia gia' presente.** Senza istante, due annullamenti sulla
+stessa casella sono indistinguibili per ordine, quindi se la riga porta gia' un
+attore o e' quello stesso — e riscriverlo non aggiunge niente — o e' posteriore
+allo schianto, e riscriverlo cancellerebbe chi ha deciso dopo.
+
+#### 6. Cosa questo sblocca, e cosa no
+
+- **Sblocca il piano 58-12.** Il cron e' la corsa non presidiata per
+  definizione, e fino a oggi la guardia che dovrebbe fermarlo rispondeva `ok` sul
+  caso vivo. Adesso rifiuta.
+- **Non sblocca `R15`.** `MIRROR_RESTORE_PATH_VERIFIED` resta `false`: nessuno ha
+  ancora visto il rientro rimettere davvero una riga. La voce **3** non cambia
+  stato, e la voce **20** — l'evidenza di presidio che si procura allocando un
+  terminale — resta aperta per la stessa ragione che lei stessa dichiara.
+- **Non tocca la voce 13, punto 1.** Cancellare e riscrivere `rsnt` con una
+  traccia viva resta un'autorizzazione del proprietario.
+
+**Verifiche:** `npm run build` verde. `npm run verify` — 23 controlli passati, un
+solo rosso ed e' quello della **voce 12**, che precede questa riparazione e sta in
+un file che non e' stato toccato. `npm run verify:ics` verde. `npm run
+verify:mirror-guards` verde, con i cinque casi nuovi.
+
+**Questa voce e' chiusa.** Cio' che ha prodotto e che non era suo sta nella
+**voce 22**.
+
+---
+
+## 22. Una ri-emissione di `COMMENT ON FUNCTION` aveva cancellato due frasi che non stava correggendo
+
+- **Trovata:** riparazione 58-16, 2026-08-24, leggendo `obj_description` dal
+  catalogo con `read_only: true` per verificare se la frase che la voce 21 cita
+  fosse davvero quella spedita
+- **Il fatto, in due numeri.** Il commento **in catalogo** e' lungo **968**
+  caratteri e **non contiene** *«who last decided, in both directions»*. Quello
+  nel file di `20260815120100` e' lungo **1129** e la contiene. La voce 21 aveva
+  citato il secondo credendolo il primo, e nessuno se n'era accorto.
+- **La causa, letta dai file e non dedotta.** `20260815120200` — la migration che
+  chiude la funzione con un `REVOKE` — ha **ri-emesso l'intera stringa** per
+  spiegare il proprio intervento, e ri-emettendola ha lasciato cadere **due frasi
+  che non stava correggendo**: quella sulla reversibilita' e quella su
+  `production.read`. `COMMENT ON FUNCTION` **imposta** un valore, non ne aggiunge
+  uno: una ri-emissione che omette una clausola la cancella.
+- **Perche' conta piu' di un commento.** Il commento in catalogo e' cio' che
+  legge chi ispeziona il database senza avere il repo davanti — ed e' la forma in
+  cui questo progetto scrive i propri contratti. Un contratto che sparisce da
+  dove lo si va a cercare e' peggio di uno sbagliato: non c'e' niente da smentire.
+- **Perche' e' una classe e non un caso.** Nessun controllo di questo repo
+  confronta un `COMMENT` in catalogo con quello che l'ha scritto. La stessa forma
+  di perdita puo' essere gia' avvenuta su qualunque altra funzione ri-commentata
+  in avanti, e nessuno lo saprebbe.
+- **Cosa e' stato fatto:** `supabase/migrations/20260824120000_checklist_tick_reversible_comment.sql`,
+  in avanti e senza toccare i due file applicati, rimette la frase e le aggiunge
+  il **secondo custode** — lo specchio, che cancella la riga e la riscrive, e che
+  fino alla riparazione 58-16 non la onorava.
+- **⚠ Non applicata.** Il file e' scritto e dichiara di esserlo: applicarlo e' un
+  atto su produzione, e la riparazione 58-16 era autorizzata a leggere il
+  catalogo e a cambiare codice. Non scrive nessuna riga, nessuna policy e nessun
+  grant — una descrizione, idempotente, su una funzione — ma **finche' nessuno la
+  applica, il catalogo resta come misurato sopra.**
+- **Come si chiude, e sono due cose:** **(1)** qualcuno applica quella migration,
+  e rilegge `obj_description` per confermarlo — con lo strumento della lettura,
+  che e' diverso da quello che ha prodotto l'effetto; **(2)** la frase *«nessun
+  controllo confronta un commento con il file che l'ha scritto»* diventa falsa,
+  oppure resta vera e scritta. La seconda **non e' di questa fase** e non si
+  improvvisa: e' un gate nuovo, e un gate che nasce per un caso e' un gate che
+  misura un caso.
 
 ---
 
