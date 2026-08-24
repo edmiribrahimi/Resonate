@@ -1,0 +1,78 @@
+-- The tick function gets back the sentence that says an UNTICK is an act
+-- Phase 58, repair of deferred item 21: ICS-03
+--
+-- WHY THIS FILE EXISTS, in one sentence. `record_checklist_tick` re-records the
+-- author in BOTH directions — `p_ticked = false` clears `ticked_at` and writes
+-- `ticked_by` in the same statement — and **the catalogue no longer says so**.
+--
+-- ── THE MEASUREMENT, TAKEN BEFORE THIS FILE WAS WRITTEN ─────────────────────
+--
+-- Read from `obj_description(p.oid, 'pg_proc')` with `read_only: true`:
+--
+--   * the deployed comment is 968 characters and does **not** contain the words
+--     *who last decided, in both directions*;
+--   * the comment in `20260815120100_production_calendar_access.sql` is 1129
+--     characters and does.
+--
+-- The two diverged at `20260815120200_production_checklist_tick_revoke.sql`,
+-- which re-issued the whole string to explain the REVOKE and, in re-issuing it,
+-- **dropped two sentences it was not correcting** — the reversibility one and
+-- the one about `production.read`. `COMMENT ON FUNCTION` sets a value, it does
+-- not append one, so a re-issue that omits a clause deletes it. Nothing reported
+-- that, because nothing compares a comment against the file that wrote it.
+--
+-- ── WHY IT IS WORTH A MIGRATION AND NOT A NOTE ──────────────────────────────
+--
+-- That sentence is a **contract with a second keeper**. The function honours it
+-- on its own; the MIRROR has to honour it too, because it deletes the row and
+-- writes it back. It did not: `src/lib/production/ics/reconcile.ts` collected the
+-- checklist rows carrying an INSTANT, and an untick has none — full actor, null
+-- instant, by construction. Measured across a real `--apply` on 2026-08-22, the
+-- rows carrying an author went from 1 to 0; measured again from the catalogue on
+-- 2026-08-24, the shape was 0 ticked and 1 un-ticked, inside a scope a mirror
+-- deletes.
+--
+-- Worse, the guard of the unattended run read the same list. With an untick at
+-- risk and no tick, it counted `0` and answered `ok`: a cron would have taken a
+-- person's decision away **with no number in the report going down**.
+--
+-- The reconciler and the guard are repaired — the list now collects a DECISION in
+-- either direction, and `scripts/verify-mirror-guards.mjs` measures the case
+-- `U12`-`U16`, proved by mutation. This file makes the catalogue say again what
+-- the code now does in two places instead of one.
+--
+-- ── ⚠ WHY A NEW FILE AND NOT AN EDIT ────────────────────────────────────────
+--
+-- `supabase-data.md`, gate *migration in avanti*, and `20260815120200` states the
+-- same discipline in its own words: *rewriting a file that has been applied makes
+-- the history a description of something that never ran*. Both files this one
+-- corrects are applied. Neither is touched.
+--
+-- ── ⚠ WHY THERE IS NO `CREATE OR REPLACE` AND NO TRANSACTION BLOCK ──────────
+--
+-- `COMMENT ON FUNCTION` is idempotent by construction and there is one statement,
+-- so there is no half-applied state for a `BEGIN; … COMMIT;` to protect. The
+-- function's body is NOT restated: re-declaring a `SECURITY DEFINER` body to
+-- change a description would put a second copy of it in the tree, and the day the
+-- two copies differ the tree carries two answers to *what does this write?*.
+--
+-- The signature is quoted exactly, because `COMMENT ON FUNCTION` resolves by
+-- signature.
+--
+-- ── ⚠ THIS FILE IS WRITTEN AND NOT APPLIED, AND THAT IS DECLARED ────────────
+--
+-- Applying it is an act on production, and the repair that produced it was
+-- authorised to read the catalogue and to change code — not to write to it. It
+-- writes no row, no policy and no grant: one description, idempotent, on one
+-- function. Until somebody applies it, the deployed comment stays as measured
+-- above, and deferred item 22 carries that gap with the measurement beside it.
+--
+-- NO MATERIAL: this file carries no venue, no date of a night and no line-up. It
+-- names one function and one contract.
+
+COMMENT ON FUNCTION public.record_checklist_tick(uuid, boolean, uuid, text) IS
+  'PROD-01: records a checklist tick together with who made it and when, in one transaction, so the trace cannot fail while the tick succeeds — a divergence nothing in this product would report, since there is no error tracking. '
+  'THE TICK IS REVERSIBLE, AND THE UNTICK IS AN ACT: p_ticked = false clears ticked_at and re-records the author in the SAME statement, so the trace answers who last decided, in both directions. An un-ticked row is therefore an actor with a NULL instant — that null is the shape of the decision, not a missing value, and code that reads ticked_at alone reads half the trace. Anything that deletes and rewrites these rows must carry both directions back: the mirror lost one until it was repaired (src/lib/production/ics/reconcile.ts, cases U12-U16 of verify-mirror-guards). It is NOT a monotone guard and borrows nothing from venue_reveal_sent, a completed payment or a series progressivo. '
+  'The actor is an ARGUMENT because auth.uid() is null under the service client. That is precisely why execute is revoked from public, anon and authenticated and granted to service_role alone: a caller that could reach this function could choose the author of a tick, and a trace whose author is chosen by the caller is a claim, not a trace. '
+  'The entitlement check lives in the calling Server Action, not here: has_capability answers about auth.uid(), which is null on every path that reaches this function, so a check here would refuse every legitimate tick. '
+  'Refusals are RETURNED VALUES and not exceptions: on a constraint violation PostgREST returns the entire failing row in error.details, and a row of production_plan carries the venue word.';
