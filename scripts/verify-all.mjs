@@ -374,13 +374,16 @@ const OFFLINE = [
   ],
   [
     "verify:venue-surfaces", true,
-    "2026-08-22 — the owner's three-surface rule for a secret venue. It runs " +
-      "everywhere and never refuses: it reads two page files and EXECUTES the " +
-      "predicate module's own source, so it needs no server, no credential and no " +
-      "gitignored material. Its own header lists what a green does NOT mean, and " +
-      "the two exits it cannot see — the wallet pass and the events-list payload — " +
-      "are printed on every run, pass or fail, so a green cannot be read as " +
-      "\"no address can reach anybody\"",
+    "2026-08-22 — the owner's three-surface rule for a secret venue, plus the " +
+      "FOURTH surface the owner ruled on separately on 2026-08-24: the wallet " +
+      "pass, which carries no venue column and no coordinate on any night. It " +
+      "runs everywhere and never refuses: it reads the page files and EXECUTES " +
+      "the predicate module's own source, so it needs no server, no credential " +
+      "and no gitignored material. Its own header lists what a green does NOT " +
+      "mean, and the exits it cannot see are printed on every run, pass or fail — " +
+      "since 2026-08-24 those are FREE TEXT (a place typed into a night's title " +
+      "still reaches a pass, and no predicate can see it) and MEDIA, the wallet " +
+      "pass having left that list by being closed rather than announced",
   ],
   [
     "verify:touch-targets", true,

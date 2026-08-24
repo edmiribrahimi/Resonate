@@ -29,12 +29,13 @@
  *     is FREE TEXT SOMEBODY TYPED. This gate can prove that a surface asks the
  *     predicate before printing that column; it cannot prove that what a person
  *     typed into it was safe to store, and nothing in a repository can.
- *   - It does NOT cover the WALLET PASS. `src/app/api/tickets/[id]/wallet/route.ts`
- *     writes the same column onto a signed file that syncs to a phone and cannot
- *     be recalled, and it asks nothing. That exit is real, it is named in
- *     `41.2-08-FINDINGS.md` §1, and it is **outside the owner's three-surface
- *     rule** — so this gate does not pretend to have closed it. Check C names it
- *     out loud on every run rather than letting a green imply otherwise.
+ *   - It does NOT prove that a place cannot reach a WALLET PASS. Since
+ *     2026-08-24 the pass is MEASURED rather than announced — check F — but what
+ *     F measures is that no venue COLUMN and no COORDINATE reaches it. The pass
+ *     still prints the night's title and the party's title, and both are FREE
+ *     TEXT SOMEBODY TYPED. If a person types a place into a title, it rides the
+ *     same irreversible road, and no predicate in this repository governs it.
+ *     Check D says so on every run.
  *   - It does NOT prove a PAYLOAD is safe by proving a RENDER is guarded. Those
  *     are different measurements, and this gate learned the difference the
  *     expensive way: for a whole phase checks A-C were green while
@@ -51,7 +52,7 @@
  *   - It does NOT cover MEDIA. A photograph that frames the sign carries the
  *     same information down a road with no predicate on it at all.
  *
- * ── THE FIVE CHECKS ─────────────────────────────────────────────────────────
+ * ── THE SIX CHECKS ──────────────────────────────────────────────────────────
  *
  *   A. The predicate's TRUTH TABLE, executed. `mayShowVenueOnPublicSurface`
  *      answers `false` for a secret night under every combination of reveal
@@ -69,6 +70,13 @@
  *      server files that build a client boundary are asserted to take the
  *      secrecy term — and the SESSION term — where the value is BUILT rather
  *      than where it is painted.
+ *   F. NOTHING THAT NAMES A PLACE ON THE WALLET PASS. One negative sweep over
+ *      the two wallet files' LIVE CODE, and four POSITIVE allow-lists — the
+ *      shape handed to the generator, the fields printed on the pass, the
+ *      methods called on it, and the columns the route selects. The positive
+ *      form is the point: a deny-list only reds the names somebody thought to
+ *      forbid, and the pass format carries a place down two roads that are not
+ *      text at all.
  *
  * Exit codes follow the repository's convention: `0 = passed · 1 = failed ·
  * 2 = refused`. A refusal is not a failure — it means the measurement did not
@@ -78,6 +86,7 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { liveLines } from "./lib/comments.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -559,21 +568,359 @@ if (!/venueOnPublicSurface\s*\|\|\s*!isAuthenticated/.test(detailSrc)) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * CHECK D — the exits this gate cannot see, printed every run
+ * CHECK F — the wallet pass, MEASURED instead of announced
+ *
+ * Until 2026-08-24 this file printed the wallet pass as an open exit on every
+ * run. It is now closed, so the gate's job changed: an exit that is closed and
+ * only announced is an exit nobody is watching.
+ *
+ * ── WHY THIS ONE IS BUILT DIFFERENTLY FROM C AND E ──────────────────────────
+ *
+ * A pass LEAVES THE PRODUCT. Signed, downloaded, added to a device, synced from
+ * there to that person's other devices, with **no revocation path** — no cron and
+ * no migration un-writes a field on a file already on a phone
+ * (`41.2-08-FINDINGS.md` §1.1). Every other surface this gate measures can be
+ * repaired by an edit; this one cannot be repaired at all, only prevented.
+ *
+ * So the deny-list that is enough elsewhere is not enough here, for a reason
+ * that is a property of the FORMAT and not of our code: **a pass can carry a
+ * place down three roads, and two of them are not text.**
+ *
+ *   1. a printed FIELD — the road that was open, and the only one a text check
+ *      would ever have found;
+ *   2. `locations[]` — LOCATION RELEVANCE: latitude and longitude that wake the
+ *      pass on the lock screen when the holder comes near. An address by another
+ *      road, carrying no word at all;
+ *   3. `semantics` — the dictionary the OPERATING SYSTEM reads, which has
+ *      fifteen entries dedicated to the place a thing happens (`venueName`,
+ *      `venueLocation`, `venueRoom`, `venuePhoneNumber`, and the rest).
+ *
+ * **Measured 2026-08-24: this pass uses none of the three.** The only relevance
+ * it declares is TEMPORAL — `setRelevantDate`, an instant, not a place — and a
+ * date is not a coordinate. F3 is what keeps it that way.
+ *
+ * ── THE FORM: ONE NEGATIVE SWEEP, FOUR POSITIVE ALLOW-LISTS ─────────────────
+ *
+ * A deny-list reds the names somebody thought to forbid. A field called `place`
+ * would walk past one, and so would a semantic tag nobody had heard of. So four
+ * of the five assertions here are POSITIVE — they pin the whole set and red on
+ * ANY addition, including the one that has no name yet:
+ *
+ *   F1  the negative sweep, over LIVE CODE
+ *   F2  the shape handed to the generator — the exact field set
+ *   F3  the methods called on the pass — the exact set
+ *   F4  the fields PRINTED on the pass — the exact key set
+ *   F5  the columns the route selects — the exact set, per embed
+ *
+ * ── F1 READS LIVE CODE, AND THAT IS A TRADE WITH A DIRECTION ────────────────
+ *
+ * F1 sweeps the two files with `scripts/lib/comments.mjs` — the repository's one
+ * comment stripper (D-41.1-07), itself proved by asserted mutation — rather than
+ * the raw bytes. Check E1 does the opposite on purpose, and both choices are
+ * right for their file: E1's client components have no reason to NAME a column
+ * they must not carry, while these two files must EXPLAIN a rule whose whole
+ * subject is the word being forbidden, and a docblock that cannot name the thing
+ * it is about is a docblock nobody will keep true.
+ *
+ * The cost is stated rather than hidden. The stripper's declared error direction
+ * is that it blanks MORE than it should, never less — so F1 can UNDER-count, and
+ * a green from F1 alone would be a weaker claim than a green from E1.
+ * **F2-F5 are why that is acceptable**: an under-count hides a NAME, and the
+ * positive lists do not measure names — they measure the SIZE AND MEMBERSHIP of
+ * five closed sets. A field the sweep missed is still a member the allow-list
+ * never authorised.
+ *
+ * ── WHAT A GREEN ON F DOES *NOT* MEAN ───────────────────────────────────────
+ *
+ * That no place can reach a pass. The pass prints the night's title and the
+ * party's title, both FREE TEXT SOMEBODY TYPED, and if a person types a place
+ * into one it travels the same irreversible road with no predicate on it. That
+ * is check D's business, and D prints it every run.
+ *
+ * ── PROVED BY MUTATION, 2026-08-24 ──────────────────────────────────────────
+ *
+ * A check nobody has seen go red is a check nobody has seen work. Six mutations
+ * were applied to the tree, one at a time; each was RE-READ FROM DISK AND
+ * ASSERTED PRESENT BEFORE THE GATE WAS RUN — a run that skips that step cannot
+ * tell *the gate caught it* from *the edit never landed*, and the second reads
+ * exactly like the first — and each was reverted by writing the SAVED BYTES
+ * back, never by a git command that discards a working tree.
+ *
+ *   W1  a printed field returns, under its old name        → F1 + F4, exit 1
+ *   W2  the route selects the free-text column again       → F1 + F5, exit 1
+ *   W3  location relevance, through a method call          → F1 + F3, exit 1
+ *   W4  the semantic dictionary carries the place          → F1,      exit 1
+ *   W5  a field called `place` — no forbidden substring    → F2,      exit 1
+ *   W6  coordinates through the PROPS, no method call      → F1,      exit 1
+ *
+ * Afterwards the two files were compared byte-for-byte with their starting state
+ * and the gate was green again — the control, without which six reds prove only
+ * that the script can fail.
+ *
+ * **W5 is the one that earns the positive form.** It adds a place-bearing field
+ * whose name contains no term any deny-list would hold, and only the allow-list
+ * on the shape sees it. **W6 is the one that earns F1's breadth**: it writes a
+ * coordinate through the constructor's props, touching no method, so F3 is blind
+ * to it by construction.
+ *
+ * **And W1 is the one that found a defect in this gate rather than in the
+ * surface.** F4 was first written line-anchored — a key at the start of its own
+ * line — and W1 pushes a field onto the pass on ONE line. The run was red anyway,
+ * because F1 caught the mutation on its NAME, and reading only the exit code
+ * would have recorded a pass. It was reading WHICH checks fired that showed F4
+ * had been stepped over. The anchor is gone and the record stays: a mutation run
+ * that reads exit codes instead of checks proves less than it looks like it does.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const WALLET = "src/app/api/tickets/[id]/wallet/route.ts";
+const WALLET_LIB_REL = "src/lib/apple-wallet.ts";
+const WALLET_ROUTE_REL = "src/app/api/tickets/[id]/wallet/route.ts";
 
-const walletSrc = read(join(ROOT, WALLET));
-if (walletSrc && /venue:\s*party\?\.venue_text/.test(walletSrc)) {
-  notes.push(
-    `${WALLET} still writes the night's free venue text onto the wallet pass with no ` +
-      "secrecy term. A pass leaves the product: signed, downloaded, synced to a device, " +
-      "and nothing here can recall it — the same irreversibility class as a sent mail, " +
-      "with a longer tail. NOT covered by the owner's three-surface rule of 2026-08-22, " +
-      "and deliberately not closed. It needs its own decision."
+const WALLET_LIB = join(ROOT, WALLET_LIB_REL);
+const WALLET_ROUTE = join(ROOT, WALLET_ROUTE_REL);
+
+const walletLibSrc = read(WALLET_LIB);
+const walletRouteSrc = read(WALLET_ROUTE);
+
+if (walletLibSrc === null || walletRouteSrc === null) {
+  console.error(
+    "REFUSED — one of the two wallet files is absent from the tree.\n" +
+      "Nothing about the pass was measured. If the pass was deliberately removed,\n" +
+      "remove check F in the same commit and say so — do not leave a gate that\n" +
+      "refuses forever, because a permanent refusal reads like a green to a list."
+  );
+  process.exit(2);
+}
+
+/**
+ * Every term is matched as a CASE-INSENSITIVE SUBSTRING, not as a word: the
+ * point is to catch `venueName`, `venue_text`, `displayVenue` and `VenueLocation`
+ * with one entry, since the failure this is guarding is somebody re-adding the
+ * thing under whatever name reads naturally that day.
+ */
+const PLACE_TERMS = [
+  "venue",
+  "latitude",
+  "longitude",
+  "altitude",
+  "locations",
+  "beacons",
+  "maxDistance",
+  "relevantText",
+  "google_maps",
+];
+
+for (const [rel, abs] of [
+  [WALLET_LIB_REL, WALLET_LIB],
+  [WALLET_ROUTE_REL, WALLET_ROUTE],
+]) {
+  const { lines, unterminated } = liveLines(abs);
+  if (unterminated !== null) {
+    console.error(
+      `REFUSED — ${rel} has a ${unterminated.kind} comment opened at line ` +
+        `${unterminated.lineNo} that never closes. The stripper cannot read this\n` +
+        "file, so F1 measured nothing rather than measuring zero."
+    );
+    process.exit(2);
+  }
+
+  lines.forEach((line, index) => {
+    const lower = line.toLowerCase();
+    for (const term of PLACE_TERMS) {
+      if (lower.includes(term)) {
+        fail(
+          "F1",
+          `${rel}:${index + 1} names \`${term}\` in live code: ${line.trim()}\n` +
+            "        A pass is signed, downloaded and synced to a device, and nothing in " +
+            "this product can recall it. The owner's rule of 2026-08-24 is *never* — not " +
+            "*after the reveal* — because a pass does not update backwards."
+        );
+      }
+    }
+  });
+}
+
+/** The exact set, sorted, as one comparable string. */
+const asSet = (values) => [...new Set(values)].sort().join(", ");
+
+/**
+ * F2-F5 read LIVE CODE too, and for a second reason on top of F1's.
+ *
+ * F1 needs it so the two files may explain themselves. F2-F5 need it so they
+ * cannot go red on a docblock: `src/lib/apple-wallet.ts` documents the three
+ * roads a pass can carry a place, which means it NAMES the very method calls F3
+ * forbids. Read raw, a comment saying *do not call this* would red the gate — and
+ * a gate that reds on correct code is a gate the next person in a hurry loosens.
+ *
+ * The stripper's under-count is harmless here, and that is worth saying rather
+ * than assuming: these four are POSITIVE set comparisons, so a member the
+ * stripper blanked makes the extracted set SMALLER, and a smaller set fails the
+ * equality just as loudly as a bigger one. The error direction is red, not green.
+ */
+const liveTextOf = (abs) => liveLines(abs).lines.join("\n");
+const walletLibLive = liveTextOf(WALLET_LIB);
+const walletRouteLive = liveTextOf(WALLET_ROUTE);
+
+/* F2 — the shape handed to the generator */
+
+const SHAPE_MATCH = walletLibLive.match(/interface TicketPassData \{([\s\S]*?)\n\}/);
+if (SHAPE_MATCH === null) {
+  fail(
+    "F2",
+    `${WALLET_LIB_REL} no longer declares \`interface TicketPassData\`. The shape ` +
+      "handed to the generator is the narrowest place a new field can be caught; if " +
+      "it was renamed, rename it here too, deliberately, and say why in the commit."
+  );
+} else {
+  const fields = [...SHAPE_MATCH[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map(
+    (m) => m[1]
+  );
+  const EXPECTED_SHAPE =
+    "date, endTime, eventSlug, eventTitle, partyTitle, qrValue, ticketId, tierName, time";
+  if (asSet(fields) !== EXPECTED_SHAPE) {
+    fail(
+      "F2",
+      `${WALLET_LIB_REL}'s \`TicketPassData\` carries {${asSet(fields)}};\n` +
+        `        the authorised set is {${EXPECTED_SHAPE}}.\n` +
+        "        This list is POSITIVE on purpose: a field named for a place in some " +
+        "way nobody thought to forbid still reds here. Adding one to a pass is adding " +
+        "it to files already on other people's phones — decide it, then widen this."
+    );
+  }
+}
+
+/* F3 — the methods called on the pass */
+
+const mutators = [...walletLibLive.matchAll(/(?<![A-Za-z0-9_$])pass\.([A-Za-z_$][\w$]*)/g)].map(
+  (m) => m[1]
+);
+const EXPECTED_MUTATORS =
+  "auxiliaryFields, getAsBuffer, primaryFields, secondaryFields, setBarcodes, setRelevantDate, type";
+if (asSet(mutators) !== EXPECTED_MUTATORS) {
+  fail(
+    "F3",
+    `${WALLET_LIB_REL} touches the pass through {${asSet(mutators)}};\n` +
+      `        the authorised set is {${EXPECTED_MUTATORS}}.\n` +
+      "        This is the assertion that no text check could stand in for: " +
+      "`setLocations` writes a COORDINATE, `setBeacons` writes a proximity trigger, " +
+      "and neither carries a word. `setRelevantDate` stays — a date is not a place."
   );
 }
+
+/* F4 — the fields printed on the pass */
+
+/**
+ * NOT line-anchored, and mutation W1 is why. The first draft matched
+ * `/^\s*key:\s*"…"/gm` — a key at the start of its own line — and W1 pushed a
+ * field onto the pass on ONE line, where `key:` sits mid-line. F1 caught that
+ * mutation on its name, so the run was red and would have been called a pass;
+ * it was only reading WHICH checks fired that showed F4 had been walked past.
+ * A mutation run that reads the exit code and not the checks proves less than
+ * it appears to.
+ */
+const printedKeys = [
+  ...walletLibLive.matchAll(/(?<![A-Za-z0-9_$])key:\s*"([^"]+)"/g),
+].map((m) => m[1]);
+const EXPECTED_KEYS = "date, event, tier, time";
+if (asSet(printedKeys) !== EXPECTED_KEYS) {
+  fail(
+    "F4",
+    `the pass prints the fields {${asSet(printedKeys)}}; the authorised set is ` +
+      `{${EXPECTED_KEYS}} — what a person needs to get in, and nothing else.`
+  );
+}
+
+/* F5 — the columns the route selects
+ *
+ * The select LITERAL is located first and the embeds are read out of it, rather
+ * than sweeping the file for anything shaped like `name(...)`. The first draft of
+ * this check did the latter and went red on correct code: scanning the whole file,
+ * `.select(` itself matches that shape and its non-greedy body swallows the first
+ * embed whole. A gate that reds on correct code gets loosened by the next person
+ * in a hurry, and this is the one file where that is not survivable. */
+
+const SELECT_MATCH = walletRouteLive.match(/\.select\(\s*"([^"]*)"/);
+
+if (SELECT_MATCH === null) {
+  fail(
+    "F5",
+    `${WALLET_ROUTE_REL} has no single-string \`.select("…")\` for this gate to read. ` +
+      "If the query was rebuilt, rebuild this check with it in the same commit: a check " +
+      "that silently stops finding its subject is indistinguishable from a green."
+  );
+} else {
+  const selectLiteral = SELECT_MATCH[1];
+
+  const embedSets = new Map(
+    [...selectLiteral.matchAll(/([a-z_]+)\(([^)]*)\)/g)].map(([, name, cols]) => [
+      name,
+      asSet(cols.split(",").map((c) => c.trim())),
+    ])
+  );
+
+  const topLevel = asSet(
+    selectLiteral
+      .replace(/[a-z_]+\([^)]*\)/g, "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean)
+  );
+
+  for (const [embed, expected] of [
+    ["ticket_tiers", "name"],
+    ["events", "date, slug, title"],
+    ["event_parties", "date, end_time, time, title"],
+  ]) {
+    const actual = embedSets.get(embed);
+    if (actual === undefined) {
+      fail("F5", `${WALLET_ROUTE_REL}'s select no longer embeds \`${embed}\`.`);
+    } else if (actual !== expected) {
+      fail(
+        "F5",
+        `${WALLET_ROUTE_REL} selects \`${embed}(${actual})\`; the authorised set is ` +
+          `{${expected}}.\n        What must not come back is a column of the place: ` +
+          "the route re-selects for itself, its query carries no secrecy term, and it " +
+          "never will — the rule is *never*, so there is nothing for a term to decide."
+      );
+    }
+  }
+
+  const EXPECTED_TOP = "event_id, id, party_id";
+  if (topLevel !== EXPECTED_TOP) {
+    fail(
+      "F5",
+      `${WALLET_ROUTE_REL} selects the top-level columns {${topLevel}}; the ` +
+        `authorised set is {${EXPECTED_TOP}}.`
+    );
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CHECK D — the exits this gate cannot see, printed every run
+ *
+ * The wallet pass used to be printed here. It was closed on 2026-08-24 and is
+ * now MEASURED by check F, so it left this list — an exit that is closed and
+ * still announced trains a reader to skim the announcements.
+ *
+ * What took its place is narrower and truer: the pass is closed to every COLUMN
+ * of the place, and open to the one thing no schema governs.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+notes.push(
+  "FREE TEXT ON A PASS. The wallet pass carries no venue column and no coordinate " +
+    "since 2026-08-24 (check F), but it still prints the EVENT TITLE and the PARTY " +
+    "TITLE, and both are free text somebody typed into a form. A place typed into a " +
+    "title rides the same road as the column used to — signed onto a file, synced to " +
+    "a device, with no revocation path — and no predicate in this repository can see " +
+    "it. This is not a defect to fix in code: it is a fact to know when naming a " +
+    "night whose place is meant to stay secret."
+);
+
+notes.push(
+  "MEDIA. A photograph that frames the sign, a story with the street number, a recap " +
+    "that names the place: the same information down a road with no predicate on it " +
+    "at all. `media-and-storage` with `venue-secrecy` supplementary, and nothing built " +
+    "in this file protects a gallery."
+);
 
 /* ──────────────────────────────────────────────────────────────────────────── */
 
@@ -582,7 +929,9 @@ console.log("  A  the predicate's truth table, executed from the source on disk"
 console.log("  B  one home for each predicate, and both surfaces import it");
 console.log("  C  no ungated venue render on either surface");
 console.log("  D  the exits this gate cannot see");
-console.log("  E  no secret venue in a payload — the sweep, and the two boundaries\n");
+console.log("  E  no secret venue in a payload — the sweep, and the two boundaries");
+console.log("  F  nothing that names a place on the wallet pass — one sweep, four");
+console.log("     positive allow-lists, and no location relevance\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
@@ -600,6 +949,8 @@ if (failures.length > 0) {
 }
 
 console.log("PASSED — no public surface renders a secret night's venue, nothing that");
-console.log("         names the place crosses a public client boundary for one, and the");
-console.log("         holder's ticket renders it only once the reveal has fired.");
+console.log("         names the place crosses a public client boundary for one, the");
+console.log("         holder's ticket renders it only once the reveal has fired, and");
+console.log("         the wallet pass carries neither a venue column nor a coordinate");
+console.log("         — on any night, secret or not, because a pass cannot be recalled.");
 process.exit(0);
