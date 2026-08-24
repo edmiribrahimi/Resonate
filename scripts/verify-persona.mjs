@@ -335,7 +335,7 @@ check(
       ? []
       : [
           `${tokens} token > tetto ${BUDGET_CEILING_TOKENS}`,
-          'Correzione di prima scelta: restringere i paths o accorciare la prosa — si taglia la descrizione, non la regola. Alzare il tetto e' una decisione del proprietario, presa una volta il 2026-08-24 e non ereditabile: va chiesta di nuovo.',
+          'Correzione di prima scelta: restringere i paths o accorciare la prosa — si taglia la descrizione, non la regola. Alzare il tetto resta una decisione del proprietario, presa una volta il 2026-08-24 e non ereditabile: va chiesta di nuovo.',
         ]
   );
   notes.push(
