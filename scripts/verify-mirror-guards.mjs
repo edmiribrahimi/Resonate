@@ -10,7 +10,8 @@
  *   1. il predicato puro della guardia del feed        — `V0`-`V7`
  *   2. i rifiuti dell'importatore, per uscita e categoria — `R1`-`R3` (+`R4`
  *      rimandato)
- *   3. il predicato puro della guardia della corsa NON PRESIDIATA — `U0`-`U11`
+ *   3. il predicato puro della guardia della corsa NON PRESIDIATA — `U0`-`U11`,
+ *      e la lista che lo alimenta — `U12`-`U16`
  *   4. i rifiuti del percorso di rientro, per uscita e categoria — `R5`-`R13`
  *      (+ due rimandati)
  *
@@ -400,7 +401,9 @@ say("            gia' su una locandina.");
  *
  *     unattendedMirrorGuard({
  *       supervision,           // l'esito di sopra
- *       ticksAtRisk,           // number — le spunte dentro lo scopo
+ *       decisionsAtRisk,       // number — le DECISIONI di checklist dentro lo
+ *                              //   scopo: spunte E annullamenti, perche' una
+ *                              //   casella tolta e' un atto con un autore
  *       linksAtRisk,           // number — i legami dentro lo scopo
  *       restorePathVerified,   // boolean — il rientro e' stato ESERCITATO?
  *     }) => "ok" | "unattended_state_at_risk"
@@ -413,7 +416,17 @@ say("            gia' su una locandina.");
  * `U3` a fissarlo.
  *
  * ⚠ **Conteggi, non liste**, come nella famiglia 1 e per la stessa ragione: la
- * lista delle spunte porta il nome di una persona.
+ * lista delle decisioni porta il nome di una persona.
+ *
+ * ⚠ **`decisionsAtRisk` si chiamava `ticksAtRisk`, e il nome era il difetto.**
+ * Una casella si decide in due direzioni: spuntata porta attore e istante,
+ * ANNULLATA porta attore e **nessun** istante, perche' azzerare l'istante e' il
+ * modo in cui un annullamento viene scritto. Finche' questo argomento contava le
+ * spunte, uno scopo con un annullamento e nessuna spunta valeva `0`, la guardia
+ * rispondeva `ok`, e una corsa non presidiata avrebbe portato via la traccia
+ * **senza che un solo numero del referto calasse**. I casi `U12`-`U16` misurano
+ * la meta' che il predicato da solo non puo' misurare: che la lista da cui quel
+ * conteggio esce contenga davvero cio' che si perderebbe.
  *
  * ⚠ **`U11` legge il valore SPEDITO della costante.** Se qualcuno mettesse
  * `MIRROR_RESTORE_PATH_VERIFIED` a `true` senza aver mai esercitato il rientro,
@@ -492,7 +505,7 @@ if (
       etichetta: "non presidiata, una spunta, rientro non esercitato",
       input: {
         supervision: "unattended",
-        ticksAtRisk: 1,
+        decisionsAtRisk: 1,
         linksAtRisk: 0,
         restorePathVerified: false,
       },
@@ -503,7 +516,7 @@ if (
       etichetta: "non presidiata, un legame, rientro non esercitato",
       input: {
         supervision: "unattended",
-        ticksAtRisk: 0,
+        decisionsAtRisk: 0,
         linksAtRisk: 1,
         restorePathVerified: false,
       },
@@ -517,7 +530,7 @@ if (
       etichetta: "non presidiata, niente in gioco — la corsa dopo riscrive tutto",
       input: {
         supervision: "unattended",
-        ticksAtRisk: 0,
+        decisionsAtRisk: 0,
         linksAtRisk: 0,
         restorePathVerified: false,
       },
@@ -530,7 +543,7 @@ if (
       etichetta: "presidiata con tutto in gioco: ammessa, perche' il rientro e' suo",
       input: {
         supervision: "attended",
-        ticksAtRisk: 7,
+        decisionsAtRisk: 7,
         linksAtRisk: 3,
         restorePathVerified: false,
       },
@@ -541,7 +554,7 @@ if (
       etichetta: "non presidiata con spunte, ma il rientro e' stato esercitato",
       input: {
         supervision: "unattended",
-        ticksAtRisk: 7,
+        decisionsAtRisk: 7,
         linksAtRisk: 0,
         restorePathVerified: true,
       },
@@ -554,7 +567,7 @@ if (
       etichetta: "un conteggio illeggibile vale come stato presente",
       input: {
         supervision: "unattended",
-        ticksAtRisk: Number.NaN,
+        decisionsAtRisk: Number.NaN,
         linksAtRisk: 0,
         restorePathVerified: false,
       },
@@ -565,7 +578,7 @@ if (
       etichetta: "con il valore SPEDITO della costante: una spunta e nessuno che guarda",
       input: {
         supervision: "unattended",
-        ticksAtRisk: 1,
+        decisionsAtRisk: 1,
         linksAtRisk: 0,
         restorePathVerified: MIRROR_RESTORE_PATH_VERIFIED,
       },
@@ -598,6 +611,215 @@ if (
         say("            una spunta vera e l'ha scritto con la data. Se e' successo,");
         say("            questo caso va riscritto; se non e' successo, va rimessa a false.");
       }
+      fallimenti.push(caso.id);
+    }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * FAMIGLIA 3-bis — LA LISTA CHE ALIMENTA LA GUARDIA (`U12`-`U16`)
+ *
+ * PERCHE' ESISTE, e perche' i casi `U5`-`U11` non bastavano.
+ *
+ * Quelli misurano un predicato che riceve **due numeri**. Un predicato corretto
+ * alimentato da un conteggio cieco risponde `ok` con esattezza impeccabile
+ * mentre c'e' una traccia da perdere — ed e' successo: il riconciliatore
+ * raccoglieva le voci di checklist che portano un ISTANTE, un annullamento non
+ * ne ha, e attraversando lo specchio la traccia d'autore e' passata da 1 a 0.
+ * `U5` era verde per tutto il tempo.
+ *
+ * Quindi questa famiglia misura l'altra meta': **cio' che entra nel conteggio**.
+ * Chiama il riconciliatore su righe costruite qui, e poi passa alla guardia la
+ * lunghezza della lista che ne esce — cioe' esattamente cio' che fa
+ * l'importatore. Se raccolta e guardia leggessero due liste, questa catena si
+ * spezzerebbe qui.
+ *
+ * ⚠ **Il file non contiene ne' un nome ne' una data di serata.** L'attore e' un
+ * uuid tutto a zeri e un'etichetta che nomina un RUOLO, come pretende
+ * `20260815120000` della colonna che porta un nome: gli artefatti nominano
+ * ruoli. Il calendario in ingresso e' **vuoto** — le tre liste del file sono
+ * vuote — perche' cio' che si misura qui e' cosa il riconciliatore fa con le
+ * righe GIA' MEMORIZZATE, e un calendario finto non aggiunge nessuna evidenza.
+ *
+ * ⚠ **Il conteggio non e' scritto a mano.** Ogni caso dichiara cosa si aspetta
+ * dalla lista, e la guardia riceve `plan.decisionsToRestore.length`: un gate che
+ * passasse un numero copiato misurerebbe di nuovo il predicato e non la catena.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+say("");
+say("  famiglia 3-bis — la lista da cui esce quel conteggio");
+say("");
+
+let reconcilerMod = null;
+try {
+  reconcilerMod = await import(pathToFileURL(join(ICS_DIR, "reconcile.ts")).href);
+} catch (error) {
+  reconcilerMod = null;
+  say(`    (il riconciliatore non si e' importato: ${error.message})`);
+}
+
+if (
+  guard === null ||
+  reconcilerMod === null ||
+  typeof reconcilerMod.reconcile !== "function" ||
+  typeof guard.unattendedMirrorGuard !== "function"
+) {
+  say("    ✗ U12 la lista non si puo' misurare: riconciliatore o guardia assenti");
+  say("            atteso: reconcile da reconcile.ts e unattendedMirrorGuard da guard.ts");
+  say("            Nessuno dei cinque casi sotto e' stato misurato, e nessuno puo'");
+  say("            dirsi verde: un conteggio non misurato non e' uno zero.");
+  fallimenti.push("U12");
+} else {
+  const { reconcile } = reconcilerMod;
+  const { unattendedMirrorGuard } = guard;
+
+  // ⚠ Un uuid tutto a zeri e un'etichetta che nomina un RUOLO. Nessuna persona
+  // entra in un file tracciato di questo repository, che e' pubblico.
+  const ATTORE = "00000000-0000-4000-8000-000000000000";
+  const RUOLO = "a role, not a person";
+  const ISTANTE = "2026-01-01T00:00:00.000Z";
+
+  /** Un file che non porta niente: qui si misura cio' che il DATABASE tiene. */
+  const fileVuoto = {
+    calendarKey: "rsnt",
+    nights: [],
+    pieces: [],
+    commitments: [],
+    unclassified: [],
+    unsupportedRecurrences: [],
+    lineupSlotCounts: new Map(),
+    recurrenceOccurrenceCap: 200,
+  };
+
+  const voce = (tickedAt, tickedBy, tickedByName) => ({
+    id: "item-under-test",
+    planSourceUid: "uid-under-test",
+    kind: "piece",
+    label: "an item under test",
+    tickedAt,
+    tickedBy,
+    tickedByName,
+  });
+
+  const pianoCon = (items) =>
+    reconcile(fileVuoto, { plans: [], checklistItems: items }, [], ISTANTE);
+
+  const CASI_LISTA = [
+    {
+      id: "U12",
+      etichetta: "un ANNULLAMENTO — attore pieno, nessun istante — entra nella lista",
+      items: [voce(null, ATTORE, RUOLO)],
+      atteso: { raccolte: 1, direzione: "unticked", istante: null, attore: ATTORE },
+      perche:
+        "e' il caso che e' costato una riga: la traccia d'autore di un annullamento " +
+        "non e' ricostruibile dal calendario piu' di quanto lo sia quella di una spunta",
+    },
+    {
+      id: "U13",
+      etichetta: "una SPUNTA continua a entrare, e porta il proprio istante",
+      items: [voce(ISTANTE, ATTORE, RUOLO)],
+      atteso: { raccolte: 1, direzione: "ticked", istante: ISTANTE, attore: ATTORE },
+      perche: "la direzione che gia' funzionava non deve regredire con la riparazione",
+    },
+    {
+      id: "U14",
+      etichetta: "una voce che nessuno ha mai toccato NON entra — il controllo negativo",
+      items: [voce(null, null, null)],
+      atteso: { raccolte: 0, direzione: null, istante: null, attore: null },
+      perche:
+        "senza questo caso la riparazione potrebbe essere «raccogliere tutto», che " +
+        "rimetterebbe righe che il file ricostruisce da solo e renderebbe il " +
+        "conteggio della guardia inutile in avanti",
+    },
+  ];
+
+  for (const caso of CASI_LISTA) {
+    let misurato;
+    try {
+      const piano = pianoCon(caso.items);
+      const raccolte = piano.decisionsToRestore;
+      misurato = {
+        raccolte: raccolte.length,
+        direzione: raccolte.length === 1 ? raccolte[0].decision : null,
+        istante: raccolte.length === 1 ? raccolte[0].tickedAt : null,
+        attore: raccolte.length === 1 ? raccolte[0].tickedBy : null,
+      };
+    } catch (error) {
+      misurato = `solleva: ${error.message}`;
+    }
+
+    const uguale =
+      typeof misurato === "object" &&
+      misurato !== null &&
+      misurato.raccolte === caso.atteso.raccolte &&
+      misurato.direzione === caso.atteso.direzione &&
+      misurato.istante === caso.atteso.istante &&
+      misurato.attore === caso.atteso.attore;
+
+    if (uguale) {
+      say(
+        `    ✓ ${caso.id}  ${caso.etichetta} → ${misurato.raccolte} raccolta/e` +
+          `${misurato.direzione === null ? "" : `, direzione ${misurato.direzione}`}`
+      );
+    } else {
+      say(`    ✗ ${caso.id}  ${caso.etichetta}`);
+      say(`            atteso ${JSON.stringify(caso.atteso)}`);
+      say(`            misurato ${JSON.stringify(misurato)}`);
+      say(`            perche' conta: ${caso.perche}`);
+      fallimenti.push(caso.id);
+    }
+  }
+
+  /*
+   * `U15` E' IL CASO DELLA VOCE 21, DA CAPO A FONDO.
+   *
+   * Non ripete `U5`: quello passa `1` a mano. Questo passa cio' che la lista
+   * contiene davvero, partendo da una riga che nel database ha la forma di un
+   * annullamento. E' l'unico caso di tutto il file in cui una raccolta e un
+   * predicato si misurano **insieme**, ed e' l'unico che sarebbe andato rosso il
+   * giorno in cui la traccia e' stata persa.
+   */
+  const casiCatena = [
+    {
+      id: "U15",
+      etichetta: "un annullamento, nessuno che guarda: la guardia RIFIUTA",
+      items: [voce(null, ATTORE, RUOLO)],
+      atteso: "unattended_state_at_risk",
+    },
+    {
+      id: "U16",
+      etichetta: "solo voci mai toccate, nessuno che guarda: ammessa",
+      items: [voce(null, null, null)],
+      atteso: "ok",
+    },
+  ];
+
+  for (const caso of casiCatena) {
+    let misurato;
+    let conteggio = null;
+    try {
+      const piano = pianoCon(caso.items);
+      conteggio = piano.decisionsToRestore.length;
+      misurato = unattendedMirrorGuard({
+        supervision: "unattended",
+        // ⚠ La lunghezza della LISTA, mai un numero scritto qui: e' il punto
+        // dell'intera famiglia. Una fonte, due lettori.
+        decisionsAtRisk: conteggio,
+        linksAtRisk: piano.linksToRestore.length,
+        restorePathVerified: false,
+      });
+    } catch (error) {
+      misurato = `solleva: ${error.message}`;
+    }
+
+    if (misurato === caso.atteso) {
+      say(`    ✓ ${caso.id}  ${caso.etichetta} → ${misurato} (in gioco: ${conteggio})`);
+    } else {
+      say(`    ✗ ${caso.id}  ${caso.etichetta}`);
+      say(`            atteso ${caso.atteso} · misurato ${misurato} (in gioco: ${conteggio})`);
+      say("            E' il difetto della voce 21: la guardia conta cio' che si");
+      say("            perderebbe, non cio' che e' spuntato. Se questo e' rosso, una");
+      say("            corsa non presidiata passa sopra la decisione di una persona.");
       fallimenti.push(caso.id);
     }
   }
