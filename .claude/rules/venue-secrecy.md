@@ -38,9 +38,11 @@ autorizzazione esplicita documentata nel commit.
 - **Gate irreversibilita'**: Ogni modifica a un percorso che puo' rivelare un venue e' Critical e richiede validazione esplicita. Non esiste "lo sistemiamo dopo": dopo, l'indirizzo e' pubblico.
 - **Gate percorsi enumerati**: L'indirizzo esce da piu' punti. **Rienumerati leggendo il codice il 2026-08-22.**
 
-  **Chiusi:** `(public)/events/[slug]/page.tsx`, `EventTabs.tsx` — mai, per nessuno; `(public)/tickets/[id]/page.tsx` — solo al titolare, solo dopo la rivelazione. Entrambe leggono l'unico predicato, `src/lib/venue-reveal/venue-disclosure.ts`.
+  **Chiusi:** `(public)/events/[slug]/page.tsx`, `EventTabs.tsx` — mai, per nessuno; `(public)/tickets/[id]/page.tsx` — solo al titolare, solo dopo la rivelazione. Entrambe leggono l'unico predicato, `src/lib/venue-reveal/venue-disclosure.ts`. E il **pass Wallet** (`lib/apple-wallet.ts`), **chiuso il 2026-08-24**: nessun luogo, nessuna coordinata, **su nessuna serata** — controllo **F** di `verify:venue-surfaces`. I suoi gate stanno in `ticketing-payments.md`, il modulo che si carica su quei file.
 
-  **Aperti:** `lib/venue-reveal/reveal-party-venue.ts` (**l'unico posto che spedisce**) coi suoi due chiamanti; `emails/venue-reveal.tsx`; il **pass Wallet** (`api/tickets/[id]/wallet/route.ts` -> `lib/apple-wallet.ts`), che scrive `venue_text` su un file che finisce su un telefono e **non si ritira**, senza alcun termine di segretezza; il **payload di `(public)/events/page.tsx`**, che passa `venue_text` a un componente `"use client"` **anche per le serate segrete** — nel documento di una pagina che chiunque apre; `components/events/EventForm.tsx`, `components/venues/**`, `admin/(work)/venues/**`.
+  **Aperti:** `lib/venue-reveal/reveal-party-venue.ts` (**l'unico posto che spedisce**) coi suoi due chiamanti; `emails/venue-reveal.tsx`; il **payload di `(public)/events/page.tsx`**, che passa `venue_text` a un componente `"use client"` **anche per le serate segrete** — nel documento di una pagina che chiunque apre; `components/events/EventForm.tsx`, `components/venues/**`, `admin/(work)/venues/**`.
+
+  **E un'uscita che non e' una colonna:** il pass stampa i **titoli** di serata e festa, testo libero. Un posto scritto li' finisce su un file che **non si ritira**, e **nessun predicato lo vede**: e' un vincolo su **come si da' un nome**, non un difetto da riparare.
 
   **E il confine, piu' largo di ogni superficie:** `public.venue_for_parties`, concessa a `authenticated`, risponde ancora con l'indirizzo di una serata segreta via `POST /rest/v1/rpc/`, senza passare da nessuna pagina. Piu' largo e' la direzione sicura, ma e' una divergenza, e sta scritta.
 
@@ -68,7 +70,7 @@ autorizzazione esplicita documentata nel commit.
   - **Senza biglietto: solo l'indizio** — che ora e' **l'ultima cosa che una pagina pubblica dice sul luogo**, quindi il gate sull'indizio pesa piu' di prima.
   - **Il predicato si legge, non si riscrive.** `venue-disclosure.ts` e' l'unica casa della decisione. Due espressioni per una decisione divergono, e qui divergere pubblica un indirizzo: e' come nacque la divergenza fra pagina evento e pagina biglietto, durata mesi.
 
-  **Cosa NON copre, e va deciso a parte:** il **pass Wallet**, che porta lo stesso testo fuori dal prodotto; **chi compra dopo la rivelazione**, la cui mail e' un secondo percorso; **il titolare di un RSVP**, che non ha una pagina del biglietto e da oggi riceve l'indirizzo **solo per mail** — una strada sola dove le altre ne hanno due.
+  **Cosa NON copriva:** il **pass Wallet** — **deciso il 2026-08-24**, regola propria: *mai*, a prescindere dalla segretezza, perche' e' la sola superficie irraggiungibile; **chi compra dopo la rivelazione**, la cui mail e' un secondo percorso, **ancora aperto**; **il titolare di un RSVP**, che riceve l'indirizzo **solo per mail** — una strada sola dove le altre ne hanno due.
 
 - **Gate idempotenza del cron**: `api/cron/venue-reveal` puo' essere eseguito due volte. Marcare `venue_reveal_sent` **prima o insieme** all'invio, mai solo dopo: una seconda esecuzione non deve rispedire. E se l'invio fallisce dopo la marcatura, va loggato come tale — un destinatario che non ha ricevuto l'indirizzo e' un problema visibile, una doppia mail e' rumore.
 - **Gate indizio non equivalente all'indirizzo**: `venue_secret_hint_reveal_hours` esiste per dare un indizio prima dell'indirizzo. L'indizio non deve essere sufficiente a identificare il luogo: se lo e', hai rivelato in anticipo con piu' passaggi.
@@ -88,3 +90,4 @@ autorizzazione esplicita documentata nel commit.
 - When writing the reveal cron: mark before or with the send, and log a failed send explicitly
 - When writing a hint: verify it does not identify the place on its own
 - When a page can show the venue: mark it dynamic and uncacheable
+- When naming a night whose place is secret: keep the place out of the title — the wallet pass prints it, and no predicate can see it

@@ -43,7 +43,7 @@ la indebolisce e' Critical.
 - **Gate stato terminale monotono**: Uno stato di pagamento non torna indietro. La riconciliazione corregge in avanti; non esiste un percorso che riporti un `completed` a `pending`.
 - **Gate cron non atomico**: I cron (`event-reminders`, `reconcile-refunds`, `refund-expired-tokens`, `venue-reveal`) possono essere interrotti a meta'. Ogni ciclo deve marcare il progresso **per elemento**, non alla fine del batch: un cron che segna "fatto" solo in coda, se cade a meta', o riprocessa tutto o salta il resto.
 - **Gate codice sconto**: La validazione e' case-insensitive (scelta gia' presa). Ogni nuovo vincolo — scadenza, tetto d'uso, applicabilita' per tier — va applicato **al momento del checkout server-side**, mai solo nella UI: il prezzo che conta e' quello che il server calcola.
-- **Gate pass Wallet**: Un pass emesso e' sul telefono di qualcuno e non si ritira. Se un biglietto viene rimborsato o annullato, la validita' deve essere verificata **allo scan**, non presunta dall'esistenza del pass.
+- **Gate pass Wallet — validita' e contenuto**: Un pass emesso e' sul telefono di qualcuno e **non si ritira**. **Validita'**: si verifica **allo scan**, mai presunta dall'esistenza del pass. **Contenuto**, dal 2026-08-24: codice, data, orario, serata, tier — e **mai il luogo**, ne' campo, ne' **coordinata** (`locations[]`, che accende il pass avvicinandosi), ne' **voce semantica** (`semantics.venueName`). **Su ogni serata, segreta o no**: un pass non si aggiorna a ritroso, quindi un termine di segretezza coprirebbe solo l'emissione. Controllo **F** di `verify:venue-surfaces`.
 - **Gate guest list**: Un ingresso in guest list e' un ingresso non pagato. Ogni percorso che aggiunge nomi va tracciato con chi lo ha fatto — e' la superficie piu' semplice per far entrare gratis qualcuno.
 
 ## Imperative Behaviors
@@ -55,4 +55,5 @@ la indebolisce e' Critical.
 - When writing a cron: mark progress per item, never only at the end of the batch
 - When adding a discount rule: enforce it server-side at checkout
 - When validating a ticket at the door: check current validity, not the existence of a pass
+- When touching the wallet pass: it carries no place on any night — no field, no coordinate, no semantic tag
 - When adding someone to the guest list: record who added them

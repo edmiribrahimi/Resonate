@@ -3,6 +3,92 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.18.0] - 2026-08-24
+
+### Changed — `ticketing-payments.md`: il pass Wallet ha una regola sul CONTENUTO, non solo sulla validita'
+
+Decisione del proprietario, 2026-08-24: *«il pass non porta mai l'indirizzo»*.
+
+Il gate *pass Wallet* diceva gia' la meta' giusta — *«un pass emesso e' sul
+telefono di qualcuno e non si ritira»* — ma **solo sulla validita'**. La stessa
+frase e' vera del **contenuto**, e nessun gate lo diceva: il pass riselezionava
+il testo libero del luogo per conto suo, con una interrogazione che **non
+portava affatto la spunta di segretezza**. Sguarnito per costruzione, non per
+dimenticanza.
+
+**Perche' la regola e' «mai» e non «dopo la rivelazione».** Un pass **non si
+aggiorna a ritroso**: e' firmato, scaricato, sincronizzato fra i dispositivi di
+chi lo possiede, e **non esiste un percorso di revoca**. Un termine di
+segretezza qui proteggerebbe l'istante dell'emissione e nient'altro. E' la
+stessa classe di irreversibilita' di una mail partita, con una coda piu' lunga.
+
+Il gate nomina **tutte e tre le strade** con cui il formato puo' portare un
+luogo, perche' due non sono testo e un controllo sui campi ne intercetterebbe
+una: un campo stampato, `locations[]` (le coordinate che accendono il pass sulla
+schermata di blocco), e `semantics.venueName` (il dizionario che legge il
+sistema operativo).
+
+### Changed — `venue-secrecy.md`: il pass passa da «aperto» a «chiuso» nell'enumerazione
+
+Il gate *percorsi enumerati* lo elencava fra le uscite aperte, ed era diventato
+falso. **Una enumerazione datata in questo dominio e' peggio di nessuna
+enumerazione**: e' il gate stesso a dire *«questa lista e' datata per
+costruzione»*.
+
+### Added — l'uscita che non e' una colonna, e l'imperativo su chi da' i nomi
+
+Il pass stampa i **titoli** di serata e festa, testo libero scritto da una
+persona in un form. Un posto scritto li' finisce su un file che non si ritira, e
+**nessun predicato puo' vederlo**. Non e' riparabile in codice: e' un vincolo su
+**come si da' un nome**, e l'imperativo sta in `venue-secrecy.md` perche' quel
+modulo si carica su `src/components/events/**` — cioe' dove i titoli si scrivono.
+
+### La regola sta dove si carica, e la prima stesura sbagliava
+
+La prima stesura metteva l'imperativo sul pass in `venue-secrecy.md`. **I `paths:`
+di quel modulo non coprono ne' `src/lib/apple-wallet.ts` ne'
+`src/app/api/tickets/**`**: sarebbe stato un gate giusto in un file che su quei
+due non si apre — *gate un gate deve poter caricarsi*, «indistinguibile da un
+gate assente, con l'aggravante che sembra presidiato».
+
+Il modulo che si carica su entrambi e' **`ticketing-payments.md`**, e li' e'
+finito il gate. In `venue-secrecy.md` resta l'enumerazione — che e' il suo
+mestiere — piu' un rimando esplicito a dove stanno i gate del pass.
+
+### Context budget rimisurato
+
+Caso peggiore invariato — `src/app/(public)/events/EventTabs.tsx`, 5 file
+caricati — **42.959 byte ≈ 11.933 token** su un tetto di 12.000, **margine 67**.
+Prima di questa modifica: 11.658, margine 342.
+
+**Il margine e' ora sottile, e va detto invece di lasciarlo scoprire.** La prosa
+di questa voce e' stata tagliata **due volte** per rientrare — descrizione via,
+regole intatte, come `gate context budget` prescrive — e il tetto non e' stato
+alzato. **La prossima aggiunta a uno di quei cinque file non ci sta**: chiede
+prima una potatura della prosa piu' vecchia, ed e' una decisione da prendere,
+non da improvvisare sotto scadenza.
+
+### Scenario di caricamento (gate *eval, in un repo senza test*)
+
+File reale: `src/lib/apple-wallet.ts`. Moduli attesi: `CLAUDE.md`, `meta-gates`,
+**`ticketing-payments`** (primario e unico di dominio — nessun altro modulo ha un
+glob che copra questo file). Modifica-tipo che deve far scattare un gate:
+rimettere un campo del luogo sul pass, oppure aggiungere una rilevanza per
+posizione con `pass.setLocations(...)` -> *gate pass Wallet, validita' e
+contenuto*, **piu' `npm run verify:venue-surfaces` che esce 1** sul controllo F.
+
+Provato per mutazione: **sei mutazioni, sei uccise**, ognuna riletta dal disco e
+asserita presente **prima** di leggerne l'esito, ognuna ripristinata dai byte
+salvati e mai con un comando git, piu' un controllo finale con i file
+byte-identici e il gate di nuovo verde.
+
+Una delle sei ha trovato un difetto **nel gate** invece che nella superficie: F4
+era ancorata a inizio riga, e la mutazione che spinge un campo sul pass su una
+riga sola le e' passata accanto. Il giro era rosso lo stesso — un altro controllo
+la prendeva sul nome — quindi **leggere il solo codice d'uscita l'avrebbe
+registrata come catturata**. E' stato leggere *quali* controlli scattavano a
+mostrarlo.
+
 ## [1.17.0] - 2026-08-22
 
 ### Changed — `venue-secrecy.md`: la rivelazione non rende pubblico, rende noto a chi ha comprato
