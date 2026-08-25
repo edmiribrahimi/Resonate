@@ -13,8 +13,8 @@ updated: 2026-08-25T00:00:00Z
 ## Tests
 
 ### 1. Esercitare `P-58-C` (passi 1-7) — il rientro dall'istantanea dopo uno specchio interrotto
-expected: Un'osservazione scritta per ognuno dei sette passi, con i conteggi del passo 2 riconfermati al passo 6, o il ritrovamento scritto per esteso se l'istantanea manca. Al termine, `MIRROR_RESTORE_PATH_VERIFIED` puo' passare a `true` **solo** dopo che questa procedura ha rimesso DAVVERO una spunta.
-why_human: `P-58-C` **scrive in produzione** (tramite lo strumento di restore) e richiede o un incidente reale — una corsa morta a meta' — o una seduta datata con l'autorizzazione del proprietario per esercitarla a comando (`R15` in `verify-mirror-guards.mjs`). Nessun agente automatico puo' autorizzare o simulare un atto su produzione.
+expected: Un'osservazione scritta per ognuno dei sette passi, con i conteggi del passo 2 riconfermati al passo 6, o il ritrovamento scritto per esteso se l'istantanea manca. Al termine, `MIRROR_RESTORE_PATH_VERIFIED` puo' passare a `true` **solo** dopo che questa procedura ha rimesso DAVVERO una riga.
+why_human: **Non e' l'autorizzazione a bloccare — quel fatto era riportato male, e la correzione e' del 2026-08-25.** Il frontmatter di `58-PROCEDURES.md` dice *«`P-58-C` legge soltanto»*, e la procedura stessa: *«non scrive in produzione con le proprie mani … Non ha bisogno di un'autorizzazione propria»*. Cio' che blocca e' la **precondizione**: *«lo specchio e' morto fra la cancellazione e la riscrittura»*. Misurato in produzione il 2026-08-25: **nessuna corsa e' morta a meta'** — tutte e sei le righe di `production_import_run` portano un `finished_at`. Un runbook di rientro non si esercita a comando su un incidente che non c'e'; o si aspetta, o si costruisce un posto dove provocarlo che non sia la produzione.
 result: [pending]
 
 ### 2. `R15` in `npm run verify:mirror-guards` — il rientro che rimette DAVVERO una spunta
