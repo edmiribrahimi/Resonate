@@ -16,8 +16,10 @@ import {
 import { formatProgressivo } from "@/app/(admin)/admin/calendar/dates";
 import {
   ImportRunSummary,
+  type CalendarMirrorState,
   type ImportRun,
 } from "@/app/(admin)/admin/calendar/ImportRunSummary";
+import { CALENDAR_KEYS } from "@/lib/production/ics/vocabulary";
 
 import type {
   ProductionChecklistItem,
@@ -168,23 +170,71 @@ export default async function AdminCalendarPage() {
     .order("occurrence_date", { ascending: true });
 
   /*
-    The last run, whichever run it was.
+    ── TWO READS OF ONE TABLE, ANSWERING TWO DIFFERENT QUESTIONS ──────────────
 
-    A dry run is a real row and is not filtered out here: it IS the last thing
-    that happened, and hiding it would leave the block describing a run that is
-    no longer the most recent one. `ImportRunSummary` says which kind it was
-    instead — the tallies of a run that applied nothing mean something different
-    from the tallies of one that did, and the difference is drawn rather than
-    left to be inferred.
+    They are kept apart deliberately, and the reason is worth stating because the
+    obvious tidy-up is to keep only one of them.
+
+    **The first is *the last run, whichever run it was*.** It has two consumers
+    that predate the calendar key and still want exactly that: the list's own
+    empty state — *never imported* rather than *no nights* — and the divergence
+    mark on a night row. Both ask about the archive as a whole, not about one
+    calendar, and both must go on seeing a row written before `ICS-02` existed,
+    which carries no key at all. Narrowing this read to the three keys would have
+    made those rows invisible and changed two behaviours nobody asked to change.
+
+    **The second is *the last run OF EACH CALENDAR*** — `ICS-10` guard (b), and
+    the whole of the block at the foot. A single most-recent run answers for
+    whichever calendar happened to be last and says nothing about the other two;
+    since plan 58-12 a process nobody is watching writes them, so *nothing about
+    the other two* is precisely the silence that guard exists to break.
+
+    A dry run is a real row and is not filtered out of either: it IS the last
+    thing that happened, and hiding it would leave the block describing a run
+    that is no longer the most recent one. `ImportRunSummary` says which kind it
+    was instead — the tallies of a run that applied nothing mean something
+    different from the tallies of one that did, and the difference is drawn
+    rather than left to be inferred.
   */
+  const IMPORT_RUN_COLUMNS = `id, started_at, finished_at, file_byte_size, entries_seen, entries_by_class,
+       unclassified_count, divergences, unsupported_recurrences, dry_run`;
+
   const { data: runRows, error: runError } = await supabase
     .from("production_import_run")
-    .select(
-      `id, started_at, finished_at, file_byte_size, entries_seen, entries_by_class,
-       unclassified_count, divergences, unsupported_recurrences, dry_run`
-    )
+    .select(IMPORT_RUN_COLUMNS)
     .order("started_at", { ascending: false })
     .limit(1);
+
+  /*
+    One query per key, and not one query sliced afterwards.
+
+    The vocabulary is closed and holds three members, so three reads is the exact
+    answer; a single read of the newest N rows would be a guess about N, and the
+    calendar whose last run fell off the end of that window would silently draw
+    *never mirrored* — a zero standing in for a measurement, on the block whose
+    whole subject is that the two are different.
+  */
+  const perKeyReads = await Promise.all(
+    CALENDAR_KEYS.map(async (calendarKey) => {
+      const read = await supabase
+        .from("production_import_run")
+        .select(IMPORT_RUN_COLUMNS)
+        .eq("calendar_key", calendarKey)
+        .order("started_at", { ascending: false })
+        .limit(1);
+      return { calendarKey, read };
+    })
+  );
+
+  /*
+    THREE OUTCOMES PER KEY, NEVER TWO, and the third one joins the page's own.
+
+    Rows returned; zero rows; and the read itself failed. The third is NOT the
+    empty state and never becomes one: *this calendar has never been mirrored*
+    and *we could not find out whether it has* have different next steps, and
+    collapsing them would put the more reassuring of the two on the screen.
+  */
+  const perKeyError = perKeyReads.find((entry) => entry.read.error)?.read.error ?? null;
 
   /*
     THREE OUTCOMES, NEVER TWO (OBS-03).
@@ -199,7 +249,7 @@ export default async function AdminCalendarPage() {
     `error.code` and `error.message` only. Never the error object, and never
     `details`, which carries the rejected row.
   */
-  const readError = planError ?? commitmentError ?? runError;
+  const readError = planError ?? commitmentError ?? runError ?? perKeyError;
   if (readError) {
     console.error(
       `[calendar.read_failed] code=${readError.code} message=${readError.message}`
@@ -209,6 +259,20 @@ export default async function AdminCalendarPage() {
 
   const today = turinToday();
   const lastRun = (runRows as ProductionImportRun[] | null)?.[0] ?? null;
+
+  /*
+    One entry per key, in the order of the closed vocabulary, and a key with no
+    row keeps its entry with a `null` run. Dropping it would have made *never
+    mirrored* and *not a calendar of this project* the same absence on the
+    screen.
+
+    Nothing here reaches this point unless every one of the three reads
+    succeeded: a failure returned above, at the page's one alert region.
+  */
+  const mirrorStates: CalendarMirrorState[] = perKeyReads.map((entry) => ({
+    calendarKey: entry.calendarKey,
+    run: toImportRun((entry.read.data as ProductionImportRun[] | null)?.[0] ?? null),
+  }));
 
   const nights = ((planRows as PlanRow[] | null) ?? []).map((row) =>
     toNightRow(row, today, lastRun)
@@ -246,16 +310,21 @@ export default async function AdminCalendarPage() {
           S3, at the FOOT of the list and never behind a click.
 
           This repository has no error tracking at all, so a failed or partial
-          import reaches nobody on its own — and an import summary behind a
-          second click is a log with a nicer font, seen only by whoever already
-          suspected something. It renders on every visit, whether or not
-          anything went wrong.
+          mirror reaches nobody on its own — and a summary behind a second click
+          is a log with a nicer font, seen only by whoever already suspected
+          something. It renders on every visit, whether or not anything went
+          wrong.
 
-          `null` draws nothing: *the import has never run* is the empty state
-          above and not a block of zeros, because a block of zeros says the
-          import ran and found nothing.
+          ⚠ **One block per calendar since plan 58-12** (`ICS-10`, guard b). A
+          process nobody is watching now writes these rows, so *the last run*
+          without saying which calendar it belonged to would have left two
+          calendars unaccounted for on the one surface that accounts for them.
+
+          A key whose run is `null` draws a sentence and not a block of zeros:
+          a block of zeros says the mirror ran and found nothing, and it did not
+          run.
         */}
-        <ImportRunSummary run={toImportRun(lastRun)} />
+        <ImportRunSummary states={mirrorStates} />
       </div>
     </PageShell>
   );
