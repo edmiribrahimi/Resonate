@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "58-11 CHIUSO: P-58-A e P-58-B eseguite (17 Result su 24), ICS-03 e ICS-03b chiusi dall'evidenza di una procedura; i 7 pendenti sono tutti e soli quelli di P-58-C"
+stopped_at: "58-12 ESEGUITO (12/12 piani), fase NON chiusa: 58-VERIFICATION.md e' human_needed — 4 item in 58-HUMAN-UAT.md, tutti sull'atto di produzione che P-58-C pretende. E il code review ha prodotto 3 BLOCKER verificati alla fonte, NON riparati e NON decisi: CR-03 linksAtRisk riceve righe che non entrano nella cancellazione (la prima serata annunciata manda il cron in rifiuto permanente), CR-01 il restore di una spunta conta i tentativi e non gli effetti (.update senza .select, vivo sul percorso PRESIDIATO dell'importatore), CR-02 Bearer undefined se CRON_SECRET manca (idioma preesistente dei 5 cron, ma questa e' l'unica rotta il cui successo e' un DELETE massivo). Referto in 58-REVIEW.md"
 last_updated: "2026-08-25T13:04:44.189Z"
 last_activity: 2026-08-25
 progress:
