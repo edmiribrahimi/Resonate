@@ -115,9 +115,22 @@ Per ogni nuovo percorso d'errore o blocco `catch`:
 
 **E c'e' un vincolo in piu', verificato il 2026-08-05: non esiste alcun error
 tracking.** `package.json` non ha dipendenze di monitoraggio, quindi **nessun
-errore di produzione raggiunge un essere umano da solo**. I quattro cron girano
-di notte, il webhook dei pagamenti gira quando gira, e se falliscono non lo sa
-nessuno finche' qualcuno non nota l'effetto.
+errore di produzione raggiunge un essere umano da solo**. I **sei** cron girano
+**di prima mattina** — fra le 06:00 e le 09:00 UTC, cioe' fra le 08:00 e le
+11:00 a Torino d'estate — il webhook dei pagamenti gira quando gira, e se
+falliscono non lo sa nessuno finche' qualcuno non nota l'effetto.
+
+> **Questa riga diceva «i quattro cron girano di notte», ed erano due errori.**
+> Il numero: `vercel.json` ne dichiara **sei** e altrettante directory stanno
+> sotto `src/app/api/cron/`, contate su entrambe le fonti il 2026-08-25. L'ora:
+> **nessuno di loro gira di notte**, e non per caso — il cron dello specchio
+> dichiara la ragione accanto a se stesso, *«una notte re:sonate va 22:00 → 06:00
+> locale, quindi qualunque cosa prima delle 06:00 locali puo' capitare mentre la
+> porta e' ancora aperta»*. **Una riga di questo file che descrive male il
+> prodotto e' peggio di una riga assente**, perche' sta in un modulo che si
+> carica su ogni risposta: chi la legge ci costruisce sopra. E' successo il
+> 2026-08-25, quando il numero sbagliato ha fatto formulare a un assistente una
+> domanda al proprietario su una premessa falsa.
 
 Finche' resta cosi', "loggare l'errore" **non e' sufficiente**: il log e' un
 posto dove nessuno guarda. Un fallimento che conta deve avere un **effetto

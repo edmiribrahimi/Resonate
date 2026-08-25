@@ -3,6 +3,59 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.19.1] - 2026-08-25
+
+### Fixed — `meta-gates.md` diceva «i quattro cron girano di notte», e sbagliava due volte
+
+**Trovato eseguendo la fase 58**, non leggendo la persona: il piano `58-12`
+aggiunge il sesto cron, e nel farlo ha reso visibile che la riga ne contava
+quattro.
+
+**Verificato su due fonti indipendenti prima di correggere**, come il proprietario
+ha chiesto: `vercel.json` dichiara **sei** voci in `crons`, e **sei** directory
+stanno sotto `src/app/api/cron/`. Le due liste corrispondono una a una.
+
+**Il secondo errore e' piu' interessante del primo.** La riga diceva anche *«di
+notte»*, e con gli orari veri — 06:00, 07:00, 07:30, 08:00, 08:30 e 09:00 UTC,
+cioe' fra le 08:00 e le 11:00 a Torino d'estate — **nessuno di loro gira di
+notte**. E non e' un caso: il cron dello specchio porta la ragione scritta
+accanto a se stesso, *«una notte re:sonate va 22:00 → 06:00 locale, quindi
+qualunque cosa prima delle 06:00 locali puo' capitare mentre la porta e' ancora
+aperta»*.
+
+**Perche' questa correzione e' registrata come un fatto e non come una pulizia.**
+La riga sbagliata ha prodotto un danno misurabile lo stesso giorno: un assistente
+ha portato al proprietario una domanda — *«l'orario e' 08:30, il piano lo
+descriveva come corsa notturna: lo sposto?»* — costruita su quella premessa. Il
+proprietario ha risposto *«spostarlo di notte»*, la modifica e' stata applicata,
+e poi il docblock della rotta ha mostrato che l'orario era **scelto** per stare
+fuori da una serata. La modifica e' stata ripristinata e il fatto riportato.
+
+`meta-gates.md` e' **sempre caricato**: una sua riga che descrive male il prodotto
+non e' un dettaglio di prosa, e' una premessa che qualcuno usera'. La correzione
+porta con se' il precedente, perche' il gate *documentazione datata* dice che una
+data non e' una garanzia di validita' ma una scadenza da controllare.
+
+**Scenario di caricamento e di scatto.** File nello scope: qualunque file, dato
+che il modulo e' sempre caricato; il caso concreto e'
+`src/app/api/cron/production-mirror/route.ts`, dove si caricano `CLAUDE.md`,
+`meta-gates` e `ticketing-payments` (riga `src/app/api/cron/**` della tabella di
+priorita'). Il gate che deve scattare su una modifica-tipo: aggiungere un settimo
+cron **rende falsa di nuovo questa riga**, e il conteggio va riletto da
+`vercel.json` invece che ricordato — esattamente come `production-calendar.md`
+pretende che le ancore si rileggano dal calendario.
+
+### Misure
+
+Caso peggiore del context budget **rimisurato**, perche' la prosa e' entrata in
+un modulo **sempre caricato** e il gate lo impone: `src/app/(public)/events/EventTabs.tsx`,
+5 file (`CLAUDE.md`, `meta-gates`, `nextjs-architecture`, `ticketing-payments`,
+`venue-secrecy`), **43.898 byte ≈ 12.194 token su un tetto di 15.000 — margine
+2.806**. Era 11.933 alla 1.19.0: **+261 token**, che e' il costo di questa voce.
+Nessun `paths:` e' stato allargato, quindi il caso peggiore non ha cambiato file.
+
+`npm run verify:persona` **7/7 verdi**.
+
 ## [1.19.0] - 2026-08-24
 
 ### Changed — il tetto del context budget passa da 12.000 a 15.000 token
