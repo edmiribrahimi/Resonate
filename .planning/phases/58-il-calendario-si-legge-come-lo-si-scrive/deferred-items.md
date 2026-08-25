@@ -256,6 +256,35 @@ so the way back is theirs to take`.
 ⚠ **E come l'evidenza di presidio e' stata prodotta e' a sua volta un
 ritrovamento: vedi la voce 20.**
 
+### ⇢ 2026-08-25, piano 58-12: la guardia e' sul percorso del cron, e li' e' PORTANTE
+
+**Il cron E' la corsa non presidiata**, per costruzione e non per dichiarazione:
+una funzione serverless non ha un terminale di controllo e **non puo'
+procurarselo** — che e' la forma onesta dell'evidenza che `runSupervision` legge,
+e la ragione per cui la voce 20 e' un ritrovamento sul terminale di una persona e
+non su questo chiamante.
+
+`unattendedMirrorGuard` gira in `src/app/api/cron/production-mirror/route.ts`
+**dopo il piano e prima di qualunque cancellazione**, con i conteggi presi da
+`plan.decisionsToRestore` e `plan.linksToRestore` — la stessa lista che lo
+scrittore rimette, mai una seconda contata sul posto.
+
+**E qui non e' una cintura in piu': e' la ragione per cui questa strada puo'
+girare senza istantanea.** Lo scrittore a mano scrive un'istantanea su disco
+prima di rimuovere, e dice di se' che *uno specchio che non puo' prendere la sua
+istantanea non parte*. Il cron non ne prende una — e non perche' un filesystem
+serverless sia scomodo, ma perche' **sul solo ramo che arriva a un `DELETE`
+l'istantanea sarebbe vuota per costruzione**: la guardia rifiuta a meno che
+entrambi i conteggi siano zero, e cio' che un'istantanea esiste per restituire
+sono esattamente quelle due eccezioni di stato. Tutto il resto lo riscrive il
+feed alla corsa successiva. Il ragionamento sta scritto nel file, non qui.
+
+**Cosa questo NON chiude.** `R15` resta non esercitato e
+`MIRROR_RESTORE_PATH_VERIFIED` resta `false`. Il rientro dall'istantanea non e'
+stato visto rimettere una spunta vera, e finche' non lo sara' questa voce resta
+aperta — con la conseguenza operativa ora visibile in un posto in piu': il cron
+**non specchia `rsnt`**, per dichiarazione, e lo dice nel corpo della risposta.
+
 ---
 
 ## 4. Lo specchio non ha una sorgente registrata: la prima corsa non e' potuta partire — **CHIUSA il 2026-08-20**
@@ -573,7 +602,7 @@ registrata nella **voce 5**.
 
 ---
 
-## 10. `mtnlb` rifiuta a ogni corsa, ed e' il codice che ha ragione
+## 10. `mtnlb` rifiuta a ogni corsa, ed e' il codice che ha ragione — **CHIUSA il 2026-08-25**
 
 - **Trovata:** piano 58-11, 2026-08-20, lanciando la prova a vuoto sulla terza
   chiave
@@ -604,6 +633,29 @@ registrata nella **voce 5**.
   fatta **prima** della corsa e per dichiarazione — quali chiavi il cron specchia
   oggi — non dentro la guardia, che deve continuare a rifiutare tutto cio' che
   non sa spiegare.
+
+### ⇢ CHIUSA il 2026-08-25, piano 58-12 — nella forma che questa voce chiedeva
+
+`MIRRORED_TODAY` in `src/app/api/cron/production-mirror/route.ts` e' un `Record`
+**totale** su `CALENDAR_KEYS`: per ogni chiave dice se un processo non presidiato
+la specchia oggi, e quando non la specchia dice **perche'**, con un vocabolario
+chiuso di due ragioni.
+
+`mtnlb` porta `no_declared_dates`. Non viene mai richiesta, mai letta, mai
+pianificata — quindi `mirrorGuard` non viene interrogato su di essa e **non e'
+stato allentato di una riga**: nessuna chiave esclusa dentro la guardia, nessun
+feed vuoto tollerato. E' esattamente la distinzione che questa voce prescriveva:
+prima della corsa e per dichiarazione.
+
+Il suo esito nel corpo della risposta e' `not_mirrored_by_declaration`, che vale
+`200`. Quindi **la notte in cui `rsnt` rifiutera' per una ragione vera, quel
+rosso sara' l'unico rosso** — che era il danno concreto che questa voce
+descriveva.
+
+**Un `Record` totale e non una lista, e la differenza e' la chiusura vera:** una
+lista avrebbe risposto per le chiavi di oggi e taciuto sulla prossima. Cosi', una
+quarta chiave non compila finche' qualcuno non ha deciso se un processo che
+nessuno guarda puo' cancellarla e riscriverla.
 
 ---
 
@@ -848,6 +900,31 @@ diverso da quello che ha prodotto l'effetto:
 Le undici serate: **7** su `RSNT` (002–008), **2** su `RSNT-PRLN` (001–002), **2**
 su `RMDB-BZ` (001–002). Nessun progressivo inventato, nessuno spostato, nessun
 salto dentro le serie che il calendario porta.
+
+### ⇢ 2026-08-25, piano 58-12: l'autorizzazione del punto 1 resta di una persona
+
+Il punto 1 di questa voce si e' chiuso con un `--apply` **presidiato** e
+un'autorizzazione datata del proprietario. Quel modo di chiudersi porta con se'
+una conseguenza per il cron, ed e' scritta qui perche' non venga ereditata di
+nascosto: **cancellare e riscrivere `rsnt` con una spunta viva resta un atto di
+una persona, e il cron non se lo prende.**
+
+`MIRRORED_TODAY` in `src/app/api/cron/production-mirror/route.ts` trattiene
+`rsnt` con la ragione `state_needs_a_person`, e la trattiene **per
+dichiarazione** — prima della corsa, non dentro una guardia.
+
+⚠ **La dichiarazione non sostituisce la guardia, e viceversa.** Ognuna copre un
+buco che l'altra non copre: la dichiarazione impedisce che il tentativo venga
+fatto; `unattendedMirrorGuard` rende sicuro il tentativo quando viene fatto — su
+`rmdb` gira comunque, a ogni corsa, e rifiuterebbe se domani nascesse una spunta
+li'. Toglierne una delle due sarebbe lasciare scoperto cio' che l'altra non
+guarda.
+
+**Quando smette di valere:** quando `MIRROR_RESTORE_PATH_VERIFIED` diventa `true`
+— cioe' quando qualcuno avra' visto il rientro rimettere una spunta vera (voce 3,
+caso `R15`) — **oppure** con un'autorizzazione datata del proprietario a far
+cancellare e riscrivere `rsnt` a un processo che nessuno guarda. Sono due
+decisioni diverse e nessuna delle due e' un ritocco.
 
 ---
 
