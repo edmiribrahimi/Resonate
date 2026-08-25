@@ -1,20 +1,25 @@
 #!/usr/bin/env node
 /**
- * verify-calendar-surface.mjs — the eleven assertions this surface answers to,
+ * verify-calendar-surface.mjs — the twelve assertions this surface answers to,
  * run as a command instead of remembered.
  *
  * WHAT IT ASSERTS, in one sentence: **the calendar surface's files agree with
- * the eleven string-level rules written down for them, and with nothing
- * else.**
+ * the string-level rules written down for them, and with nothing else** — plus
+ * one assertion about two files that are not on that surface at all.
  *
- * ── TEN OF THEM ARE §15's, AND ONE IS NOT ──────────────────────────────────
+ * ── TEN OF THEM ARE §15's, AND TWO ARE NOT ─────────────────────────────────
  *
- * U1 … U10 are `44-UI-SPEC.md` §15, whole. **U11 is not**: it belongs to
- * `ICS-06`, it arrived with the mirror, and §15 was written before the mirror
- * existed. The count and the provenance are both kept here rather than
- * flattened into *the eleven of §15*, because a check folded into a contract
- * it was never in is a check nobody can trace back to a decision — and this
- * phase exists partly to repair prose that stopped being true.
+ * U1 … U10 are `44-UI-SPEC.md` §15, whole. **U11 and U12 are not.** U11 belongs
+ * to `ICS-06` and arrived with the mirror; **U12 belongs to `D-58-07` and
+ * arrived with the cron**, and it is the one check here whose subject is not a
+ * rendering file: it reads the two callers that hold a calendar's bytes and
+ * asserts none of them prints one. §15 was written before either existed. The
+ * count and the provenance are kept here rather than flattened into *the twelve
+ * of §15*, because a check folded into a contract it was never in is a check
+ * nobody can trace back to a decision — and this phase exists partly to repair
+ * prose that stopped being true. **This paragraph has already been wrong once**,
+ * before plan 58-04 corrected it; the number and the provenance move together
+ * with the array at the foot, or it will be wrong again.
  *
  * ── WHAT A GREEN DOES NOT MEAN (cosa un verde NON significa) ────────────────
  *
@@ -47,6 +52,12 @@
  * disables. The two directories are the measured `(work)` convention: route
  * files inside the nested group, every other module one level out
  * (`nextjs-architecture.md`, R-WORK-ROUTES).
+ *
+ * ⚠ **U12 DOES NOT USE THAT SCOPE, AND HAS ITS OWN LIST OF TWO PATHS.** They
+ * are named one by one rather than walked, they hold no JSX, and none of the
+ * eleven above is applied to them. Two lists, because one list widened by
+ * accident would apply eleven rendering rules to a cron route and a script —
+ * which is the shape of a gate somebody disables.
  *
  * ── GREP HYGIENE, WHICH IS NOT OPTIONAL HERE ───────────────────────────────
  *
@@ -245,6 +256,54 @@ for (const abs of files) {
   });
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * The two files U12 reads, which are NOT on the surface
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The two callers that hold a calendar's bytes in memory.
+ *
+ * ⚠ **Neither is in {@link SCOPE}, and adding them to it would be wrong.** The
+ * eleven checks above are `44-UI-SPEC.md` §15's contract with a rendering
+ * surface; these two files render nothing and never agreed to any of it. U12 has
+ * its own subject and reads its own list, and the two lists are kept apart so
+ * that widening one cannot silently widen the other.
+ *
+ * They are named as PATHS rather than discovered by a walk. A walk would answer
+ * *whatever is there today*, and this check's whole claim is about two specific
+ * paths — the one that fetches a calendar inside the product, and the one that
+ * fetches it from a terminal.
+ */
+const FEED_READERS = [
+  "src/app/api/cron/production-mirror/route.ts",
+  "scripts/import-production-calendar.mjs",
+];
+
+const feedReaders = [];
+for (const rel of FEED_READERS) {
+  const abs = join(ROOT, rel);
+  if (!existsSync(abs)) {
+    refuse(
+      `${rel} is not on disk.\n` +
+        "       U12 asserts that no calendar's bytes reach a print or a response body, and it\n" +
+        "       asserts it about that file by name. A file that is not there was not measured,\n" +
+        "       and a green that skipped it would be a green about nothing — which is exactly\n" +
+        "       the shape D-58-07's first defence cannot afford, because the platform's runtime\n" +
+        "       logs are retained."
+    );
+  }
+  const { lines, unterminated } = liveLines(abs);
+  if (unterminated !== null) {
+    refuse(
+      `${rel} opens a ${unterminated.kind} comment on line ${unterminated.lineNo} ` +
+        "that never closes.\n" +
+        "       This gate cannot tell that file's comments from its code, so it measured\n" +
+        "       nothing about it."
+    );
+  }
+  feedReaders.push({ rel, lines, joined: lines.join("\n") });
+}
+
 /** The 1-based line number of a character offset in `file.joined`. */
 function lineOf(file, index) {
   let line = 1;
@@ -285,7 +344,7 @@ function argumentsFrom(text, open) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * The eleven checks — U1 … U10 from §15, U11 from ICS-06
+ * The twelve checks — U1 … U10 from §15, U11 from ICS-06, U12 from D-58-07
  *
  * Each returns `{ id, title, note, failures: [{ rel, line, detail }] }`.
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -903,19 +962,197 @@ function u11() {
   return { id, title, note, failures };
 }
 
+/* ── U12 ────────────────────────────────────────────────────────────────────
+ *
+ * D-58-07, DEFENCE 1 — and it is the only form in which that defence exists.
+ *
+ * WHAT IT ASSERTS, in one sentence: **no value read out of a calendar's response
+ * body reaches a print, a refusal or a response body, in either of the two files
+ * that hold one.**
+ *
+ * WHY IT HAD TO BE WRITTEN. On 2026-08-15 the owner closed the import as a local
+ * script, with the reason recorded: an `.ics` transiting a server would carry
+ * spaces under negotiation and unannounced dates into logs, caches and runtime
+ * faults. On 2026-08-20 the owner chose the automatic update anyway (D-58-07),
+ * which turns that reason from *a surface that does not exist* into **a thing to
+ * defend by construction** — and D-58-07 says so in as many words: *the plan must
+ * VERIFY the defences, not declare them.*
+ *
+ * Written down and nothing else, defence 1 is a promise the first distracted
+ * `catch` breaks. A `console.error(e)` on a parse fault carries with it the
+ * portion of text that could not be read; the platform's runtime logs are
+ * retained; and there is no error tracking in this repository to notice.
+ *
+ * HOW IT FINDS ITS SUBJECT, which is the part that must not be hard-coded. It
+ * does not look for a variable called something in particular — a rename would
+ * make the gate green while the leak stayed. It reads the two files and collects
+ * **every identifier bound to the result of reading a response as text**, then
+ * asserts that none of those identifiers is handed to a call that emits.
+ *
+ * TWO SHAPES ARE FLAGGED, and they are two because they leak differently:
+ *
+ *   (a) the identifier **interpolated** into a template — the shape a message
+ *       assembled under pressure takes;
+ *   (b) the identifier passed as **an argument**, whole or through a member or a
+ *       slice — the shape *let us log it and look later* takes.
+ *
+ * WHAT IT DOES NOT CATCH, stated rather than discovered: a body copied into a
+ * second variable through an expression this reader does not follow, or handed
+ * to a helper that prints. No string check sees that. The structural guard is
+ * the one the route already keeps — the value is bound inside one function, is
+ * never returned, and goes out of scope with it.
+ *
+ * ⚠ **A file in which NO such identifier is found is a FAILURE, not a pass.**
+ * That is the shape of a green about nothing: if the read is restructured and
+ * this reader stops recognising it, the check must say so rather than go on
+ * reporting a defence it is no longer measuring.
+ *
+ * ⚠ **Every literal below is assembled**, for the reason U9 states about the
+ * reversed glyph: this script lives in `scripts/`, and one of the two files it
+ * reads lives there too. A literal spelled out here would be a second occurrence
+ * in a file this check could one day be pointed at, and a gate that finds itself
+ * is a gate that reddens on its own prohibition.
+ */
+
+/** The call that turns a response into text. Assembled, never spelled. */
+const TEXT_READ = "text" + "(" + ")";
+
+/** The calls that emit: a diagnostic, a transcript line, a refusal, a body. */
+const EMITTERS = [
+  "console" + "." + "error(",
+  "console" + "." + "warn(",
+  "console" + "." + "log(",
+  "console" + "." + "info(",
+  "console" + "." + "debug(",
+  "say" + "(",
+  "refuse" + "(",
+  "failPartway" + "(",
+  "stop" + "(",
+  "NextResponse" + "." + "json(",
+];
+
+/** Every identifier bound to the text of a response, in one file. */
+function bodyHolders(file) {
+  const pattern = new RegExp(
+    "(?:const|let|var)\\s+([A-Za-z_$][A-Za-z0-9_$]*)\\s*=\\s*await\\s+[^;\\n]*?\\." +
+      TEXT_READ.replace("(", "\\(").replace(")", "\\)"),
+    "g"
+  );
+  const found = new Set();
+  let match = pattern.exec(file.joined);
+  while (match !== null) {
+    found.add(match[1]);
+    match = pattern.exec(file.joined);
+  }
+  return [...found];
+}
+
+/**
+ * The top-level arguments of a call's argument text, split on depth-zero commas.
+ *
+ * A split on every comma would cut `f(a, b)` inside one argument in half and
+ * report two arguments where there is one — in the direction that HIDES a hit,
+ * because the halves would no longer equal the identifier.
+ */
+function topLevelArguments(args) {
+  const out = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < args.length; i += 1) {
+    const ch = args[i];
+    if (ch === "(" || ch === "[" || ch === "{") depth += 1;
+    else if (ch === ")" || ch === "]" || ch === "}") depth -= 1;
+    else if (ch === "," && depth === 0) {
+      out.push(args.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(args.slice(start));
+  return out.map((piece) => piece.trim());
+}
+
+/** Every occurrence of `needle` that is not preceded by an identifier character. */
+function standaloneIndicesOf(haystack, needle) {
+  return indicesOf(haystack, needle).filter((at) => {
+    if (at === 0) return true;
+    const before = haystack[at - 1];
+    return !/[A-Za-z0-9_$.]/.test(before);
+  });
+}
+
+function u12() {
+  const id = "U12";
+  const title = "no calendar's bytes reach a print, a refusal or a response body";
+  const note =
+    "D-58-07 defence 1 — runtime logs are retained, so this is the only defence there is";
+
+  const failures = [];
+
+  for (const file of feedReaders) {
+    const holders = bodyHolders(file);
+
+    if (holders.length === 0) {
+      failures.push({
+        rel: file.rel,
+        line: 0,
+        detail:
+          "no value read from a response body was recognised here, so this check " +
+          "measured nothing about this file",
+      });
+      continue;
+    }
+
+    for (const emitter of EMITTERS) {
+      // The emitter name may repeat inside a longer one; only a standalone
+      // occurrence is a call to it.
+      for (const at of standaloneIndicesOf(file.joined, emitter)) {
+        const open = at + emitter.length - 1;
+        const args = argumentsFrom(file.joined, open);
+        const pieces = topLevelArguments(args);
+
+        for (const holder of holders) {
+          // (a) interpolated into a template.
+          const interpolated = new RegExp("\\$\\{[^}]*\\b" + holder + "\\b[^}]*\\}");
+          if (interpolated.test(args)) {
+            failures.push({
+              rel: file.rel,
+              line: lineOf(file, at),
+              detail: `a calendar's bytes interpolated into ${emitter.slice(0, -1)}`,
+            });
+            continue;
+          }
+          // (b) passed as an argument, whole or through a member or a slice.
+          const passed = new RegExp("^" + holder + "\\b");
+          if (pieces.some((piece) => passed.test(piece))) {
+            failures.push({
+              rel: file.rel,
+              line: lineOf(file, at),
+              detail: `a calendar's bytes handed to ${emitter.slice(0, -1)}`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return { id, title, note, failures };
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
  * The run
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const CHECKS = [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11];
+const CHECKS = [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12];
 
 console.log("");
 console.log(
-  `verify-calendar-surface — ${CHECKS.length} assertions: U1…U10 from 44-UI-SPEC.md §15, U11 from ICS-06`
+  `verify-calendar-surface — ${CHECKS.length} assertions: U1…U10 from 44-UI-SPEC.md §15, ` +
+    "U11 from ICS-06, U12 from D-58-07"
 );
 console.log("");
 console.log(`  scope:  ${SCOPE.join("  ·  ")}`);
 console.log(`  files:  ${surface.length}, comments blanked by scripts/lib/comments.mjs`);
+console.log(`  U12 also reads:  ${feedReaders.map((f) => f.rel).join("  ·  ")}`);
 console.log("");
 
 const results = CHECKS.map((check) => check());
