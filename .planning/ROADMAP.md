@@ -147,7 +147,7 @@ Plans:
 - [x] 58-11-PLAN.md — il primo specchio, a mano, con autorizzazione datata *(onda 7, checkpoint bloccante)*
   > **CHIUSO il 2026-08-22**, dopo essere stato chiuso parzialmente il 2026-08-20. *(Il 20:)* lo specchio ha girato presidiato su due chiavi (`rsnt` con il passaggio una tantum, poi `rmdb`), i conteggi sono stati riconfermati **dal catalogo**, e la chiave di calendario e' `NOT NULL` sulle tre tabelle specchiate — versione `20260820205137`, riverificata dal catalogo il 22. *(Il 22:)* **`P-58-A` e `P-58-B` sono ESEGUITE** — diciassette `Result` con un'osservazione, e i sette pendenti sono **tutti e soli** quelli di `P-58-C`, che e' un rientro. **`ICS-03` e `ICS-03b` sono chiusi dall'evidenza di una procedura**; `ICS-01`, `ICS-01b`, `ICS-02` e `ICS-07` erano gia' chiusi.
   > ⚠ **Due cose restano aperte e sono nominate invece che arrotondate.** *(a)* La **superficie** resta irraggiungibile da chi esegue — i passi 14, 19 e 24 dichiarano una seconda lettura **non presa** (voce 11-bis). *(b)* Lo specchio **riaggancia le spunte e non gli annullamenti**, e la guardia della corsa non presidiata legge la stessa lista: **e' un prerequisito del 58-12, non un lavoro futuro** (voce 21).
-- [ ] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
+- [x] 58-12-PLAN.md — `ICS-10`/`ICS-10b`: il cron e i tre stati per chiave sulla superficie *(onda 8)*
 
 > **L'ordine delle onde non e' libero.** La lettura dei titoli va **prima** dello
 > specchio (uno specchio che capisce il 70% del file cancellerebbe e

@@ -4,8 +4,8 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "58-11 CHIUSO: P-58-A e P-58-B eseguite (17 Result su 24), ICS-03 e ICS-03b chiusi dall'evidenza di una procedura; i 7 pendenti sono tutti e soli quelli di P-58-C"
-last_updated: "2026-08-22T20:18:38.000Z"
-last_activity: 2026-08-22
+last_updated: "2026-08-25T13:04:44.189Z"
+last_activity: 2026-08-25
 progress:
   total_phases: 51
   completed_phases: 47
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 ## Current Position
 
 Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — EXECUTING
-Plan: 12 of 12 (il 58-11 e' CHIUSO dal 2026-08-22: le due procedure sono eseguite e ICS-03 / ICS-03b hanno l'evidenza che nessun gate automatico poteva dare. Resta il 58-12, il cron)
+Plan: 1 of 12
 **Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
 `.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
@@ -240,7 +240,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to execute
+Status: Executing Phase 58
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:
@@ -321,7 +321,7 @@ Note:
         organizer/approved, organizer/pending seminato a mano, staff, member —
         ne chiude la maggior parte. La fase 36 costruisce superfici pubbliche
         sopra quel modello: il debito non e' suo, ma le sta sotto.
-Last activity: 2026-08-20
+Last activity: 2026-08-25
 
 **Phase 31: EXECUTED, NOT VERIFIED.** 13 of 13 plans, 61 commits on
 `gsd/phase-31-live-defects-at-the-door-and-the-bar`. One of its four blocking
