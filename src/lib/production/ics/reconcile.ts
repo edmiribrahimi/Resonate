@@ -1025,6 +1025,35 @@ export interface ReconcilePlan {
   decisionsToRestore: ChecklistDecisionRestore[];
   /** (4b) The second exception of STATE — goes away, comes back (`ICS-03`). */
   linksToRestore: AnnouncedNightLinkRestore[];
+  /**
+   * How many of {@link linksToRestore} the deletion could actually LOSE.
+   *
+   * ⚠ **This is NOT `linksToRestore.length`, and the difference is the whole
+   * reason the field exists.** The restore list is deliberately over-collected —
+   * every linked row goes into it, so the list is the only copy of that state
+   * across a run that dies halfway. But a link lives on the **plan row**, and
+   * `ICS-03b` keeps every linked plan row out of the deletion entirely. A link
+   * on a surviving row is therefore not at risk from anything: it is never
+   * removed, so nothing has to put it back.
+   *
+   * The unattended guard asks a different question from the restore writer —
+   * *what would this run lose if it died mid-way* — and answering it off
+   * `linksToRestore.length` gets it wrong in the direction that costs the most:
+   * **the first announced night would make every unattended run refuse, for
+   * ever**, on state the code itself documents as a no-op. A red that arrives
+   * every night on a condition that is not a risk is the noise that teaches
+   * people to ignore the channel, and the night a real refusal arrives it would
+   * be indistinguishable from the noise. That failure mode is named in this
+   * phase's deferred items and it is the reason this count is separate.
+   *
+   * ⚠ **`decisionsToRestore` gets NO equivalent field, and that is deliberate.**
+   * A tick does not live on the plan row: it lives in
+   * `production_checklist_item`, which is step 1 of
+   * {@link MIRROR_DELETION_ORDER} and is removed **whether or not** its plan row
+   * survives. Every collected decision is therefore genuinely at risk, and the
+   * count already errs the only way it can afford to — toward refusing.
+   */
+  linksAtRisk: number;
   /** Carried through from the parser, untouched. */
   unsupportedRecurrences: UnsupportedRecurrence[];
   /** Carried through from the classifier, untouched. */
@@ -1126,6 +1155,7 @@ export function reconcile(
     plansThatSurviveDeletion: [],
     decisionsToRestore: [],
     linksToRestore: [],
+    linksAtRisk: 0,
     unsupportedRecurrences: [...input.unsupportedRecurrences],
     unclassified: [...input.unclassified],
     seriesWithoutRules: [],
@@ -1256,12 +1286,24 @@ function collectSurvivors(
  * nothing can rebuild.
  */
 function collectStateToRestore(plan: ReconcilePlan, existing: ExistingSnapshot): void {
+  // Read once, off the list `collectSurvivors` has already filled — the two
+  // questions (*what do I put back* and *what could I lose*) are answered in the
+  // same pass and off the same rows, which is the property that stops them from
+  // drifting apart the way the count and the writer did before.
+  const survivingSourceUids = new Set(
+    plan.plansThatSurviveDeletion.map((row) => row.sourceUid)
+  );
+
   for (const row of existing.plans) {
     if (row.linkedPartyId === null) continue;
     plan.linksToRestore.push({
       planSourceUid: row.sourceUid,
       linkedPartyId: row.linkedPartyId,
     });
+    // A link on a row the deletion never touches is not at risk. See
+    // `ReconcilePlan.linksAtRisk` for why this is counted apart, and why
+    // decisions are not.
+    if (!survivingSourceUids.has(row.sourceUid)) plan.linksAtRisk += 1;
   }
 
   for (const item of existing.checklistItems) {

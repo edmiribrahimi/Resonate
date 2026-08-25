@@ -2396,7 +2396,10 @@ const supervision = ics.runSupervision({
 const unattendedVerdict = ics.unattendedMirrorGuard({
   supervision,
   decisionsAtRisk: plan.decisionsToRestore.length,
-  linksAtRisk: plan.linksToRestore.length,
+  // NOT the length of the restore list. See `ReconcilePlan.linksAtRisk`: the
+  // list is over-collected on purpose, and a link on a row `ICS-03b` keeps out
+  // of the deletion is not something this run could lose.
+  linksAtRisk: plan.linksAtRisk,
   restorePathVerified: ics.MIRROR_RESTORE_PATH_VERIFIED,
 });
 
@@ -2404,7 +2407,9 @@ say("");
 say("  ── the second guard ──────────────────────────────────────────────────");
 say(
   `     ${supervision} · at stake ${plan.decisionsToRestore.length} decision(s) + ` +
-    `${plan.linksToRestore.length} link(s) · way back exercised: ` +
+    `${plan.linksAtRisk} link(s) at risk ` +
+    `(${plan.linksToRestore.length} put back, ` +
+    `${plan.plansThatSurviveDeletion.length} on rows that never leave) · way back exercised: ` +
     `${ics.MIRROR_RESTORE_PATH_VERIFIED ? "yes" : "NO"}`
 );
 
@@ -2659,6 +2664,33 @@ async function step(category, action) {
   const { error } = await action();
   if (error) failPartway(category, describe(error), completedSteps);
   completedSteps += 1;
+}
+
+/**
+ * A write whose EFFECT is measured rather than merely attempted.
+ *
+ * ⚠ `step` above cannot tell a restore that landed from one that matched no
+ * row: `supabase-js` answers `{ data: null, error: null }` for an `UPDATE` whose
+ * `WHERE` selects nothing. A counter next to the call therefore counts attempts,
+ * and the line that reads it says *put back N checklist decision(s) … with the
+ * original actor and instant* while nothing was written.
+ *
+ * The miss is reachable. The deletion above removes checklist items for EVERY
+ * scoped plan, survivors included, while the rewrite only recreates items for
+ * the nights the file still carries — so a linked night that has left the file
+ * keeps its plan row and loses its checklist, and `(plan_id, kind, label)`
+ * matches nothing. Labels carry a progressivo (`LiveCut 3`), so a changed
+ * timetable produces the same miss on a night that never left.
+ *
+ * That tick is the one piece of production state no feed can rebuild.
+ *
+ * @returns how many rows the write actually touched
+ */
+async function stepCounting(category, action) {
+  const { data, error } = await action();
+  if (error) failPartway(category, describe(error), completedSteps);
+  completedSteps += 1;
+  return data?.length ?? 0;
 }
 
 // The run row, opened first so that a process killed halfway leaves a row with a
@@ -3036,13 +3068,21 @@ for (const link of plan.linksToRestore) {
     );
     continue;
   }
-  await step("restore_link", () =>
+  const touched = await stepCounting("restore_link", () =>
     db
       .from("production_plan")
       .update({ linked_party_id: link.linkedPartyId })
       .eq("id", planId)
+      .select("id")
   );
-  linksRestored += 1;
+  if (touched === 0) {
+    say(
+      "     ⚠ a link matched NO row: the night was written, but this update touched " +
+        "nothing. The snapshot still holds it. That is a finding."
+    );
+    continue;
+  }
+  linksRestored += touched;
 }
 
 let decisionsRestored = 0;
@@ -3054,7 +3094,7 @@ for (const decision of plan.decisionsToRestore) {
     decisionsUnplaced += 1;
     continue;
   }
-  await step("restore_decision", () =>
+  const touched = await stepCounting("restore_decision", () =>
     db
       .from("production_checklist_item")
       .update({
@@ -3072,8 +3112,16 @@ for (const decision of plan.decisionsToRestore) {
       .eq("plan_id", planId)
       .eq("kind", decision.kind)
       .eq("label", decision.label)
+      .select("id")
   );
-  decisionsRestored += 1;
+  if (touched === 0) {
+    // The night was written; this item was not. Its label carries a progressivo,
+    // so a changed timetable renames it — and a linked night absent from the
+    // file keeps its plan row while losing its checklist entirely.
+    decisionsUnplaced += 1;
+    continue;
+  }
+  decisionsRestored += touched;
   if (decision.decision === "unticked") unticksRestored += 1;
 }
 
@@ -3081,10 +3129,16 @@ say(
   `     put back: ${decisionsRestored} checklist decision(s) — of which ${unticksRestored} ` +
     `UNTICK(s) — and ${linksRestored} link(s), with the original actor and instant.`
 );
+say(
+  `     and these are ROWS TOUCHED, read back from each write — not attempts counted ` +
+    "beside it."
+);
 if (decisionsUnplaced > 0) {
   say(
-    `     ⚠ ${decisionsUnplaced} decision(s) name a night this run did not write. They stay ` +
-      "in the snapshot and nowhere else. That is a finding."
+    `     ⚠ ${decisionsUnplaced} decision(s) did not land: either the night was never ` +
+      "written, or it was and the item was not — a renamed label, or a checklist the " +
+      "rewrite did not recreate. They stay in the snapshot and nowhere else. That is a " +
+      "finding, and P-58-C is what reads it."
   );
 }
 

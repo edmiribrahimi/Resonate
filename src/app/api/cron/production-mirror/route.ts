@@ -486,6 +486,20 @@ type MirrorCounts = {
   lineupSlotsWritten?: number;
   decisionsPutBack?: number;
   linksPutBack?: number;
+  /**
+   * Restores that matched NO row — counted apart, and never folded into the two
+   * above.
+   *
+   * ⚠ **A restore that touches nothing is not a smaller success: it is a
+   * finding.** `supabase-js` answers `{ data: null, error: null }` for an
+   * `UPDATE` whose `WHERE` selects nothing, so without reading the rows back
+   * these would be indistinguishable from work done — and the state they carry
+   * is the one thing in this system no feed can rebuild. They ride out in the
+   * counts because this project has no error tracking, and a log line alone is
+   * not an observable effect.
+   */
+  decisionsUnplaced?: number;
+  linksUnplaced?: number;
   /** How many write steps completed before a failure. `P-58-C` reads this first. */
   writeStepsCompleted?: number;
   /** How many nights came back renumbered. A count; none of them is named. */
@@ -1085,7 +1099,11 @@ async function mirrorOneCalendar(
   const unattendedVerdict = unattendedMirrorGuard({
     supervision,
     decisionsAtRisk: plan.decisionsToRestore.length,
-    linksAtRisk: plan.linksToRestore.length,
+    // NOT `linksToRestore.length`. That list is over-collected on purpose and
+    // includes links on rows `ICS-03b` keeps out of the deletion entirely — a
+    // single announced night would otherwise refuse every unattended run for
+    // ever, on state this code documents as a no-op. See `ReconcilePlan.linksAtRisk`.
+    linksAtRisk: plan.linksAtRisk,
     restorePathVerified: MIRROR_RESTORE_PATH_VERIFIED,
   });
   if (unattendedVerdict !== "ok") stop("unattended_state_at_risk", measured);
@@ -1151,6 +1169,46 @@ async function mirrorOneCalendar(
       stop("write_stopped_partway", withCounts());
     }
     writeStepsCompleted += 1;
+  };
+
+  /**
+   * A write whose EFFECT is measured, not merely attempted.
+   *
+   * ⚠ **`step` above cannot tell a restore that landed from one that matched no
+   * row.** `supabase-js` answers `{ data: null, error: null }` for an `UPDATE`
+   * whose `WHERE` selects nothing — so a counter incremented next to the call
+   * counts attempts, and the report that reads it says *put back N decision(s)
+   * with the original actor and instant* while nothing at all was written.
+   *
+   * That matters here more than anywhere else in this repository: a checklist
+   * tick is the one piece of production state **no feed can rebuild** — the
+   * calendar does not record who ticked a box. A restore that silently misses is
+   * the exact shape of the loss the whole unattended guard exists to prevent,
+   * arriving through the door marked *success*.
+   *
+   * The miss is real and reachable: the deletion above removes checklist items
+   * for **every** scoped plan, survivors included, while the rewrite only
+   * recreates items for the nights the file still carries. A linked night that
+   * has left the file therefore keeps its plan row and loses its checklist — and
+   * a restore keyed on `(plan_id, kind, label)` finds nothing to update. Labels
+   * carry a progressivo (`LiveCut 3`), so a changed timetable produces the same
+   * miss on a night that never left.
+   *
+   * @returns how many rows the write actually touched
+   */
+  const stepCounting = async (
+    action: () => PromiseLike<{
+      data: unknown[] | null;
+      error: { code?: string; message?: string } | null;
+    }>
+  ): Promise<number> => {
+    const { data, error: fault } = await action();
+    if (fault) {
+      console.error(`[production_mirror.write_stopped_partway] ${redactor.redact(describe(fault))}`);
+      stop("write_stopped_partway", withCounts());
+    }
+    writeStepsCompleted += 1;
+    return data?.length ?? 0;
   };
 
   const survivingPlanIds = new Set(plan.plansThatSurviveDeletion.map((row) => row.id));
@@ -1393,21 +1451,35 @@ async function mirrorOneCalendar(
    */
 
   let linksPutBack = 0;
+  let linksUnplaced = 0;
   for (const link of plan.linksToRestore) {
     const planId = planIdBySourceUid.get(link.planSourceUid);
-    if (planId === undefined) continue;
-    await step(() =>
-      db.from("production_plan").update({ linked_party_id: link.linkedPartyId }).eq("id", planId)
+    if (planId === undefined) {
+      linksUnplaced += 1;
+      continue;
+    }
+    const touched = await stepCounting(() =>
+      db
+        .from("production_plan")
+        .update({ linked_party_id: link.linkedPartyId })
+        .eq("id", planId)
+        .select("id")
     );
-    linksPutBack += 1;
+    if (touched === 0) linksUnplaced += 1;
+    else linksPutBack += touched;
   }
   measured.linksPutBack = linksPutBack;
+  measured.linksUnplaced = linksUnplaced;
 
   let decisionsPutBack = 0;
+  let decisionsUnplaced = 0;
   for (const decision of plan.decisionsToRestore) {
     const planId = planIdBySourceUid.get(decision.planSourceUid);
-    if (planId === undefined) continue;
-    await step(() =>
+    if (planId === undefined) {
+      decisionsUnplaced += 1;
+      continue;
+    }
+    const touched = await stepCounting(() =>
       db
         .from("production_checklist_item")
         .update({
@@ -1421,10 +1493,32 @@ async function mirrorOneCalendar(
         .eq("plan_id", planId)
         .eq("kind", decision.kind)
         .eq("label", decision.label)
+        .select("id")
     );
-    decisionsPutBack += 1;
+    if (touched === 0) decisionsUnplaced += 1;
+    else decisionsPutBack += touched;
   }
   measured.decisionsPutBack = decisionsPutBack;
+  measured.decisionsUnplaced = decisionsUnplaced;
+
+  /* ── A restore that matched nothing is a FINDING, not a quiet zero ─────────
+   *
+   * This project has no error tracking, so a log line alone is not an
+   * observable effect (`meta-gates.md`). The count therefore rides out on the
+   * run row as well, where the calendar surface draws it — and the run does not
+   * get to look like a clean success while a person's decision went missing.
+   *
+   * Not a refusal: by the time this code runs the delete has already happened,
+   * and refusing here would leave the scope emptier than a finished run. The
+   * honest move is to finish the rewrite and say what was not put back.
+   */
+  if (decisionsUnplaced > 0 || linksUnplaced > 0) {
+    console.error(
+      `[production_mirror.restore_matched_no_row] calendar=${calendarKey} ` +
+        `decisions_unplaced=${decisionsUnplaced} links_unplaced=${linksUnplaced} ` +
+        "— the snapshot holds them and the catalogue does not"
+    );
+  }
 
   /* ── The run row is closed last ─────────────────────────────────────────── */
 
@@ -1471,8 +1565,36 @@ function worstStatus(results: readonly CalendarResult[]): number {
  * carries its own outcome into the body.
  */
 export async function GET(request: Request) {
+  /* ── The secret has to EXIST before it can be compared ─────────────────────
+   *
+   * ⚠ **The five older crons write `Bearer ${process.env.CRON_SECRET}` straight
+   * into the comparison, and this one deliberately does not.** With the variable
+   * absent that template collapses to the literal string `Bearer undefined`, and
+   * anybody who sends exactly that header is admitted — a deployment missing the
+   * variable does not fail closed, it fails OPEN.
+   *
+   * On the other five the cost of that is a reconciliation running for a
+   * stranger. Here the success path is a `DELETE` across four tables with the
+   * service role, on the one dataset in this project that no feed can rebuild.
+   * The two are not the same bet, so this route does not take it.
+   *
+   * The other five are NOT changed from here: they move money, they are outside
+   * this phase, and hardening them is its own decision with its own verification.
+   * This comment is the record that the divergence is deliberate.
+   */
+  const cronSecret = process.env.CRON_SECRET;
+  if (typeof cronSecret !== "string" || cronSecret.length === 0) {
+    // Distinguishable from a wrong secret, and never says which is which to the
+    // caller: 401 to them, a named category to whoever reads the deployment.
+    console.error(
+      "[production_mirror.cron_secret_absent] the route refused every request: " +
+        "CRON_SECRET is not set in this environment"
+    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

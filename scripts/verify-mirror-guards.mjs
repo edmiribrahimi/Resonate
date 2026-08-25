@@ -805,7 +805,10 @@ if (
         // ⚠ La lunghezza della LISTA, mai un numero scritto qui: e' il punto
         // dell'intera famiglia. Una fonte, due lettori.
         decisionsAtRisk: conteggio,
-        linksAtRisk: piano.linksToRestore.length,
+        // Anche qui il piano, mai un numero scritto a mano — e il campo giusto
+        // e' `linksAtRisk`, non la lunghezza della lista di rientro: la lista
+        // e' sovra-raccolta di proposito. Vedi la famiglia 3-ter.
+        linksAtRisk: piano.linksAtRisk,
         restorePathVerified: false,
       });
     } catch (error) {
@@ -820,6 +823,143 @@ if (
       say("            E' il difetto della voce 21: la guardia conta cio' che si");
       say("            perderebbe, non cio' che e' spuntato. Se questo e' rosso, una");
       say("            corsa non presidiata passa sopra la decisione di una persona.");
+      fallimenti.push(caso.id);
+    }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * FAMIGLIA 3-ter — CIO' CHE SI RIMETTE NON E' CIO' CHE SI PUO' PERDERE (`U17`-`U19`)
+ *
+ * La famiglia 3-bis ha stabilito che la guardia legge la stessa lista che lo
+ * scrittore rimette. Questa stabilisce il suo **contrario necessario** sul
+ * secondo tipo di stato: per i LEGAMI le due domande non hanno la stessa
+ * risposta, e leggerle sulla stessa lunghezza e' un difetto.
+ *
+ * ⚠ **Il difetto che questa famiglia esiste per prendere.** `linksToRestore` e'
+ * sovra-raccolta di proposito — ogni riga legata ci finisce, perche' quella
+ * lista e' l'unica copia dello stato attraverso una corsa che muore a meta'. Ma
+ * un legame vive **sulla riga di piano**, e `ICS-03b` tiene ogni riga legata
+ * fuori dalla cancellazione: quel legame non e' a rischio di niente. Passare
+ * `linksToRestore.length` alla guardia significa quindi che **la prima serata
+ * annunciata fa rifiutare ogni corsa non presidiata, per sempre**, su uno stato
+ * che il codice stesso documenta come un no-op — ed e' il rumore che insegna a
+ * ignorare il canale, cioe' il costo che la voce differita 10 nomina per esteso.
+ *
+ * ⚠ **Le decisioni NON ricevono lo stesso trattamento, ed e' deliberato.** Una
+ * spunta non vive sulla riga di piano: vive in `production_checklist_item`, che
+ * e' il passo 1 della cancellazione e viene rimosso **anche per i sopravvissuti**
+ * — il percorso di scrittura lo dice in prosa, *survivors INCLUDED*. Ogni
+ * decisione raccolta e' percio' davvero a rischio, e il conteggio sbaglia
+ * nell'unico verso che si puo' permettere: verso il rifiuto.
+ *
+ * ⚠ **Un caso con `linksAtRisk > 0` non e' raggiungibile finche' `ICS-03b` vale**,
+ * e questo si dichiara invece di simularlo. Cio' che i casi qui sotto provano e'
+ * che il conteggio **segue i sopravvissuti** invece della lunghezza della lista:
+ * il giorno in cui qualcuno restringesse `ICS-03b`, il numero salirebbe da solo.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+say("");
+say("  famiglia 3-ter — il legame che si rimette non e' il legame che si perde");
+say("");
+
+if (reconcilerMod === null || typeof reconcilerMod.reconcile !== "function") {
+  say("    ✗ U17 il riconciliatore non si e' importato: nessun caso e' stato misurato");
+  fallimenti.push("U17");
+} else {
+  const { reconcile } = reconcilerMod;
+
+  const PARTY = "00000000-0000-4000-8000-00000000ffff";
+  const ISTANTE_3TER = "2026-01-01T00:00:00.000Z";
+
+  const rigaDiPiano = (sourceUid, linkedPartyId) => ({
+    id: `id-${sourceUid}`,
+    sourceUid,
+    seriesId: null,
+    number: null,
+    venueWord: null,
+    date: "2026-01-01",
+    startTime: null,
+    endTime: null,
+    sourceSequence: null,
+    sourceLastModified: null,
+    linkedPartyId,
+    calendarKey: "rsnt",
+  });
+
+  const fileVuoto3ter = {
+    calendarKey: "rsnt",
+    nights: [],
+    pieces: [],
+    commitments: [],
+    unclassified: [],
+    unsupportedRecurrences: [],
+    lineupSlotCounts: new Map(),
+    recurrenceOccurrenceCap: 200,
+  };
+
+  const CASI_3TER = [
+    {
+      id: "U17",
+      etichetta:
+        "una riga LEGATA e assente dal file: si rimette, ma non si puo' perdere",
+      plans: [rigaDiPiano("uid-legata", PARTY)],
+      atteso: { rimessi: 1, aRischio: 0, sopravvissuti: 1 },
+      seRosso:
+        "la guardia riceverebbe 1 e rifiuterebbe: la prima serata annunciata " +
+        "spegnerebbe il cron per sempre",
+    },
+    {
+      id: "U18",
+      etichetta: "due righe legate: due da rimettere, zero da perdere",
+      plans: [rigaDiPiano("uid-a", PARTY), rigaDiPiano("uid-b", PARTY)],
+      atteso: { rimessi: 2, aRischio: 0, sopravvissuti: 2 },
+      seRosso: "il conteggio sta leggendo la lunghezza della lista, non i sopravvissuti",
+    },
+    {
+      id: "U19",
+      etichetta: "nessun legame: nessuna delle due liste si popola",
+      plans: [rigaDiPiano("uid-nuda", null)],
+      atteso: { rimessi: 0, aRischio: 0, sopravvissuti: 0 },
+      seRosso: "una riga senza legame non e' stato e non deve entrare da nessuna parte",
+    },
+  ];
+
+  for (const caso of CASI_3TER) {
+    let misurato;
+    try {
+      const piano = reconcile(
+        fileVuoto3ter,
+        { plans: caso.plans, checklistItems: [] },
+        [],
+        ISTANTE_3TER
+      );
+      misurato = {
+        rimessi: piano.linksToRestore.length,
+        // ⚠ Il CAMPO, mai un numero scritto qui e mai la lunghezza dell'altra
+        // lista: e' esattamente la sostituzione che questa famiglia vieta.
+        aRischio: piano.linksAtRisk,
+        sopravvissuti: piano.plansThatSurviveDeletion.length,
+      };
+    } catch (error) {
+      misurato = `solleva: ${error.message}`;
+    }
+
+    const uguali =
+      typeof misurato === "object" &&
+      misurato.rimessi === caso.atteso.rimessi &&
+      misurato.aRischio === caso.atteso.aRischio &&
+      misurato.sopravvissuti === caso.atteso.sopravvissuti;
+
+    if (uguali) {
+      say(
+        `    ✓ ${caso.id}  ${caso.etichetta} → rimessi ${misurato.rimessi} · ` +
+          `a rischio ${misurato.aRischio} · sopravvissuti ${misurato.sopravvissuti}`
+      );
+    } else {
+      say(`    ✗ ${caso.id}  ${caso.etichetta}`);
+      say(`            atteso ${JSON.stringify(caso.atteso)} · misurato ${JSON.stringify(misurato)}`);
+      say(`            ${caso.seRosso}`);
       fallimenti.push(caso.id);
     }
   }
