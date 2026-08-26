@@ -302,6 +302,9 @@ function leggiArgomenti(argv) {
     else if (arg === "--from") {
       i += 1;
       opzioni.da = argv[i] ?? null;
+    } else if (arg === "--from-run") {
+      i += 1;
+      opzioni.daCorsa = argv[i] ?? null;
     } else if (arg === "--calendar") {
       i += 1;
       opzioni.calendario = argv[i] ?? null;
@@ -368,16 +371,46 @@ di("");
  * qualcuno aggiunge una negazione.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-if (opzioni.da === null || opzioni.da.trim() === "") {
+const haPercorso = opzioni.da !== null && opzioni.da !== undefined && opzioni.da.trim() !== "";
+const haCorsa =
+  opzioni.daCorsa !== null && opzioni.daCorsa !== undefined && opzioni.daCorsa.trim() !== "";
+
+/* ⚠ ESATTAMENTE UNA delle due sorgenti, mai zero e mai due.
+ *
+ * Due sorgenti insieme renderebbero l'invocazione ambigua nello stesso modo in
+ * cui `--apply --dry-run` lo sarebbe, e per la stessa ragione i due ordini della
+ * stessa coppia non devono significare due cose. Zero e' il rifiuto che c'era
+ * gia': questo strumento non cerca l'istantanea da solo e non ne sceglie una. */
+if (haPercorso && haCorsa) {
   rifiuta(
-    "missing_snapshot_path",
-    "nessun --from. Questo strumento non cerca l'istantanea da solo e non ne sceglie " +
-      "una: quale rimettere e' la domanda del passo 3 del rientro, e va risposta da " +
-      "chi ha davanti l'ora della corsa morta."
+    "ambiguous_snapshot_source",
+    "--from e --from-run insieme. Sono due sorgenti della stessa cosa e l'invocazione " +
+      "non dice quale vale: il file lo scrive l'importatore presidiato, la riga di " +
+      "registro la scrive lo specchio schedulato. Chi esegue sa da quale delle due " +
+      "corse sta rientrando."
   );
 }
 
-const percorso = resolve(ROOT, opzioni.da.trim());
+if (!haPercorso && !haCorsa) {
+  rifiuta(
+    "missing_snapshot_path",
+    "ne' --from ne' --from-run. Questo strumento non cerca l'istantanea da solo e non " +
+      "ne sceglie una: quale rimettere e' la domanda del passo 3 del rientro, e va " +
+      "risposta da chi ha davanti l'ora della corsa morta."
+  );
+}
+
+/* I controlli sul percorso valgono per il file, e per il file soltanto: una
+ * riga di registro non sta su disco, non ha un percorso e non puo' essere
+ * ignorata da git. Saltarli quando non c'e' un file non e' un'esenzione — e'
+ * l'assenza dell'oggetto che dovrebbero misurare. */
+let percorso = null;
+if (haCorsa) {
+  // La sorgente e' il registro. Si prosegue al passo 4, dove il ramo `--from-run`
+  // legge la riga e incontra ESATTAMENTE le stesse guardie del file.
+} else {
+
+percorso = resolve(ROOT, opzioni.da.trim());
 
 const rispostaGit = spawnSync("git", ["check-ignore", "-q", "--", percorso], { cwd: ROOT });
 
@@ -406,6 +439,8 @@ if (rispostaGit.status !== 0) {
       "l'istantanea sta nella directory ignorata dove lo scrittore la mette."
   );
 }
+
+} // fine del ramo `--from`: da qui i due percorsi tornano uno solo.
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Passo 3 — quale calendario, contro il vocabolario chiuso
@@ -465,6 +500,53 @@ const chiaveDichiarata = opzioni.calendario;
  * ora, completa, e dello stesso calendario
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/* ── DUE SORGENTI, E LA SECONDA E' PER LE CORSE CHE NESSUNO GUARDAVA ────────
+ *
+ * `--from <percorso>` legge il file che l'importatore PRESIDIATO scrive prima di
+ * cancellare. `--from-run <id>` legge la stessa cosa dalla riga di registro, che
+ * e' dove lo specchio SCHEDULATO la mette — non potendo scrivere su un
+ * filesystem che non sopravvive alla corsa che dovrebbe salvare.
+ *
+ * ⚠ **Le guardie a valle sono le stesse, tutte, e questo e' il punto.** Forma,
+ * ora contro la corsa interrotta, completezza, chiave di calendario: cambia da
+ * dove arrivano i byte, non cosa devono superare. Una seconda strada con guardie
+ * proprie sarebbe una seconda strada che diverge dalla prima al primo caso
+ * limite.
+ *
+ * ⚠ **`state_snapshot` NULL non e' un'istantanea vuota.** Significa che quella
+ * corsa non ha portato con se' la propria via di ritorno — vero di ogni corsa
+ * precedente al 2026-08-27 e di ogni corsa presidiata. Ha una categoria propria,
+ * perche' leggerlo come *niente da rimettere* direbbe a chi esegue che non c'e'
+ * nulla da salvare proprio quando non si sa cosa ci fosse.
+ */
+let istantanea;
+
+if (opzioni.daCorsa !== null && opzioni.daCorsa !== undefined) {
+  const risposta = await db
+    .from("production_import_run")
+    .select("id, calendar_key, started_at, finished_at, state_snapshot")
+    .eq("id", opzioni.daCorsa)
+    .maybeSingle();
+
+  if (risposta.error) {
+    rifiuta("run_unreadable", `la riga di registro non si e' potuta leggere: ${risposta.error.code ?? "?"}.`);
+  }
+  if (risposta.data === null) {
+    rifiuta("run_absent", "nessuna riga di registro con quell'identificativo.");
+  }
+  if (risposta.data.state_snapshot === null) {
+    rifiuta(
+      "run_without_snapshot",
+      "quella corsa non ha portato con se' la propria via di ritorno. NON vuol dire " +
+        "che non ci fosse niente da rimettere: vuol dire che nessuno lo ha misurato. " +
+        "E' vero di ogni corsa precedente al 2026-08-27 e di ogni corsa presidiata, " +
+        "che scrive la sua istantanea su disco — per quelle si usa --from."
+    );
+  }
+  istantanea = risposta.data.state_snapshot;
+  controlloPronto = istantanea !== null && typeof istantanea === "object";
+} else {
+
 if (!existsSync(percorso)) {
   rifiuta(
     "snapshot_absent",
@@ -481,7 +563,6 @@ try {
   rifiuta("snapshot_unreadable", `il file non si e' potuto leggere: ${errore.message}.`);
 }
 
-let istantanea;
 try {
   istantanea = JSON.parse(grezzo);
 } catch (errore) {
@@ -497,6 +578,7 @@ try {
 // Da qui in avanti il controllo in coda ha qualcosa contro cui misurare, quindi
 // gira anche sui rifiuti — che sono le uscite piu' probabili da incollare.
 controlloPronto = istantanea !== null && typeof istantanea === "object";
+}
 
 if (istantanea === null || typeof istantanea !== "object" || Array.isArray(istantanea)) {
   rifiuta("snapshot_incomplete", "il file non ha la forma di un'istantanea.");

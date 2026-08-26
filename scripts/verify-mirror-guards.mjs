@@ -106,7 +106,7 @@
  * non deve poterlo fare.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { registerHooks } from "node:module";
@@ -582,22 +582,53 @@ if (
       atteso: "unattended_state_at_risk",
     },
     {
+      /* ⚠ **L'ATTESO DI QUESTO CASO E' CAMBIATO IL 2026-08-27, ed e' l'unico
+       * caso di questo file il cui atteso dipenda da una DECISIONE invece che da
+       * un predicato.**
+       *
+       * Fino al 2026-08-26 era `unattended_state_at_risk`, perche' la costante
+       * spedita valeva `false`: una spunta viva e nessuno che guarda facevano
+       * rifiutare. Il proprietario ha sbloccato lo specchio automatico, la
+       * costante e' `true`, e lo stesso caso ora e' ammesso.
+       *
+       * **Il rosso che questo caso ha prodotto quando la costante e' cambiata E'
+       * IL PUNTO, non un fastidio.** Il docblock della costante lo annuncia:
+       * *«flipping it without touching the gate turns the gate red: the friction
+       * is deliberate»*. Chi cambia quella riga passa di qui e deve dire perche'.
+       *
+       * **Perche' e' ammesso adesso.** Non perche' lo stato a rischio sia
+       * sparito — c'e' ancora, ed e' un annullamento — ma perche' il percorso
+       * schedulato ha guadagnato una via di ritorno lo stesso giorno: la riga di
+       * registro porta le due eccezioni di stato catturate PRIMA della
+       * cancellazione (migration `20260827000000`), e il rientro le rilegge con
+       * `--from-run`. Prima non le portava, e la guardia era l'unica cosa fra
+       * una corsa morta a meta' e una riga che nulla ricostruisce.
+       *
+       * **Cosa fara' questo caso se qualcuno rimettesse `false`:** tornera'
+       * rosso, e l'atteso qui sotto andra' rimesso a `unattended_state_at_risk`
+       * con la stessa cerimonia. La frizione vale in entrambe le direzioni.
+       */
       id: "U11",
-      etichetta: "con il valore SPEDITO della costante: una spunta e nessuno che guarda",
+      etichetta:
+        "con il valore SPEDITO della costante: una spunta e nessuno che guarda",
       input: {
         supervision: "unattended",
         decisionsAtRisk: 1,
         linksAtRisk: 0,
         restorePathVerified: MIRROR_RESTORE_PATH_VERIFIED,
       },
-      atteso: "unattended_state_at_risk",
+      atteso: MIRROR_RESTORE_PATH_VERIFIED ? "ok" : "unattended_state_at_risk",
     },
   ];
 
   say("");
   say(
-    `    rientro esercitato, valore spedito: ${MIRROR_RESTORE_PATH_VERIFIED ? "si'" : "NO"} — ` +
-      "finche' e' no la guardia resta armata"
+    `    rientro esercitato, valore spedito: ${MIRROR_RESTORE_PATH_VERIFIED ? "SI'" : "NO"} — ` +
+      (MIRROR_RESTORE_PATH_VERIFIED
+        ? "la guardia e' DISARMATA per decisione del proprietario (2026-08-27), e cio' che " +
+          "la rende difendibile e' che la corsa schedulata porta ora la propria via di " +
+          "ritorno nella riga di registro"
+        : "finche' e' no la guardia resta armata")
   );
   say("");
 
@@ -832,6 +863,87 @@ if (
       say("            perderebbe, non cio' che e' spuntato. Se questo e' rosso, una");
       say("            corsa non presidiata passa sopra la decisione di una persona.");
       fallimenti.push(caso.id);
+    }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * FAMIGLIA 3-quater — LA VIA DI RITORNO DELLA CORSA CHE NESSUNO GUARDA (`U20`-`U22`)
+ *
+ * ⚠ **Questa famiglia esiste per una mutazione che e' rimasta VERDE.** Il
+ * 2026-08-27, dopo aver disarmato `MIRROR_RESTORE_PATH_VERIFIED`, la prova per
+ * mutazione ha tolto dal cron la riga che scrive l'istantanea nella riga di
+ * registro: **il build e' passato e questo file e' passato**. Cioe' esisteva uno
+ * stato — guardia disarmata, nessuna via di ritorno — in cui una corsa notturna
+ * poteva cancellare un annullamento vivo senza niente da cui rientrare, e nessun
+ * controllo lo diceva.
+ *
+ * Il disarmo della guardia e la presenza dell'istantanea sono **una decisione
+ * sola spezzata in due file**, ed e' la forma esatta del difetto D7 e della
+ * voce 21: due meta' che nessuno confronta. Qui si confrontano.
+ *
+ * Si asserisce sul SORGENTE, come `U12` di `verify-calendar-surface.mjs`, perche'
+ * chiedere la risposta al processo in esecuzione vorrebbe dire una richiesta, un
+ * segreto e un database — cioe' non sarebbe un controllo di questo file.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+say("");
+say("  famiglia 3-quater — la corsa non presidiata porta la propria via di ritorno");
+say("");
+
+{
+  const rotta = join(ROOT, "src", "app", "api", "cron", "production-mirror", "route.ts");
+  let sorgente = null;
+  try {
+    sorgente = readFileSync(rotta, "utf8");
+  } catch {
+    sorgente = null;
+  }
+
+  if (sorgente === null) {
+    say("    ✗ U20 il sorgente della rotta non si e' potuto leggere: nulla e' stato misurato");
+    fallimenti.push("U20");
+  } else {
+    const scriveIstantanea = /state_snapshot\s*:/.test(sorgente);
+    const iIstantanea = sorgente.search(/state_snapshot\s*:/);
+    const iCancellazione = sorgente.search(/\.delete\(\)/);
+    const usaLeListeDelPiano =
+      /decisions:\s*plan\.decisionsToRestore/.test(sorgente) &&
+      /links:\s*plan\.linksToRestore/.test(sorgente);
+
+    // U20 — esiste. E' la condizione che rende difendibile il disarmo.
+    if (scriveIstantanea) {
+      say("    ✓ U20  la rotta scrive `state_snapshot` sulla riga di registro");
+    } else {
+      say("    ✗ U20  la rotta NON scrive nessuna istantanea");
+      say(`            e MIRROR_RESTORE_PATH_VERIFIED vale ${MIRROR_RESTORE_PATH_VERIFIED}.`);
+      say("            Con la guardia disarmata e nessuna via di ritorno, una corsa che");
+      say("            muore fra la cancellazione e la riscrittura perde una riga che");
+      say("            nulla ricostruisce. Le due meta' sono UNA decisione.");
+      fallimenti.push("U20");
+    }
+
+    // U21 — prima di cancellare, non dopo. Un'istantanea presa dopo e' un referto.
+    if (scriveIstantanea && iCancellazione !== -1) {
+      if (iIstantanea < iCancellazione) {
+        say("    ✓ U21  la scrive PRIMA della prima cancellazione");
+      } else {
+        say("    ✗ U21  la scrive DOPO la prima cancellazione: non e' una via di ritorno,");
+        say("            e' un referto di cio' che era gia' andato.");
+        fallimenti.push("U21");
+      }
+    }
+
+    // U22 — le stesse liste che lo scrittore rimette. Una fonte, due lettori.
+    if (scriveIstantanea) {
+      if (usaLeListeDelPiano) {
+        say("    ✓ U22  porta le liste del piano, non una loro copia costruita a parte");
+      } else {
+        say("    ✗ U22  l'istantanea non porta `plan.decisionsToRestore` e");
+        say("            `plan.linksToRestore`. Due elenchi che nessuno confronta");
+        say("            divergono al primo cambio — e' il difetto della voce 21.");
+        fallimenti.push("U22");
+      }
     }
   }
 }

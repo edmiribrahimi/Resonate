@@ -333,8 +333,42 @@ export function runSupervision({
  * caused the effect — and that observation is written down with its date.
  * `scripts/verify-mirror-guards.mjs` asserts the shipped value, so flipping it
  * without touching the gate turns the gate red: the friction is deliberate.
+ *
+ * ── ⚠ FLIPPED TO `true` ON 2026-08-27, BY THE OWNER, AND HERE IS THE SHAPE ───
+ *
+ * The authorisation: the owner asked for the scheduled mirror to be unblocked,
+ * with the cost stated in front of them first — that this constant is what arms
+ * `unattendedMirrorGuard`, and that `rsnt` carries a live untick which a run
+ * dying mid-way would lose for good.
+ *
+ * **What was exercised, and where.** `P-58-C` steps 1-7 and case `R15`, run on
+ * 2026-08-26 in a laboratory whose fidelity was measured catalogue by catalogue
+ * (`lab-fidelity.mjs`: 10 of 10, functions compared by signature). The restore
+ * put back **2 decisions out of 2 — one of them an UNTICK** — with actor, name
+ * and the direction of the instant identical to the snapshot, re-read **from the
+ * catalogue**. The interrupted-mirror precondition was produced deliberately,
+ * not waited for. The report is in `58-PROCEDURES.md`, section *«Il rientro
+ * esercitato»*.
+ *
+ * **What was NOT exercised, and it is the reason this note is long.** That run
+ * was against a laboratory, so what is proven is that the CODE does what it
+ * says — not that it does it against the production catalogue, which has a
+ * migration history of its own. The fidelity measured there is the SCHEMA's, not
+ * the DATA's.
+ *
+ * ⚠ **What made the flip defensible is not the exercise: it is that the
+ * scheduled path GAINED a way back on the same day.** Until 2026-08-27 the cron
+ * took no snapshot at all, and that was sound only because this guard refused
+ * before reaching a `DELETE` whenever there was human state to lose — so on the
+ * one branch that deleted, a snapshot would have been empty by construction.
+ * Flipping this constant removes exactly that condition. The migration
+ * `20260827000000_import_run_state_snapshot.sql` gives the run row itself the
+ * two exceptions of state, captured before the removal, and
+ * `restore-mirror-snapshot.mjs --from-run <id>` reads them back through the same
+ * guards as the on-disk file. Without that half, this `true` would have meant
+ * *delete a live untick with nothing to restore it from*.
  */
-export const MIRROR_RESTORE_PATH_VERIFIED = false;
+export const MIRROR_RESTORE_PATH_VERIFIED = true;
 
 /**
  * The two things this guard can answer.

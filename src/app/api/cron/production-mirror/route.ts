@@ -7,6 +7,7 @@ import {
   MAX_INPUT_LINES,
   MIRROR_RESTORE_PATH_VERIFIED,
   MIRROR_SHRINK_FLOOR,
+  MIRROR_SNAPSHOT_SHAPE,
   classifyEntries,
   joinKey,
   mirrorGuard,
@@ -270,13 +271,27 @@ type MirrorDeclaration = { mirrored: true } | { mirrored: false; reason: Withhel
  */
 const MIRRORED_TODAY = {
   /**
-   * Withheld. Measured 2026-08-22: one live checklist decision inside the scope
-   * this key deletes, pressed by a real identity on 2026-08-20. The way back
-   * from a run that dies halfway has never been exercised, so the loss would be
-   * permanent — there is no transaction across the removal and no point-in-time
-   * recovery behind it.
+   * Mirrored, since 2026-08-27 — and it was withheld until the day before.
+   *
+   * ⚠ **What was withheld, and why it stopped being the right answer.** Measured
+   * 2026-08-22: one live checklist decision inside the scope this key deletes,
+   * pressed by a real identity on 2026-08-20. Re-measured 2026-08-27, still
+   * there: **one UNTICK — an actor with no instant**, the single row of this
+   * whole system that no feed can rebuild, because the calendar records who
+   * removed a tick no more than it records who made one.
+   *
+   * It stayed withheld while a run that died between the removal and the rewrite
+   * would have lost it **with nothing to restore it from**. That is no longer
+   * the case: the migration of the same day gives the run row the two exceptions
+   * of state, captured before the removal, and the restore tool reads them back
+   * with `--from-run`. The way back exists on THIS path now, not only on the
+   * attended one.
+   *
+   * The owner authorised the unblock on 2026-08-27, with the cost stated first.
+   * The residual risk, written rather than implied: the restore path was
+   * exercised in a laboratory, not against this catalogue.
    */
-  rsnt: { mirrored: false, reason: "state_needs_a_person" },
+  rsnt: { mirrored: true },
   /** Mirrored. Measured 2026-08-22: zero decisions and zero links at risk. */
   rmdb: { mirrored: true },
   /**
@@ -1129,6 +1144,38 @@ async function mirrorOneCalendar(
       },
       unclassified_count: classified.unclassified.length,
       dry_run: false,
+      /* ── LA VIA DI RITORNO, scritta PRIMA di qualunque cancellazione ────────
+       *
+       * ⚠ **Questa riga e' la condizione che rende disarmabile
+       * {@link MIRROR_RESTORE_PATH_VERIFIED}, e non un di piu'.** Fino al
+       * 2026-08-27 questo percorso non prendeva istantanea, e andava bene per un
+       * motivo solo: `unattendedMirrorGuard` rifiutava prima di arrivare a un
+       * `DELETE` ogni volta che c'era uno stato umano da perdere, quindi sul solo
+       * ramo che cancellava l'istantanea sarebbe stata vuota per costruzione.
+       * Sbloccare lo specchio su una chiave che porta una traccia viva toglie
+       * esattamente quella condizione — quindi l'istantanea deve esistere prima.
+       *
+       * **Perche' qui e non su disco:** il filesystem di questa funzione e'
+       * effimero e non sopravvive alla corsa che dovrebbe salvare. Questa riga
+       * invece si apre PRIMA della cancellazione ed e' gia' il segnale di una
+       * corsa morta a meta' (`finished_at` nullo): l'istantanea le appartiene.
+       *
+       * **Perche' il contenuto puo' stare qui:** letto dal catalogo il
+       * 2026-08-27, `production_import_run` ha RLS e UNA policy in SELECT,
+       * condizionata a `production.calendar.manage`. Le stesse due identita' che
+       * gia' aprono la superficie. Il nome che questo campo porta non guadagna
+       * lettori.
+       *
+       * **Le due liste sono quelle che lo scrittore rimette**, non una loro
+       * copia costruita a parte: una fonte, due lettori — la stessa proprieta'
+       * che la famiglia 3-bis del gate protegge sul conteggio.
+       */
+      state_snapshot: {
+        shape: MIRROR_SNAPSHOT_SHAPE,
+        calendarKey,
+        decisions: plan.decisionsToRestore,
+        links: plan.linksToRestore,
+      },
     })
     .select("id")
     .single();

@@ -51,6 +51,15 @@ import type {
   UnresolvedReason,
   VenueStage,
 } from "@/lib/production/ics/vocabulary";
+// Sesto import invertito, e type-only come i cinque sopra. Le due forme del
+// rientro sono definite dove vive il riconciliatore che le produce, e
+// `production_import_run.state_snapshot` le porta ALLA LETTERA: ridichiararle
+// qui vorrebbe dire due elenchi di campi che divergono al primo cambio — che e'
+// esattamente il difetto che la colonna esiste per non ripetere.
+import type {
+  AnnouncedNightLinkRestore,
+  ChecklistDecisionRestore,
+} from "@/lib/production/ics/reconcile";
 // The fifth import, same inverted direction and the same reason as the four
 // above. The three production sections' vocabularies are each shared by a SQL
 // `CHECK`, a seeding script and every TypeScript caller, so they are defined
@@ -1698,6 +1707,30 @@ export interface ProductionImportRun {
    * that somebody checked before writing is their memory of having checked.
    */
   dry_run: boolean;
+  /**
+   * The two exceptions of state of `ICS-03`, captured **before** this run's
+   * removal — the way back for a run nobody is watching.
+   *
+   * ⚠ **Written only by the scheduled mirror**, which cannot put a snapshot on
+   * disk: a function's filesystem is ephemeral and does not survive the run it
+   * would be saving. The attended importer keeps writing its own file and does
+   * not populate this column.
+   *
+   * ⚠ **`null` does NOT mean "nothing was at risk".** It means *this run did not
+   * carry its own way back*, which is true of every run before 2026-08-27 and of
+   * every attended run at any time. A restore path that read the two cases as
+   * one would answer *nothing to put back* about a run whose state it simply
+   * never had — the shape of invented certainty this phase exists to remove.
+   *
+   * The field names are the snapshot's, not the table's, because this IS the
+   * snapshot: a reader that already knows the on-disk file knows this one.
+   */
+  state_snapshot: {
+    shape: string;
+    calendarKey: CalendarKey;
+    decisions: ChecklistDecisionRestore[];
+    links: AnnouncedNightLinkRestore[];
+  } | null;
 }
 
 /**
