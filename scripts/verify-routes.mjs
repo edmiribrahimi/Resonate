@@ -558,7 +558,7 @@ const { PROTECTED_PREFIXES, resolveNext, DEFAULT_NEXT } = await import(
 // — una domanda che nessuno ha. Al loro posto va cio' che il prodotto genera
 // davvero: un uuid o uno slug, entrambi dentro `[a-z0-9-]`
 // (`src/utils/slugify.ts`).
-const CAMPIONE = "0486e4fb-e8c8-40bc-a296-d76e47d44804";
+const CAMPIONE = "00000000-0000-4000-8000-000000000000";
 const bersagli = [
   ...PROTECTED_PREFIXES,
   ...census
