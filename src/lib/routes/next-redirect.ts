@@ -84,7 +84,63 @@ const NEXT_ALLOW_LIST: readonly RegExp[] = [
   /^\/set-password$/,
   /^\/events\/[a-z0-9-]{1,80}$/,
   /^\/events\/[a-z0-9-]{1,80}\/menu$/,
+  // ── Added 2026-08-26, closing blocker D7's second half ─────────────────────
+  //
+  // ⚠ **Adding these IS an access decision**, as the note above says, so here is
+  // the reasoning rather than just the patterns.
+  //
+  // Until today `src/lib/supabase/middleware.ts` bounced an anonymous caller off
+  // a protected address with `?redirect=`, which this file's reader never looks
+  // at — so the destination was lost and everybody landed on `/dashboard`
+  // (blocker D7). Aligning the name was only half the repair: with the list as
+  // it stood, a caller bounced off `/admin/calendar` would have arrived with a
+  // `next` this list refuses and landed on `/dashboard` anyway.
+  //
+  // **What the addition does and does not grant.** This is a destination filter,
+  // not an access control — the sentence at the top of this file, and it matters
+  // most here. Landing on `/admin/calendar` does not mean being admitted to it:
+  // the page's own capability check and the RLS decide that, exactly as they did
+  // before. What this list decides is only whether somebody who was already
+  // going there gets taken back there after signing in.
+  //
+  // **Why the risk does not grow.** The dangerous shape of an open redirect is a
+  // jump to another origin, and that is refused before the list is consulted —
+  // no leading `/`, a `//`, a backslash, a scheme or a control character never
+  // reaches these patterns. What remains is same-origin, which is the product's
+  // own surface.
+  //
+  // **Anchored at both ends, with a charset and a depth, and no `.*`.** The
+  // segment charset is the one the product generates: slugs from
+  // `src/utils/slugify.ts` and uuids, both inside `[a-z0-9-]`. Four segments is
+  // more than the deepest address the work surface has
+  // (`/admin/events/<id>/media`) and far short of unbounded.
+  /^\/membership-card$/,
+  /^\/attendance$/,
+  /^\/door$/,
+  /^\/admin(?:\/[a-z0-9-]{1,64}){0,4}$/,
 ];
+
+/**
+ * The address prefixes an anonymous caller is bounced away from.
+ *
+ * ⚠ **Declared HERE, and imported by the middleware, so that the bouncer and
+ * the allow-list cannot drift apart again.** They did drift, and the cost was
+ * blocker D7: the middleware wrote a parameter name the reader did not read, and
+ * nothing anywhere compared the two. `scripts/verify-routes.mjs` now asserts
+ * that every prefix below resolves through {@link resolveNext} without being
+ * substituted — so a sixth prefix added to this list without a matching pattern
+ * above turns the gate red instead of silently sending that address's callers to
+ * `/dashboard`.
+ *
+ * The order is the middleware's `startsWith` order and carries no meaning.
+ */
+export const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/membership-card",
+  "/attendance",
+  "/admin",
+  "/door",
+] as const;
 
 /**
  * Resolve an inbound `next` to a path that is safe to put in a `Location`

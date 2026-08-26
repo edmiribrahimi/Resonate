@@ -117,7 +117,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MAP_FILE = join(ROOT, "src/lib/routes/capability-routes.ts");
@@ -512,6 +512,135 @@ if (unbound.length === 0) {
 }
 console.log("");
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * [3/3] IL RIMBALZO E L'ELENCO DI CIO' CHE E' AMMESSO NON POSSONO DIVERGERE
+ *
+ * Blocker **D7**, chiuso il 2026-08-26: il middleware rimbalzava chi non ha una
+ * sessione scrivendo `?redirect=`, e la pagina di accesso legge `?next=`. I due
+ * nomi non corrispondevano, **nessuno confrontava le due meta'**, e la
+ * destinazione si perdeva su ogni indirizzo protetto — tutti a `/dashboard`.
+ *
+ * Allineare il nome era meta' della riparazione. L'altra meta' e' che
+ * `resolveNext` rifiuta per difetto: con l'elenco com'era, chi veniva rimbalzato
+ * da `/admin/calendar` sarebbe arrivato con un `next` rifiutato e sarebbe finito
+ * su `/dashboard` **lo stesso**, per una ragione diversa.
+ *
+ * Questo controllo lega le due liste: per ogni prefisso da cui il middleware
+ * rimbalza, `resolveNext` deve restituire **quel percorso**, non una
+ * sostituzione. Un sesto prefisso aggiunto senza il suo pattern diventa rosso
+ * qui, invece di mandare in silenzio a `/dashboard` chi arriva da quell'indirizzo.
+ *
+ * ⚠ **Prova anche i rifiuti**, perche' un elenco che ammettesse tutto passerebbe
+ * la prima meta' e sarebbe la peggiore riparazione possibile: aprire un redirect
+ * su un flusso che usano tutti mentre si chiude un difetto di comodita'.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+console.log("[3/3] il rimbalzo e l'elenco di cio' che e' ammesso");
+
+const { PROTECTED_PREFIXES, resolveNext, DEFAULT_NEXT } = await import(
+  pathToFileURL(join(ROOT, "src", "lib", "routes", "next-redirect.ts")).href
+);
+
+// Il middleware scrive il `pathname` cosi' com'e', quindi i bersagli sono gli
+// indirizzi che ESISTONO, non ogni stringa che passa lo `startsWith`.
+//
+// ⚠ **Presi dal censimento del controllo 2, mai scritti a mano qui.** Una lista
+// scritta a mano invecchia in silenzio: un indirizzo nuovo sotto `/admin` non
+// verrebbe provato, e il primo a scoprirlo sarebbe chi si vede rimbalzare sul
+// cruscotto. Il censimento vede `src/app/(admin)`, quindi gli altri quattro
+// prefissi entrano come indirizzi nudi — che e' cio' che sono: foglie, non
+// alberi. Il giorno in cui uno di loro crescesse un figlio, il controllo 2
+// vedrebbe la pagina nuova e questa riga andrebbe rivista con lui.
+//
+// ⚠ **I segnaposto dinamici si sostituiscono, perche' il middleware scrive il
+// pathname RISOLTO.** `/admin/location/[id]` non e' un indirizzo: e' un pattern,
+// e provarlo cosi' com'e' misurerebbe se le parentesi quadre passano il charset
+// — una domanda che nessuno ha. Al loro posto va cio' che il prodotto genera
+// davvero: un uuid o uno slug, entrambi dentro `[a-z0-9-]`
+// (`src/utils/slugify.ts`).
+const CAMPIONE = "0486e4fb-e8c8-40bc-a296-d76e47d44804";
+const bersagli = [
+  ...PROTECTED_PREFIXES,
+  ...census
+    .map((p) => p.address)
+    .filter((a) => a.startsWith("/admin/"))
+    .map((a) => a.replace(/\[[^\]]+\]/g, CAMPIONE)),
+];
+
+let ammessiRossi = 0;
+for (const b of bersagli) {
+  const { path, refused } = resolveNext(b);
+  if (refused || path !== b) {
+    ammessiRossi += 1;
+    console.log(`  FAIL — un indirizzo protetto non e' ammesso: ${b}`);
+    console.log(`      resolveNext lo manda a ${path}, quindi chi viene rimbalzato da li'`);
+    console.log(`      perde la destinazione — che E' il difetto D7, tornato.`);
+  }
+}
+if (ammessiRossi === 0) {
+  console.log(`  ok — tutti e ${bersagli.length} gli indirizzi protetti tornano se stessi.`);
+}
+
+// I rifiuti che questo elenco deve continuare a fare. Se uno di questi passa,
+// la riparazione ha aperto ciò che la guardia esisteva per chiudere.
+const RIFIUTI = [
+  "https://example.org",
+  "//example.org",
+  "/\\example.org",
+  "javascript:alert(1)",
+  "/admin/../../etc",
+  "/qualcosa-che-non-esiste",
+];
+let rifiutiRossi = 0;
+for (const r of RIFIUTI) {
+  const { path, refused } = resolveNext(r);
+  if (!refused || path !== DEFAULT_NEXT) {
+    rifiutiRossi += 1;
+    console.log(`  FAIL — un valore che va rifiutato e' passato: ${JSON.stringify(r)} -> ${path}`);
+  }
+}
+if (rifiutiRossi === 0) {
+  console.log(`  ok — tutti e ${RIFIUTI.length} i valori da rifiutare finiscono su ${DEFAULT_NEXT}.`);
+}
+
+// ── E il NOME del parametro, che e' la prima meta' di D7 ────────────────────
+//
+// ⚠ **Questa asserzione e' arrivata dopo le altre due, e per una ragione che
+// vale la pena scrivere.** La prima versione di questo controllo legava i
+// prefissi all'elenco di cio' che e' ammesso e si fermava li'. Provata per
+// mutazione — rimettendo `?redirect=` nel middleware — **e' rimasta verde**:
+// copriva la seconda meta' del difetto e non la prima, cioe' commetteva in
+// piccolo lo stesso errore che D7 e' stato in grande. Nessuno confrontava le due
+// meta'; nemmeno il gate scritto per impedirlo.
+//
+// Si asserisce sul SORGENTE perche' e' li' che i due nomi vivono, e perche' un
+// controllo che chiedesse la risposta al middleware in esecuzione avrebbe
+// bisogno di una richiesta, di una sessione e di un ambiente — cioe' non
+// sarebbe un controllo di questo file.
+const sorgenteMw = readFileSync(join(ROOT, "src", "lib", "supabase", "middleware.ts"), "utf8");
+const sorgenteLogin = readFileSync(join(ROOT, "src", "app", "(auth)", "login", "page.tsx"), "utf8");
+
+const scritto = /searchParams\.set\(\s*"([a-z]+)"\s*,\s*pathname\s*\)/.exec(sorgenteMw);
+const letto = /searchParams\.get\(\s*"([a-z]+)"\s*\)/.exec(sorgenteLogin);
+
+if (scritto === null || letto === null) {
+  failed = true;
+  console.log("  FAIL — non trovo uno dei due nomi nel sorgente:");
+  console.log(`      scritto dal middleware: ${scritto === null ? "NON TROVATO" : scritto[1]}`);
+  console.log(`      letto dalla pagina:     ${letto === null ? "NON TROVATO" : letto[1]}`);
+  console.log("      Se una delle due forme e' cambiata, questa regex va rivista — non tolta.");
+} else if (scritto[1] !== letto[1]) {
+  failed = true;
+  console.log(`  FAIL — i due nomi NON coincidono: il middleware scrive "${scritto[1]}",`);
+  console.log(`      la pagina di accesso legge "${letto[1]}". E' il difetto D7: chi viene`);
+  console.log("      rimbalzato perde la destinazione e finisce sul cruscotto.");
+} else {
+  console.log(`  ok — middleware e pagina di accesso usano lo stesso nome: "${scritto[1]}".`);
+}
+
+if (ammessiRossi > 0 || rifiutiRossi > 0) failed = true;
+console.log("");
+
 if (failed) {
   console.log("FAIL — see above.");
   console.log(
@@ -523,7 +652,7 @@ if (failed) {
   process.exit(1);
 }
 
-console.log("PASS — both checks green.");
+console.log("PASS — tutti e tre i controlli verdi.");
 console.log(
   "  This means every statically visible literal names a declared address, not that every"
 );

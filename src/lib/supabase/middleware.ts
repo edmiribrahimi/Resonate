@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { CAP } from "@/lib/capabilities/keys";
 import { CAPABILITY_ROUTES, resolveRoute } from "@/lib/routes/capability-routes";
+import { PROTECTED_PREFIXES } from "@/lib/routes/next-redirect";
 
 /**
  * Set on the RESPONSE when the access context could not be resolved.
@@ -546,25 +547,39 @@ export async function updateSession(request: NextRequest) {
   // bounces it to login — so the person working the door signs in and arrives at
   // the **dashboard**, in the dark, with a queue.
   //
-  // Blocker **D7** — this file writes `?redirect=` while
-  // `src/app/(auth)/login/page.tsx` reads `?next=`, so the destination is lost
-  // on every protected address — is **pre-existing and is not repaired here**.
-  // Adding this prefix stops Phase 39 from putting a second wrong turn on top of
-  // it, and nothing more.
-  const protectedPrefixes = [
-    "/dashboard",
-    "/membership-card",
-    "/attendance",
-    "/admin",
-    "/door",
-  ];
-
+  // ── Blocker **D7** — CLOSED on 2026-08-26, and it took BOTH halves ─────────
+  //
+  // This file used to write `?redirect=` while `src/app/(auth)/login/page.tsx`
+  // reads `?next=`, so the destination was lost on every protected address and
+  // everybody landed on `/dashboard`.
+  //
+  // ⚠ **Renaming the parameter alone would have repaired nothing.** The login
+  // page passes what it reads through `resolveNext`, an allow-list, and that
+  // list held only `/dashboard`, `/set-password` and the two event paths — so a
+  // caller bounced off `/admin/calendar` would have arrived with a `next` the
+  // guard refuses, and landed on `/dashboard` exactly as before, for a different
+  // reason. The census this repair owed found the other half.
+  //
+  // The order the login page prescribed has been kept: the guard was already
+  // there, so aligning the names does not open the hole it was written to close.
+  // What made the alignment safe to do is that `resolveNext` refuses by default
+  // — an absolute URL, a protocol-relative one, a backslash, a scheme or a
+  // control character never reach the list at all.
+  //
+  // **The census, since it is what this defect cost:** the product writes
+  // `?next=` in four places — `tickets/page.tsx:126`, `GuestLoginBanner.tsx:101`
+  // and `:162`, `register/page.tsx:209` — and `?redirect=` in exactly one, this
+  // file. `next` was already the product's name; this line was the outlier.
+  //
+  // ⚠ **`PROTECTED_PREFIXES` is exported and read by the allow-list's gate.**
+  // The two lists cannot drift apart again without `npm run verify:routes`
+  // going red, which is the property this defect existed for the lack of.
   if (!user) {
     // Unauthenticated: redirect from protected routes to login
-    if (protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+    if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      url.searchParams.set("redirect", pathname);
+      url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
   } else {
