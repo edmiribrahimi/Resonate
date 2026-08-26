@@ -124,7 +124,11 @@ phase_closes: non prima che ogni `Result` qui sotto porti un'osservazione
   Un rientro corso contro un processo automatico e' un rientro che perde.
 - Annotare l'ora di orologio.
 
-Result: pending
+Result: **ESEGUITO IN LABORATORIO il 2026-08-26**, ora di orologio `01:21:17Z`. Non
+rilanciato e non premuto nulla. Nessun cron da fermare: nessuno punta al
+laboratorio, e in produzione lo specchio non ha ancora girato. ⚠ **Questo
+esercizio e' avvenuto su un laboratorio, non sulla produzione** — vedi il
+referto del passo 7 per cosa questo prova e cosa non prova.
 
 ### Passo 2 — I conteggi, chiesti al catalogo
 
@@ -140,7 +144,13 @@ Result: pending
 - Registrare i numeri, **mai una riga**. Nessun titolo, nessun identificativo,
   nessuna data.
 
-Result: pending
+Result: **ESEGUITO.** Catalogo interrogato con `read_only: true`, chiave `rsnt`:
+**piani 0 · pezzi 0 · impegni 0 · voci 0 · spuntate 0 · annullate 0 · legami 0**.
+Il calendario e' vuoto per quella chiave, che e' esattamente lo stato che questa
+procedura descrive. La riga di registro della corsa interrotta e' **aperta**,
+`finished_at` nullo, aperta alle `01:20:53.115Z`. ⚠ **Le spunte contate qui sono
+0 perche' sono state cancellate**: cio' che c'era — 1 spunta e 1 annullamento —
+esiste ormai solo nell'istantanea, ed e' la ragione per cui l'istantanea esiste.
 
 ### Passo 3 — L'istantanea, cercata prima di sperarci
 
@@ -158,7 +168,17 @@ Result: pending
   esteso. E' il ritrovamento peggiore che questa procedura possa fare, e va
   scritto — non aggirato con un secondo tentativo.
 
-Result: pending
+Result: **ESEGUITO.** Istantanea trovata nella directory che `git check-ignore`
+conferma ignorata. Marcatore **`mirror-state-2`**, chiave `rsnt`, istante proprio
+`01:20:53.020Z` — **95 millisecondi PRIMA** dell'apertura della corsa interrotta,
+quindi e' l'istantanea di quella corsa e non di un giro precedente. Copre
+entrambe le eccezioni di `ICS-03`: **2 decisioni** (di cui 1 annullamento) e **0
+legami**, ognuna con la chiave stabile `planSourceUid + kind + label` e le tre
+colonne di traccia. ⚠ **Ritrovamento positivo:** al primo tentativo del passo 5 e'
+stata passata l'istantanea SBAGLIATA — la piu' recente, che era quella del passo
+4 — e lo strumento ha **rifiutato** con `snapshot_after_run`, uscita `2`, nulla
+scritto. La guardia che questo passo pretende ha funzionato su un errore vero di
+chi eseguiva, non su uno simulato.
 
 ### Passo 4 — Il secondo giro, con la stessa chiave e la stessa sorgente
 
@@ -175,7 +195,13 @@ Result: pending
 - Osservare che la corsa arriva in fondo. Se muore di nuovo nello stesso punto,
   **il problema non e' la corsa**: scriverlo al passo 7 e fermarsi.
 
-Result: pending
+Result: **ESEGUITO.** Rilanciato con la stessa chiave e la stessa sorgente:
+uscita `0`, **38 passi di scrittura**, `IMPORT_APPLIED_OK`. Ha rimosso 0 righe —
+lo scopo era gia' vuoto — e riscritto l'intero contenuto del file. ⚠ **`put back:
+0 checklist decision(s)`**: la seconda corsa NON rimette le spunte, perche' la
+sua istantanea e' quella di un calendario gia' vuoto. E' il fatto che rende il
+passo 5 necessario invece che ridondante, ed e' stato osservato invece che
+dedotto.
 
 ### Passo 5 — Le spunte e i legami, rimessi senza riattribuirli
 
@@ -214,7 +240,13 @@ Result: pending
 > non conferma ignorato. Entrambi i rifiuti escono `2`, cioe' *nulla e' stato
 > scritto*, con una categoria propria.
 
-Result: pending
+Result: **ESEGUITO — e questa e' la prima volta che il rientro rimette davvero una
+riga.** Giro a vuoto per primo: istantanea riconosciuta come quella della corsa
+(`precede l'apertura di 0 secondi`, finestra ammessa 600), **2 su 2**
+identificativi con una riga davanti. Poi `--apply`: **rimesso 2 + 0, con l'attore
+e l'istante ORIGINALI, di cui 1 ANNULLAMENTO** · gia' a posto 0 · in conflitto 0
+· senza voce davanti 0. Uscita `0`, `RESTORE_APPLIED_OK`. Nessuna riga
+dell'istantanea e' stata stampata.
 
 ### Passo 6 — La riconferma, dalla stessa fonte del passo 2
 
@@ -231,7 +263,15 @@ Result: pending
   che si sistemi.
 - Riaccendere il cron fermato al passo 1, e annotare l'ora.
 
-Result: pending
+Result: **ESEGUITO**, stessa query e stessa fonte del passo 2. **piani 9 · pezzi
+47 · impegni 48 · voci 71 · spuntate 1 · annullate 1 · legami 0.** Le spunte e i
+legami **coincidono** con quelli che l'istantanea portava; i conteggi delle tre
+tabelle corrispondono a cio' che il file porta. **Differenza: zero.** Confronto
+campo per campo contro l'istantanea: attore **IDENTICO**, nome **IDENTICO**,
+direzione dell'istante **IDENTICA**, su entrambe le decisioni. ⚠ L'istante
+ripristinato e' quello **originale**, non l'ora del rientro — che e' la prova
+osservabile che il percorso NON passa da `record_checklist_tick` e non
+riattribuisce. Nessun cron da riaccendere.
 
 ### Passo 7 — Il referto del rientro
 
@@ -246,7 +286,71 @@ Result: pending
 - Numeri e categorie soltanto. Nessun titolo, nessun identificativo grezzo,
   nessuna data di serata.
 
-Result: pending
+Result: **ESEGUITO.** Vedi il referto per esteso nella sezione *«Il rientro
+esercitato»* qui sotto.
+
+## Il rientro esercitato — referto del passo 7, 2026-08-26
+
+**Dove.** In un **laboratorio**, non in produzione. Progetto Supabase separato,
+costruito con `lab-bootstrap.mjs` e misurato con `lab-fidelity.mjs`: **10
+cataloghi su 10 identici** alla produzione — 40 tabelle, 482 colonne, 96 policy,
+32 funzioni **confrontate per firma**, 260 vincoli, 139 indici, 46 enum, 6
+bucket. Il catalogo di configurazione — formati, serie con i loro alias, regole
+di pipeline — e' stato copiato dalla produzione in **sola lettura**. Gli spazi in
+trattativa non sono stati copiati: non servivano.
+
+**Cosa e' stato osservato, in numeri.**
+
+| | passo 2 (dopo lo schianto) | passo 6 (dopo il rientro) |
+|---|---|---|
+| piani | 0 | 9 |
+| pezzi | 0 | 47 |
+| impegni | 0 | 48 |
+| voci di checklist | 0 | 71 |
+| **spuntate** | **0** | **1** |
+| **annullate** | **0** | **1** |
+| legami | 0 | 0 |
+
+**Differenza fra cio' che l'istantanea portava e cio' che e' tornato: zero.**
+Attore, nome e direzione dell'istante **identici** su entrambe le decisioni,
+confrontati campo per campo. L'istante ripristinato e' l'**originale**, non l'ora
+del rientro: la prova osservabile che il percorso non passa da
+`record_checklist_tick` e non riattribuisce a chi ha lanciato la corsa.
+
+**Le ore.** Corsa interrotta aperta alle `01:20:53.115Z`; istantanea presa alle
+`01:20:53.020Z`, cioe' **95 millisecondi prima**. Lo scrittore la prende prima,
+per costruzione, e il verso e' l'unica cosa che identifica l'istantanea di quella
+corsa — cosa che lo strumento ha dimostrato rifiutando quella sbagliata.
+
+**Come e' stata prodotta la precondizione.** Uno specchio morto fra la
+cancellazione e la riscrittura non si aspetta: e' stato **provocato**, iniettando
+una interruzione nell'importatore subito dopo la cancellazione. La mutazione e'
+stata **asserita applicata sul disco** con lo `sha` prima di lanciarla, e
+**ripristinata dai byte salvati** con lo `sha` riconfrontato subito dopo — mai
+`git checkout`. Il primo tentativo di mutazione **non era andato a segno**, e
+l'assert l'ha preso: leggerne l'esito avrebbe certificato uno schianto che non
+era avvenuto.
+
+### ⚠ Cosa questo prova, e cosa NON prova
+
+**Prova** che il percorso di rientro funziona: legge l'istantanea giusta, rifiuta
+quella sbagliata, rimette entrambe le direzioni — spunta e annullamento — con
+l'attore e l'istante originali, e i conteggi riconfermati da uno strumento
+diverso da quello che ha prodotto l'effetto coincidono.
+
+**Non prova** che funzioni contro il catalogo di produzione, che ha una storia di
+migration propria, 184 spazi e 85 voci di checklist. La fedelta' misurata e'
+quella dello **schema**, non quella dei **dati**.
+
+**Per questo `MIRROR_RESTORE_PATH_VERIFIED` resta `false`.** Metterlo a `true`
+disarma `unattendedMirrorGuard`, cioe' rende **piu' facile** far scattare un
+percorso che cancella — e `meta-gates.md` dice che una guardia si puo' solo
+rendere piu' difficile da far scattare, salvo autorizzazione esplicita
+documentata. Un esercizio in laboratorio aggiunge evidenza; non e'
+l'autorizzazione. **La decisione di disarmare la guardia resta del proprietario,
+e questa sezione e' cio' che gli va messo davanti quando la prendera'.**
+
+---
 
 ## La riga che questa procedura sostituisce
 

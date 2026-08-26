@@ -89,13 +89,21 @@
  * Che lo specchio sia sicuro. Dice che **queste strade non portano a una
  * scrittura**, e che i due predicati rispondono come dichiarato.
  *
- * ⚠ **E non dice affatto che un rientro funzioni.** Il percorso di ripristino
- * esiste da oggi e i suoi rifiuti sono misurati qui; **rimettere davvero una
- * spunta non lo e'**, perche' richiede un database davanti ed e' **un atto** —
- * scrive righe di produzione e ha bisogno di un'autorizzazione datata propria.
- * Finche' quell'esercizio non e' avvenuto, `MIRROR_RESTORE_PATH_VERIFIED` vale
- * `false` e la guardia della famiglia 3 resta armata. Un verde qui non la
- * disarma e non deve poterlo fare.
+ * ⚠ **E non dice che un rientro funzioni CONTRO LA PRODUZIONE.** I rifiuti del
+ * percorso di ripristino sono misurati qui; rimettere davvero una riga richiede
+ * un database davanti ed e' **un atto**, quindi non e' esercitabile da questo
+ * file.
+ *
+ * **E' stato esercitato altrove: in laboratorio, il 2026-08-26** — 2 decisioni
+ * rimesse su 2, di cui un ANNULLAMENTO, con attore e istante originali
+ * riconfermati dal catalogo. Il referto sta in `58-PROCEDURES.md`.
+ *
+ * `MIRROR_RESTORE_PATH_VERIFIED` vale **ancora `false`**, e la guardia della
+ * famiglia 3 resta armata. La fedelta' misurata del laboratorio e' quella dello
+ * SCHEMA, non quella dei DATI, e disarmare la guardia rende **piu' facile** far
+ * scattare un percorso che cancella: e' una decisione del proprietario, non la
+ * conseguenza automatica di un esercizio riuscito. Un verde qui non la disarma e
+ * non deve poterlo fare.
  */
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -1156,11 +1164,10 @@ if (finteScritte) {
  *
  * **R15 — il rientro che rimette davvero una spunta.** Legge il registro,
  * risolve gli identificativi e scrive due colonne: ha bisogno di un database
- * davanti, e soprattutto **e' un atto**. Esercitarlo scrive righe di produzione e
- * pretende un'autorizzazione datata propria, che al 2026-08-22 non esiste.
- * Simularlo sarebbe la cosa peggiore che questo file possa fare: farebbe credere
- * esercitato l'unico percorso che sta fra una corsa morta a meta' e la perdita
- * dell'unico dato che nessun feed sa ricostruire.
+ * davanti, e soprattutto **e' un atto**. Simularlo qui sarebbe la cosa peggiore
+ * che questo file possa fare: farebbe credere esercitato l'unico percorso che
+ * sta fra una corsa morta a meta' e la perdita dell'unico dato che nessun feed
+ * sa ricostruire.
  *
  * **R16 — il rifiuto `unattended_state_at_risk` dell'importatore, da capo a
  * fondo.** Il predicato e' misurato da `U5`-`U11`; il **cablaggio** — che la
@@ -1168,6 +1175,27 @@ if (finteScritte) {
  * l'importatore rifiuta prima su `missing_feed_source` e su `missing_credential`,
  * che e' esattamente il contratto che `R3` protegge. Serve una sorgente
  * registrata e delle credenziali: non e' esercitabile qui.
+ *
+ * ── ⚠ ENTRAMBI SONO STATI ESERCITATI IL 2026-08-26, IN LABORATORIO ──────────
+ *
+ * Non da questo file, e non contro la produzione: in un progetto separato la cui
+ * fedelta' e' stata misurata catalogo per catalogo (`lab-fidelity.mjs`, 10 su 10,
+ * funzioni confrontate per firma). Il referto per esteso e' in `58-PROCEDURES.md`,
+ * sezione *«Il rientro esercitato»*.
+ *
+ *   R16  uscita 2, categoria `unattended_state_at_risk`, ZERO scritture
+ *        riconfermate dal catalogo
+ *   R15  2 decisioni rimesse su 2 — di cui UN ANNULLAMENTO — con attore, nome e
+ *        direzione dell'istante IDENTICI all'istantanea, confrontati campo per
+ *        campo; l'istante e' l'ORIGINALE e non l'ora del rientro
+ *
+ * **Restano `rimandati` qui, e non e' una formalita'.** Cio' che e' stato provato
+ * e' che il CODICE fa quello che dice; cio' che resta non provato e' che lo faccia
+ * contro il catalogo di produzione, che ha una storia di migration propria. La
+ * fedelta' misurata e' quella dello SCHEMA, non quella dei DATI — e
+ * `MIRROR_RESTORE_PATH_VERIFIED` resta `false` per la stessa ragione: metterlo a
+ * `true` disarma una guardia, cioe' rende PIU' FACILE far scattare un percorso
+ * che cancella, e quella e' una decisione del proprietario.
  */
 
 rimandati.push({
@@ -1176,8 +1204,11 @@ rimandati.push({
   etichetta: "il rientro rimette davvero una spunta, con l'attore e l'istante originali",
   atteso:
     "l'attore e l'istante ORIGINALI riletti DAL CATALOGO, e zero righe toccate fuori dalle due colonne",
-  dove: "un esercizio datato, con la sua autorizzazione",
-  ragione: "scrive righe di produzione: e' un atto, e non ne esiste l'autorizzazione",
+  dove: "la produzione — ESERCITATO in laboratorio il 2026-08-26",
+  ragione:
+    "in laboratorio ha rimesso 2 decisioni su 2, di cui 1 ANNULLAMENTO, con attore e istante " +
+    "originali; contro il catalogo di produzione non e' stato provato, e la fedelta' misurata " +
+    "e' quella dello schema, non quella dei dati",
 });
 
 rimandati.push({
@@ -1185,8 +1216,10 @@ rimandati.push({
   requisito: "voce 3, punto 2",
   etichetta: "l'importatore rifiuta per la guardia della corsa non presidiata",
   atteso: "uscita 2, categoria unattended_state_at_risk, zero scritture",
-  dove: "una corsa con sorgente registrata e credenziali",
-  ragione: "l'importatore rifiuta prima su sorgente e credenziali — ed e' il contratto di R3",
+  dove: "la produzione — ESERCITATO in laboratorio il 2026-08-26",
+  ragione:
+    "in laboratorio, con sorgente registrata e credenziali vere: uscita 2, categoria " +
+    "unattended_state_at_risk, zero scritture riconfermate DAL CATALOGO",
 });
 
 for (const r of rimandati.slice(1)) {
@@ -1206,9 +1239,13 @@ if (fallimenti.length === 0) {
   say(`  MIRROR_GUARDS_OK — ogni caso esercitabile e' come dichiarato.`);
   say(`  ${rimandati.length} caso/i rimandato/i e dichiarato/i: ${rimandati.map((r) => `${r.id}→${r.dove}`).join(", ")}.`);
   say("  Dice che queste strade non portano a una scrittura e che i due predicati");
-  say("  rispondono come dichiarato. NON dice che un rientro funzioni: rimettere");
-  say("  davvero una spunta e' un atto, non e' mai stato eseguito, ed e' per questo");
-  say("  che la guardia della corsa non presidiata resta armata.");
+  say("  rispondono come dichiarato. NON dice che un rientro funzioni contro la");
+  say("  PRODUZIONE: rimettere davvero una riga e' un atto, ed e' stato esercitato");
+  say("  in LABORATORIO il 2026-08-26 — 2 decisioni su 2, di cui un annullamento,");
+  say("  con attore e istante originali. La fedelta' misurata li' e' quella dello");
+  say("  schema e non quella dei dati, quindi la guardia della corsa non presidiata");
+  say("  resta armata: disarmarla e' una decisione, non la conseguenza di un");
+  say("  esercizio riuscito.");
   say("");
   process.exit(0);
 }

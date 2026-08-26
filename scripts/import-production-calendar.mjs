@@ -2506,6 +2506,31 @@ function refuseUnlessIgnored(path) {
 }
 
 /**
+ * How many rows a snapshot payload holds, counted WITHOUT naming a field.
+ *
+ * Walks the payload and sums the length of every array it finds, one level into
+ * nested objects. It never spells a field name, so it cannot fall out of step
+ * with the payload the way the hand-written sum did — see the note at its call
+ * site for the defect this replaces and how it was found.
+ *
+ * ⚠ **It reads only lengths.** No value, no key and no element ever leaves this
+ * function: a snapshot entry carries a person's name, and the counts are the
+ * only thing the report is allowed to know about it.
+ */
+function countRowsIn(payload) {
+  let total = 0;
+  for (const value of Object.values(payload)) {
+    if (Array.isArray(value)) total += value.length;
+    else if (value !== null && typeof value === "object") {
+      for (const nested of Object.values(value)) {
+        if (Array.isArray(nested)) total += nested.length;
+      }
+    }
+  }
+  return total;
+}
+
+/**
  * Writes the snapshot and returns how many rows it holds.
  *
  * @returns the counts, for the report — never the content
@@ -2536,14 +2561,28 @@ function writeSnapshotBeforeRemoving(payload) {
     // this file is to SAY LESS — print only the counts — and never to widen the
     // audit's rule.
     where: relative(ROOT, SNAPSHOT_DIR),
-    rows:
-      payload.ticks.length +
-      payload.links.length +
-      payload.rows.plans.length +
-      payload.rows.pieces.length +
-      payload.rows.commitments.length +
-      payload.rows.checklistItems.length +
-      payload.rows.lineupSlots.length,
+    /**
+     * ⚠ **Counted from what the payload ACTUALLY holds, never from a list of
+     * field names written out beside it.**
+     *
+     * This line used to name the fields one by one, and on 2026-08-22 the state
+     * exception list was renamed `ticks` → `decisions` — the rename that moved
+     * the shape marker to `mirror-state-2`. The rename reached the payload three
+     * lines above and **did not reach this sum**, so `payload.ticks.length`
+     * threw a `TypeError` on every `--apply` from that day on.
+     *
+     * The failure at least pointed the safe way: the snapshot was already on
+     * disk and the process died BEFORE the removal, so nothing was deleted and
+     * no run row was opened. But the importer was unusable, and no gate caught
+     * it — the dry run stops at stage 6 and never reaches this function, so the
+     * whole `--apply` path had no automated reader at all. It was found on
+     * 2026-08-26 by running it in the laboratory.
+     *
+     * Summing the payload's own arrays removes the class of defect rather than
+     * this instance of it: a field can be renamed, added or dropped and this
+     * count follows, because it never says a name.
+     */
+    rows: countRowsIn(payload),
   };
 }
 
