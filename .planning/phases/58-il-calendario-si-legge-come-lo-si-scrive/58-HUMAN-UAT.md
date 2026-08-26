@@ -70,7 +70,7 @@ Se la memoria e' giusta, il ritorno dopo l'accesso non funziona. Non verificato 
 
 total: 4
 passed: 4
-issues: 2
+issues: 1
 pending: 0
 skipped: 0
 blocked: 0
@@ -84,8 +84,15 @@ indietro** e il codice non e' mai stato spinto su `origin/main`. Non e' un difet
 codice — e' una distanza fra ciò che e' scritto e ciò che gira. Si chiude con un deploy,
 che e' una decisione del proprietario e non un passo di questa verifica.
 
-### 2. Il parametro del redirect di login
-status: open
-La produzione reindirizza a `/login?redirect=%2Fadmin%2Fcalendar`; la memoria di progetto
-dice che quella pagina legge `?next=`. Se e' vero, il ritorno dopo l'accesso non avviene.
-Fuori dal perimetro della fase 58, e da verificare prima di trattarlo come difetto.
+### 2. Il parametro del redirect di login — CHIUSO il 2026-08-26 (`adb05e7`)
+status: resolved
+Era vero, ed era il **blocker D7**, gia' registrato in prosa nel middleware e nella pagina
+di accesso. Il middleware scriveva `?redirect=`, la pagina legge `?next=`: la destinazione
+si perdeva su ogni indirizzo protetto.
+
+⚠ **Rinominare il parametro da solo non riparava niente.** L'allow-list di `resolveNext`
+non conteneva `/membership-card`, `/attendance`, `/admin/**` ne' `/door`, quindi chi veniva
+rimbalzato da `/admin/calendar` sarebbe finito su `/dashboard` **lo stesso**, per una
+ragione diversa. Chiuso con entrambe le meta', piu' `PROTECTED_PREFIXES` esportato da un
+punto solo e il controllo 3 di `verify:routes` che lega le due liste — provato con tre
+mutazioni, e la terza ha corretto il gate stesso.
