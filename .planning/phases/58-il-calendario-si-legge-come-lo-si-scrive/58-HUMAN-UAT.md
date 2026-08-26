@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 58-il-calendario-si-legge-come-lo-si-scrive
 source: [58-VERIFICATION.md]
 started: 2026-08-25T00:00:00Z
@@ -8,7 +8,7 @@ updated: 2026-08-26T01:30:00Z
 
 ## Current Test
 
-[item 4 — la lettura dalla superficie; gli altri tre sono chiusi]
+[tutti e quattro chiusi — due ritrovamenti registrati nei Gaps]
 
 ## Tests
 
@@ -44,15 +44,48 @@ Lo stato a rischio erano 1 spunta e 1 annullamento seminati per l'occasione.
 ### 4. La strada (2) della voce 11-bis — una seconda lettura presa DALLA superficie
 expected: Una seconda lettura, dalla superficie stessa, che corrobori quelle gia' prese dal catalogo ai passi 14/19/24 di `P-58-A` e `P-58-B`. Serve a ogni futura esecuzione presidiata, non solo a questa.
 why_human: La superficie risponde `307 → /login` a ogni richiesta anonima, e i due soli conti che la aprono sono **account di persone**. Coniare una sessione e' un atto che richiede l'autorizzazione datata del proprietario, nella forma che `npm run verify:refusal` gia' pretende per se stesso.
-result: [pending]
+result: **ESEGUITO il 2026-08-26, con un RITROVAMENTO.** Sessione coniata sul ruolo
+`master`, `GET /admin/calendar` → **HTTP 200**, documento di 174.505 byte: la superficie
+si apre al ruolo titolare, e da anonimo lo stesso indirizzo da' `307 → /login?redirect=…`.
+**Ma nessuno dei tre stati per chiave compare**, e `rmdb` e `mtnlb` non compaiono affatto.
+La causa e' misurata e non e' un difetto della superficie: **la produzione gira 149 commit
+indietro** — `ImportRunSummary` con i tre stati vive in `main` locale e non e' mai stata
+spinta su `origin`, quindi Vercel non l'ha deployata. **`ICS-10` guardia (b) e' costruita
+e NON e' osservabile in produzione finche' non si deploya.**
+
+⚠ **Registro dell'autorizzazione, come `ai-engineering.md` pretende.** Concessa dal
+proprietario il 2026-08-26 nella forma descritta — sola lettura, revoca globale, rilettura
+della revoca, nessun token ne' indirizzo stampato. **Usata due volte.** Il primo conio e'
+finito contro `http://localhost:3000`, perche' e' quello che `NEXT_PUBLIC_APP_URL` vale in
+`.env.local`: ha ottenuto `404` da un dev server e **non ha letto nulla della produzione**.
+Il secondo, con l'indirizzo verificato, e' l'atto autorizzato. **Entrambe le sessioni sono
+state revocate globalmente e la revoca RILETTA** (`HTTP 403` in tutti e due i casi, mai
+assunta). L'autorizzazione e' ora **esaurita**.
+
+⚠ **Secondo ritrovamento, fuori perimetro e da verificare:** il redirect di produzione usa
+`?redirect=`, mentre la memoria di progetto dice che la pagina di login legge `?next=`.
+Se la memoria e' giusta, il ritorno dopo l'accesso non funziona. Non verificato qui.
 
 ## Summary
 
 total: 4
-passed: 3
-issues: 0
-pending: 1
+passed: 4
+issues: 2
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+### 1. `ICS-10` guardia (b) non e' osservabile in produzione
+status: open
+La superficie deployata non porta i tre stati per chiave: la produzione gira **149 commit
+indietro** e il codice non e' mai stato spinto su `origin/main`. Non e' un difetto del
+codice — e' una distanza fra ciò che e' scritto e ciò che gira. Si chiude con un deploy,
+che e' una decisione del proprietario e non un passo di questa verifica.
+
+### 2. Il parametro del redirect di login
+status: open
+La produzione reindirizza a `/login?redirect=%2Fadmin%2Fcalendar`; la memoria di progetto
+dice che quella pagina legge `?next=`. Se e' vero, il ritorno dopo l'accesso non avviene.
+Fuori dal perimetro della fase 58, e da verificare prima di trattarlo come difetto.
