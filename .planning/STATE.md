@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "58-12 ESEGUITO e i tre blocker del code review RIPARATI (commit 86fd9bc): linksAtRisk separato da linksToRestore, i due rientri leggono le righe toccate invece di contare i tentativi, e la rotta rifiuta se CRON_SECRET manca invece di confrontarsi con «Bearer undefined». Gate nuovo: famiglia 3-ter U17-U19 in verify-mirror-guards, provata con tre mutazioni. Cio' che RESTA: 58-VERIFICATION.md e' human_needed — 4 item in 58-HUMAN-UAT.md, tutti su P-58-C, che scrive in produzione e pretende un'autorizzazione datata. La fase NON e' chiusa."
+stopped_at: "58 CHIUSA lato lavoro e DEPLOYATA. 153 commit spinti su origin/main il 2026-08-26 dopo sette controlli di pubblicazione; il deploy e' verificato dal vivo — /api/cron/production-mirror risponde 401 senza segreto, e /admin/calendar rimbalza a /login?next=%2Fadmin%2Fcalendar. I 4 item di 58-HUMAN-UAT sono PASSATI (3 esercitati in un laboratorio poi cancellato). Riparati in corsa: i 3 blocker del code review, l'importatore rotto dal 24/8 (payload.ticks dopo il rename a decisions) e il blocker D7 sul redirect di accesso. MIRROR_RESTORE_PATH_VERIFIED resta false: disarmare la guardia e' una decisione del proprietario, e il referto del passo 7 di 58-PROCEDURES.md e' cio' che gli va messo davanti."
 last_updated: "2026-08-25T13:04:44.189Z"
 last_activity: 2026-08-25
 progress:
