@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "58 CHIUSA lato lavoro e DEPLOYATA. 153 commit spinti su origin/main il 2026-08-26 dopo sette controlli di pubblicazione; il deploy e' verificato dal vivo — /api/cron/production-mirror risponde 401 senza segreto, e /admin/calendar rimbalza a /login?next=%2Fadmin%2Fcalendar. I 4 item di 58-HUMAN-UAT sono PASSATI (3 esercitati in un laboratorio poi cancellato). Riparati in corsa: i 3 blocker del code review, l'importatore rotto dal 24/8 (payload.ticks dopo il rename a decisions) e il blocker D7 sul redirect di accesso. MIRROR_RESTORE_PATH_VERIFIED resta false: disarmare la guardia e' una decisione del proprietario, e il referto del passo 7 di 58-PROCEDURES.md e' cio' che gli va messo davanti."
+stopped_at: "SPECCHIO AUTOMATICO SBLOCCATO su rsnt il 2026-08-27 (decisione del proprietario) e deployato — commit edbd48e. Sono state TRE cose: la migration 20260827000000 che da' alla riga di registro le due eccezioni di stato PRIMA della cancellazione, --from-run sul rientro, e solo dopo MIRROR_RESTORE_PATH_VERIFIED=true + MIRRORED_TODAY.rsnt mirrored. Il cron non prendeva istantanea e la guardia era load-bearing: disarmarla da sola avrebbe lasciato un annullamento vivo senza via di ritorno. ⚠ LA PROVA CHE E' VIVO NON C'E' ANCORA: la prima corsa e' alle 08:30 UTC del 27/8, e va letta con `node scripts/check-first-mirror-run.mjs` — deve mostrare una riga rsnt con state_snapshot non nullo. ⚠ E SE PRODUCTION_CALENDAR_FEED_RSNT NON E' REGISTRATA SU VERCEL il cron rispondera' source_not_registered e non specchiera' nulla: e' l'unica cosa che resta al proprietario."
 last_updated: "2026-08-25T13:04:44.189Z"
 last_activity: 2026-08-25
 progress:
