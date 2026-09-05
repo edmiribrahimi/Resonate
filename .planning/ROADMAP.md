@@ -342,6 +342,36 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 > rivende — cioe' la serata che sceglie il suo pubblico da sola. Sei e' un gruppo
 > di amici con un solo pagante.
 
+> ⚠ **BUY-05 ha cambiato bersaglio il 2026-09-05, e la riga sopra e' lasciata
+> come sta perche' si veda quale premessa e' caduta.** `src/utils/qr.ts:49`
+> **non** genera il codice del biglietto: sta dentro `generateMembershipCode()`,
+> riguarda la membership card e **non ha nessun importatore in `src/`** — e'
+> codice morto. La credenziale del biglietto e' gia' `gen_random_uuid()` con
+> firma HMAC-SHA256. Il difetto vero e' `membership_code`, coniato dal `random()`
+> **non crittografico** di plpgsql dentro `handle_new_user` e sufficiente **da
+> solo** ad ammettere alla porta. **Si ripara in questa fase** (`D-49-01`,
+> decisione del proprietario), perche' e' la fase che comincia a coniarne uno per
+> ogni persona che compra.
+
+**Goal:** una persona che non ci conosce vede una serata, compra fino a sei
+biglietti con il solo indirizzo mail, li ritrova senza login, e li fa passare
+alla porta — anche con la radio spenta.
+
+**Plans:** 11 piani in 5 onde
+
+Plans:
+- [ ] 49-01-PLAN.md — lo schema dell'ordine: righe, tetto, attribuzione, etichetta
+- [ ] 49-02-PLAN.md — la credenziale della porta coniata con `crypto`
+- [ ] 49-03-PLAN.md — il perimetro che l'account leggero allarga (misura + decisione)
+- [ ] 49-04-PLAN.md — l'azione d'acquisto senza account
+- [ ] 49-05-PLAN.md — la mail che porta biglietti e link, dentro il registro delle consegne
+- [ ] 49-06-PLAN.md — la superficie del biglietto senza login, e il gate delle superfici esteso
+- [ ] 49-07-PLAN.md — il webhook: identita' al pagamento, N biglietti, esito visibile
+- [ ] 49-08-PLAN.md — la UI d'acquisto, il tetto dell'organizer, la pagina che elenca
+- [ ] 49-09-PLAN.md — l'indirizzo a chi compra dopo la rivelazione (Critical)
+- [ ] 49-10-PLAN.md — la porta con un biglietto al portatore
+- [ ] 49-11-PLAN.md — le cinque procedure manuali, scritte ed eseguite
+
 ### Phase 50: Via le iscrizioni
 
 | ID | Requisito |
