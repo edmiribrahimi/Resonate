@@ -91,7 +91,7 @@ per assecondare una decisione presa dopo che e' stata citata.
 
 ## Phase Details
 
-### 58 — Il calendario e' uno specchio
+### Phase 58: Il calendario e' uno specchio
 
 Aperta dai tre ritrovamenti della fase 48 e **riscritta il 2026-08-20**, dopo una
 domanda del proprietario: *«il calendario deve semplicemente riportare cosa e'
@@ -190,7 +190,7 @@ Plans:
 
 ---
 
-### 47 — Il token che si beve e si fa rimborsare
+### Phase 47: Il token che si beve e si fa rimborsare
 
 Un difetto **riprodotto in laboratorio il 2026-08-19**, non dedotto: referto in
 [`v1.6-47-PROBE.md`](v1.6-47-PROBE.md), sonda in
@@ -293,7 +293,7 @@ l'acquisto agli ospiti, e quello moltiplica i drink venduti.
 > `redeemed` e `refunded` 24 ore dopo la chiusura del menu. La finestra di
 > richiesta e' 72. Vanno guardate insieme prima di toccare l'una o l'altro.
 
-### 48 — Il catalogo dei format dice la verita'
+### Phase 48: Il catalogo dei format dice la verita'
 
 Apre la milestone perche' il catalogo lo leggono quattro superfici a valle: la
 barra dei format nella pagina eventi, le viste della sezione Location, le pagine
@@ -316,7 +316,7 @@ visual, e i chip di TASK. Farlo dopo significa riaprire quattro superfici.
 > alcuna occorrenza di SunSet** (misurato: 0 su 79 voci, contro 3 su 91 nella
 > versione precedente), quindi l'import e la cancellazione non si contraddicono.
 
-### 49 — Comprare senza account
+### Phase 49: Comprare senza account
 
 Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 
@@ -342,7 +342,7 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 > rivende — cioe' la serata che sceglie il suo pubblico da sola. Sei e' un gruppo
 > di amici con un solo pagante.
 
-### 50 — Via le iscrizioni
+### Phase 50: Via le iscrizioni
 
 | ID | Requisito |
 |---|---|
@@ -352,7 +352,7 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 | **REG-04** | Entrano solo `master`, `admin`, `organizer`, `staff`. Gli account li crea un admin o un organizer **dentro l'app** — percorso che esiste gia' dalla fase 43. |
 | **REG-05** | Nessun cancello nuovo su `status`. Quelli esistenti che sopravvivono a questa fase sono **elencati** come debito che 51 o 57 chiudono. |
 
-### 51 — Via le superfici da socio, e la porta
+### Phase 51: Via le superfici da socio, e la porta
 
 | ID | Requisito |
 |---|---|
@@ -369,7 +369,7 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 > resta quella di sempre: rifiutare un ospite valido e' peggio che ammetterne uno
 > doppio.
 
-### 52 — La barra di navigazione e i ritocchi
+### Phase 52: La barra di navigazione e i ritocchi
 
 | ID | Requisito |
 |---|---|
@@ -398,7 +398,7 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 > che non stia gia' vedendo. E il calcolo va fatto **prima** del filtro per
 > format, o selezionandone uno spariscono tutti gli altri.
 
-### 53 — TASK
+### Phase 53: TASK
 
 La checklist a quattro fasi del tracker di produzione entra nell'app, e
 **il tracker smette di comandare**: resta come fotografia del giorno in cui e'
@@ -425,7 +425,7 @@ stata scritta, e lo dichiara.
 > **assegnazioni per serata** costruite nella fase 35: il tuo runbook e' la
 > procedura del ruolo che hai quella sera.
 
-### 54 — Location, alla pari con il tracker
+### Phase 54: Location, alla pari con il tracker
 
 I 184 spazi e i 1840 attributi sono **gia' in produzione** dalla fase 45, e i
 dieci attributi corrispondono uno a uno alle colonne-criterio del tracker.
@@ -454,7 +454,7 @@ Manca la superficie.
 > sottotitolo della colonna *Fino a tardi* e la statistica sul tesseramento — le
 > **tre frasi di evidenza**, e il **segno del vino naturale**.
 
-### 55 — Visual, una pagina per format
+### Phase 55: Visual, una pagina per format
 
 Oggi l'app ha il contenitore — capitolato, palette, archivio — e **nessuna**
 delle pagine per format del tracker.
@@ -472,7 +472,7 @@ delle pagine per format del tracker.
 > l'identita' prima di averla*. E `sound-manifesto.md`: dove l'identita' sonora
 > non e' scritta, **i materiali non possono alludervi**.
 
-### 56 — La navetta
+### Phase 56: La navetta
 
 | ID | Requisito |
 |---|---|
@@ -556,7 +556,7 @@ delle pagine per format del tracker.
 > di produzione raggiunge un essere umano da solo, e un percorso critico nuovo
 > senza osservabilita' va costruito sapendolo.
 
-### 57 — I documenti che ancora difendono la community
+### Phase 57: I documenti che ancora difendono la community
 
 | ID | Requisito |
 |---|---|
