@@ -78,24 +78,72 @@ Con un'identita' reale creata al volo, **tutte e tre reggono senza modifiche**:
 nessuna chiave esterna da allentare, nessun vincolo da smontare, e **nessuna
 policy nuova che scavalchi la RLS**.
 
-> ⚠ **`UNIQUE (event_id, user_id)` e `BUY-01` sono in tensione, e va risolta nel
-> piano.** Un ordine con piu' biglietti sullo stesso evento, per la stessa
-> identita', urta quel vincolo. Le due strade — una riga per biglietto con il
-> vincolo allentato, oppure una quantita' sulla riga — hanno conseguenze diverse
-> alla porta, dove ogni biglietto ha bisogno del proprio codice scansionabile.
-> **La scelta va dichiarata nel piano, non scoperta durante l'esecuzione**, e
-> qualunque allentamento di quel vincolo e' materia di `supabase-data.md` e
-> `access-gating.md`.
+> ⚠ **CORRETTO IL 2026-09-05, contro le migration invece che contro il ricordo.**
+> Questo blocco diceva che `UNIQUE (event_id, user_id)` e' in tensione con
+> `BUY-01`. **Quel vincolo non esiste da due migration.** Creato in
+> `20260225110000_phase6_ticketing.sql:32`, **eliminato** in
+> `20260225150000_party_architecture.sql:129`; il suo successore
+> `tickets_party_id_user_id_key` **eliminato** in
+> `20260226300000_multi_sub_events.sql:57`. Oggi al suo posto ci sono due indici
+> unici **parziali**, e una migration piu' recente
+> (`20260822180000_email_ledger_night_paths.sql:90`) lo dichiara gia' per
+> iscritto.
+>
+> La lettura sbagliata veniva dal todo del 2026-08-22, che aveva letto il file
+> della prima migration senza seguirne le successive. E' il *gate documentazione
+> datata* di `ai-engineering.md`: citare un documento derivato senza verificarlo
+> contro il codice corrente. Rovesciato invece che cancellato, perche' chi
+> rilegge deve vedere quale premessa e' caduta.
+>
+> **Il vincolo che blocca DAVVERO `BUY-01` non e' nominato da nessun documento:**
+> `tickets.sumup_checkout_id text UNIQUE`
+> (`20260225110000_phase6_ticketing.sql:28`). Sei biglietti nati da un solo
+> checkout lo violerebbero.
+>
+> **La strada raccomandata dalla ricerca e' lo split ordine/righe**, ed esiste
+> gia' in produzione con un altro nome: `drink_orders` → `fulfill_drink_order` →
+> N `drink_tokens`. Risolve `sumup_checkout_id UNIQUE` **senza allentarlo** —
+> cioe' tenendo l'idempotenza del pagamento nello schema invece che spostarla nel
+> codice, che e' esattamente cio' che `ticketing-payments.md` non vuole.
+> **La scelta va dichiarata nel piano, non scoperta durante l'esecuzione.**
 
-### Il codice del biglietto — `BUY-05`
+### `BUY-05` — il requisito e' giusto, il bersaglio no
 
-`src/utils/qr.ts:49` genera il codice con `Math.random()`. La **firma** e' HMAC
-e regge; **il codice no**.
+> ⚠ **CORRETTO IL 2026-09-05, leggendo il codice.** `BUY-05` e questo blocco
+> dicevano: *«`src/utils/qr.ts:49` genera il codice del biglietto con
+> `Math.random()`»*. **Non e' vero, su due punti.**
 
-Finche' esiste un account, il codice non e' l'unica cosa che lega una persona al
-suo acquisto. Con l'acquisto da ospite **lo diventa**: e' l'unica prova che
-qualcuno ha pagato. La fase che rende quel codice l'unica credenziale e' la fase
-che deve ripararlo — quindi qui, non ereditato.
+**Uno.** La riga 49 sta dentro `generateMembershipCode()` — la *membership card*,
+`RSN-` piu' 8 caratteri di un alfabeto da 32, cioe' **40 bit**. Non e' il codice
+del biglietto. E quella funzione ha **zero importatori in `src/`**: e' codice
+morto, e la fase 51 rimuove la superficie che serviva (`MEM-01`).
+
+**Due.** Il biglietto non ha un codice generato: la sua credenziale e'
+`tickets.id`, un uuid da `gen_random_uuid()`, con **firma HMAC-SHA256** e
+confronto a tempo costante. La proprieta' che `BUY-05` voleva **e' gia' vera sul
+biglietto**.
+
+**Ma il requisito non muore: cambia bersaglio, e il bersaglio vero e' peggiore.**
+
+`handle_new_user` assegna a **ogni nuovo profilo** un `membership_code` generato
+con il `random()` di plpgsql — un PRNG **non crittografico**, seminato
+(`20260224_rbac_migration.sql:78`, `20260225000000_phase3_referral.sql:41`,
+`20260310000000_guest_list.sql:105`).
+
+E quel codice **e' una credenziale della porta**, dichiarato tale nel codice:
+`src/app/(public)/events/[slug]/page.tsx:296` lo chiama *«the door credential»*,
+`src/app/api/membership/verify/route.ts:114-115` cerca il profilo per
+`membership_code`, e `src/app/api/tickets/attendance/route.ts:145` dichiara che
+si ammette **sul solo `membership_code`, senza leggere ne' ruolo ne' stato**.
+
+**Perche' e' un problema DI QUESTA FASE e non della 51.** Oggi i profili in
+produzione sono **quattro**. Questa fase e' quella che comincia a crearne uno
+**per ogni persona che compra** — quindi e' la fase che moltiplica la
+popolazione che tiene una credenziale d'ingresso indovinabile, e viene **prima**
+della 51, che sarebbe quella deputata a ripararla.
+
+**La riformulazione di `BUY-05` e' una decisione del proprietario** e va presa
+prima di pianificare: vedi *Domande aperte* in fondo.
 
 ### Il tetto e' 6 per default, modificabile per serata — `BUY-02`
 
@@ -163,40 +211,90 @@ via membership card, event history e referral, `PROJECT.md` da riscrivere.
 - `.claude/rules/meta-gates.md` — impatto cross-dominio, zero fallimenti silenziosi
 
 ### Il codice che la fase tocca o da cui copia la forma
-- `src/app/(public)/events/[slug]/actions.ts` — l'acquisto parte da
-  `auth.getUser()` (riga 97): e' il punto che questa fase apre
-- `src/app/(public)/events/[slug]/page.tsx` — legge `userTicket` **al
-  singolare** (riga 640): un ordine con piu' biglietti non e' mai esistito
+
+> ⚠ **Riferimenti rimisurati il 2026-09-05.** Le righe di questo blocco venivano
+> da `STATE.md` (19 agosto) e dal todo del 22 agosto, e **due erano sbagliate**.
+> Ogni riga qui sotto e' stata riletta dal codice a `main` `5f1e260`.
+
+- **`src/app/(admin)/admin/events/actions.ts:1563` e `:1853`** — e' **qui** che
+  parte l'acquisto di un biglietto (`createCheckout`).
+  *(I documenti dicevano `src/app/(public)/events/[slug]/actions.ts:97`,
+  `auth.getUser()`. **Quel file contiene solo azioni sui media** — quattro
+  funzioni, tutte di upload e stato. La riga 97 non e' un acquisto.)*
+- **`src/app/(public)/events/[slug]/menu/actions.ts:311`** — il checkout **da
+  ospite** che gia' funziona, per i drink. E' il precedente da riusare per
+  `BUY-03`, non da reinventare.
+- `src/app/(public)/events/[slug]/page.tsx` — `userTicket` al **singolare**; e
+  `:296`, dove il codice dichiara `membership_code` *«the door credential»*
+- `src/app/(public)/tickets/[id]/page.tsx:114-117` — `auth.getUser()` e rimbalzo
+  a `/login`: il muro fra un ospite e il proprio indirizzo
+- `src/app/api/cron/venue-reveal/route.ts:186-201` — la regola «chi compra dopo
+  la rivelazione la legge dalla pagina»
 - `src/app/api/webhooks/sumup/route.ts` — verifica sempre via GET checkout,
   idempotente; porta a `approved` (riga 88)
-- `src/utils/qr.ts` — riga 49, `Math.random()`
-- `src/lib/email.ts` — riga 38, lancia solo su `error`
-- `src/lib/guest-list/process-entry.ts` — riga 176, la forma dell'attribuzione
-- `supabase/migrations/20260225110000_phase6_ticketing.sql` — i tre vincoli
-- Il percorso dei token drink da ospite — il precedente di `BUY-04`
+- `src/app/api/membership/verify/route.ts:114-115` e
+  `src/app/api/tickets/attendance/route.ts:145` — si ammette sul **solo**
+  `membership_code`, senza leggere ruolo ne' stato
+- `supabase/migrations/20260224_rbac_migration.sql:78` (piu' `phase3_referral.sql:41`
+  e `guest_list.sql:105`) — il `random()` di plpgsql che conia quel codice
+- `src/lib/email.ts` — il registro `email_deliveries` e il ramo `suppressed`
+- `src/lib/guest-list/process-entry.ts:176` — la forma dell'attribuzione
+- `supabase/migrations/20260225110000_phase6_ticketing.sql:28` —
+  `sumup_checkout_id text UNIQUE`, il vincolo che blocca davvero `BUY-01`
+- `scripts/verify-venue-surfaces.mjs:93-95` — le due sole superfici che il gate
+  conosce
+- `src/utils/qr.ts:49` — `Math.random()` in `generateMembershipCode()`,
+  **zero importatori**: codice morto, non il codice del biglietto
 
 </canonical_refs>
 
 <specifics>
 ## Specific Ideas
 
-### La riparazione della posta e' un PREREQUISITO, non un lavoro parallelo
+### La riparazione della posta E' GIA' STATA FATTA — non e' un'onda di questa fase
 
-Con l'ospite, **una sola mail porta tre cose**: il biglietto, il link d'accesso
-e — piu' tardi — la rivelazione del venue.
+> ⚠ **CORRETTO IL 2026-09-05.** Questo blocco dichiarava la riparazione della
+> posta *«precondizione, non lavoro parallelo»*, sulla base di
+> `src/lib/email.ts:38` che *«lancia solo su `error`»*. **Quel file oggi non fa
+> piu' cosi'.**
 
-Verificato alla fonte il 2026-08-22 sulla documentazione Resend: la lista di
-soppressione **accetta la chiamata e non consegna**, e fra le cause dichiarate
-c'e' un errore di battitura nell'indirizzo. `src/lib/email.ts:38` lancia solo su
-`error`, quindi **una mail soppressa torna «riuscita»**.
+`src/lib/email.ts` porta il registro `email_deliveries`, quattro esiti che **non
+si collassano** in un messaggio solo, e un ramo `suppressed` esplicito — letto
+come stringa grezza perche' l'unione di tipi dell'SDK `resend@6.9.2` non lo
+contiene. Il cron di riconciliazione esiste
+(`src/app/api/cron/reconcile-email-deliveries/`, dichiarato in `vercel.json`).
 
-Per un membro e' un fastidio. **Per un ospite significa niente biglietto,
-niente login, niente indirizzo: nessuna via di rientro**, e lo scopre alla
-porta, dove `checkin-offline.md` dice che rifiutare un ospite valido e' l'errore
-che costa di piu'.
+**Conseguenza per il piano: nessuna onda per un lavoro gia' fatto.** Cio' che
+resta e' molto piu' piccolo e va comunque fatto: **verificare che il percorso
+dell'ospite passi da quel registro** invece di avere una strada propria. Una
+mail nuova che non si registra e' il buco vecchio riaperto in un posto nuovo.
 
-**Il piano deve trattarla come precondizione di un'onda, non come voce
-parallela.**
+**Perche' contava, e conta ancora.** Con l'ospite una sola mail porta biglietto,
+link d'accesso e — piu' tardi — l'indirizzo. Per un membro una mancata consegna
+e' un fastidio; **per un ospite e' niente biglietto, niente login, niente
+indirizzo**, e lo scopre alla porta, dove `checkin-offline.md` dice che
+rifiutare un ospite valido e' l'errore che costa di piu'.
+
+### Il buco che questa fase APRE, e che deve chiudere dentro di se'
+
+`src/app/api/cron/venue-reveal/route.ts:186-201` dichiara la regola:
+*«chi ha comprato un biglietto DOPO la rivelazione vede l'indirizzo sulla pagina
+e non riceve nessuna mail.»*
+
+Quella pagina e' `src/app/(public)/tickets/[id]/page.tsx`, che a `:114-117` fa
+`auth.getUser()` e **reindirizza a `/login`**.
+
+**Per un ospite che non ha mai scelto una password non esiste quella pagina,
+quindi non esiste nessun indirizzo. Ha pagato e non sa dove andare.**
+
+La schermata del biglietto d'ospite non e' una comodita': su un intero ramo di
+acquirenti e' **l'unica via verso l'indirizzo**. E' un requisito, non un
+miglioramento.
+
+**E il gate non lo vedrebbe.** `scripts/verify-venue-surfaces.mjs` conosce
+**esattamente due** superfici, codificate a `:93-95`. Una terza che il gate non
+conosce e' peggio di nessun gate: fa credere che qualcuno stia controllando.
+Allargare quel gate e' lavoro di questa fase.
 
 ### Cio' che nessun controllo automatico puo' dire
 
@@ -243,7 +341,48 @@ osservare. Per questa fase servono almeno:
 
 </deferred>
 
+## Domande aperte — da decidere PRIMA di pianificare
+
+Non sono dettagli d'implementazione: cambiano cosa viene costruito.
+
+### D-49-01 — Cosa diventa `BUY-05`
+
+Il requisito fu scritto su una premessa falsa: il codice del biglietto **non**
+nasce da `Math.random()`, e la proprieta' che il requisito voleva e' gia' vera.
+Ma la ricerca ha trovato una debolezza **peggiore e vicina**: `membership_code`,
+coniato dal `random()` di plpgsql, **ammette alla porta da solo**, e questa fase
+comincia a coniarne uno per ogni acquirente.
+
+Tre strade, non equivalenti:
+
+1. **`BUY-05` si ripunta su `membership_code`** e la fase 49 lo ripara — dentro
+   la fase che moltiplica chi lo possiede.
+2. **`BUY-05` si dichiara soddisfatto per costruzione**, con la ragione scritta,
+   e la debolezza di `membership_code` diventa una voce differita verso la 51.
+3. **`BUY-05` si ripunta e la porta smette di ammettere sul solo codice** — la
+   riparazione piu' profonda, e la piu' larga: tocca `access-gating.md` e
+   `checkin-offline.md`, quindi non e' una decisione di questa fase da sola.
+
+### D-49-02 — L'identita' leggera allarga `authenticated`
+
+Se ogni acquirente diventa un utente reale, il ruolo `authenticated` copre una
+popolazione molto piu' grande di oggi. Ogni policy RLS che concede a
+`authenticated` senza restringere oltre **si allarga con lei**, `venue_for_parties`
+compresa. Va misurato **prima** di scrivere il piano, non dopo: e' una lettura
+del catalogo, non un'opinione.
+
+### D-49-03 — Il nome alla porta di un ospite
+
+`handle_new_user` scrive `coalesce(..., '')`: un ospite senza nome ottiene la
+**stringa vuota**, non `null`. Il ripiego `?? "Unknown"` intercetta `null` e
+**non** la stringa vuota, quindi lo scanner mostrerebbe righe vuote identiche —
+non risolvibili l'una dall'altra davanti a una fila. Cosa deve mostrare la
+porta per un ospite: la mail? le ultime cifre del biglietto? Va deciso, e non e'
+una scelta estetica.
+
 ---
 
 *Phase: 49-comprare-senza-account*
 *Context gathered: 2026-09-05, dalle decisioni datate del proprietario*
+*Corretto il 2026-09-05 contro il codice a `5f1e260`: quattro premesse dei
+documenti a monte non reggevano. Vedi `49-RESEARCH.md`.*
