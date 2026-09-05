@@ -341,44 +341,103 @@ osservare. Per questa fase servono almeno:
 
 </deferred>
 
-## Domande aperte — da decidere PRIMA di pianificare
+## Decisioni prese il 2026-09-05 — chiuse prima di pianificare
 
-Non sono dettagli d'implementazione: cambiano cosa viene costruito.
+### D-49-01 — `BUY-05` si ripunta su `membership_code`, e si ripara QUI
 
-### D-49-01 — Cosa diventa `BUY-05`
+**Decisione del proprietario.** Il requisito era scritto su una premessa falsa;
+la debolezza vera e' `membership_code`, coniato dal `random()` non
+crittografico di plpgsql e sufficiente **da solo** ad ammettere alla porta.
 
-Il requisito fu scritto su una premessa falsa: il codice del biglietto **non**
-nasce da `Math.random()`, e la proprieta' che il requisito voleva e' gia' vera.
-Ma la ricerca ha trovato una debolezza **peggiore e vicina**: `membership_code`,
-coniato dal `random()` di plpgsql, **ammette alla porta da solo**, e questa fase
-comincia a coniarne uno per ogni acquirente.
+Si ripara **in questa fase**, con `crypto`, perche' questa e' la fase che
+comincia a coniarne uno per ogni acquirente: oggi i profili sono quattro.
+Lavoro contenuto — la funzione, in una migration. **I quattro codici gia'
+emessi restano come sono**: rigenerarli invaliderebbe credenziali in mano a
+persone reali.
 
-Tre strade, non equivalenti:
+> **Conseguenza accettata, dichiarata una volta e non riaperta.** La porta
+> continua ad avere **due** credenziali — il biglietto e `membership_code` — e
+> la seconda ammette senza leggere ne' ruolo ne' stato
+> (`attendance/route.ts:145`). Togliere l'ammissione sul solo codice era la
+> terza strada, ed e' stata **non scelta**: allargherebbe la fase a
+> `access-gating.md` e `checkin-offline.md`. Resta debito, e va nominato nella
+> verifica di fase invece che dimenticato.
 
-1. **`BUY-05` si ripunta su `membership_code`** e la fase 49 lo ripara — dentro
-   la fase che moltiplica chi lo possiede.
-2. **`BUY-05` si dichiara soddisfatto per costruzione**, con la ragione scritta,
-   e la debolezza di `membership_code` diventa una voce differita verso la 51.
-3. **`BUY-05` si ripunta e la porta smette di ammettere sul solo codice** — la
-   riparazione piu' profonda, e la piu' larga: tocca `access-gating.md` e
-   `checkin-offline.md`, quindi non e' una decisione di questa fase da sola.
+### D-49-02 — `authenticated` si allarga, e la misura dice che non brucia
 
-### D-49-02 — L'identita' leggera allarga `authenticated`
+**Misurato dal catalogo il 2026-09-05**, non dedotto. Delle **31** policy che
+nominano `authenticated` in `public`, **due** concedono senza restringere oltre
+il ruolo, ed entrambe sono `SELECT`:
 
-Se ogni acquirente diventa un utente reale, il ruolo `authenticated` copre una
-popolazione molto piu' grande di oggi. Ogni policy RLS che concede a
-`authenticated` senza restringere oltre **si allarga con lei**, `venue_for_parties`
-compresa. Va misurato **prima** di scrivere il piano, non dopo: e' una lettura
-del catalogo, non un'opinione.
+- `drink_items.drink_items_select` — `true`. Il menu del bar.
+- `event_media.event_media_select_approved` — `status = 'approved'`.
 
-### D-49-03 — Il nome alla porta di un ospite
+**`venue_for_parties` non e' fra queste**, quindi l'assunzione ad alto rischio
+della ricerca **cade**: l'account leggero non allarga la strada verso un
+indirizzo.
 
-`handle_new_user` scrive `coalesce(..., '')`: un ospite senza nome ottiene la
-**stringa vuota**, non `null`. Il ripiego `?? "Unknown"` intercetta `null` e
-**non** la stringa vuota, quindi lo scanner mostrerebbe righe vuote identiche —
-non risolvibili l'una dall'altra davanti a una fila. Cosa deve mostrare la
-porta per un ospite: la mail? le ultime cifre del biglietto? Va deciso, e non e'
-una scelta estetica.
+> **La riga che resta da guardare nel piano:** le foto approvate diventano
+> visibili a ogni acquirente, e **una foto puo' mostrare un posto**. E' materia
+> di `media-and-storage.md` con `venue-secrecy.md` a fianco, ed e' un controllo
+> da fare, non un allarme.
+
+### D-49-03 — IL BIGLIETTO E' AL PORTATORE
+
+**Decisione del proprietario, dichiarata con lo scenario:** *«Luca compra il
+ticket, poi lo rivende o lo regala a Paolo. Paolo entra con il ticket di
+Luca.»*
+
+Non e' un caso limite tollerato: e' il caso **progettato**. `BUY-02` fissa il
+tetto a sei perche' *«sei e' un gruppo di amici con un solo pagante»* — un
+pagante e sei persone significa che **cinque biglietti su sei sono in mano a
+qualcun altro**.
+
+**Conseguenze, e sono vincoli sul piano:**
+
+1. **Nessun nome si chiede all'acquisto.** `BUY-03` resta *una mail basta*. Un
+   nome sullo schermo dello staff, su un biglietto trasferibile, produce uno di
+   due danni: lo staff vede un nome, ha davanti un'altra persona e **rifiuta un
+   ospite valido** — l'errore che `checkin-offline.md` dichiara il piu' costoso
+   perche' avviene davanti a una fila — oppure lo staff impara a ignorare il
+   nome, e allora il campo e' teatro. Un dato che si chiede e poi si ignora e'
+   peggio di un dato che non si chiede.
+2. **La porta verifica il BIGLIETTO, non la persona.** Lo schermo mostra cio'
+   che serve a decidere: valido o rifiutato, quale serata, quale tier, e **se
+   quel biglietto e' gia' passato**.
+3. **La seconda scansione e' l'unico controllo che esiste.** Non e' un dettaglio
+   dello scanner: al portatore, e' **tutto** il meccanismo.
+4. **Quindi il conflitto offline pesa piu' di prima.** Due telefoni non sanno
+   l'uno dell'altro; lo stesso biglietto passa due volte e il conflitto si
+   scopre alla sincronizzazione. Finche' il biglietto era legato a un account
+   era improbabile; **al portatore diventa il modo normale in cui qualcuno prova
+   a entrare in due.** Va guardato in questa fase, non ereditato.
+
+### D-49-04 — L'indirizzo va SOLO a chi ha comprato
+
+**Decisione del proprietario.** Al momento della rivelazione l'indirizzo
+raggiunge **l'acquirente**, che lo inoltra a chi tiene il biglietto come gli ha
+inoltrato il biglietto.
+
+**La credenziale del biglietto NON diventa una chiave verso l'indirizzo.** Il
+segreto del venue resta esattamente largo com'e' oggi: nessuna superficie nuova
+puo' mostrarlo, nessun `uuid` inoltrato lo porta con se'. E' la scelta piu'
+stretta fra quelle poste, ed e' coerente con il default chiuso di
+`venue-secrecy.md`.
+
+**Conseguenza accettata:** se chi ha comprato non inoltra o non legge la mail,
+chi va alla serata arriva senza sapere dove, e lo scopre la sera stessa.
+
+**Cosa il piano deve comunque risolvere.** Resta il caso dichiarato dal cron
+(`venue-reveal/route.ts:186-201`): chi compra **dopo** la rivelazione non riceve
+mail e dovrebbe leggere l'indirizzo dalla pagina del biglietto — che per un
+ospite senza password **non esiste**. Con D-49-04, la strada corretta e' che
+**quell'indirizzo arrivi per mail all'acquirente anche in quel caso**, invece di
+costruire una pagina che lo mostri.
+
+> ⚠ **E' un percorso NUOVO che puo' far uscire un indirizzo, quindi e'
+> Critical.** Deve essere idempotente, non deve poter partire prima del momento
+> della rivelazione, e non deve poter alterare `venue_reveal_email_sent`, che e'
+> una guardia monotona per serata e non per acquirente.
 
 ---
 
