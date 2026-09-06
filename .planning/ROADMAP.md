@@ -357,10 +357,10 @@ Il primo passo del perno, e va prima di 50 per la ragione detta sopra.
 biglietti con il solo indirizzo mail, li ritrova senza login, e li fa passare
 alla porta — anche con la radio spenta.
 
-**Plans:** 11 piani in 5 onde
+**Plans:** 1/11 plans executed
 
 Plans:
-- [ ] 49-01-PLAN.md — lo schema dell'ordine: righe, tetto, attribuzione, etichetta
+- [x] 49-01-PLAN.md — lo schema dell'ordine: righe, tetto, attribuzione, etichetta
 - [ ] 49-02-PLAN.md — la credenziale della porta coniata con `crypto`
 - [ ] 49-03-PLAN.md — il perimetro che l'account leggero allarga (misura + decisione)
 - [ ] 49-04-PLAN.md — l'azione d'acquisto senza account

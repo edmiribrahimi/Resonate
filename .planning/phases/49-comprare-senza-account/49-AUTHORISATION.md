@@ -65,11 +65,40 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 
 | Migration | Applicata (UTC) | Versione registrata | Riletta dal catalogo | Esito |
 |---|---|---|---|---|
-| 1 `ticket_orders` | — | — | — | non ancora |
-| 2 `reserve_ticket_order` | — | — | — | non ancora |
+| 1 `ticket_orders` | 2026-09-06 14:11:54 | `20260906141154` / `ticket_orders` | si' — `pg_class`, `pg_policies`, `pg_indexes`, `pg_constraint`, `information_schema.columns` | **applicata** |
+| 2 `reserve_ticket_order` | 2026-09-06 14:12:23 | `20260906141223` / `reserve_ticket_order` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`) | **applicata** |
 | 3 `membership_code_crypto` | — | — | — | non ancora |
 | 4 `venue_reader_needs_a_ticket` | — | — | — | non ancora |
 | 5 `email_category_ticket_order` | — | — | — | non ancora |
 
 **Esaurita il:** — *(da scrivere quando l'ultima delle cinque e' applicata e
 riletta, o quando ci si ferma per un fallimento)*
+
+### Note d'uso — piano 49-01, 2026-09-06
+
+**Perimetro speso: 2 su 5.** Il piano 49-01 copre solo le migration 1 e 2. Le tre
+restanti appartengono ad altri piani della fase e l'autorizzazione resta aperta
+su di esse. **Nessuna scrittura fuori perimetro:** nessuna riga seminata, nessuna
+rimossa, nessuna sessione coniata, nessuna altra tabella toccata.
+
+**La versione registrata NON e' il timestamp del file.** L'endpoint
+`POST /database/migrations` conia la versione con l'istante dell'applicazione:
+i file si chiamano `20260905120000` e `20260905120100`, la storia registra
+`20260906141154` e `20260906141223`. Non e' una deriva ne' un errore — e' come
+si comporta l'endpoint — ma chi cerchera' domani una migration per il nome del
+file in `supabase_migrations.schema_migrations` **non la trovera' per numero**, e
+merita saperlo prima di concluderne che manca. E' la stessa forma della deriva
+gia' registrata in `STATE.md` per `20260508000000_drink_token_active_state.sql`,
+con la differenza che questa e' dichiarata al momento in cui si crea.
+
+**Istantanea: NON ripresa, come prescritto.** Il conteggio delle 35 tabelle e'
+stato **ri-derivato in modo indipendente** leggendo `pg_constraint` invece di
+fidarsi dell'elenco: prima dell'applicazione ha restituito **35 tabelle / 2241
+righe**, con le 15 tabelle non vuote identiche voce per voce a quelle dichiarate.
+La derivazione riproduce la misura, quindi la misura regge.
+
+**Ri-conteggio dopo: 2241 righe, identico.** Il numero di tabelle nell'insieme
+passa da 35 a 36, e la differenza e' `public.ticket_orders` — **una tabella
+creata, non una tabella toccata**, con zero righe. E' esattamente la distinzione
+che il gate *un'istantanea prima copre cio' che si tocca, non cio' che si crea*
+pone: la misura che conta e' il totale delle righe, e non si e' mosso di una.
