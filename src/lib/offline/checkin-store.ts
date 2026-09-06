@@ -645,6 +645,40 @@ export interface AttendeeRow {
   isGuestList?: boolean;
 }
 
+/**
+ * A label, only when there is one — and **the empty string is not one**.
+ *
+ * This is the SERVER'S rule, restated on the device on purpose
+ * (`attendance/route.ts` → `namedOrNull`). `handle_new_user` writes
+ * `full_name = coalesce(..., '')`, so an identity minted behind a guest
+ * checkout carries `''` and not `NULL`, and a `??` chain walks straight past
+ * it. Two different rules online and offline are two screens that contradict
+ * each other in front of a queue — which is the one thing the door cannot
+ * afford — so the rule is one rule, written twice rather than imported: this
+ * module is the client half of the wire and shares no runtime with the route.
+ */
+function labelOrNull(value: string | null | undefined): string | null {
+  const trimmed = (value ?? "").trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * The last resort, when this device knows a subject's id and nothing else.
+ *
+ * Reached on exactly one path: a ticket **bought after this device downloaded
+ * the list**, admitted and flagged offline (`ScannerClient.tsx:2210-2237`).
+ * With guest purchase that path stops being rare, so the record it leaves
+ * behind has to be readable — `"Unknown"`, which is what this used to write,
+ * makes every such row identical to every other.
+ *
+ * The tail of the id names nobody and is always available. Same four
+ * characters, same case, as the server's own last resort.
+ */
+function fallbackLabel(subjectType: DoorSubjectType, subjectId: string): string {
+  const tail = subjectId.slice(-4);
+  return subjectType === "guest_list_entry" ? `Guest ${tail}` : `Ticket ${tail}`;
+}
+
 /** Why a refresh declined to apply a payload. */
 export type MergeRefusalReason = "empty_payload" | "payload_smaller_than_cache";
 
@@ -745,7 +779,14 @@ export async function mergeAttendees(
       partyId,
       subjectType: subject.type,
       subjectId: subject.id,
-      name: row.name,
+      // A blank from the payload never overwrites a label this device already
+      // holds. The direction matters: a refresh may add what the server knows,
+      // never subtract what the phone knows — the same monotone rule the
+      // check-in flag above is defended by.
+      name:
+        labelOrNull(row.name) ??
+        labelOrNull(local?.name) ??
+        fallbackLabel(subject.type, subject.id),
       email: row.email ?? local?.email,
       tierName: row.tierName ?? local?.tierName,
       ticketType: row.ticketType === "guest_list" ? "guest_list" : "purchased",
@@ -869,7 +910,13 @@ export async function checkInLocally(
     partyId,
     subjectType,
     subjectId,
-    name: local?.name ?? opts.name ?? "Unknown",
+    // Same rule as the merge above, and as the server's: the empty string is an
+    // absence, not a label. A record written here with a blank name is a line
+    // the door cannot resolve from the line under it.
+    name:
+      labelOrNull(local?.name) ??
+      labelOrNull(opts.name) ??
+      fallbackLabel(subjectType, subjectId),
     ticketType:
       local?.ticketType ??
       (subjectType === "guest_list_entry" ? "guest_list" : "purchased"),

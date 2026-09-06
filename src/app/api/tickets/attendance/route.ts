@@ -303,6 +303,15 @@ interface TicketRow {
   checked_in_by: string | null;
   user_id: string;
   ticket_type: string | null;
+  /**
+   * «2 di 6» — the position inside its order, written at issuance by
+   * `reserve_ticket_order` (`20260905120100_reserve_ticket_order.sql:229`).
+   *
+   * **It is not a name, and it must never become one** (`D-49-03`: the ticket is
+   * bearer, the buyer may gift or resell it). It is `NULL` for every ticket not
+   * born from an order.
+   */
+  holder_label: string | null;
 }
 
 interface GuestRow {
@@ -362,6 +371,89 @@ function refundedHolderName(
 ): string {
   if (row.type !== "user_request") return REFUNDED_SUBJECT_LABEL;
   return labels.get(row.requested_by) ?? REFUNDED_SUBJECT_LABEL;
+}
+
+/**
+ * A profile name, only when there is one — and **the empty string is not one**.
+ *
+ * ── The measured defect this exists to close ─────────────────────────────────
+ *
+ * `public.handle_new_user` writes `full_name = coalesce(<metadata>, '')`, so a
+ * lightweight identity minted behind a guest checkout (plan 49-07) carries the
+ * **empty string**, never `NULL`. Every `?? "Unknown"` on this path therefore
+ * never fired: `??` intercepts `null` and `undefined`, and `''` is neither. The
+ * door did not read *Unknown* — it read **nothing**, on every row.
+ *
+ * With guest purchase that is not an edge: it is the ordinary shape of a buyer.
+ * Six tickets of one order would have been six identical blank lines on a phone
+ * held in front of a queue, unresolvable from one another, which is the same
+ * failure as no list at all.
+ *
+ * Trimmed rather than merely length-checked, because a name of spaces draws the
+ * same blank as `''` and would reach the door through a `length > 0` test.
+ */
+function namedOrNull(fullName: string | null): string | null {
+  const trimmed = (fullName ?? "").trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * The tail of an identifier — the last resort that is **always** available.
+ *
+ * Four hex characters are enough to tell two rows apart by eye, on a phone, in
+ * the dark, and they name nobody. Lower case, byte-identical to how a uuid is
+ * printed on every other surface of this product, so a staff member and a
+ * holder comparing two screens compare the same characters.
+ */
+function shortId(id: string): string {
+  return id.slice(-4);
+}
+
+/**
+ * What the door reads on the line of one ticket, in a fixed order.
+ *
+ * 1. **The profile name**, when the profile has one. A member who chose a name
+ *    still reads as themselves.
+ * 2. **`holder_label`** — «2 di 6», the position inside its order. Written at
+ *    issuance, and passed through **verbatim**: it is the same string the buyer
+ *    sees on the ticket page and in the order mail, so staff and holder are
+ *    looking at one label rather than two renderings of it.
+ * 3. **Tier and the tail of the id.** Always available, on every row that has
+ *    ever existed, including the tickets that predate orders entirely.
+ *
+ * ── Why it is never "Unknown" ────────────────────────────────────────────────
+ *
+ * With guest purchase, *Unknown* would be half the night. A list where every
+ * line says the same thing is not a list — it is a blank with a word on it, and
+ * the staff member holding the phone has to resolve one line from another
+ * before a queue, not read a word that admits the server did not look.
+ *
+ * ── Why it is never derived from the e-mail address ──────────────────────────
+ *
+ * `D-49-03`: the ticket is **bearer** — the person at the door may not be the
+ * person who paid — so a fragment of the buyer's address would name the wrong
+ * human, and a staff member who trusts it refuses a valid guest. That is the
+ * error `checkin-offline.md` calls the most expensive, because it happens in
+ * front of a queue. It is also the *PII* gate: an address fragment on a phone
+ * at the door is personal data on a surface that does not need it, and this
+ * payload lands in IndexedDB and stays there. The position inside the order
+ * tells staff everything they need to tell six tickets apart, and tells them
+ * nothing about anybody.
+ */
+function ticketLabel(
+  ticket: TicketRow,
+  tierName: string | null,
+  labels: Map<string, string>
+): string {
+  const named = labels.get(ticket.user_id);
+  if (named) return named;
+
+  const holder = (ticket.holder_label ?? "").trim();
+  if (holder) return holder;
+
+  return tierName
+    ? `${tierName} · ${shortId(ticket.id)}`
+    : `Ticket ${shortId(ticket.id)}`;
 }
 
 /** What could not be read for one party, and therefore what the payload would be lying about. */
@@ -594,7 +686,7 @@ export async function GET(request: Request) {
         serviceClient
           .from("tickets")
           .select(
-            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type"
+            "id, party_id, tier_id, checked_in, checked_in_at, checked_in_by, user_id, ticket_type, holder_label"
           )
           .eq("event_id", party.event_id)
           .or(`party_id.eq.${party.id},party_id.is.null`)
@@ -731,7 +823,14 @@ export async function GET(request: Request) {
           id: string;
           full_name: string | null;
         }[]) {
-          profileMap.set(p.id, p.full_name ?? "Unknown");
+          // An entry is written only when there is a name to write. An absence
+          // has to REMAIN an absence in this map, or every reader below —
+          // `ticketLabel`, `operatorLabel`, `refundedHolderName` — resolves a
+          // blank string and stops falling back. That is exactly what the empty
+          // string did here before: it was stored, it was truthy to `??`, and
+          // it silenced three fallbacks at once.
+          const named = namedOrNull(p.full_name);
+          if (named) profileMap.set(p.id, named);
         }
       }
 
@@ -752,21 +851,27 @@ export async function GET(request: Request) {
         }
       }
 
-      const ticketAttendees: AttendeeItem[] = tickets.map((t) => ({
-        subjectType: "ticket",
-        subjectId: t.id,
-        ticketId: t.id,
-        guestListEntryId: null,
-        name: profileMap.get(t.user_id) ?? "Unknown",
-        checkedIn: t.checked_in,
-        checkedInAt: t.checked_in_at,
-        checkedInBy: operatorLabel(t.checked_in, t.checked_in_by, profileMap),
-        refundedAt: null,
-        isGuestList: false,
-        hasEmail: true,
-        ticketType: t.ticket_type || "purchased",
-        tierName: (t.tier_id && tierMap.get(t.tier_id)) || null,
-      }));
+      const ticketAttendees: AttendeeItem[] = tickets.map((t) => {
+        // Resolved once and used twice — as the row's tier and, when nothing
+        // else names the row, as part of its label. Two reads of one fact are
+        // two facts waiting to disagree.
+        const tierName = (t.tier_id && tierMap.get(t.tier_id)) || null;
+        return {
+          subjectType: "ticket",
+          subjectId: t.id,
+          ticketId: t.id,
+          guestListEntryId: null,
+          name: ticketLabel(t, tierName, profileMap),
+          checkedIn: t.checked_in,
+          checkedInAt: t.checked_in_at,
+          checkedInBy: operatorLabel(t.checked_in, t.checked_in_by, profileMap),
+          refundedAt: null,
+          isGuestList: false,
+          hasEmail: true,
+          ticketType: t.ticket_type || "purchased",
+          tierName,
+        };
+      });
 
       const guestListAttendees: AttendeeItem[] = guestEntries.map((g) => {
         const checkedIn = g.status === "checked_in";
