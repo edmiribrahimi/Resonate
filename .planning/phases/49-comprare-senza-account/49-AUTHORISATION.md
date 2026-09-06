@@ -104,7 +104,7 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 |---|---|---|---|---|
 | 1 `ticket_orders` | 2026-09-06 14:11:54 | `20260906141154` / `ticket_orders` | si' — `pg_class`, `pg_policies`, `pg_indexes`, `pg_constraint`, `information_schema.columns` | **applicata** |
 | 2 `reserve_ticket_order` | 2026-09-06 14:12:23 | `20260906141223` / `reserve_ticket_order` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`) | **applicata** |
-| 3 `membership_code_crypto` | — | — | — | non ancora |
+| 3 `membership_code_crypto` | 2026-09-06 14:26:05 | `20260906142605` / `membership_code_crypto` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `pg_get_functiondef`, `obj_description`) | **applicata** |
 | 4 `venue_reader_needs_a_ticket` | — | — | — | non ancora |
 | 5 `email_category_ticket_order` | — | — | — | non ancora |
 | **6** `reserve_ticket_service_only` | — | — | — | non ancora — **estensione del 2026-09-06** |
