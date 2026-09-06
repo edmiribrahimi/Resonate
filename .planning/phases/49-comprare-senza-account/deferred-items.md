@@ -387,3 +387,38 @@ delle due e' la strada, e poi la scrive.
 sull'albero del piano 49-08, per **tre** elementi in **due** file che questo
 piano non tocca. Nessun rosso nuovo e' stato introdotto: i tre sono gli stessi
 prima e dopo i suoi commit.
+
+---
+
+## D-49-10-DEF-10 — la scansione online risponde `Unknown` sul biglietto di un ospite
+
+**Trovato nel piano 49-10**, misurando se il difetto della stringa vuota vivesse
+anche fuori dal payload della presenza.
+
+`src/app/api/tickets/checkin/route.ts:1078-1094` compone l'etichetta che il
+telefono mostra **subito dopo una scansione**: `memberName` parte da `"Unknown"`
+e viene sostituita solo `else if (profilo?.full_name)`. E' un controllo di
+verita', non un `??`, quindi **la stringa vuota di `handle_new_user` non passa**:
+il difetto misurato dal piano 49-10 **non morde qui**. Lo schermo dice la parola,
+non il vuoto.
+
+**Cio' che resta e' un'altra cosa, piu' piccola.** Con l'acquisto da ospite ogni
+biglietto senza nome fa lampeggiare `Unknown`. Su un *elenco* il piano 49-10 ha
+dichiarato inaccettabile quella parola — *«un elenco in cui ogni riga dice la
+stessa cosa non e' un elenco»* — ma qui non c'e' un elenco: c'e' **una** riga
+per volta, con davanti una persona sola, e la sostanza del riquadro e' il verdetto
+piu' il fatto (`at`, `by`), non l'etichetta. L'etichetta non sta disambiguando
+niente.
+
+**Perche' non si ripara qui.** `src/app/api/tickets/checkin/route.ts` non e' nel
+perimetro del piano 49-10 (`files_modified`: la rotta della presenza, lo store
+offline, la lista della review), e' il percorso che **ammette** — quindi ogni
+modifica e' Critical per `checkin-offline.md` — e il difetto e' preesistente,
+non causato dalle modifiche di questo piano.
+
+**Chi lo chiudera' decide prima una cosa**, perche' non e' ovvia: il riquadro
+della scansione deve portare la **stessa** etichetta della lista (`holder_label`
+→ «2 di 6»), oppure deve smettere di portare un'etichetta e dire solo il tier?
+Al portatore la seconda e' difendibile quanto la prima — `D-49-03`: la porta
+verifica il biglietto, non la persona — e sceglierla renderebbe `member_name`
+un campo di analytics invece che una superficie. **Non si prende di passaggio.**
