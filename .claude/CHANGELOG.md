@@ -3,6 +3,88 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.20.0] - 2026-09-05
+
+### Changed — i due gate dell'entropia indicavano codice morto, e adesso indicano il generatore vero
+
+**Trovato eseguendo la fase 49**, non rileggendo la persona. `access-gating.md`
+(*entropia degli identificatori*) e `checkin-offline.md` (*entropia dei codici*)
+citavano entrambi `src/utils/qr.ts:49` come il posto dove il codice della porta
+nasce da `Math.random()`. **La riga esisteva davvero — ma la funzione che la
+conteneva aveva zero importatori.** Era codice morto, e i due gate presidiavano
+un difetto in un file che il prodotto non eseguiva.
+
+Il generatore vero e' il trigger `public.handle_new_user`, che coniava
+`membership_code` con il `random()` **seminato** di plpgsql — e quel codice
+**ammette da solo alla porta** (`api/tickets/attendance/route.ts:145`, senza
+leggere ne' ruolo ne' stato). Dal 2026-09-05 conia da
+`extensions.gen_random_bytes`: 32 caratteri per 10, **2^50** contro i 2^40
+nominali di prima, dentro la regex che lo scanner gia' accetta
+(`ScannerClient.tsx:71`, massimo 10 caratteri).
+
+**Rovesciato, non cancellato**, com'e' regola di casa: le due righe dicono
+adesso quale premessa e' caduta e perche'. Una riga tolta senza la sua ragione
+torna folklore, e qualcuno la «ripara».
+
+**Cio' che il gate NON dice piu' e' importante quanto cio' che dice.** Il
+difetto e' chiuso **solo in avanti**: i **quattro codici emessi prima non sono
+stati rigenerati** (`D-49-01`, decisione del proprietario — sono credenziali in
+mano a persone reali), quindi la debolezza vecchia sopravvive su quei quattro, e
+il gate lo dichiara invece di lasciar credere che sia sparita. Il rate limiting
+**continua a non esistere**: quella meta' resta aperta e non e' stata toccata.
+
+### Added — `Gate la porta ha due credenziali, e la seconda non guarda chi sei`
+
+Aggiunto **in entrambi** i moduli, perche' il fatto e' uno e i due lettori sono
+diversi: chi legge `access-gating.md` sta guardando i permessi, chi legge
+`checkin-offline.md` sta guardando cosa succede alla porta.
+
+**Situazione concreta che lo fa scattare** (gate *un gate deve poter fallire*):
+un piano che, per far entrare piu' in fretta chi compra, propone di far valere
+il `membership_code` anche su una serata a cui quella persona non ha biglietto —
+oppure di esporlo su una superficie nuova. Il gate risponde che quel codice
+ammette gia' senza leggere ruolo ne' stato, che e' **debito non scelto** e non
+un difetto dimenticato, e che si puo' restringere o lasciare, **mai allargare**.
+
+La versione di `checkin-offline.md` porta in piu' la ragione che decide alla
+porta: **il biglietto e' HMAC-firmato e il QR di membership non porta firma**.
+E' quella asimmetria — non l'entropia — a giustificare il rifiuto offline di un
+codice che il roster non conosce, ed e' la ragione che resta vera anche adesso
+che l'entropia e' salita.
+
+### Scenari di caricamento e di scatto (gate *eval*, in un repo senza test)
+
+- **`access-gating.md`** — file nello scope: `src/lib/rbac/roles.ts`. Moduli
+  attesi: `CLAUDE.md`, `meta-gates`, `access-gating`. Modifica-tipo che deve far
+  scattare il gate: introdurre un identificatore d'accesso generato con
+  `Math.random()` o con `random()` di plpgsql — il gate ora nomina **entrambi** i
+  generatori vietati e i due CSPRNG ammessi, quindi copre anche il lato database,
+  che prima non nominava affatto.
+- **`checkin-offline.md`** — file nello scope:
+  `src/app/(admin)/admin/scanner/ScannerClient.tsx`. Moduli attesi: `CLAUDE.md`,
+  `meta-gates`, `access-gating`, `checkin-offline`, `nextjs-architecture`.
+  Modifica-tipo: proporre di ammettere offline un codice che il roster non
+  conosce — il gate risponde con la firma mancante, non con l'entropia.
+
+### Note
+
+- **I `paths:` NON cambiano.** Nessun glob aggiunto, tolto o allargato in nessuno
+  dei due moduli, quindi il routing e l'indice restano quelli di prima e non c'e'
+  nulla da riallineare in `CLAUDE.md` ne' nella tabella di `meta-gates.md`.
+- **Il budget e' stato comunque rimisurato**, perche' la prosa e' cresciuta su
+  due dei moduli che entrano nel caso peggiore: `access-gating.md`
+  4042 → 5772 byte (+1730), `checkin-offline.md` 7221 → 8614 (+1393).
+  `npm run verify:persona` misura il caso peggiore a **45.131 byte ≈ 12.536
+  token su un tetto di 15.000** — margine **2.464**.
+  **E il caso peggiore ha cambiato file di nuovo**: non e' piu' la porta
+  (`ScannerClient.tsx`) ma `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx`,
+  dove si caricano `CLAUDE.md`, `meta-gates`, `access-gating`,
+  `nextjs-architecture` e `venue-secrecy`. Registrato qui perche' il gate
+  *context budget* chiede di **guardarlo**, non solo di annotarlo: quando il caso
+  peggiore si sposta, e' il progetto che si e' spostato.
+- `npm run verify:persona`: **7/7 verdi** (A, B, C, D, E, F, G).
+- Fase 49, piano 02, requisito `BUY-05` come ripuntato da `D-49-01`.
+
 ## [1.19.1] - 2026-08-25
 
 ### Fixed — `meta-gates.md` diceva «i quattro cron girano di notte», e sbagliava due volte

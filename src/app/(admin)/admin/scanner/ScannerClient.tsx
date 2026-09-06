@@ -2336,10 +2336,19 @@ export default function ScannerClient() {
    * position is admitted.** The two are not inconsistent. A ticket token is
    * HMAC-signed, so an uncached one still had to be a `uuid.64-hex` string and
    * the server re-checks the signature on sync — a bounded window. A membership
-   * QR carries no signature at all (checkin-store.ts:29-32) and the code space
-   * is generated with `Math.random()` (`src/utils/qr.ts:49`, open defect QR-01),
-   * so admitting an unknown one offline would be an unbounded hole rather than a
-   * bounded one, with nothing on the far side able to catch it.
+   * QR carries no signature at all (checkin-store.ts:29-32), so admitting an
+   * unknown one offline would be an unbounded hole rather than a bounded one,
+   * with nothing on the far side able to catch it.
+   *
+   * **The missing signature is what decides this, and it is unchanged.** This
+   * block used to lean on a second reason — that the code space came from
+   * `Math.random()` (`src/utils/qr.ts:49`, defect QR-01). That function was dead
+   * code and is gone; codes minted since migration
+   * `20260905130000_membership_code_crypto.sql` come from a CSPRNG at 2^50, and
+   * the four issued before it were deliberately not regenerated (D-49-01). So
+   * the roster carries both kinds, and the refusal below would be right even if
+   * it carried only the strong kind: an unsigned string offline cannot be
+   * checked against anything.
    *
    * The cost is a real false refusal for a member who joined after the roster was
    * downloaded — which is why a failed roster refresh is now a banner on this

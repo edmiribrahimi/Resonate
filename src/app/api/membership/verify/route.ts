@@ -92,10 +92,20 @@ function parseDoorEntryRole(value: unknown): string | null {
 //
 // **Left exactly as it was, and that is a decision, not an oversight.** It
 // answers valid / not-valid for a membership code with no session and no rate
-// limit, over a code space generated with `Math.random()` (`src/utils/qr.ts:49`)
-// — a brute-force oracle. Both halves are known and deferred by name: RATE-01
-// (no rate limiting exists anywhere in this repository) and QR-01. This plan
-// neither fixes them silently nor pretends they are fixed, and it does not
+// limit — a brute-force oracle. **RATE-01 is the half that is still open**: no
+// rate limiting exists anywhere in this repository, so the oracle costs an
+// attacker nothing per guess.
+//
+// **QR-01 is closed, but only forwards, and that distinction is the point.**
+// This block used to say the code space came from `Math.random()`
+// (`src/utils/qr.ts:49`). That function was dead code with no importers and is
+// gone; the generator is `public.handle_new_user`, and since migration
+// `20260905130000_membership_code_crypto.sql` it mints from
+// `extensions.gen_random_bytes` — 2^50 instead of 2^40 nominal. **The four
+// codes issued before were not regenerated** (D-49-01: they are credentials
+// held by real people), so on those four the old weakness survives, and an
+// oracle with no rate limit is still what stands in front of them. This plan
+// neither fixes RATE-01 silently nor pretends it is fixed, and it does not
 // widen this handler. The three-outcome contract below applies to the POST,
 // which is the door path; changing this GET's shape would break the membership
 // card view for no gain.
@@ -216,9 +226,16 @@ export async function POST(request: Request) {
      * plain URL carrying the code (`src/utils/qr.ts:33-43`) — there is no
      * signature to digest. The proof on this path is therefore **weaker** than
      * on the ticket path, where the token is HMAC-signed: possession of the
-     * string is the only claim, and the code itself is generated with
-     * `Math.random()` (`qr.ts:49`, open defect QR-01). That is a fact to carry
-     * in the record, not to paper over with a digest of something unsigned.
+     * string is the only claim. That is a fact to carry in the record, not to
+     * paper over with a digest of something unsigned.
+     *
+     * The weakness is the **missing signature**, and that has not changed. What
+     * changed is the entropy behind it: this block used to cite `Math.random()`
+     * (`qr.ts:49`), which was dead code and is gone. Codes minted since
+     * migration `20260905130000_membership_code_crypto.sql` come from
+     * `extensions.gen_random_bytes` (2^50). The four issued before it were left
+     * alone on purpose (D-49-01), so the roster holds both kinds — and neither
+     * kind is signed.
      *
      * Returns false on failure. The caller must not answer `recorded` on a
      * false: with no error tracking in this project, a log line is a place
