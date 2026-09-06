@@ -400,6 +400,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 49]: Il `membership_code` e' lungo **10** perche' 10 e' il **massimo** che `BARE_MEMBERSHIP_PATTERN` accetta alla porta: la forma di una credenziale la decide il **consumatore**, non il generatore — un codice piu' lungo sarebbe coniato da noi e rifiutato dalla nostra porta
 - [Phase 49]: I quattro `membership_code` gia' emessi **non** si rigenerano (`D-49-01`): il difetto si chiude **solo in avanti**, e i due gate dell'entropia lo dichiarano invece di far credere che sia sparito
 - [Phase 49]: Il ritentativo sulla collisione distingue `profiles_membership_code_key` da **ogni altra** `unique_violation`, che viene rilanciata invariata: senza error tracking, due cause collassate in un messaggio sono un fallimento che nessuno vedra'
+- [Phase 49]: **`stringi`** (proprietario, 2026-09-05): l'indirizzo di una serata lo legge **chi ha un biglietto per QUELLA serata**, non chi ha uno stato. L'arm 5 di `venue_for_parties` non interroga piu' `profiles.status` — applicato in produzione il 2026-09-06, versione registrata `20260906144948`
+- [Phase 49]: L'unico angolo in cui il nuovo arm 5 **allarga** e' dichiarato invece che scoperto: un titolare di biglietto non approvato, su una serata con `venue_reveal_on_purchase = false`, dopo la rivelazione. E' coerente col cron, che spedisce gia' l'indirizzo a ogni titolare senza leggere ruolo ne' stato, e con `D-49-03`, che rende il biglietto al portatore
+- [Phase 49]: L'arm 2 di `venue_for_parties` risponde alla sola concessione **per ruolo** di `staff.manage` — non passa `p_party_id`, quindi un'assegnazione per serata non lo apre: un `member` assegnato alla porta non legge l'indirizzo da questa funzione, e oggi `party_assignments` ha zero righe
 
 ## Accumulated Context
 
