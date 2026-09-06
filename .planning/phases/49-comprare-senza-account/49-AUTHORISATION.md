@@ -105,7 +105,7 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 | 1 `ticket_orders` | 2026-09-06 14:11:54 | `20260906141154` / `ticket_orders` | si' — `pg_class`, `pg_policies`, `pg_indexes`, `pg_constraint`, `information_schema.columns` | **applicata** |
 | 2 `reserve_ticket_order` | 2026-09-06 14:12:23 | `20260906141223` / `reserve_ticket_order` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`) | **applicata** |
 | 3 `membership_code_crypto` | 2026-09-06 14:26:05 | `20260906142605` / `membership_code_crypto` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `pg_get_functiondef`, `obj_description`) | **applicata** |
-| 4 `venue_reader_needs_a_ticket` | — | — | — | non ancora |
+| 4 `venue_reader_needs_a_ticket` | 2026-09-06 14:49:48 | `20260906144948` / `venue_reader_needs_a_ticket` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `provolatile`, `pg_get_functiondef`, `obj_description`), piu' `supabase_migrations.schema_migrations` | **applicata** |
 | 5 `email_category_ticket_order` | — | — | — | non ancora |
 | **6** `reserve_ticket_service_only` | 2026-09-06 14:39:08 | `20260906143908` | si' — `pg_proc.proacl`, tre sovraccarichi, prima e dopo | **applicata** |
 
@@ -140,3 +140,32 @@ passa da 35 a 36, e la differenza e' `public.ticket_orders` — **una tabella
 creata, non una tabella toccata**, con zero righe. E' esattamente la distinzione
 che il gate *un'istantanea prima copre cio' che si tocca, non cio' che si crea*
 pone: la misura che conta e' il totale delle righe, e non si e' mosso di una.
+
+### Note d'uso — piano 49-03, 2026-09-06
+
+**Perimetro speso: la migration 4, e nient'altro.** Il piano 49-03 copre
+**solo** `20260905131000_venue_reader_needs_a_ticket.sql`. La 5 appartiene al
+piano 49-05 e l'autorizzazione resta aperta su di essa.
+
+**Nessuna scrittura fuori perimetro:** un solo `CREATE OR REPLACE FUNCTION` e un
+`COMMENT ON FUNCTION`. **Zero `INSERT`, zero `UPDATE`, zero `DELETE`, nessuna
+sessione coniata, nessun `GRANT` e nessun `REVOKE`** — `CREATE OR REPLACE` su una
+firma identica conserva l'ACL, e il catalogo lo conferma invariato byte per byte
+prima e dopo.
+
+**Istantanea: NON ripresa, come prescritto.** Il ri-conteggio riproduce **tutti e
+tre** i riferimenti gia' pubblicati, prima e dopo l'applicazione: le 15 tabelle
+non vuote dell'istantanea sommano **2241**, quelle piu' `artists` e `venues`
+sommano **2253**, e ogni tabella di `public` somma **2327** su 41 tabelle, 19 non
+vuote. **Nessuna delle tre misure si e' mossa di una riga.**
+
+**Prova di volo prima di spendere.** Il corpo nuovo e' stato eseguito come
+`SELECT` autonomo con `SET search_path = ''` in vigore, **in sola lettura**,
+prima dell'applicazione: analizza, tipizza e risolve ogni nome. Un'autorizzazione
+si consuma una volta, quindi il modo di sbagliarla si cerca dove non costa nulla.
+
+**Cosa resta dell'autorizzazione dopo il piano 49-03: la migration 5.** Spese la
+1, la 2, la 3, la 4 e la 6 (l'estensione). L'autorizzazione **non e' esaurita**, e
+non si estende da se': ogni scrittura in produzione che non sia
+`20260905140000_email_category_ticket_order.sql` ha bisogno di un atto nuovo, con
+la sua data.
