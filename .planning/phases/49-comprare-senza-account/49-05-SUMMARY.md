@@ -472,6 +472,33 @@ ha portato `HEAD` a `77cc5d0`.
    nuovi **nel programma**, e la prova per mutazione mostra il compilatore che
    reagisce **a `order-confirmation.ts` in particolare**.
 
+#### E una terza, che e' successa davvero: 59 righe di 49-05 sono finite in un commit di 49-04
+
+**Due alberi di lavoro non esistono: esiste un albero solo, quindi un `index`
+solo.** Le due voci `D-49-05-DEF-06` e `D-49-05-DEF-07` erano state messe in
+`index` da questo piano e non ancora committate; il `git commit` successivo —
+lanciato dall'agente di 49-04, che non poteva sapere di avere in `index` roba di
+qualcun altro — **le ha portate via con se'**. Sono in `3cb5013`,
+`docs(49-04): il numero dei rifiuti era sbagliato in due commenti`, insieme a
+`order-quote.ts`.
+
+**Cosa e' andato perso: niente.** Le due voci sono in `HEAD`, integre, verificate
+con `git show HEAD:…deferred-items.md | grep -c` → **2**. **Cosa e' sbagliato:
+l'attribuzione.** Chi leggera' `git log -- deferred-items.md` credera' che quei
+due debiti li abbia trovati il piano 49-04. Non e' cosi': li ha trovati 49-05,
+scrivendo il modulo d'invio.
+
+**Non si ripara riscrivendo la storia**, e la ragione e' la stessa di ogni altra
+guardia di questa fase: un `rebase` o un `commit --amend` su un commit che un
+altro agente sta usando come base distrugge il suo lavoro per sistemare
+un'etichetta. **Si ripara dicendolo**, ed e' quello che fa questo paragrafo.
+
+**La regola che ne esce, per chi eseguira' piani in parallelo nello stesso
+albero:** `git add` e `git commit` sono **un solo gesto**, non due. Ogni intervallo
+fra i due e' una finestra in cui il commit di qualcun altro si porta via i tuoi
+file — e la finestra non si vede, perche' `git status` di quell'altro mostra i
+tuoi file esattamente come mostrerebbe i suoi.
+
 ## Deviazioni dal piano
 
 ### 1. [Rule 2 — funzionalita' critica mancante] La guardia contro il secondo invio
