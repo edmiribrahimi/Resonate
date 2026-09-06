@@ -326,6 +326,25 @@ export interface EventParty {
    * not a hole.
    */
   number: number | null;
+  /**
+   * Quanti biglietti puo' contenere **un ordine** su questa serata —
+   * `20260905120000_ticket_orders.sql` §6, `NOT NULL DEFAULT 6`.
+   *
+   * **PER ORDINE E NON PER PERSONA**, e la distinzione va letta: sei ordini da
+   * sei sono trentasei biglietti, e nulla lo impedisce. E' il perimetro
+   * dichiarato di BUY-02, non un difetto — ma un perimetro non dichiarato e'
+   * indistinguibile da un buco, e «tetto» si legge come «limite per persona» se
+   * nessuno scrive il contrario.
+   *
+   * `NOT NULL` con default e non nullabile con un `coalesce` nel codice: e' la
+   * forma di `refund_request_window_hours`, non quella di `venue_reveal_hours`,
+   * il cui `coalesce(..., 25)` vive in due posti. Una casa sola per il numero.
+   *
+   * Il tetto e' autoritativo dentro `public.reserve_ticket_order`, dentro la
+   * transazione. La UI e l'azione lo controllano in modo **consultivo**: due
+   * richieste in volo passano un controllo di UI e non passano quello della RPC.
+   */
+  max_tickets_per_order: number;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -509,6 +528,90 @@ export interface Ticket {
   checked_in_at: string | null;
   checked_in_by: string | null;
   created_at: string;
+  /**
+   * L'ordine da cui questo biglietto e' nato — `20260905120000_ticket_orders.sql`
+   * §4 — o `null` se e' nato dal percorso con sessione, che non conosce questa
+   * colonna.
+   *
+   * **Non e' solo un puntatore: e' il discrimine di due indici unici.** I due
+   * indici parziali `tickets_party_user_unique` e
+   * `tickets_event_user_master_unique` sono stati ricreati con
+   * `AND order_id IS NULL`, quindi vincolano il percorso vecchio e non il nuovo.
+   * Un biglietto con `order_id` valorizzato puo' condividere `(party_id,
+   * user_id)` con altri cinque; uno con `order_id` nullo no. Chi scrive qui
+   * direttamente sta scegliendo quale delle due regole si applica.
+   *
+   * `ON DELETE SET NULL` e non `CASCADE`: cancellare un ordine non cancella i
+   * biglietti pagati.
+   */
+  order_id: string | null;
+  /**
+   * Come questo biglietto si distingue dagli altri dello stesso ordine — la
+   * forma e' `«2 di 6»`.
+   *
+   * **NON E' UN NOME, e non deve diventarlo.** D-49-03: il biglietto e' al
+   * portatore, ed e' il caso progettato — «sei e' un gruppo di amici con un solo
+   * pagante» significa che cinque biglietti su sei stanno in mano a qualcun
+   * altro. Un nome sullo schermo dello staff produce uno di due danni: si
+   * rifiuta un ospite valido davanti a una fila, oppure lo staff impara a
+   * ignorare il campo e il campo diventa teatro.
+   */
+  holder_label: string | null;
+  /**
+   * Come questo biglietto e' stato acquisito.
+   *
+   * `null` significa **«scritto prima che questa colonna esistesse»**, mai
+   * «acquisto ordinario». Nessun default e nessun backfill, per la ragione che
+   * `20260808003000_attendances_entry_role.sql` scrive per esteso: l'unico
+   * valore disponibile a un backfill sarebbe una supposizione di oggi scritta
+   * dentro un fatto di ieri, e in un rapporto si leggerebbe come misurata.
+   */
+  issued_via: string | null;
+}
+
+/**
+ * Un ordine di biglietti — `public.ticket_orders`, migration
+ * `20260905120000_ticket_orders.sql`.
+ *
+ * **Un checkout SumUp, N biglietti.** La tabella esiste perche'
+ * `tickets.sumup_checkout_id text UNIQUE` impediva a un solo pagamento di
+ * produrre piu' di un biglietto, e quell'unicita' non era decorativa: era
+ * l'idempotenza del pagamento. Qui non si allenta, si SPOSTA — su una tabella
+ * che ha davvero un checkout solo. Stessa forma di {@link DrinkOrder}, che gira
+ * gia' in produzione.
+ */
+export interface TicketOrder {
+  id: string;
+  event_id: string;
+  party_id: string | null;
+  tier_id: string;
+  /**
+   * **Nullabile apposta.** L'identita' dell'acquirente nasce al webhook, dopo la
+   * verifica dell'incasso via GET: fra l'avvio del checkout e l'incasso
+   * verificato l'ordine esiste e non ha proprietario. Dichiararlo non nullabile
+   * costringerebbe a coniare un conto per ogni carrello abbandonato.
+   */
+  user_id: string | null;
+  buyer_email: string;
+  /**
+   * Quanti biglietti emette questo ordine. Il tetto e'
+   * {@link EventParty.max_tickets_per_order}, applicato in modo autoritativo
+   * dentro `public.reserve_ticket_order` — non da chi chiama.
+   */
+  quantity: number;
+  /**
+   * `UNIQUE NOT NULL` nello schema, e la differenza fra i due modificatori e' il
+   * punto: e' il DATABASE a garantire che due consegne dello stesso webhook non
+   * diventino due ordini. Non spostare questa garanzia nel codice.
+   */
+  sumup_checkout_id: string;
+  sumup_transaction_code: string | null;
+  total_amount: number;
+  discount_code_id: string | null;
+  status: "pending" | "completed" | "failed" | "expired";
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
