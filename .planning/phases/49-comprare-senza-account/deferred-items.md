@@ -168,3 +168,60 @@ modifiche alla persona nello stesso commit sarebbero due ragioni in una riga.
 il numero da `scripts/verify-persona.mjs` invece di ricordarlo — e dichiarare
 **quando** il tetto e' passato da 12.000 a 15.000 e chi l'ha deciso, perche'
 quello e' il fatto che manca.
+
+---
+
+## D-49-03-DEF-05 — una foto approvata puo' mostrare un luogo, e il bucket e' pubblico
+
+**Trovato:** 2026-09-06, piano 49-03, task 1, misurando dal catalogo cosa
+guadagna di visibile un acquirente che completa l'account. **Non e' causato da
+questa fase**: la fase ne moltiplica la popolazione, non apre la superficie.
+
+**Il debito e' aperto qui per obbligo del piano**, il cui criterio d'accettazione
+dice: *«se quella risposta e' si', la riga entra fra i debiti dichiarati di
+`49-VERIFICATION.md`, con la ragione per cui non si ripara in questa fase»*. Un
+rischio misurato che non compare fra i debiti e' un rischio che sparisce — ed e'
+peggio di uno mai misurato, perche' qualcuno ha guardato e la traccia non c'e'.
+
+**La risposta e' `si'`, non `forse`, ed e' strutturale.**
+`catalogo: pg_policies` — `event_media_select_approved` concede `SELECT` ad
+`authenticated` con `qual = (status = 'approved')`, e **nessun predicato di
+quella policy guarda `event_parties.venue_secret`, `venues.address` o lo stato
+della rivelazione**. `catalogo: information_schema.columns` — la tabella porta
+`url` (un'immagine) e `caption` (testo libero). Niente, nello schema, impedisce
+che una foto approvata inquadri un'insegna, una targa o una facciata
+riconoscibile.
+
+**E il confine vero sta piu' in la' di quanto la policy suggerisca.**
+`catalogo: storage.buckets` — il bucket **`event-media` ha `public = true`**, e
+le URL sono costruite su `/storage/v1/object/public/event-media/`
+(`src/app/(public)/events/[slug]/actions.ts:320`). **I byte dell'immagine sono
+gia' raggiungibili da chiunque abbia l'URL, senza alcuna sessione.** La policy
+governa **chi scopre la riga**, non chi vede la fotografia.
+
+**Cosa questa fase cambia, e cosa no.** Cambia **chi puo' elencare** le righe
+approvate: da quattro profili a ogni acquirente. **Non** cambia la
+raggiungibilita' dell'immagine, che era gia' anonima. `public.event_media` ha
+**0 righe** in produzione: oggi il rischio e' interamente potenziale.
+
+**Corroborato da una fonte indipendente:** `scripts/verify-venue-surfaces.mjs`
+stampa la stessa uscita fra le *OPEN EXITS* a ogni esecuzione, pass o fail —
+*«MEDIA. A photograph that frames the sign … the same information down a road
+with no predicate on it at all»*.
+
+**Perche' non si ripara in questa fase.** Le riparazioni possibili sono tre, e
+ognuna esce dal perimetro di una fase che apre l'acquisto senza account:
+
+1. sottoporre l'approvazione dei media a un predicato di segretezza della
+   serata — tocca `media-and-storage.md` e il flusso di moderazione;
+2. rendere privato il bucket `event-media` e servire ogni immagine da URL
+   firmate — tocca **ogni** superficie che mostra una foto, comprese quelle
+   pubbliche, ed e' un cambio di architettura dello storage;
+3. sospendere l'approvazione sulle serate segrete — e' una decisione di
+   prodotto del proprietario, non una migration.
+
+**A chi tocca:** `media-and-storage.md` con `venue-secrecy.md` a fianco. La
+decisione fra le tre e' del proprietario, e va presa **prima** che esista un
+archivio fotografico di una serata segreta — perche' `venue-secrecy.md` dice che
+una rivelazione anticipata non ha rimedio, e una foto pubblicata e' esattamente
+quella forma di rimedio che non esiste.
