@@ -52,7 +52,7 @@
  *   - It does NOT cover MEDIA. A photograph that frames the sign carries the
  *     same information down a road with no predicate on it at all.
  *
- * ── THE SIX CHECKS ──────────────────────────────────────────────────────────
+ * ── THE SEVEN CHECKS ────────────────────────────────────────────────────────
  *
  *   A. The predicate's TRUTH TABLE, executed. `mayShowVenueOnPublicSurface`
  *      answers `false` for a secret night under every combination of reveal
@@ -77,6 +77,20 @@
  *      form is the point: a deny-list only reds the names somebody thought to
  *      forbid, and the pass format carries a place down two roads that are not
  *      text at all.
+ *   G. THE GUEST ORDER SURFACE SELECTS NO PLACE. The THIRD surface, added by
+ *      plan 49-06: the page that opens a guest's tickets from an HMAC signature
+ *      with no session, and the payment-callback branch that sends them there.
+ *      One negative sweep over LIVE CODE, one POSITIVE allow-list of every column
+ *      those two files select, and the assertion that neither reaches for the
+ *      disclosure predicate — on this surface the owner's answer is *never*
+ *      (D-49-04), so there is nothing for a predicate to decide.
+ *
+ *      **This gate knew exactly two surfaces until 49-06, and a third one it did
+ *      not know would have been worse than no gate at all** — it would have gone
+ *      green while nobody was watching the newest place an address could reach.
+ *      Widening it happened in the same wave that created the surface, on
+ *      purpose. If the surface ever goes away, remove G in the same commit and
+ *      say so.
  *
  * Exit codes follow the repository's convention: `0 = passed · 1 = failed ·
  * 2 = refused`. A refusal is not a failure — it means the measurement did not
@@ -93,6 +107,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MODULE_PATH = join(ROOT, "src/lib/venue-reveal/venue-disclosure.ts");
 const PUBLIC_PAGE = join(ROOT, "src/app/(public)/events/[slug]/page.tsx");
 const TICKET_PAGE = join(ROOT, "src/app/(public)/tickets/[id]/page.tsx");
+
+/**
+ * The THIRD surface, and the second file that leads onto it. Declared beside the
+ * other two so that the list of what this gate knows is one list, in one place —
+ * `49-CONTEXT.md` names `:93-95` as *the two surfaces the gate knows*, and the
+ * next person to count them should be able to count them here.
+ */
+const ORDER_PAGE_REL = "src/app/(public)/tickets/order/[token]/page.tsx";
+const CALLBACK_ACTIONS_REL = "src/app/(public)/payment/callback/actions.ts";
+const ORDER_PAGE = join(ROOT, ORDER_PAGE_REL);
+const CALLBACK_ACTIONS = join(ROOT, CALLBACK_ACTIONS_REL);
 
 const failures = [];
 const notes = [];
@@ -895,6 +920,233 @@ if (SELECT_MATCH === null) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * CHECK G — the guest order surface, and the branch that sends people to it
+ *
+ * ── WHY A THIRD SURFACE NEEDED THE GATE WIDENED IN THE SAME WAVE ────────────
+ *
+ * Until plan 49-06 this file knew exactly two surfaces, written into the three
+ * constants at the top. `49-CONTEXT.md` says what a third one would have meant:
+ * *«una terza che il gate non conosce e' peggio di nessun gate: fa credere che
+ * qualcuno stia controllando»*. A green that covers two thirds of the surfaces
+ * is a green that lied by omission, and the omission is invisible.
+ *
+ * ── WHAT THE SURFACE IS, AND WHY THE RULE ON IT IS *NEVER* ──────────────────
+ *
+ * `src/app/(public)/tickets/order/[token]/page.tsx` opens a guest's tickets from
+ * an HMAC signature, WITH NO SESSION. It exists because
+ * `(public)/tickets/[id]/page.tsx` bounces a guest to `/login`, and a person who
+ * bought without an account has no password to arrive with.
+ *
+ * The research for the phase recommended that this page consult
+ * `mayShowVenueToTicketHolder`, on the grounds that for somebody who buys after
+ * the reveal it would be the only road to the address. **`D-49-04` decided
+ * otherwise and it is later and narrower**: the address goes only to the buyer,
+ * by mail, and *the ticket's credential does not become a key to the address*. A
+ * signed uuid is forwarded exactly the way a ticket is forwarded — which at a
+ * bearer ticket (`D-49-03`) is the DESIGNED case, not an abuse — and the address
+ * would ride along with it.
+ *
+ * So on this surface there is no predicate to read, because there is nothing to
+ * decide. The rule is simpler and, more to the point, MECHANICALLY CHECKABLE:
+ * **the page selects no column that describes a place.** A column that is never
+ * read cannot be printed.
+ *
+ * ── THE FORM: ONE NEGATIVE SWEEP, ONE POSITIVE ALLOW-LIST ───────────────────
+ *
+ *   G1  the negative sweep, over LIVE CODE — the raw names, as case-insensitive
+ *       substrings, so one entry catches `venue_text`, `venueLabel` and
+ *       `displayVenue` alike.
+ *   G2  THE POSITIVE ALLOW-LIST. Every `.select("…")` literal in the two files is
+ *       located, flattened (embed names and embedded columns become tokens of
+ *       their own), and the resulting set is compared with a list declared here.
+ *       **A new column — any new column, whatever it is called — reds this until
+ *       somebody adds it deliberately.** That is the difference between a gate
+ *       that knows what it is looking at and one that hopes. The NUMBER of select
+ *       literals is pinned too, so a whole new query cannot appear unnoticed.
+ *   G3  NO IMPORT OF THE PREDICATE. Not a slip to flag: `D-49-04` made
+ *       executable. If this surface ever grows a reveal test, that is not a
+ *       feature, it is the decision being reversed by an edit.
+ *   G4  THE SHAPE THAT MAKES IT A GUEST SURFACE: `force-dynamic` declared, no
+ *       session resolved, no bounce to `/login`. The first is
+ *       `nextjs-architecture.md`'s *cache esplicita* on a page that shows the
+ *       state of a payment; the other two are the reason the page exists, and a
+ *       later "tidy-up" that added a session read would silently close the road
+ *       this plan opened.
+ *
+ * G1 reads live code with the repository's one comment stripper, for the same
+ * reason F1 does: this surface must EXPLAIN the rule whose whole subject is the
+ * word being forbidden. The cost is the same and points the same way — the
+ * stripper blanks more than it should, never less, so G1 can under-count — and
+ * G2 is why that is acceptable: an under-count hides a NAME, and G2 does not
+ * measure names, it measures the membership of a closed set.
+ *
+ * ── PROVED BY MUTATION, 2026-09-06 ──────────────────────────────────────────
+ *
+ * A check nobody has seen go red is a check nobody has seen work. Three
+ * mutations, one at a time; each RE-READ FROM DISK AND ASSERTED PRESENT BEFORE
+ * THE GATE WAS RUN — a run that skips that step cannot tell *the gate caught it*
+ * from *the edit never landed*, and the second reads exactly like the first — and
+ * each reverted by writing the saved bytes back, never by a git command that
+ * discards a working tree.
+ *
+ *   V1  the order page selects the night's free venue text  → G1 + G2, exit 1
+ *   V2  a column named `street_line` — no forbidden term    → G2,      exit 1
+ *   V3  the page imports the disclosure predicate           → G1 + G3, exit 1
+ *
+ * **V2 is the one that earns the positive form**, exactly as W5 does for F: it
+ * adds a place-bearing column a deny-list would wave through, and **G2 alone**
+ * caught it. V1 and V3 each fired TWO checks, and that is worth recording rather
+ * than rounding to an exit code — F4 was once stepped over by a mutation that
+ * F1 caught, and reading only the exit code would have called it a pass.
+ * Afterwards the file was compared byte-for-byte with its starting state and the
+ * gate was green again — the control, without which three reds prove only that
+ * the script can fail.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+if (!existsSync(ORDER_PAGE) || !existsSync(CALLBACK_ACTIONS)) {
+  console.error(
+    "REFUSED — the guest order surface or the payment-callback branch is absent\n" +
+      "from the tree. Nothing about the third surface was measured. If it was\n" +
+      "deliberately removed, remove check G in the same commit and say so — do not\n" +
+      "leave a gate that refuses forever, because a permanent refusal reads like a\n" +
+      "green to a list."
+  );
+  process.exit(2);
+}
+
+/**
+ * Matched as CASE-INSENSITIVE SUBSTRINGS, like F's list and for the same reason:
+ * the failure being guarded against is somebody re-adding the thing under
+ * whatever name reads naturally that day.
+ */
+const GUEST_PLACE_TERMS = [
+  "venue",
+  "address",
+  "latitude",
+  "longitude",
+  "google_maps",
+  "coordinate",
+];
+
+/**
+ * Per file: the exact set of column tokens its selects may name, and how many
+ * select literals it may contain.
+ *
+ * Not one of these tokens describes a place, and that is the whole assertion.
+ * Widening either value is a decision about the one act in this product that has
+ * no undo — make it deliberately, and say why in the commit.
+ */
+const GUEST_SURFACES = [
+  [
+    ORDER_PAGE_REL,
+    ORDER_PAGE,
+    "date, end_time, event_id, holder_label, id, name, party_id, quantity, slug, status, tier_id, time, title, user_id",
+    5,
+  ],
+  [CALLBACK_ACTIONS_REL, CALLBACK_ACTIONS, "id, status, ticket_id", 3],
+];
+
+for (const [rel, abs, expectedColumns, expectedSelects] of GUEST_SURFACES) {
+  const { lines, unterminated } = liveLines(abs);
+  if (unterminated !== null) {
+    console.error(
+      `REFUSED — ${rel} has a ${unterminated.kind} comment opened at line ` +
+        `${unterminated.lineNo} that never closes. The stripper cannot read this\n` +
+        "file, so G measured nothing rather than measuring zero."
+    );
+    process.exit(2);
+  }
+
+  /* G1 — the negative sweep */
+  lines.forEach((line, index) => {
+    const lower = line.toLowerCase();
+    for (const term of GUEST_PLACE_TERMS) {
+      if (lower.includes(term)) {
+        fail(
+          "G1",
+          `${rel}:${index + 1} names \`${term}\` in live code: ${line.trim()}\n` +
+            "        This surface opens from a FORWARDED signature and shows no place " +
+            "at any moment, on any night (`D-49-04`). There is no reveal state that " +
+            "makes this line correct later."
+        );
+      }
+    }
+  });
+
+  /* G2 — the positive allow-list of selected columns */
+  const live = lines.join("\n");
+  const selects = [...live.matchAll(/\.select\(\s*"([^"]*)"/g)].map((m) => m[1]);
+
+  if (selects.length !== expectedSelects) {
+    fail(
+      "G2",
+      `${rel} contains ${selects.length} \`.select("…")\` literal(s); ${expectedSelects} ` +
+        "are authorised.\n        A query that appears without this list moving is a " +
+        "query nobody weighed. If one was added or removed on purpose, move the number " +
+        "here in the same commit."
+    );
+  }
+
+  // Embed names and embedded columns become tokens of their own — `events(title,
+  // slug)` yields `events`, `title`, `slug`. Stripping embeds instead would hide
+  // exactly the columns this check exists to see.
+  const columns = asSet(
+    selects.flatMap((literal) =>
+      literal
+        .replace(/[()]/g, ",")
+        .split(",")
+        .map((column) => column.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (columns !== expectedColumns) {
+    fail(
+      "G2",
+      `${rel} selects {${columns}};\n        the authorised set is {${expectedColumns}}.\n` +
+        "        This list is POSITIVE on purpose: a column that carries a place under " +
+        "a name nobody thought to forbid still reds here. A column that is never read " +
+        "cannot be printed — that property is the whole guard on this surface, and it " +
+        "is only true while this list is."
+    );
+  }
+}
+
+/* G3 — the predicate is not consulted here */
+
+const orderPageLive = liveLines(ORDER_PAGE).lines.join("\n");
+
+if (/venue-disclosure|mayShowVenueToTicketHolder|mayShowVenueOnPublicSurface/.test(orderPageLive)) {
+  fail(
+    "G3",
+    `${ORDER_PAGE_REL} reaches for the disclosure predicate. On this surface the ` +
+      "answer is *never* — `D-49-04`, the address goes only to the buyer, by mail — " +
+      "so a predicate here has nothing to decide and its presence means the decision " +
+      "was reversed by an edit rather than by the owner."
+  );
+}
+
+/* G4 — the shape that makes this a guest surface */
+
+if (!/export const dynamic = "force-dynamic"/.test(orderPageLive)) {
+  fail(
+    "G4",
+    `${ORDER_PAGE_REL} does not declare \`force-dynamic\`. It renders the state of a ` +
+      "payment, and Serwist serves content when the network is gone — including old " +
+      "content. `nextjs-architecture.md`, gate *cache esplicita*: declared, never derived."
+  );
+}
+
+if (/auth\.getUser|redirect\("\/login"\)/.test(orderPageLive)) {
+  fail(
+    "G4",
+    `${ORDER_PAGE_REL} resolves a session or sends the reader to \`/login\`. That is ` +
+      "the wall this page exists to remove: somebody who bought without an account has " +
+      "no password to arrive with, and the links in their order mail lead here."
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
  * CHECK D — the exits this gate cannot see, printed every run
  *
  * The wallet pass used to be printed here. It was closed on 2026-08-24 and is
@@ -931,7 +1183,9 @@ console.log("  C  no ungated venue render on either surface");
 console.log("  D  the exits this gate cannot see");
 console.log("  E  no secret venue in a payload — the sweep, and the two boundaries");
 console.log("  F  nothing that names a place on the wallet pass — one sweep, four");
-console.log("     positive allow-lists, and no location relevance\n");
+console.log("     positive allow-lists, and no location relevance");
+console.log("  G  the guest order surface selects no place — one sweep, one positive");
+console.log("     allow-list of every column, and no predicate to reverse\n");
 
 if (notes.length > 0) {
   console.log("  OPEN EXITS — printed on every run, pass or fail:\n");
@@ -952,5 +1206,7 @@ console.log("PASSED — no public surface renders a secret night's venue, nothin
 console.log("         names the place crosses a public client boundary for one, the");
 console.log("         holder's ticket renders it only once the reveal has fired, and");
 console.log("         the wallet pass carries neither a venue column nor a coordinate");
-console.log("         — on any night, secret or not, because a pass cannot be recalled.");
+console.log("         — on any night, secret or not, because a pass cannot be recalled");
+console.log("         — and the guest order surface selects no column of the place at");
+console.log("         all, on a link that is meant to be forwarded.");
 process.exit(0);

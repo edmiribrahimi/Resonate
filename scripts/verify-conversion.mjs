@@ -1579,6 +1579,23 @@ export const FOCUS_ROUTES = [
   ['/register', 'one card, one action'],
   ['/set-password', 'one card, one action'],
   ['/payment/callback', 'one card, one action — and the outcome of a payment'],
+  // WIDENED 2026-09-06 by plan 49-06, and written out rather than slipped in
+  // because this list is CLOSED and check D says in its own red that which of
+  // the two is wrong "is a question for a person".
+  //
+  // **The literal phrase above is stretched here, and pretending otherwise
+  // would be the loosening this gate exists to prevent**: this surface carries
+  // one tile PER TICKET, up to six, so it is not one card. What it is, is the
+  // property the pair D+E actually enforces — A SINGLE-PURPOSE SCREEN THAT
+  // MOUNTS NO NAVIGATION. The default form reserves a column and a bar for a
+  // navigation, and this page mounts none, which is not an omission: it is
+  // opened by an HMAC signature with NO SESSION, by somebody who has no account
+  // to navigate. Mounting one would mean resolving a session on the one surface
+  // whose whole reason is that a session is not required.
+  //
+  // It is the continuation of `/payment/callback`, already on this list, for the
+  // reader that page redirects when the buyer has no account.
+  ['/tickets/order/[token]', 'a single-purpose screen with no navigation — the tickets of one order, opened by a signature and not by a session'],
 ];
 
 const WIDE_SET = new Set(WIDE_ROUTES.map(([route]) => route));

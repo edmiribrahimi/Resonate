@@ -284,3 +284,40 @@ per cui e' stata scritta — una superficie che ordina per costo alla porta inve
 che per data — oppure toglierla e lasciarne la ragione scritta. **Nel frattempo
 l'assenza di lettori e' dichiarata nel docblock della lista**, cosi' chi la legge
 non deduce una sorveglianza che non c'e'.
+
+---
+
+## D-49-06-DEF-08 — `verify:touch-targets` e' rosso su due controlli della fase 47
+
+**Trovato:** piano 49-06, task 3, lanciando `npm run verify` dopo aver allargato
+il gate delle superfici venue.
+
+**Il fatto, e la sua prova.** `npm run verify` esce **1** per un solo gate,
+`verify:touch-targets`, che segnala due elementi senza altezza minima:
+
+- `src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx:689` — `<button>`
+- `src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx:702` — `<button>`
+
+**E' precedente a questo piano, e la cosa e' stata misurata invece che
+affermata.** Il gate e' stato eseguito su un albero di lavoro staccato alla
+baseline della fase, `5f1e260`, e li' fallisce **con gli stessi due elementi
+alle stesse due righe**. Il file non e' cambiato da allora
+(`git diff 5f1e260 HEAD -- <file>` vuoto) e nessuno dei commit di questo piano lo
+tocca. L'albero temporaneo e' stato rimosso subito dopo la misura.
+
+**Perche' non si ripara qui.** E' la regola di perimetro dell'esecuzione: si
+ripara cio' che il proprio lavoro ha rotto, non cio' che si trova rotto. I due
+controlli appartengono al ritiro di un token drink da ospite (fase 47), che
+questo piano non apre — e un piano che tocca il percorso dei biglietti per
+sistemare i bottoni del bar e' un piano di cui nessuno sa piu' leggere il diff.
+
+**Cosa costa lasciarlo.** Sono due bersagli sotto i 44px su una superficie che si
+usa **in un locale, al buio, con una mano** — `nextjs-architecture.md`, gate
+*accessibilita' al buio*. Non e' cosmetico: e' un controllo che si manca al
+primo tentativo. Va chiuso da un piano che ha quel file nel proprio perimetro.
+
+**E la conseguenza sull'aggregato va detta:** finche' resta, `npm run verify`
+esce 1 su ogni albero, e **un rosso permanente e' il modo in cui un aggregato
+smette di essere letto**. Chi lancia il comando dopo questo piano deve poter
+distinguere questo rosso da uno nuovo: il criterio e' il nome dei due file e
+delle due righe qui sopra.
