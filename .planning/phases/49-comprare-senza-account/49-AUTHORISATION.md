@@ -3,8 +3,9 @@ phase: 49-comprare-senza-account
 document: autorizzazione a scrivere in produzione
 granted: 2026-09-06
 granted_by: proprietario
-scope: cinque migration, nominate
-status: CONCESSA — non ancora spesa
+scope: cinque migration, nominate, piu' una estensione del 2026-09-06
+status: ESAURITA — 2026-09-06 15:03:04 UTC, sei su sei applicate, zero fallite
+exhausted: 2026-09-06
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-06
@@ -106,11 +107,21 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 | 2 `reserve_ticket_order` | 2026-09-06 14:12:23 | `20260906141223` / `reserve_ticket_order` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`) | **applicata** |
 | 3 `membership_code_crypto` | 2026-09-06 14:26:05 | `20260906142605` / `membership_code_crypto` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `pg_get_functiondef`, `obj_description`) | **applicata** |
 | 4 `venue_reader_needs_a_ticket` | 2026-09-06 14:49:48 | `20260906144948` / `venue_reader_needs_a_ticket` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `provolatile`, `pg_get_functiondef`, `obj_description`), piu' `supabase_migrations.schema_migrations` | **applicata** |
-| 5 `email_category_ticket_order` | — | — | — | non ancora |
+| 5 `email_category_ticket_order` | 2026-09-06 15:03:04 | `20260906150304` / `email_category_ticket_order` | si' — `pg_constraint` (`conname`, `convalidated`, `pg_get_constraintdef`), piu' `supabase_migrations.schema_migrations` | **applicata** |
 | **6** `reserve_ticket_service_only` | 2026-09-06 14:39:08 | `20260906143908` | si' — `pg_proc.proacl`, tre sovraccarichi, prima e dopo | **applicata** |
 
-**Esaurita il:** — *(da scrivere quando l'ultima delle cinque e' applicata e
-riletta, o quando ci si ferma per un fallimento)*
+**Esaurita il: 2026-09-06 15:03:04 UTC**, con l'applicazione e la rilettura della
+migration 5 — l'ultima delle cinque nominate. Sei su sei applicate (le cinque del
+perimetro originale piu' l'estensione), **zero fallite**, quindi la condizione 4
+*«se una fallisce, ci si ferma»* non e' mai stata esercitata.
+
+> **Da qui in poi questo documento non autorizza piu' niente.** Ogni scrittura in
+> produzione — un'altra migration, una riga seminata, una spunta, una sessione
+> coniata, una rimozione — ha bisogno di **un atto nuovo, con la sua data**.
+> `ai-engineering.md`: un'autorizzazione si consuma una volta e non si estende da
+> se'. Un piano successivo di questa fase che trovasse qui una riga «applicata»
+> e ne concludesse di poter scrivere starebbe leggendo una ricevuta come un
+> permesso.
 
 ### Note d'uso — piano 49-01, 2026-09-06
 
@@ -169,3 +180,29 @@ si consuma una volta, quindi il modo di sbagliarla si cerca dove non costa nulla
 non si estende da se': ogni scrittura in produzione che non sia
 `20260905140000_email_category_ticket_order.sql` ha bisogno di un atto nuovo, con
 la sua data.
+
+### Note d'uso — piano 49-05, 2026-09-06. **L'ultima.**
+
+**Perimetro speso: la migration 5, e nient'altro.** Due istruzioni —
+`DROP CONSTRAINT IF EXISTS` e `ADD CONSTRAINT` — sullo stesso vincolo di
+`public.email_deliveries`. **Zero `INSERT`, zero `UPDATE`, zero `DELETE`, nessuna
+colonna, nessun indice, nessuna policy, nessun `GRANT` e nessun `REVOKE`, nessuna
+sessione coniata.**
+
+**Istantanea: NON ripresa, come prescritto.** Il ri-conteggio riproduce tutte e
+tre le misure gia' pubblicate dalla fase, **prima e dopo**: le 15 tabelle non
+vuote dell'istantanea sommano **2241**, quelle piu' `artists` e `venues`
+**2253**, ogni tabella di `public` **2327** su 41 tabelle, 19 non vuote.
+**Nessuna delle tre si e' mossa di una riga**, ed era atteso: la migration non
+contiene una sola istruzione di scrittura di dati.
+
+**Perche' l'`ADD CONSTRAINT` non poteva fallire sui dati**, misurato prima invece
+che sperato: `public.email_deliveries` ha **zero righe** — e comunque l'elenco
+nuovo e' un **superinsieme** del vecchio, quindi nessuna riga scritta sotto il
+vincolo precedente potrebbe violarlo. Le due ragioni sono indipendenti e valgono
+entrambe.
+
+**La deriva della versione si e' ripetuta per la quinta volta, identica.** File
+`20260905140000`, storia `20260906150304`. Non e' un errore: e' come si comporta
+l'endpoint, e cinque ripetizioni su cinque la rendono una proprieta' misurata
+dello strumento, non un incidente.

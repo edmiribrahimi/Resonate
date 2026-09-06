@@ -39,12 +39,20 @@
  */
 
 /**
- * I nove messaggi che questo prodotto sa spedire, uno per template.
+ * I dodici messaggi che questo prodotto sa spedire, uno per template.
  *
  * Aggiungerne uno costa **due modifiche in un commit**: questa unione e il
  * `CHECK` della migration. Una sola delle due produce un invio che parte e non
  * si registra — cioe' esattamente lo stato «non si sa» che questa infrastruttura
  * esiste per eliminare.
+ *
+ * *(Questo docblock diceva «I nove messaggi» e l'elenco sotto ne portava
+ * **undici** dal 2026-08-22: `20260822180000_email_ledger_night_paths.sql` ne
+ * aveva aggiunte due senza rileggere la riga che le contava. Corretto il
+ * 2026-09-06 contandoli, non ricordandoli — e vale la pena dirlo qui invece che
+ * cancellarlo in silenzio: un conteggio scritto in prosa accanto a un elenco
+ * diverge alla prima aggiunta, ed e' il motivo per cui il numero che decide non
+ * e' questo ma `EMAIL_CATEGORIES.length`.)*
  */
 export const EMAIL_CATEGORIES = [
   /** La conferma del biglietto, con il QR allegato. **La copia di cortesia.** */
@@ -80,30 +88,64 @@ export const EMAIL_CATEGORIES = [
   "venue_reveal",
   /** Il promemoria del giorno prima. Anche questo spedito a lotti. */
   "event_reminder",
+  /**
+   * La mail di un ORDINE comprato senza account: N biglietti, e il link per
+   * completare l'account quando si e' potuto costruire.
+   *
+   * **Non e' `ticket_confirmation` con un nome diverso, e il rischio e' quello
+   * che le separa.** La conferma esistente e' una copia di cortesia per chi ha
+   * gia' un account e puo' rientrare da `/login` quando vuole; questa e'
+   * l'**unica cosa** che una persona senza password possiede — se non arriva
+   * non ha ne' il biglietto ne' un modo di accedere, e lo scopre alla porta.
+   * Contarle sotto lo stesso nome renderebbe indistinguibile un fastidio da una
+   * persona respinta davanti a una fila.
+   *
+   * **Non porta nessun luogo.** D-49-04: l'indirizzo va **solo** all'acquirente
+   * per la sua strada, il countdown della rivelazione. Questa mail non e' quella
+   * strada e non lo diventa — vedi il template `src/emails/ticket-order.tsx`.
+   */
+  "ticket_order_confirmation",
 ] as const;
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
 /**
- * Le due categorie il cui mancato recapito costa **alla porta**, non in casella.
+ * Le tre categorie il cui mancato recapito costa **alla porta**, non in casella.
  *
- * Entrambe portano un QR: il biglietto comprato e l'invito da guest list. Una
- * mail di approvazione che non arriva e' un fastidio; uno di questi due che non
- * arriva e' una persona che si presenta all'ingresso senza sapere di doversi
- * portare qualcosa.
+ * Tutte e tre portano un QR: il biglietto comprato con una sessione, l'invito da
+ * guest list, e i biglietti di un ordine comprato senza account. Una mail di
+ * approvazione che non arriva e' un fastidio; uno di questi tre che non arriva
+ * e' una persona che si presenta all'ingresso senza sapere di doversi portare
+ * qualcosa.
  *
  * Nominate qui e non dedotte dal nome del template, perche' la ragione per cui
- * queste due contano di piu' e' di dominio e non lessicale.
+ * queste tre contano di piu' e' di dominio e non lessicale.
+ *
+ * **`ticket_order_confirmation` e' la terza, e nella lista pesa piu' delle altre
+ * due.** Le prime due arrivano a qualcuno che ha comunque un account: la mail
+ * perduta si aggira da `/login`. La terza arriva a chi **non ha una password**,
+ * quindi il suo mancato recapito non toglie una copia di cortesia — toglie
+ * l'originale e la via di rientro insieme. E' `D-49-03` che la rende cosi': al
+ * portatore, i biglietti dell'ordine possono essere gia' in mano ad altre cinque
+ * persone che non hanno ricevuto nulla e non hanno dove guardare.
  *
  * **`venue_reveal` non e' qui, e l'assenza e' deliberata.** Il suo mancato
  * recapito costa **prima** della porta, non alla porta: chi non riceve
  * l'indirizzo non ci arriva affatto. E' un costo maggiore, non minore — e per
  * questo ha una superficie propria, quella di chi organizza la serata, invece
  * di essere raccolto sotto un nome che parla di code all'ingresso.
+ *
+ * ⚠️ **Questa lista non ha ancora un lettore nel prodotto** — misurato con un
+ * grep su `src/` e `scripts/` il 2026-09-06: zero importatori. E' un vocabolario
+ * dichiarato in attesa della superficie che lo usera', non un filtro attivo:
+ * aggiungere una voce qui **non** accende nessun avviso da nessuna parte oggi.
+ * Detto perche' il contrario e' facile da credere, e credere che qualcuno stia
+ * guardando e' peggio che sapere che nessuno guarda.
  */
 export const AT_THE_DOOR_CATEGORIES: readonly EmailCategory[] = [
   "ticket_confirmation",
   "guest_invitation",
+  "ticket_order_confirmation",
 ];
 
 /**
