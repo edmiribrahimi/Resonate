@@ -34,6 +34,43 @@ non sono state prese.
 | 4 | `20260905131000_venue_reader_needs_a_ticket.sql` | `venue_for_parties`: l'arm 5 guarda **un biglietto per quella serata** invece di `profiles.status` |
 | 5 | `20260905140000_email_category_ticket_order.sql` | una categoria nel registro delle consegne |
 
+## Estensione del perimetro — 2026-09-06, una migration in piu'
+
+**Domanda posta, alla lettera:**
+
+> «`reserve_ticket` e' chiamabile da chiunque e si scavalca il pagamento. Un solo
+> chiamante reale, che usa il service role: togliere il permesso non rompe
+> niente. Estendo l'autorizzazione di una migration?»
+
+**Risposta: `Si', sesta migration adesso`.** Le altre due strade — scriverla ora
+e applicarla a fine fase, oppure registrarla soltanto fra i debiti — erano
+disponibili e non sono state prese.
+
+**Cosa l'ha resa necessaria, misurato e non dedotto.** Tutti e tre i
+sovraccarichi di `public.reserve_ticket` portavano `proacl` con `=X` (PUBLIC),
+`anon=X` e `authenticated=X`, con `prosecdef = true`. La funzione riceve **dal
+chiamante** chi compra e per quale tier, e PostgREST espone lo schema `public`
+su `/rest/v1/rpc/`. Il percorso: registrare un conto, chiamare l'endpoint con il
+proprio `user_id`, ottenere un biglietto **senza che nessun pagamento sia
+avvenuto**.
+
+**Preesistente alla fase 49**, e fino a oggi senza conseguenze perche' non
+esisteva un biglietto in vendita. La fase 49 e' quella che apre le vendite.
+
+**Perche' revocare non rompe niente, verificato leggendo il codice:**
+`reserve_ticket` ha **un solo chiamante in tutto `src/`** —
+`src/app/api/webhooks/sumup/route.ts:49` — che usa `getServiceClient()`. Il
+`service_role` non passa dai permessi di `anon` ne' di `authenticated`.
+
+**Cosa questa migration NON fa, per decisione scritta:** non fissa il
+`search_path` sulle tre funzioni, benche' sia `NULL`. I tre corpi risultano
+completamente qualificati (letti da `pg_proc.prosrc`: 4, 5 e 7 riferimenti
+`public.`, zero nudi), ma senza un test runner non c'e' modo di provare che
+continuino a girare **se non scrivendo righe in produzione**, che questa stessa
+autorizzazione esclude. Fra i due modi di sbagliare, uno rompe il percorso del
+denaro alla cieca e l'altro lascia una minaccia che la revoca ha gia' tolto di
+mezzo. Debito dichiarato, da chiudere al primo esercizio vero del webhook.
+
 **Fuori perimetro, esplicitamente:** ogni altra scrittura in produzione — righe
 seminate, spunte, sessioni coniate, rimozioni. Per quelle serve un'autorizzazione
 nuova, con la sua data.
@@ -70,6 +107,7 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 | 3 `membership_code_crypto` | — | — | — | non ancora |
 | 4 `venue_reader_needs_a_ticket` | — | — | — | non ancora |
 | 5 `email_category_ticket_order` | — | — | — | non ancora |
+| **6** `reserve_ticket_service_only` | — | — | — | non ancora — **estensione del 2026-09-06** |
 
 **Esaurita il:** — *(da scrivere quando l'ultima delle cinque e' applicata e
 riletta, o quando ci si ferma per un fallimento)*
