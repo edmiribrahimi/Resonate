@@ -45,10 +45,24 @@ function PaymentCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const ctx = (searchParams.get("ctx") as "drink" | "ticket" | null) ?? null;
+  // ── Tre contesti, non due, dal piano 49-06 ──────────────────────────────────
+  //
+  // `ticket_order` e' il ritorno di chi ha comprato **senza account**. Il valore
+  // arrivava gia' nell'URL da `purchaseTicketsGuest`, e finche' questo file ne
+  // conosceva due su tre cadeva nello stato d'errore progettato — visibile, e
+  // scelto proprio per questo invece di mandarlo al ramo `ticket`, che avrebbe
+  // cercato l'ordine nella tabella sbagliata e detto `NOT_FOUND` su un pagamento
+  // riuscito. Il lettore arriva adesso.
+  //
+  // **E porta con se' quale parametro leggere**: un ordine d'ospite viaggia come
+  // `?order=`, come i drink, non come `?purchase=`. Senza questa riga il ramo
+  // nuovo esisterebbe nel server e non verrebbe mai raggiunto — un gate che non
+  // si carica e' indistinguibile da un gate assente.
+  const ctx =
+    (searchParams.get("ctx") as "drink" | "ticket" | "ticket_order" | null) ?? null;
   const orderParam = searchParams.get("order");
   const purchaseParam = searchParams.get("purchase");
-  const id = ctx === "drink" ? orderParam : purchaseParam;
+  const id = ctx === "drink" || ctx === "ticket_order" ? orderParam : purchaseParam;
   const slug = searchParams.get("slug") ?? undefined;
   const party = searchParams.get("party") ?? undefined;
 
@@ -69,7 +83,7 @@ function PaymentCallbackContent() {
 
       try {
         const result = await checkPaymentStatus({
-          ctx: ctx as "drink" | "ticket",
+          ctx: ctx as "drink" | "ticket" | "ticket_order",
           id: id!,
           slug,
           party,
@@ -132,9 +146,9 @@ function PaymentCallbackContent() {
             </div>
             <PageTitle>Payment successful!</PageTitle>
             <p className="mt-2 text-sm text-muted">
-              {ctx === "ticket"
-                ? "Your ticket has been confirmed. Check your email for details."
-                : "Your drink order has been confirmed."}
+              {ctx === "drink"
+                ? "Your drink order has been confirmed."
+                : "Your ticket has been confirmed. Check your email for details."}
             </p>
             <Button href={eventUrl} size="lg" variant="primary" className="mt-4 w-full">
               Back to event

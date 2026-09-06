@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import { getServiceClient } from "@/lib/supabase/service";
+import { generateTicketToken } from "@/utils/qr";
 
 export type PaymentCallbackStatus =
   | "PENDING"
@@ -22,7 +23,11 @@ export interface PaymentCallbackResult {
    * `string` said nothing about it. The two shapes are the only two this
    * function returns, and they are checked against the generated route union.
    */
-  redirectTo?: Route<`/events/${string}/menu?${string}` | `/tickets/${string}`>;
+  redirectTo?: Route<
+    | `/events/${string}/menu?${string}`
+    | `/tickets/${string}`
+    | `/tickets/order/${string}`
+  >;
 }
 
 /**
@@ -33,12 +38,16 @@ export interface PaymentCallbackResult {
  * 1:1 to drink_orders.id / pending_purchases.id.
  */
 export async function checkPaymentStatus(params: {
-  ctx: "drink" | "ticket";
+  ctx: "drink" | "ticket" | "ticket_order";
   id: string;
   slug?: string;
   party?: string;
 }): Promise<PaymentCallbackResult> {
   const supabase = getServiceClient();
+
+  if (params.ctx === "ticket_order") {
+    return checkTicketOrderStatus(supabase, params.id);
+  }
 
   if (params.ctx === "drink") {
     const { data: order, error } = await supabase
@@ -84,6 +93,58 @@ export async function checkPaymentStatus(params: {
     return {
       status,
       redirectTo: `/tickets/${purchase.ticket_id}`,
+    };
+  }
+  return { status };
+}
+
+/**
+ * Il ritorno dal pagamento di un ordine comprato **senza account**.
+ *
+ * ── Perche' e' un ramo nuovo e non il ramo `ticket` allargato ────────────────
+ *
+ * Il ramo `ticket` sopra legge `pending_purchases`, che e' la tabella del
+ * percorso **con sessione**: un ordine d'ospite non vi compare, e mandarcelo
+ * significherebbe cercarlo nel posto sbagliato e concludere `NOT_FOUND` su un
+ * pagamento riuscito. `purchaseTicketsGuest` marca infatti il ritorno con
+ * `ctx=ticket_order` (`guest-purchase-actions.ts:257`) proprio per non produrre
+ * quell'errore silenzioso — e questo e' il lettore che quel valore attendeva.
+ *
+ * ── Perche' la destinazione conta ────────────────────────────────────────────
+ *
+ * Chi ha comprato senza account **non ha una sessione**, quindi `/tickets/{id}`
+ * lo rimbalzerebbe a `/login`. Va invece all'indirizzo aperto dalla **firma**,
+ * cosi' vede i propri codici **senza attendere la mail**. E' cio' che rende un
+ * mancato recapito rumore invece che una persona alla porta senza biglietto.
+ *
+ * ── Nessuna colonna di luogo, e nessun indirizzo di posta ───────────────────
+ *
+ * Si leggono `id` e `status`, e nient'altro. `D-49-04`: la credenziale di un
+ * biglietto non diventa una chiave verso il posto dove si suona, e questo e' il
+ * cammino che porta a quella credenziale.
+ */
+async function checkTicketOrderStatus(
+  supabase: ReturnType<typeof getServiceClient>,
+  orderId: string
+): Promise<PaymentCallbackResult> {
+  const { data: order, error } = await supabase
+    .from("ticket_orders")
+    .select("id, status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !order) {
+    return { status: "NOT_FOUND" };
+  }
+
+  const status = mapOrderStatus(order.status);
+  if (status === "PAID") {
+    // La firma si conia qui e non si porta nell'URL di ritorno del fornitore:
+    // quell'indirizzo passa per una superficie di terzi, e una credenziale che
+    // apre dei biglietti non ha ragione di attraversarla.
+    return {
+      status,
+      redirectTo: `/tickets/order/${generateTicketToken(order.id)}`,
     };
   }
   return { status };
