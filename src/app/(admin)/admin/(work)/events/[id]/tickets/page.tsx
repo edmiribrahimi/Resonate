@@ -285,7 +285,26 @@ export default async function TicketTiersPage({ params }: PageProps) {
     // `PGRST200` — e qui l'errore era scartato nella destrutturazione, quindi la
     // lista dei venduti sarebbe stata VUOTA senza dirlo. I nomi si risolvono
     // sotto, con una seconda lettura.
-    .select("id, user_id, amount_paid, tier_id, created_at, ticket_tiers(name)")
+    //
+    // ── Due colonne aggiunte dalla fase 49, con la loro ragione ──────────────
+    //
+    // La lista qui sopra e' la piu' stretta delle due gemelle, e resta il
+    // criterio: si aggiunge solo cio' che qualcosa disegna.
+    //
+    //   `order_id`     — dice se questo biglietto viene da un ordine comprato
+    //                    senza account. Senza, il segno della posta qui sotto
+    //                    cercherebbe la conferma sbagliata e disegnerebbe
+    //                    «nessun invio registrato» su OGNI biglietto d'ospite:
+    //                    un allarme falso su ogni riga, che e' il modo in cui
+    //                    si nasconde l'unica riga vera.
+    //   `holder_label` — «2 di 6». Sei biglietti di uno stesso ordine hanno lo
+    //                    stesso acquirente e lo stesso prezzo: senza
+    //                    l'etichetta sono sei righe IDENTICHE, ognuna con il
+    //                    proprio bottone di rimborso, e chi ne rimborsa uno non
+    //                    sa quale. Nessuna delle due porta un dato di nessuno.
+    .select(
+      "id, user_id, amount_paid, tier_id, created_at, order_id, holder_label, ticket_tiers(name)"
+    )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
 
@@ -390,6 +409,104 @@ export default async function TicketTiersPage({ params }: PageProps) {
     ticketIdsPerConsegna,
     "event_reminder"
   );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GLI ORDINI — E QUELLI CHE NON HANNO PRODOTTO BIGLIETTI
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // ── Perche' e' un requisito e non un abbellimento ──────────────────────────
+  //
+  // Dalla fase 49 si compra **senza account**, e il pagamento diventa biglietti
+  // dentro il webhook. Quando quel percorso si ferma a meta' — l'identita' non
+  // si e' potuta risolvere, la RPC ha rifiutato per capienza o per tetto —
+  // l'ordine resta con la sua causa scritta addosso e **nessun biglietto**.
+  //
+  // Questo prodotto **non ha error tracking** (`meta-gates.md`, verificato
+  // 2026-08-05): quella riga oggi non raggiungerebbe nessun essere umano da
+  // sola. La persona si presenterebbe alla porta senza sapere di non avere
+  // niente — e rifiutare qualcuno che ha pagato e' l'errore che
+  // `checkin-offline.md` dichiara il piu' costoso, perche' avviene davanti a una
+  // fila. **L'effetto osservabile e' questa sezione**, e chi lavora la serata la
+  // vede prima che qualcuno si presenti.
+  const { data: ordini, error: ordiniError } = await serviceClient
+    .from("ticket_orders")
+    .select(
+      "id, status, buyer_email, quantity, total_amount, error_message, created_at"
+    )
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: false });
+
+  if (ordiniError) {
+    // Distinta dalle altre cause, come ogni lettura di questa pagina. Una
+    // sezione vuota per un errore di lettura si legge «va tutto bene», che e'
+    // la bugia peggiore che questa sezione possa dire.
+    console.error(`[tickets.orders_unreadable] ${redactDbError(ordiniError)}`);
+  }
+
+  /**
+   * Quanto puo' restare `pending` un ordine prima di meritare una riga.
+   *
+   * Trenta minuti, e la finestra e' **dichiarata** invece che scelta di volta in
+   * volta: un checkout si paga in pochi minuti, quindi mezz'ora e' abbastanza
+   * lunga da non mostrare chi sta ancora digitando la carta e abbastanza corta
+   * da far comparire prima della serata un ordine comprato lo stesso pomeriggio.
+   */
+  const FINESTRA_PENDING_MS = 30 * 60 * 1000;
+  const adesso = Date.now();
+
+  // I due insiemi NON si fondono, e la distinzione e' la sostanza.
+  //
+  //   `falliti`  — il fornitore ha confermato l'incasso e i biglietti non sono
+  //                nati. **Denaro preso, niente biglietto.** Ha una causa
+  //                scritta, ed e' la riga che deve gridare.
+  //   `sospesi`  — nessuno sa se siano stati pagati. Un carrello abbandonato ha
+  //                esattamente questo aspetto, e anche un pagamento il cui
+  //                messaggio non e' mai arrivato. **Il database non puo'
+  //                distinguerli: solo il fornitore lo sa.** Disegnarli con la
+  //                stessa voce dei falliti sarebbe rumore su ogni carrello
+  //                abbandonato — e il rumore nasconde l'unica riga che conta.
+  //
+  // Gli ordini `expired` non compaiono: sono checkout scaduti senza pagamento,
+  // cioe' il funzionamento normale, non un guasto.
+  const ordiniFalliti = (ordini ?? []).filter(
+    (o: { status: string }) => o.status === "failed"
+  );
+  const ordiniSospesi = (ordini ?? []).filter(
+    (o: { status: string; created_at: string }) =>
+      o.status === "pending" &&
+      adesso - new Date(o.created_at).getTime() > FINESTRA_PENDING_MS
+  );
+
+  // ── L'esito della mail d'ordine, e perche' si legge PER ORDINE ─────────────
+  //
+  // La conferma d'ordine e' **una** mail per N biglietti, e il registro la
+  // attacca al PRIMO biglietto dell'ordine — `email_deliveries` ha `ticket_id`,
+  // non `order_id` (debito `D-49-05-DEF-06`). Letto per biglietto, gli altri N-1
+  // risulterebbero «nessun invio registrato»: vero alla lettera, e falso per chi
+  // legge, perche' si legge come *nessuno ha guardato*.
+  //
+  // Qui il segno si risolve **per ordine** e vale per tutti i suoi biglietti,
+  // che e' la lettura giusta: l'invio e' uno, non sei.
+  //
+  // La riconciliazione qui sopra li ha gia' coperti — e' ristretta per
+  // `ticket_id` e **non per categoria**, quindi le righe della conferma
+  // d'ordine hanno gia' il loro verdetto senza una seconda chiamata al
+  // fornitore.
+  const consegneOrdineDi = await readTicketDeliveryMarks(
+    ticketIdsPerConsegna,
+    "ticket_order_confirmation"
+  );
+
+  const segnoPerOrdine = new Map<
+    string,
+    ReturnType<typeof consegneOrdineDi.get>
+  >();
+  for (const t of soldTickets ?? []) {
+    const oid = (t as { order_id: string | null }).order_id;
+    if (!oid || segnoPerOrdine.has(oid)) continue;
+    const segno = consegneOrdineDi.get(t.id);
+    if (segno) segnoPerOrdine.set(oid, segno);
+  }
 
   function formatPartyDate(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
@@ -535,6 +652,99 @@ export default async function TicketTiersPage({ params }: PageProps) {
           </div>
         )}
 
+        {/*
+          ── ORDINI SENZA BIGLIETTI ────────────────────────────────────────────
+
+          La sezione si disegna solo quando ha qualcosa dentro, come quella dei
+          rimborsi in attesa: una sezione vuota permanente e' un elemento che si
+          impara a saltare, e il giorno che parla nessuno la guarda piu'.
+
+          Il titolo e' il canale, non il colore (D-41.1-25): la parola dice cosa
+          e' successo anche a chi non distingue le tinte.
+        */}
+        {(ordiniFalliti.length > 0 || ordiniSospesi.length > 0) && (
+          <div className="space-y-4">
+            <SectionHeading>
+              Orders without tickets ({ordiniFalliti.length + ordiniSospesi.length})
+            </SectionHeading>
+
+            <div className="space-y-3">
+              {ordiniFalliti.map(
+                (o: {
+                  id: string;
+                  buyer_email: string;
+                  quantity: number;
+                  total_amount: number;
+                  error_message: string | null;
+                }) => (
+                  <Card key={o.id}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                      <p className="text-sm font-semibold text-ink">
+                        {o.buyer_email}
+                      </p>
+                      {/* The money mark — D-41.1-13. */}
+                      <p className="text-sm font-semibold text-ink">
+                        {formatPrice(o.total_amount)}
+                      </p>
+                    </div>
+                    <p className="text-xs font-medium text-sem-crit">
+                      Paid, and {o.quantity === 1 ? "the ticket was" : `all ${o.quantity} tickets were`}{" "}
+                      never issued. They have nothing at the door — reach out
+                      before the night.
+                    </p>
+                    {/*
+                      IL MESSAGGIO, NON UN'ICONA. La causa distinta e' l'unica
+                      diagnosi che esistera' — questo progetto non ha error
+                      tracking — e riassumerla in un simbolo la butterebbe via
+                      proprio nel momento in cui serve.
+                    */}
+                    <p className="mt-1 break-words text-xs text-muted">
+                      {o.error_message ?? "No cause recorded — that is itself the problem."}
+                    </p>
+                  </Card>
+                )
+              )}
+
+              {ordiniSospesi.map(
+                (o: {
+                  id: string;
+                  buyer_email: string;
+                  quantity: number;
+                  total_amount: number;
+                  created_at: string;
+                }) => (
+                  <Card key={o.id}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                      <p className="text-sm font-semibold text-ink">
+                        {o.buyer_email}
+                      </p>
+                      <p className="text-sm font-semibold text-ink">
+                        {formatPrice(o.total_amount)}
+                      </p>
+                    </div>
+                    {/*
+                      La voce piu' bassa, di proposito. Un carrello abbandonato
+                      ha questo stesso aspetto, e cosi' un pagamento il cui
+                      messaggio non e' mai arrivato: **il database non li
+                      distingue, solo SumUp lo sa**. Dire «non pagato» sarebbe
+                      inventare un fatto; dire «non consegnato» sarebbe
+                      inventarne un altro. Si dice cosa non si sa, e dove si va
+                      a saperlo.
+                    */}
+                    <p className="text-xs text-sem-warn">
+                      Checkout never confirmed, {o.quantity}{" "}
+                      {o.quantity === 1 ? "ticket" : "tickets"}. We do not know
+                      whether it was paid — an abandoned cart looks exactly like
+                      this. Check the checkout on SumUp before treating it as a
+                      problem.
+                    </p>
+                  </Card>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Sold Tickets */}
         {(soldTickets ?? []).length > 0 && (
           <div className="space-y-4">
@@ -542,7 +752,7 @@ export default async function TicketTiersPage({ params }: PageProps) {
               Sold Tickets ({(soldTickets ?? []).length})
             </SectionHeading>
             <div className="space-y-2">
-              {(soldTickets ?? []).map((ticket: { id: string; user_id: string | null; amount_paid: number; created_at: string; ticket_tiers: unknown }) => {
+              {(soldTickets ?? []).map((ticket: { id: string; user_id: string | null; amount_paid: number; created_at: string; order_id: string | null; holder_label: string | null; ticket_tiers: unknown }) => {
                 const profile = ticket.user_id ? profiloDi.get(ticket.user_id) ?? null : null;
                 const rawTier = ticket.ticket_tiers as unknown;
                 const tier = (Array.isArray(rawTier) ? rawTier[0] : rawTier) as { name: string } | null;
@@ -557,6 +767,18 @@ export default async function TicketTiersPage({ params }: PageProps) {
                       </p>
                       <p className="text-xs text-muted">
                         {tier?.name}
+                        {/*
+                          «2 di 6». Il biglietto e' AL PORTATORE (D-49-03) e
+                          nessun nome si chiede all'acquisto, quindi sei
+                          biglietti di un ordine hanno lo stesso acquirente e lo
+                          stesso prezzo: senza questa etichetta sono sei righe
+                          identiche, ognuna con il proprio bottone di rimborso.
+                          Non e' una rifinitura — e' cio' che permette di
+                          rimborsare quello giusto.
+                        */}
+                        {ticket.order_id && ticket.holder_label
+                          ? ` · ${ticket.holder_label}`
+                          : ""}
                       </p>
                       {/*
                         ── IL SEGNO, E I QUATTRO STATI CHE NON SI COLLASSANO ───
@@ -586,14 +808,33 @@ export default async function TicketTiersPage({ params }: PageProps) {
                         parola.
                       */}
                       {(() => {
-                        const consegna = consegneDi.get(ticket.id);
+                        // ── LA CATEGORIA GIUSTA PER QUESTO BIGLIETTO ────────
+                        //
+                        // Due percorsi d'acquisto, due mail, due categorie nel
+                        // registro. Un biglietto nato da un ORDINE non ha mai
+                        // avuto una `ticket_confirmation`: la sua conferma e' la
+                        // mail dell'ordine. Leggere la categoria vecchia su di
+                        // lui restituirebbe sempre l'assenza, cioe' «nessun
+                        // invio registrato» su OGNI biglietto d'ospite — un
+                        // allarme falso su ogni riga, che e' esattamente il
+                        // rumore che il commento qui sopra dice di non fare.
+                        //
+                        // E si legge PER ORDINE, non per biglietto: la mail e'
+                        // una per N, e il registro la attacca al primo. Cosi'
+                        // tutti e sei portano l'esito vero invece di uno solo.
+                        const consegna = ticket.order_id
+                          ? segnoPerOrdine.get(ticket.order_id)
+                          : consegneDi.get(ticket.id);
+                        const etichetta = ticket.order_id
+                          ? "Order email"
+                          : "Email";
 
                         if (!consegna) {
                           return (
                             <p className="mt-1 text-xs text-muted">
-                              Email: no send recorded — the outcome is unknown,
-                              which is not the same as undelivered. Assume they
-                              may not have it.
+                              {etichetta}: no send recorded — the outcome is
+                              unknown, which is not the same as undelivered.
+                              Assume they may not have it.
                             </p>
                           );
                         }
@@ -603,9 +844,9 @@ export default async function TicketTiersPage({ params }: PageProps) {
                         if (consegna.outcome === "undelivered") {
                           return (
                             <p className="mt-1 text-xs font-medium text-sem-crit">
-                              Email NOT delivered — {consegna.reason} Tell them
-                              their ticket is on the tickets page; the QR code
-                              there is what gets them in.
+                              {etichetta} NOT delivered — {consegna.reason} Tell
+                              them their ticket is on the tickets page; the QR
+                              code there is what gets them in.
                             </p>
                           );
                         }
@@ -613,15 +854,15 @@ export default async function TicketTiersPage({ params }: PageProps) {
                         if (consegna.outcome === "unknown") {
                           return (
                             <p className="mt-1 text-xs text-sem-warn">
-                              Email outcome unknown — {consegna.reason} Treat it
-                              as possibly not delivered.
+                              {etichetta} outcome unknown — {consegna.reason}{" "}
+                              Treat it as possibly not delivered.
                             </p>
                           );
                         }
 
                         return (
                           <p className="mt-1 text-xs text-muted">
-                            Email sent — outcome not settled yet.
+                            {etichetta} sent — outcome not settled yet.
                           </p>
                         );
                       })()}

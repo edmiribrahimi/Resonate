@@ -260,6 +260,31 @@ smette di essere creduto.
 ordini multipli — cioe' prima che qualcuno legga cinque «nessun invio
 registrato» e vada a cercare un guasto che non c'e'.
 
+### CHIUSO — 2026-09-06, piano 49-07, per la **strada 3**
+
+La superficie dei venduti risale da `tickets.order_id` e disegna **un** segno per
+ordine invece di sei per i biglietti
+(`src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx`). Le strade 1 e 2
+restano scartate per le ragioni gia' scritte: la prima inventerebbe consegne, la
+seconda ha bisogno di una migration e l'autorizzazione e' **esaurita**.
+
+**E la riparazione ne portava dietro una piu' grande, che il debito non aveva
+visto.** Il segno non andava solo attribuito all'ordine: andava letto **nella
+categoria giusta**. Un biglietto nato da un ordine non ha mai avuto una
+`ticket_confirmation` — la sua conferma e' `ticket_order_confirmation` — quindi
+la superficie, prima di questo piano, avrebbe scritto «nessun invio registrato»
+su **tutti e sei**, non su cinque. La strada 3 da sola avrebbe corretto cinque
+righe su sei e lasciato in piedi l'errore su tutte.
+
+**Cosa NON e' chiuso:** `email_deliveries` continua a non avere `order_id`. La
+riparazione vive nella superficie, non nello schema — quindi un secondo lettore
+del registro che nascesse domani rifarebbe lo stesso ragionamento da capo, o non
+lo farebbe.
+
+**Non verificato comportamentalmente:** con zero ordini e zero biglietti in
+produzione, nessuna di queste righe e' mai stata disegnata da dati veri. Vedi la
+procedura `P-ORD-VIS-1` nel `49-07-SUMMARY.md`.
+
 ---
 
 ## D-49-05-DEF-07 — `AT_THE_DOOR_CATEGORIES` non ha lettori
