@@ -136,8 +136,39 @@ interface PartyWithTiers {
     starts_at?: string | null;
     expires_at?: string | null;
   }[];
-  userTicket: { id: string; tier_id: string | null } | null;
+  /**
+   * OGNI biglietto di chi guarda su questa serata, non il primo.
+   *
+   * **Era `userTicket`, al singolare, e il singolare era una lettura del mondo
+   * che non esiste piu'.** Fino al 2026-09-06 due indici unici parziali
+   * garantivano un biglietto per persona per serata; la migration
+   * `20260905120000_ticket_orders.sql:231-238` li ha **ricreati ristretti a
+   * `order_id IS NULL`**. La strada con sessione tiene la sua garanzia; **un
+   * ordine ne porta fino a sei** (`BUY-01`).
+   *
+   * Il campo era letto con `.maybeSingle()`, che su piu' righe **restituisce un
+   * errore** invece di una riga — e quell'errore era scartato. Il risultato
+   * sarebbe stato `null`: la pagina avrebbe riproposto il controllo d'acquisto a
+   * chi ha gia' sei biglietti, senza dire niente. Un guasto silenzioso con una
+   * faccia neutra, sul percorso del denaro.
+   *
+   * `holder_label` e' **«n di N», mai un nome** — il biglietto e' al portatore
+   * (`D-49-03`), e la colonna lo dichiara nel proprio `COMMENT`.
+   */
+  userTickets: { id: string; holder_label: string | null }[];
   userRsvp: { id: string } | null;
+  /**
+   * Quanti biglietti puo' contenere UN ORDINE su questa serata.
+   *
+   * **Per ordine e non per persona** (`BUY-02`): sei ordini da sei sono
+   * trentasei biglietti, e nulla qui lo impedisce. E' il perimetro dichiarato,
+   * non un buco — e viaggia fino alla selezione perche' il numero offerto sia
+   * quello della serata e non una costante scritta in un componente.
+   *
+   * Qui e' **consultivo**: limita cio' che si puo' scegliere. L'autorita' e'
+   * `reserve_ticket_order`, dentro la transazione.
+   */
+  maxTicketsPerOrder: number;
   spotsLeft: number | null;
   /**
    * Whether a `null` `spotsLeft` means *could not count* rather than *no
@@ -501,7 +532,10 @@ export default async function EventDetailPage({
   // secret in itself: it is an instant, never an address.
   const { data: rawParties, error: partiesError } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
+    // `max_tickets_per_order` e' l'unica colonna aggiunta a questa select, ed e'
+    // un intero: **nessuna colonna di luogo entra qui**, che e' la sola forma
+    // controllabile con un `grep` del gate *default chiuso*.
+    .select("id, title, description, date, time, end_time, venue_text, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, access_type, capacity, sort_order, max_tickets_per_order, formats(name, slug, color), party_series!event_parties_series_id_fkey(name)")
     .eq("event_id", event.id)
     .order("sort_order", { ascending: true });
 
@@ -526,25 +560,38 @@ export default async function EventDetailPage({
   }
 
   // Check if user has a master ticket (event-level, party_id IS NULL)
+  //
+  // **Anche questa lettura ha smesso di usare `.maybeSingle()`**, e per la stessa
+  // ragione della sua gemella per serata piu' sotto: `tickets_event_user_master_unique`
+  // e' stato ricreato ristretto a `order_id IS NULL`
+  // (`20260905120000_ticket_orders.sql:235-238`), quindi il database non
+  // garantisce piu' UNA riga qui. Oggi nessun ordine d'ospite nasce senza serata
+  // — `buildOrderQuote` pretende un `partyId` — quindi il caso non e'
+  // raggiungibile; ma la garanzia che lo rendeva impossibile non c'e' piu', e
+  // scrivere una query che si affida a una garanzia rimossa e' come lasciarla
+  // rotta e non saperlo. `limit(1)` risponde alla domanda che si sta facendo
+  // davvero: *ne esiste almeno uno*.
   let hasMasterTicket = false;
   let masterTicketId: string | null = null;
   if (isAuthenticated && user) {
-    const { data: masterTk } = await supabase
+    const { data: masterTk, error: masterTkError } = await supabase
       .from("tickets")
       .select("id")
       .eq("event_id", event.id)
       .is("party_id", null)
       .eq("user_id", user.id)
-      .maybeSingle();
-    if (masterTk) {
+      .limit(1);
+    if (masterTkError) {
+      logUnreadableCount("event_detail.master_ticket", masterTkError);
+    } else if (masterTk && masterTk.length > 0) {
       hasMasterTicket = true;
-      masterTicketId = masterTk.id;
+      masterTicketId = masterTk[0].id;
     }
   }
 
   const parties: PartyWithTiers[] = await Promise.all(
     (rawParties ?? []).map(async (rawParty: Record<string, unknown>) => {
-      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number };
+      const party = rawParty as { id: string; title: string; description: string | null; date: string; time: string; end_time: string | null; venue_text: string | null; lineup: string[] | null; venue_secret: boolean; venue_secret_hint: string | null; venue_reveal_hours: number | null; venue_reveal_on_purchase: boolean | null; venue_revealed_at: string | null; formats: PartyFormat | PartyFormat[] | null; party_series: { name: string } | { name: string }[] | null; access_type: string; capacity: number | null; sort_order: number; max_tickets_per_order: number | null };
       // An embed arrives as an object or as a one-element array depending on
       // how PostgREST resolves the relationship; both shapes are unwrapped the
       // same way.
@@ -598,19 +645,53 @@ export default async function EventDetailPage({
         );
       }
 
-      // Check if user has ticket/rsvp for this party
-      let userTicket: { id: string; tier_id: string | null } | null = null;
+      // ── I biglietti di chi guarda: un ELENCO, e non piu' una riga sola ───────
+      //
+      // `.maybeSingle()` e' sparito da questa lettura, e non e' un ritocco.
+      // Da quando un ordine puo' portarne sei (`BUY-01`, e i due indici unici
+      // parziali ristretti a `order_id IS NULL`), questa query puo'
+      // legittimamente restituire piu' righe — e su piu' righe PostgREST
+      // risponde con un ERRORE, che qui era scartato. Il risultato era `null`,
+      // cioe' *questa persona non ha biglietti*, cioe' il controllo d'acquisto
+      // riproposto a chi ne ha gia' sei, in silenzio.
+      let userTickets: { id: string; holder_label: string | null }[] = [];
       let userRsvp: { id: string } | null = null;
 
       if (isAuthenticated && user) {
         if (party.access_type === "paid") {
-          const { data: ticket } = await supabase
+          const { data: ticketRows, error: ticketsError } = await supabase
             .from("tickets")
-            .select("id, tier_id")
+            .select("id, holder_label")
             .eq("party_id", party.id)
-            .eq("user_id", user.id)
-            .maybeSingle();
-          userTicket = ticket;
+            .eq("user_id", user.id);
+          if (ticketsError) {
+            // L'errore NON e' piu' scartato: ha una categoria propria, distinta
+            // da quella dei conteggi, perche' si ripara in un altro posto.
+            //
+            // **Direzione dichiarata, non scelta di comodo.** Su lettura fallita
+            // l'elenco resta vuoto — cioe' il comportamento che questa pagina
+            // aveva prima — e il controllo d'acquisto resta vivo: la decisione
+            // permanente del proprietario (46-FINDING-01) e' che questa pagina
+            // non rifiuta chi compra, e l'autorita' sta nel database. Il costo
+            // e' che il collegamento ai propri biglietti non compare; restano
+            // raggiungibili da `/tickets`. Una frase per questo caso vorrebbe
+            // un'aggiunta alla lista di copy approvata (D-46-10a), che e' una
+            // decisione e non un'aggiunta di passaggio: sta nel SUMMARY.
+            logUnreadableCount("event_detail.party_user_tickets", ticketsError);
+          } else {
+            // Ordinamento NUMERICO sul progressivo dentro l'ordine: `holder_label`
+            // e' «n di N», e in ordine di testo `'10 di 12'` precede `'2 di 12'`.
+            // E' la stessa correzione che `reserve_ticket_order` applica al
+            // proprio `RETURN QUERY`, qui perche' la lista si legge.
+            userTickets = [...(ticketRows ?? [])].sort((a, b) => {
+              const na = Number.parseInt(a.holder_label ?? "", 10);
+              const nb = Number.parseInt(b.holder_label ?? "", 10);
+              if (Number.isNaN(na) && Number.isNaN(nb)) return 0;
+              if (Number.isNaN(na)) return 1;
+              if (Number.isNaN(nb)) return -1;
+              return na - nb;
+            });
+          }
         }
 
         if (party.access_type === "free_rsvp") {
@@ -693,8 +774,20 @@ export default async function EventDetailPage({
         capacity: party.capacity,
         sort_order: party.sort_order,
         tiers,
-        userTicket,
+        userTickets,
         userRsvp,
+        // Il fallback e' **1 e non 6**, e la scelta e' dichiarata: nessun client
+        // Supabase di questo repository e' parametrizzato con `Database`, quindi
+        // una colonna rinominata arriverebbe `undefined` senza rumore. Scrivere
+        // `?? 6` qui darebbe al numero una SECONDA casa, che e' esattamente cio'
+        // che il `COMMENT` della colonna vieta — e offrirebbe sei biglietti su
+        // una serata che ne ammette due. Con 1 il controllo resta vivo e si
+        // compra come si comprava prima, un biglietto per volta.
+        maxTicketsPerOrder:
+          Number.isInteger(party.max_tickets_per_order) &&
+          (party.max_tickets_per_order as number) > 0
+            ? (party.max_tickets_per_order as number)
+            : 1,
         spotsLeft,
         spotsUnknown,
       };
@@ -1488,11 +1581,13 @@ export default async function EventDetailPage({
                 </p>
               )}
 
-              {/* Already has ticket for this party */}
-              {isAuthenticated && party.userTicket && (
+              {/* Already has one or more tickets for this party */}
+              {isAuthenticated && party.userTickets.length > 0 && (
                 <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 p-4 text-center">
                   <p className="text-sm font-medium text-sem-done mb-3">
-                    You have a ticket for this
+                    {party.userTickets.length === 1
+                      ? "You have a ticket for this"
+                      : `You have ${party.userTickets.length} tickets for this`}
                   </p>
                   {/*
                     ── UNA FRASE, AGGIUNTA IL 2026-08-22 ────────────────────────
@@ -1516,17 +1611,37 @@ export default async function EventDetailPage({
                     You never need to open the email — showing the QR code from
                     the ticket is enough.
                   </p>
-                  <Link
-                    href={`/tickets/${party.userTicket.id}`}
-                    className={`inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
-                  >
-                    View Your Ticket
-                  </Link>
+                  {/*
+                    UN COLLEGAMENTO PER BIGLIETTO, e non piu' uno solo.
+                    L'etichetta e' `holder_label` — «n di N» — che e' **un
+                    progressivo dentro l'ordine e non un nome** (`D-49-03`, il
+                    biglietto e' al portatore). Chi ha comprato per sei ne
+                    regalera' cinque, e i cinque destinatari non compaiono da
+                    nessuna parte: il biglietto vale per chi lo tiene.
+
+                    Un biglietto nato dalla strada con sessione non ha etichetta
+                    (`holder_label` e' `NULL`): allora si scrive la frase che
+                    c'era. Non si inventa un «1 di 1» — sarebbe un dato
+                    fabbricato dentro un fatto vecchio.
+                  */}
+                  <div className="flex flex-col items-center gap-2">
+                    {party.userTickets.map((ticket) => (
+                      <Link
+                        key={ticket.id}
+                        href={`/tickets/${ticket.id}`}
+                        className={`inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-ground transition-colors hover:bg-accent-hover active:scale-95 active:opacity-80 ${FOCUS_RING}`}
+                      >
+                        {ticket.holder_label
+                          ? `View ticket ${ticket.holder_label}`
+                          : "View Your Ticket"}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* Master ticket holder sees "covered" badge */}
-              {isAuthenticated && hasMasterTicket && !party.userTicket && (
+              {isAuthenticated && hasMasterTicket && party.userTickets.length === 0 && (
                 <div className="rounded-xl border border-sem-done/30 bg-sem-done/10 px-4 py-3 text-center">
                   <p className="text-sm font-medium text-sem-done">
                     Covered by your Event Pass
@@ -1535,8 +1650,30 @@ export default async function EventDetailPage({
               )}
 
               {/* Paid party: tier selection (upcoming only) */}
+              {/*
+                ── PERCHE' QUESTA CONDIZIONE NON E' STATA TOLTA ─────────────────
+
+                `BUY-01` permette a una persona di avere piu' biglietti su una
+                serata, e i due indici unici parziali sono stati ristretti
+                apposta. Verrebbe da rendere il controllo anche a chi ne ha gia'
+                uno — **e sarebbe un controllo che rifiuta sempre.**
+
+                La strada con sessione passa ancora da `purchaseTicket`, che
+                porta il proprio controllo di duplicato
+                (`admin/events/actions.ts:1446-1455` e `:1458-1468`) piu' quello
+                dentro `reserve_ticket`. Nessuno dei tre e' toccato da questa
+                fase: governano la strada vecchia, che le fasi 50/51 chiuderanno.
+                Offrire l'acquisto a chi ha gia' un biglietto significherebbe
+                mandarlo contro un rifiuto la cui ragione non e' visibile da
+                nessuna parte.
+
+                **Chi non ha una sessione non e' toccato da questa riga**:
+                l'elenco e' vuoto per costruzione, il controllo si rende, e la
+                strada d'ospite non ha nessuno dei tre rifiuti — un ordine porta
+                fino al tetto della serata in un colpo solo.
+              */}
               {isUpcoming &&
-                !party.userTicket &&
+                party.userTickets.length === 0 &&
                 !hasMasterTicket &&
                 party.access_type === "paid" &&
                 party.tiers.length > 0 &&
@@ -1602,7 +1739,7 @@ export default async function EventDetailPage({
                     tiers={party.tiers}
                     isAuthenticated={isAuthenticated}
                     eventSlug={slug}
-
+                    maxTicketsPerOrder={party.maxTicketsPerOrder}
                   />
                   </>
                 )}

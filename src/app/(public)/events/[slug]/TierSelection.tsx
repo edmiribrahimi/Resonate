@@ -92,6 +92,25 @@ interface TierSelectionProps {
   label?: string;
   isAuthenticated?: boolean;
   eventSlug?: string;
+  /**
+   * Quanti biglietti puo' contenere UN ORDINE su questa serata — `BUY-02`.
+   *
+   * Arriva dalla pagina, che lo legge da `event_parties.max_tickets_per_order`.
+   * **Non e' una costante di questo file, e non deve diventarlo**: il tetto e'
+   * della serata, e chi organizza lo cambia dalla schermata in cui la configura.
+   *
+   * **Per ordine e non per persona.** Sei ordini da sei sono trentasei
+   * biglietti, e nulla lo impedisce: e' il perimetro dichiarato di `BUY-02`.
+   *
+   * **Ed e' CONSULTIVO.** Limita cio' che si puo' scegliere e nient'altro. Il
+   * conteggio che conta lo fa `reserve_ticket_order` dentro la transazione, e
+   * prima ancora `buildOrderQuote` rilegge il tetto dal database. Un limite
+   * nella UI che sembra una garanzia e' il modo in cui qualcuno smette di
+   * metterlo dove serve.
+   *
+   * Assente sul pass di evento, che non ha una serata: allora vale 1.
+   */
+  maxTicketsPerOrder?: number;
 }
 
 function formatPrice(price: number) {
@@ -221,7 +240,7 @@ function CountdownDisplay({ targetDate }: { targetDate: Date }) {
   );
 }
 
-export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug }: TierSelectionProps) {
+export default function TierSelection({ partyId, tiers, label, isAuthenticated = true, eventSlug, maxTicketsPerOrder = 1 }: TierSelectionProps) {
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
