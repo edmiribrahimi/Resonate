@@ -106,3 +106,65 @@ quella che ha agito, e qui la fonte diversa e' `git diff`.
 
 **Fuori perimetro:** e' strumentazione GSD, non prodotto. Nessuna riparazione da
 questo piano.
+
+### RIPRODOTTO — 2026-09-06, piano 49-02
+
+Non e' un caso isolato. `gsd-sdk query state.add-decision` — **un comando
+diverso** da quello che l'ha rivelato — produce lo **stesso** effetto: ha
+risposto `{"added": true, "decision": "…"}`, e nel frattempo ha riscritto
+`stopped_at` con una frase della **fase 58**, `last_updated`, e l'intero blocco
+`progress` con gli **stessi identici** denominatori sbagliati (`total_phases`
+51 → **12**, `total_plans` 348 → **29**, `percent` 92 → **17**).
+
+**Quindi non e' `record-session`: e' la scrittura di `STATE.md` in se'.**
+Qualunque verbo `state.*` va trattato come se riscrivesse il file intero.
+
+**Ripristinato con `git checkout -- .planning/STATE.md`**, e la riga voluta e'
+stata applicata **a mano** — che ha anche corretto un secondo difetto: il comando
+etichettava la decisione `[Phase ?]`, senza numero di fase, in un elenco dove
+ogni altra riga porta il suo.
+
+**Regola operativa, finche' non e' riparato:** dopo **ogni** `gsd-sdk query
+state.*`, leggere `git diff .planning/STATE.md` e ripristinare se ha toccato piu'
+della riga richiesta. La conferma va chiesta a una fonte diversa da quella che ha
+agito, e la risposta del comando **non e' quella fonte**.
+
+## D-49-02-DEF-04 — il gate *context budget* di `ai-engineering.md` descrive una misura che non e' piu' quella
+
+**Trovato:** 2026-09-05, piano 49-02, task 2, rimisurando il budget dopo aver
+allargato la prosa di due moduli.
+
+Il gate dichiara: *«Misurato il 2026-08-10 (v1.7.0), caso peggiore
+`src/app/(admin)/admin/scanner/ScannerClient.tsx`: 5 file caricati … 38.240 byte
+≈ 10.622 token su un tetto di 12.000 — margine 1.378»*, e ne trae la conseguenza
+operativa *«il margine si e' ristretto: la prossima aggiunta di prosa a uno di
+quei cinque file va pesata, non improvvisata»*.
+
+`npm run verify:persona` (controllo E) misura oggi qualcos'altro:
+
+| | il gate dice | lo script misura |
+|---|---|---|
+| Tetto | 12.000 token | **15.000 token** |
+| Caso peggiore | `…/scanner/ScannerClient.tsx` | **`…/(work)/venues/[slug]/page.tsx`** |
+| Moduli del caso peggiore | access-gating, checkin-offline, nextjs-architecture | **access-gating, nextjs-architecture, venue-secrecy** |
+| Misura | 10.622 token, margine 1.378 | **12.536 token, margine 2.464** |
+
+**Perche' va sistemato e non solo notato.** Il gate e' prosa che si carica su
+ogni modifica alla persona, e la sua conseguenza operativa — *«il margine si e'
+ristretto»* — **non e' piu' vera**: il margine e' quasi raddoppiato perche' il
+tetto e' salito. Chi legge il gate pesa una decisione contro un numero che lo
+script non usa. E' la forma esatta del gate *documentazione datata*, con
+l'aggravante che stavolta il documento datato e' **la persona stessa**.
+
+**Nessuna delle due misure e' sbagliata**: sono di due momenti diversi, e il
+tetto e' stato alzato da una modifica che non ha aggiornato questa riga.
+
+**Non e' riparato qui** perche' modificare `ai-engineering.md` e' un'altra
+modifica alla persona, con il suo bump di versione e il suo scenario di
+caricamento — e questo piano ne ha gia' una in corso su due moduli. Due
+modifiche alla persona nello stesso commit sarebbero due ragioni in una riga.
+
+**A chi tocca:** la prossima modifica a `ai-engineering.md`, che deve rileggere
+il numero da `scripts/verify-persona.mjs` invece di ricordarlo — e dichiarare
+**quando** il tetto e' passato da 12.000 a 15.000 e chi l'ha deciso, perche'
+quello e' il fatto che manca.

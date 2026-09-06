@@ -397,6 +397,9 @@ Fixed by the project owner before planning — not re-opened at plan time:
 - [Phase 58]: I due `--apply` si lanciano **di fila**: lo specchio `rsnt` con il passaggio una tantum rivendica anche i pezzi di RamaDub, e solo lo specchio `rmdb` li rimette
 - [Phase 58]: `production_import_run` resta nullabile **per sempre** — il registro non si cancella mai, e riempirne le righe storiche lo renderebbe una fonte che afferma cio' che non e' avvenuto
 - [Phase 58]: Nessuna spunta scritta dal catalogo attribuendola a chi non l'ha premuta, e nessun `Result` bloccato riempito con un ritrovamento: un `Result` non-`pending` **afferma** che la procedura e' stata eseguita
+- [Phase 49]: Il `membership_code` e' lungo **10** perche' 10 e' il **massimo** che `BARE_MEMBERSHIP_PATTERN` accetta alla porta: la forma di una credenziale la decide il **consumatore**, non il generatore — un codice piu' lungo sarebbe coniato da noi e rifiutato dalla nostra porta
+- [Phase 49]: I quattro `membership_code` gia' emessi **non** si rigenerano (`D-49-01`): il difetto si chiude **solo in avanti**, e i due gate dell'entropia lo dichiarano invece di far credere che sia sparito
+- [Phase 49]: Il ritentativo sulla collisione distingue `profiles_membership_code_key` da **ogni altra** `unique_violation`, che viene rilanciata invariata: senza error tracking, due cause collassate in un messaggio sono un fallimento che nessuno vedra'
 
 ## Accumulated Context
 
