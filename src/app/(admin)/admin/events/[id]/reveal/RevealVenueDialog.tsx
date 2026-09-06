@@ -277,6 +277,21 @@ function describeOutcome(
     case "party_not_found":
       return `${opened}The send reported that the night was gone, so no mail left. Reload the page and read what the panel says.`;
 
+    // Phase 49 added this outcome for the buyer path — somebody paying after
+    // the reveal has already fired. **It cannot arrive here**: the guard that
+    // produces it lives in `revealPartyVenueForOrder`, which only the SumUp
+    // webhook calls, and the two acts this dialog performs go through the
+    // manual action. The arm exists because `failureKind` is a closed union and
+    // this `switch` is exhaustive over it — the same mechanism as
+    // `REPORTABLE_FAILURE` in the reveal cron, and the reason both turned red
+    // at build time instead of rendering a blank panel at two in the morning.
+    //
+    // The sentence says what it would mean rather than pretending it is
+    // ordinary: if this ever reaches a screen, this dialog and the reveal
+    // predicate disagree about the same night.
+    case "reveal_not_due":
+      return `${opened}The send answered that this night's reveal has not fired, so no mail left and nobody was marked. That answer should not be reachable from this screen: reload the page, and if this sentence comes back, this dialog and the night's reveal state disagree.`;
+
     case "none":
       return recipientsFailed === 0
         ? `${opened}${recipientsSent} of ${recipientsTotal}. The address has left for everybody who was entitled to it at this moment.`

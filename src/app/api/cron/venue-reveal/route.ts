@@ -73,6 +73,21 @@ const REPORTABLE_FAILURE: Record<VenueRevealFailureKind, boolean> = {
   send_failed: true,
   /** Who was entitled could not be READ. Not "nobody": a verdict. */
   recipients_unavailable: true,
+  /**
+   * The night's reveal has not fired. **This caller cannot produce it** — the
+   * guard lives in `revealPartyVenueForOrder`, which only the SumUp webhook
+   * calls, and the window filter below has already answered the same question
+   * before this loop is reached.
+   *
+   * Reported anyway, and the value is the point of the map being total: if this
+   * ever appeared here it would mean the window filter and the predicate in
+   * `venue-disclosure.ts` disagree about the same night — which is a verdict
+   * about this product, not a quiet night. The alternative, `false`, would hide
+   * exactly that.
+   *
+   * Behaviour today: unchanged, because the value is unreachable from here.
+   */
+  reveal_not_due: true,
   /** The night was gone by the time the send looked. A verdict. */
   party_not_found: true,
 };

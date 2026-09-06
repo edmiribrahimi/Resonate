@@ -6,6 +6,10 @@ import { getResend } from "@/lib/email";
 import { recordBatchSend } from "@/lib/email-delivery/ledger";
 import { VenueRevealEmail } from "@/emails/venue-reveal";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
+import {
+  hasRevealFired,
+  type NightVenueState,
+} from "@/lib/venue-reveal/venue-disclosure";
 
 /**
  * reveal-party-venue.ts — the ONE place that lets a night's address out by mail.
@@ -27,13 +31,23 @@ import { formatTime, formatEventDate } from "@/utils/formatTime";
  * stronger here, not weaker: two copies of the deduplication would mean two
  * different numbers for the same act that cannot be undone.
  *
- * ── The two callers ──────────────────────────────────────────────────────────
+ * ── The THREE callers, and the third one is new ──────────────────────────────
  *   1. `src/app/api/cron/venue-reveal/route.ts` — the scheduled net. It keeps
  *      the `Bearer` authentication, the query of the nights, the window filter,
  *      the loop and the JSON response.
  *   2. The manual server action of plan 37-10 — it keeps the capability
  *      re-check, the actor resolution, the atomic trace writer, and the
  *      translation of this result into what the person who pressed reads.
+ *   3. `src/app/api/webhooks/sumup/route.ts`, from phase 49 — somebody bought
+ *      AFTER the reveal already fired. It reaches this module through
+ *      {@link revealPartyVenueForOrder} and through nothing else, which is what
+ *      makes its two constraints structural rather than remembered: it cannot
+ *      fire early, and it cannot address anybody outside the order it was born
+ *      from.
+ *
+ * **Only caller 1 raises the night-level guard.** The per-recipient marks are
+ * this module's business; the per-night one is not, and never was — see the
+ * paragraph below.
  *
  * On a Hobby plan the manual path is **not the exception, it is the reliable
  * one** (D-37-01): the cron may arrive up to a day after the window opens and
@@ -88,12 +102,26 @@ export interface VenueRevealParty {
  * and without anyone knowing. That is D9's shape on a different axis, and
  * `venue-secrecy.md` (gate *default chiuso*) says an undeterminable state is
  * not an empty one.
+ *
+ * `"reveal_not_due"` is the phase-49 addition, and it is **information, not a
+ * fault** — the same standing as `no_recipients`. It says: this night's reveal
+ * has not fired, so nothing was collected, nothing was sent and nothing was
+ * marked. On the buyer path it is the ORDINARY outcome, because most people buy
+ * before the window opens; the address will leave later, from the cron, for
+ * everyone at once, exactly as it always has.
+ *
+ * It is its own word and not `no_recipients` on purpose. Reusing that one would
+ * say *"nobody was entitled"* where the truth is *"it was not the moment yet"*,
+ * which is the `catch` that collapses two causes into one that `meta-gates.md`
+ * forbids — and here the two causes want opposite reactions: one is fine for
+ * ever, the other is fine only until the window opens.
  */
 export type VenueRevealFailureKind =
   | "none"
   | "send_failed"
   | "no_recipients"
   | "recipients_unavailable"
+  | "reveal_not_due"
   | "party_not_found";
 
 /**
@@ -259,7 +287,82 @@ export interface VenueRevealOptions {
    * not more, which is the safe direction in this domain.
    */
   createdBefore?: string;
+
+  /**
+   * Restrict the send to these ticket rows — the tickets ONE order just issued.
+   *
+   * ── It is an ADDITION to `venue_reveal_sent = false`, never a replacement ───
+   *
+   * The per-recipient mark is the idempotence: a ticket already reached is not
+   * reached twice, whoever is calling. Substituting a list for that condition
+   * would re-send to whoever already received, every time a caller asked.
+   *
+   * ── Why it is applied in ONE place and not three ────────────────────────────
+   *
+   * {@link collectRecipients} reads from THREE sources — this night's tickets,
+   * this night's RSVPs, and the event-level master tickets. Filtering only the
+   * first would leave the other two whole: **one person's payment would send
+   * this night's address to everybody else on it not yet reached** — people who
+   * did nothing, on a path that has no undo. So the restriction is not applied
+   * at three call sites. It is applied by the single builder every source is
+   * constructed through, against a map that is TOTAL over the source names, so
+   * a fourth source added tomorrow is a **compile error** until somebody says
+   * whether an order can reach it. See {@link REACHABLE_BY_AN_ORDER}.
+   *
+   * ── And it is not optional for the caller who needs it ─────────────────────
+   *
+   * A webhook that forgot to pass this would mail every missing recipient of the
+   * night. That call is not expressible: the buyer path reaches this module only
+   * through {@link revealPartyVenueForOrder}, whose scope argument is required.
+   *
+   * An EMPTY array restricts to nobody rather than to everybody —
+   * {@link collectRecipients} returns before it queries. Default closed
+   * (`venue-secrecy.md`): a restriction that names nobody is not the absence of
+   * a restriction.
+   */
+  onlyTicketIds?: string[];
 }
+
+/**
+ * The three tables a recipient can come from, named once so the builder below
+ * can be total over them.
+ */
+type RecipientSource = "night_tickets" | "rsvps" | "master_tickets";
+
+const RECIPIENT_SOURCES: readonly RecipientSource[] = [
+  "night_tickets",
+  "rsvps",
+  "master_tickets",
+];
+
+/**
+ * May a send scoped to ONE ORDER reach this source at all?
+ *
+ * A total `Record` and not a list of two names, for the same reason
+ * `REPORTABLE_FAILURE` in the cron is one: a list answers today's question and
+ * says nothing about the next source, which would simply be absent — and absent
+ * here means **unrestricted**, i.e. an address leaving towards somebody who did
+ * not buy. Total, adding a source does not compile until it is answered.
+ *
+ * `rsvps` is `false` and that is a fact about the domain, not a shortcut: an
+ * order issues TICKETS. An RSVP has no order and its id is not in any order's
+ * list, so an order-scoped run has nothing to say to it — it is skipped
+ * entirely rather than filtered to nothing, because "skipped" is provable by
+ * reading this line and "filtered to nothing" would depend on how PostgREST
+ * renders an empty `in()`.
+ */
+const REACHABLE_BY_AN_ORDER: Record<RecipientSource, boolean> = {
+  night_tickets: true,
+  master_tickets: true,
+  rsvps: false,
+};
+
+/** The three columns every recipient source returns, and nothing else. */
+type EntitlingRow = {
+  id: string;
+  user_id: string | null;
+  created_at: string | null;
+};
 
 /**
  * One person, and the rows that entitle them.
@@ -288,55 +391,84 @@ type Recipient = {
  * A person holding both a ticket and an RSVP receives ONE mail and counts as
  * ONE. The third query is the **event-level master ticket** (`party_id IS
  * NULL`), which a rewrite from scratch is the most likely thing to forget.
+ *
+ * ── The three are built by ONE function, from phase 49 ───────────────────────
+ *
+ * They used to be three expressions written out side by side. They are now
+ * three calls to {@link RECIPIENT_SOURCES} through one builder, and the change
+ * is not cosmetic: `onlyTicketIds` restricts a send to the tickets of a single
+ * order, and applied to the first expression alone it would have left the other
+ * two whole — one buyer's payment mailing the address to everybody else on the
+ * night who had not been reached. Three hand-written queries make that the
+ * DEFAULT mistake for the next person who adds an option; one builder makes it
+ * unexpressible, and a fourth source a compile error.
  */
 async function collectRecipients(
   supabase: SupabaseClient,
   party: VenueRevealParty,
   opts?: VenueRevealOptions
 ): Promise<{ recipients: Map<string, Recipient>; unavailable: boolean }> {
-  const bound = <T extends { lte: (c: string, v: string) => T }>(q: T): T =>
-    opts?.createdBefore ? q.lte("created_at", opts.createdBefore) : q;
+  const onlyTicketIds = opts?.onlyTicketIds;
 
-  // Ticket holders of THIS night who have not been reached yet.
-  const ticketsQuery = bound(
-    supabase
-      .from("tickets")
+  // A restriction that names nobody restricts to NOBODY. Before any query, so
+  // the answer cannot depend on how an empty `in()` is rendered on the wire.
+  // `venue-secrecy.md`, gate *default chiuso*.
+  if (onlyTicketIds && onlyTicketIds.length === 0) {
+    return { recipients: new Map(), unavailable: false };
+  }
+
+  /**
+   * **Every recipient query in this module is built here, and there is no other
+   * way to build one.**
+   *
+   * That is the whole point of the shape. Until phase 49 the three queries were
+   * three expressions side by side and each caller-facing option had to be
+   * repeated on all three by hand; the fourth reader would have added a fourth
+   * query beside them and inherited nothing. On an ordinary module that is a
+   * tidiness argument. Here the option being forgotten is the one that keeps a
+   * night's address inside the order that paid for it, and the failure mode is
+   * an address delivered to somebody who did not buy — which does not come back.
+   *
+   * Returns `null` for a source an order-scoped run must not touch at all.
+   */
+  const buildSource = (source: RecipientSource) => {
+    if (onlyTicketIds && !REACHABLE_BY_AN_ORDER[source]) return null;
+
+    // `venue_reveal_sent = false` — the per-recipient mark, and the ONLY
+    // condition that makes this module idempotent. It is applied to every
+    // source, always, and no option below replaces it.
+    let q = supabase
+      .from(source === "rsvps" ? "rsvps" : "tickets")
       .select("id, user_id, created_at")
-      .eq("party_id", party.id)
-      .eq("venue_reveal_sent", false)
+      .eq("venue_reveal_sent", false);
+
+    // Who this night's address is owed to: its own ticket holders, its own RSVP
+    // holders (an RSVP counts as a ticket, D-37-10), and the event-level master
+    // tickets — bought for the whole event, with no night named.
+    q =
+      source === "master_tickets"
+        ? q.eq("event_id", party.event_id).is("party_id", null)
+        : q.eq("party_id", party.id);
+
+    // D-37-08: only recipients who already existed when somebody pressed.
+    if (opts?.createdBefore) q = q.lte("created_at", opts.createdBefore);
+
+    // The order scope. Applied HERE and nowhere else — see
+    // {@link VenueRevealOptions.onlyTicketIds}.
+    if (onlyTicketIds) q = q.in("id", onlyTicketIds);
+
+    return q;
+  };
+
+  const answers = await Promise.all(
+    RECIPIENT_SOURCES.map(async (source) => {
+      const q = buildSource(source);
+      return [source, q ? await q : null] as const;
+    })
   );
 
-  // RSVP holders of this night. An RSVP counts as a ticket (D-37-10).
-  const rsvpsQuery = bound(
-    supabase
-      .from("rsvps")
-      .select("id, user_id, created_at")
-      .eq("party_id", party.id)
-      .eq("venue_reveal_sent", false)
-  );
-
-  // Master ticket holders: bought at the event level, no night named.
-  const masterQuery = bound(
-    supabase
-      .from("tickets")
-      .select("id, user_id, created_at")
-      .eq("event_id", party.event_id)
-      .is("party_id", null)
-      .eq("venue_reveal_sent", false)
-  );
-
-  const [tickets, rsvps, masterTickets] = await Promise.all([
-    ticketsQuery,
-    rsvpsQuery,
-    masterQuery,
-  ]);
-
-  for (const [what, res] of [
-    ["tickets", tickets],
-    ["rsvps", rsvps],
-    ["master_tickets", masterTickets],
-  ] as const) {
-    if (res.error) {
+  for (const [what, res] of answers) {
+    if (res?.error) {
       // Logged with its own category and NOT collapsed into "nobody is
       // entitled". Only the code and the message are logged — never the
       // PostgREST error's `details` field, which carries the offending row, and
@@ -348,6 +480,17 @@ async function collectRecipients(
       return { recipients: new Map(), unavailable: true };
     }
   }
+
+  const rowsOf = (source: RecipientSource): EntitlingRow[] =>
+    (answers.find(([s]) => s === source)?.[1]?.data as
+      | EntitlingRow[]
+      | null
+      | undefined) ?? [];
+
+  // Two shapes downstream, not three: a ticket row and an RSVP row are marked
+  // on different tables, and that distinction is what `markBatchReached` needs.
+  const ticketRows = [...rowsOf("night_tickets"), ...rowsOf("master_tickets")];
+  const rsvpRows = rowsOf("rsvps");
 
   // ── I profili si risolvono con una SECONDA query, non con un incorporamento ──
   //
@@ -377,11 +520,7 @@ async function collectRecipients(
   // solo alle serate piene.
   const idsUtente = [
     ...new Set(
-      [
-        ...(tickets.data || []),
-        ...(masterTickets.data || []),
-        ...(rsvps.data || []),
-      ]
+      [...ticketRows, ...rsvpRows]
         .map((r) => r.user_id)
         .filter((id): id is string => Boolean(id))
     ),
@@ -437,7 +576,7 @@ async function collectRecipients(
   // Una riga il cui `user_id` non ha profilo viene SALTATA, non contata: e' la
   // stessa direzione di prima (`if (!profile) continue`), ed e' quella sicura —
   // meno mail, non piu'.
-  for (const ticket of [...(tickets.data || []), ...(masterTickets.data || [])]) {
+  for (const ticket of ticketRows) {
     const profile = ticket.user_id ? profiloDi.get(ticket.user_id) : undefined;
     if (!profile) continue;
     upsert(profile.email, profile.full_name, ticket.user_id).ticketIds.push(
@@ -445,7 +584,7 @@ async function collectRecipients(
     );
   }
 
-  for (const rsvp of rsvps.data || []) {
+  for (const rsvp of rsvpRows) {
     const profile = rsvp.user_id ? profiloDi.get(rsvp.user_id) : undefined;
     if (!profile) continue;
     upsert(profile.email, profile.full_name, rsvp.user_id).rsvpIds.push(rsvp.id);
@@ -871,4 +1010,93 @@ export async function revealPartyVenue(
     failureKind: recipientsSent === 0 ? "send_failed" : "none",
     retryOutlook: failedOutlook ?? "nothing_to_retry",
   };
+}
+
+/**
+ * What the buyer path must hand over, and the reason both fields are REQUIRED.
+ *
+ * Neither is optional, and that is the whole construction. An optional night
+ * state would mean a caller could omit the reveal check and send early; an
+ * optional list of ids would mean a caller could omit the restriction and mail
+ * the whole night. Both mistakes are one forgotten property away in a shape
+ * that permits them, both are irreversible, and neither is caught by anything
+ * in this repository — there is no test runner for this product. Required, they
+ * are compile errors.
+ */
+export interface VenueRevealForOrder {
+  /**
+   * The night's reveal inputs, read straight from `event_parties`. The
+   * predicate is IMPORTED from `venue-disclosure.ts` and applied below — it is
+   * never restated here and never restated at a call site, because two
+   * expressions of this decision diverge and divergence here publishes an
+   * address (`venue-secrecy.md`).
+   */
+  night: NightVenueState;
+  /**
+   * The ids of the tickets this order just issued — nobody else's. See
+   * {@link VenueRevealOptions.onlyTicketIds}.
+   */
+  onlyTicketIds: string[];
+}
+
+/**
+ * The reveal has not fired for this night, so nothing was owed and nothing was
+ * done. **Not a failure** — see {@link VenueRevealFailureKind}.
+ */
+export const VENUE_REVEAL_NOT_DUE: VenueRevealResult = {
+  recipientsTotal: 0,
+  recipientsSent: 0,
+  recipientsFailed: 0,
+  failureKind: "reveal_not_due",
+  // What clears this is TIME, and what comes back later is the scheduled run,
+  // not a second call from a webhook. Same reading, and the same precedent, as
+  // `daily_quota_exceeded` above.
+  retryOutlook: "same_answer",
+};
+
+/**
+ * Send this night's address to the buyer of ONE order, and to nobody else.
+ *
+ * ── The hole this closes ─────────────────────────────────────────────────────
+ *
+ * `api/cron/venue-reveal/route.ts` states the rule: whoever buys AFTER the
+ * reveal reads the address on their ticket page and gets no mail. From phase 49
+ * people buy **without an account**, and that page redirects to `/login` — so
+ * for a guest there is no page, therefore no address: they paid and do not know
+ * where to go. `D-49-04` chose the mail over building a surface that shows it,
+ * which keeps the secret exactly as wide as it is today: the ticket credential
+ * does not become a key to the address.
+ *
+ * ── The two things this function does that its caller must not be trusted with
+ *
+ *   1. **It cannot fire early.** {@link hasRevealFired} is asked here, from the
+ *      one home of that decision, and a false answer returns
+ *      {@link VENUE_REVEAL_NOT_DUE} without collecting, sending or marking. The
+ *      webhook asks the same question first, for its own reasons — it has an
+ *      outcome to record either way — and this is the backstop under it. Two
+ *      guards, one predicate, no second expression of the rule.
+ *   2. **It cannot address anybody outside the order.** The restriction is not
+ *      an option this caller may pass; it is a field of a required argument.
+ *
+ * ── And the one it does NOT do ───────────────────────────────────────────────
+ *
+ * It does not touch the night-level guard, in any branch. That switch is raised
+ * by the scheduled run alone, on the strength of a night-wide send; raised by a
+ * per-buyer path it would tell the cron a night was done when most of it never
+ * received anything. Grep this file for it: the only three occurrences are
+ * prose explaining that this module does not write it.
+ *
+ * Idempotent for the same reason every other path here is: `venue_reveal_sent`
+ * is marked per recipient, so a second call for the same order collects zero.
+ */
+export async function revealPartyVenueForOrder(
+  supabase: SupabaseClient,
+  party: VenueRevealParty,
+  order: VenueRevealForOrder
+): Promise<VenueRevealResult> {
+  if (!hasRevealFired(order.night)) return VENUE_REVEAL_NOT_DUE;
+
+  return revealPartyVenue(supabase, party, {
+    onlyTicketIds: order.onlyTicketIds,
+  });
 }
