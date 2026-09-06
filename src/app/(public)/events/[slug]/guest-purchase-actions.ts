@@ -8,6 +8,10 @@ import {
   buildOrderQuote,
   type OrderQuoteRefusal,
 } from "@/lib/tickets/order-quote";
+import {
+  sendOrderConfirmation,
+  ORDER_CONFIRMATION_CATEGORY,
+} from "@/lib/tickets/order-confirmation";
 
 /**
  * guest-purchase-actions.ts — la strada d'acquisto che non chiede un account.
@@ -326,4 +330,262 @@ export async function purchaseTicketsGuest(input: {
   }
 
   return { success: true, checkoutId, orderId };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * «Rimandami i biglietti» — BUY-04, la seconda strada
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * La finestra oltre la quale un ordine non si rimanda: sessanta giorni.
+ *
+ * Dichiarata invece che infinita. Rispedire il biglietto di una serata finita da
+ * mesi non serve a nessuno e allarga inutilmente cio' che un indirizzo digitato
+ * da chiunque puo' mettere in moto.
+ */
+const RESEND_WINDOW_DAYS = 60;
+
+/**
+ * Quanti ordini al massimo una richiesta puo' far spedire.
+ *
+ * Un tetto e' necessario perche' il numero di mail generate da **una** richiesta
+ * non deve dipendere da quanti ordini ha una persona. Se qualcuno ne avesse di
+ * piu', i piu' recenti sono quelli che sta cercando — e la troncatura si logga,
+ * invece di sparire.
+ */
+const RESEND_MAX_ORDERS = 10;
+
+/** La finestra del freno, in minuti, e quanti invii vi stanno dentro. */
+const RESEND_THROTTLE_MINUTES = 60;
+const RESEND_THROTTLE_MAX = 3;
+
+const RESEND_EMAIL_MISSING = "resend_email_missing";
+const RESEND_EMAIL_MALFORMED = "resend_email_malformed";
+const RESEND_UNAVAILABLE = "resend_unavailable";
+
+type ResendRefusal =
+  | typeof RESEND_EMAIL_MISSING
+  | typeof RESEND_EMAIL_MALFORMED
+  | typeof RESEND_UNAVAILABLE;
+
+const RESEND_ERROR: Record<ResendRefusal, string> = {
+  [RESEND_EMAIL_MISSING]:
+    "Enter the email you used when you bought. Nothing was sent.",
+  [RESEND_EMAIL_MALFORMED]:
+    "That does not look like an email address, so there is nowhere to send anything. Check it and try again.",
+  [RESEND_UNAVAILABLE]:
+    "We could not look this up just now, so nothing was sent. This says nothing about your order — try again in a moment.",
+};
+
+/**
+ * La **sola** risposta positiva, e l'unica frase che questa funzione restituisce
+ * quando l'indirizzo era ben formato.
+ *
+ * Identica che esistano o meno ordini per quell'indirizzo, e identica anche
+ * quando il freno ha impedito l'invio: vedi il docblock qui sotto.
+ */
+const RESEND_ACKNOWLEDGEMENT =
+  "If that address has tickets with us, we have just sent them again. Check your spam folder too.";
+
+type ResendResult =
+  | { success: true; message: string }
+  | { success: false; refusal: ResendRefusal; error: string };
+
+/**
+ * Rimanda i biglietti degli ordini comprati con un certo indirizzo.
+ *
+ * `BUY-04` — *i biglietti si ritrovano senza login*. Il precedente in albero e'
+ * il ritrovamento dei token drink da ospite: credenziale piu' indirizzo, nessuna
+ * sessione. Qui la credenziale e' l'indirizzo stesso, perche' chi ha perso il
+ * link non ha piu' nient'altro.
+ *
+ * ── PERCHE' LA RISPOSTA E' SEMPRE LA STESSA ─────────────────────────────────
+ *
+ * **Questo e' un endpoint di verifica in senso stretto**: dato un identificativo
+ * — un indirizzo di posta — puo' dire se esiste fra i nostri clienti. Una
+ * risposta che distinguesse *«rimandati»* da *«non ho trovato niente»* sarebbe un
+ * **oracolo sugli acquirenti**, interrogabile senza costo.
+ *
+ * E senza costo e' letterale: **il repository non ha rate limiting** — nessuna
+ * dipendenza, nessuna implementazione (`access-gating.md`, gate *nessun rate
+ * limiting, oggi*). Quel gate chiede che l'assenza sia **dichiarata per
+ * iscritto** invece che risolta qui, perche' introdurre un meccanismo di
+ * limitazione e' una decisione di architettura per tutto il prodotto. Questa e'
+ * la dichiarazione, e la risposta indistinguibile e' cio' che toglie all'endpoint
+ * il valore di oracolo **in assenza** di quel meccanismo.
+ *
+ * Le tre cause che invece si distinguono — indirizzo assente, indirizzo
+ * malformato, lettura non riuscita — **non dicono nulla su chi ha comprato**: le
+ * prime due parlano di cio' che il chiamante ha appena digitato, la terza di noi.
+ * Nessuna delle tre cambia risposta a seconda che l'indirizzo esista.
+ *
+ * ── IL FRENO SUGLI INVII RIPETUTI NON E' UN CONTROLLO DI SICUREZZA ─────────
+ *
+ * E' un **freno all'abuso di posta**, e va chiamato cosi'. Non protegge nessun
+ * dato: impedisce che qualcuno usi questa funzione per riempire di messaggi la
+ * casella di un altro. Si conta dal registro delle consegne, che porta gia' la
+ * data di ogni invio, quindi non introduce stato nuovo.
+ *
+ * **Quando il freno scatta, la risposta e' identica a quella di un invio
+ * riuscito.** Se dicesse *«hai gia' chiesto troppe volte»* ricostruirebbe da solo
+ * l'oracolo che la frase unica esiste per togliere: quella risposta si
+ * otterrebbe **solo** da un indirizzo che ha ordini. Il freno e' osservabile da
+ * noi, in una riga di log con la sua categoria, e da nessun altro.
+ *
+ * ── E OGNI INVIO PASSA DAL REGISTRO ────────────────────────────────────────
+ *
+ * Non e' una mail nuova: e' **la stessa** mail dell'ordine, spedita dallo stesso
+ * modulo, con la stessa categoria. Una mail nuova che non si registra sarebbe il
+ * buco vecchio riaperto in un posto nuovo — e questa fase esiste anche per non
+ * riaprirlo.
+ *
+ * L'invio e' marcato `trigger: "requested"`, che salta la guardia contro il
+ * secondo invio di `sendOrderConfirmation`. Quella guardia protegge da una
+ * duplicazione accidentale fra percorsi automatici; rispondere *«ti e' gia'
+ * arrivata»* a chi sta dicendo di non averla ricevuta trasformerebbe questa
+ * funzione in un pulsante che non fa niente.
+ *
+ * @returns una frase sola quando l'indirizzo era leggibile — qualunque cosa sia
+ * successa dietro — oppure un rifiuto che parla dell'input o di noi.
+ */
+export async function resendOrderTickets(input: {
+  email: string;
+}): Promise<ResendResult> {
+  // Stessa normalizzazione dell'acquisto, e per la stessa ragione: due
+  // convenzioni diverse sullo stesso indirizzo sono due persone diverse, e qui
+  // sarebbero una ricerca che non trova gli ordini di chi li ha comprati.
+  const email =
+    typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+
+  if (!email) {
+    return {
+      success: false,
+      refusal: RESEND_EMAIL_MISSING,
+      error: RESEND_ERROR[RESEND_EMAIL_MISSING],
+    };
+  }
+  if (email.length > EMAIL_MAX_LENGTH || !EMAIL_SHAPE.test(email)) {
+    return {
+      success: false,
+      refusal: RESEND_EMAIL_MALFORMED,
+      error: RESEND_ERROR[RESEND_EMAIL_MALFORMED],
+    };
+  }
+
+  const serviceClient = getServiceClient();
+
+  const since = new Date(
+    Date.now() - RESEND_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  // Solo `id`. Non serve altro, e cio' che non si legge non si puo' stampare
+  // ne' registrare per sbaglio.
+  const { data: orders, error: ordersError } = await serviceClient
+    .from("ticket_orders")
+    .select("id")
+    .eq("buyer_email", email)
+    .eq("status", "completed")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(RESEND_MAX_ORDERS + 1);
+
+  if (ordersError) {
+    // Distinguibile, e sicura da distinguere: una lettura fallita e' uno stato
+    // NOSTRO e si verifica identica su un indirizzo che non esiste.
+    console.error(
+      `[tickets.order_resend_unreadable] ${redactDbError(ordersError)}`
+    );
+    return {
+      success: false,
+      refusal: RESEND_UNAVAILABLE,
+      error: RESEND_ERROR[RESEND_UNAVAILABLE],
+    };
+  }
+
+  const found = orders ?? [];
+  if (found.length > RESEND_MAX_ORDERS) {
+    // La troncatura si dice. Un tetto silenzioso e' un pezzo di comportamento
+    // che nessuno ritrova quando qualcuno segnala «me ne mancano due».
+    console.warn(
+      `[tickets.order_resend_truncated] oltre ${RESEND_MAX_ORDERS} ordini nella finestra; rimandati i piu' recenti`
+    );
+  }
+  const selected = found.slice(0, RESEND_MAX_ORDERS);
+
+  if (selected.length > 0) {
+    const orderIds = selected.map((order) => order.id);
+
+    // ── Il freno, contato dal registro ────────────────────────────────────────
+    //
+    // Il registro attacca la riga al PRIMO biglietto di un ordine (49-05), quindi
+    // si contano le righe di questa categoria su qualunque biglietto di questi
+    // ordini dentro la finestra breve.
+    let throttled = false;
+    const { data: ticketRows, error: ticketsError } = await serviceClient
+      .from("tickets")
+      .select("id")
+      .in("order_id", orderIds);
+
+    if (ticketsError) {
+      console.error(
+        `[tickets.order_resend_tickets_unreadable] ${redactDbError(ticketsError)}`
+      );
+    } else if ((ticketRows?.length ?? 0) > 0) {
+      const throttleSince = new Date(
+        Date.now() - RESEND_THROTTLE_MINUTES * 60 * 1000
+      ).toISOString();
+      const { count, error: ledgerError } = await serviceClient
+        .from("email_deliveries")
+        .select("id", { count: "exact", head: true })
+        .eq("category", ORDER_CONFIRMATION_CATEGORY)
+        .in(
+          "ticket_id",
+          (ticketRows ?? []).map((row) => row.id)
+        )
+        .gte("created_at", throttleSince);
+
+      if (ledgerError) {
+        // **Si prosegue.** Stessa direzione, e stessa ragione, della guardia
+        // dentro `sendOrderConfirmation`: fra un duplicato e un silenzio, su un
+        // messaggio che porta l'unica copia di un biglietto, il duplicato e' il
+        // modo giusto di sbagliare. Il freno e' contro il fastidio, il silenzio
+        // e' contro una persona alla porta.
+        console.error(
+          `[tickets.order_resend_ledger_unreadable] ${redactDbError(ledgerError)}`
+        );
+      } else if ((count ?? 0) >= RESEND_THROTTLE_MAX) {
+        throttled = true;
+        console.warn(
+          `[tickets.order_resend_throttled] ${count} invii negli ultimi ` +
+            `${RESEND_THROTTLE_MINUTES} minuti: nessun invio nuovo`
+        );
+      }
+    }
+
+    if (!throttled) {
+      // In sequenza e non in parallelo: una richiesta sola non deve diventare una
+      // raffica verso il fornitore di posta.
+      for (const orderId of orderIds) {
+        const outcome = await sendOrderConfirmation({
+          orderId,
+          serviceClient,
+          trigger: "requested",
+        });
+        if (!outcome.sent) {
+          // `sendOrderConfirmation` non solleva mai e porta gia' la sua causa
+          // distinta. Qui si registra solo che era un invio CHIESTO, che e'
+          // l'unica informazione che quel modulo non ha.
+          console.error(
+            `[tickets.order_resend_not_sent] order=${orderId} reason=${outcome.reason}`
+          );
+        }
+      }
+    }
+  }
+
+  // ── L'unica uscita positiva ───────────────────────────────────────────────
+  //
+  // Un solo `return`, raggiunto identico dai tre cammini — nessun ordine, ordini
+  // rimandati, freno scattato. Non e' una scelta di stile: e' la proprieta'.
+  return { success: true, message: RESEND_ACKNOWLEDGEMENT };
 }

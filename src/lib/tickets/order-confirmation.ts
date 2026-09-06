@@ -56,8 +56,19 @@ import type { getServiceClient } from "@/lib/supabase/service";
  * il solo posto in cui esiste prima che nasca un account.
  */
 
-/** La categoria, scritta una volta sola e usata due. */
-const CATEGORY = "ticket_order_confirmation" satisfies EmailCategory;
+/**
+ * La categoria, scritta una volta sola.
+ *
+ * **Esportata dal piano 49-06**, che ne ha un terzo lettore: il freno sugli invii
+ * ripetuti conta le righe di registro *di questa categoria*, e una seconda copia
+ * della stringa sarebbe una seconda verita' che nessuno confronta — divergerebbe
+ * in silenzio, e il freno smetterebbe di contare cio' che crede di contare.
+ */
+export const ORDER_CONFIRMATION_CATEGORY =
+  "ticket_order_confirmation" satisfies EmailCategory;
+
+/** L'alias interno, per non riscrivere il nome lungo in ogni riga di questo file. */
+const CATEGORY = ORDER_CONFIRMATION_CATEGORY;
 
 /**
  * Le cause per cui la mail non e' partita, una per riga di log.
@@ -133,13 +144,36 @@ function ordinalOf(label: string | null): number {
  * era fallita, la mail **riparte**: fra un duplicato e un silenzio, su un
  * messaggio che porta l'unica copia di un biglietto, la direzione giusta e' il
  * duplicato.
+ *
+ * ── E la guardia distingue un invio AUTOMATICO da uno CHIESTO ───────────────
+ *
+ * Aggiunto dal piano 49-06, che ha introdotto il terzo chiamante: *rimandami i
+ * biglietti*. Con `trigger: "automatic"` — il valore di default, e quello dei due
+ * chiamanti che esistevano prima — la guardia vale e il secondo invio non parte.
+ *
+ * Con `trigger: "requested"` la guardia **si salta**, e non e' un allentamento:
+ * quella guardia esiste per impedire una **duplicazione accidentale** fra due
+ * percorsi che non si conoscono, non per rispondere *«ti e' gia' arrivata»* a una
+ * persona che sta dicendo il contrario. Su un ordine comprato senza account la
+ * mail e' l'unica copia del biglietto, e rifiutarla a chi la richiede
+ * riprodurrebbe alla porta esattamente il danno che questo modulo esiste per
+ * evitare. **Il freno su quel percorso e' altrove** — contato dal registro dentro
+ * `resendOrderTickets` — ed e' dichiarato li' come freno all'abuso di posta e non
+ * come controllo di sicurezza.
  */
 export async function sendOrderConfirmation({
   orderId,
   serviceClient,
+  trigger = "automatic",
 }: {
   orderId: string;
   serviceClient: ReturnType<typeof getServiceClient>;
+  /**
+   * Chi ha chiesto questo invio. `"automatic"` e' un percorso di prodotto — il
+   * webhook, il ritorno dal pagamento — e non deve mai spedire due volte;
+   * `"requested"` e' una persona che ha chiesto di riceverla di nuovo.
+   */
+  trigger?: "automatic" | "requested";
 }): Promise<OrderConfirmationResult> {
   const fail = (
     reason: OrderConfirmationFailure,
@@ -211,23 +245,29 @@ export async function sendOrderConfirmation({
     }
 
     // ── La guardia contro il secondo invio ────────────────────────────────────
-    const { data: alreadyRecorded, error: ledgerError } = await serviceClient
-      .from("email_deliveries")
-      .select("id")
-      .eq("category", CATEGORY)
-      .eq("ticket_id", tickets[0].id)
-      .limit(1);
+    //
+    // Solo sui percorsi automatici. Un invio CHIESTO da una persona la salta, per
+    // la ragione scritta nel docblock: la guardia protegge da una duplicazione
+    // che nessuno ha voluto, non dalla richiesta di qualcuno che non ha ricevuto.
+    if (trigger === "automatic") {
+      const { data: alreadyRecorded, error: ledgerError } = await serviceClient
+        .from("email_deliveries")
+        .select("id")
+        .eq("category", CATEGORY)
+        .eq("ticket_id", tickets[0].id)
+        .limit(1);
 
-    if (ledgerError) {
-      // Una lettura fallita NON e' «non e' mai partita». Ma fermarsi qui
-      // significherebbe che un registro illeggibile impedisce a qualcuno di
-      // ricevere il proprio biglietto, e fra i due modi di sbagliare questo e'
-      // il peggiore. Si prosegue, e la causa resta scritta con un nome suo.
-      console.error(
-        `[tickets.order_email_ledger_unreadable] order=${orderId} ${redactDbError(ledgerError)}`
-      );
-    } else if ((alreadyRecorded?.length ?? 0) > 0) {
-      return fail("already_sent", "riga di registro gia' presente");
+      if (ledgerError) {
+        // Una lettura fallita NON e' «non e' mai partita». Ma fermarsi qui
+        // significherebbe che un registro illeggibile impedisce a qualcuno di
+        // ricevere il proprio biglietto, e fra i due modi di sbagliare questo e'
+        // il peggiore. Si prosegue, e la causa resta scritta con un nome suo.
+        console.error(
+          `[tickets.order_email_ledger_unreadable] order=${orderId} ${redactDbError(ledgerError)}`
+        );
+      } else if ((alreadyRecorded?.length ?? 0) > 0) {
+        return fail("already_sent", "riga di registro gia' presente");
+      }
     }
 
     // ── La serata, il tier, la sua data ───────────────────────────────────────
