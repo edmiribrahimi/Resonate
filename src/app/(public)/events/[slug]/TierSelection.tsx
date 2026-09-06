@@ -3,11 +3,46 @@
 import { useState, useTransition, useEffect, useCallback, useId } from "react";
 import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
 import { validateDiscountCode } from "@/app/(admin)/admin/events/[id]/tickets/actions";
+import { purchaseTicketsGuest } from "./guest-purchase-actions";
 import { Button, FOCUS_RING } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
-import { Input } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { SectionHeading } from "@/components/ui/Typography";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
+
+/**
+ * ── NESSUN NOME SI CHIEDE QUI, E NON E' UNA DIMENTICANZA ─────────────────────
+ *
+ * **`D-49-03`, decisione del proprietario: il biglietto e' AL PORTATORE.** Chi
+ * compra puo' regalarlo o rivenderlo, e chi entra e' chi lo tiene. Il tetto e'
+ * sei perche' *sei e' un gruppo di amici con un solo pagante* — cioe' cinque
+ * biglietti su sei finiscono in mano a qualcun altro. E' il caso **progettato**,
+ * non un caso limite tollerato.
+ *
+ * Un campo per il nome dell'intestatario, su questa superficie, produce uno di
+ * due danni e nessun beneficio:
+ *
+ *   1. lo staff alla porta legge un nome, ha davanti un'altra persona e
+ *      **rifiuta un ospite valido** — l'errore che `checkin-offline.md` dichiara
+ *      il piu' costoso, perche' avviene davanti a una fila;
+ *   2. oppure lo staff impara a ignorare il campo, e allora il campo e' teatro.
+ *
+ * Un dato che si chiede e poi si ignora e' peggio di un dato che non si chiede.
+ * `BUY-03` dice **una mail basta**, ed e' l'unica cosa chiesta sotto.
+ *
+ * **Se qualcuno stesse per aggiungere un nome «per gentilezza»: non e' una
+ * gentilezza, e' una porta che rifiuta.** Vale anche sotto un'altra etichetta —
+ * «intestatario», «a nome di», «per chi e' il biglietto».
+ *
+ * ── IL TETTO QUI E' CONSULTIVO ───────────────────────────────────────────────
+ *
+ * `maxTicketsPerOrder` limita cio' che si puo' **scegliere**, e nient'altro.
+ * Tutto cio' che sta in un componente client e' pubblico, e il limite scelto
+ * nella UI e' un suggerimento: chi conta davvero e' `buildOrderQuote` prima del
+ * checkout e `reserve_ticket_order` dentro la transazione. Scritto perche' un
+ * limite nella UI che sembra una garanzia e' il modo in cui qualcuno smette di
+ * metterlo dove serve.
+ */
 
 /**
  * The surface that decides what a guest pays, on the design system.
@@ -260,6 +295,24 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   const [isValidating, setIsValidating] = useState(false);
   const discountCodeId = useId();
 
+  // ── La strada senza sessione ────────────────────────────────────────────────
+  //
+  // Esiste solo su una SERATA. `purchaseTicketsGuest` passa da
+  // `buildOrderQuote`, che pretende un `partyId`: il pass di evento
+  // (`partyId === null`) non ha una strada d'ospite oggi, e la superficie lo
+  // **dice** invece di aprire un checkout che verrebbe rifiutato con «serata non
+  // trovata» — un «no» travestito da guasto, che e' il difetto che il piano
+  // 49-04 ha gia' corretto una volta in questa fase.
+  const guestRoad = !isAuthenticated && partyId !== null;
+  const cap = Number.isInteger(maxTicketsPerOrder) && maxTicketsPerOrder > 0
+    ? maxTicketsPerOrder
+    : 1;
+  const [quantity, setQuantity] = useState(1);
+  const [email, setEmail] = useState("");
+  const [guestOrderId, setGuestOrderId] = useState<string | null>(null);
+  const quantityFieldId = useId();
+  const emailFieldId = useId();
+
   // Re-render every 60s to recompute statuses (beyond the countdown timer)
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -304,17 +357,60 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
   function handlePurchase() {
     if (!selectedTierId) return;
     setError(null);
+    setGuestOrderId(null);
 
-    // Anonymous user: save intent and redirect to register
+    // ── CHI NON HA UNA SESSIONE NON VIENE PIU' MANDATO A REGISTRARSI ──────────
+    //
+    // Fin qui il ramo salvava un'intenzione in `localStorage` e rimbalzava alla
+    // registrazione. **Era il muro che questa fase esiste per abbattere**: una
+    // persona che non ci conosce, davanti a una serata, doveva prima farsi un
+    // account per poter pagare.
+    //
+    // Adesso paga. `purchaseTicketsGuest` apre il checkout con l'indirizzo e la
+    // quantita', **e nessun account nasce qui**: l'identita' la conia il webhook,
+    // dietro un incasso verificato (piano 49-07).
+    //
+    // I RIFIUTI ARRIVANO COME VALORE DI RITORNO, non come eccezione, e si
+    // mostrano **come arrivano**. Next redige il messaggio di un errore sollevato
+    // da una Server Action in un build di produzione: frasi diverse arriverebbero
+    // identiche proprio dove contano. Le venti cause del preventivo sono distinte
+    // apposta, e collassarle in «Impossibile procedere» rifarebbe il difetto del
+    // form newsletter registrato in questo progetto.
     if (!isAuthenticated) {
-      localStorage.setItem(
-        "resonate_intent",
-        JSON.stringify({ type: "purchase", tierId: selectedTierId, partyId, eventSlug, discountCodeId: discount?.id ?? null })
-      );
-      window.location.href = `/register?next=/events/${eventSlug}`;
+      if (!partyId) {
+        // Nessuna strada d'ospite sul pass di evento. Detto, non simulato.
+        setError(
+          "Buying this pass without an account is not available yet. Pick a single night instead — that road is open."
+        );
+        return;
+      }
+
+      startTransition(async () => {
+        const result = await purchaseTicketsGuest({
+          partyId,
+          tierId: selectedTierId,
+          quantity,
+          email,
+          discountCodeId: discount?.id ?? null,
+        });
+
+        if (result.success) {
+          setGuestOrderId(result.orderId);
+          setCheckoutId(result.checkoutId);
+          return;
+        }
+
+        setError(result.error);
+      });
       return;
     }
 
+    // La strada con sessione resta **quella di prima, argomento per argomento**.
+    // Compra un biglietto, e le fasi 50/51 decideranno se sopravvive. Mescolare
+    // le due qui produrrebbe la superficie mezza convertita che questa fase
+    // esiste per evitare — ed e' anche la ragione per cui il selettore di
+    // quantita' sotto non le viene mostrato: un controllo il cui valore non
+    // arriva da nessuna parte e' teatro, come il campo del nome.
     startTransition(async () => {
       try {
         const result = await purchaseTicket(partyId, selectedTierId, discount?.id ?? null);
@@ -476,6 +572,65 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
       )}
 
       {/*
+        ── QUANTITA' E INDIRIZZO — la strada senza sessione, 2026-09-06 ─────────
+
+        I due campi si rendono **solo** su quella strada, ed e' una scelta:
+
+        · la QUANTITA' perche' su quella strada arriva davvero fino al database,
+          mentre la strada con sessione compra un biglietto e ignorerebbe il
+          numero. Un selettore che non cambia cio' che si compra e' teatro, e
+          questo file ha gia' una regola contro i campi teatro (D-49-03, sopra);
+
+        · l'INDIRIZZO perche' chi ha una sessione ne ha gia' uno. `BUY-03`: una
+          mail basta — ed e' l'unica cosa chiesta. **Nessun nome.**
+
+        Il massimo del selettore e' `cap`, che viene dalla SERATA. Non e' una
+        costante di questo file e non deve diventarlo: chi organizza lo cambia
+        dalla schermata in cui configura la serata, e il numero ha una casa sola.
+      */}
+      {guestRoad && (
+        <div className="mb-4 space-y-3">
+          <Select
+            id={quantityFieldId}
+            label="How many tickets"
+            value={String(quantity)}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            disabled={isPending}
+            hint={
+              cap > 1
+                ? `Up to ${cap} per order — not per person.`
+                : "One ticket per order on this night."
+            }
+          >
+            {Array.from({ length: cap }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+
+          {/*
+            `inputMode` e `autoComplete` perche' questo campo si compila su un
+            telefono, spesso in piedi. Nessuna validazione di forma qui: la
+            forma la controlla il server, e la frase che ne torna e' l'unica —
+            una seconda copia sarebbe una seconda verita' che nessuno confronta.
+          */}
+          <Input
+            id={emailFieldId}
+            label="Where should the tickets go?"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isPending}
+            placeholder="you@example.com"
+            hint="Your tickets and, later, the address arrive here. No account needed."
+          />
+        </div>
+      )}
+
+      {/*
         The accent fill carried white ink, which is 2.91 : 1 on it and fails the
         4.5 : 1 the text rule asks for. The ladder's own arithmetic puts the page
         ground on an accent fill at 6.85 : 1, so the label on the control that
@@ -516,6 +671,22 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
         nessun codice sconto, nessuna chiave di idempotenza, nessun percorso di
         webhook. `handlePurchase` sopra non ha una riga diversa.
       */}
+      {/*
+        ── DUE ESITI, PERCHE' LE DUE STRADE FINISCONO IN DUE POSTI ──────────────
+
+        La frase che c'era prometteva *la pagina dei biglietti*, cioe'
+        `/tickets`, che chiede una sessione. **Per chi ha appena comprato senza
+        account quella pagina non esiste**, e mandarcelo sarebbe un rimbalzo al
+        login subito dopo aver pagato — lo stesso muro che questa fase sta
+        abbattendo, spostato di una schermata.
+
+        Chi ha comprato da ospite torna dal ritorno del pagamento, che riconosce
+        `ctx=ticket_order` (piano 49-06), attende che l'ordine si chiuda e lo
+        porta ai suoi codici su un indirizzo firmato che non chiede nessuna
+        sessione. E' l'indirizzo che l'azione ha gia' costruito per il 3DS:
+        **nessuna superficie nuova nasce qui**, e in particolare nessuna che
+        possa mostrare un luogo (`D-49-04`).
+      */}
       {checkoutId && (
         <SumUpCheckoutModal
           checkoutId={checkoutId}
@@ -524,12 +695,25 @@ export default function TierSelection({ partyId, tiers, label, isAuthenticated =
             setCheckoutId(null);
             window.location.reload();
           }}
-          successOutcome={{
-            message:
-              "Your ticket will be on the tickets page. You never need to open the email — showing the QR code from there is enough.",
-            href: "/tickets",
-            label: "Open my tickets",
-          }}
+          successOutcome={
+            guestOrderId
+              ? {
+                  message:
+                    "Your tickets are being issued. They also arrive by email — and they are transferable, so you can pass them on to whoever is coming with you.",
+                  href: `/payment/callback?${new URLSearchParams({
+                    order: guestOrderId,
+                    ctx: "ticket_order",
+                    ...(eventSlug ? { slug: eventSlug } : {}),
+                  }).toString()}`,
+                  label: "Open my tickets",
+                }
+              : {
+                  message:
+                    "Your ticket will be on the tickets page. You never need to open the email — showing the QR code from there is enough.",
+                  href: "/tickets",
+                  label: "Open my tickets",
+                }
+          }
         />
       )}
     </div>
