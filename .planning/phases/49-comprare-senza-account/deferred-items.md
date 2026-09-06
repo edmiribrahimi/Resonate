@@ -225,3 +225,62 @@ decisione fra le tre e' del proprietario, e va presa **prima** che esista un
 archivio fotografico di una serata segreta — perche' `venue-secrecy.md` dice che
 una rivelazione anticipata non ha rimedio, e una foto pubblicata e' esattamente
 quella forma di rimedio che non esiste.
+
+---
+
+## D-49-05-DEF-06 — la superficie dei venduti sa leggere un biglietto, non un ordine
+
+**Trovato:** piano 49-05, scrivendo `src/lib/tickets/order-confirmation.ts`.
+
+**Il fatto.** `email_deliveries` attribuisce un invio a **un** biglietto
+(`ticket_id`), e la mail di un ordine ne porta **N**. La riga di registro viene
+quindi attaccata al **primo** biglietto dell'ordine.
+
+**La conseguenza, detta com'e'.** Sulla superficie dei venduti gli altri N-1
+biglietti risulteranno **«nessun invio registrato»**. Non e' falso — l'invio e'
+**uno**, non sei — ma quello stato e' stato scritto per significare *nessuno ha
+guardato*, e chi lo legge su cinque righe di sei concludera' che cinque persone
+non hanno ricevuto niente. **La direzione dell'errore e' quella sbagliata**: fa
+sembrare rotto cio' che funziona, ed e' il modo in cui un canale d'allarme
+smette di essere creduto.
+
+**Perche' non si ripara qui.** Le tre strade escono tutte dal piano 49-05:
+
+1. una riga di registro **per biglietto** — ma sarebbe **una riga per messaggio
+   che non e' mai stato spedito**, cioe' quattro consegne inventate su sei;
+2. una colonna `order_id` su `email_deliveries` — una migration, e
+   l'autorizzazione del 2026-09-06 e' **esaurita** con la migration 5;
+3. la superficie dei venduti che risale da `tickets.order_id` al primo biglietto
+   dell'ordine e disegna **un** segno per l'ordine invece di sei per i biglietti
+   — e' la strada piu' onesta, e vive nel file della superficie, che questo piano
+   non tocca.
+
+**A chi tocca:** la superficie dei venduti (`ticketing-payments.md` con
+`comms-analytics.md` a fianco). Da guardare **prima** della prima serata con
+ordini multipli — cioe' prima che qualcuno legga cinque «nessun invio
+registrato» e vada a cercare un guasto che non c'e'.
+
+---
+
+## D-49-05-DEF-07 — `AT_THE_DOOR_CATEGORIES` non ha lettori
+
+**Trovato:** piano 49-05, task 1, con un grep su `src/` e `scripts/` prima di
+aggiungerci una voce.
+
+**Il fatto.** `src/lib/email-delivery/categories.ts` esporta
+`AT_THE_DOOR_CATEGORIES` e **nessun file la importa**: zero occorrenze fuori dal
+file che la dichiara. E' un vocabolario dichiarato, non un filtro attivo.
+
+**Perche' e' un debito e non una curiosita'.** La lista nomina le categorie il cui
+mancato recapito **costa alla porta**, e il piano 49-05 gliene ha aggiunta una
+terza — quella che pesa di piu', perche' chi la riceve non ha una password. Chi
+legge quel file crede ragionevolmente che aggiungere una voce accenda qualcosa da
+qualche parte. **Non accende niente.** `meta-gates.md`: una lista che sembra un
+gate e non lo e' e' peggio di una lista assente, perche' fa credere che qualcuno
+stia controllando.
+
+**Le due uscite, e nessuna delle due appartiene a questa fase:** darle il lettore
+per cui e' stata scritta — una superficie che ordina per costo alla porta invece
+che per data — oppure toglierla e lasciarne la ragione scritta. **Nel frattempo
+l'assenza di lettori e' dichiarata nel docblock della lista**, cosi' chi la legge
+non deduce una sorveglianza che non c'e'.

@@ -107,7 +107,7 @@ const UUID_SHAPE =
 // repository senza test runner quel build e' l'unico cancello automatico che
 // esiste.
 //
-// Sono **quattordici** e non uno perche' il precedente contrario e' registrato
+// Sono **sedici** e non uno perche' il precedente contrario e' registrato
 // in questo progetto: il form della newsletter cattura ogni causa con «Qualcosa
 // e' andato storto», rendendo indistinguibili una rete caduta, una chiave
 // mancante e un capiente esaurito (`.planning/codebase/CONCERNS.md`,
@@ -272,7 +272,7 @@ export interface OrderQuoteInput {
  * Ogni ritorno negativo porta la sua causa **come valore**. Nessuno di loro e'
  * un `throw`: Next **redige** il messaggio di un errore sollevato da una Server
  * Action in un build di produzione (`src/lib/capabilities/server.ts:58-63`),
- * quindi quattordici frasi diverse arriverebbero identiche proprio dove
+ * quindi sedici frasi diverse arriverebbero identiche proprio dove
  * contano.
  */
 export async function buildOrderQuote(
