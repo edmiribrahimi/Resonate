@@ -2,361 +2,445 @@
 phase: 49-comprare-senza-account
 plan: 09
 subsystem: venue-secrecy / ticketing-payments
-tags: [venue-reveal, monotone-guard, observability, blocked, no-write-authorisation]
-status: BLOCCATO — nessuna riga di codice scritta, per la condizione di arresto che il piano stesso dichiara
-provides: []
+tags: [venue-reveal, monotone-guard, observability, guest-purchase, critical-path]
+status: eseguito — task 1 e 2 a terra, task 3 APERTO (checkpoint bloccante, sei passi)
+provides:
+  - "la restrizione della spedizione ai biglietti di UN ordine, applicata in un punto solo e obbligatoria per tipo"
+  - "il secondo percorso che fa uscire l'indirizzo: chi compra dopo la rivelazione lo riceve per mail"
+  - "la faccia del fallimento — «pagati, indirizzo non partito» — sulla pagina di chi lavora la serata"
 requirements: [BUY-03]
 decisions:
-  - "Il passo 5 del task 2 e' irrealizzabile senza una migration: `email_deliveries.provider_message_id` e' NOT NULL UNIQUE, verificato sul catalogo VIVO"
-  - "Nessun ripiego sul log, come il piano prescrive: si dichiara il blocco invece di simulare l'osservabilita'"
-  - "Trovati due difetti nel piano oltre al blocco previsto — uno dei due allargherebbe la rivelazione a terzi"
+  - "Il filtro copre tutte e tre le interrogazioni tramite UN builder, contro un Record TOTALE sulle fonti: una quarta fonte e' un errore di compilazione"
+  - "La restrizione e la guardia di tempo sono campi OBBLIGATORI di un argomento obbligatorio: la chiamata senza di esse non compila"
+  - "Il fallimento si scrive in ticket_orders.error_message lasciando status = completed — decisione del proprietario del 2026-09-06, nessuna migration"
+  - "Lo strappo semantico di error_message e' dichiarato nel codice che la scrive E in quello che la legge, perche' il COMMENT della colonna richiederebbe una migration"
+  - "Il failureKind proprio vince sul criterio «diff del cron vuoto» — e lo stesso meccanismo esiste una seconda volta, in RevealVenueDialog, che il piano non prevedeva"
+key-files:
+  modified:
+    - src/lib/venue-reveal/reveal-party-venue.ts
+    - src/app/api/webhooks/sumup/route.ts
+    - src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx
+    - src/app/api/cron/venue-reveal/route.ts
+    - src/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog.tsx
 metrics:
   completed: 2026-09-06
-  tasks_executed: 0
-  commits: 0
+  tasks_executed: 2
+  commits: 2
 ---
 
 # Fase 49 Piano 09 — Summary
 
 ## Esito in una riga
 
-**Nessuna riga di codice scritta.** La condizione di arresto che il piano
-dichiara nel proprio task 2 e' **verificata come vera** contro il catalogo di
-produzione, non contro un file di migration — e le due strade alternative
-richiedono entrambe una migration, cioe' una scrittura in produzione che **non
-e' autorizzata**: l'autorizzazione del 2026-09-06 e' `ESAURITA`.
+**Chi compra dopo che la rivelazione e' scattata riceve l'indirizzo per mail,
+una volta sola, ristretto ai biglietti del proprio ordine — e se quella mail non
+parte, un essere umano lo vede su una pagina prima della serata.** Chi compra
+prima non riceve niente in anticipo, e la guardia per serata non e' stata
+toccata da nessun ramo.
 
-L'albero e' pulito, `HEAD` e' `c012398`, e nessuna delle due invarianti
-monotone di questo dominio e' stata avvicinata.
+Il **task 3 resta aperto**: e' un `checkpoint:human-verify` bloccante, e i suoi
+passi sono **sei**, non cinque.
 
----
-
-## 1. Il blocco previsto dal piano, misurato
-
-Il task 2 porta un passo **[BLOCKING]** che pretende che il fallimento della
-nuova strada lasci una traccia leggibile da una persona, scrivendo una riga in
-`email_deliveries`. E porta la propria condizione di arresto:
-
-> *«Se in esecuzione risultasse che `email_deliveries` non accetta una riga
-> senza un identificativo del fornitore — cioe' senza che un invio sia mai
-> partito — **fermarsi e dirlo**, invece di ripiegare sul log.»*
-
-**Risulta. Misurato due volte, da due fonti indipendenti.**
-
-### La fonte scritta
-
-`supabase/migrations/20260822130000_email_delivery_ledger.sql:64`
-
-```sql
-provider_message_id text NOT NULL UNIQUE,
-```
-
-Le due migration successive — `20260822180000_email_ledger_night_paths.sql` e
-`20260905140000_email_category_ticket_order.sql` — toccano **solo** il `CHECK`
-delle categorie e la colonna `party_id`. Nessuna delle due allenta quel vincolo.
-
-### La fonte viva, che e' quella che decide
-
-Interrogato il catalogo di produzione in sola lettura, via la specifica
-OpenAPI di PostgREST (nessuna scrittura, nessuna riga creata):
-
-```
-REQUIRED: ["id","provider_message_id","category","outcome","check_attempts","created_at"]
-```
-
-`provider_message_id` e' fra i campi **obbligatori**. La migration e il catalogo
-concordano: non c'e' deriva di schema da cui sperare.
-
-### E il vocabolario degli esiti non ha una parola per «non e' mai partita»
-
-`email_deliveries.outcome` ha un `CHECK` di quattro valori — `unverified`,
-`delivered`, `undelivered`, `unknown` — e **tutti e quattro presuppongono un
-invio**. `unverified` significa *spedito, esito non ancora chiesto*;
-`undelivered` significa *il fornitore dice che non e' stata consegnata*. Nessuno
-dei quattro puo' dire *non e' partito niente*.
-
-Quindi la riga chiesta dal passo 5 richiederebbe **due** modifiche di schema,
-non una: rendere `provider_message_id` nullabile (o inventarne uno falso) **e**
-aggiungere un esito. Un identificativo inventato sarebbe peggio del silenzio:
-`email_deliveries` e' un registro in cui `recordBatchSend` scrive gia' *«meno
-righe, tutte vere»* invece di attribuire per congettura, e una riga che dichiara
-un invio mai avvenuto e' una bugia in un registro che serve a togliere le bugie.
+**Questo referto conserva le misure dell'esecuzione precedente**, che si era
+fermata correttamente e aveva trovato i due difetti poi corretti nel piano. Le
+sue misure erano buone e restano; qui sotto sono marcate dove sono state
+**rimisurate** contro il codice scritto.
 
 ---
 
-## 2. La seconda strada, chiusa per la stessa ragione strutturale
+## 1. Cosa scatta, e quando
 
-Prima di concludere, la superficie del pannello legge **due** registri, non uno.
-Il secondo e' la traccia degli atti — `public.venue_reveal_acts`, letta da
-`VenueRevealPanel` sotto il referto delle consegne. Anche quella e' chiusa, e in
-modo piu' profondo:
-
-| Ostacolo | Perche' non e' aggirabile |
+| Condizione, nell'ordine in cui e' interrogata | Cosa succede |
 |---|---|
-| `CHECK (act IN ('revealed','completed','re_hidden'))` | vocabolario chiuso: un quarto valore e' una migration |
-| `actor_name NOT NULL` con `CHECK` di non-vuoto | ogni riga e' attribuita a **una persona**; qui l'attore e' un webhook |
-| unico scrittore: `record_venue_reveal_act`, `SECURITY DEFINER`, `EXECUTE` al solo `service_role` | la firma e' fissa e non ha un ramo di fallimento |
-| **semantica** | ogni riga di quella tabella significa *un indirizzo e' uscito*. Scriverci un fallimento farebbe mentire la traccia sull'unico fatto che esiste per registrare |
+| l'ordine e' gia' `completed` | **si esce prima di tutto** (`route.ts:367`) — e' la prima delle due ragioni per cui la seconda esecuzione non spedisce |
+| l'ordine non ha `party_id` (ordine di evento) | **niente**, con una categoria di log propria e una riga scritta in questo referto: **non e' coperto** |
+| la riserva non ha restituito gli id dei biglietti | **niente**, e la traccia parte: senza la lista una spedizione raggiungerebbe l'intera serata |
+| la serata non e' leggibile | **niente**, e la traccia parte — *default chiuso*: uno stato non determinabile non e' uno stato vuoto |
+| `isNightSecret` e' falso | **niente**. Su una serata non segreta nessuna mail d'indirizzo e' mai stata dovuta: il luogo sta gia' sulla pagina pubblica |
+| `hasRevealFired` e' falso | **niente, e non e' un errore**: e' il caso ordinario. La rivelazione arrivera' dal cron, per tutti insieme |
+| tutto vero | **una** chiamata per ordine, ristretta ai biglietti appena emessi |
 
-L'ultima riga e' quella che conta: anche con la migration, quella tabella
-sarebbe il posto sbagliato.
+Il momento e' **dopo** che i biglietti esistono e **dopo** la mail di conferma
+(`route.ts:564`), dentro un `try` che non puo' far fallire l'incasso.
 
----
-
-## 3. Due difetti trovati nel piano, oltre al blocco previsto
-
-Il piano non e' bloccato solo dal passo 5. Leggendolo contro il codice ne sono
-emersi altri due, e **il secondo e' un allargamento della rivelazione**.
-
-### 3a. Il criterio «diff del cron vuoto» e' incompatibile con «un `failureKind` proprio»
-
-Il task 1 chiede due cose che non possono valere insieme:
-
-- *«la funzione esce con zero destinatari e un `failureKind` **proprio**»*
-- *«`git diff src/app/api/cron/venue-reveal/route.ts` e' **vuoto**»*
-
-`src/app/api/cron/venue-reveal/route.ts:63` dichiara
-
-```ts
-const REPORTABLE_FAILURE: Record<VenueRevealFailureKind, boolean> = { … }
-```
-
-**totale sull'unione**, e il suo docblock dichiara che quella totalita' e' il
-punto: aggiungere un membro all'unione e' un **errore di compilazione** finche'
-qualcuno non decide da che parte sta. E' un buon meccanismo, e fa esattamente il
-suo lavoro: un `failureKind` nuovo **obbliga** a toccare il file del cron.
-
-I due criteri quindi non sono entrambi soddisfacibili. `meta-gates.md` dice cosa
-fare — *vince il piu' restrittivo, e il conflitto si documenta* — e il piu'
-restrittivo e' il `failureKind` distinto, perche' riusare `no_recipients`
-significherebbe dire *«nessuno aveva diritto»* dove la verita' e' *«non era
-ancora il momento»*, cioe' il `catch` che collassa due cause che `meta-gates.md`
-vieta. Il costo e' **una riga** nel file del cron, a comportamento invariato.
-
-**Non e' una ragione per fermarsi**, ed e' registrata perche' chi ripianifica
-scelga consapevolmente invece di scoprirlo davanti al compilatore.
-
-### 3b. `onlyTicketIds` come specificato spedirebbe l'indirizzo a terzi — questo si'
-
-Il task 1 prescrive che `onlyTicketIds` sia applicato *«come `.in("id", ...)` in
-aggiunta alle condizioni gia' presenti»*. `collectRecipients`
-(`src/lib/venue-reveal/reveal-party-venue.ts:292-330`) fa pero' **tre** query,
-non una:
-
-1. i biglietti della serata — `party_id = <serata>`;
-2. **le prenotazioni** — `rsvps`, `party_id = <serata>`;
-3. **i biglietti di evento** — `event_id = <evento>`, `party_id IS NULL`.
-
-Un `.in("id", …)` aggiunto alla sola prima lascia la seconda e la terza
-**intatte**. Conseguenza, letta sul codice:
-
-> Il pagamento di **una** persona farebbe partire l'indirizzo verso **tutti**
-> quelli che su quella serata hanno una prenotazione o un biglietto di evento e
-> non sono ancora stati raggiunti.
-
-Tre ragioni per cui non e' un dettaglio da sistemare in corsa:
-
-- viola l'invariante 3 **del piano stesso** — *«non spedisce a tutti quelli
-  dell'evento»*;
-- viola `D-49-04`, che dice che l'indirizzo raggiunge **l'acquirente**;
-- e' **irreversibile**: `venue-secrecy.md` apre dichiarando che una rivelazione
-  anticipata non ha rimedio, e questa lo sarebbe verso persone che non hanno
-  fatto nulla.
-
-La correzione e' semplice — la restrizione va applicata a **tutti e tre** i rami,
-sopprimendo quello delle prenotazioni quando `onlyTicketIds` e' presente — ma
-**e' un cambio al contratto di un'opzione su codice Critical**, e va deciso, non
-improvvisato dentro un'esecuzione.
+**Una chiamata per ordine, non per biglietto.** Il modulo deduplica per
+indirizzo di posta: sei biglietti di un ordine sono **un** destinatario e **una**
+mail.
 
 ---
 
-## 4. I due conteggi di destinatari — l'idempotenza, provata sul codice
+## 2. La forma della restrizione — perche' una quarta interrogazione non le sfugge
 
-Richiesta esplicitamente dal piano. Ricostruita leggendo le query, con la
-restrizione applicata correttamente a tutti e tre i rami (§3b).
+Il difetto che l'esecuzione precedente aveva trovato nel piano: `collectRecipients`
+fa **tre** interrogazioni — i biglietti della serata, le **prenotazioni** (una
+prenotazione conta come un biglietto, `D-37-10`) e i **biglietti di evento**
+(master, `party_id` nullo). Filtrare solo la prima avrebbe lasciato le altre due
+intatte: **il pagamento di una persona avrebbe spedito l'indirizzo a chiunque
+altro sulla serata non fosse ancora stato raggiunto.** Irreversibile, verso
+persone che non hanno fatto niente.
 
-**Scenario.** Serata segreta, rivelazione **gia' scattata**. Chi compra prende un
-ordine da 2 biglietti, `T1` e `T2`. Entrambi nascono con
-`venue_reveal_sent = false` (default della colonna).
+**Cosa e' stato costruito, e non e' un filtro ripetuto tre volte.**
 
-| Esecuzione | Cosa filtra la query | Destinatari | Effetto |
+1. Le tre query non esistono piu' come tre espressioni affiancate. Esistono come
+   **tre nomi** — `night_tickets`, `rsvps`, `master_tickets` — e **un solo
+   costruttore**, `buildSource` (`reveal-party-venue.ts:434`), che e' l'unico
+   posto del modulo in cui una query di destinatari si puo' costruire.
+2. Il costruttore decide contro `REACHABLE_BY_AN_ORDER` (`:354`), un `Record`
+   **TOTALE** sui nomi delle fonti. **Una quarta fonte aggiunta domani e' un
+   errore di compilazione** finche' qualcuno non dichiara se un ordine puo'
+   raggiungerla — che e' esattamente la domanda che il quarto lettore avrebbe
+   altrimenti saltato. Stessa forma, e stessa ragione, di `REPORTABLE_FAILURE`
+   nel cron.
+3. Le **prenotazioni** su una chiamata per ordine sono **saltate del tutto**, non
+   filtrate a zero. Un ordine emette biglietti; un rsvp non ha ordine e il suo id
+   non e' in nessuna lista d'ordine. «Saltata» si prova leggendo una riga;
+   «filtrata a zero» dipenderebbe da come PostgREST rende un `in()` vuoto, che e'
+   una scommessa che questo dominio non fa.
+4. **Una lista vuota restringe a nessuno**, deciso **prima** di interrogare
+   (`:416`). Default chiuso: una restrizione che non nomina nessuno non e'
+   l'assenza di una restrizione.
+5. La restrizione e' **in aggiunta** a `venue_reveal_sent = false`, mai al posto.
+   Quella condizione e' l'idempotenza, e sostituirla rispedirebbe a chi ha gia'
+   ricevuto ogni volta che un chiamante lo chiede. Il conteggio del simbolo nel
+   modulo passa da **8 a 9**: non e' diminuito.
+
+**E la chiamata senza restrizione non e' esprimibile.** Il webhook raggiunge il
+modulo **solo** attraverso `revealPartyVenueForOrder` (`:1092`), la cui firma
+pretende un argomento con **due campi obbligatori**:
+
+- `night` — lo stato temporale della serata, su cui la funzione applica
+  `hasRevealFired` **importato** da `venue-disclosure.ts`. Senza, non compila;
+- `onlyTicketIds` — la lista. Senza, non compila.
+
+Non e' disciplina, e non e' un commento: sono due errori di compilazione. Le due
+strade vecchie — il cron e l'azione manuale — non hanno cambiato **una riga** al
+proprio punto di chiamata.
+
+---
+
+## 3. I due conteggi di destinatari — l'idempotenza
+
+Richiesta esplicitamente dal piano. **Rimisurata sul codice scritto**, non
+riportata dalla versione precedente.
+
+**Scenario.** Serata segreta, rivelazione **gia' scattata**. Un ordine da 2
+biglietti, `T1` e `T2`, stesso acquirente. Entrambi nascono con
+`venue_reveal_sent = false`.
+
+| Esecuzione | Cosa filtra | Destinatari | Effetto |
 |---|---|---|---|
-| **1ª** | `party_id = N` · `venue_reveal_sent = false` · `id IN (T1,T2)` → 2 righe, **una sola persona** dopo la deduplicazione per indirizzo | **1** | una mail; `markBatchReached` porta `venue_reveal_sent = true` su `T1` e `T2` |
-| **2ª** | stessa query: `T1` e `T2` ora hanno `venue_reveal_sent = true` → **0 righe** | **0** | `failureKind: "no_recipients"`, `retryOutlook: "nothing_to_retry"`, nessun invio, nessuna marcatura |
+| **1ª** | `party_id = N` · `venue_reveal_sent = false` · `id IN (T1,T2)` → 2 righe, **una persona** dopo la deduplicazione per indirizzo | **1** | una mail; `markBatchReached` porta `venue_reveal_sent = true` su `T1` e `T2` |
+| **2ª** | stessa query: `T1` e `T2` ora hanno `venue_reveal_sent = true` → **0 righe** | **0** | `no_recipients`, nessun invio, nessuna marcatura |
 
-**1 poi 0.** E lo zero ha **due** cause indipendenti, non una:
+**1 poi 0.** E lo zero ha **due cause indipendenti**, confermate leggendo il
+codice scritto e non assunte:
 
 1. la seconda consegna **non arriva nemmeno** a questo punto — il ramo esce su
-   `ticketOrder.status === 'completed'` (`route.ts:264`);
+   `ticketOrder.status === "completed"` a `route.ts:367`, e la riserva porta
+   l'ordine a `completed` alla prima;
 2. e se ci arrivasse, il filtro per riga `venue_reveal_sent = false` la
    svuoterebbe comunque.
 
-Il conteggio e' di **persone**, non di righe: `emailMap` e' indicizzata
-sull'indirizzo di posta, quindi due biglietti di un solo acquirente sono un
-destinatario e una mail — il che e' anche perche' il piano chiede **una chiamata
-per ordine** e non una per biglietto.
+**Le prenotazioni e i biglietti di evento della stessa serata non compaiono in
+nessuna delle due esecuzioni**: la prima fonte e' ristretta agli id dell'ordine,
+la seconda e' saltata, la terza e' ristretta agli stessi id. E' la proprieta'
+che il passo 6 del checkpoint deve osservare dal vivo.
 
 ---
 
-## 5. Cosa vede una persona quando la strada fallisce — la risposta onesta
+## 4. Cosa vede una persona quando la strada fallisce, e su quale superficie
 
-La domanda del piano. La risposta misurata e' **peggiore di quanto il piano
-supponesse**, e in un modo che vale la pena scrivere.
+### Perche' un log non basta, e non e' un'opinione
 
-### Ci sono DUE esiti invisibili, non uno
+Questo progetto **non ha error tracking**: nessun errore raggiunge un essere
+umano da solo. E su questa strada l'asimmetria e' misurata e vale la pena
+riscriverla, perche' e' la ragione per cui il passo era `[BLOCKING]`:
 
-Il piano prevede il caso in cui `revealPartyVenue` **solleva** prima che esista
-una riga di registro. Ma la funzione ha anche due rami che **ritornano
-normalmente** senza spedire e senza scrivere niente da nessuna parte:
-
-- `failureKind: "recipients_unavailable"` — la lettura dei destinatari e'
-  fallita (`reveal-party-venue.ts:638-648`);
-- `failureKind: "send_failed"` — il fornitore ha rifiutato tutto
-  (`:871`).
-
-Nel cron questi due sono osservabili, perche' finiscono nel JSON della risposta
-via `REPORTABLE_FAILURE`. **Chiamati dal webhook non hanno nessun lettore**: il
-webhook risponde `200` a SumUp e il valore di ritorno muore li'. Un
-`console.error` e' l'unica traccia, e `meta-gates.md` lo liquida in una riga —
-*«il log e' un posto dove nessuno guarda»* — con l'aggravante misurata che
-questo progetto **non ha error tracking**.
-
-### E l'asimmetria che decide quanto costa
-
-C'e' una rete sotto questa strada, **ma solo per meta' dei casi**, e la
-differenza sta in come la rivelazione e' scattata:
-
-| Come la rivelazione e' scattata | `venue_revealed_at` | Cosa fa il cron del giorno dopo | Cosa dice il pannello |
+| Come la rivelazione e' scattata | `venue_revealed_at` | Il cron del giorno dopo | Il pannello della rivelazione |
 |---|---|---|---|
-| **dalla finestra** (nessuno ha premuto) | `NULL` | nessun bound `createdBefore` → **raggiunge** chi ha comprato dopo | lo conta fra *«N persone non sono ancora state raggiunte»* |
-| **a mano** (qualcuno ha premuto) | valorizzato | passa `{ createdBefore: revealedAt }` → chi ha comprato dopo e' **escluso** | `recipientsPending` e' calcolato con **lo stesso bound** (`actions.ts:589-593`) → **non lo vede** |
+| **dalla finestra** (nessuno ha premuto) | `NULL` | nessun limite `createdBefore` → **raggiunge** chi ha comprato dopo | lo conta fra i «non ancora raggiunti» |
+| **a mano** (qualcuno ha premuto) | valorizzato | passa `{ createdBefore: revealedAt }` → chi ha comprato dopo e' **escluso** | calcolato con **lo stesso limite** → **non lo vede** |
 
-**Nel secondo caso la strada nuova e' l'unica**, e il suo fallimento e'
-invisibile su ogni superficie esistente: il pannello dira' *zero rimasti* mentre
-una persona che ha pagato non sa dove andare. Nel primo caso il ritardo massimo
-e' una corsa del cron — fino a un giorno, sul piano Hobby.
+**Nel secondo caso questa strada e' l'unica**, e senza una traccia il suo
+fallimento sarebbe invisibile su ogni superficie esistente: il pannello direbbe
+*zero rimasti* mentre una persona che ha pagato non sa dove andare.
 
-E' questo che rende il passo 5 **[BLOCKING]** invece che desiderabile: senza di
-esso la strada nuova sarebbe piu' silenziosa proprio nel caso in cui e' sola.
+### La strada che il registro delle consegne non permetteva
 
----
+`email_deliveries` **non puo' contenere un invio mai partito**, e resta misurato
+due volte:
 
-## 6. Le due strade per sbloccare — nessuna delle due e' eseguibile da qui
+- la migration — `20260822130000_email_delivery_ledger.sql:64`,
+  `provider_message_id text NOT NULL UNIQUE`;
+- il catalogo vivo — `REQUIRED: ["id","provider_message_id","category","outcome","check_attempts","created_at"]`.
 
-Entrambe richiedono una **migration**, cioe' una scrittura in produzione. Non
-esiste autorizzazione: quella del 2026-09-06 copriva sei migration ed e'
-`ESAURITA`. Sono presentate perche' la scelta e' del proprietario, non
-dell'esecutore.
+E i quattro valori di `outcome` — `unverified`, `delivered`, `undelivered`,
+`unknown` — **presuppongono tutti che un invio sia partito**. Servirebbero **due**
+modifiche di schema, e l'autorizzazione del 2026-09-06 e' `ESAURITA`.
 
-### Strada A — un registro che accetta un invio mai partito
+### Cosa e' stato costruito invece — decisione del proprietario, 2026-09-06
 
-`email_deliveries` diventa capace di dire *«questa mail non e' mai uscita»*:
-`provider_message_id` nullabile piu' un quinto esito, o una tabella accanto.
+**Dentro il ramo di fallimento**, `segnaAssenza` (`route.ts:87`) scrive la causa
+in **`ticket_orders.error_message`** lasciando **`status = 'completed'`**.
+`status` non compare in quell'aggiornamento, ed e' l'intero punto: i biglietti
+esistono, il denaro e' buono, il codice QR apre la porta.
 
-- **Pro:** il pannello esistente lo mostrerebbe **senza modifiche**, perche'
-  legge per serata e non per chiamante. E' l'osservabilita' piu' economica.
-- **Contro:** tocca il registro su cui poggiano dodici percorsi di posta, e
-  `provider_message_id` e' anche la chiave della riconciliazione — un `UNIQUE`
-  nullabile va pensato insieme al cron che legge quella coda.
+> **Verificato sul catalogo VIVO prima di scrivere, non dedotto dalla migration:**
+> `error_message` **non e'** fra le dieci colonne obbligatorie di
+> `ticket_orders`, quindi e' nullabile; `party_id` esiste ed e' anch'essa
+> nullabile. Nessuna scrittura in produzione: la lettura e' la specifica OpenAPI
+> di PostgREST.
 
-### Strada B — l'alternativa che il piano stesso nomina
+**Lo strappo, dichiarato invece che nascosto.** Fino a oggi `error_message`
+significava *«perche' l'ordine e' fallito»*, e qui la si scrive su una riga che
+**non e' fallita**. Il `COMMENT` della colonna direbbe questo, ma cambiarlo e'
+una migration: sta quindi scritto **nei due posti che la toccano** — nel codice
+che la scrive (`segnaAssenza`) e nel codice che la legge (`page.tsx:512`).
 
-Estendere la sezione *«Ordini senza biglietti»* di `49-07` a coprire anche
-questa categoria: il fallimento si attacca all'**ordine**, sulla superficie di
-chi lavora la serata, che esiste gia'.
+### Cosa vede, esattamente, chi lavora la serata
 
-- **Pro:** superficie gia' costruita e gia' guardata; l'ordine e' l'oggetto che
-  la persona che ha pagato possiede.
-- **Contro, e non e' piccolo:** `ticket_orders` non ha una colonna per questo.
-  Riusare `error_message` **non basta**, perche' quella superficie disegna gli
-  ordini in stato `failed` — e portare l'ordine a `failed` sarebbe **falso**: i
-  biglietti esistono, il denaro e' buono, manca solo l'indirizzo. Il webhook di
-  `49-07` dichiara gia' questa distinzione per il caso dell'ammissione
-  (`route.ts:414-422`: *«NON si porta l'ordine a `failed`: i biglietti esistono
-  e sono validi»*). Serve quindi **una colonna nuova**, cioe' comunque una
-  migration.
+Un **terzo** insieme sulla pagina della serata, con la sua sezione propria e non
+una voce in piu' dentro *«Orders without tickets»* — quel titolo qui sarebbe
+falso, perche' questi ordini i biglietti ce li hanno:
 
-**Osservazione per chi decide.** La strada B mette il fallimento davanti a chi
-lavora la **serata**; la strada A davanti a chi lavora la **rivelazione** — che
-e' la persona che puo' effettivamente rimediare, perche' ha il bottone *«manda ai
-mancanti»* a due centimetri. Per questo motivo A e' preferibile per il dominio,
-anche se costa di piu'.
+> **Paid, address never sent (N)**
+> *nome@indirizzo* — *€ importo*
+> *Paid, 2 tickets issued and valid — but the venue address never reached them.
+> They can get in and do not know where to go. Send it from the night's reveal
+> panel, before the night.*
+> *reveal_send_failed: serata …, destinatari 1, spediti 0, ritentabile may_help*
 
----
+**Perche' separato e non fuso con i falliti.** Fusi, chi legge non saprebbe piu'
+se «errore» voglia dire *nessun biglietto* o *nessun indirizzo* — e sono **due
+telefonate diverse a due persone diverse**: alla prima si dice che non ha niente,
+alla seconda dove andare. Un insieme solo trasformerebbe la riga che grida in una
+riga da interpretare.
 
-## 7. Cosa NON e' stato toccato — verificato, non affermato
+**E la frase non stampa l'indirizzo.** Il rimedio indicato e' il bottone della
+rivelazione sulla pagina della serata: questa pagina, che chiunque organizzi
+apre, non e' un posto dove scrivere il luogo di una serata segreta.
 
-| Invariante | Stato | Come lo si sa |
+### Quali esiti lasciano la traccia, e perche' e' un `Record` totale
+
+`SENZA_INDIRIZZO` (`route.ts:47`) e' **totale** sugli esiti della rivelazione: un
+esito nuovo e' un errore di compilazione, perche' **assente qui significherebbe
+nessuna traccia** — cioe' una persona che ha pagato, non ha ricevuto l'indirizzo,
+e di cui nessuno sa niente.
+
+| Esito | Traccia | Perche' |
 |---|---|---|
-| `venue_reveal_email_sent` (guardia **per serata**) | intatta | nessun file modificato |
-| `tickets.venue_reveal_sent` (guardia **per destinatario**) | intatta | nessun file modificato |
-| Il cron della rivelazione | invariato | `git status` pulito |
-| Il predicato in `venue-disclosure.ts` | non riscritto in nessun punto di chiamata | nessun file modificato |
-| Produzione | **zero scritture** | l'unica interrogazione e' stata una lettura della specifica OpenAPI di PostgREST |
+| `none` | no | almeno una mail e' partita, e qui il destinatario e' uno |
+| `reveal_not_due` | no | non era dovuto niente: il cron ci arrivera' |
+| `no_recipients` | **si** | e la divergenza col cron e' deliberata — vedi sotto |
+| `send_failed` | **si** | nessuna mail e' partita |
+| `recipients_unavailable` | **si** | non si e' potuto leggere chi aveva diritto |
+| `party_not_found` | **si** | non producibile da qui, ma resta un verdetto |
+
+**`no_recipients` vale `true` qui e `false` nel cron.** Nel cron significa *«questa
+serata e' gia' stata servita»*, che e' lo stato di regime. Qui non puo'
+significare quello: i biglietti sono nati **in questa stessa consegna** con
+`venue_reveal_sent = false`, e il ramo si raggiunge **una volta sola per ordine**.
+Zero destinatari vuol dire quindi che chi ha appena pagato **non e' stato visto
+da chi spedisce** — un'assenza da dire, non uno stato di regime.
+
+### Il limite residuo, dichiarato
+
+Se anche la scrittura su `ticket_orders` fallisse, resta **solo** il log
+(`tickets.order_reveal_gap_unrecordable`). In quel caso esiste una persona che ha
+pagato, non sa dove andare, e **nessuna superficie lo mostra**. E' dichiarato qui
+come limite invece di essere lasciato credere coperto.
 
 ---
 
-## 8. Stato dei gate
+## 5. Le invarianti, verificate e non affermate
+
+| Invariante | Come lo si sa |
+|---|---|
+| `venue_reveal_email_sent` (guardia **per serata**) mai scritta dal webhook | `grep -c` sul webhook: **0** |
+| … ne' dal modulo che spedisce | `grep -c` sul modulo: **3**, e tutte e tre sono **righe di prosa** (`:45`, `:245`, `:792` prima delle modifiche) che dichiarano che questo modulo non la scrive. Vedi §7 |
+| La condizione con cui il cron la alza | invariata: quel blocco non e' stato toccato |
+| Il predicato non e' riscritto al punto di chiamata | `grep -cE "venue_secret\s*===\|revealed_at\s*!==\s*null"` sul webhook: **0** |
+| Non spedisce «a tutti quelli dell'evento» | la restrizione copre le tre fonti da un punto solo, ed e' obbligatoria per tipo (§2) |
+| Non anticipa | **due** guardie sullo stesso predicato importato: una nel webhook (che deve registrare l'esito) e una dentro `revealPartyVenueForOrder`, che nessun chiamante puo' saltare |
+| `markBatchReached`, l'ordine fra marcatura e invio, `recordBatchSend` | non toccati |
+| Produzione | **zero scritture.** Due letture, entrambe in sola lettura: i conteggi (`ticket_orders` 0, `tickets` 0, `event_parties` 3) e la specifica OpenAPI |
+
+---
+
+## 6. Stato dei gate
 
 | Gate | Esito | Nota |
 |---|---|---|
-| `npm run build` | **0** | baseline verde prima e dopo, perche' nulla e' cambiato |
-| `npm run verify:venue-surfaces` | **0** | conosce **tre** superfici; questo piano non ne avrebbe aggiunta una quarta — aggiunge un percorso di **posta**, non una pagina, quindi nessun allargamento del gate era dovuto |
-| `npm run verify` | **1**, per una ragione **pre-esistente** | `verify:touch-targets`, 3 elementi: `GuestTokenDisplay.tsx:689`, `:702`, `emails/ticket-order.tsx:231`. **Nessuno dei tre e' nei file di questo piano.** Rosso prima che questo piano cominciasse; non toccato, come impone il confine di ambito |
+| `npm run build` | **0** | verde dopo il task 1 e dopo il task 2 |
+| `npx tsc --noEmit` | **0** | |
+| `npm run verify:venue-surfaces` | **0** | |
+| `npm run verify` | **1**, per una ragione **pre-esistente** | `verify:touch-targets`, 3 elementi. **La lista degli elementi rossi e' identica byte a byte prima e dopo** (`diff` sui due referti): `GuestTokenDisplay.tsx:689`, `:702`, `emails/ticket-order.tsx:231`. Nessuno dei tre e' nei file di questo piano. Controllata la **lista**, non il codice d'uscita, cosi' che un fallimento nuovo non potesse nascondersi dietro il vecchio |
+
+**Nessun test e' passato, perche' non esistono.** Non c'e' un test runner per il
+prodotto: la verifica e' `npm run build` piu' cio' che e' scritto qui e i sei
+passi del task 3.
 
 ---
 
-## 9. Il task 3 resta aperto, e non e' stato simulato
+## 7. Deviazioni — tre criteri del piano non erano soddisfacibili alla lettera
 
-Il task 3 e' un `checkpoint:human-verify` **bloccante**, ed e' aperto **due
-volte**: perche' e' un checkpoint, e perche' i due task che dovrebbe verificare
-non esistono.
+Tutte e tre riguardano **grep**, e in tutte e tre la sostanza e' rispettata.
+`meta-gates.md`: vince il piu' restrittivo, e il conflitto si documenta.
 
-I cinque passi restano quelli scritti nel piano
-(`49-09-PLAN.md`, task 3, `how-to-verify`) e vanno percorsi da chi configura le
+### 7a. `venue_reveal_email_sent` = 0 nel modulo — era gia' 3 **prima** di toccarlo
+
+Il criterio pretende `0` su `reveal-party-venue.ts`. Il file ne aveva **3** al
+commit `5f1e260`, e tutte e tre sono **commenti** che spiegano perche' quel
+modulo non scrive la guardia per serata. Il criterio era quindi rosso su un file
+intatto, e il suo `<verify><automated>` sarebbe fallito senza che nessuno avesse
+scritto una riga.
+
+**Cancellare tre righe di buona documentazione per far passare un grep** sarebbe
+stato il peggiore dei due esiti. Il conteggio resta **3**, le tre righe sono le
+stesse, e la proprieta' vera — *nessun codice di questo modulo scrive quella
+colonna* — e' verificata leggendole.
+
+### 7b. `hasRevealFired` = 1 nel webhook — e' **2**
+
+Una **chiamata** (`route.ts:676`) e un **import** (`:18`). Il criterio e'
+soddisfacibile solo non importando il predicato, cioe' riscrivendolo — che e'
+esattamente cio' che le invarianti del piano vietano. Una decisione, un punto di
+chiamata, importato dall'unica casa.
+
+### 7c. `git diff` vuoto sul cron — impossibile insieme a «un `failureKind` proprio»
+
+Trovato dall'esecuzione precedente e confermato: `REPORTABLE_FAILURE`
+(`cron/venue-reveal/route.ts:63`) e' un `Record` **totale** su
+`VenueRevealFailureKind`, quindi un membro nuovo e' un errore di compilazione in
+quel file. Vince il `failureKind` distinto: riusare `no_recipients` direbbe
+*«nessuno aveva diritto»* dove la verita' e' *«non era ancora il momento»*, cioe'
+il `catch` che collassa due cause che `meta-gates.md` vieta.
+
+**Costo: una riga, a comportamento invariato** — il valore e' **irraggiungibile**
+dal cron, che non chiama `revealPartyVenueForOrder`. E' marcato `true` e non
+`false` di proposito: se comparisse davvero li', significherebbe che il filtro
+della finestra e il predicato non concordano sulla stessa serata, che e' un
+verdetto e non una serata tranquilla.
+
+### 7d. Lo stesso meccanismo esiste **una seconda volta**, e il piano non lo prevedeva
+
+`RevealVenueDialog.tsx:277` porta uno `switch` **esaustivo** sullo stesso
+`failureKind`. Il membro nuovo lo ha reso rosso al build con
+`TS2366 — Function lacks ending return statement`.
+
+**[Rule 3 — blocco]** Un arco in piu', stessa ragione, stesso comportamento: il
+valore e' irraggiungibile da quella superficie, perche' i due atti del dialog
+passano dall'azione manuale. La frase dice cosa significherebbe — *«questa
+risposta non dovrebbe essere raggiungibile da questo schermo»* — invece di
+fingere che sia ordinaria. **Quinto file toccato**, dichiarato invece che
+nascosto.
+
+---
+
+## 8. La prova per mutazione: **non eseguibile**, e diventa un passo di `49-11`
+
+Il criterio chiede di far fallire deliberatamente la rivelazione e verificare che
+l'ordine porti `error_message` con `status` ancora `completed`.
+
+**Richiede una riga d'ordine che non esiste.** Misurato in sola lettura oggi:
+
+```
+ticket_orders  -> 0 righe
+tickets        -> 0 righe
+event_parties  -> 3 righe
+```
+
+**Non e' stata seminata nessuna riga**: l'autorizzazione di scrittura in
+produzione e' `ESAURITA`, e il piano dice esplicitamente cosa fare in questo caso.
+La prova si dichiara **non eseguibile** e diventa un passo scritto:
+
+> **`P-REV-MUT-1` (per `49-11`, in ambiente di sviluppo).** Su una serata di
+> prova **gia' rivelata**, rendere illeggibile la chiave del fornitore di posta
+> — `RESEND_API_KEY` assente — e **asserire che la mutazione sia stata davvero
+> applicata** prima di leggerne l'esito (avviare il processo e verificare che la
+> variabile non sia definita). Comprare un biglietto da ospite. Osservare, sulla
+> riga dell'ordine: `status` = `completed`, `error_message` valorizzato con una
+> causa `reveal_…`, i biglietti esistenti. Osservare, sulla pagina della serata:
+> l'ordine compare sotto **«Paid, address never sent»** e **non** fra i falliti.
+> Ripristinare la chiave.
+
+---
+
+## 9. Cosa NON e' coperto — l'ordine di evento
+
+Un ordine con `party_id` nullo — un biglietto per l'intero evento — **non riceve
+niente da questa strada**. La rivelazione e' **per serata**, e da qui non si
+sceglie a quale delle N serate spedire: sceglierne una sarebbe inventare.
+
+**Oggi non e' raggiungibile**: `purchaseTicketsGuest` pretende una serata
+(`partyId: string`), quindi ogni ordine d'ospite ne ha una. Ma la colonna e'
+nullabile, il ramo esiste, ed e' scritto qui invece di essere scoperto quando
+qualcuno vendera' un pass d'evento. Il ramo logga con una categoria propria
+(`tickets.order_reveal_no_party`) e **non** scrive `error_message`: non e' un
+guasto di questo ordine, e' una strada non costruita.
+
+---
+
+## 10. Il task 3 resta aperto — sei passi, non cinque
+
+E' un `checkpoint:human-verify` **bloccante**. Non e' stato eseguito, non e'
+stato simulato, non e' stato marcato fatto. Va percorso da chi configura le
 serate, su una **serata di prova**, in ambiente di sviluppo:
 
-1. serata segreta non rivelata, acquisto da ospite → **nessun indirizzo** in
-   nessuna superficie;
-2. rivelazione a mano → l'indirizzo arriva al primo acquirente;
-3. **secondo acquisto adesso** → biglietti **e** indirizzo (il caso che questa
-   fase esiste per chiudere);
-4. cron rilanciato → **nessuna seconda mail** a nessuno dei due;
-5. la guardia **per serata** e' identica a com'era al passo 2.
+1. serata segreta **non** rivelata, acquisto da ospite → arrivano i biglietti e
+   **nessun indirizzo**, in nessuna superficie: mail, pagina dei biglietti,
+   ritorno dal pagamento;
+2. rivelazione a mano → l'indirizzo arriva al primo acquirente, come sempre;
+3. **secondo acquisto adesso**, con un indirizzo diverso → arrivano i biglietti
+   **e** l'indirizzo. E' il caso che questa fase esiste per chiudere;
+4. cron rilanciato → **nessuna seconda mail** a nessuno dei due: il numero di
+   mail di rivelazione per indirizzo e' esattamente **1**;
+5. la guardia **per serata** e' identica a com'era al passo 2 — la mail al
+   secondo acquirente non deve averla mossa;
+6. **il sesto, che discende dal difetto trovato e corretto:** sulla stessa
+   serata, **una prenotazione e un biglietto di evento non ancora raggiunti**. Al
+   passo 3 **nessuno dei due deve ricevere niente** — l'acquisto di una persona
+   non spedisce l'indirizzo a un'altra.
 
-**A questi cinque va aggiunto un sesto**, che discende dal §3b e che il piano non
-prevedeva:
-
-6. sulla stessa serata, **una prenotazione e un biglietto di evento non ancora
-   raggiunti**. Al passo 3, **nessuno dei due deve ricevere niente**: l'acquisto
-   di una persona non spedisce l'indirizzo a un'altra.
+Riportare i sei esiti con quello che si e' **osservato**, non con quello che ci
+si aspettava.
 
 ---
 
-## 10. Cosa non e' verificato, e perche'
+## 11. Cosa non e' verificato, e perche'
 
-**Tutto il comportamento.** Non esiste un test runner per il prodotto, e non
-esiste codice da provare: nessuna riga e' stata scritta. Le affermazioni di
-questo referto sono di **due** tipi soltanto, e la distinzione va tenuta:
+Non esiste un test runner per il prodotto: **nessun comportamento di questo piano
+e' stato eseguito.** Le affermazioni di questo referto sono di tre tipi, e la
+distinzione va tenuta.
 
-- **misurate** — il vincolo su `provider_message_id` (catalogo vivo + migration),
-  il vocabolario di `outcome`, il vocabolario di `venue_reveal_acts`, la firma
-  `RETURNS SETOF uuid` di `reserve_ticket_order`, il bound `createdBefore` sul
-  pannello e sul cron, i tre elementi rossi di `verify:touch-targets`, il verde
-  di `build` e di `verify:venue-surfaces`;
-- **lette dal codice e non eseguite** — i due conteggi di destinatari del §4 e
-  l'allargamento del §3b. Sono deduzioni da query che si leggono, non
-  osservazioni: reggono quanto la lettura, e vanno confermate al passo 3 e al
-  passo 6 del checkpoint.
+- **Misurate** — il vincolo su `provider_message_id` (migration + catalogo vivo);
+  il vocabolario di `outcome`; la nullabilita' di `ticket_orders.error_message` e
+  `party_id` sul catalogo vivo; i tre conteggi di riga in produzione; il verde di
+  `build`, `tsc` e `verify:venue-surfaces`; l'identita' byte a byte della lista
+  rossa di `verify:touch-targets` prima e dopo; i quattro `grep` del §5.
+- **Verificate dal compilatore** — che la restrizione e la guardia di tempo non
+  possono essere omesse dal chiamante nuovo, e che una quarta fonte di
+  destinatari o un esito nuovo non compilano finche' non sono dichiarati. Sono
+  le uniche affermazioni comportamentali di questo referto che qualcosa di
+  automatico regge davvero.
+- **Lette dal codice e non eseguite** — i due conteggi di destinatari del §3, e
+  il fatto che prenotazioni e biglietti di evento restino fuori. Sono deduzioni
+  da query che si leggono: reggono quanto la lettura, e **vanno confermate ai
+  passi 3, 4 e 6 del checkpoint**.
 
-Nessuna di queste e' stata arrotondata, e nessuna prova comportamentale e' stata
-inventata.
+Nessuna e' stata arrotondata, e nessuna prova comportamentale e' stata inventata.
 
 ---
 
 ## Self-Check: PASSED
 
-- `.planning/phases/49-comprare-senza-account/49-09-SUMMARY.md` — creato
-- Nessun commit di codice dichiarato, perche' nessuno esiste
-- `git status` pulito prima della scrittura di questo file
+- `src/lib/venue-reveal/reveal-party-venue.ts` — FOUND
+- `src/app/api/webhooks/sumup/route.ts` — FOUND
+- `src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx` — FOUND
+- `src/app/api/cron/venue-reveal/route.ts` — FOUND
+- `src/app/(admin)/admin/events/[id]/reveal/RevealVenueDialog.tsx` — FOUND
+- commit `fad0cf0` (task 1) — FOUND
+- commit `41b9c37` (task 2) — FOUND
 - `STATE.md` **non** toccato, deliberatamente
+</content>
+</invoke>
