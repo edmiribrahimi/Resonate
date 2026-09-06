@@ -299,6 +299,56 @@ export default function ReviewListClient({
     return !Number.isNaN(recorded) && recorded > nightEnd;
   };
 
+  // ── The one number a bearer ticket makes load-bearing ───────────────────────
+  //
+  // `D-49-03`: the ticket is **bearer** — it may be gifted or resold, and the
+  // door verifies the ticket rather than the person. That makes the second read
+  // the only control that exists, and it makes this number the substance of the
+  // night rather than one line of a tally.
+  //
+  // Every row here was stored with `outcome = 'already_recorded'`
+  // (`api/tickets/checkin/route.ts:1139-1141`): the door found the ticket
+  // already admitted. `classifyNight` turns that outcome into one of three
+  // causes and the two below are the ones it lists — `double_read` is the third
+  // and is **deliberately excluded**, because a repeat from one phone, by one
+  // operator, inside twenty seconds is an operator who could not see the first
+  // read land. Counting it here would put a defect of the lighting into a number
+  // about guests, which is the one thing `classify.ts` exists to keep apart.
+  //
+  // Counted by SUBJECT and not by row: a ticket presented three times leaves two
+  // rows, and it is still one ticket. `entries` is `listed`, so nothing hidden
+  // is counted and the number can be checked against what is drawn below it.
+  //
+  // Tickets only. A guest-list entry and a membership are not bearer
+  // instruments; their counts stay in the tally at the foot of the page.
+  //
+  // **This is not a notification, and FIX-11 still holds.** Nothing is sent,
+  // no badge is added to navigation and nobody is pinged. It is drawn on the
+  // page, only when the number is not zero, in the same calm card the tally
+  // uses — not the alert treatment the failed read takes. The requirement's
+  // reason was that pinging somebody about every repeated read trains them to
+  // stop reading the surface; putting the number where it is read first does the
+  // opposite.
+  const seenTwice = entries.filter(
+    (entry) =>
+      entry.subjectType === "ticket" &&
+      (entry.cause === "two_devices" ||
+        entry.cause === "second_ticket_same_holder")
+  );
+  const subjectsOf = (rows: ClassifiedEntry[]) =>
+    new Set(rows.map((entry) => entry.subjectId ?? entry.id)).size;
+  const ticketsSeenTwice = subjectsOf(seenTwice);
+  const onTwoDevices = subjectsOf(
+    seenTwice.filter((entry) => entry.cause === "two_devices")
+  );
+  // Queued on a phone with the radio off. The distinction is not a detail: an
+  // offline duplicate was **admitted at the door** and became visible only when
+  // the queue drained, so describing it as refused would reassure somebody about
+  // a person who is standing inside.
+  const admittedWhileOffline = subjectsOf(
+    seenTwice.filter((entry) => entry.source === "offline_sync")
+  );
+
   const doubleReads = counters.double_read;
   const otherCounters = (
     Object.entries(counters) as [DoorScanCause, number][]
@@ -371,6 +421,76 @@ export default function ReviewListClient({
           </p>
           <p className="mt-1 text-xs text-muted">{readError}</p>
         </div>
+      )}
+
+      {/*
+        In front of the list, because a fact that lives only in a small line at
+        the foot of an enumeration is a fact nobody reads — and this project has
+        no error tracking, so the person who opens this page is the only observer
+        there is.
+
+        A Card, not the alert region above it: a repeated read is something to
+        look at, not a failure of the system, and drawing it in the critical
+        colour every time would spend on an ordinary night the attention a failed
+        read needs.
+      */}
+      {!readError && ticketsSeenTwice > 0 && (
+        <section className="mb-5">
+          <Card>
+            <h2 className="text-base font-semibold text-ink">
+              {ticketsSeenTwice} ticket{ticketsSeenTwice === 1 ? "" : "s"}{" "}
+              {ticketsSeenTwice === 1 ? "was" : "were"} presented twice
+            </h2>
+
+            <p className="mt-1 text-sm text-muted">
+              A ticket can be given away or resold, so the door checks the ticket
+              and not the person holding it. The second read is therefore the
+              only control there is, and this is what it caught.
+            </p>
+
+            {onTwoDevices > 0 && (
+              <p className="mt-2 text-sm text-ink">
+                {onTwoDevices} of them {onTwoDevices === 1 ? "was" : "were"}{" "}
+                read on two different
+                devices — the case where two people may have entered on one
+                ticket.
+              </p>
+            )}
+
+            {admittedWhileOffline > 0 && (
+              <p className="mt-2 text-sm text-ink">
+                {admittedWhileOffline}{" "}
+                {admittedWhileOffline === 1 ? "was" : "were"} read on a phone
+                that had no signal, and {admittedWhileOffline === 1
+                  ? "that read was"
+                  : "those reads were"}{" "}
+                <strong className="font-semibold">not refused at the door</strong>
+                : two phones cannot know about each other, so the second person
+                was let in and the duplicate only appeared when the queue was
+                sent.
+                {/*
+                  Written only when there is a rest. "The rest were refused"
+                  over a night where every duplicate came from an offline phone
+                  would state a refusal that never happened.
+                */}
+                {ticketsSeenTwice > admittedWhileOffline
+                  ? ` The other ${ticketsSeenTwice - admittedWhileOffline} ${
+                      ticketsSeenTwice - admittedWhileOffline === 1
+                        ? "was"
+                        : "were"
+                    } refused at the time.`
+                  : ""}
+              </p>
+            )}
+
+            <p className="mt-2 text-xs text-muted">
+              Each one is listed below, with the ticket it concerns. Reads of the
+              same code within {DOUBLE_READ_WINDOW_SECONDS} seconds from one
+              phone are not counted here — those are a scanner whose feedback was
+              not visible, not a guest.
+            </p>
+          </Card>
+        </section>
       )}
 
       {/*
