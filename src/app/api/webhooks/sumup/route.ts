@@ -11,6 +11,105 @@ import { generateTicketToken } from "@/utils/qr";
 import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
 import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
 import { redactDbError } from "@/lib/errors/redact";
+import {
+  revealPartyVenueForOrder,
+  type VenueRevealFailureKind,
+} from "@/lib/venue-reveal/reveal-party-venue";
+import { hasRevealFired, isNightSecret } from "@/lib/venue-reveal/venue-disclosure";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Quali esiti della rivelazione tardiva lasciano **chi ha pagato senza
+ * l'indirizzo**.
+ *
+ * Un `Record` **totale** e non una lista di tre nomi, per la stessa ragione per
+ * cui `REPORTABLE_FAILURE` nel cron lo e': una lista risponde alla domanda di
+ * oggi e tace su un esito futuro, che sarebbe semplicemente assente — e assente
+ * qui significa **nessuna traccia**, cioe' una persona che ha pagato, non ha
+ * ricevuto l'indirizzo, e di cui nessuno sa niente. Totale, un esito nuovo e' un
+ * errore di compilazione finche' qualcuno non dichiara da che parte sta.
+ *
+ * Due esiti valgono `false` e i due `false` non hanno la stessa ragione:
+ *
+ *   `none`           — almeno una mail e' partita. Su questa strada il
+ *                      destinatario e' uno, quindi «almeno una» e' «la sua».
+ *   `reveal_not_due` — non era dovuto niente. Il cron ci arrivera'.
+ *
+ * `no_recipients` vale **`true` qui e `false` nel cron**, e la divergenza e'
+ * deliberata. Nel cron significa *«questa serata e' gia' stata servita»*, che e'
+ * lo stato di regime. Qui non puo' significare quello: i biglietti sono nati in
+ * questa stessa consegna con `venue_reveal_sent = false`, e il ramo si
+ * raggiunge una volta sola per ordine (la seconda consegna esce su
+ * `status = 'completed'`). Zero destinatari vuol dire quindi che **chi ha appena
+ * pagato non e' stato visto da chi spedisce** — un'assenza da dire, non uno
+ * stato di regime.
+ */
+const SENZA_INDIRIZZO: Record<VenueRevealFailureKind, boolean> = {
+  none: false,
+  reveal_not_due: false,
+  no_recipients: true,
+  send_failed: true,
+  recipients_unavailable: true,
+  party_not_found: true,
+};
+
+/**
+ * La faccia del fallimento della rivelazione tardiva, su una superficie che
+ * qualcuno guarda.
+ *
+ * ── Perche' non `email_deliveries`, che sarebbe stato il posto ovvio ─────────
+ *
+ * Quel registro **non puo' contenere un invio mai partito**, misurato due volte
+ * — dalla migration (`20260822130000_email_delivery_ledger.sql:64`,
+ * `provider_message_id text NOT NULL UNIQUE`) e dal catalogo vivo, dove le
+ * colonne obbligatorie sono sei e quella e' fra loro. E i quattro valori di
+ * `outcome` presuppongono tutti che un invio sia partito: nessuno puo' dire
+ * *«non e' mai stata tentata»*. Servirebbero due modifiche di schema.
+ *
+ * ── Lo strappo semantico, dichiarato invece che nascosto ────────────────────
+ *
+ * **`error_message` ha sempre voluto dire «perche' l'ordine e' fallito», e qui
+ * la si scrive su una riga che NON e' fallita.** `status` resta `completed` e
+ * non e' un dettaglio: i biglietti esistono, il denaro e' buono, il codice QR
+ * apre la porta. Portare l'ordine a `failed` sarebbe falso su entrambe le
+ * superfici che lo leggono, e direbbe a chi lavora la serata di richiamare una
+ * persona per un biglietto che invece ha.
+ *
+ * E' anche il motivo per cui la superficie disegna questi ordini in un insieme
+ * **separato** dai falliti — vedi
+ * `src/app/(admin)/admin/(work)/events/[id]/tickets/page.tsx`. Fusi, chi legge
+ * non saprebbe piu' se «errore» voglia dire *nessun biglietto* o *nessun
+ * indirizzo*: sono due telefonate diverse a due persone diverse.
+ *
+ * Scriverlo nel `COMMENT` della colonna richiederebbe una migration. Si scrive
+ * quindi **nel codice che la scrive e in quello che la legge**, in entrambi.
+ */
+async function segnaAssenza(
+  supabase: SupabaseClient,
+  orderId: string,
+  cause: string,
+  detail: string
+): Promise<void> {
+  console.error(`[tickets.order_${cause}] order=${orderId} ${detail}`);
+
+  const { error } = await supabase
+    .from("ticket_orders")
+    .update({
+      // `status` NON compare in questo aggiornamento, ed e' l'intero punto.
+      error_message: `${cause}: ${detail}`.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    // Il fallimento del fallimento. Non c'e' un terzo posto dove scriverlo, e
+    // va detto invece che nascosto: se questa riga compare, esiste una persona
+    // che ha pagato, non sa dove andare, e **nessuna superficie lo mostra**.
+    console.error(
+      `[tickets.order_reveal_gap_unrecordable] order=${orderId} ${redactDbError(error)}`
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -254,7 +353,11 @@ export async function POST(request: Request) {
     const { data: ticketOrder } = await supabase
       .from("ticket_orders")
       .select(
-        "id, status, buyer_email, user_id, total_amount, quantity, event_id"
+        // `party_id` e' aggiunto dal passo 7: la rivelazione e' **per serata**,
+        // e senza questa colonna il ramo tardivo non saprebbe quale stato
+        // temporale interrogare. Nullabile nello schema — un ordine di evento —
+        // e il passo 7 dichiara cosa fa in quel caso invece di presumerlo.
+        "id, status, buyer_email, user_id, total_amount, quantity, event_id, party_id"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
@@ -370,7 +473,12 @@ export async function POST(request: Request) {
       // `approved_via`, che le fasi 50/51 stanno smontando. La forma e' quella
       // di `src/lib/guest-list/process-entry.ts:176`, spostata sull'oggetto che
       // sopravvive alla milestone.
-      const { error: orderRpcError } = await supabase.rpc(
+      // `data` e' l'insieme degli id emessi — la RPC e' `RETURNS SETOF uuid`.
+      // Serve al passo 7, ed e' l'unica lista che restringe la mail
+      // dell'indirizzo ai biglietti di QUESTO ordine: leggerli con una seconda
+      // query per `order_id` darebbe lo stesso insieme oggi e un insieme diverso
+      // il giorno in cui qualcosa scrivesse `order_id` altrove.
+      const { data: idsEmessi, error: orderRpcError } = await supabase.rpc(
         "reserve_ticket_order",
         {
           p_order_id: ticketOrder.id,
@@ -449,6 +557,187 @@ export async function POST(request: Request) {
         console.error(
           "Webhook: order confirmation email failed (non-blocking)",
           orderEmailError
+        );
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // 7. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA
+      // ═══════════════════════════════════════════════════════════════════════
+      //
+      // ── Il buco che questa fase apre, e che si chiude qui ──────────────────
+      //
+      // `api/cron/venue-reveal/route.ts` dichiara la regola: chi compra DOPO la
+      // rivelazione legge l'indirizzo sulla pagina del proprio biglietto e non
+      // riceve nessuna mail. Quella pagina fa `auth.getUser()` e rimbalza a
+      // `/login`: **per un ospite che non ha mai scelto una password non
+      // esiste, quindi non esiste nessun indirizzo. Ha pagato e non sa dove
+      // andare.**
+      //
+      // `D-49-04`: l'indirizzo gli arriva **per mail**, invece di costruire una
+      // superficie che lo mostri. Il segreto resta largo esattamente com'e'
+      // oggi — la credenziale del biglietto non diventa una chiave verso
+      // l'indirizzo.
+      //
+      // ── Il caso ORDINARIO qui e' non fare niente ───────────────────────────
+      //
+      // Quasi tutti comprano PRIMA della finestra. Per loro questo blocco esce
+      // senza spedire e senza marcare, e non e' un errore: la rivelazione
+      // arrivera' dal cron, per tutti insieme, come e' sempre stato.
+      //
+      // ── Cosa questo blocco NON tocca ───────────────────────────────────────
+      //
+      // La guardia **per serata** — quella che il cron alza quando almeno una
+      // mail e' partita — non compare in questo file in nessun ramo. E' per
+      // serata e non per acquirente: alzata da qui direbbe al cron che una
+      // serata e' fatta mentre quasi tutti non hanno ricevuto niente.
+      //
+      // ── E il denaro non dipende da questo ──────────────────────────────────
+      //
+      // `ticketing-payments.md`, gate *soldi vs contenuto*: una scrittura di
+      // contenuto che fallisce non aborta il percorso del pagamento. Ma qui il
+      // fallimento e' **una persona che ha pagato e non sa dove andare**, ed e'
+      // il verso in cui `venue-secrecy.md` dice che *arrivare tardi e' grave
+      // quanto arrivare in anticipo*. Percio' non basta loggarlo: lascia una
+      // traccia su una superficie che qualcuno guarda — vedi `segnaAssenza`.
+      try {
+        const ticketIdsOrdine = Array.isArray(idsEmessi)
+          ? (idsEmessi as unknown[]).filter(
+              (v): v is string => typeof v === "string"
+            )
+          : [];
+
+        if (!ticketOrder.party_id) {
+          // Un ordine di EVENTO, senza serata nominata. La rivelazione e' per
+          // serata: da qui non si sceglie a quale delle N serate spedire, e
+          // sceglierne una sarebbe inventare. Non e' coperto, ed e' scritto nel
+          // referto come tale invece di sembrarlo. Oggi la strada d'acquisto
+          // ospite pretende una serata (`purchaseTicketsGuest`, `partyId:
+          // string`), quindi questo ramo non e' raggiungibile da li'.
+          console.error(
+            `[tickets.order_reveal_no_party] order=${ticketOrder.id} ordine di evento: la rivelazione tardiva non e' coperta`
+          );
+        } else if (ticketIdsOrdine.length === 0) {
+          // I biglietti esistono — la RPC non ha dato errore — ma i loro id non
+          // sono arrivati. Senza la lista non si spedisce **niente**: una
+          // chiamata senza restrizione raggiungerebbe tutta la serata, e questa
+          // e' esattamente la differenza fra tacere e pubblicare un indirizzo.
+          await segnaAssenza(
+            supabase,
+            ticketOrder.id,
+            "reveal_ids_missing",
+            "la riserva non ha restituito gli id dei biglietti"
+          );
+        } else {
+          // La serata, con i cinque campi che il predicato pretende piu' quelli
+          // che compongono il messaggio. Gli stessi che legge il cron.
+          const { data: serata, error: serataError } = await supabase
+            .from("event_parties")
+            .select(
+              "id, title, date, time, venue_secret, venue_reveal_hours, venue_revealed_at, venue_text, event_id, events(title, slug), venues(name, address)"
+            )
+            .eq("id", ticketOrder.party_id)
+            .single();
+
+          if (serataError || !serata) {
+            // *Default chiuso*: uno stato non determinabile non e' uno stato
+            // vuoto. Non si spedisce, e si lascia la traccia — perche' se la
+            // rivelazione era gia' scattata questa persona resta senza
+            // indirizzo e nessun'altra strada la raggiunge.
+            await segnaAssenza(
+              supabase,
+              ticketOrder.id,
+              "reveal_night_unreadable",
+              serataError ? redactDbError(serataError) : "nessuna riga"
+            );
+          } else {
+            const night = {
+              venueSecret: serata.venue_secret,
+              partyDate: serata.date,
+              partyTime: serata.time,
+              venueRevealHours: serata.venue_reveal_hours,
+              venueRevealedAt: serata.venue_revealed_at,
+            };
+
+            // ── LA DECISIONE, IMPORTATA E MAI RISCRITTA ───────────────────
+            //
+            // `venue-disclosure.ts` e' l'unica casa di questa decisione. Due
+            // espressioni per una decisione divergono, e qui divergere pubblica
+            // un indirizzo (`venue-secrecy.md`). Non c'e' nessun confronto su
+            // `venue_secret` ne' su `venue_revealed_at` in questo file.
+            //
+            // La segretezza e' il primo termine perche' su una serata non
+            // segreta **nessuna mail d'indirizzo e' mai stata dovuta**: il
+            // luogo sta gia' sulla pagina pubblica, e spedirla sarebbe un
+            // percorso di posta nuovo per serate che non ne hanno mai avuto
+            // uno. E' lo stesso insieme che il cron seleziona.
+            if (!isNightSecret(night.venueSecret)) {
+              // Non dovuto. Nessun log: e' il funzionamento normale della
+              // stragrande maggioranza delle serate.
+            } else if (!hasRevealFired(night)) {
+              // Non dovuto, e **non e' un fallimento**: e' il caso ordinario.
+              // La rivelazione arrivera' dal cron, per tutti insieme.
+            } else {
+              const evento = serata.events as unknown as {
+                title: string;
+                slug: string;
+              };
+              const luogo = serata.venues as unknown as {
+                name: string;
+                address: string | null;
+              } | null;
+
+              // UNA chiamata per ORDINE, non una per biglietto: tutti i
+              // biglietti di un ordine hanno lo stesso acquirente e lo stesso
+              // indirizzo di posta, e il modulo deduplica per indirizzo — sei
+              // biglietti sono un destinatario e una mail.
+              //
+              // La restrizione ai biglietti di quest'ordine non e' una
+              // cortesia del chiamante: e' un campo obbligatorio di un
+              // argomento obbligatorio, e senza di esso questa chiamata **non
+              // compila**. Lo stesso vale per lo stato della serata, che e'
+              // cio' che impedisce di spedire in anticipo.
+              const esito = await revealPartyVenueForOrder(
+                supabase,
+                {
+                  id: serata.id,
+                  event_id: serata.event_id,
+                  title: serata.title,
+                  date: serata.date,
+                  time: serata.time,
+                  venue_text: serata.venue_text,
+                  event: evento,
+                  venue: luogo,
+                },
+                { night, onlyTicketIds: ticketIdsOrdine }
+              );
+
+              if (SENZA_INDIRIZZO[esito.failureKind]) {
+                await segnaAssenza(
+                  supabase,
+                  ticketOrder.id,
+                  `reveal_${esito.failureKind}`,
+                  `serata ${serata.id}, destinatari ${esito.recipientsTotal}, ` +
+                    `spediti ${esito.recipientsSent}, ritentabile ${esito.retryOutlook}`
+                );
+              }
+            }
+          }
+        }
+      } catch (revealError) {
+        // ── IL RAMO CHE IL PIANO CHIAMA [BLOCKING] ────────────────────────
+        //
+        // Un'eccezione **prima** che esista una riga nel registro delle
+        // consegne: errore di rete, campo della serata illeggibile, template
+        // che solleva. In quel ramo non esiste nessun'altra superficie umana, e
+        // questo progetto non ha error tracking — un `console.error` non
+        // raggiunge nessuno da solo.
+        await segnaAssenza(
+          supabase,
+          ticketOrder.id,
+          "reveal_threw",
+          revealError instanceof Error
+            ? revealError.message
+            : String(revealError)
         );
       }
 

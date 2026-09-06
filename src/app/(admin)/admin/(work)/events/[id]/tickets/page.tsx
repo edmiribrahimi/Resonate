@@ -477,6 +477,43 @@ export default async function TicketTiersPage({ params }: PageProps) {
       adesso - new Date(o.created_at).getTime() > FINESTRA_PENDING_MS
   );
 
+  // ── IL TERZO INSIEME: PAGATI, INDIRIZZO NON PARTITO (fase 49, piano 09) ────
+  //
+  // ── Lo strappo semantico, dichiarato qui come nel codice che scrive ────────
+  //
+  // `error_message` ha sempre voluto dire **«perche' l'ordine e' fallito»**, e
+  // queste righe **non sono fallite**: `status` e' `completed`, i biglietti
+  // esistono, il denaro e' buono, il codice QR apre la porta. Cio' che manca e'
+  // l'indirizzo di una serata segreta, per chi ha comprato **dopo** che la
+  // rivelazione era gia' scattata — l'unico ramo in cui quella mail e' l'unica
+  // strada, perche' la pagina del biglietto rimanda al login e un ospite non ha
+  // una password.
+  //
+  // Il commento sulla colonna direbbe questo, ma cambiarlo e' una migration.
+  // Sta quindi scritto **in entrambi i posti che la toccano**: qui, che la
+  // legge, e in `src/app/api/webhooks/sumup/route.ts` (`segnaAssenza`), che la
+  // scrive.
+  //
+  // ── PERCHE' SEPARATO E NON FUSO CON I FALLITI ─────────────────────────────
+  //
+  // Fusi, chi legge non saprebbe piu' se «errore» voglia dire *nessun
+  // biglietto* o *nessun indirizzo* — e sono **due telefonate diverse a due
+  // persone diverse**: alla prima si dice che non ha niente, alla seconda dove
+  // andare. Un insieme solo trasformerebbe la riga che grida in una riga da
+  // interpretare.
+  //
+  // ── E PERCHE' NESSUNA ALTRA SUPERFICIE LO MOSTREREBBE ─────────────────────
+  //
+  // Il pannello della rivelazione conta *«N non ancora raggiunti»* con lo stesso
+  // limite temporale che il cron usa: su una serata rivelata **a mano**, chi ha
+  // comprato dopo e' escluso da quel conteggio. Il pannello direbbe *zero
+  // rimasti* mentre una persona che ha pagato non sa dove andare. Questa
+  // sezione e' la sola che lo dice.
+  const ordiniIndirizzoNonPartito = (ordini ?? []).filter(
+    (o: { status: string; error_message: string | null }) =>
+      o.status === "completed" && Boolean(o.error_message)
+  );
+
   // ── L'esito della mail d'ordine, e perche' si legge PER ORDINE ─────────────
   //
   // La conferma d'ordine e' **una** mail per N biglietti, e il registro la
@@ -737,6 +774,68 @@ export default async function TicketTiersPage({ params }: PageProps) {
                       whether it was paid — an abandoned cart looks exactly like
                       this. Check the checkout on SumUp before treating it as a
                       problem.
+                    </p>
+                  </Card>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+        {/*
+          ── PAGATI, INDIRIZZO NON PARTITO ────────────────────────────────────
+
+          Sezione **propria**, non una voce in piu' dentro «Orders without
+          tickets»: quel titolo sarebbe falso qui, perche' questi ordini i
+          biglietti ce li hanno. Cio' che manca e' il luogo.
+
+          Si disegna solo quando ha qualcosa dentro, come le altre due.
+        */}
+        {ordiniIndirizzoNonPartito.length > 0 && (
+          <div className="space-y-4">
+            <SectionHeading>
+              Paid, address never sent ({ordiniIndirizzoNonPartito.length})
+            </SectionHeading>
+
+            <div className="space-y-3">
+              {ordiniIndirizzoNonPartito.map(
+                (o: {
+                  id: string;
+                  buyer_email: string;
+                  quantity: number;
+                  total_amount: number;
+                  error_message: string | null;
+                }) => (
+                  <Card key={o.id}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                      <p className="text-sm font-semibold text-ink">
+                        {o.buyer_email}
+                      </p>
+                      {/* The money mark — D-41.1-13. */}
+                      <p className="text-sm font-semibold text-ink">
+                        {formatPrice(o.total_amount)}
+                      </p>
+                    </div>
+                    {/*
+                      La frase dice ESATTAMENTE cosa c'e' e cosa manca, perche'
+                      e' l'opposto della sezione qui sopra e confonderle e' il
+                      danno: qui il biglietto esiste e apre la porta.
+
+                      E dice anche **cosa fare**, senza scriverlo qui: il
+                      rimedio e' il bottone della rivelazione sulla pagina della
+                      serata, non un indirizzo copiato in una chat — e questa
+                      pagina, che chiunque organizzi apre, non e' un posto dove
+                      stampare il luogo di una serata segreta.
+                    */}
+                    <p className="text-xs font-medium text-sem-crit">
+                      Paid, {o.quantity === 1 ? "1 ticket" : `${o.quantity} tickets`}{" "}
+                      issued and valid — but the venue address never reached
+                      them. They can get in and do not know where to go. Send it
+                      from the night&apos;s reveal panel, before the night.
+                    </p>
+                    <p className="mt-1 break-words text-xs text-muted">
+                      {o.error_message ??
+                        "No cause recorded — that is itself the problem."}
                     </p>
                   </Card>
                 )
