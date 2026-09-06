@@ -83,6 +83,20 @@ type ServiceClient = ReturnType<typeof getServiceClient>;
 /** Il minimo che il fornitore di pagamento accetta, in euro. */
 const SUMUP_MINIMUM_EUR = 1.0;
 
+/**
+ * La forma di un uuid, controllata **prima** di mandarlo a PostgREST.
+ *
+ * Non e' una difesa contro un'iniezione — un filtro `.eq(...)` e' gia' un
+ * parametro — ma contro un **rifiuto della categoria sbagliata**: un id
+ * malformato fa fallire la query con `22P02`, e quel fallimento cadrebbe nel
+ * ramo *non si e' potuto rispondere*, che dice a chi legge «riprova fra un
+ * momento» per una cosa che non funzionera' mai. Il terzo membro non si fonde
+ * mai con il *no* (`money-path.ts:71-80`), e questo e' il caso in cui il *no* si
+ * travestirebbe da esso.
+ */
+const UUID_SHAPE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // I rifiuti
 //
@@ -272,6 +286,21 @@ export async function buildOrderQuote(
   //    Il confronto col tetto arriva dopo la serata, perche' il tetto e' suo.
   if (!Number.isInteger(quantity) || quantity < 1) {
     return refuse(QUOTE_QUANTITY_INVALID);
+  }
+
+  // 1-bis. Gli identificativi, per forma. Vedi {@link UUID_SHAPE}: senza, un id
+  //        malformato diventa un `22P02` e viene raccontato come «riprova».
+  if (typeof partyId !== "string" || !UUID_SHAPE.test(partyId)) {
+    return refuse(QUOTE_NIGHT_NOT_FOUND);
+  }
+  if (typeof tierId !== "string" || !UUID_SHAPE.test(tierId)) {
+    return refuse(QUOTE_TIER_NOT_FOUND);
+  }
+  if (
+    input.discountCodeId != null &&
+    (typeof input.discountCodeId !== "string" || !UUID_SHAPE.test(input.discountCodeId))
+  ) {
+    return refuse(QUOTE_DISCOUNT_UNKNOWN);
   }
 
   // 2. La serata. Nessuna colonna del luogo, e non c'e' bisogno di fidarsi del
