@@ -346,3 +346,44 @@ esce 1 su ogni albero, e **un rosso permanente e' il modo in cui un aggregato
 smette di essere letto**. Chi lancia il comando dopo questo piano deve poter
 distinguere questo rosso da uno nuovo: il criterio e' il nome dei due file e
 delle due righe qui sopra.
+
+## D-49-08-DEF-09 — il rosso di `verify:touch-targets` sono TRE elementi, non due, e il terzo e' una mail
+
+**Trovato:** 2026-09-06, piano 49-08, eseguendo `npm run verify` per il task 3.
+La voce `D-49-06-DEF-08` qui sopra ne dichiara **due** e nomina il criterio con
+cui distinguere questo rosso da uno nuovo. **Il criterio non regge piu': gli
+elementi sono tre**, e chi lo applicasse alla lettera leggerebbe il terzo come
+un rosso nuovo, oppure — peggio — leggerebbe l'intero blocco come «gia' noto» e
+non guarderebbe.
+
+| File:riga | Elemento | Entrato con |
+|---|---|---|
+| `src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx:689` | `<button>` | fase 47 (gia' in `DEF-08`) |
+| `src/app/(public)/events/[slug]/menu/GuestTokenDisplay.tsx:702` | `<button>` | fase 47 (gia' in `DEF-08`) |
+| **`src/emails/ticket-order.tsx:231`** | **`<a href={ticket.url}>`** | **`ee115a8`, piano 49-05** |
+
+Il terzo e' stato attribuito misurando — `git log -S'href={ticket.url}'` — non
+dedotto dalla data.
+
+**Perche' non si ripara qui.** Stessa regola di perimetro di `DEF-08`: il piano
+49-08 non ha `src/emails/**` nel proprio perimetro, e i suoi tre commit non
+toccano quel file.
+
+**Ma questo terzo non e' della stessa specie degli altri due, e la differenza
+va guardata da chi lo chiudera'.** Gli altri due sono controlli in una pagina.
+Questo e' un collegamento **dentro una mail**: il minimo di 44px nasce da un
+dito su uno schermo, e un client di posta non e' un browser di questo prodotto —
+`min-h-11` e' una classe Tailwind che **nessun client di posta applica**, perche'
+una mail viaggia con stili inline. Quindi la riparazione non e' la stessa
+riparazione: o e' `padding` inline sull'ancora, o e' una **decisione sul
+perimetro del gate**, cioe' se `src/emails/**` debba essere spazzato da un
+controllo scritto per superfici HTML dell'app.
+
+**Nessuna delle due si prende di passaggio**, ed e' la ragione per cui questa
+voce e' una domanda registrata e non un fix. Chi la chiude decide **prima** quale
+delle due e' la strada, e poi la scrive.
+
+**Conseguenza sull'aggregato, aggiornata:** `npm run verify` esce **1** anche
+sull'albero del piano 49-08, per **tre** elementi in **due** file che questo
+piano non tocca. Nessun rosso nuovo e' stato introdotto: i tre sono gli stessi
+prima e dopo i suoi commit.

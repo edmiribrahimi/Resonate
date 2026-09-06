@@ -106,6 +106,16 @@ interface SubEventFormState {
   venue_reveal_on_purchase: boolean;
   access_type: AccessType;
   capacity: string;
+  /**
+   * Quanti biglietti puo' contenere UN ORDINE su questa serata — `BUY-02`.
+   *
+   * Stringa, come ogni numero nello stato di questo modulo. **Vuota significa
+   * «lascia com'e'», mai `null`**: la colonna e' `integer NOT NULL DEFAULT 6`
+   * proprio per avere una casa sola per il numero, e scrivere `null` violerebbe
+   * il vincolo. Un campo lasciato in bianco non e' una scelta dell'operatore:
+   * e' l'assenza di una scelta.
+   */
+  max_tickets_per_order: string;
   sort_order: number;
   format_id: string;
   series_id: string;
@@ -131,6 +141,7 @@ function defaultSubEvent(sortOrder: number): SubEventFormState {
     venue_reveal_on_purchase: true,
     access_type: "paid",
     capacity: "",
+    max_tickets_per_order: "",
     sort_order: sortOrder,
     format_id: "",
     series_id: "",
@@ -156,6 +167,16 @@ export interface PartyInitialData {
   venue_reveal_on_purchase: boolean;
   access_type: AccessType;
   capacity: number | null;
+  /**
+   * `number | null` e non `number`, benche' la colonna sia `NOT NULL`.
+   *
+   * Nessun client Supabase di questo repository e' parametrizzato con
+   * `Database`: una colonna assente da una `select` arriva `undefined` senza
+   * rumore. Dichiararla `number` direbbe al lettore che il valore c'e' sempre,
+   * e la prima `select` che dimenticasse la colonna trasformerebbe un tetto in
+   * un campo vuoto **senza che niente si accorga**.
+   */
+  max_tickets_per_order: number | null;
   sort_order: number;
   format_id: string | null;
   series_id: string | null;
@@ -221,6 +242,7 @@ function subEventFromInitial(p: PartyInitialData): SubEventFormState {
     venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity?.toString() ?? "",
+    max_tickets_per_order: p.max_tickets_per_order?.toString() ?? "",
     sort_order: p.sort_order,
     format_id: p.format_id ?? "",
     series_id: p.series_id ?? "",
@@ -347,6 +369,11 @@ export default function EventForm({
   );
   const [mainCapacity, setMainCapacity] = useState(
     isMainEventParty && singleParty.capacity ? singleParty.capacity.toString() : ""
+  );
+  const [mainMaxTicketsPerOrder, setMainMaxTicketsPerOrder] = useState(
+    isMainEventParty && singleParty.max_tickets_per_order
+      ? singleParty.max_tickets_per_order.toString()
+      : ""
   );
 
   // Format, series and number for the single-night path. The Event Details
@@ -548,6 +575,16 @@ export default function EventForm({
           venue_reveal_on_purchase: se.venue_secret ? se.venue_reveal_on_purchase : true,
           access_type: se.access_type,
           capacity: se.capacity ? parseInt(se.capacity, 10) : null,
+          // VUOTO NON E' `null`, ed e' la differenza che questa riga esiste per
+          // tenere. `capacity` sopra manda `null` perche' li' il vuoto e' uno
+          // stato reale — *nessun tetto di capienza*. Qui la colonna e'
+          // `NOT NULL DEFAULT 6`: `null` verrebbe rifiutato dal database, e uno
+          // `0` coercito cambierebbe chi entra in una stanza. Vuoto viaggia come
+          // `undefined`, che significa «lascia com'e'» e in creazione lascia
+          // parlare il default della colonna — la casa sola per il numero.
+          max_tickets_per_order: se.max_tickets_per_order
+            ? parseInt(se.max_tickets_per_order, 10)
+            : undefined,
           sort_order: index,
           format_id: se.format_id,
           series_id: se.series_id,
@@ -583,6 +620,11 @@ export default function EventForm({
           venue_reveal_on_purchase: venueSecret ? mainVenueRevealOnPurchase : true,
           access_type: mainAccessType,
           capacity: mainCapacity ? parseInt(mainCapacity, 10) : null,
+          // Stessa regola del percorso a piu' serate sopra: vuoto e' `undefined`,
+          // mai `null` e mai `0`.
+          max_tickets_per_order: mainMaxTicketsPerOrder
+            ? parseInt(mainMaxTicketsPerOrder, 10)
+            : undefined,
           sort_order: 0,
           format_id: mainFormatId,
           series_id: mainSeriesId,
@@ -1227,6 +1269,33 @@ export default function EventForm({
           placeholder="Leave empty for unlimited"
           min={1}
         />
+
+        {/*
+          ── IL TETTO PER SERATA — `BUY-02` ────────────────────────────────────
+
+          La frase accanto dice **per ordine, non per persona**, e la dice qui
+          perche' e' qui che qualcuno decide il numero. La stessa riga sta nel
+          `COMMENT` della colonna, dove pero' la legge solo chi apre una
+          migration: sei ordini da sei sono trentasei biglietti, e chi credesse
+          di aver messo un limite per persona avrebbe messo un limite che non
+          esiste.
+
+          Il segnaposto dichiara il default invece di precompilarlo: un campo
+          precompilato con 6 farebbe scrivere 6 a ogni salvataggio, e il numero
+          smetterebbe di avere una casa sola.
+        */}
+        <Input
+          id={`${idPrefix}-max-tickets-per-order`}
+          label="Tickets per order"
+          type="number"
+          value={subEvent.max_tickets_per_order}
+          onChange={(e) =>
+            updateSubEvent(index, "max_tickets_per_order", e.target.value)
+          }
+          placeholder="Leave empty for the default (6)"
+          min={1}
+          hint="Per ordine, non per persona: la stessa persona puo' fare piu' ordini."
+        />
       </Card>
     );
   }
@@ -1544,6 +1613,18 @@ export default function EventForm({
             onChange={(e) => setMainCapacity(e.target.value)}
             placeholder="Leave empty for unlimited"
             min={1}
+          />
+
+          {/* Il tetto per ordine — stessa riga del percorso a piu' serate. */}
+          <Input
+            id="main-max-tickets-per-order"
+            label="Tickets per order"
+            type="number"
+            value={mainMaxTicketsPerOrder}
+            onChange={(e) => setMainMaxTicketsPerOrder(e.target.value)}
+            placeholder="Leave empty for the default (6)"
+            min={1}
+            hint="Per ordine, non per persona: la stessa persona puo' fare piu' ordini."
           />
         </Card>
       )}

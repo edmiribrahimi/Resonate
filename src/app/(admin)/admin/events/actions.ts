@@ -82,6 +82,16 @@ interface PartyInput {
   venue_reveal_on_purchase?: boolean;
   access_type: AccessType;
   capacity?: number | null;
+  /**
+   * `BUY-02` — quanti biglietti puo' contenere UN ORDINE su questa serata.
+   *
+   * **Opzionale, e mai `null`.** La colonna e' `integer NOT NULL DEFAULT 6` con
+   * `CHECK (> 0)`: `undefined` significa *«il modulo non ha espresso un
+   * valore»*, e allora la chiave non entra nella scrittura — in creazione parla
+   * il default della colonna, in aggiornamento resta il valore che c'era. E'
+   * l'opposto di `capacity`, dove il vuoto e' uno stato reale.
+   */
+  max_tickets_per_order?: number;
   sort_order: number;
   /** FMT-01. `NOT NULL` in the database — a night cannot be saved without one. */
   format_id: string;
@@ -499,6 +509,37 @@ function validateEventData(formData: FormData) {
       }
       party.capacity = cap;
     }
+    // ── Il tetto per ordine, validato PRIMA che lo veda il database ───────────
+    //
+    // Il `CHECK (max_tickets_per_order > 0)` e' l'ultima parola, e resta tale.
+    // Ma un vincolo violato torna a chi organizza come un messaggio grezzo di
+    // Postgres — `new row for relation "event_parties" violates check
+    // constraint …` — che non dice quale campo, quale serata, ne' cosa fare.
+    // Due rifiuti e non uno, perche' sono due errori diversi: un valore che non
+    // e' un numero intero, e un numero che non ammette nessuno.
+    //
+    // **Il valore si tratta come una decisione su chi entra in una stanza**, non
+    // come una preferenza. Un tetto a 0 chiude la vendita di una serata senza
+    // dire di averla chiusa; le sedi in target stanno fra 150 e 300 persone, e
+    // dopo il perno il biglietto e' l'unica cosa che regola chi entra.
+    if (party.max_tickets_per_order !== undefined && party.max_tickets_per_order !== null) {
+      const perOrder = Number(party.max_tickets_per_order);
+      if (!Number.isInteger(perOrder)) {
+        throw new Error("Tickets per order must be a whole number.");
+      }
+      if (perOrder < 1) {
+        throw new Error(
+          "Tickets per order must be at least 1. Zero would stop this night selling without saying so — " +
+            "to close sales, unpublish the event or remove its tiers."
+        );
+      }
+      party.max_tickets_per_order = perOrder;
+    } else {
+      // Normalizzato a `undefined` in modo esplicito: un `null` arrivato dal
+      // modulo non deve poter raggiungere una colonna `NOT NULL` per il solo
+      // fatto che nessuno lo ha guardato.
+      delete party.max_tickets_per_order;
+    }
     // Ensure lineup is an array
     if (party.lineup && !Array.isArray(party.lineup)) {
       party.lineup = [];
@@ -769,6 +810,14 @@ export async function createEvent(formData: FormData): Promise<EventWriteResult>
     venue_reveal_on_purchase: p.venue_reveal_on_purchase ?? true,
     access_type: p.access_type,
     capacity: p.capacity ?? null,
+    // La chiave entra SOLO se il modulo ha espresso un valore. Assente, parla il
+    // `DEFAULT 6` della colonna — che e' l'unica casa del numero. Scriverlo qui
+    // con un `?? 6` gliene darebbe una seconda, e due case per un numero sono
+    // due verita' che prima o poi divergono (il `COMMENT` della colonna lo dice
+    // citando `venue_reveal_hours` come contro-esempio).
+    ...(p.max_tickets_per_order !== undefined
+      ? { max_tickets_per_order: p.max_tickets_per_order }
+      : {}),
     sort_order: p.sort_order,
     format_id: p.format_id,
     series_id: p.series_id,
@@ -1025,6 +1074,13 @@ export async function updateEvent(
       venue_reveal_on_purchase: party.venue_reveal_on_purchase ?? true,
       access_type: party.access_type,
       capacity: party.capacity ?? null,
+      // Come in creazione: assente significa **«lascia com'e'»**, e su un
+      // aggiornamento e' la differenza fra non toccare un tetto e azzerarlo.
+      // Ogni altro campo qui e' scritto sempre perche' il modulo li porta
+      // sempre; questo no, ed e' la ragione per cui e' l'unico condizionale.
+      ...(party.max_tickets_per_order !== undefined
+        ? { max_tickets_per_order: party.max_tickets_per_order }
+        : {}),
       sort_order: party.sort_order,
       format_id: party.format_id,
       series_id: party.series_id,

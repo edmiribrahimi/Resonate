@@ -219,7 +219,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   // one act behind. It never draws the button — see axis 3 of the docblock.
   const { data: parties } = await supabase
     .from("event_parties")
-    .select("id, title, description, date, time, end_time, menu_closes_at, venue_text, access_type, capacity, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, format_id, series_id, number, venues(name)")
+    .select("id, title, description, date, time, end_time, menu_closes_at, venue_text, access_type, capacity, max_tickets_per_order, sort_order, venue_id, lineup, venue_secret, venue_secret_hint, venue_reveal_hours, venue_reveal_on_purchase, venue_revealed_at, format_id, series_id, number, venues(name)")
     .eq("event_id", eventId)
     .order("sort_order", { ascending: true });
 
@@ -423,6 +423,13 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
                 venue_reveal_on_purchase: (p.venue_reveal_on_purchase as boolean) ?? true,
                 access_type: p.access_type as AccessType,
                 capacity: p.capacity as number | null,
+                // NON `?? 6`: il campo mostra cio' che la serata PORTA. Un
+                // fallback qui riempirebbe di 6 anche una serata la cui colonna
+                // non e' stata letta, e chi organizza leggerebbe come un fatto
+                // un numero che nessuno ha misurato. Vuoto e' la risposta
+                // giusta quando il valore non e' arrivato — e il segnaposto del
+                // campo dice comunque qual e' il default.
+                max_tickets_per_order: (p.max_tickets_per_order as number | null) ?? null,
                 sort_order: p.sort_order as number,
                 format_id: p.format_id as string | null,
                 series_id: p.series_id as string | null,
