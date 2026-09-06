@@ -107,7 +107,7 @@ riaperta qui. Cambia cosa significa sbagliare, e per questo la finestra conta.
 | 3 `membership_code_crypto` | 2026-09-06 14:26:05 | `20260906142605` / `membership_code_crypto` | si' — `pg_proc` (`prosecdef`, `proconfig`, `proacl`, `pg_get_functiondef`, `obj_description`) | **applicata** |
 | 4 `venue_reader_needs_a_ticket` | — | — | — | non ancora |
 | 5 `email_category_ticket_order` | — | — | — | non ancora |
-| **6** `reserve_ticket_service_only` | — | — | — | non ancora — **estensione del 2026-09-06** |
+| **6** `reserve_ticket_service_only` | 2026-09-06 14:39:08 | `20260906143908` | si' — `pg_proc.proacl`, tre sovraccarichi, prima e dopo | **applicata** |
 
 **Esaurita il:** — *(da scrivere quando l'ultima delle cinque e' applicata e
 riletta, o quando ci si ferma per un fallimento)*
