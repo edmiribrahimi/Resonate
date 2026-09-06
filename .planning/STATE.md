@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "SPECCHIO AUTOMATICO SBLOCCATO su rsnt il 2026-08-27 (decisione del proprietario) e deployato — commit edbd48e. Sono state TRE cose: la migration 20260827000000 che da' alla riga di registro le due eccezioni di stato PRIMA della cancellazione, --from-run sul rientro, e solo dopo MIRROR_RESTORE_PATH_VERIFIED=true + MIRRORED_TODAY.rsnt mirrored. Il cron non prendeva istantanea e la guardia era load-bearing: disarmarla da sola avrebbe lasciato un annullamento vivo senza via di ritorno. ⚠ LA PROVA CHE E' VIVO NON C'E' ANCORA: la prima corsa e' alle 08:30 UTC del 27/8, e va letta con `node scripts/check-first-mirror-run.mjs` — deve mostrare una riga rsnt con state_snapshot non nullo. ⚠ E SE PRODUCTION_CALENDAR_FEED_RSNT NON E' REGISTRATA SU VERCEL il cron rispondera' source_not_registered e non specchiera' nulla: e' l'unica cosa che resta al proprietario."
-last_updated: "2026-08-25T13:04:44.189Z"
-last_activity: 2026-08-25
+stopped_at: "FASE 49 ESEGUITA — undici piani su undici, 2026-09-06. Sei migration applicate in produzione sotto un'autorizzazione datata ora ESAURITA (registro in 49-AUTHORISATION.md); 2241 righe prima e 2241 dopo, ricontate dopo ognuna sull'insieme ri-derivato da pg_constraint. ⚠ DUE CHECKPOINT UMANI RESTANO APERTI e sono corretti cosi': 49-09 task 3 (sei passi, il sesto nato da un difetto trovato in esecuzione) e 49-11 task 2. ⚠ 52 PROCEDURE SCRITTE, ZERO ESEGUITE, ZERO ESEGUIBILI OGGI — e la causa NON e' l'autorizzazione esaurita: NON ESISTE UN DATABASE DI SVILUPPO. Un solo SUPABASE_URL in .env.local, nessun supabase/config.toml, quindi «si prova in sviluppo» significa `next dev` contro la produzione. E' il debito piu' economico della fase e sblocca 52 prove su 52. ⚠ MANCA ANCHE IL SOGGETTO: 0 biglietti, 0 ordini, 0 staff, 0 assegnazioni, 2 eventi pubblicati entrambi con data passata."
+last_updated: "2026-09-06T16:00:00.000Z"
+last_activity: 2026-09-06
 progress:
   total_phases: 51
-  completed_phases: 47
-  total_plans: 348
-  completed_plans: 349
+  completed_phases: 48
+  total_plans: 359
+  completed_plans: 360
   percent: 92
 ---
 
@@ -30,12 +30,36 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 58 — il-calendario-si-legge-come-lo-si-scrive
+**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA, verifica umana dovuta
 
 ## Current Position
 
-Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — EXECUTING
-Plan: 1 of 12
+Phase: 49 (comprare-senza-account) — **ESEGUITA il 2026-09-06**, undici piani su
+undici, contati dai SUMMARY su disco.
+
+**Cosa e' in produzione, e cosa no.** Le sei migration sono applicate e rilette
+dal catalogo. **Il codice non e' deployato**: 41+ commit in locale, nessun push.
+Produzione gira ancora il codice di prima con lo schema nuovo — che regge,
+perche' nessuna delle sei toglie qualcosa a cui il codice vecchio si appoggia,
+ma **e' uno stato da chiudere, non da lasciare**.
+
+**Due checkpoint umani aperti, ed e' lo stato giusto:** `49-09` task 3 (sei
+passi) e `49-11` task 2. Nessuno dei due e' stato simulato.
+
+**Il runbook della fase e' `49-RUNBOOK.md`: 691 righe, 52 procedure, zero
+eseguite.** Le tre da percorrere **prima del primo listing pubblico**, non a una
+fine astratta: il venue sulle superfici dell'ospite (una rivelazione non si
+annulla), `P-WH-1`/`P-WH-2`/`P-RES-1` prima che esista un incasso vero, e il
+passo 2.4 — biglietto comprato dopo lo scarico della lista, radio spenta, che
+con l'acquisto da ospite e' il caso **normale** e il cui fallimento e' un ospite
+valido respinto davanti a una fila.
+
+Phase: 58 (il-calendario-si-legge-come-lo-si-scrive) — chiusa in esecuzione,
+verifica `human_needed` (4 voci). **Lo specchio automatico e' VIVO**: prima corsa
+il 2026-09-06 alle 09:06 UTC, `state_snapshot` non nullo, una decisione
+catturata. Aveva rifiutato per nove notti perche' le tre variabili
+`PRODUCTION_CALENDAR_FEED_*` non erano registrate su Vercel — registrate il
+2026-09-05.
 **Milestone v1.6 aperta il 2026-08-19.** Roadmap scritta in
 `.planning/ROADMAP.md`: undici fasi (47..57), due binari — il perno («piattaforma, non
 community», decisione del proprietario del 2026-08-14) e l'impianto (undici voci
