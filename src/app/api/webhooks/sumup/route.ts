@@ -8,6 +8,9 @@ import { render } from "@react-email/render";
 import QRCode from "qrcode";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
 import { generateTicketToken } from "@/utils/qr";
+import { resolveGuestIdentity } from "@/lib/tickets/guest-identity";
+import { sendOrderConfirmation } from "@/lib/tickets/order-confirmation";
+import { redactDbError } from "@/lib/errors/redact";
 
 export async function POST(request: Request) {
   try {
@@ -200,6 +203,253 @@ export async function POST(request: Request) {
       } catch (emailError) {
         // Email failure should NOT cause webhook to fail
         console.error("Webhook: email send failed (non-blocking)", emailError);
+      }
+
+      return NextResponse.json({ received: true });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // === Ticket order handling — l'acquisto SENZA ACCOUNT (fase 49) ===
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // Il terzo ramo, e **i due sopra e sotto non sono stati toccati**: un
+    // percorso nuovo su un file che muove denaro si aggiunge, non si intreccia.
+    //
+    // ── E' QUI CHE UN INCASSO DIVENTA UN'IDENTITA' ─────────────────────────
+    //
+    // `49-CONTEXT.md`: l'account leggero nasce **al webhook**, non all'avvio del
+    // checkout. Nessun conto senza un pagamento verificato dietro — cioe'
+    // nessun account fantasma per ogni carrello abbandonato, e nessuna
+    // credenziale della porta in piu' al mondo per qualcuno che non ha comprato.
+    //
+    // ── DOVE STA L'IDEMPOTENZA, CHE E' LA PROPRIETA' CHE CONTA ─────────────
+    //
+    // La consegna at-least-once e' il disegno, non l'eccezione: SumUp ritenta.
+    // Questo ramo regge una seconda consegna in **quattro** punti indipendenti,
+    // e nessuno dei quattro e' scritto qui dentro per intero — e' voluto, perche'
+    // una guardia che vive solo nel codice del chiamante e' una guardia che si
+    // dimentica:
+    //
+    //   1. **Nello schema** — `ticket_orders.sumup_checkout_id` e' UNIQUE, e
+    //      `tickets.sumup_checkout_id` **non lo e' piu'**: il vincolo si e'
+    //      spostato apposta, cosi' una seconda consegna collide sull'ordine e
+    //      non su un biglietto. Letto dal catalogo il 2026-09-06.
+    //   2. **Qui sotto** — l'uscita su `status = 'completed'`, prima di tutto.
+    //   3. **Dentro la RPC** — che blocca la riga dell'ordine `FOR UPDATE` e, se
+    //      la trova gia' chiusa, **restituisce gli stessi id senza inserire**.
+    //      E' il punto che regge due consegne SIMULTANEE, che l'uscita al punto
+    //      2 non vedrebbe perche' nessuna delle due ha ancora chiuso l'ordine.
+    //   4. **Nell'identita' e nella posta** — `resolveGuestIdentity` cerca prima
+    //      di coniare e rilegge se la creazione fallisce; `sendOrderConfirmation`
+    //      guarda il registro delle consegne prima di spedire.
+    //
+    // ── E LO STATO `failed` NON E' UN VICOLO CIECO ─────────────────────────
+    //
+    // Un ordine portato a `failed` da un intoppo passeggero viene **ritentato**
+    // dalla consegna successiva: il ramo qui sotto esce solo su `completed`, e la
+    // RPC dichiara esplicitamente che `failed` non la blocca. E' la direzione
+    // giusta — chi ha pagato deve poter ricevere il biglietto al secondo giro —
+    // e resta dentro il gate *stato terminale monotono*, perche' la correzione
+    // va in avanti.
+    const { data: ticketOrder } = await supabase
+      .from("ticket_orders")
+      .select(
+        "id, status, buyer_email, user_id, total_amount, quantity, event_id"
+      )
+      .eq("sumup_checkout_id", checkout.id)
+      .single();
+
+    if (ticketOrder) {
+      // 1. L'USCITA IDEMPOTENTE, PRIMA DI TUTTO — stessa forma del ramo sopra.
+      if (ticketOrder.status === "completed") {
+        return NextResponse.json({ received: true });
+      }
+
+      // Un ordine che va a `failed` porta la causa **scritta sulla riga**, non
+      // solo in un log: questo progetto non ha error tracking, quindi un
+      // `console.error` non raggiunge nessun essere umano da solo. La riga e'
+      // cio' che la superficie dei venduti disegna (task 3), ed e' li' che un
+      // pagamento senza biglietti trova una faccia prima della serata.
+      const failOrder = async (cause: string, detail: string) => {
+        console.error(
+          `[tickets.order_${cause}] order=${ticketOrder.id} ${detail}`
+        );
+        const { error: markError } = await supabase
+          .from("ticket_orders")
+          .update({
+            status: "failed",
+            // Troncato: `error_message` finisce su uno schermo, e un messaggio
+            // di mezzo chilometro nasconde gli altri ordini invece di spiegare
+            // questo.
+            error_message: `${cause}: ${detail}`.slice(0, 500),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", ticketOrder.id);
+
+        if (markError) {
+          // Il fallimento del fallimento. Non c'e' un terzo posto dove
+          // scriverlo, e va detto invece che nascosto: se questa riga compare,
+          // esiste un incasso senza biglietti E senza una faccia.
+          console.error(
+            `[tickets.order_failure_unrecordable] order=${ticketOrder.id} ${redactDbError(markError)}`
+          );
+        }
+      };
+
+      // L'importo, confrontato con quello che il FORNITORE dice di aver preso.
+      //
+      // Non blocca, e la scelta e' deliberata: rifiutare i biglietti a chi ha
+      // pagato per una differenza di arrotondamento sarebbe il danno peggiore
+      // dei due (`checkin-offline.md`, l'asimmetria della porta). E' una spia,
+      // e come ogni riga di log **non e' un effetto osservabile** in un progetto
+      // senza error tracking — detto qui invece di lasciar credere il contrario.
+      if (
+        typeof checkout.amount === "number" &&
+        Math.round(checkout.amount * 100) !==
+          Math.round(Number(ticketOrder.total_amount) * 100)
+      ) {
+        console.error(
+          `[tickets.order_amount_mismatch] order=${ticketOrder.id} ` +
+            `checkout=${checkout.amount} ordine=${ticketOrder.total_amount}`
+        );
+      }
+
+      const orderTransactionCode =
+        checkout.transactions?.[0]?.transaction_code || null;
+
+      // 2. L'IDENTITA'.
+      //
+      // Se l'ordine ha gia' un portatore non se ne cerca un altro: e' il caso di
+      // una seconda consegna arrivata dopo che la prima aveva attaccato
+      // l'identita' ma prima che chiudesse l'ordine. Ririsolvere l'indirizzo
+      // sarebbe innocuo nel caso normale e sbagliato in quello in cui l'ordine
+      // e' gia' legato a qualcuno.
+      let buyerId = ticketOrder.user_id ?? null;
+      if (!buyerId) {
+        const identity = await resolveGuestIdentity(
+          supabase,
+          ticketOrder.buyer_email
+        );
+
+        if (!identity.ok) {
+          // E' UN PAGAMENTO INCASSATO SENZA BIGLIETTI. La causa distinta entra
+          // nella riga; si risponde `200` perche' ritentare all'infinito una
+          // cosa che non migliorera' da sola non aiuta nessuno.
+          await failOrder(`identity_${identity.reason}`, identity.detail);
+          return NextResponse.json({ received: true });
+        }
+
+        buyerId = identity.userId;
+      }
+
+      // 3. IL PORTATORE E IL CODICE DI TRANSAZIONE, UNA VOLTA SOLA SULL'ORDINE.
+      //
+      // Il codice sta **sull'ordine** e non sulle N righe perche' e' l'ordine ad
+      // aver mosso il denaro, ed e' da li' che un rimborso SumUp lo legge. La
+      // RPC lo copia poi su ogni biglietto insieme al resto.
+      const { error: attachError } = await supabase
+        .from("ticket_orders")
+        .update({
+          user_id: buyerId,
+          sumup_transaction_code: orderTransactionCode,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", ticketOrder.id);
+
+      if (attachError) {
+        // Senza questo controllo il fallimento arriverebbe comunque, un passo
+        // piu' in la', come «ordine senza portatore» — cioe' con il nome di
+        // un'altra causa addosso, che manda chi indaga nel posto sbagliato.
+        await failOrder("attach_failed", redactDbError(attachError));
+        return NextResponse.json({ received: true });
+      }
+
+      // 4. I BIGLIETTI: N righe in UNA transazione.
+      //
+      // `p_issued_via` e' l'attribuzione, e sta sul **biglietto** — non su
+      // `approved_via`, che le fasi 50/51 stanno smontando. La forma e' quella
+      // di `src/lib/guest-list/process-entry.ts:176`, spostata sull'oggetto che
+      // sopravvive alla milestone.
+      const { error: orderRpcError } = await supabase.rpc(
+        "reserve_ticket_order",
+        {
+          p_order_id: ticketOrder.id,
+          p_issued_via: "guest_checkout",
+        }
+      );
+
+      if (orderRpcError) {
+        // Il messaggio della RPC porta gia' la causa vera — tetto per ordine,
+        // capienza del tier, usi del codice sconto esauriti — e va conservato
+        // com'e': riassumerlo qui significherebbe buttare via la sola diagnosi
+        // che esistera'.
+        await failOrder("reservation_failed", orderRpcError.message);
+        return NextResponse.json({ received: true });
+      }
+
+      // 5. SOLO ORA L'AMMISSIONE.
+      //
+      // *Il pagamento decide l'ammissione* e' la decisione del proprietario, e
+      // questa riga e' dove avviene — **dopo** che i biglietti esistono, mai
+      // prima: una persona ammessa da un ordine che poi non ha prodotto niente
+      // sarebbe un accesso concesso senza pagamento evaso.
+      //
+      // La guardia `.eq("status", "pending")` la rende idempotente ed e' la
+      // stessa gia' in uso nel ramo sopra: la seconda consegna non trova piu'
+      // niente da aggiornare.
+      //
+      // **Nessuna mail di benvenuto**, e non e' una dimenticanza. Il ramo sopra
+      // ne manda una che dice *«You're Approved»*: e' il registro «diventa
+      // membro» che `49-CONTEXT.md` vieta esplicitamente su questo percorso
+      // (punto 5 delle decisioni del proprietario). Chi ha comprato riceve UNA
+      // mail — biglietti piu' *«Completa il tuo account»* — e due messaggi che
+      // raccontano la stessa cosa in due modi diversi sono il modo in cui il
+      // prodotto si contraddice davanti a chi lo usa.
+      const { error: admitError } = await supabase
+        .from("profiles")
+        .update({ status: "approved" })
+        .eq("id", buyerId)
+        .eq("status", "pending");
+
+      if (admitError) {
+        // NON si porta l'ordine a `failed`: i biglietti esistono e sono validi.
+        // Il gate *soldi vs contenuto* al contrario — qui il denaro e' andato a
+        // buon fine e cio' che manca e' uno stato che alla porta non si legge
+        // (`attendance/route.ts:145`). Si scrive e si prosegue.
+        console.error(
+          `[tickets.order_admission_failed] order=${ticketOrder.id} ${redactDbError(admitError)}`
+        );
+      }
+
+      // 6. LA MAIL, dentro un `try` che non puo' far fallire l'incasso.
+      //
+      // `sendOrderConfirmation` non solleva verso chi chiama, ma `await` su una
+      // promessa e' comunque un punto in cui qualcosa di inatteso passerebbe: il
+      // `try` e' la rete, non la fiducia.
+      try {
+        const mail = await sendOrderConfirmation({
+          orderId: ticketOrder.id,
+          serviceClient: supabase,
+        });
+
+        if (!mail.sent) {
+          console.error(
+            `[tickets.order_email_not_sent] order=${ticketOrder.id} reason=${mail.reason}`
+          );
+        } else if (!mail.recorded) {
+          // Partita ma non registrata: il suo esito non sara' **mai**
+          // verificato, ed e' uno stato distinto sia da consegnata sia da non
+          // consegnata. Sulla superficie dei venduti si legge «no send
+          // recorded».
+          console.error(
+            `[tickets.order_email_unrecorded] order=${ticketOrder.id} tickets=${mail.ticketCount}`
+          );
+        }
+      } catch (orderEmailError) {
+        console.error(
+          "Webhook: order confirmation email failed (non-blocking)",
+          orderEmailError
+        );
       }
 
       return NextResponse.json({ received: true });
