@@ -69,6 +69,40 @@ const query = async (sql, etichetta) => {
   return body;
 };
 
+/* ── 0. Realtime esiste solo dopo la prima connessione ────────────────────── */
+//
+// Misurato il 2026-09-07 su un progetto appena creato: lo schema `realtime` era
+// VUOTO — niente `messages`, niente `schema_migrations` — e la migration della
+// fase 38 (`20260811120000_live_attendance_channel.sql`) si fermava con 42P01.
+// Il servizio Realtime esegue le proprie migration alla PRIMA connessione
+// websocket del tenant, non alla creazione del progetto. Una `phx_join` vuota
+// basta: dopo, `realtime.messages` e le sue partizioni giornaliere esistono.
+// La chiave anon serve solo per aprire il socket, e si legge dall'endpoint.
+
+const realtimeC = JSON.parse(await query(`select to_regclass('realtime.messages') as t`, "sonda realtime"));
+if (!realtimeC[0]?.t) {
+  const keys = await (await api("/api-keys?reveal=true")).json();
+  const anon = keys.find((k) => k.name === "anon")?.api_key;
+  if (!anon) { console.error("chiave anon non trovata: non posso svegliare Realtime"); process.exit(1); }
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(`https://${REF}.supabase.co/realtime/v1/websocket?apikey=${anon}&vsn=1.0.0`.replace("https", "wss"));
+    const t = setTimeout(() => { ws.close(); reject(new Error("Realtime non ha risposto in 15 s")); }, 15000);
+    ws.onopen = () => ws.send(JSON.stringify({ topic: "realtime:lab-bootstrap", event: "phx_join", payload: { config: {} }, ref: "1" }));
+    ws.onmessage = () => { clearTimeout(t); ws.close(); resolve(); };
+    ws.onerror = () => { clearTimeout(t); reject(new Error("websocket Realtime rifiutato")); };
+  });
+  for (let n = 0; n < 12; n++) {
+    const c = JSON.parse(await query(`select to_regclass('realtime.messages') as t`, "sonda realtime"));
+    if (c[0]?.t) break;
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  const fin = JSON.parse(await query(`select to_regclass('realtime.messages') as t`, "sonda realtime"));
+  if (!fin[0]?.t) { console.error("realtime.messages ancora assente dopo la connessione: fermarsi"); process.exit(1); }
+  console.log("0/4  Realtime svegliato: realtime.messages esiste");
+} else {
+  console.log("0/4  Realtime gia' inizializzato");
+}
+
 /* ── 1. schema.sql, senza il riferimento in avanti della riga 490 ─────────── */
 
 let schema = readFileSync("supabase/schema.sql", "utf8");
@@ -82,8 +116,19 @@ if (!RIGA_490.test(schema)) {
   process.exit(1);
 }
 schema = schema.replace(RIGA_490, "party_id uuid not null");
-await query(schema, "schema.sql");
-console.log("1/4  schema.sql applicato (senza la chiave esterna in avanti)");
+
+// RIPETIBILE, dal 2026-09-07. Un laboratorio permanente si ricostruisce anche a
+// meta': se `public.profiles` esiste, schema.sql e' gia' passato e si salta. Le
+// migration gia' applicate vengono saltate come duplicate dal passo 2, e i
+// quattro oggetti del passo 3-4 tollerano i duplicati per la stessa ragione.
+// La prova che il risultato e' fedele resta `lab-fidelity.mjs`, non questo file.
+const giaSchema = JSON.parse(await query(`select to_regclass('public.profiles') as t`, "sonda schema"));
+if (giaSchema[0]?.t) {
+  console.log("1/4  schema.sql gia' applicato (public.profiles esiste): saltato");
+} else {
+  await query(schema, "schema.sql");
+  console.log("1/4  schema.sql applicato (senza la chiave esterna in avanti)");
+}
 
 /* ── 2. le migration, tollerando SOLO gli errori di "esiste gia'" ─────────── */
 
@@ -106,44 +151,111 @@ const dir = "supabase/migrations";
 const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
 const applicate = [], saltate = [];
 
-for (const f of files) {
-  const res = await api("/database/migrations", {
-    method: "POST",
-    body: JSON.stringify({ name: f.replace(/\.sql$/, ""), query: readFileSync(`${dir}/${f}`, "utf8") }),
-  });
-  await new Promise((r) => setTimeout(r, 1100)); // versioni distinte al secondo
-  if (res.ok) { applicate.push(f); continue; }
-  const body = await res.text();
-  if (eDuplicato(body)) { saltate.push({ file: f, errore: body.slice(0, 200).replace(/\s+/g, " ") }); continue; }
-  console.error(`\nFERMATO a ${f} (HTTP ${res.status}) — NON e' un duplicato:\n${body.slice(0, 700)}`);
-  process.exit(1);
-}
-console.log(`2/4  migration: ${applicate.length} applicate, ${saltate.length} saltate come duplicate`);
-for (const s of saltate) console.log(`       - ${s.file}\n         ${s.errore}`);
-
 /* ── 3 e 4. I quattro oggetti che il percorso non porta ───────────────────── */
 //
 // Due di questi sono COMMENTATI dentro schema.sql (righe 511-515) e vivono solo
 // nella migration dei codici sconto, che il passo 2 salta come duplicata perche'
 // la sua TABELLA esiste gia'. Il risultato e' un laboratorio senza le due
 // colonne e senza l'overload — e senza nessun errore che lo dica.
+//
+// VANNO RIMESSI SUBITO DOPO QUEL FILE, NON ALLA FINE. Misurato il 2026-09-07,
+// alla prima ricostruzione dopo la fase 49: la migration
+// `20260905150000_reserve_ticket_service_only.sql` fa REVOKE/GRANT sulla firma
+// a otto argomenti, e si e' fermata con 42883 «function does not exist» perche'
+// l'overload arrivava solo al passo 4. Con 67 migration l'ordine non contava;
+// con 85 conta. Ogni migration futura che tocchi `reserve_ticket` lo trova.
 
-const migSconti = readFileSync(`${dir}/20260310100000_discount_codes.sql`, "utf8");
+const FILE_SCONTI = "20260310100000_discount_codes.sql";
+const migSconti = readFileSync(`${dir}/${FILE_SCONTI}`, "utf8");
 const i = migSconti.indexOf("CREATE OR REPLACE FUNCTION public.reserve_ticket(");
 if (i < 0) { console.error("l'overload di reserve_ticket non e' piu' in quella migration: fermarsi"); process.exit(1); }
 
-await query(
-  `alter table public.discount_codes
-     add constraint discount_codes_party_id_fkey
-     foreign key (party_id) references public.event_parties(id) on delete cascade`,
-  "chiave esterna della riga 490"
-);
-console.log("3/4  chiave esterna della riga 490 rimessa");
+// Tollera SOLO "esiste gia'": e' cio' che rende il bootstrap ripetibile a meta'.
+const queryOppureDuplicato = async (sql, etichetta) => {
+  try { await query(sql, etichetta); }
+  catch (e) { if (eDuplicato(String(e.message))) console.log(`     (${etichetta}: gia' presente, saltato)`); else throw e; }
+};
 
-await query(`alter table public.tickets add column discount_code_id uuid references public.discount_codes on delete set null`, "tickets.discount_code_id");
-await query(`alter table public.pending_purchases add column discount_code_id uuid references public.discount_codes on delete set null`, "pending_purchases.discount_code_id");
-await query(migSconti.slice(i), "overload di reserve_ticket");
-console.log("4/4  le due colonne e l'overload di reserve_ticket");
+async function quattroOggetti() {
+  await queryOppureDuplicato(
+    `alter table public.discount_codes
+       add constraint discount_codes_party_id_fkey
+       foreign key (party_id) references public.event_parties(id) on delete cascade`,
+    "chiave esterna della riga 490"
+  );
+  console.log("3/4  chiave esterna della riga 490 rimessa");
+  await queryOppureDuplicato(`alter table public.tickets add column discount_code_id uuid references public.discount_codes on delete set null`, "tickets.discount_code_id");
+  await queryOppureDuplicato(`alter table public.pending_purchases add column discount_code_id uuid references public.discount_codes on delete set null`, "pending_purchases.discount_code_id");
+  await query(migSconti.slice(i), "overload di reserve_ticket");
+  console.log("4/4  le due colonne e l'overload di reserve_ticket — rimessi subito dopo " + FILE_SCONTI);
+}
+
+// RIPRESA: l'endpoint annota ogni migration riuscita in
+// `supabase_migrations.schema_migrations` con il `name` che le passiamo, cioe'
+// il nome del file. Cio' che e' annotato non si rimanda: una migration che
+// cancella un vincolo, rimandata, fallisce con 42704 «does not exist» — che
+// NON e' un duplicato e fermava la ripresa (misurato il 2026-09-07 su
+// `20260226300000_multi_sub_events.sql`). Le migration saltate come duplicate
+// non sono annotate e vengono rimandate: si saltano di nuovo, senza effetto.
+let registrate = new Set();
+try {
+  registrate = new Set(JSON.parse(await query(`select name from supabase_migrations.schema_migrations`, "registro")).map((r) => r.name));
+} catch { /* progetto nuovo: nessun registro, nessuna ripresa */ }
+const riprese = [];
+
+let oggettiRimessi = false;
+for (const f of files) {
+  const nome = f.replace(/\.sql$/, "");
+  if (registrate.has(nome)) {
+    riprese.push(f);
+    if (f === FILE_SCONTI) { await quattroOggetti(); oggettiRimessi = true; }
+    continue;
+  }
+  const res = await api("/database/migrations", {
+    method: "POST",
+    body: JSON.stringify({ name: f.replace(/\.sql$/, ""), query: readFileSync(`${dir}/${f}`, "utf8") }),
+  });
+  await new Promise((r) => setTimeout(r, 1100)); // versioni distinte al secondo
+  if (res.ok) { applicate.push(f); }
+  else {
+    const body = await res.text();
+    if (!eDuplicato(body)) {
+      console.error(`\nFERMATO a ${f} (HTTP ${res.status}) — NON e' un duplicato:\n${body.slice(0, 700)}`);
+      process.exit(1);
+    }
+    saltate.push({ file: f, errore: body.slice(0, 200).replace(/\s+/g, " ") });
+  }
+  if (f === FILE_SCONTI) {
+    if (res.ok) { console.error(`${FILE_SCONTI} e' stata APPLICATA invece che saltata: schema.sql e' cambiato, fermarsi e rileggere.`); process.exit(1); }
+    await quattroOggetti();
+    oggettiRimessi = true;
+  }
+}
+if (!oggettiRimessi) { console.error(`${FILE_SCONTI} non e' nella cartella: il percorso misurato non vale piu'.`); process.exit(1); }
+console.log(`2/4  migration: ${applicate.length} applicate, ${saltate.length} saltate come duplicate, ${riprese.length} gia' registrate (ripresa)`);
+for (const s of saltate) console.log(`       - ${s.file}\n         ${s.errore}`);
+
+/* ── 5. Cio' che le migration saltate avrebbero TOLTO ─────────────────────── */
+//
+// Il verso opposto del passo 3-4. Una migration saltata come duplicata non
+// aggiunge cio' che doveva aggiungere, e nemmeno toglie cio' che doveva togliere.
+// `20260225150000_party_architecture.sql` righe 163-171 elimina da `events`
+// sette colonne che schema.sql porta ancora; nel laboratorio restavano, e il
+// confronto dei cataloghi lo ha detto il 2026-09-07 («colonne prod 502 · lab
+// 509»). Si tolgono qui, per nome, con `if exists` perche' il passo e' ripetibile.
+
+await query(
+  `alter table public.events
+     drop column if exists end_time,
+     drop column if exists preparty_title,
+     drop column if exists preparty_time,
+     drop column if exists preparty_location,
+     drop column if exists afterparty_title,
+     drop column if exists afterparty_time,
+     drop column if exists afterparty_location`,
+  "colonne di events tolte da party_architecture"
+);
+console.log("5/5  le sette colonne di events che party_architecture toglie");
 
 console.log(
   "\nIl database c'e'. NON e' ancora detto che sia fedele:\n" +
