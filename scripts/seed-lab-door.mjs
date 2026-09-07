@@ -273,6 +273,36 @@ async function seed() {
   ids.tier = tier[0].id;
   write();
 
+  // La serata SEGRETA, a rivelazione NON avvenuta — PRE-SECRET di 49-RUNBOOK.md.
+  // Procedura 1: il venue non compare in nessuna superficie dell'ospite prima
+  // della rivelazione. Tier a 1.00: e' l'euro vero deciso dal proprietario il
+  // 2026-09-07 per le prove sul denaro. Nessun biglietto seminato: gli ordini da
+  // ospite nascono dal percorso d'acquisto, che e' cio' che le prove misurano.
+  const sev = await sql(`
+    insert into public.events (slug, title, description, date, is_published, created_by, venue_secret)
+    values ('lab-secret-night', 'Lab Secret Night', 'Serata segreta di laboratorio — non e'' un evento reale',
+            (current_date + interval '14 days'), true, ${q(ids.accounts.master.id)}, true)
+    returning id`);
+  ids.secretEvent = sev[0].id;
+  write();
+
+  const sparty = await sql(`
+    insert into public.event_parties
+      (event_id, title, time, end_time, date, access_type, sort_order, lineup,
+       venue_id, venue_secret, venue_reveal_on_purchase, format_id, series_id, number)
+    values (${q(ids.secretEvent)}, 'Lab Secret Night', '22:00', '06:00', (current_date + interval '14 days'),
+            'paid', 1, '{}', ${q(ids.venue)}, true, false, ${q(fmt[0].id)}, ${q(ser[0].id)}, null)
+    returning id`);
+  ids.secretParty = sparty[0].id;
+  write();
+
+  const stier = await sql(`
+    insert into public.ticket_tiers (event_id, party_id, name, price, quantity)
+    values (${q(ids.secretEvent)}, ${q(ids.secretParty)}, 'Lab Secret', 1.00, 10)
+    returning id`);
+  ids.secretTier = stier[0].id;
+  write();
+
   const tk = await sql(`
     insert into public.tickets (event_id, party_id, tier_id, user_id, amount_paid, ticket_type)
     values (${q(ids.event)}, ${q(ids.party)}, ${q(ids.tier)}, ${q(ids.accounts.member.id)}, 0, 'purchased')
@@ -288,6 +318,7 @@ async function seed() {
 
   console.log(`Seminato su ${REF}. Chiavi in ${SEED_FILE}.`);
   console.log(`  serata   ${ids.party}`);
+  console.log(`  segreta  ${ids.secretParty} (venue_secret, rivelazione non avvenuta, tier 1.00)`);
   console.log(`  biglietto ${ids.ticket}`);
   console.log(`  codice   ${ids.ticketToken.slice(0, 12)}… (per intero nel file)`);
   console.log(`  account  ${Object.values(ids.accounts).map((a) => `${a.email} (${a.role}/${a.status})`).join(", ")}`);
@@ -308,6 +339,9 @@ async function verify() {
     ["ticket_tiers", ids.tier],
     ["tickets", ids.ticket],
     ["party_assignments", ids.assignment],
+    ["ticket_tiers", ids.secretTier],
+    ["event_parties", ids.secretParty],
+    ["events", ids.secretEvent],
     ["venues", ids.venue],
   ];
   let present = 0;
@@ -340,6 +374,9 @@ async function teardown() {
     ["ticket_tiers", ids.tier],
     ["event_parties", ids.party],
     ["events", ids.event],
+    ["ticket_tiers", ids.secretTier],
+    ["event_parties", ids.secretParty],
+    ["events", ids.secretEvent],
     ["venues", ids.venue],
   ];
   for (const [table, id] of steps) {
