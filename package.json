@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:lab": "bash scripts/dev-lab.sh",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
