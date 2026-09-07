@@ -3,6 +3,29 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.21.0] - 2026-09-07
+
+### Added — `meta-gates.md`: esiste un laboratorio permanente, e le procedure manuali si percorrono li'
+
+Una riga nella sezione *Il gate della verifica, in un repo senza test*. Fino a
+oggi `next dev` con l'unico URL Supabase del repo girava **contro la
+produzione**, e le 52 prove della fase 49 erano scritte e non eseguibili. Il
+laboratorio della fase 42 era usa-e-getta e cancellato; dal 2026-09-07 e'
+permanente, per decisione del proprietario (`.planning/v1.6-LAB-DESIGN.md`).
+
+**Situazione che fa scattare il gate:** un agente che, per «provare in
+sviluppo», lancia `npm run dev` o uno script con `.env.local` e scrive
+righe in produzione. Il gate dice dove si prova, e pretende che ogni script di
+laboratorio rifiuti il ref di produzione in prima riga.
+
+**Scenario di carico:** modifica a `src/lib/offline/queue.ts` → si caricano
+`CLAUDE.md`, `meta-gates`, `checkin-offline`, `supabase-data`; il gate
+manda la prova del passo 2.4 (radio spenta) al laboratorio, non a `/door` di
+produzione.
+
+**Context budget:** `meta-gates.md` si carica ovunque; +6 righe. Caso peggiore
+rimisurato: `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx`, 5 file, **45.534 byte ≈ 12.648 token** su tetto 15.000 (era 45.131 / 12.536).
+
 ## [1.20.0] - 2026-09-05
 
 ### Changed — i due gate dell'entropia indicavano codice morto, e adesso indicano il generatore vero

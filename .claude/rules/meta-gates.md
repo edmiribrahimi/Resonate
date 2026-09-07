@@ -158,3 +158,9 @@ Non esiste un test runner per il prodotto. Questo cambia cosa significa
 - Per tutto cio' che tocca accesso, denaro, porta o venue, serve **una
   procedura manuale scritta**: quali passi, con quale ruolo, e cosa si deve
   osservare. Scritta, non evocata — perche' e' l'unica prova che esistera'.
+- **Dal 2026-09-07 esiste un laboratorio permanente** — un secondo progetto
+  Supabase fedele alla produzione, `npm run dev:lab`, ricetta in
+  `.planning/v1.6-LAB-DESIGN.md`. Le procedure manuali si percorrono **li'**,
+  mai in produzione. Ogni script di laboratorio **rifiuta il ref di produzione
+  come prima riga eseguita**, e un nuovo script senza quel rifiuto non e' uno
+  script di laboratorio.

@@ -49,8 +49,16 @@ entrambi passati).
 
 **Il deploy non ha eseguito nessuna delle 52 prove.** Le tre «prima del primo
 listing pubblico» restano a `pending`, e la causa e' la stessa di prima: non
-esiste un database di sviluppo, e l'autorizzazione a scrivere in produzione e'
-esaurita. Il primo passo resta un secondo database, decisione del proprietario.
+esisteva un database di sviluppo, e l'autorizzazione a scrivere in produzione e'
+esaurita.
+
+**Il secondo database ESISTE dal 2026-09-07.** Laboratorio permanente, secondo
+progetto Supabase hosted, fedele alla produzione su dieci cataloghi su dieci,
+seminato (nove righe radice, serata segreta compresa), raggiungibile con
+`npm run dev:lab` e dall'anteprima Vercel del ramo `lab`. Disegno e piano in
+`.planning/v1.6-LAB-DESIGN.md` e `.planning/v1.6-LAB-PLAN.md`. Il bootstrap ha
+trovato tre ostacoli nuovi rispetto alla fase 42 e li ha chiusi nel bootstrap,
+mai nello schema. **52 prove su 52 sono ora eseguibili; zero eseguite.**
 
 **Due checkpoint umani aperti, ed e' lo stato giusto:** `49-09` task 3 (sei
 passi) e `49-11` task 2. Nessuno dei due e' stato simulato.

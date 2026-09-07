@@ -101,19 +101,26 @@ corta: **il primo passo non e' una procedura, e' un secondo database.**
 
 | Sigla | Cosa deve esistere | Esiste oggi |
 |---|---|---|
-| **PRE-DB** | un database **non di produzione** su cui si possano scrivere righe | **no** |
-| **PRE-NIGHT** | una serata pubblicata con data futura | **no** |
-| **PRE-SECRET** | una serata segreta con la rivelazione **non ancora avvenuta** | **no** |
-| **PRE-TIER** | un tier in vendita su quella serata | **no** |
+| **PRE-DB** | un database **non di produzione** su cui si possano scrivere righe | **si', dal 2026-09-07** — il laboratorio permanente, `.planning/v1.6-LAB-DESIGN.md`; `npm run dev:lab` |
+| **PRE-NIGHT** | una serata pubblicata con data futura | **si', in laboratorio** — `Lab Night`, seminata a +7 giorni |
+| **PRE-SECRET** | una serata segreta con la rivelazione **non ancora avvenuta** | **si', in laboratorio** — `Lab Secret Night`, a +14 giorni, `venue_reveal_on_purchase = false` |
+| **PRE-TIER** | un tier in vendita su quella serata | **si', in laboratorio** — `Lab Secret` a 1,00, l'euro vero deciso dal proprietario |
 | **PRE-PAY** | un pagamento vero arrivato a `completed`, col fornitore | **no** |
-| **PRE-STAFF** | un conto `staff` e la sua assegnazione a quella serata | **no** (zero conti, zero assegnazioni) |
+| **PRE-STAFF** | un conto `staff` e la sua assegnazione a quella serata | **si', in laboratorio** — `door@lab.invalid`, `door.operate` su `Lab Night`; **no** in produzione |
 | **PRE-2PHONE** | **due** telefoni reali, con la radio spegnibile a comando | dipende da chi esegue |
 | **PRE-DARK** | il luogo d'uso reale: buio, una mano, di fretta | dipende da chi esegue |
 | **PRE-IPHONE** | un iPhone, in Safari | dipende da chi esegue |
-| **PRE-MAILKEY** | poter togliere e rimettere la chiave del fornitore di posta | **solo con PRE-DB** |
+| **PRE-MAILKEY** | poter togliere e rimettere la chiave del fornitore di posta | **si'**, in `.env.lab.local` |
 
 Nessuna procedura di questo documento e' eseguibile senza almeno **PRE-DB**,
 tranne dove esplicitamente detto.
+
+> **Dal 2026-09-07 PRE-DB esiste.** Il laboratorio permanente e' fedele alla
+> produzione su dieci cataloghi (`lab-fidelity.mjs`), raggiungibile con
+> `npm run dev:lab` e dall'anteprima Vercel del ramo `lab`. **PRE-PAY resta un
+> atto**: un euro vero sul merchant di produzione, senza rimborso, per decisione
+> del proprietario. Gli esiti `_NON ESEGUIBILE OGGI_` qui sotto sono stati scritti
+> il 2026-09-06 e vanno riletti: cio' che bloccava era PRE-DB.
 
 ---
 
