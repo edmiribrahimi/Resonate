@@ -362,15 +362,15 @@ alla porta — anche con la radio spenta.
 Plans:
 - [x] 49-01-PLAN.md — lo schema dell'ordine: righe, tetto, attribuzione, etichetta
 - [x] 49-02-PLAN.md — la credenziale della porta coniata con `crypto`
-- [ ] 49-03-PLAN.md — il perimetro che l'account leggero allarga (misura + decisione)
-- [ ] 49-04-PLAN.md — l'azione d'acquisto senza account
-- [ ] 49-05-PLAN.md — la mail che porta biglietti e link, dentro il registro delle consegne
-- [ ] 49-06-PLAN.md — la superficie del biglietto senza login, e il gate delle superfici esteso
-- [ ] 49-07-PLAN.md — il webhook: identita' al pagamento, N biglietti, esito visibile
-- [ ] 49-08-PLAN.md — la UI d'acquisto, il tetto dell'organizer, la pagina che elenca
-- [ ] 49-09-PLAN.md — l'indirizzo a chi compra dopo la rivelazione (Critical)
-- [ ] 49-10-PLAN.md — la porta con un biglietto al portatore
-- [ ] 49-11-PLAN.md — le cinque procedure manuali, scritte ed eseguite
+- [x] 49-03-PLAN.md — il perimetro che l'account leggero allarga (misura + decisione)
+- [x] 49-04-PLAN.md — l'azione d'acquisto senza account
+- [x] 49-05-PLAN.md — la mail che porta biglietti e link, dentro il registro delle consegne
+- [x] 49-06-PLAN.md — la superficie del biglietto senza login, e il gate delle superfici esteso
+- [x] 49-07-PLAN.md — il webhook: identita' al pagamento, N biglietti, esito visibile
+- [x] 49-08-PLAN.md — la UI d'acquisto, il tetto dell'organizer, la pagina che elenca
+- [x] 49-09-PLAN.md — l'indirizzo a chi compra dopo la rivelazione (Critical)
+- [x] 49-10-PLAN.md — la porta con un biglietto al portatore
+- [x] 49-11-PLAN.md — le cinque procedure manuali, scritte ed eseguite
 
 ### Phase 50: Via le iscrizioni
 

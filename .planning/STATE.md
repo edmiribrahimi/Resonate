@@ -4,8 +4,8 @@ milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
 stopped_at: "FASE 49 ESEGUITA — undici piani su undici, 2026-09-06. Sei migration applicate in produzione sotto un'autorizzazione datata ora ESAURITA (registro in 49-AUTHORISATION.md); 2241 righe prima e 2241 dopo, ricontate dopo ognuna sull'insieme ri-derivato da pg_constraint. ⚠ DUE CHECKPOINT UMANI RESTANO APERTI e sono corretti cosi': 49-09 task 3 (sei passi, il sesto nato da un difetto trovato in esecuzione) e 49-11 task 2. ⚠ 52 PROCEDURE SCRITTE, ZERO ESEGUITE, ZERO ESEGUIBILI OGGI — e la causa NON e' l'autorizzazione esaurita: NON ESISTE UN DATABASE DI SVILUPPO. Un solo SUPABASE_URL in .env.local, nessun supabase/config.toml, quindi «si prova in sviluppo» significa `next dev` contro la produzione. E' il debito piu' economico della fase e sblocca 52 prove su 52. ⚠ MANCA ANCHE IL SOGGETTO: 0 biglietti, 0 ordini, 0 staff, 0 assegnazioni, 2 eventi pubblicati entrambi con data passata."
-last_updated: "2026-09-06T16:00:00.000Z"
-last_activity: 2026-09-06
+last_updated: "2026-09-07T09:30:00.000Z"
+last_activity: 2026-09-07
 progress:
   total_phases: 51
   completed_phases: 48
@@ -30,18 +30,27 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA, verifica umana dovuta
+**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA e DEPLOYATA (2026-09-07), verifica umana dovuta
 
 ## Current Position
 
 Phase: 49 (comprare-senza-account) — **ESEGUITA il 2026-09-06**, undici piani su
 undici, contati dai SUMMARY su disco.
 
-**Cosa e' in produzione, e cosa no.** Le sei migration sono applicate e rilette
-dal catalogo. **Il codice non e' deployato**: 41+ commit in locale, nessun push.
-Produzione gira ancora il codice di prima con lo schema nuovo — che regge,
-perche' nessuna delle sei toglie qualcosa a cui il codice vecchio si appoggia,
-ma **e' uno stato da chiudere, non da lasciare**.
+**Cosa e' in produzione — DEPLOYATO il 2026-09-07.** Le sei migration erano
+applicate dal 2026-09-06; il codice le ha raggiunte il giorno dopo: 55 commit
+spinti su `origin/main` (`5f1e260..1363b86`), deploy Vercel Production alle
+09:16 UTC in stato `success`, `/events` risponde 200 da anonimo. Gate prima del
+push: `npm run build` (artefatto fresco), `verify:persona` 7/7, controllo F
+verde, 70 file toccati tutti sotto `src/`, `.planning/`, `supabase/`, `scripts/`,
+`.claude/`. **Da questo momento un ospite senza account puo' comprare fino a sei
+biglietti su una serata in vendita** — oggi nessuna lo e' (due eventi pubblicati,
+entrambi passati).
+
+**Il deploy non ha eseguito nessuna delle 52 prove.** Le tre «prima del primo
+listing pubblico» restano a `pending`, e la causa e' la stessa di prima: non
+esiste un database di sviluppo, e l'autorizzazione a scrivere in produzione e'
+esaurita. Il primo passo resta un secondo database, decisione del proprietario.
 
 **Due checkpoint umani aperti, ed e' lo stato giusto:** `49-09` task 3 (sei
 passi) e `49-11` task 2. Nessuno dei due e' stato simulato.
