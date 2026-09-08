@@ -3,7 +3,7 @@ phase: 49-comprare-senza-account
 document: esiti delle 52 prove del runbook
 started: 2026-09-08
 environment: laboratorio permanente (`.planning/v1.6-LAB-DESIGN.md`), MAI la produzione
-status: in corso
+status: chiuso il 2026-09-08 — bilancio in 49-VERIFICATION.md
 ---
 
 # Fase 49 — Gli esiti, percorrendo

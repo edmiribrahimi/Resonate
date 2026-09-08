@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "FASE 49 ESEGUITA — undici piani su undici, 2026-09-06. Sei migration applicate in produzione sotto un'autorizzazione datata ora ESAURITA (registro in 49-AUTHORISATION.md); 2241 righe prima e 2241 dopo, ricontate dopo ognuna sull'insieme ri-derivato da pg_constraint. ⚠ DUE CHECKPOINT UMANI RESTANO APERTI e sono corretti cosi': 49-09 task 3 (sei passi, il sesto nato da un difetto trovato in esecuzione) e 49-11 task 2. ⚠ 52 PROCEDURE SCRITTE, ZERO ESEGUITE, ZERO ESEGUIBILI OGGI — e la causa NON e' l'autorizzazione esaurita: NON ESISTE UN DATABASE DI SVILUPPO. Un solo SUPABASE_URL in .env.local, nessun supabase/config.toml, quindi «si prova in sviluppo» significa `next dev` contro la produzione. E' il debito piu' economico della fase e sblocca 52 prove su 52. ⚠ MANCA ANCHE IL SOGGETTO: 0 biglietti, 0 ordini, 0 staff, 0 assegnazioni, 2 eventi pubblicati entrambi con data passata."
-last_updated: "2026-09-07T09:30:00.000Z"
-last_activity: 2026-09-07
+stopped_at: "FASE 49 VERIFICATA il 2026-09-08 — 49-VERIFICATION.md scritto, status gaps_found: BUY-01/02/03/05 chiusi da prove eseguite sul laboratorio (46/52, cinque pagamenti veri, porta in aereo), BUY-04 PARZIALE perche' «rimandami i biglietti» (resendOrderTickets) non ha una superficie. I due checkpoint umani (49-09 task 3, 49-11 task 2) sono chiusi dall'evidenza di 49-ESITI.md. Tre difetti trovati e riparati lo stesso giorno (45be363), migration del trigger applicata anche in produzione sotto la seconda autorizzazione, ESAURITA. Ordine pagato senza biglietti: pulsante Retry issuing + cron 07:15 UTC + avviso a info@, tutti verificati con pagamenti veri. ⚠ Prossimo: la terza strada (49-BEARER-WITHOUT-IDENTITY.md, quattro decisioni del proprietario), poi fase 50. ⚠ Il frontmatter di questo file era stato riscritto male da state.record-session alla chiusura per contesto (D-49-01-DEF-03): ripristinato da git e riscritto a mano."
+last_updated: "2026-09-08T12:30:00.000Z"
+last_activity: 2026-09-08
 progress:
   total_phases: 51
   completed_phases: 48
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-05)
 
 **Stack:** Next.js 16 + Supabase + Tailwind CSS v4 + PWA (Vercel hosting)
 
-**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA e DEPLOYATA (2026-09-07), verifica umana dovuta
+**Current Focus:** Phase 49 — comprare-senza-account — ESEGUITA, DEPLOYATA e VERIFICATA (2026-09-08, `49-VERIFICATION.md`, `gaps_found` su BUY-04). Prossimo: la terza strada (`49-BEARER-WITHOUT-IDENTITY.md`), poi fase 50
 
 ## Current Position
 
@@ -567,8 +567,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-08-22T20:18:38.000Z
-**Stopped at:** 58-11 CHIUSO: P-58-A e P-58-B eseguite (17 Result su 24), ICS-03 e ICS-03b chiusi dall'evidenza di una procedura; i 7 pendenti sono tutti e soli quelli di P-58-C
+**Last session:** 2026-09-08T12:30:00.000Z
+**Stopped at:** 49-VERIFICATION.md scritto (gaps_found: BUY-04 parziale, «rimandami i biglietti» senza superficie); i due checkpoint umani chiusi dall'evidenza di 49-ESITI.md; STATE.md ripristinato dopo la riscrittura sbagliata del frontmatter (D-49-01-DEF-03)
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
