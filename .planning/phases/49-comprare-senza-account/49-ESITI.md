@@ -171,3 +171,11 @@ status: in corso
 | trigger delle iscrizioni | `P-CODE-4` ripetuto dopo la migration: **passa**; produzione allineata (migration applicata e riletta dal catalogo) |
 
 **Bilancio finale: 46 prove percorse, 3 fallimenti trovati e riparati lo stesso giorno, produzione aggiornata (codice e trigger).** Restano aperti, dichiarati: `P-UI-6` (frase del tetto a zero), l'azione «rimandami i biglietti» senza superficie, l'etichetta «Unknown» sul gia' registrato, e le sei prove non eseguibili in laboratorio.
+
+## La riparazione di un ordine pagato senza biglietti ha uno strumento — commit `c5db820` + `7d55194`, 2026-09-08
+
+| Cosa | Dove | Verifica sul laboratorio |
+|---|---|---|
+| «Retry issuing» sulla scheda dell'ordine fallito | `admin/events/[id]/tickets/actions.ts` → `replayPaidOrderDelivery` (`src/lib/tickets/replay-order-delivery.ts`): rilegge su SumUp che il checkout sia `PAID`, rifiuta se l'ordine ha gia' biglietti, rimette `pending` e **rigioca la consegna al webhook** — nessuna seconda strada del denaro | ordine da sei messo `failed` con i suoi biglietti → **rifiutato**, biglietti 6 → 6; ordine abbandonato (checkout `PENDING`) messo `failed` → **rifiutato**. Il ramo felice (failed senza biglietti, checkout PAID) e' la stessa sequenza eseguita a mano per `P-WH-3`/`P-WH-4`; non riprodotto dal pulsante perche' ogni checkout pagato del laboratorio ha gia' i suoi biglietti — si prova al prossimo acquisto con la mail svuotata |
+| cron `retry-failed-orders`, 07:15 UTC | `api/cron/retry-failed-orders`: ordini `failed` fermi da 10 minuti, salta `identity_email_missing`, conta per elemento | sul laboratorio: `considered 2, checkoutNotPaid 1, other 1 (has_tickets), completed 0`; nessuna scrittura |
+| la 3 — biglietti anche senza identita' | `49-BEARER-WITHOUT-IDENTITY.md`: specifica di fase, quattro decisioni da prendere prima di pianificare | da pianificare in una sessione nuova |
