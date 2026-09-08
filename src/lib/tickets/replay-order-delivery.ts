@@ -41,6 +41,7 @@ export type ReplayOutcome =
   | { ok: true; status: "completed"; tickets: number }
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "not_failed"; status: string }
+  | { ok: false; reason: "has_tickets"; tickets: number }
   | { ok: false; reason: "checkout_not_paid"; checkoutStatus: string }
   | { ok: false; reason: "provider_unreachable"; detail: string }
   | { ok: false; reason: "reset_lost" }
@@ -62,6 +63,22 @@ export async function replayPaidOrderDelivery(args: {
   if (error || !order) return { ok: false, reason: "not_found" };
   if (order.status !== "failed") {
     return { ok: false, reason: "not_failed", status: order.status };
+  }
+
+  // Un ordine `failed` non ha biglietti, per costruzione: il webhook lo marca
+  // `failed` solo PRIMA del conio. Ma `reserve_ticket_order` e' idempotente
+  // solo su `completed` — su un `pending` che avesse gia' dei biglietti ne
+  // conierebbe altri N. Fra «rifiutare un rigioco» e «raddoppiare i biglietti»
+  // c'e' un solo verso sicuro, e la guardia sta qui, non nella speranza.
+  const { count: existing } = await serviceClient
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", orderId);
+  if ((existing ?? 0) > 0) {
+    console.error(
+      `[tickets.replay_refused_has_tickets] order=${orderId} tickets=${existing}: a failed order with tickets is not a failed order — look at it, do not replay it`
+    );
+    return { ok: false, reason: "has_tickets", tickets: existing ?? 0 };
   }
 
   let checkoutStatus: string;
