@@ -189,3 +189,4 @@ status: in corso
 | correzione della mail (a mano, come farebbe chi organizza) + **«Retry issuing» premuto dal proprietario** nella finestra del master | 11:48:07 UTC: ordine **`completed`**, `error_message` null, **1 biglietto** «1 di 1» `guest_checkout`, **1** riga di posta con id del fornitore. Nessun secondo pagamento, nessun biglietto in piu' |
 
 **Totale speso dal proprietario per le prove: 9,00 € su quattro ordini, tutti con i loro biglietti.**
+| la mail dopo il pulsante | **PASSA** | riferito dal proprietario: «Il tuo biglietto per Lab Night» arrivata dopo «Retry issuing», una sola volta — coincide con l'unica riga di `email_deliveries` dell'ordine |
