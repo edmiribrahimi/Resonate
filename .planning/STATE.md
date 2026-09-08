@@ -58,7 +58,7 @@ seminato (nove righe radice, serata segreta compresa), raggiungibile con
 `npm run dev:lab` e dall'anteprima Vercel del ramo `lab`. Disegno e piano in
 `.planning/v1.6-LAB-DESIGN.md` e `.planning/v1.6-LAB-PLAN.md`. Il bootstrap ha
 trovato tre ostacoli nuovi rispetto alla fase 42 e li ha chiusi nel bootstrap,
-mai nello schema. **Il 2026-09-08 le prove sono state PERCORSE: 46 su 52** (esiti in `49-ESITI.md`), con tre acquisti veri del proprietario (8,00 €) e la porta esercitata su iPhone in modalita' aereo. **Tre fallimenti veri da riparare prima del primo listing:** la schermata «Payment failed — Try again» su un ordine pagato senza biglietti; chi e' in guest list non puo' creare un account (trigger, vale anche in produzione); lo staff assegnato non puo' ammettere dal codice membership. Le tre prove «prima del primo listing» passano tutte.
+mai nello schema. **Il 2026-09-08 le prove sono state PERCORSE: 46 su 52** (esiti in `49-ESITI.md`), con tre acquisti veri del proprietario (8,00 €) e la porta esercitata su iPhone in modalita' aereo. **Tre fallimenti veri, trovati e RIPARATI lo stesso giorno (commit `45be363`, migration `20260908120000` applicata anche in produzione, verificati sul laboratorio):** la schermata «Payment failed — Try again» su un ordine pagato senza biglietti; chi e' in guest list non puo' creare un account (trigger, vale anche in produzione); lo staff assegnato non puo' ammettere dal codice membership. Le tre prove «prima del primo listing» passano tutte.
 
 **Due checkpoint umani aperti, ed e' lo stato giusto:** `49-09` task 3 (sei
 passi) e `49-11` task 2. Nessuno dei due e' stato simulato.

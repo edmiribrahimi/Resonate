@@ -206,3 +206,14 @@ entrambe.
 `20260905140000`, storia `20260906150304`. Non e' un errore: e' come si comporta
 l'endpoint, e cinque ripetizioni su cinque la rendono una proprieta' misurata
 dello strumento, non un incidente.
+
+## Seconda autorizzazione — 2026-09-08, una migration
+
+**Domanda posta:** «La correzione del trigger delle iscrizioni e' una migration. Mi autorizzi ad applicarla anche in PRODUZIONE, oltre che nel laboratorio?»
+**Risposta del proprietario:** «Si': laboratorio, poi produzione».
+
+| # | Migration | Cosa tocca | Laboratorio | Produzione |
+|---|---|---|---|---|
+| 1 | `20260908120000_guest_list_update_after_profile` | ricrea `public.handle_new_user()`: l'`UPDATE` di `guest_list_entries` passa DOPO l'`INSERT` del profilo. Nessuna tabella, nessuna policy | applicata, `P-CODE-4` ripetuto: **passa** | applicata alle **2026-09-08T11:14:36Z**, HTTP 200, riletta dal catalogo (md5 cambiato, `UPDATE` ora dopo `INSERT`) |
+
+**Stato: ESAURITA** — una migration su una, zero fallite. Nessuna riga di dato e' stata scritta o letta oltre `pg_proc` e `schema_migrations`.

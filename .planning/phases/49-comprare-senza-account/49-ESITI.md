@@ -153,3 +153,21 @@ status: in corso
 **Fatti da sapere, non difetti del codice:** la mail da sei biglietti e' finita in Promozioni su Gmail; nell'app Gmail il QR arriva come allegato e non inline; la ricevuta SumUp porta ragione sociale e indirizzo legale del merchant; Apple Pay non e' verificabile sul dominio del laboratorio; il riquadro «member list NOT refreshed» compare anche online; «Hey Member» e «an unnamed operator» quando il profilo non ha un nome.
 
 **Il laboratorio resta com'e'**, con i suoi dati: tre ordini veri (8,00 €), otto biglietti, tredici scansioni. Sono materiale per la verifica, non da cancellare: `49-VERIFICATION.md` li cita.
+
+## Le riparazioni — 2026-09-08, commit `45be363`
+
+| Difetto | Correzione | Verifica |
+|---|---|---|
+| «Payment failed — Try again» su un ordine pagato senza biglietti (`P-WH-4`, lato ospite) | `payment/callback/actions.ts`: su un ordine `failed` il ritorno **riverifica il checkout su SumUp**; se `PAID` → stato `PAID_NOT_ISSUED` e schermata «We received your payment — your tickets were not issued. **Do not pay again**», senza «Try again»; se il fornitore non risponde → `UNCONFIRMED`, «check your bank app before paying again» | build verde; prova sul laboratorio sotto |
+| chi e' in guest list non puo' creare un account (`P-CODE-4`) | migration `20260908120000_guest_list_update_after_profile`: l'`UPDATE` della voce dopo l'`INSERT` del profilo | laboratorio: `P-CODE-4` ripetuto, **passa**; **produzione: applicata alle 11:14:36 UTC** sotto autorizzazione (`49-AUTHORISATION.md`), riletta dal catalogo |
+| lo staff assegnato non puo' ammettere dal codice membership (`P-CODE-2`) | `api/membership/verify`: il corpo si legge prima e la guardia riceve la serata, come la via dei biglietti; decisione del proprietario: ruolo **oppure** assegnazione alla serata | prova sul laboratorio sotto, con la sessione dello staff |
+
+**Verifica delle riparazioni sul laboratorio (deploy `45be363`, 2026-09-08 11:2x UTC):**
+
+| Riparazione | Osservato |
+|---|---|
+| schermata «non ripagare» | ordine da sei messo `failed` per un istante (checkout SumUp `PAID`): `/payment/callback?ctx=ticket_order&order=…` → **«We received your payment — your tickets were not issued»**, «Do not pay again» presente, **«Try again» assente**; ordine ripristinato `completed` |
+| staff e codice membership | sessione di `door@` (staff, assegnato alla serata), `POST /api/membership/verify` con un codice mai letto → **200**, `valid: true`, `outcome: recorded`; `door_scan_events` attribuisce l'evento a `door@`. `P-CODE-2` **passa anche con lo staff** |
+| trigger delle iscrizioni | `P-CODE-4` ripetuto dopo la migration: **passa**; produzione allineata (migration applicata e riletta dal catalogo) |
+
+**Bilancio finale: 46 prove percorse, 3 fallimenti trovati e riparati lo stesso giorno, produzione aggiornata (codice e trigger).** Restano aperti, dichiarati: `P-UI-6` (frase del tetto a zero), l'azione «rimandami i biglietti» senza superficie, l'etichetta «Unknown» sul gia' registrato, e le sei prove non eseguibili in laboratorio.
