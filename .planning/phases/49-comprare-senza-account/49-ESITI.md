@@ -105,3 +105,51 @@ status: in corso
 | nota di esercizio | — | la riparazione di un ordine `failed` per mail assente **non ha una superficie**: e' stata fatta con due `update` sul catalogo. In produzione chi organizza vede l'ordine fallito ma non ha un pulsante per correggere la mail e rigiocare |
 | `P-ORD-VIS-1` | **PASSA nella sostanza** | pagina organizer di Lab Night, *Sold tickets (7)*: le sei righe dell'ordine portano **tutte** «Order email sent — outcome not settled yet», l'esito dell'ordine; nessuna dice «no send recorded» (che compare solo sul biglietto seminato senza ordine). Il segno e' **dell'ordine**, mostrato su ogni riga. *Cosmetico:* le righe non sono in ordine numerico (3, 1, 2, 6, 4, 5) |
 | `P-UI-4` / `P-ORD-5` | **PASSA** | link firmato dell'ordine da sei, senza sessione: «I tuoi 6 biglietti», **sei** riquadri, **sei QR distinti** (md5 diversi), etichette «Biglietto 1 di 6»…«6 di 6» **in ordine numerico**; nessuna sede |
+
+## La porta — 2026-09-08, dalle 12:24 CEST, proprietario con telefono (staff `door@`) e Mac (master)
+
+| Sigla | Esito | Osservato |
+|---|---|---|
+| `P-DOOR-1` (2.1) | **PASSA** | `/door` → Lab Night, lista scaricata **Online**: «1 di 6»…«6 di 6» con badge «Lab», piu' «Lab · fff6» per il biglietto senza etichetta; 0 / 7; **nessuna riga vuota, nessuna «Unknown»** |
+| `P-DOOR-2` (2.2) | **PASSA** | le sei righe dello stesso ordine sono distinte a occhio, in ordine numerico |
+| nota | — | il riquadro «The member list on this device was NOT refreshed. With the radio off, a member who joined recently may not be recognised…» compare **anche con la rete accesa**, al primo caricamento: dice il vero sul rischio, ma con «Online» accanto sembra un'incoerenza |
+| posta — ordine da sei | **PASSA, con un fatto da sapere** | «I tuoi 6 biglietti per Lab Night» inviata alle 10:09:46 UTC, Resend `last_event = delivered`; il proprietario **non la vedeva**: Gmail l'aveva messa in **Promozioni**. Le due mail precedenti (biglietto singolo, rivelazione) erano in Inbox. Un ospite che non guarda Promozioni «non ha ricevuto i biglietti»: la conferma a schermo e il link stabile dell'ordine (5.1) sono la prima copia per questa ragione |
+| 2.3 | **PASSA** | modalita' aereo, «1 di 6» dalla lista scaricata: verde immediato (riferito dal proprietario) |
+| `P-DOOR-8` (2.4) | **PASSA** | biglietto creato **dopo** lo scarico della lista (10:25:18 UTC), scansionato in modalita' aereo: **ammesso**, mai rifiutato; la voce sul dispositivo porta l'etichetta del biglietto («dopo lo scarico»), non «Unknown»; il contatore locale passa a 0 / 8 e «Pending (2)» mostra la coda. Seconda lettura dello stesso QR pochi secondi dopo: «Recorded at 12:33 by this device» |
+| `P-DOOR-3` (2.5) | **PASSA** | biglietto seminato con `holder_label` NULL, in modalita' aereo: **verde**, si legge **«Lab · fff6 — Lab · Offline»**, cioe' tier e quattro cifre, non vuoto; «Pending (3)» |
+| 2.6 | **PASSA** | rete riaccesa: «Pending» sparisce, il contatore passa a **3 / 8**, «Checked In (3)»; le tre scansioni fatte in aereo sono arrivate |
+| `P-CODE-2` (2.7) | **FALLISCE — per l'operatore, non per il codice** | il codice membership coniato dopo il 2026-09-06 (14 caratteri) scansionato dallo staff `door@`, assegnato alla serata con `door.operate`: **rosso**, «This account is not allowed to check people in», voce «Unknown» fra le scansioni recenti. Causa letta nel codice e nel catalogo: `api/membership/verify` chiede `door.operate` **per ruolo** (`requireDoorOperator`, «role alone»), e `private.role_capabilities` lo da' per ruolo solo a `master` e `organizer`; lo `staff` lo riceve solo per serata (`party_assignments`), che la via dei biglietti onora e quella della membership **no**. **Conseguenza in produzione:** chi fa la porta come staff registra i biglietti ma non puo' ammettere un socio dal codice membership. Da ripetere con il master (ruolo) per separare «codice riconosciuto» da «operatore rifiutato» |
+| `P-CODE-2` — con il master | **PASSA** | stesso QR, scansionato dal master (ruolo): `door_scan_events` 10:45:56 UTC, `subject_type = membership`, `outcome = recorded`, `source = online`. **Il codice e' riconosciuto**; il rifiuto della riga sopra e' del permesso dello staff, non del codice |
+| 3.2 | **PASSA** | rete accesa, dalla finestra del master: «2», «3», «4 di 6» → `recorded`, `source online`, 10:48:42–10:48:59 UTC (con «1 di 6» in aereo al 2.3: quattro dei sei letti) |
+| `P-DOOR-4` (3.3) | **PASSA sul server** | «2 di 6» riletto 40 s dopo: `door_scan_events` → `outcome = already_recorded`, stesso dispositivo, operatore master. Lo screenshot del riquadro rosso con ora e operatore e' del proprietario |
+| `P-DOOR-4` (3.3) — a schermo | **PASSA con un difetto di etichetta** | riquadro **viola** (non rosso) con l'orologio: «**Unknown** — Recorded at 12:48 by Lab Master», contatore 6 / 8. Ora e operatore ci sono; **il biglietto e' chiamato «Unknown» invece di «2 di 6»**, sebbene sia nella lista scaricata e sia appena stato letto verde con la sua etichetta. Chi e' alla porta vede «gia' registrato» senza sapere *quale* biglietto |
+| `P-DOOR-5` (3.4) | **PASSA** | modalita' aereo su due finestre (due `device_id` diversi): «5 di 6» **verde su entrambe**; al rientro della rete `door_scan_events` porta `recorded` (master, `offline_sync`) e, 17 s dopo, `already_recorded` (staff, `offline_sync`) |
+| 3.5 — la review | **PASSA** | `/admin/events/<id>/review`: *«2 tickets were presented twice … **1 of them was read on two different devices** — the case where two people may have entered on one ticket. 1 was read on a phone that had no signal, and **that read was not refused at the door**…»*; riga «At 12:51, the same ticket was read on two devices, 18 seconds apart», causa `two_devices`, `offline_sync`. La rilettura online del 2 di 6 e' classificata a parte: `second_ticket_same_holder`, «No action beyond making the entry count add up». Conteggio: «1 — same code read twice · 1 — read on two devices · 10 scans in all». *Nota di copy:* lo staff senza nome compare come «an unnamed operator» |
+| `P-DOOR-6` (3.6) | **PASSA** | «6 di 6» letto tre volte in 17 s dallo stesso dispositivo (staff): `recorded`, poi due `already_recorded`. Review: *«2 reads were the same code within seconds and are not listed. A rising number here means the scanner's feedback was not visible at the door … It says nothing about any guest»*; il conteggio in testa resta «1 — same code read twice · 1 — read on two devices»; «13 scans in all, of which 9 were an ordinary admission or a reversal» |
+| `P-DOOR-7` (3.7) | **NON RIPRODUCIBILE in laboratorio** | chiede un telefono che porti gia' uno store alla versione 5 con voci in coda; il telefono del laboratorio non ha mai avuto uno store precedente |
+| `P-CODE-5` (2.8) | **NON RIPRODUCIBILE in laboratorio** | i quattro codici «preesistenti» sono di produzione; quelli del laboratorio sono tutti coniati dal trigger nuovo |
+| `P-REV-MUT-1` | **NON ESEGUITA** | chiede di rendere illeggibile la chiave del fornitore di posta sull'anteprima (variabile Vercel + ridistribuzione) e un acquisto in piu'; non scelta in questa sessione. Resta scritta |
+| `P-BUY-3` | **MAI CONCLUSIVA, per costruzione** | come dichiara il runbook: l'azione non accetta un prezzo; l'importo dell'ordine coincide col catalogo (`P-BUY-1`: 2 × 1.00) |
+
+## Il conto, alla fine — 2026-09-08
+
+| | Quante | Quali |
+|---|---|---|
+| **Percorse** | **46 / 52** | tutto il resto |
+| Passano | 40 | — |
+| Passano con un difetto osservato | 2 | `P-DOOR-4` (etichetta «Unknown» sul gia' registrato), `P-WH-4` (lato organizer passa; **lato ospite «Payment failed» su un pagamento riuscito**) |
+| **Falliscono** | 3 | `P-UI-6` (frase del tetto a zero non arriva), **`P-CODE-4` (chi e' in guest list non puo' creare un account — anche in produzione)**, `P-CODE-2` con lo staff (lo staff assegnato non puo' ammettere dal codice membership; con il master passa) |
+| Non eseguibili / non riproducibili / mai conclusive | 6 | `P-REV-MUT-1`, `P-DOOR-7`, `P-CODE-5`, `P-BUY-3`, `P-ORD-4` (azione senza superficie), `P-MAIL-6` |
+
+**Le tre «prima del primo listing pubblico» sono tutte percorse:** procedura 1 sul venue (nessun indirizzo su nessuna superficie, ricevuta SumUp compresa), il denaro (`P-WH-1`, `P-WH-2`, `P-RES-1`, piu' la corsa vera di `P-WH-3`), il passo 2.4 (biglietto comprato dopo lo scarico, radio spenta: ammesso).
+
+**Da riparare prima del primo listing, in ordine di costo per chi paga o entra:**
+1. **La schermata «Payment failed — Try again» su un ordine pagato senza biglietti** (`P-WH-4`, lato ospite): invita a pagare due volte.
+2. **Chi e' in guest list `pending`/`invited` non puo' creare un account** (`P-CODE-4`): l'`UPDATE` della voce precede l'`INSERT` del profilo nel trigger. Vale anche per la creazione in-app da admin.
+3. **Lo staff assegnato alla serata non puo' ammettere un socio dal codice membership** (`P-CODE-2`): `api/membership/verify` chiede `door.operate` per ruolo.
+4. «Rimandami i biglietti» non ha una superficie (`P-ORD-4`).
+5. Il «gia' registrato» chiama il biglietto «Unknown» (`P-DOOR-4`); il tetto a zero mostra l'errore generico di Next (`P-UI-6`).
+
+**Fatti da sapere, non difetti del codice:** la mail da sei biglietti e' finita in Promozioni su Gmail; nell'app Gmail il QR arriva come allegato e non inline; la ricevuta SumUp porta ragione sociale e indirizzo legale del merchant; Apple Pay non e' verificabile sul dominio del laboratorio; il riquadro «member list NOT refreshed» compare anche online; «Hey Member» e «an unnamed operator» quando il profilo non ha un nome.
+
+**Il laboratorio resta com'e'**, con i suoi dati: tre ordini veri (8,00 €), otto biglietti, tredici scansioni. Sono materiale per la verifica, non da cancellare: `49-VERIFICATION.md` li cita.

@@ -538,7 +538,7 @@ essere ricordato.
 | Acquisto — le superfici | `P-UI-1…7` | 49-08 | 7 | non eseguibili oggi |
 | Ordine senza sessione | `P-ORD-1…5` | 49-06 | 5 | non eseguibili oggi |
 | Posta | `P-MAIL-1…6` | 49-05 | 6 | non eseguibili oggi |
-| **Totale** | | | **52** | **0 eseguite** |
+| **Totale** | | | **52** | **46 percorse il 2026-09-08 in laboratorio — esiti in `49-ESITI.md`** |
 
 Piu' **una prova differita** che non e' una procedura: Apple Pay.
 
@@ -685,12 +685,12 @@ Nessuna riga di questa tabella dice «i test passano». **Non ci sono test.**
 
 | Procedura | Data | Chi (ruolo) | Esito osservato |
 |---|---|---|---|
-| 1 — il venue prima della rivelazione | — | — | **NON ESEGUITA** — mancano PRE-DB, PRE-SECRET, PRE-TIER, PRE-PAY |
-| 2 — la porta, anche offline | — | — | **NON ESEGUITA** — mancano PRE-STAFF, PRE-NIGHT, PRE-PAY, PRE-DB. **La radio non e' stata spenta su nessun dispositivo reale, perche' non c'era niente da scansionare** |
-| 3 — l'ordine da piu' biglietti | — | — | **NON ESEGUITA** — mancano PRE-STAFF, PRE-2PHONE con assegnazioni, PRE-PAY, PRE-DB |
-| 4 — l'indirizzo dopo la rivelazione | — | — | **NON ESEGUITA** — mancano PRE-DB, PRE-SECRET, PRE-PAY, PRE-MAILKEY |
-| 5 — l'indirizzo mail scritto male | — | — | **NON ESEGUITA** — mancano PRE-DB, PRE-NIGHT, PRE-TIER |
-| 6ª voce — Apple Pay | — | — | **NON ESEGUITA** — manca PRE-TIER |
+| 1 — il venue prima della rivelazione | 2026-09-08 | agente + proprietario (acquirente, lettore della ricevuta) | **ESEGUITA, passa** — nessun indirizzo su pagina, pannello del fornitore, ritorno, pagina dell'ordine, mail, ricevuta SumUp; `venue_for_parties` risponde solo a chi ha il biglietto e solo dopo la rivelazione. Dettaglio in `49-ESITI.md` |
+| 2 — la porta, anche offline | 2026-09-08 | proprietario (staff `door@` e master, iPhone in modalita' aereo) | **ESEGUITA** — 2.0–2.6 passano; 2.4 (biglietto dopo lo scarico, radio spenta) **ammesso**; 2.7 **fallisce con lo staff** (permesso per ruolo), passa con il master; 2.8 non riproducibile |
+| 3 — l'ordine da piu' biglietti | 2026-09-08 | proprietario (due finestre = due dispositivi) + agente (3.8, 3.9) | **ESEGUITA** — 3.1–3.6, 3.8, 3.9 passano; 3.3 con etichetta «Unknown» sul gia' registrato; 3.7 non riproducibile |
+| 4 — l'indirizzo dopo la rivelazione | 2026-09-08 | agente (rivelazione come master, cron) + proprietario (due acquisti, due caselle) | **ESEGUITA, sei passi su sei passano**; `P-REV-MUT-1` non eseguita |
+| 5 — l'indirizzo mail scritto male | 2026-09-08 | agente + proprietario | **ESEGUITA** — 5.1, 5.2 (organizer), 5.3, 5.5, 5.6, 5.8 passano; **5.2 lato ospite fallisce: «Payment failed — Try again» su un pagamento riuscito**; 5.4 senza superficie; 5.7 non inducibile |
+| 6ª voce — Apple Pay | 2026-09-08 | proprietario (iPhone, Safari) | **NON CONCLUSIVA** — il pulsante non compare, ma il dominio del laboratorio non e' registrato per Apple Pay presso SumUp: va rifatta sul dominio di produzione |
 
 ---
 
