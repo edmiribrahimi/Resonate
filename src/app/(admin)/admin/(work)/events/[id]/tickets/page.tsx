@@ -11,6 +11,7 @@ import AddDiscountCodeForm from "@/components/tickets/AddDiscountCodeForm";
 import DiscountCodeCard from "@/components/tickets/DiscountCodeCard";
 import RefundActions from "@/app/(admin)/admin/events/[id]/tickets/RefundActions";
 import { FOCUS_RING } from "@/components/ui/Button";
+import { retryFailedOrder } from "@/app/(admin)/admin/events/[id]/tickets/actions";
 import { Card } from "@/components/ui/Card";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageTitle, SectionHeading } from "@/components/ui/Typography";
@@ -738,6 +739,28 @@ export default async function TicketTiersPage({ params }: PageProps) {
                     <p className="mt-1 break-words text-xs text-muted">
                       {o.error_message ?? "No cause recorded — that is itself the problem."}
                     </p>
+                    {/*
+                      RETRY, NON RIPARAZIONE A MANO. 2026-09-08, 49-ESITI.md
+                      P-WH-4: la scheda diceva «reach out» e la riparazione era
+                      due update sul catalogo. Il pulsante rimette l'ordine in
+                      attesa e rigioca la consegna al webhook, dopo aver
+                      riletto su SumUp che il checkout e' PAID. Se la causa e'
+                      ancora li' (mail vuota), la scheda resta, con la causa.
+                    */}
+                    <form
+                      action={retryFailedOrder.bind(null, eventId, o.id)}
+                      className="mt-3"
+                    >
+                      <button
+                        type="submit"
+                        className={`inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-ink ${FOCUS_RING}`}
+                      >
+                        Retry issuing
+                      </button>
+                      <span className="ml-3 text-xs text-muted">
+                        Re-checks the payment with SumUp, then replays the delivery. Nothing is charged.
+                      </span>
+                    </form>
                   </Card>
                 )
               )}

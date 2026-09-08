@@ -8,6 +8,7 @@ import {
   assertStaffManage,
 } from "@/lib/capabilities/guards";
 import { CAP } from "@/lib/capabilities/keys";
+import { replayPaidOrderDelivery } from "@/lib/tickets/replay-order-delivery";
 
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master managing tiers for events they don't own)
@@ -521,4 +522,39 @@ export async function validateDiscountCode(
     discount_amount: discountCode.discount_amount,
     applicable_tier_ids: applicableTierIds,
   };
+}
+
+/**
+ * «Retry issuing» — un ordine d'ospite `failed` il cui checkout e' PAID viene
+ * rimesso in attesa e la consegna del webhook viene rigiocata. Niente viene
+ * emesso qui: emette il webhook, idempotente (`replay-order-delivery.ts`).
+ *
+ * Nato il 2026-09-08 da `49-ESITI.md`, P-WH-4: la scheda diceva «reach out
+ * before the night» e la riparazione era due `update` sul catalogo. La stessa
+ * guardia delle altre azioni di questa pagina (`assertStaffManage` +
+ * `assertEventOwnership`), piu' il vincolo che l'ordine appartenga a questo
+ * evento, perche' `orderId` arriva dal form e il client di servizio bypassa la
+ * RLS (`access-gating.md`, *gate service role*).
+ */
+export async function retryFailedOrder(eventId: string, orderId: string) {
+  const supabase = await createClient();
+  const ctx = await assertStaffManage();
+  await assertEventOwnership(supabase, eventId, ctx);
+
+  const serviceClient = getServiceClient();
+  const { data: order } = await serviceClient
+    .from("ticket_orders")
+    .select("id")
+    .eq("id", orderId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (!order) {
+    console.error(`[tickets.retry_refused_wrong_event] order=${orderId} event=${eventId}`);
+    revalidatePath(`/admin/events/${eventId}/tickets`);
+    return;
+  }
+
+  const outcome = await replayPaidOrderDelivery({ orderId, serviceClient });
+  console.log(`[tickets.retry_by_organizer] order=${orderId} by=${ctx.userId} → ${JSON.stringify(outcome)}`);
+  revalidatePath(`/admin/events/${eventId}/tickets`);
 }
