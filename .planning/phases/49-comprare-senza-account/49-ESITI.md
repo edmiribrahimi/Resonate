@@ -179,3 +179,13 @@ status: in corso
 | «Retry issuing» sulla scheda dell'ordine fallito | `admin/events/[id]/tickets/actions.ts` → `replayPaidOrderDelivery` (`src/lib/tickets/replay-order-delivery.ts`): rilegge su SumUp che il checkout sia `PAID`, rifiuta se l'ordine ha gia' biglietti, rimette `pending` e **rigioca la consegna al webhook** — nessuna seconda strada del denaro | ordine da sei messo `failed` con i suoi biglietti → **rifiutato**, biglietti 6 → 6; ordine abbandonato (checkout `PENDING`) messo `failed` → **rifiutato**. Il ramo felice (failed senza biglietti, checkout PAID) e' la stessa sequenza eseguita a mano per `P-WH-3`/`P-WH-4`; non riprodotto dal pulsante perche' ogni checkout pagato del laboratorio ha gia' i suoi biglietti — si prova al prossimo acquisto con la mail svuotata |
 | cron `retry-failed-orders`, 07:15 UTC | `api/cron/retry-failed-orders`: ordini `failed` fermi da 10 minuti, salta `identity_email_missing`, conta per elemento | sul laboratorio: `considered 2, checkoutNotPaid 1, other 1 (has_tickets), completed 0`; nessuna scrittura |
 | la 3 — biglietti anche senza identita' | `49-BEARER-WITHOUT-IDENTITY.md`: specifica di fase, quattro decisioni da prendere prima di pianificare | da pianificare in una sessione nuova |
+
+### Il ramo felice del pulsante, dal telefono del proprietario — 2026-09-08, acquisto 4 (1,00 €)
+
+| Passo | Osservato |
+|---|---|
+| ordine da 1 con la mail svuotata prima del pagamento; SumUp `PAID` | ordine `failed`, «identity_email_missing» |
+| schermata al ritorno (screenshot del proprietario, 13:45) | **«We received your payment — your tickets were not issued. Do not pay again…»**, solo «Go to events». La riparazione di `P-WH-4` lato ospite e' verificata con un pagamento vero |
+| correzione della mail (a mano, come farebbe chi organizza) + **«Retry issuing» premuto dal proprietario** nella finestra del master | 11:48:07 UTC: ordine **`completed`**, `error_message` null, **1 biglietto** «1 di 1» `guest_checkout`, **1** riga di posta con id del fornitore. Nessun secondo pagamento, nessun biglietto in piu' |
+
+**Totale speso dal proprietario per le prove: 9,00 € su quattro ordini, tutti con i loro biglietti.**
