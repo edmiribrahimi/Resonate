@@ -98,7 +98,14 @@ export async function replayPaidOrderDelivery(args: {
 
   const { data: reset } = await serviceClient
     .from("ticket_orders")
-    .update({ status: "pending", error_message: null, updated_at: new Date().toISOString() })
+    // La traccia resta: il webhook non legge `error_message` su un `pending`,
+    // ma il suo `failOrder` la legge, per NON riavvisare l'organizzazione a
+    // ogni rigioco fallito (`organizer-alert.ts`, paletto 2).
+    .update({
+      status: "pending",
+      error_message: `retrying: ${order.error_message ?? "no cause"}`.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", orderId)
     .eq("status", "failed")
     .select("id");

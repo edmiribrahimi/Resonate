@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getCheckout } from "@/lib/sumup";
+import { alertOrganizerPaidNotIssued } from "@/lib/tickets/organizer-alert";
 import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
 import { MemberApprovedEmail } from "@/emails/member-approved";
@@ -357,7 +358,7 @@ export async function POST(request: Request) {
         // e senza questa colonna il ramo tardivo non saprebbe quale stato
         // temporale interrogare. Nullabile nello schema — un ordine di evento —
         // e il passo 7 dichiara cosa fa in quel caso invece di presumerlo.
-        "id, status, buyer_email, user_id, total_amount, quantity, event_id, party_id"
+        "id, status, buyer_email, user_id, total_amount, quantity, event_id, party_id, error_message"
       )
       .eq("sumup_checkout_id", checkout.id)
       .single();
@@ -396,6 +397,22 @@ export async function POST(request: Request) {
           console.error(
             `[tickets.order_failure_unrecordable] order=${ticketOrder.id} ${redactDbError(markError)}`
           );
+        }
+
+        // Un incasso senza biglietti raggiunge un umano da solo — 2026-09-08,
+        // decisione del proprietario. Solo alla PRIMA transizione: un ordine
+        // rigiocato porta in `error_message` la traccia `retrying: …`, e un
+        // secondo fallimento non riavvisa. Ausiliario: qualunque errore resta
+        // nel log dell'avviso, mai su questo ramo.
+        if (!ticketOrder.error_message) {
+          await alertOrganizerPaidNotIssued({
+            serviceClient: supabase,
+            orderId: ticketOrder.id,
+            eventId: ticketOrder.event_id,
+            quantity: ticketOrder.quantity,
+            totalAmount: Number(ticketOrder.total_amount),
+            cause: `${cause}: ${detail}`.slice(0, 200),
+          });
         }
       };
 
