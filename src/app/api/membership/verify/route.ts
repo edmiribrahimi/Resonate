@@ -16,6 +16,15 @@ import type {
 import type { UserRole } from "@/types/database";
 
 import { redactDbError } from "@/lib/errors/redact";
+
+/**
+ * The shape `requireDoorOperator({ partyId })` accepts before it throws
+ * `door.invalid_party_id`. Same pattern as `require-operator.ts:228`, kept
+ * local because that one is not exported and a route must not throw 500 on a
+ * malformed body field.
+ */
+const PARTY_ID_SHAPE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** The subject of every row this route writes. FIX-13: a thing, never a person. */
 const SUBJECT_TYPE = "membership" satisfies DoorSubjectType;
 
@@ -139,39 +148,30 @@ export async function GET(request: Request) {
 // POST — door check-in: verify member + record attendance for selected party
 export async function POST(request: Request) {
   try {
-    // May this person work the door tonight? `door.operate`, role alone — the
-    // same one function the other three door routes ask, resolved ONCE because
-    // `cache()` does not memoise inside a Route Handler.
+    // The body is read FIRST, because the door question needs the night.
+    //
+    // ── Role alone was the rule here, and it was wrong for the staff ─────────
+    //
+    // This line used to say «`door.operate`, role alone» and call
+    // `requireDoorOperator()` with no night. Measured in the lab on 2026-09-08
+    // (`49-ESITI.md`, P-CODE-2): a staff member assigned to the night with
+    // `door.operate` — the normal door operator — scanned a membership code and
+    // was refused with «This account is not allowed to check people in», while
+    // the same phone admitted tickets a minute earlier. `role_capabilities`
+    // grants `door.operate` by role only to master and organizer; staff hold it
+    // per night, through `party_assignments`, and the ticket route
+    // (`api/tickets/attendance`, POST) asks `requireDoorOperator({ partyId })`
+    // and honours that. This route did not, so the two credentials of the door
+    // answered two different guards.
+    //
+    // Owner decision, 2026-09-08: the same guard on both roads — role OR an
+    // assignment to that night. Nothing widens beyond the night the operator
+    // is assigned to, and without a `partyId` the role-only answer is unchanged.
     //
     // The local copy this replaces read `userProfile.role`, not `profile.role`.
     // That naming is why the criterion-3 assertion for this phase is
     // variable-agnostic: `grep -c 'profile.role !== '` scored **0** on this file
     // whether the dead code was still sitting here or not.
-    const auth = await requireDoorOperator();
-    if (!auth.ok) {
-      // 401 and 403 keep the exact bodies they had — `{valid:false, status}`
-      // with no `error` field. `unresolved` is the new third case and carries
-      // one, because the staff member holding the phone has to be able to tell
-      // "we could not check" from "you are not allowed".
-      if (auth.kind === "unresolved") {
-        return NextResponse.json(
-          {
-            valid: false,
-            status: DOOR_UNRESOLVED_STATUS,
-            error: auth.error,
-          },
-          { status: auth.status }
-        );
-      }
-      return NextResponse.json(
-        {
-          valid: false,
-          status: auth.kind === "unauthenticated" ? "unauthorized" : "forbidden",
-        },
-        { status: auth.status }
-      );
-    }
-
     let body: {
       code?: string;
       partyId?: string;
@@ -193,6 +193,39 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { valid: false, error: "Invalid request body" },
         { status: 400 }
+      );
+    }
+
+    // A malformed `partyId` must not reach `requireDoorOperator`, which throws
+    // on it; the «no party selected» refusal further down keeps its shape.
+    const nightForGuard =
+      typeof body.partyId === "string" && PARTY_ID_SHAPE.test(body.partyId)
+        ? body.partyId
+        : undefined;
+    const auth = await requireDoorOperator(
+      nightForGuard ? { partyId: nightForGuard } : undefined
+    );
+    if (!auth.ok) {
+      // 401 and 403 keep the exact bodies they had — `{valid:false, status}`
+      // with no `error` field. `unresolved` is the new third case and carries
+      // one, because the staff member holding the phone has to be able to tell
+      // "we could not check" from "you are not allowed".
+      if (auth.kind === "unresolved") {
+        return NextResponse.json(
+          {
+            valid: false,
+            status: DOOR_UNRESOLVED_STATUS,
+            error: auth.error,
+          },
+          { status: auth.status }
+        );
+      }
+      return NextResponse.json(
+        {
+          valid: false,
+          status: auth.kind === "unauthenticated" ? "unauthorized" : "forbidden",
+        },
+        { status: auth.status }
       );
     }
 

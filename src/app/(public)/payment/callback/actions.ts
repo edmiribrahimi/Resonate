@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getCheckout } from "@/lib/sumup";
 import { generateTicketToken } from "@/utils/qr";
 
 export type PaymentCallbackStatus =
@@ -9,7 +10,17 @@ export type PaymentCallbackStatus =
   | "PAID"
   | "FAILED"
   | "EXPIRED"
-  | "NOT_FOUND";
+  | "NOT_FOUND"
+  /**
+   * Il fornitore ha incassato e i biglietti NON sono nati. Non e' un pagamento
+   * fallito, e dirlo come tale invita a pagare due volte. Solo `ticket_order`.
+   */
+  | "PAID_NOT_ISSUED"
+  /**
+   * L'ordine e' `failed` e il fornitore non ha risposto: non sappiamo se ha
+   * incassato. La sola cosa sicura da dire e' «non ripagare prima di guardare».
+   */
+  | "UNCONFIRMED";
 
 export interface PaymentCallbackResult {
   status: PaymentCallbackStatus;
@@ -129,7 +140,7 @@ async function checkTicketOrderStatus(
 ): Promise<PaymentCallbackResult> {
   const { data: order, error } = await supabase
     .from("ticket_orders")
-    .select("id, status")
+    .select("id, status, sumup_checkout_id")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -146,6 +157,44 @@ async function checkTicketOrderStatus(
       status,
       redirectTo: `/tickets/order/${generateTicketToken(order.id)}`,
     };
+  }
+
+  // ── `failed` non vuol dire «pagamento fallito» ─────────────────────────────
+  //
+  // Misurato in laboratorio il 2026-09-08 (`49-ESITI.md`, P-WH-4): un ordine
+  // pagato i cui biglietti non sono nati — identita' non risolvibile — e'
+  // `failed` in tabella, e questa pagina diceva «Payment failed — Try again».
+  // SumUp aveva incassato 6,00 €. Un ospite in quello stato paga una seconda
+  // volta.
+  //
+  // Lo stato locale dice cosa e' successo DOPO l'incasso, non se l'incasso c'e'
+  // stato. Quello si chiede al fornitore — la stessa regola del webhook:
+  // «ALWAYS verify via GET checkout API». Se il fornitore dice PAID, la
+  // schermata deve dire «non ripagare»; se non risponde, non sappiamo, e
+  // l'unica frase onesta e' «guarda la tua banca prima di ripagare». Il ramo
+  // «Payment failed» resta solo quando il fornitore conferma che non ha
+  // incassato.
+  //
+  // Verso dell'errore: dire «fallito» a chi ha pagato costa un secondo
+  // pagamento; dire «forse pagato» a chi non ha pagato costa un'occhiata
+  // all'app della banca. Il default, nell'incertezza, e' il secondo.
+  if (status === "FAILED") {
+    try {
+      const checkout = await getCheckout(order.sumup_checkout_id);
+      if (checkout.status === "PAID") {
+        console.error(
+          `[tickets.paid_not_issued] order=${order.id} checkout=${order.sumup_checkout_id}: ` +
+            "the provider took the money and no ticket was issued; the buyer was told not to pay again"
+        );
+        return { status: "PAID_NOT_ISSUED" };
+      }
+    } catch (verifyError) {
+      console.error(
+        `[tickets.callback_verify_failed] order=${order.id}: could not read the checkout from the provider`,
+        verifyError
+      );
+      return { status: "UNCONFIRMED" };
+    }
   }
   return { status };
 }

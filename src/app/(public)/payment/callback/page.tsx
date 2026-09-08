@@ -178,6 +178,53 @@ function PaymentCallbackContent() {
           </>
         )}
 
+        {/*
+          Paid, no tickets. The provider took the money and the order failed
+          AFTER that — this is not a failed payment, and the one thing this
+          screen must never do is offer "Try again". Measured 2026-09-08
+          (49-ESITI.md, P-WH-4): the old screen said "Payment failed" on a
+          6,00 € PAID checkout.
+        */}
+        {status === "PAID_NOT_ISSUED" && (
+          <>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sem-warn/20">
+              <svg aria-hidden="true" className="h-6 w-6 text-sem-warn" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <PageTitle>We received your payment — your tickets were not issued</PageTitle>
+            <p className="mt-2 text-sm text-muted">
+              <strong>Do not pay again.</strong> The payment went through, but
+              something on our side stopped the tickets from being issued. The
+              organiser can see this order and will write to the email you gave.
+              Keep your card receipt: it is your proof.
+            </p>
+            <Button href="/events" size="lg" variant="secondary" className="mt-4 w-full">
+              Go to events
+            </Button>
+          </>
+        )}
+
+        {/* The provider did not answer: we cannot say whether it took the money. */}
+        {status === "UNCONFIRMED" && (
+          <>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sem-warn/20">
+              <svg aria-hidden="true" className="h-6 w-6 text-sem-warn" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <PageTitle>We could not confirm your payment</PageTitle>
+            <p className="mt-2 text-sm text-muted">
+              <strong>Do not pay again before checking your bank app.</strong> If
+              the charge is there, the order is ours to fix — write to us and we
+              will sort it out. If it is not, you can try again later.
+            </p>
+            <Button href="/events" size="lg" variant="secondary" className="mt-4 w-full">
+              Go to events
+            </Button>
+          </>
+        )}
+
         {/* Not Found */}
         {status === "NOT_FOUND" && (
           <>
