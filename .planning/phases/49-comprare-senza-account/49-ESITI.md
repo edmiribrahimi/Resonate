@@ -190,3 +190,13 @@ status: in corso
 
 **Totale speso dal proprietario per le prove: 9,00 € su quattro ordini, tutti con i loro biglietti.**
 | la mail dopo il pulsante | **PASSA** | riferito dal proprietario: «Il tuo biglietto per Lab Night» arrivata dopo «Retry issuing», una sola volta — coincide con l'unica riga di `email_deliveries` dell'ordine |
+
+## L'avviso a `info@` — commit `d090bca`, 2026-09-08, acquisto 5 (1,00 €)
+
+| Passo | Osservato |
+|---|---|
+| ordine da 1 con mail svuotata, pagato | `failed` «identity_email_missing»; **Resend: «Pagato senza biglietti — Lab Night — 1,00 €» verso `info@resonatemotion.com`, 12:00:40 UTC** |
+| mail ripristinata, **Retry issuing** dal proprietario | ordine `completed`, 1 biglietto, 1 mail al compratore; **avvisi a info@ nei 10 minuti: 1** — il secondo fallimento non e' avvenuto e la traccia `retrying:` avrebbe comunque taciuto |
+| nota | l'ordine completato conserva in `error_message` la causa del fallimento precedente: il webhook non la ripulisce alla chiusura. Cosmetico oggi (la sezione «address never sent» filtra sulle cause `reveal_*`), da pulire quando si riapre il webhook |
+
+**Totale speso dal proprietario per le prove: 10,00 € su cinque ordini, tutti con i loro biglietti.**
