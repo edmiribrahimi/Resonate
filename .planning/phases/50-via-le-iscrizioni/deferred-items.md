@@ -683,3 +683,43 @@ membri ora riguarda tutti.
 modifica sapendo cosa si rompe, non di rimbalzo a una verifica che stava
 provando un'altra cosa. **Proprietario naturale:** chi possiede il prodotto,
 nella fase che segue.
+
+## Registrato dall'orchestratore il 2026-09-21, dopo P-50-8 — decisioni e discrepanze viste dal proprietario
+
+### §7 — RISOLTA: il nome sullo schermo della porta
+**Decisione del proprietario, 2026-09-21:** lo scanner mostra **solo l'esito e il tipo
+di biglietto, nessun nome**. Il biglietto e' al portatore (`D-49-03`); un nome sullo
+schermo fa respingere un ospite valido che non e' chi ha prenotato. **Si fa nella
+fase 51**, che possiede porta, scanner e coda offline, e si riverifica con la radio
+spenta. I punti che rendono il nome sono quelli citati sopra in §7.
+
+### Osservate dal proprietario sulle schermate del lab (2026-09-21, 18:01–18:10)
+
+**Porta (fase 51):**
+- L'avviso «member list NOT refreshed» resta acceso anche con il badge «Online»
+  (gia' in 49-ESITI) e parla di *member list*, vocabolario smontato da questa fase.
+- L'intestazione con il pulsante «QR Scan» scorre via: in tre schermate su quattro
+  titolo e pulsante sono sotto la barra di stato. Alla porta va resa fissa.
+- Il velo dell'esito e' semitrasparente: «Scanner paused» e la lista sotto
+  attraversano il risultato. Zona del risultato opaca, leggibile in un colpo d'occhio.
+
+**Pagina dell'ordine `/tickets/order/[token]` e mail dell'ordine (ritocco prima del
+listing della 003, fuori dalla fase 50 — proprietario: fase 52 o task immediato):**
+- **Il QR non si vede nel corpo della mail su Gmail web**: riquadro vuoto con il testo
+  alternativo, il codice arriva solo come allegato. La 49 lo aveva registrato per
+  l'app Gmail. Alla porta il cliente mostra la mail: e' la voce piu' urgente. Causa
+  probabile: immagine spedita come allegato e non `inline` con `content_id`.
+- La mail dice «il pagamento e' andato a buon fine» anche per una prenotazione
+  gratuita: serve il ramo del testo per l'ordine a zero.
+- Il saluto usa la parte locale dell'indirizzo invece di `full_name` (D-50-18b
+  consente di salutare per nome).
+- Accenti scritti con l'apostrofo («e'», «c'e'», «cosi'», «gia'») su pagina e mail.
+- Pagina e mail in italiano mentre l'app e' in inglese (decisione di milestone:
+  inglese). Da uniformare.
+- Etichetta «RE:SONATE» in maiuscolo sulla pagina dell'ordine: la grafia e'
+  `re:sonate` minuscolo. Mittente «Resonate» e pie' di pagina «Resonate Music
+  Events Community»: brand e parola *community* da rivedere.
+- Colore rosso corallo su titolo, link e pulsante della mail: da verificare contro il
+  token dell'accento (`#FF5C93`).
+- Minori: «Lab Free Night - RSVP» ripete il nome della serata; la mail mostra solo
+  l'ora d'inizio, la pagina l'intervallo.
