@@ -1523,7 +1523,13 @@ function logPurchasePrecheckUnreadable(
 
 /**
  * Initiate a ticket purchase via SumUp hosted checkout.
- * Only approved members can purchase tickets (TICK-07).
+ *
+ * Any authenticated account with a profile can purchase. The approval axis is
+ * gone (phase 50, REG-02): there is no `pending`, no `approved` and no
+ * `rejected` to read, so the only thing this function still verifies about the
+ * buyer is that a profile row **exists** — see the read below, which is a
+ * `select("id")` on purpose.
+ *
  * partyId can be null for event-level (master) tickets.
  */
 export async function purchaseTicket(partyId: string | null, tierId: string, discountCodeId?: string | null) {
@@ -1537,21 +1543,20 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     throw new Error("Not authenticated");
   }
 
-  // Verify user has a profile (pending users CAN purchase — approval happens on successful payment)
+  // Verify user has a profile. The read stays — it is an EXISTENCE check, and
+  // nobody asked to remove it — but it no longer selects `status`: a
+  // `select("id")` answers the only question left. What used to follow, a
+  // refusal for `status === "rejected"`, is gone with the column (phase 50,
+  // REG-02): there is no rejected account any more, and access is removed by
+  // deleting the account (D-50-16), not by a flag the checkout reads.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("status")
+    .select("id")
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
     throw new Error("Profile not found");
-  }
-
-  if (profile.status === "rejected") {
-    throw new Error(
-      "Your account has been rejected and cannot purchase tickets"
-    );
   }
 
   // Fetch tier details to get event_id

@@ -4,7 +4,6 @@ import { getCheckout } from "@/lib/sumup";
 import { alertOrganizerPaidNotIssued } from "@/lib/tickets/organizer-alert";
 import { sendEmail } from "@/lib/email";
 import { TicketConfirmationEmail } from "@/emails/ticket-confirmation";
-import { MemberApprovedEmail } from "@/emails/member-approved";
 import { render } from "@react-email/render";
 import QRCode from "qrcode";
 import { formatTime, formatEventDate } from "@/utils/formatTime";
@@ -184,23 +183,6 @@ export async function POST(request: Request) {
           ticket_id: ticketId,
         })
         .eq("id", purchase.id);
-
-      // Auto-approve pending members on successful ticket purchase
-      const { data: updatedProfile } = await supabase
-        .from("profiles")
-        .update({ status: "approved" })
-        .eq("id", purchase.user_id)
-        .eq("status", "pending")
-        .select("email, full_name")
-        .single();
-
-      if (updatedProfile) {
-        // Fire-and-forget: send approval email
-        const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/login`;
-        render(MemberApprovedEmail({ memberName: updatedProfile.full_name || "Member", loginUrl }))
-          .then((html) => sendEmail({ to: updatedProfile.email, subject: "Welcome to Resonate - You're Approved!", html, category: "member_approved", userId: purchase.user_id }))
-          .catch((err) => console.error("Webhook: approval email failed (non-blocking)", err));
-      }
 
       // Fire-and-forget: send confirmation email with QR code
       try {
@@ -520,41 +502,27 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // 5. SOLO ORA L'AMMISSIONE.
+      // 5. LA MAIL — UNA SOLA, E NON DUE. Dentro un `try` che non puo' far
+      //    fallire l'incasso.
       //
-      // *Il pagamento decide l'ammissione* e' la decisione del proprietario, e
-      // questa riga e' dove avviene — **dopo** che i biglietti esistono, mai
-      // prima: una persona ammessa da un ordine che poi non ha prodotto niente
-      // sarebbe un accesso concesso senza pagamento evaso.
+      // **Qui stava l'ammissione**, fra i biglietti e la mail: un
+      // `update({status:'approved'})` sul profilo di chi aveva appena pagato,
+      // con il commento *«il pagamento decide l'ammissione»*. La fase 50 toglie
+      // l'asse dello stato dai profili (REG-02), quindi l'ammissione non esiste
+      // piu' come concetto e **non e' stata sostituita da nient'altro** — non da
+      // un ruolo nuovo, non da una colonna nuova: chi compra ottiene un account
+      // leggero con ruolo `member`, e basta (D-50-05). Il ruolo dedicato a chi
+      // compra e' esplicitamente differito.
       //
-      // La guardia `.eq("status", "pending")` la rende idempotente ed e' la
-      // stessa gia' in uso nel ramo sopra: la seconda consegna non trova piu'
-      // niente da aggiornare.
-      //
-      // **Nessuna mail di benvenuto**, e non e' una dimenticanza. Il ramo sopra
-      // ne manda una che dice *«You're Approved»*: e' il registro «diventa
-      // membro» che `49-CONTEXT.md` vieta esplicitamente su questo percorso
-      // (punto 5 delle decisioni del proprietario). Chi ha comprato riceve UNA
-      // mail — biglietti piu' *«Completa il tuo account»* — e due messaggi che
-      // raccontano la stessa cosa in due modi diversi sono il modo in cui il
-      // prodotto si contraddice davanti a chi lo usa.
-      const { error: admitError } = await supabase
-        .from("profiles")
-        .update({ status: "approved" })
-        .eq("id", buyerId)
-        .eq("status", "pending");
-
-      if (admitError) {
-        // NON si porta l'ordine a `failed`: i biglietti esistono e sono validi.
-        // Il gate *soldi vs contenuto* al contrario — qui il denaro e' andato a
-        // buon fine e cio' che manca e' uno stato che alla porta non si legge
-        // (`attendance/route.ts:145`). Si scrive e si prosegue.
-        console.error(
-          `[tickets.order_admission_failed] order=${ticketOrder.id} ${redactDbError(admitError)}`
-        );
-      }
-
-      // 6. LA MAIL, dentro un `try` che non puo' far fallire l'incasso.
+      // **Cio' che NON cade con la colonna e' la decisione che la accompagnava**,
+      // ed e' la ragione per cui questo commento sopravvive: chi ha comprato
+      // riceve **UNA** mail — biglietti piu' *«Completa il tuo account»* — e mai
+      // una seconda che annunci di essere diventato qualcosa. E' il registro
+      // «diventa membro» che `49-CONTEXT.md` vieta su questo percorso (punto 5
+      // delle decisioni del proprietario), e due messaggi che raccontano la
+      // stessa cosa in due modi diversi restano il modo in cui il prodotto si
+      // contraddice davanti a chi lo usa. Dal 2026-09-21 non c'e' piu' nemmeno
+      // un mittente che potrebbe mandarla: `member-approved` e' cancellata.
       //
       // `sendOrderConfirmation` non solleva verso chi chiama, ma `await` su una
       // promessa e' comunque un punto in cui qualcosa di inatteso passerebbe: il
@@ -586,7 +554,7 @@ export async function POST(request: Request) {
       }
 
       // ═══════════════════════════════════════════════════════════════════════
-      // 7. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA
+      // 6. L'INDIRIZZO, SOLO SE LA RIVELAZIONE E' GIA' SCATTATA
       // ═══════════════════════════════════════════════════════════════════════
       //
       // ── Il buco che questa fase apre, e che si chiude qui ──────────────────
