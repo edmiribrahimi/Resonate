@@ -96,3 +96,55 @@ Il secondo e' su un percorso di rivelazione, quindi **non e' debito estetico**:
 l'elenco positivo esiste perche' una colonna che non si legge non si puo'
 stampare. Va guardato da chi possiede quella superficie, e il modo di chiuderlo
 e' correggere la `select`, mai allargare l'asserzione.
+
+---
+
+## `process-entry.ts` scrive ancora sull'asse dello stato — e nessun piano lo possiede
+
+**Trovata:** piano 50-07, task 3 (2026-09-21).
+**Fuori perimetro perche':** il file non e' nell'elenco `files_modified` di
+nessuno dei dodici piani della fase — verificato leggendoli tutti — e sta sul
+percorso della guest list, che e' biglietteria, non superficie membri.
+
+`src/lib/guest-list/process-entry.ts:165-178` legge `status` dal profilo e, se
+vale `pending`, scrive **entrambe** le colonne che la fase cancella:
+
+```
+.select("id, status, email")            // :165
+if (existingProfile.status === "pending")   // :173
+  .update({ status: "approved", approved_via: "guest_list" })   // :176
+```
+
+**Dopo la migration in produzione questo ramo e' un `42703`**, e non cade su una
+superficie amministrativa: cade quando si processa una voce di guest list, cioe'
+mentre si prepara una serata. `50-RESEARCH.md` §2 lo cita nella riga del trigger
+ma non in quella dei consumatori, e nessun piano lo raccoglie.
+
+**Cosa serve:** togliere il ramo intero — non c'e' piu' niente da
+auto-approvare, perche' non c'e' piu' un `pending` — e ridurre la `select` a
+`("id, email")`. Nessun comportamento cambia: ogni account e' gia' quello che
+sara'.
+
+**Chi la chiude:** il piano dell'ultima onda che tocca il codice prima del
+deploy. **Va chiusa dentro la fase**, non differita alla 51: D-50-24 dice che il
+codice dispiegato prima della migration non deve leggere ne' scrivere quelle
+colonne, e questa riga fa entrambe.
+
+---
+
+## `assigned` e `unassigned` non hanno un'etichetta nel registro
+
+**Trovata:** piano 50-07, task 1 (2026-09-21), aggiungendo quella di `deleted`.
+**Fuori perimetro perche':** e' un difetto della fase 35, non di questa: i due
+atti sono nati senza etichetta e `ACT_LABELS` e' un `Record<string, string>`,
+quindi `npm run build` non se ne accorge.
+
+`src/app/(admin)/admin/(work)/members/register/page.tsx:109-131` mappa otto
+valori su dieci. Le righe `assigned` e `unassigned` — quelle delle assegnazioni
+per serata — si disegnano col loro valore grezzo invece che in parole.
+
+Non corretto qui perche' il perimetro del task era l'atto `deleted`, e
+sistemare un difetto vicino ma diverso dentro un commit che ne dichiara un altro
+e' il modo in cui una modifica diventa illeggibile.
+
+**Chi la chiude:** chiunque tocchi quella superficie. Sono due righe.
