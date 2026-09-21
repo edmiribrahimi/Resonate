@@ -61,9 +61,32 @@ const nextConfig: NextConfig = {
     ],
   },
   async redirects() {
+    // ── L'alias italiano dell'iscrizione e' uscito da qui (fase 50, D-50-11) ─
+    //
+    // **Erano quattro voci, sono tre.** La quarta era la coppia italiano →
+    // inglese della pagina d'iscrizione, `permanent: true` come le altre, e se
+    // ne va insieme alla pagina che puntava: quell'indirizzo risponde 404,
+    // quindi un rimando verso di lui prometterebbe una porta che non c'e' piu'.
+    //
+    // **Il fatto che va dichiarato e non scoperto.** `permanent: true` emette un
+    // **308**, e un 308 lo **memorizza il browser**: chi ha seguito quell'alias
+    // anche una sola volta continuera' a essere mandato sulla pagina cancellata
+    // **dalla propria cache**, anche dopo questa rimozione, finche' non la
+    // svuota o l'ingresso non scade. Non e' un difetto di questa modifica — e'
+    // la proprieta' di un redirect permanente — e si accetta dichiarandola
+    // (T-50-28, disposizione `accept`): l'esito per quella persona e' un 404,
+    // non un percorso sbagliato che la porta da qualche altra parte. **`P-50-1`
+    // lo prova da un browser che l'aveva seguito**, non da uno pulito, che non
+    // direbbe nulla.
+    //
+    // Il service worker non c'entra e non aiuta: `src/app/sw.ts:129-158`
+    // cancella ogni documento in cache a ogni rilascio, quindi il rischio
+    // residuo e' il **solo** ingresso di redirect HTTP del browser.
+    //
+    // Le tre che restano sono coppie italiano → inglese di indirizzi che
+    // esistono ancora.
     return [
       { source: "/eventi/:path*", destination: "/events/:path*", permanent: true },
-      { source: "/registrati", destination: "/register", permanent: true },
       { source: "/presenze", destination: "/attendance", permanent: true },
       { source: "/galleria", destination: "/gallery", permanent: true },
     ];

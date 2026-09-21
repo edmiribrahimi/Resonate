@@ -348,11 +348,19 @@ export const PENDING_SURFACES = [
  *     true or false about. It does not dissolve; an entry leaves it only by the
  *     file ceasing to be what it is.
  *
- * **The one member today, and the arithmetic it closes.** Measured 2026-08-14:
- * `find src/app -name "page.tsx"` returns **41** = **38** declared + **2**
- * behind the Phase 42 fence + **1** here. The arithmetic closes exactly, with no
- * residue and no judgement call, which is the condition under which a tree-side
- * census is worth writing rather than a permanent source of noise.
+ * **I membri, e l'aritmetica che chiudono.** Misurato il 2026-08-14:
+ * `find src/app -name "page.tsx"` restituiva **41** = **38** dichiarate + **2**
+ * dietro la recinzione della fase 42 + **1** qui. L'aritmetica chiudeva esatta,
+ * senza residui e senza giudizi — che e' la condizione a cui un censimento
+ * lato-albero vale la pena di scriverlo invece di essere una fonte permanente
+ * di rumore.
+ *
+ * **Rimisurato il 2026-09-21, fase 50: sono 44** = **36** dichiarate + **6** in
+ * attesa di un'altra fase + **2** qui. Le due differenze sono dello stesso
+ * commit: `/register` **cancellata** (D-50-11, nessuno si iscrive piu' da solo)
+ * e `/` passata di lista, perche' ha smesso di disegnare qualcosa. Il numero si
+ * rilegge dal gate a ogni corsa — **questa prosa no**, ed e' la ragione per cui
+ * porta la data accanto al numero invece che il numero da solo.
  *
  * **What check F does NOT make true.** It closes ONE direction — a page that
  * exists and is not accounted for. It does not close the other: a page declared
@@ -368,6 +376,10 @@ export const PENDING_SURFACES = [
  * list whose reasons stop being true unnoticed.
  */
 export const NON_DECLARABLE = [
+  [
+    "src/app/page.tsx",
+    "/ e' un'entrata, non una superficie — DA FASE 50, D-50-12. Era una superficie dichiarata (piano 41.2-03: wordmark, tre azioni, la barra montata direttamente) e ha smesso di esserlo il giorno in cui la pagina e' stata sostituita da un `redirect(\"/events\")` e nient'altro: nessuna shell, nessuna barra, nessun markup che qualcuno guardi. La ragione del cambiamento e' che il pulsante principale di quella landing portava alla pagina d'iscrizione, e la fase 50 la cancella — nessuno si iscrive piu' da solo, entra chi compra un biglietto o chi e' invitato. Il movimento e' quello che la voce /admin di questa stessa lista prescrive letta al contrario: «se un piano futuro da' markup a quella rotta … diventa dichiarabile, e questa voce esce nello STESSO COMMIT della sua voce CONVERTED». Qui e' successo il verso opposto, e la voce CONVERTED e' uscita nello stesso commit del redirect. ONESTA' SUL COME E' STATA TROVATA, perche' D-41-16 dice che un'esenzione trovata su una corsa rossa e' un'esenzione di cui nessuno si fida: questa e' stata trovata cosi'. I controlli D ed E sono diventati rossi — la pagina non importa piu' PageShell, e dichiara una larghezza il cui guscio riserva lo spazio di una barra che non monta piu' — ed ERANO RAGIONE, non falsi allarmi. Il rosso e' stato il segnale; la ragione e' che il file ha smesso di essere cio' che la voce diceva. Il criterio 1 legge «ogni pagina che disegna una superficie», e un rimando non disegna niente e non mostra a nessuno una schermata mezza convertita: non e' un'esenzione ritagliata dentro il criterio, e' un file uscito dal suo perimetro. Nessuna asserzione e' stata allargata per far passare il rosso — allargarla sarebbe stata l'unica modifica di questo file capace di spegnere un gate invece di aggiornarlo. Se la fase 52 (NAV-01) restituisse markup a questa rotta, questa voce esce e la voce CONVERTED torna, nello stesso commit",
+  ],
   [
     "src/app/(admin)/admin/(work)/page.tsx",
     "/admin is an entrance, not a surface: 39 lines, zero className, no markup, ends in a redirect. It resolves the access context, refuses a visitor without organizer.access, and forwards. It can therefore NEVER import PageShell — there is nothing for a shell to wrap — and check D puts any declared surface whose page file does not import the shell into pagesWithoutShell, which is a FAILURE. Declaring it would put a correct file into a red, and a gate that reddens correct code is a gate somebody switches off (§0 rule 3, D-41-19's second failure mode; scripts/verify-media-strip.mjs:51-62 is this repository's own record of it happening). Criterion 1 reads 'every page that renders a surface'; a redirect renders nothing and shows nobody a half-converted screen, which is the thing that criterion protects a person from — so this is not an exemption carved out of the criterion's scope, it was never inside it. Settled BEFORE check D's first red run, which is why it is trusted: an exemption found on a red run is an exemption nobody trusts (D-41-16). If a future plan gives that route markup — a chooser, a landing board, anything a person looks at — it stops being a redirect, it becomes declarable, and this entry comes out in the SAME COMMIT as its CONVERTED entry",
@@ -438,7 +450,7 @@ export const PRIMITIVES = [
   ],
   [
     "src/components/ui/Input.tsx", "Input",
-    "plan 41-06 — the text-entry control on the boundary that measures; its consumers in that wave are the seven fields of /login, /register and /set-password",
+    "plan 41-06 — the text-entry control on the boundary that measures; its consumers in that wave were the seven fields of /login, /register and /set-password. /register was deleted by phase 50 (D-50-11) and the count is left as it was measured, because this is a record of a wave and not a live census",
   ],
   [
     "src/components/ui/Chip.tsx", "Badge",
@@ -570,10 +582,25 @@ export const CONVERTED = [
     "/login", "src/app/(auth)/login/page.tsx", "focus",
     "plan 41-06 — the front door, whole: both fields on the control boundary, the submit on the accent fill's own ink, every outline-killer gone. Named on §4's closed focus list, and it already used the focus width by hand, so the shell is adoption",
   ],
-  [
-    "/register", "src/app/(auth)/register/page.tsx", "focus",
-    "plan 41-06 — whole, including the branch that renders after a successful sign-up: three fields, the password checklist off the raw palette and onto the completion semantic, and the brand spelled re:sonate. Named on §4's closed focus list",
-  ],
+  // ── `/register` era qui, ed e' uscito con la fase 50 (D-50-11, D-50-28) ────
+  //
+  // La voce nominava l'indirizzo dell'iscrizione, il suo file sotto `(auth)/`
+  // e la larghezza `focus`, convertita dal piano 41-06. **La pagina e' stata
+  // cancellata**: nessuno si iscrive piu' da solo, entra chi compra un
+  // biglietto o chi e' invitato da guest list.
+  //
+  // La voce se ne va **nello stesso commit della cancellazione**, e non e' una
+  // cortesia: il controllo F di `verify:conversion` pretende che ogni voce
+  // dichiarata punti a un file esistente, quindi una pagina cancellata senza
+  // questa riga rende **rosso** `npm run verify:conversion` — e un gate rosso
+  // lasciato indietro e' un gate che nessuno rilancia.
+  //
+  // **Non e' un debito e non e' un'esenzione.** Una superficie che non esiste
+  // non e' una superficie da convertire: sparisce dai conteggi di questo file
+  // invece di restarci come pendenza.
+  //
+  // `/admin/members/register` piu' sotto e' un **altro** indirizzo — la pagina
+  // con cui l'organizer crea un account — e resta.
   [
     "/set-password", "src/app/(auth)/set-password/page.tsx", "focus",
     "plan 41-06 — the surface is TWO files, and this entry names the ROUTE file rather than the form, because the route file imports the form and an import-closure walk from it therefore covers both; naming the form instead would have fenced off the half that owns the shell and the page title. All four outcomes stayed four. Named on §4's closed focus list",
@@ -887,10 +914,29 @@ export const CONVERTED = [
    * `41.2-04-FINDINGS.md` F-41.2-04-01 rather than resolved in silence.
    * ────────────────────────────────────────────────────────────────────────── */
 
-  [
-    "/", "src/app/page.tsx", "default",
-    "plan 41.2-03 — whole, and 'whole' here is ONE file: the landing route file itself. Everything its closure reaches beyond the primitives is spine already converted, and no loading, error or not-found file exists beside the route — listed, not assumed. NOT on §4's closed wide list and therefore default, which is not a fallback but the answer for every surface nobody had to argue about; focus is UNAVAILABLE rather than deferred, because this surface now mounts the responsive navigation DIRECTLY and check E fails any focus surface that mounts one. The own-maximum wave 0 dispositioned DELETE is gone and the disposition was applied rather than decided here; the equal-width action column it was actually buying is re-established by a grid that sizes to its widest child — not by a second maximum, and not by a fixed width, which would overflow the gutter on a 360px phone and put a horizontal scrollbar on the product's first screen. THE COPY CAUTION: the surface gains exactly ONE heading and its accessible string is the wordmark image's existing alt text, so no copy was introduced — the title WRAPS the image rather than carrying the brand as text, because Typography.tsx:34-42 puts the display face on that element and forbids it on a format name, re:sonate among them. The two call-to-action pills stayed Links and did NOT become Chips: the chip's only filled form is its selected state, which is also what emits aria-current, and a landing call to action is not the current item among its siblings, so taking the fill would make that claim falsely to every assistive technology reading the page. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
-  ],
+  // ── `/` non e' piu' una superficie: e' uscito da CONVERTED (fase 50) ───────
+  //
+  // La voce diceva `"/", "src/app/page.tsx", "default"`, convertita dal piano
+  // 41.2-03: wordmark, tre azioni, la barra montata direttamente. **D-50-12 ha
+  // sostituito quella pagina con un `redirect("/events")` e nient'altro.**
+  //
+  // La voce si sposta in `NON_DECLARABLE`, che e' esattamente il movimento
+  // previsto dalla voce `/admin` di quella lista, letta al contrario: *«se un
+  // piano futuro da' markup a quella rotta … diventa dichiarabile, e questa
+  // voce esce nello STESSO COMMIT della sua voce CONVERTED»*. Qui e' successo
+  // il verso opposto — una superficie ha perso il proprio markup — e la regola
+  // si applica uguale, nello stesso commit.
+  //
+  // **Il rosso l'ha trovata, e va detto.** D-41-16: *un'esenzione trovata su
+  // una corsa rossa e' un'esenzione di cui nessuno si fida*. Il rosso e' stato
+  // il segnale, non la ragione: i controlli D ed E sono andati in rosso perche'
+  // la pagina non importa piu' la shell e non monta piu' la barra — **ed e'
+  // vero**, non un falso allarme da zittire. Cio' che e' cambiato e' il file,
+  // non il criterio: *«ogni pagina che disegna una superficie»* non ha mai
+  // compreso un rimando, perche' un rimando non mostra a nessuno una schermata
+  // mezza convertita. Allargare l'asserzione avrebbe zittito un gate; questo la
+  // lascia intatta e sposta il file nella lista che gia' descrive cosa e'
+  // diventato.
   [
     "/newsletter", "src/app/(public)/newsletter/page.tsx", "default",
     "plan 41.2-03 — whole, and 'whole' here is TWO files: the route file and the subscribe form it is the only importer of. No loading, error or not-found file exists beside the route. NOT on §4's closed wide list and therefore default; focus is UNAVAILABLE rather than deferred, for the same check-E reason as the landing surface. THE HEADING CAUTION, and it is the opposite of what the research expected: the PAGE FILE GAINED NO HEADING. Measured across the surface rather than the page file, the form already carries one in EACH of its two mutually exclusive branches, so a title on the page file would have given the surface two headings per render; the substitution was done in the form, in place, one per branch, because the invariant is what the browser gets and not the count in a file. THE FORM'S OWN ENTRY COLUMN IS RETAINED, and the reason is written into the component's docblock rather than left sitting in a blind spot: check D reads the page file only, and that is a LIMIT rather than a permission — the shell owns the page measure now, and a single-field subscribe form run across the whole of it is not a form. RECORDED AND NOT REPAIRED: the subscribe form still collapses a network fault, a missing key and an address already on the list into one sentence, and this repository has no error tracking, so that sentence is the whole of what anybody will learn; naming the causes decides what an API route may tell an anonymous caller about an address it already holds, which is a question about a list of people and belongs to a plan that owns that route. THE NO-BEHAVIOUR-CHANGE SENTENCE, which is the line a reviewer greps the diff against: no query changed, no column added, no capability check touched, no action payload altered",
