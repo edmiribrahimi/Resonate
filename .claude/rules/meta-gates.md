@@ -11,7 +11,7 @@ Prima di QUALSIASI modifica a codice o configurazione:
    questo file?
 2. **Controllo cross-dominio** — quali ALTRI domini sono impattati?
    - Modifica ai ruoli o al middleware → verifica l'impatto su RLS, navigazione,
-     e su cosa vede un utente `pending`
+     e su cosa vede un **account leggero**
    - Modifica a una migration → verifica l'impatto sulle policy esistenti, sui
      tipi in `src/types/database.ts`, e sulle query gia' scritte
    - Modifica al flusso di pagamento → verifica idempotenza, rimborsi, cron di

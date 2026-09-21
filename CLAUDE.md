@@ -63,11 +63,15 @@ classificato ("si", "fatto", conferme). Nel dubbio, mettilo.
 
 ## Operating Principles
 
-1. **Il gating E' il prodotto.**
-   `PROJECT.md` lo dice esplicitamente: il valore della community e' il
-   meccanismo di accesso — referral immediato, non-referred in approvazione.
-   Ogni modifica che allarga chi puo' vedere cosa non e' una feature di
-   convenienza: tocca la ragione per cui la community vale qualcosa.
+1. **Il gating E' il prodotto — e dal 2026-09-21 il gating e' la porta.**
+   Il valore della community e' il meccanismo di accesso. **Nessuno si iscrive
+   piu'**: `/register` non esiste, il signup pubblico e' spento anche in
+   Supabase Auth, e con loro sono spariti approvazione, rifiuto e referral. Chi
+   entra lo fa **col biglietto o con l'invito**; gli account di lavoro li crea un
+   admin o un organizer dentro l'app. Ogni modifica che allarga chi puo' vedere
+   cosa non e' una feature di convenienza: tocca la ragione per cui la community
+   vale qualcosa. *(La politica di chi entra resta da scrivere — la riprende la
+   fase 57: `community-membership.md`.)*
 
 2. **Il middleware e' UX, la RLS e' sicurezza.**
    `src/lib/supabase/middleware.ts` risolve `role` e `status` e reindirizza.
@@ -108,8 +112,11 @@ classificato ("si", "fatto", conferme). Nel dubbio, mettilo.
 
 8. **Precisione lessicale.**
    Un *format* non e' un *evento*, una *serata* non e' una *edizione*, un
-   *satellite* non e' la *notte*. `member` non e' `approved`: sono due assi
-   diversi (ruolo e stato) e confonderli produce bug di accesso.
+   *satellite* non e' la *notte*. E **`member` non e' «socio»**: dal 2026-09-21
+   l'asse dello stato non esiste piu' — `profiles.status` e' stato rimosso — e
+   `member` e' il ruolo dell'**account leggero** di chi ha comprato un biglietto
+   o e' stato invitato. Chiamarlo socio produce bug di accesso, come prima li
+   produceva confonderlo con `approved`.
 
 ---
 

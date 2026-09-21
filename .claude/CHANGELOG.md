@@ -3,6 +3,96 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.22.0] - 2026-09-21
+
+### Changed — lo stato non e' piu' un asse: `access-gating.md`, `community-membership.md`, `meta-gates.md`, `CLAUDE.md`
+
+**Cosa e' caduto.** La fase 50 ha rimosso `profiles.status`,
+`public.get_user_status()` e `role_capabilities.requires_approved` dal database
+(`20260921120000_drop_status_and_referral.sql:996-1010`), ha cancellato
+`/register` e ha spento il signup pubblico in Supabase Auth. Di conseguenza:
+
+- `access-gating.md` — la sezione *Le due assi, che non vanno confuse* diventa
+  **Un asse solo: il ruolo**; il **gate due assi** (*«`role === 'member'` senza
+  `status === 'approved'` e' un buco»*) e' sostituito dal **gate ruolo e
+  capability**, con `private.has_capability` come predicato autoritativo; il
+  **gate escalation privilegi** perde `status` e **conserva** `role`, citando la
+  `profiles_update_own` ricreata nella stessa migration; il *Before Touching*
+  chiede cosa vede un **account leggero senza ruolo di lavoro** invece di cosa
+  vede un utente `pending`. Aggiunta la riga che mancava e senza la quale il
+  modulo mente per omissione: **`member` non significa «socio»** — e' il ruolo
+  dell'account leggero di chi compra o e' invitato, e il ruolo dedicato a chi
+  compra e' differito alla fase 51.
+- `meta-gates.md` — **una riga sola**, nel pattern d'analisi d'impatto:
+  *«cosa vede un utente `pending`»* → *«cosa vede un account leggero»*. Nient'altro:
+  il modulo si carica su **ogni** risposta, e una correzione piu' larga del
+  necessario e' esattamente il rischio che il modulo descrive.
+- `community-membership.md` — cade la parte **meccanica** (la coda `pending`,
+  il rifiuto come riga di tabella, il referral come canale), **non** la politica:
+  *un criterio scritto o nessun criterio*, *nessuna corsia grigia*, *la capienza
+  e' finita* restano, e *chi decide e' tracciato* si **rafforza** nominando
+  l'atto `deleted` e la riga che sopravvive alla persona cancellata (D-50-16).
+- `CLAUDE.md` — principio 1 (*il gating E' il prodotto*) e principio 8
+  (*precisione lessicale*) dicevano che il referral entra subito e i non-referred
+  vanno in approvazione, e che `member` non e' `approved`. Adesso dicono che
+  **nessuno si iscrive**, che si entra col biglietto o con l'invito, e che
+  `member` non e' «socio».
+
+**Perche' adesso e non nella fase 57.** Due gate del progetto si
+contraddicevano: l'*Ordering Constraint* del ROADMAP dice *«i documenti in
+fondo»* e la 57 possiede `DOC`, ma `meta-gates.md` dice che **una riga che
+descrive male il prodotto e' peggio di una riga assente**, *«perche' sta in un
+modulo che si carica su ogni risposta: chi la legge ci costruisce sopra»* — con
+un precedente datato **2026-08-25**, quando un numero sbagliato fece formulare a
+un assistente una domanda al proprietario su una premessa falsa. La 57 riscrive
+i **documenti** che difendono la community; un **gate operativo che ordina un
+controllo impossibile** e' un difetto vivo, e i difetti vivi vanno per primi
+(D-50-25, `50-RESEARCH.md` §8.4).
+
+**Situazione che fa scattare il gate.** Chiunque, dopo questa fase, apra
+`src/lib/rbac/**`, `src/middleware.ts` o `src/app/(admin)/**`, legga
+*«verifica ruolo **e** stato»* e scriva `.select("role, status")` o
+`status = 'approved'` in una policy: **nessun compilatore lo ferma** — la
+colonna non e' nei tipi, ma una stringa SQL non e' tipizzata — e il database
+accetta fino al `42703` **in esecuzione**, su un percorso d'accesso.
+
+**Scenari di carico, uno per modulo modificato** (nessun test runner, gate *eval*
+di `ai-engineering.md`):
+
+- `src/lib/rbac/roles.ts` → caricano `CLAUDE.md` + `meta-gates` +
+  `access-gating` + `nextjs-architecture`. Modifica-tipo: aggiungere un
+  controllo d'accesso a una nuova superficie. Scatta il **gate ruolo e
+  capability** — si chiede `private.has_capability`, non si legge una colonna
+  a mano, e non si cerca un secondo asse.
+- `src/middleware.ts` → stesso insieme. Modifica-tipo: cambiare chi viene
+  reindirizzato. Scatta il pattern d'impatto di `meta-gates` — e adesso chiede
+  *cosa vede un account leggero*, che e' una domanda a cui il prodotto sa
+  rispondere.
+- `community-membership.md` → **manuale, nessun `paths:`**. Consultazione-tipo:
+  «rimettiamo una lista d'attesa / un “richiedi un invito”». Scatta il gate
+  *una richiesta senza risposta non esiste piu', e non va reintrodotta di
+  nascosto*: la coda nasce con il suo tempo di risposta dichiarato, o non nasce.
+- `CLAUDE.md` → si carica sempre. Consultazione-tipo: qualcuno chiama «soci» i
+  titolari di account `member`. Scatta il principio 8.
+
+**Cosa NON e' cambiato.** Le tre **guardie monotone** di `meta-gates.md` —
+`venue_reveal_sent`, il pagamento verso `completed`, la numerazione di serie —
+sono intatte (contate prima e dopo: 3 e 3), e questa fase non ne ha resa nessuna
+piu' facile da far scattare. Intatti i gate *RLS-e'-il-confine*, *service role*,
+*redirect validato*, *entropia degli identificatori*, *nessun rate limiting* e
+*coerenza navigazione/permessi*. Intatti i gate di politica di
+`community-membership.md`, che la fase 57 riprendera'. **Nessun `paths:` e'
+cambiato**, in nessun modulo.
+
+**Context budget: nessun glob allargato, ma il caso peggiore e' stato
+rimisurato** perche' la prosa e' cresciuta su due dei suoi cinque file. Caso
+peggiore `src/app/(admin)/admin/(work)/venues/[slug]/page.tsx`: **48.118 byte
+≈ 13.366 token** su un tetto di 15.000 — margine **1.634**. Prima di questa voce
+erano 45.534 byte ≈ 12.648 token: **+2.584 byte, +718 token**, quasi tutti in
+`access-gating.md` (5.772 → 7.780) e in `CLAUDE.md` (13.600 → 14.173).
+`npm run verify:persona`: **7/7 verdi**, lanciato **dopo** la cancellazione delle
+superfici e **dopo** la scrittura in produzione, mai prima.
+
 ## [1.21.1] - 2026-09-09
 
 ### Fixed — `production-calendar.md`: la `003` non e' piu' in due atti
