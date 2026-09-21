@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
 status: executing
-stopped_at: "FASE 49 VERIFICATA il 2026-09-08 — 49-VERIFICATION.md scritto, status gaps_found: BUY-01/02/03/05 chiusi da prove eseguite sul laboratorio (46/52, cinque pagamenti veri, porta in aereo), BUY-04 PARZIALE perche' «rimandami i biglietti» (resendOrderTickets) non ha una superficie. I due checkpoint umani (49-09 task 3, 49-11 task 2) sono chiusi dall'evidenza di 49-ESITI.md. Tre difetti trovati e riparati lo stesso giorno (45be363), migration del trigger applicata anche in produzione sotto la seconda autorizzazione, ESAURITA. Ordine pagato senza biglietti: pulsante Retry issuing + cron 07:15 UTC + avviso a info@, tutti verificati con pagamenti veri. ⚠ Prossimo: la terza strada (49-BEARER-WITHOUT-IDENTITY.md, quattro decisioni del proprietario), poi fase 50. ⚠ Il frontmatter di questo file era stato riscritto male da state.record-session alla chiusura per contesto (D-49-01-DEF-03): ripristinato da git e riscritto a mano."
-last_updated: "2026-09-08T12:30:00.000Z"
-last_activity: 2026-09-08
+stopped_at: "Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50"
+last_updated: "2026-09-21T11:05:44.335Z"
+last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 48
@@ -567,8 +567,8 @@ Fixed by the project owner before planning — not re-opened at plan time:
 
 ## Session Continuity
 
-**Last session:** 2026-09-08T12:30:00.000Z
-**Stopped at:** 49-VERIFICATION.md scritto (gaps_found: BUY-04 parziale, «rimandami i biglietti» senza superficie); i due checkpoint umani chiusi dall'evidenza di 49-ESITI.md; STATE.md ripristinato dopo la riscrittura sbagliata del frontmatter (D-49-01-DEF-03)
+**Last session:** 2026-09-21T11:05:44.331Z
+**Stopped at:** Phase 50 context gathered (2026-09-21) — REG-06 aggiunto; prossimo: plan-phase 50
 commits on `gsd/phase-31-live-defects-at-the-door-and-the-bar`. Branch not merged,
 nothing pushed. `main` is 14 commits ahead of `origin/main`.
 
