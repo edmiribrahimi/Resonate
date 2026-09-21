@@ -198,7 +198,7 @@ const NOTICES: Record<MemberNoticeKind, Notice> = {
   },
 
   // ───────────────────────────────────────────────────────────────────────────
-  // LE CAUSE DELLA CANCELLAZIONE — dodici insiemi, dodici frasi, e nessuna
+  // LE CAUSE DELLA CANCELLAZIONE — tredici insiemi, dodici frasi, e nessuna
   // dice «qualcosa è andato storto»
   // ───────────────────────────────────────────────────────────────────────────
   //

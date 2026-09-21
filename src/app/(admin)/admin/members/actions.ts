@@ -242,13 +242,18 @@ export type MemberActFailure =
 /**
  * Perche' `deleteAccount` ha un vocabolario suo invece di allargare questo.
  *
- * Le dodici cause qui sotto dicono **quale traccia** impedisce la
- * cancellazione, e sono dodici perche' dodici sono gli insiemi misurati sul
- * catalogo (`50-MEASURES.md`, M10): undici vincoli che BLOCCANO piu' i
- * biglietti, che invece cascherebbero. Metterle in `MemberActFailure`
- * significherebbe offrirle a `updateMemberRole`, che non puo' produrne
- * nessuna — e un'unione che promette cause irraggiungibili e' la stessa
- * ambiguita' che questo file toglie altrove, un piano piu' su.
+ * Le dodici cause bloccanti qui sotto dicono **quale traccia** impedisce la
+ * cancellazione. Coprono **tredici** insiemi — gli undici vincoli che BLOCCANO,
+ * riletti dal catalogo in `50-MEASURES.md` M10, piu' i biglietti e le
+ * assegnazioni ricevute, che invece cascherebbero in silenzio — e sono dodici e
+ * non tredici perche' i due insiemi dei rimborsi, *richiesto* e *processato*,
+ * portano lo stesso codice: e' la stessa cosa da andare a sistemare, e il
+ * `detail` distingue comunque quale dei due ha bloccato.
+ *
+ * Metterle in `MemberActFailure` significherebbe offrirle a `updateMemberRole`,
+ * che non puo' produrne nessuna — e un'unione che promette cause
+ * irraggiungibili e' la stessa ambiguita' che questo file toglie altrove, un
+ * piano piu' su.
  *
  * `CreateAccountFailure` ha gia' fatto questa scelta per la stessa ragione.
  * Le quattro cause condivise — la coppia della guardia, il soggetto assente e
