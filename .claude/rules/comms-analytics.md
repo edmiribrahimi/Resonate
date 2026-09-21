@@ -24,7 +24,7 @@ Una mail e un evento analytics sono entrambi **dati che lasciano il perimetro**.
 - **Gate PII negli eventi**: Un evento analytics non porta dati che non servono alla domanda che deve rispondere. Nome, indirizzo email, codice di membership e indirizzo del venue non stanno in un payload di prodotto. PostHog e' configurato su istanza EU: quella e' una scelta di conformita', e mandarci PII inutile la spreca.
 - **Gate consenso**: Il tracciamento client-side segue il consenso dell'utente. Un evento raccolto senza base giuridica non e' un dato: e' un debito.
 - **Gate metrica onesta**: Un numero mostrato in dashboard porta la sua unita' e, se e' una stima o un parziale, la sua dimensione campionaria. Una percentuale su nove ingressi non e' una percentuale, e' un aneddoto con la virgola.
-- **Gate template in italiano**: I materiali verso i membri sono in italiano, coerenti con la voce del progetto. Una mail transazionale in inglese dentro un prodotto italiano legge come phishing. **L'interfaccia invece e' in inglese** (scelta presa alla fase 01, con i redirect permanenti da `/eventi`, `/registrati`, `/presenze`, `/galleria` a testimoniarlo): le due lingue convivono per destinatario, non per caso, e i **materiali visivi seguono l'inglese britannico** (`brand-visual-system.md`).
+- **Gate una lingua sola per percorso**: **Il prodotto e' in inglese, e lo sono anche le mail transazionali.** L'interfaccia lo e' dalla fase 01 (i redirect permanenti da `/eventi`, `/registrati`, `/presenze`, `/galleria` lo testimoniano), e il 2026-09-21 il proprietario ha deciso che la mail dell'ordine — la ricevuta di un acquisto fatto in inglese — segue la lingua del percorso: una ricevuta in un'altra lingua rispetto alla pagina che l'ha generata legge come un altro mittente, cioe' come phishing. *(Questo gate diceva il contrario — «i materiali verso i membri sono in italiano» — ed e' stato scritto quando la community aveva soci e non acquirenti; con la fase 50 non ci sono piu' soci, e la persona che riceve la mail e' la stessa che ha appena letto la pagina in inglese.)* L'italiano resta dove e' un asset: i nomi dei locali, `aperitivo`, e i materiali verso i locali (`docs/`, non versionati). I **materiali visivi seguono l'inglese britannico** (`brand-visual-system.md`).
 
 - **Gate due mittenti, due funzioni**: `noreply@resonatemotion.com` porta le transazionali del prodotto; `info@resonatemotion.com` e' l'indirizzo di contatto — ricevuto via Cloudflare Email Routing e inoltrato, inviato via SMTP Resend. **Non si scambiano**: una transazionale da `info@` invita a rispondere a un indirizzo che nessun sistema legge; una risposta umana da `noreply@` dice all'interlocutore che non deve rispondere.
 
@@ -41,7 +41,7 @@ Una mail e un evento analytics sono entrambi **dati che lasciano il perimetro**.
 - When emitting an analytics event: strip anything the question doesn't need
 - When tracking client-side: respect consent
 - When displaying a metric: show its unit and its sample size
-- When writing member-facing copy: write it in Italian — the interface stays English
+- When writing copy for a buyer or a member: write it in English, the language of the surface that led there
 - When choosing the sender: transactional from noreply@, human replies from info@
 - When adding a sending service or subdomain: align SPF and DKIM before the first send
 - When asked to enable open/click tracking: don't — measure what happens in the product instead

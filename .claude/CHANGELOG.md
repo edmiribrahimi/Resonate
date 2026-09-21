@@ -3,6 +3,43 @@
 Tutte le modifiche rilevanti all'architettura di prompt di re:sonate.
 Formato: [Semantic Versioning](https://semver.org/)
 
+## [1.23.0] - 2026-09-21
+
+### Changed — la lingua delle mail segue il prodotto: `comms-analytics.md`
+
+**Cosa e' cambiato.** Il **gate template in italiano** diventa il **gate una
+lingua sola per percorso**: le mail transazionali sono in **inglese**, come
+l'interfaccia che le genera. La regola precedente era stata scritta per una
+community di soci; dalla fase 50 chi riceve la mail dell'ordine e' la persona
+che ha appena comprato su una pagina in inglese, e il proprietario — guardando
+la mail accanto all'app sul laboratorio, il 2026-09-21 — ha deciso che le due
+lingue nello stesso percorso sono un difetto, non una scelta. L'imperativo
+*write it in Italian* e' riscritto di conseguenza.
+
+**Cosa lo ha fatto scattare.** Il ritocco della mail e della pagina dell'ordine
+prima del listing della 003: la mail era l'**unico** template in italiano su
+tredici, e il suo docblock citava il gate come ragione. Tradurla senza
+riscrivere il gate avrebbe lasciato una regola che il codice contraddice su
+tutti i file che governa.
+
+**Scenario di carico e scatto.** File: `src/emails/ticket-order.tsx`. Moduli
+attesi: `comms-analytics.md` (primario, `src/emails/**`) + `meta-gates.md`.
+Modifica-tipo che deve far scattare il gate: una frase in italiano aggiunta a
+un template transazionale, o un template nuovo scritto in italiano.
+
+**L'eccezione, dichiarata.** `src/emails/account-invitation.tsx` resta in
+italiano: e' l'ultimo template nella lingua vecchia, e il suo contenuto e'
+superato oltre la lingua (promette un invito personale che la fase 50 ha tolto
+e l'ingresso per nome che la fase 51 riscrive). Lo traduce la fase 51 quando lo
+riscrive, con l'oggetto in `admin/members/actions.ts`. Il docblock lo dichiara.
+
+**Fuori dal gate, registrato qui.** Nello stesso ritocco: gli allegati di
+`sendEmail` passano a camelCase (`contentType`, `contentId`) perche' l'SDK
+Resend ignorava la chiave snake_case e nessun QR era in linea; la palette delle
+mail e' allineata ai token dell'app; il pie' di pagina dice *re:sonate motion
+music hub* (decisione del proprietario, 2026-09-21). Nessun `paths:` e' cambiato:
+il context budget non e' stato rimisurato.
+
 ## [1.22.0] - 2026-09-21
 
 ### Changed — lo stato non e' piu' un asse: `access-gating.md`, `community-membership.md`, `meta-gates.md`, `CLAUDE.md`

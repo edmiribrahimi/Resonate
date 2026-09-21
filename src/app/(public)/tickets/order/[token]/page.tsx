@@ -7,6 +7,7 @@ import { redactDbError } from "@/lib/errors/redact";
 import { PageShell } from "@/components/ui/PageShell";
 import { Card } from "@/components/ui/Card";
 import { PageTitle } from "@/components/ui/Typography";
+import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -105,7 +106,7 @@ function Unavailable({ title, body }: { title: string; body: string }) {
         <PageTitle>{title}</PageTitle>
         <p className="mt-2 text-sm text-muted">{body}</p>
         <Button href="/events" size="lg" variant="secondary" className="mt-4 w-full">
-          Torna agli eventi
+          Back to events
         </Button>
       </Card>
     </PageShell>
@@ -134,8 +135,8 @@ export default async function GuestOrderTicketsPage({
     );
     return (
       <Unavailable
-        title="Non riusciamo ad aprire questa pagina"
-        body="Il tuo ordine e i tuoi biglietti non sono stati toccati: e' un problema nostro, non del tuo link. Riprova fra qualche minuto, e se resta cosi' scrivici."
+        title="We can't open this page right now"
+        body="Your order and your tickets are untouched: this is on our side, not your link. Try again in a few minutes, and write to us if it stays like this."
       />
     );
   }
@@ -174,8 +175,8 @@ export default async function GuestOrderTicketsPage({
     );
     return (
       <Unavailable
-        title="Non siamo riusciti a leggere il tuo ordine"
-        body="Non vuol dire che sia andato perduto: la lettura non ha risposto. Ricarica fra un momento — il link resta valido."
+        title="We couldn't read your order"
+        body="That doesn't mean it's lost: the lookup didn't answer. Reload in a moment — the link stays valid."
       />
     );
   }
@@ -197,8 +198,8 @@ export default async function GuestOrderTicketsPage({
     );
     return (
       <Unavailable
-        title="Non siamo riusciti a leggere i tuoi biglietti"
-        body="L'ordine c'e'. Sono i biglietti che non hanno risposto: ricarica fra un momento."
+        title="We couldn't read your tickets"
+        body="The order is there. It's the tickets that didn't answer: reload in a moment."
       />
     );
   }
@@ -215,23 +216,23 @@ export default async function GuestOrderTicketsPage({
     if (order.status === "pending") {
       return (
         <Unavailable
-          title="Il pagamento e' ancora in corso"
-          body="Non c'e' niente da rifare: appena il pagamento e' confermato i biglietti compaiono qui. Ricarica fra un minuto, e tieni questo link — e' l'indirizzo stabile del tuo ordine."
+          title="Your payment is still in progress"
+          body="Nothing to redo: as soon as the payment is confirmed your tickets appear here. Reload in a minute, and keep this link — it's the permanent link to your order."
         />
       );
     }
     if (order.status === "expired") {
       return (
         <Unavailable
-          title="La sessione di pagamento e' scaduta"
-          body="Non e' stato addebitato nulla e non e' stato emesso nessun biglietto. Puoi ricominciare dalla pagina della serata."
+          title="The payment session has expired"
+          body="Nothing was charged and no ticket was issued. You can start again from the event page."
         />
       );
     }
     return (
       <Unavailable
-        title="Il pagamento non e' andato a buon fine"
-        body="Non e' stato emesso nessun biglietto. Se sul tuo estratto conto vedi un addebito per questo ordine, scrivici: non deve restare."
+        title="The payment didn't go through"
+        body="No ticket was issued. If you see a charge for this order on your statement, write to us: it shouldn't stay there."
       />
     );
   }
@@ -252,8 +253,8 @@ export default async function GuestOrderTicketsPage({
     );
     return (
       <Unavailable
-        title="Il pagamento e' confermato, i biglietti stanno per arrivare"
-        body="L'incasso e' registrato e non va perduto. I codici compaiono qui appena l'emissione e' completata: ricarica fra un minuto. Se dopo qualche minuto sono ancora assenti, scrivici e tieni questo link."
+        title="Payment confirmed, your tickets are on their way"
+        body="The payment is recorded and won't be lost. The codes appear here as soon as they're issued: reload in a minute. If they're still missing after a few minutes, write to us and keep this link."
       />
     );
   }
@@ -288,8 +289,8 @@ export default async function GuestOrderTicketsPage({
   const heading = party
     ? party.title && event?.title && party.title !== event.title
       ? `${event.title} — ${party.title}`
-      : (party.title ?? event?.title ?? "Il tuo ordine")
-    : (event?.title ?? "Il tuo ordine");
+      : (party.title ?? event?.title ?? "Your order")
+    : (event?.title ?? "Your order");
 
   const displayDate = party?.date ?? event?.date ?? null;
   const displayTime = party?.time ?? null;
@@ -305,7 +306,7 @@ export default async function GuestOrderTicketsPage({
     codes = await Promise.all(
       tickets.map(async (ticket, index) => ({
         id: ticket.id,
-        label: ticket.holder_label ?? `${index + 1} di ${tickets.length}`,
+        label: formatHolderLabel(ticket.holder_label, index, tickets.length),
         dataUrl: await QRCode.toDataURL(generateTicketToken(ticket.id), {
           width: 280,
           margin: 2,
@@ -320,8 +321,8 @@ export default async function GuestOrderTicketsPage({
     );
     return (
       <Unavailable
-        title="I codici non si sono disegnati"
-        body="I biglietti esistono e sono validi: e' il disegno del codice che non e' riuscito. Ricarica la pagina, e se non basta usa i codici allegati alla mail dell'ordine."
+        title="The codes couldn't be drawn"
+        body="Your tickets exist and are valid: it's the drawing of the code that failed. Reload the page, and if that's not enough use the codes in your order email."
       />
     );
   }
@@ -339,11 +340,11 @@ export default async function GuestOrderTicketsPage({
           <span className="text-3xl">&#10003;</span>
         </div>
         <PageTitle>
-          {codes.length > 1 ? `I tuoi ${codes.length} biglietti` : "Il tuo biglietto"}
+          {codes.length > 1 ? `Your ${codes.length} tickets` : "Your ticket"}
         </PageTitle>
         <p className="mt-2 text-sm text-muted">
-          Questo link e&apos; l&apos;indirizzo stabile del tuo ordine: salvalo, e potrai
-          riaprirlo senza fare accesso.
+          This link is the permanent way back to your order: save it, and you can
+          reopen it without signing in.
         </p>
       </div>
 
@@ -380,16 +381,16 @@ export default async function GuestOrderTicketsPage({
             key={code.id}
             className="flex flex-col items-center rounded-2xl border border-line bg-surface p-5"
           >
-            <p className="mb-3 text-sm font-semibold">Biglietto {code.label}</p>
+            <p className="mb-3 text-sm font-semibold">Ticket {code.label}</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={code.dataUrl}
-              alt={`Codice del biglietto ${code.label}`}
+              alt={`QR code for ticket ${code.label}`}
               width={200}
               height={200}
               className="mb-2"
             />
-            <p className="text-xs text-muted">Mostra questo codice all&apos;ingresso</p>
+            <p className="text-xs text-muted">Show this code at the door</p>
           </div>
         ))}
       </div>
@@ -410,14 +411,14 @@ export default async function GuestOrderTicketsPage({
             used»* — una frase falsa detta a chi un link non l'ha mai avuto.
             Mandarcelo sarebbe un vicolo cieco travestito da invito.
           */}
-          <p className="text-sm font-semibold">Completa il tuo account</p>
+          <p className="text-sm font-semibold">Complete your account</p>
           <p className="mt-1 text-sm text-muted">
-            Nella mail dell&apos;ordine c&apos;e&apos; il link per scegliere una password:
-            serve a rientrare da qualunque dispositivo. Non cambia nulla di questi
-            biglietti, che restano validi cosi&apos; come sono.
+            Your order email has the link to choose a password: it lets you come
+            back from any device. It changes nothing about these tickets, which
+            stay valid as they are.
           </p>
           <Button href="/login" size="lg" variant="secondary" className="mt-4 w-full">
-            Ho gia&apos; una password
+            I already have a password
           </Button>
         </Card>
       ) : null}
@@ -429,7 +430,7 @@ export default async function GuestOrderTicketsPage({
           variant="secondary"
           className="mt-4 w-full"
         >
-          Vai alla serata
+          Go to the event
         </Button>
       ) : null}
     </PageShell>

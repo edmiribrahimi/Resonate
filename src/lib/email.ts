@@ -96,10 +96,30 @@ export async function sendEmail({
   to: string;
   subject: string;
   html: string;
+  /**
+   * Allegati, nella forma che l'SDK Resend legge davvero.
+   *
+   * **camelCase, non snake_case.** `resend@6.9.2` converte `contentType` in
+   * `content_type` e `contentId` in `content_id` prima della chiamata HTTP
+   * (`node_modules/resend/dist/index.mjs`, `parseAttachments`): una chiave
+   * scritta gia' in snake_case **viene ignorata in silenzio**, e il tipo
+   * arriva al fornitore come `undefined`. E' successo fino al 2026-09-21: il
+   * QR partiva come allegato generico, senza `content_id`, e il `cid:` nel
+   * corpo restava un riquadro vuoto su Gmail. Il codice arrivava, ma solo
+   * come file in fondo alla mail — alla porta, di notte, non e' la stessa cosa.
+   *
+   * `contentId` e' cio' che rende un allegato **in linea**: il template lo
+   * cita come `src="cid:<contentId>"`, e senza di esso nessun client lo mostra
+   * nel corpo. Il tipo e' dichiarato qui invece che importato dall'SDK perche'
+   * tutti i suoi campi sono opzionali: un chiamante che dimenticasse
+   * `contentId` compilerebbe, e la mail sembrerebbe partita bene.
+   */
   attachments?: Array<{
     content: string;
     filename: string;
-    content_type: string;
+    contentType: string;
+    /** Obbligatorio per un'immagine citata come `cid:` nel corpo. */
+    contentId?: string;
   }>;
   /** Quale dei nove messaggi e' questo. Obbligatoria — vedi il docblock. */
   category: EmailCategory;
@@ -109,7 +129,7 @@ export async function sendEmail({
   ticketId?: string | null;
 }): Promise<SendEmailResult> {
   const fromAddress =
-    process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
+    process.env.RESEND_FROM_EMAIL || "re:sonate <onboarding@resend.dev>";
   const { data, error } = await getResend().emails.send({
     from: fromAddress,
     to: [to],

@@ -131,7 +131,10 @@ async function sendGuestInvitation(
       {
         content: qrBuffer.toString("base64"),
         filename: "ticket-qr.png",
-        content_type: "image/png",
+        contentType: "image/png",
+        // `cid:ticket-qr` nel template: senza questo campo l'immagine non e' in
+        // linea e il riquadro resta vuoto. Vedi il docblock di `sendEmail`.
+        contentId: "ticket-qr",
       },
     ],
   });

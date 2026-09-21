@@ -7,6 +7,7 @@ import type { EmailCategory } from "@/lib/email-delivery/categories";
 import { buildPasswordSetLink } from "@/lib/auth/password-set-link";
 import { TicketOrderEmail, type TicketOrderTicket } from "@/emails/ticket-order";
 import { generateTicketToken } from "@/utils/qr";
+import { formatHolderLabel } from "@/lib/tickets/holder-label";
 import { formatEventDate, formatTime } from "@/utils/formatTime";
 import { redactDbError } from "@/lib/errors/redact";
 import type { getServiceClient } from "@/lib/supabase/service";
@@ -204,7 +205,7 @@ export async function sendOrderConfirmation({
     // ── L'ordine. Colonne nominate una per una, mai `*` ───────────────────────
     const { data: order, error: orderError } = await serviceClient
       .from("ticket_orders")
-      .select("id, event_id, party_id, tier_id, user_id, buyer_email, quantity")
+      .select("id, event_id, party_id, tier_id, user_id, buyer_email, buyer_name, quantity, total_amount")
       .eq("id", orderId)
       .single();
 
@@ -291,14 +292,15 @@ export async function sendOrderConfirmation({
       );
     }
 
-    let party: { title: string; time: string } | null = null;
+    let party: { title: string; time: string; end_time: string | null } | null =
+      null;
     if (order.party_id) {
-      // Due colonne, e nessuna che descriva un posto. Un fallimento qui non
+      // Tre colonne, e nessuna che descriva un posto. Un fallimento qui non
       // ferma la mail: senza il titolo della serata il biglietto resta valido,
       // e il codice e' cio' che apre la porta.
       const { data: partyRow, error: partyError } = await serviceClient
         .from("event_parties")
-        .select("title, time")
+        .select("title, time, end_time")
         .eq("id", order.party_id)
         .single();
       if (partyError) {
@@ -324,7 +326,8 @@ export async function sendOrderConfirmation({
     const attachments: Array<{
       content: string;
       filename: string;
-      content_type: string;
+      contentType: string;
+      contentId: string;
     }> = [];
     const emailTickets: TicketOrderTicket[] = [];
 
@@ -337,13 +340,19 @@ export async function sendOrderConfirmation({
           margin: 2,
           errorCorrectionLevel: "H",
         });
+        // `contentId` E' il legame con `src="cid:…"` nel template. Senza di esso
+        // l'immagine e' un allegato in fondo alla mail e il riquadro resta vuoto
+        // — su Gmail, cioe' sul telefono che alla porta mostra il codice. Fino al
+        // 2026-09-21 mancava, e il tipo era scritto in snake_case che l'SDK
+        // ignora: vedi il docblock di `sendEmail`.
         attachments.push({
           content: buffer.toString("base64"),
           filename: `${cid}.png`,
-          content_type: "image/png",
+          contentType: "image/png",
+          contentId: cid,
         });
         emailTickets.push({
-          label: ticket.holder_label ?? `${i + 1} di ${tickets.length}`,
+          label: formatHolderLabel(ticket.holder_label, i, tickets.length),
           url: `${appUrl}/tickets/${ticket.id}`,
           qrCid: cid,
         });
@@ -378,16 +387,46 @@ export async function sendOrderConfirmation({
       );
     }
 
+    // ── Il nome, quando c'e' ──────────────────────────────────────────────────
+    //
+    // Dalla fase 50 il nome viene chiesto all'acquisto (`D-50-18b`) e vive su
+    // `ticket_orders.buyer_name`, casa di passaggio verso `profiles.full_name`.
+    // Si legge prima dall'ordine, poi dal profilo se l'ordine ne e' privo (le
+    // righe nate prima della colonna), e se manca ovunque la mail saluta senza
+    // nome: la parte locale dell'indirizzo — il ripiego di prima — non e' un
+    // nome, e' l'indirizzo ripetuto a chi l'ha appena scritto.
+    //
+    // **Il nome non finisce sul biglietto**: resta nel saluto. Il biglietto e'
+    // al portatore (`D-49-03`) e l'etichetta resta un progressivo.
+    let buyerName: string | null = (order.buyer_name ?? "").trim() || null;
+    if (!buyerName && order.user_id) {
+      const { data: profile, error: profileError } = await serviceClient
+        .from("profiles")
+        .select("full_name")
+        .eq("id", order.user_id)
+        .maybeSingle();
+      if (profileError) {
+        // Non ferma la mail: un saluto senza nome e' una mail che parte.
+        console.error(
+          `[tickets.order_email_profile_unreadable] order=${orderId} ${redactDbError(profileError)}`
+        );
+      }
+      buyerName = (profile?.full_name ?? "").trim() || null;
+    }
+
+    // Un ordine a totale zero (REG-06) non ha pagato niente: la frase che dice
+    // «il pagamento e' andato a buon fine» sarebbe falsa, e una mail che dice
+    // una cosa falsa sulla prima riga legge come un errore o come phishing.
+    const isFree = Number(order.total_amount) === 0;
+
     const html = await render(
       TicketOrderEmail({
-        // Nessun nome viene chiesto all'acquisto (`D-49-03`, il biglietto e' al
-        // portatore), quindi cio' che si conosce di chi compra e' il suo
-        // indirizzo di posta. La parte prima della chiocciola e' un saluto
-        // ragionevole; il resto sarebbe ripetergli cio' che ha appena scritto.
-        buyerLabel: buyerEmail.split("@")[0] || "ciao",
+        buyerName,
+        isFree,
         eventTitle: event.title,
         eventDate: formatEventDate(event.date),
         eventTime: party ? formatTime(party.time) : "",
+        eventEndTime: party?.end_time ? formatTime(party.end_time) : "",
         partyTitle: party?.title ?? (order.party_id ? undefined : "Event Pass"),
         tierName: tier.name,
         tickets: emailTickets,
@@ -397,8 +436,8 @@ export async function sendOrderConfirmation({
 
     const subject =
       emailTickets.length > 1
-        ? `I tuoi ${emailTickets.length} biglietti per ${event.title}`
-        : `Il tuo biglietto per ${event.title}`;
+        ? `Your ${emailTickets.length} tickets for ${event.title}`
+        : `Your ticket for ${event.title}`;
 
     // ── L'invio ───────────────────────────────────────────────────────────────
     //

@@ -36,17 +36,22 @@ import { EmailLayout, BRAND } from "./components/email-layout";
  * su un biglietto trasferibile fa rifiutare un ospite valido davanti a una fila.
  *
  * ═════════════════════════════════════════════════════════════════════════════
- * IL TESTO E' IN ITALIANO
+ * IL TESTO E' IN INGLESE, COME IL PRODOTTO
  * ═════════════════════════════════════════════════════════════════════════════
  *
- * `comms-analytics.md`, gate *template in italiano*: i materiali verso chi compra
- * sono in italiano; **l'interfaccia resta in inglese**, e le due lingue convivono
- * per destinatario, non per caso. *(Gli altri dodici template di `src/emails/`
- * sono in inglese e precedono quel gate: sono debito dichiarato altrove, non un
- * precedente da imitare.)*
+ * Fino al 2026-09-21 questo template era in italiano, e `comms-analytics.md`
+ * lo chiedeva. Il proprietario, guardando la mail accanto all'app, ha deciso
+ * il contrario: **l'app e' in inglese, e la mail dell'ordine e' la ricevuta di
+ * un acquisto fatto in inglese** — due lingue nello stesso percorso leggono
+ * come due mittenti. Il gate e' stato riscritto (`CHANGELOG.md` 1.23.0), e gli
+ * altri dodici template — gia' in inglese — smettono di essere debito.
+ *
+ * L'etichetta del portatore in tabella resta «2 di 6» (coniata in SQL,
+ * `20260905120100:242`): la traduce `formatHolderLabel` nel punto in cui si
+ * mostra, perche' le righe emesse non si riscrivono.
  */
 export interface TicketOrderTicket {
-  /** «1 di 6» — da `tickets.holder_label`. **Non e' un nome** (`D-49-03`). */
+  /** «1 of 6» — da `tickets.holder_label`, tradotta. **Non e' un nome** (`D-49-03`). */
   label: string;
   /**
    * Il link permanente di quel biglietto dentro il prodotto.
@@ -68,16 +73,31 @@ export interface TicketOrderTicket {
    * qualcuno tocca. Con sei biglietti la divergenza non e' un'immagine rotta: e'
    * **il QR sbagliato accanto all'etichetta giusta**, cioe' due persone respinte
    * alla porta invece di una.
+   *
+   * Dal 2026-09-21 e' anche il `contentId` dell'allegato: senza quello il
+   * `cid:` qui sotto non trova niente e il riquadro resta vuoto.
    */
   qrCid: string;
 }
 
 interface TicketOrderEmailProps {
-  /** Come ci si rivolge a chi ha comprato. Nessun nome viene chiesto: e' la mail. */
-  buyerLabel: string;
+  /**
+   * Il nome di chi ha comprato, **oppure `null`**: allora si saluta senza nome.
+   * Viene da `ticket_orders.buyer_name` o da `profiles.full_name` (D-50-18b);
+   * mai dalla parte locale dell'indirizzo, che non e' un nome.
+   */
+  buyerName: string | null;
+  /**
+   * `true` per un ordine a totale zero (REG-06). Cambia **una frase**: una
+   * prenotazione gratuita non ha un pagamento andato a buon fine, e dirlo
+   * sarebbe falso sulla prima riga.
+   */
+  isFree: boolean;
   eventTitle: string;
   eventDate: string;
   eventTime: string;
+  /** L'orario di fine, quando c'e'. Vuoto altrimenti: si stampa solo l'inizio. */
+  eventEndTime: string;
   partyTitle?: string;
   tierName: string;
   tickets: TicketOrderTicket[];
@@ -92,36 +112,56 @@ interface TicketOrderEmailProps {
   completeAccountUrl: string | null;
 }
 
+const HEADING_FONT = "'Orbitron', 'Arial', sans-serif";
+const BODY_FONT = "'Arial', sans-serif";
+
 export function TicketOrderEmail({
-  buyerLabel,
+  buyerName,
+  isFree,
   eventTitle,
   eventDate,
   eventTime,
+  eventEndTime,
   partyTitle,
   tierName,
   tickets,
   completeAccountUrl,
 }: TicketOrderEmailProps) {
   const many = tickets.length > 1;
+  const preview = many
+    ? `Your ${tickets.length} tickets for ${eventTitle}`
+    : `Your ticket for ${eventTitle}`;
+
+  // «Lab Free Night - RSVP» ripeteva il nome della serata: quando il titolo
+  // della serata coincide con quello dell'evento si stampa solo il tier.
+  const subtitle =
+    partyTitle && partyTitle !== eventTitle ? `${partyTitle} · ${tierName}` : tierName;
+
+  const when = [eventDate, eventTime ? (eventEndTime ? `${eventTime} – ${eventEndTime}` : eventTime) : ""]
+    .filter(Boolean)
+    .join(" · ");
+
+  const greeting = buyerName ? `Hi ${buyerName},` : "Hi,";
+  const opening = isFree
+    ? many
+      ? "your booking is confirmed. Your tickets are below."
+      : "your booking is confirmed. Your ticket is below."
+    : many
+      ? "your payment went through. Your tickets are below."
+      : "your payment went through. Your ticket is below.";
 
   return (
-    <EmailLayout
-      preview={
-        many
-          ? `I tuoi ${tickets.length} biglietti per ${eventTitle}`
-          : `Il tuo biglietto per ${eventTitle}`
-      }
-    >
+    <EmailLayout preview={preview}>
       <Heading
         style={{
           color: BRAND.accent,
           fontSize: "24px",
           fontWeight: "bold",
           margin: "0 0 16px",
-          fontFamily: "'Orbitron', 'Arial', sans-serif",
+          fontFamily: HEADING_FONT,
         }}
       >
-        {many ? "I tuoi biglietti" : "Il tuo biglietto"}
+        {many ? "Your tickets" : "Your ticket"}
       </Heading>
 
       <Text
@@ -130,10 +170,10 @@ export function TicketOrderEmail({
           fontSize: "16px",
           lineHeight: "1.5",
           margin: "0 0 20px",
-          fontFamily: "'Arial', sans-serif",
+          fontFamily: BODY_FONT,
         }}
       >
-        Ciao {buyerLabel}, il pagamento e&apos; andato a buon fine.
+        {greeting} {opening}
       </Text>
 
       <Text
@@ -143,7 +183,7 @@ export function TicketOrderEmail({
           fontWeight: "bold",
           lineHeight: "1.4",
           margin: "0 0 4px",
-          fontFamily: "'Orbitron', 'Arial', sans-serif",
+          fontFamily: HEADING_FONT,
         }}
       >
         {eventTitle}
@@ -155,10 +195,10 @@ export function TicketOrderEmail({
           fontSize: "14px",
           lineHeight: "1.5",
           margin: "0 0 4px",
-          fontFamily: "'Arial', sans-serif",
+          fontFamily: BODY_FONT,
         }}
       >
-        {partyTitle ? `${partyTitle} - ${tierName}` : tierName}
+        {subtitle}
       </Text>
 
       <Text
@@ -167,11 +207,10 @@ export function TicketOrderEmail({
           fontSize: "14px",
           lineHeight: "1.5",
           margin: "0 0 24px",
-          fontFamily: "'Arial', sans-serif",
+          fontFamily: BODY_FONT,
         }}
       >
-        {eventDate}
-        {eventTime ? ` · ${eventTime}` : ""}
+        {when}
       </Text>
 
       {/*
@@ -192,15 +231,15 @@ export function TicketOrderEmail({
               lineHeight: "1.4",
               margin: "0 0 12px",
               textAlign: "center" as const,
-              fontFamily: "'Orbitron', 'Arial', sans-serif",
+              fontFamily: HEADING_FONT,
             }}
           >
-            Biglietto {ticket.label}
+            Ticket {ticket.label}
           </Text>
 
           <Img
             src={`cid:${ticket.qrCid}`}
-            alt={`Codice del biglietto ${ticket.label}`}
+            alt={`QR code for ticket ${ticket.label}`}
             width="200"
             height="200"
             style={{ margin: "0 auto", display: "block" }}
@@ -213,10 +252,10 @@ export function TicketOrderEmail({
               lineHeight: "1.5",
               margin: "12px 0 8px",
               textAlign: "center" as const,
-              fontFamily: "'Arial', sans-serif",
+              fontFamily: BODY_FONT,
             }}
           >
-            Mostra questo codice all&apos;ingresso.
+            Show this code at the door.
           </Text>
 
           <Text
@@ -225,11 +264,11 @@ export function TicketOrderEmail({
               lineHeight: "1.5",
               margin: "0 0 20px",
               textAlign: "center" as const,
-              fontFamily: "'Arial', sans-serif",
+              fontFamily: BODY_FONT,
             }}
           >
             <a href={ticket.url} style={{ color: BRAND.accent }}>
-              Apri il biglietto {ticket.label}
+              Open ticket {ticket.label}
             </a>
           </Text>
         </React.Fragment>
@@ -249,12 +288,12 @@ export function TicketOrderEmail({
           fontSize: "13px",
           lineHeight: "1.6",
           margin: "0 0 24px",
-          fontFamily: "'Arial', sans-serif",
+          fontFamily: BODY_FONT,
         }}
       >
         {many
-          ? "Ogni biglietto vale per una persona: inoltra questo messaggio, o il singolo codice, a chi viene con te. I biglietti si aprono da qui e dai link qui sopra, senza bisogno di accedere."
-          : "Il biglietto si apre da qui e dal link qui sopra, senza bisogno di accedere."}
+          ? "Each ticket admits one person: forward this email, or a single code, to whoever is coming with you. Tickets open from here and from the links above — no sign-in needed."
+          : "Your ticket opens from here and from the link above — no sign-in needed."}
       </Text>
 
       {completeAccountUrl && (
@@ -266,20 +305,20 @@ export function TicketOrderEmail({
               fontWeight: "bold",
               lineHeight: "1.4",
               margin: "0 0 8px",
-              fontFamily: "'Orbitron', 'Arial', sans-serif",
+              fontFamily: HEADING_FONT,
             }}
           >
-            Completa il tuo account
+            Complete your account
           </Text>
 
           {/*
-            «Completa il tuo account», mai «diventa membro» — decisione 5 del
-            proprietario, e la ragione e' il gate dei due assi di `CLAUDE.md`
-            (principio 8): **il pagamento ha gia' ammesso**, la password non
-            ammette nessuno. Aggiunge solo un modo per rientrare da un altro
-            telefono. Una frase che promettesse un ingresso attribuirebbe alla
-            password l'effetto che ha avuto il pagamento — il principio violato
-            nel punto in cui il prodotto parla, da dove passa poi nel codice.
+            «Complete your account», mai «diventa membro» — decisione 5 del
+            proprietario, e la ragione e' il principio 8 di `CLAUDE.md`: **il
+            pagamento ha gia' ammesso**, la password non ammette nessuno.
+            Aggiunge solo un modo per rientrare da un altro telefono. Una frase
+            che promettesse un ingresso attribuirebbe alla password l'effetto
+            che ha avuto il pagamento — il principio violato nel punto in cui il
+            prodotto parla, da dove passa poi nel codice.
           */}
           <Text
             style={{
@@ -287,28 +326,28 @@ export function TicketOrderEmail({
               fontSize: "13px",
               lineHeight: "1.6",
               margin: "0 0 16px",
-              fontFamily: "'Arial', sans-serif",
+              fontFamily: BODY_FONT,
             }}
           >
-            Scegli una password e potrai ritrovare i tuoi biglietti da qualunque
-            dispositivo, anche se perdi questo messaggio.
+            Choose a password and you will be able to find your tickets from any
+            device, even if you lose this email.
           </Text>
 
           <Button
             href={completeAccountUrl}
             style={{
               backgroundColor: BRAND.accent,
-              color: "#ffffff",
+              color: BRAND.onAccent,
               fontWeight: "bold",
               borderRadius: "9999px",
               padding: "12px 32px",
               fontSize: "14px",
               textDecoration: "none",
               display: "inline-block",
-              fontFamily: "'Orbitron', 'Arial', sans-serif",
+              fontFamily: HEADING_FONT,
             }}
           >
-            Completa il tuo account
+            Complete your account
           </Button>
         </>
       )}

@@ -100,7 +100,7 @@ export function GuestInvitationEmail({
         href={claimUrl}
         style={{
           backgroundColor: BRAND.accent,
-          color: "#ffffff",
+          color: BRAND.onAccent,
           fontWeight: "bold",
           borderRadius: "9999px",
           padding: "12px 32px",

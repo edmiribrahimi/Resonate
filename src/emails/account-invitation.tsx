@@ -22,18 +22,17 @@ import { EmailLayout, BRAND } from "./components/email-layout";
  * there forever, readable by anyone who ever reaches that mailbox, and nothing
  * in this system would notice.
  *
- * ── The copy is ITALIAN, and that breaks the analogs deliberately ────────────
+ * ── The copy is ITALIAN, and since 2026-09-21 that is DECLARED DEBT ──────────
  *
- * Every other template in `src/emails/` is English. `comms-analytics.md`, gate
- * *template in italiano*: member-facing transactional copy is Italian and the
- * interface stays English. The two languages coexist by recipient, not by
- * accident — a transactional message in English inside an Italian product reads
- * like phishing, and this particular message asks somebody to click a link and
- * type a password, which is the exact shape a person is right to distrust.
- *
- * The one English string left is the shared footer inside `EmailLayout`, which
- * every template renders. Changing it would edit every message this product
- * sends and belongs to whichever plan owns the layout, not to this one.
+ * This is the last Italian template in `src/emails/`. It was written under the
+ * gate *template in italiano*, which `comms-analytics.md` 1.23.0 replaced with
+ * *una lingua sola per percorso*: transactional mail is English, like the
+ * product. It is NOT translated in that same change on purpose — its content is
+ * stale beyond its language: it still promises a personal invitation (the
+ * referral, removed by phase 50) and entry by name on the member list (the
+ * door surface phase 51 owns and rewrites). Translating a sentence that will be
+ * deleted is work twice; phase 51 rewrites this message whole, in English, with
+ * the subject in `admin/members/actions.ts`.
  *
  * ── The brand is written `re:sonate`, with a normal `e` ──────────────────────
  *
@@ -121,7 +120,7 @@ export function AccountInvitationEmail({
         href={setPasswordUrl}
         style={{
           backgroundColor: BRAND.accent,
-          color: "#ffffff",
+          color: BRAND.onAccent,
           fontWeight: "bold",
           borderRadius: "9999px",
           padding: "12px 32px",

@@ -103,13 +103,13 @@ export default function ComposeForm({ onSent }: { onSent: () => void }) {
     <div style="background-color:#0a0a0a;font-family:'Arial',sans-serif;margin:0;padding:0;">
       <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
         <div style="text-align:center;margin-bottom:32px;">
-          <img src="${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/images/logo-white.png" alt="Resonate" width="180" style="margin:0 auto;display:block;" />
+          <img src="${process.env.NEXT_PUBLIC_APP_URL || "https://resonate.app"}/images/logo-white.png" alt="re:sonate" width="180" style="margin:0 auto;display:block;" />
         </div>
         <div style="background-color:#141414;border:1px solid #262626;border-radius:12px;padding:32px;color:#ededed;">
           ${htmlContent}
         </div>
         <div style="text-align:center;margin-top:32px;border-top:1px solid #262626;padding-top:16px;">
-          <p style="color:#a1a1aa;font-size:12px;">Resonate Music Events Community</p>
+          <p style="color:#a1a1aa;font-size:12px;">re:sonate motion music hub</p>
         </div>
       </div>
     </div>

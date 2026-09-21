@@ -119,7 +119,7 @@ export function VenueRevealEmail({
         href={eventUrl}
         style={{
           backgroundColor: BRAND.accent,
-          color: "#ffffff",
+          color: BRAND.onAccent,
           fontWeight: "bold",
           borderRadius: "9999px",
           padding: "12px 32px",

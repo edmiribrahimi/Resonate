@@ -81,7 +81,7 @@ async function sendAccountInvitation(
   );
   await sendEmail({
     to: email,
-    // Italian, like the body: `comms-analytics.md`, gate *template in italiano*.
+    // Italian, like the body — declared debt for phase 51, see the template's docblock.
     // The sender is `RESEND_FROM_EMAIL`, resolved inside `sendEmail`, so this
     // goes out from `noreply@` like every other transactional message.
     subject: "Il tuo account re:sonate è pronto",

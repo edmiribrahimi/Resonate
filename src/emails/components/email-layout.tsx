@@ -11,13 +11,28 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 
+/**
+ * La palette delle mail e' quella dell'app, copiata a valore.
+ *
+ * Una mail non legge `globals.css`, quindi i token si trascrivono: `--ground`,
+ * `--ink`, `--accent`, `--surface`, `--muted` (`src/app/globals.css`), e il bordo
+ * e' `--line` (rgba 13 %) appiattito sul fondo della card, perche' i client di
+ * posta non compongono l'alfa in modo affidabile. Fino al 2026-09-21 qui stava
+ * un rosso corallo (`#e5484d`) che non e' mai stato un colore del brand: il
+ * proprietario l'ha visto sulla mail dell'ordine, e il confronto col token ha
+ * dato ragione a lui. Se un token cambia, si cambia **qui** nello stesso commit.
+ *
+ * `onAccent` e' il testo sopra l'accento, **scuro come nell'app** (`Button.tsx`,
+ * `bg-accent text-ground`): il bianco su `#FF5C93` sta sotto 3:1.
+ */
 export const BRAND = {
-  background: "#0a0a0a",
-  foreground: "#ededed",
-  accent: "#e5484d",
-  card: "#141414",
-  cardBorder: "#262626",
-  muted: "#a1a1aa",
+  background: "#0A0712",
+  foreground: "#F3ECFA",
+  accent: "#FF5C93",
+  onAccent: "#0A0712",
+  card: "#140D20",
+  cardBorder: "#2C2340",
+  muted: "#A493C0",
 } as const;
 
 const LOGO_URL = process.env.NEXT_PUBLIC_APP_URL
@@ -53,7 +68,7 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
           <Section style={{ textAlign: "center" as const, marginBottom: "32px" }}>
             <Img
               src={LOGO_URL}
-              alt="Resonate"
+              alt="re:sonate"
               width="180"
               style={{ margin: "0 auto", display: "block" }}
             />
@@ -81,7 +96,7 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
                 lineHeight: "1.5",
               }}
             >
-              Resonate Music Events Community
+              re:sonate motion music hub
             </Text>
           </Section>
         </Container>
