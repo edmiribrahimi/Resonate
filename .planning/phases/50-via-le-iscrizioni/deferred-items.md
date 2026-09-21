@@ -723,3 +723,7 @@ listing della 003, fuori dalla fase 50 — proprietario: fase 52 o task immediat
   token dell'accento (`#FF5C93`).
 - Minori: «Lab Free Night - RSVP» ripete il nome della serata; la mail mostra solo
   l'ora d'inizio, la pagina l'intervallo.
+- **Deciso dal proprietario (2026-09-21):** il pie' di pagina delle mail dice
+  **«re:sonate motion music hub»** al posto di «Resonate Music Events Community»
+  — minuscolo, e normale, la tagline del logo. Vale per tutte le mail
+  (`src/emails/components/email-layout.tsx`), nello stesso ritocco.
