@@ -35,9 +35,19 @@ export const BRAND = {
   muted: "#A493C0",
 } as const;
 
+/**
+ * `logo-email.png`, non `logo-white.png`: il logo bianco e' un PNG trasparente,
+ * e Gmail su iPhone in modalita' scura **inverte i colori della mail** — il
+ * fondo `#0A0712` diventa quasi bianco — ma **non tocca le immagini**. Un logo
+ * bianco trasparente su quel fondo invertito sparisce. Visto dal proprietario
+ * il 2026-09-21 su una mail di prova. La versione per le mail porta il fondo
+ * del brand **dentro il PNG**, opaco, con un margine: cosi' resta un blocco
+ * scuro con il logo bianco in entrambe le modalita'. 816 px di larghezza per
+ * 180 px resi, cioe' nitido anche su schermo retina.
+ */
 const LOGO_URL = process.env.NEXT_PUBLIC_APP_URL
-  ? `${process.env.NEXT_PUBLIC_APP_URL}/images/logo-white.png`
-  : "https://resonate.app/images/logo-white.png";
+  ? `${process.env.NEXT_PUBLIC_APP_URL}/images/logo-email.png`
+  : "https://www.resonatemotion.com/images/logo-email.png";
 
 interface EmailLayoutProps {
   preview: string;
