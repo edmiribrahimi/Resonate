@@ -129,7 +129,11 @@ export async function sendEmail({
   ticketId?: string | null;
 }): Promise<SendEmailResult> {
   const fromAddress =
-    process.env.RESEND_FROM_EMAIL || "re:sonate <onboarding@resend.dev>";
+    // «Resonate» con la maiuscola nel NOME del mittente, per decisione del
+    // proprietario (2026-09-21): e' la parola che una persona digita nella
+    // ricerca della posta, e deve trovarla al primo colpo. La grafia
+    // `re:sonate` resta nel corpo e nel pie' di pagina, non qui.
+    process.env.RESEND_FROM_EMAIL || "Resonate <onboarding@resend.dev>";
   const { data, error } = await getResend().emails.send({
     from: fromAddress,
     to: [to],
