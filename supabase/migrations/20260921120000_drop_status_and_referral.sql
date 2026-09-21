@@ -83,7 +83,9 @@
 --
 --   1. le dipendenze REGISTRATE che bloccano il `DROP COLUMN` (le policy e il
 --      vincolo di tabella);
---   2. la policy di storage, che dipende da `get_user_status()`;
+--   2. le policy di storage — quella che dipendeva da `get_user_status()` e le
+--      QUATTRO che il laboratorio ha fatto emergere rifiutando il primo
+--      tentativo (sezione 2b: nessun inventario le aveva);
 --   3. le SEI funzioni che leggono lo stato senza dipendenza dichiarata —
 --      `CREATE OR REPLACE` su firma identica, che conserva l'ACL;
 --   4. il registro, che guadagna il suo ottavo atto;
@@ -266,6 +268,104 @@ CREATE POLICY event_media_quarantine_insert_staff
   WITH CHECK (
     bucket_id = 'event-media-quarantine'
     AND (select private.has_capability('staff.manage'))
+  );
+
+-- ── 2b. LE QUATTRO POLICY DI STORAGE CHE NESSUN INVENTARIO AVEVA VISTO ─────
+--
+-- **Trovate dal laboratorio, non dai file, e trovate perche' hanno RIFIUTATO.**
+-- Il primo tentativo di applicare questa migration, il 2026-09-21 alle
+-- 12:47:28Z, e' tornato con
+--
+--     2BP01: cannot drop column status of table profiles because other objects
+--     depend on it
+--     DETAIL: policy artist_photos_insert_organizer on table storage.objects …
+--             policy artist_photos_update_organizer …
+--             policy venue_photos_insert_organizer …
+--             policy venue_photos_update_organizer …
+--
+-- e **l'intera transazione e' stata annullata**: niente e' stato applicato a
+-- meta'. E' la ragione per cui la procedura passa dal laboratorio prima, e
+-- questo blocco e' il suo unico risultato che conta.
+--
+-- Perche' nessun inventario le aveva:
+--
+--   * `50-RESEARCH.md` §1.1 dice che *«dalla fase 32 una policy non nomina piu'
+--     `status`»*. E' vero **per lo schema `public`**: il collasso di
+--     `20260807010000` ha riscritto 45 policy, tutte li'. Queste quattro vivono
+--     su `storage.objects` e portano ancora il predicato P3 per esteso —
+--     `role IN ('organizer','master') AND status = 'approved'` — cioe' la forma
+--     che quel collasso ha sostituito ovunque tranne che qui.
+--   * la terza query di §1.5(a) cerca `get_user_status|requires_approved` in
+--     `pg_policies`. Queste quattro non nominano ne' l'una ne' l'altro:
+--     interrogano `public.profiles` direttamente, quindi quel controllo le
+--     avrebbe dichiarate **zero** anche mentre esistevano. La query che le trova
+--     e' quella che cerca `profiles` **e** `status` insieme, ed e' riportata nel
+--     SUMMARY perche' il VERIFICATION usi quella.
+--
+-- **UN SOLO CONGIUNTO CADE, e la portata non si muove.** Resta
+-- `profiles.role = ANY (ARRAY['organizer','master'])`, che e' il gate vero: chi
+-- poteva caricare la foto di un artista o di una sede e' esattamente chi puo'
+-- caricarla adesso, perche' il `CHECK profiles_role_implies_approved` rendeva
+-- ogni `organizer` e ogni `master` `approved` per regola di database. Non e' una
+-- semplificazione stimata: e' la stessa equivalenza di §1.3, applicata a quattro
+-- policy che quel paragrafo non contava.
+--
+-- Il predicato e' ricopiato dalla forma APPLICATA (`pg_policies`, laboratorio,
+-- 2026-09-21) meno quel congiunto — `roles = {public}`, quindi nessuna clausola
+-- `TO`, e `auth.uid()` NUDO, senza il `(select …)` della fase 32, che non ha mai
+-- raggiunto `storage.objects`. Avvolgerlo qui sarebbe una seconda modifica in un
+-- diff che deve rispondere a una domanda sola.
+
+DROP POLICY IF EXISTS artist_photos_insert_organizer ON storage.objects;
+
+CREATE POLICY artist_photos_insert_organizer
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'artist-photos'
+    AND EXISTS (
+      SELECT 1 FROM public.profiles
+       WHERE profiles.id = auth.uid()
+         AND profiles.role = ANY (ARRAY['organizer'::text, 'master'::text])
+    )
+  );
+
+DROP POLICY IF EXISTS artist_photos_update_organizer ON storage.objects;
+
+CREATE POLICY artist_photos_update_organizer
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'artist-photos'
+    AND EXISTS (
+      SELECT 1 FROM public.profiles
+       WHERE profiles.id = auth.uid()
+         AND profiles.role = ANY (ARRAY['organizer'::text, 'master'::text])
+    )
+  );
+
+DROP POLICY IF EXISTS venue_photos_insert_organizer ON storage.objects;
+
+CREATE POLICY venue_photos_insert_organizer
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'venue-photos'
+    AND EXISTS (
+      SELECT 1 FROM public.profiles
+       WHERE profiles.id = auth.uid()
+         AND profiles.role = ANY (ARRAY['organizer'::text, 'master'::text])
+    )
+  );
+
+DROP POLICY IF EXISTS venue_photos_update_organizer ON storage.objects;
+
+CREATE POLICY venue_photos_update_organizer
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'venue-photos'
+    AND EXISTS (
+      SELECT 1 FROM public.profiles
+       WHERE profiles.id = auth.uid()
+         AND profiles.role = ANY (ARRAY['organizer'::text, 'master'::text])
+    )
   );
 
 
