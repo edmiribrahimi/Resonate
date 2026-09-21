@@ -379,8 +379,9 @@ Plans:
 | **REG-01** | `/register` e ogni percorso di auto-iscrizione sono rimossi. |
 | **REG-02** | Lo stato `pending` e' smontato: il valore, le mail di approvazione e rifiuto, e le superfici che lo mostrano. |
 | **REG-03** | Il referral (*invite a friend*) e' rimosso. |
-| **REG-04** | Entrano solo `master`, `admin`, `organizer`, `staff`. Gli account li crea un admin o un organizer **dentro l'app** — percorso che esiste gia' dalla fase 43. |
+| **REG-04** | Entrano `master`, `admin`, `organizer`, `staff` **piu' l'account leggero** di chi compra o e' invitato da guest list (ruolo `member` fino alla 51, revisione del perno del 2026-08-22). Nessuno si iscrive: gli account di staff li crea un admin o un organizer **dentro l'app** — percorso che esiste gia' dalla fase 43 — e il signup pubblico e' spento anche in Supabase Auth. *(Riscritto il 2026-09-21 in discussione di fase.)* |
 | **REG-05** | Nessun cancello nuovo su `status`. Quelli esistenti che sopravvivono a questa fase sono **elencati** come debito che 51 o 57 chiudono. |
+| **REG-06** | L'RSVP di una serata gratuita e' **un ordine a totale zero**: nome, cognome e mail come nell'acquisto, stessa mail con QR e link firmato, stesso account leggero, stessa porta — senza SumUp. *(Aggiunto il 2026-09-21, decisione del proprietario: «uguale a comprare un ticket ma senza acquisto».)* |
 
 ### Phase 51: Via le superfici da socio, e la porta
 
