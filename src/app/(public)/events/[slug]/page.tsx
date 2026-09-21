@@ -626,8 +626,29 @@ export default async function EventDetailPage({
           .eq("party_id", party.id)
           .order("price", { ascending: true });
 
+        // ── CR-01: un livello a prezzo zero non si disegna su una serata a
+        //    pagamento ────────────────────────────────────────────────────────
+        //
+        // Questo blocco gira SOLO quando `access_type === "paid"` (la riga
+        // sopra), quindi un livello a prezzo zero qui e' per costruzione il
+        // livello `RSVP` che REG-06 crea sulle serate `free_rsvp` e che e'
+        // rimasto agganciato alla serata dopo il passaggio a `paid` — da prima
+        // che `ensureFreeRsvpTier` imparasse a chiuderlo, o da una scrittura
+        // che non passa da li'. Ordinati per prezzo crescente, quei livelli
+        // sarebbero i PRIMI dell'elenco: la superficie pubblica della serata
+        // mostrerebbe un'opzione gratuita accanto a quelle a pagamento.
+        //
+        // Il filtro sta dove i livelli si LEGGONO e non dove si disegnano, cosi'
+        // vale per ogni consumatore di `tiers` invece che per il solo
+        // `TierSelection`. E' la terza delle tre guardie di CR-01, e nessuna
+        // delle tre si deduce dalle altre: questa toglie l'opzione dalla vista,
+        // le altre due rifiutano l'acquisto se qualcuno la raggiunge lo stesso.
+        const sellableTiers = (rawTiers ?? []).filter(
+          (tier: { price: number }) => tier.price > 0
+        );
+
         tiers = await Promise.all(
-          (rawTiers ?? []).map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
+          sellableTiers.map(async (tier: { id: string; name: string; price: number; quantity: number | null; show_remaining?: boolean; starts_at?: string | null; expires_at?: string | null }) => {
             // THE ERROR IS READ, and a count that did not come back is no
             // longer written down as zero.
             //

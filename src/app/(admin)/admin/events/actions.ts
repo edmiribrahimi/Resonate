@@ -17,6 +17,10 @@ import { CAP } from "@/lib/capabilities/keys";
 import { getAccessContext } from "@/lib/capabilities/server";
 
 import { redactDbError } from "@/lib/errors/redact";
+// CR-01: la soglia del fornitore ha UNA casa. Importarla invece di riscrivere
+// `1.00` qui tiene i due percorsi d'acquisto — con sessione e ospite —
+// allineati per costruzione: se un giorno cambia, cambia in un posto solo.
+import { SUMUP_MINIMUM_EUR } from "@/lib/tickets/order-quote";
 // Service-role client for operations where RLS blocks legitimate access
 // (e.g., master updating events they don't own)
 function getServiceClient() {
@@ -719,11 +723,39 @@ async function ensureFreeRsvpTier(
     capacity: number | null;
   }
 ): Promise<{ ok: true } | { ok: false; error: WriteError }> {
-  if (night.accessType !== "free_rsvp") return { ok: true };
+  // ── CR-01: una serata che smette di essere gratuita chiude il suo livello ──
+  //
+  // Qui c'era `return { ok: true }`, e quel silenzio ERA il difetto. Il livello
+  // `RSVP` a prezzo zero restava agganciato alla serata; la pagina pubblica lo
+  // elencava — ordinato per prezzo crescente, quindi per PRIMO — e il percorso
+  // ordinario d'acquisto non ha mai avuto motivo di sospettare un prezzo nullo.
+  // Una serata appena salvata come `paid` mostrava percio' un'opzione gratuita
+  // acquistabile: l'esatto contrario dell'invariante che questa fase dichiara.
+  //
+  // **Non si cancella.** La ragione del docblock qui sopra resta intatta:
+  // `tickets.tier_id` e `ticket_orders.tier_id` sono `ON DELETE RESTRICT`, e i
+  // biglietti gia' emessi devono continuare a passare dalla porta.
+  //
+  // **E non si scrive `quantity = 0`**, che era la correzione suggerita dalla
+  // revisione: il vincolo inline `CHECK (quantity > 0)` di
+  // `20260225110000_phase6_ticketing.sql:14` e' ancora in vigore — la migration
+  // `20260227100000` ha tolto il `NOT NULL` e il `DEFAULT`, non il `CHECK` —
+  // quindi quella scrittura verrebbe rifiutata dal database, e il rifiuto
+  // arriverebbe come `rsvp_tier_failed` su un salvataggio legittimo.
+  //
+  // Lo strumento e' `expires_at`, che il modello del livello gia' porta e che
+  // **entrambe** le catene di disponibilita' gia' onorano: `order-quote.ts:461`
+  // sul percorso ospite/gratuito, `purchaseTicket` (`:1674`) e
+  // `TierSelection.tsx:198` su quello con sessione. Un livello scaduto e'
+  // `expired`, cioe' non acquistabile e non selezionabile, senza toccare lo
+  // schema e senza perdere una sola riga.
+  if (night.accessType !== "free_rsvp") {
+    return closeZeroPriceTiers(client, night.id);
+  }
 
   const { data: existing, error: readError } = await client
     .from("ticket_tiers")
-    .select("id, quantity")
+    .select("id, quantity, expires_at")
     .eq("party_id", night.id)
     .eq("price", 0)
     .order("created_at", { ascending: true })
@@ -731,7 +763,9 @@ async function ensureFreeRsvpTier(
 
   if (readError) return { ok: false, error: readError };
 
-  const tier = (existing ?? [])[0] as { id: string; quantity: number | null } | undefined;
+  const tier = (existing ?? [])[0] as
+    | { id: string; quantity: number | null; expires_at: string | null }
+    | undefined;
 
   if (!tier) {
     const { error: insertError } = await client.from("ticket_tiers").insert({
@@ -745,13 +779,87 @@ async function ensureFreeRsvpTier(
     return { ok: true };
   }
 
+  // Due allineamenti in una scrittura sola.
+  //
+  //   - `quantity` dalla capienza, come prima;
+  //   - `expires_at` a `null` — **CR-01 nel verso opposto**. Una serata puo'
+  //     tornare `free_rsvp` dopo essere passata da `paid`, e il livello che il
+  //     ramo qui sopra ha chiuso deve riaprirsi: senza, la serata gratuita si
+  //     ritroverebbe con l'unico livello capace di emettere i suoi biglietti
+  //     scaduto, e la prenotazione si rifiuterebbe da sola con
+  //     `quote_tier_not_on_sale` — un no che nessuno ha deciso.
+  const patch: { quantity?: number | null; expires_at?: null; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
   if ((tier.quantity ?? null) !== (night.capacity ?? null)) {
+    patch.quantity = night.capacity;
+  }
+  if (tier.expires_at !== null) {
+    patch.expires_at = null;
+  }
+
+  if ("quantity" in patch || "expires_at" in patch) {
     const { error: updateError } = await client
       .from("ticket_tiers")
-      .update({ quantity: night.capacity, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq("id", tier.id);
     if (updateError) return { ok: false, error: updateError };
   }
+
+  return { ok: true };
+}
+
+/**
+ * CR-01 — rende NON acquistabili i livelli a prezzo zero di una serata che non
+ * e' `free_rsvp`, senza cancellarne nessuno.
+ *
+ * Filtra per `price = 0` e non per nome: il nome di un livello e' modificabile
+ * dall'organizer, il prezzo e' la proprieta' pericolosa. Un livello gia'
+ * scaduto non viene riscritto — cosi' un salvataggio ripetuto non sposta in
+ * avanti una scadenza gia' passata, e la scrittura avviene solo quando c'e'
+ * davvero qualcosa da chiudere.
+ *
+ * Non solleva, come tutto il resto di questa catena: restituisce l'errore a chi
+ * sta a meta' di una scrittura e ha la propria categoria di rifiuto da dire.
+ */
+async function closeZeroPriceTiers(
+  client: EventWriteClient,
+  partyId: string
+): Promise<{ ok: true } | { ok: false; error: WriteError }> {
+  const nowIso = new Date().toISOString();
+  const nowMs = Date.now();
+
+  const { data: rows, error: readError } = await client
+    .from("ticket_tiers")
+    .select("id, expires_at")
+    .eq("party_id", partyId)
+    .eq("price", 0);
+
+  if (readError) return { ok: false, error: readError };
+
+  const open = ((rows ?? []) as { id: string; expires_at: string | null }[]).filter(
+    (t) => t.expires_at === null || new Date(t.expires_at).getTime() > nowMs
+  );
+  if (open.length === 0) return { ok: true };
+
+  const { error: updateError } = await client
+    .from("ticket_tiers")
+    .update({ expires_at: nowIso, updated_at: nowIso })
+    .in(
+      "id",
+      open.map((t) => t.id)
+    );
+
+  if (updateError) return { ok: false, error: updateError };
+
+  // Effetto osservabile con la sua categoria. Chiudere un livello cambia cosa
+  // la pagina pubblica mostra: un cambiamento del genere non deve essere
+  // deducibile solo guardando il risultato (`meta-gates.md`, zero fallimenti
+  // silenziosi). Nessun prezzo, nessun nome, nessuna riga: solo la serata e il
+  // conteggio.
+  console.info(
+    `[event_parties.rsvp_tier_closed] party=${partyId} tiers=${open.length}`
+  );
 
   return { ok: true };
 }
@@ -1699,7 +1807,7 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     // Verify party exists and belongs to same event
     const { data: party, error: partyError } = await supabase
       .from("event_parties")
-      .select("id, event_id")
+      .select("id, event_id, access_type")
       .eq("id", partyId)
       .single();
 
@@ -1709,6 +1817,28 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
 
     if (party.event_id !== eventId) {
       throw new Error("Tier does not belong to this sub-event's event");
+    }
+
+    // ── CR-01: un livello a prezzo zero non si vende su una serata a pagamento ──
+    //
+    // La guardia gemella di `ensureFreeRsvpTier`, e serve anche quando quella ha
+    // gia' fatto il suo lavoro: la chiusura del livello avviene al SALVATAGGIO
+    // della serata, mentre questa riga regge una chiamata costruita a mano su un
+    // livello rimasto aperto da prima del fix, o su una serata scritta da un
+    // percorso che non passa da quel salvataggio. Il gemello del percorso ospite
+    // e' `quote_tier_free_on_paid_night` (`order-quote.ts`).
+    //
+    // `free_rsvp` resta intatto: li' il prezzo zero e' la forma giusta, e la
+    // prenotazione non passa comunque da questa funzione
+    // (`free-order-actions.ts`, con `goesToPaymentProvider: false`).
+    if (tier.price === 0 && party.access_type !== "free_rsvp") {
+      console.error(
+        `[tickets.tier_free_on_paid_night] party=${partyId} tier=${tierId} ` +
+          `access_type=${party.access_type}`
+      );
+      throw new Error(
+        "This ticket type is not on sale for this night (tier_free_on_paid_night). Nothing was charged."
+      );
     }
 
     // Check user doesn't already have a ticket for this party
@@ -1813,6 +1943,30 @@ export async function purchaseTicket(partyId: string | null, tierId: string, dis
     }
 
     validatedDiscountCodeId = code.id;
+  }
+
+  // ── CR-01: il minimo SumUp si applica al prezzo NUDO, non solo allo sconto ──
+  //
+  // Il controllo esisteva **solo** dentro il ramo del codice sconto (`:1811`),
+  // cioe' proteggeva uno sconto troppo generoso e non un listino a zero: chi
+  // sceglieva un livello a prezzo zero senza codice arrivava a `createCheckout`
+  // con `amount: 0`. La soglia e' la stessa e vive in un posto solo
+  // (`SUMUP_MINIMUM_EUR`), e il nome del rifiuto e' quello che il percorso
+  // ospite usa gia' per la stessa causa — `quote_below_minimum` — perche' la
+  // causa e' la stessa e va detta con la stessa parola.
+  //
+  // Il percorso GRATUITO non passa di qui e resta intatto: `reserveFreeTickets`
+  // costruisce il preventivo con `goesToPaymentProvider: false`, che salta
+  // questa sola riga (`order-quote.ts:585`) perche' non c'e' nessun fornitore
+  // di pagamento da rispettare.
+  if (finalPrice < SUMUP_MINIMUM_EUR) {
+    console.error(
+      `[tickets.quote_below_minimum] tier=${tierId} party=${partyId ?? "none"} ` +
+        `amount=${finalPrice.toFixed(2)}`
+    );
+    throw new Error(
+      "This order is below the minimum a card payment can take (\u20AC1.00). Nothing was charged."
+    );
   }
 
   // Use one UUID as both the pending_purchases.id AND the SumUp checkout_reference,

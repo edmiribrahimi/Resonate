@@ -81,7 +81,7 @@ import type { getServiceClient } from "@/lib/supabase/service";
 type ServiceClient = ReturnType<typeof getServiceClient>;
 
 /** Il minimo che il fornitore di pagamento accetta, in euro. */
-const SUMUP_MINIMUM_EUR = 1.0;
+export const SUMUP_MINIMUM_EUR = 1.0;
 
 /**
  * La forma di un uuid, controllata **prima** di mandarlo a PostgREST.
@@ -144,6 +144,18 @@ const QUOTE_DISCOUNT_OTHER_NIGHT = "quote_discount_other_night";
 const QUOTE_DISCOUNT_OTHER_TIER = "quote_discount_other_tier";
 const QUOTE_DISCOUNT_EXHAUSTED = "quote_discount_exhausted";
 const QUOTE_BELOW_MINIMUM = "quote_below_minimum";
+/**
+ * CR-01 — un livello a prezzo zero su una serata che non e' `free_rsvp`.
+ *
+ * Causa PROPRIA e non un caso di {@link QUOTE_BELOW_MINIMUM}, anche se le due
+ * rifiuterebbero lo stesso ordine: sotto il minimo dice *questo importo non e'
+ * incassabile*, e il rimedio di chi legge e' comprare di piu'. Questa dice
+ * *questo livello non doveva essere in vendita*, e il rimedio non e' di chi
+ * compra — e' dell'organizer, che ha reso la serata a pagamento lasciandosi
+ * dietro il livello della prenotazione gratuita. Collassarle manderebbe una
+ * persona a cercare la soluzione dalla parte sbagliata.
+ */
+const QUOTE_TIER_FREE_ON_PAID_NIGHT = "quote_tier_free_on_paid_night";
 
 export type OrderQuoteRefusal =
   | typeof QUOTE_UNREADABLE
@@ -161,7 +173,8 @@ export type OrderQuoteRefusal =
   | typeof QUOTE_DISCOUNT_OTHER_NIGHT
   | typeof QUOTE_DISCOUNT_OTHER_TIER
   | typeof QUOTE_DISCOUNT_EXHAUSTED
-  | typeof QUOTE_BELOW_MINIMUM;
+  | typeof QUOTE_BELOW_MINIMUM
+  | typeof QUOTE_TIER_FREE_ON_PAID_NIGHT;
 
 /**
  * Una frase per causa, e nessuna frase nomina una riga, una persona o un id.
@@ -199,6 +212,8 @@ const ORDER_QUOTE_ERROR: Record<OrderQuoteRefusal, string> = {
   [QUOTE_DISCOUNT_EXHAUSTED]: "That discount code has been used up.",
   [QUOTE_BELOW_MINIMUM]:
     "This order is below the minimum a card payment can take (€1.00). Nothing was charged.",
+  [QUOTE_TIER_FREE_ON_PAID_NIGHT]:
+    "This ticket type is not on sale for this night. Nothing was charged.",
 };
 
 /** Cio' che il preventivo dice, e nient'altro di cio' che ha letto per dirlo. */
@@ -329,7 +344,7 @@ export async function buildOrderQuote(
   //    commento: la lista delle colonne e' qui sotto per intero.
   const { data: party, error: partyError } = await client
     .from("event_parties")
-    .select("id, event_id, title, max_tickets_per_order")
+    .select("id, event_id, title, max_tickets_per_order, access_type")
     .eq("id", partyId)
     .maybeSingle();
 
@@ -390,6 +405,28 @@ export async function buildOrderQuote(
   if (!tier) return refuse(QUOTE_TIER_NOT_FOUND);
   if (tier.party_id !== party.id || tier.event_id !== party.event_id) {
     return refuse(QUOTE_TIER_OTHER_NIGHT);
+  }
+
+  // ── CR-01: prezzo zero e serata a pagamento non stanno insieme ─────────────
+  //
+  // REG-06 fa nascere ogni serata `free_rsvp` con un livello `RSVP` a prezzo
+  // zero. Quando l'organizer salva quella stessa serata come `paid`,
+  // `ensureFreeRsvpTier` ora lo chiude (`admin/events/actions.ts`) — ma la
+  // chiusura avviene al salvataggio, e questa funzione e' raggiungibile da una
+  // **server action pubblica**: regge quindi un livello rimasto aperto da prima
+  // del fix, o una chiamata costruita a mano su un id di livello indovinato.
+  //
+  // Il percorso gratuito non arriva mai qui con questa combinazione:
+  // `reserveFreeTickets` rifiuta gia' una serata non `free_rsvp` con
+  // `free_not_free_rsvp`, prima di chiedere il preventivo. Le due guardie non si
+  // deducono l'una dall'altra, ed e' voluto — e' la stessa indipendenza che la
+  // revisione ha riconosciuto ai tre controlli del percorso gratuito.
+  if (tier.price === 0 && party.access_type !== "free_rsvp") {
+    logMoneyPathFailure("buildOrderQuote.tier_free_on_paid_night", {
+      code: party.access_type,
+      message: null,
+    });
+    return refuse(QUOTE_TIER_FREE_ON_PAID_NIGHT);
   }
 
   // 6. La catena dei tier e la capienza.
