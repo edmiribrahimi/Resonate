@@ -97,7 +97,14 @@ import type {
 // half. Do not read a green build as evidence that the four-role model is
 // wired — it is evidence of the casts.
 export type UserRole = "master" | "organizer" | "staff" | "member";
-export type UserStatus = "pending" | "approved" | "rejected";
+// ── L'unione dei tre valori dello stato stava qui (fase 50, D-50-01) ─────────
+//
+// `"pending" | "approved" | "rejected"`, accanto ai quattro ruoli come se i due
+// assi fossero pari. **Non lo sono piu': ne resta uno solo.** Il tipo e' caduto
+// per ultimo nella fase, e non e' un dettaglio d'ordine: era letto da tutta
+// l'onda precedente, e toglierlo prima avrebbe reso rosso ogni build intermedio
+// — in un repository dove il compilatore e' l'unico controllo automatico che
+// esiste.
 export type AccessType = "free_public" | "free_rsvp" | "paid";
 
 export interface Profile {
@@ -106,9 +113,15 @@ export interface Profile {
   full_name: string;
   membership_code: string;
   role: UserRole;
-  status: UserStatus;
-  referred_by: string | null;
-  approved_via: 'referral' | 'guest_list' | 'admin_manual' | null;
+  // Qui stavano tre campi, e sono usciti insieme alle tre colonne che
+  // descrivevano (fase 50): lo stato di approvazione (D-50-01) e le due del
+  // referral — chi ha invitato e per quale via si e' entrati (D-50-01, REG-03).
+  //
+  // **Un'interfaccia che descrive colonne che non esistono e' peggio di
+  // un'interfaccia assente**, perche' nessun client di questo repository e'
+  // parametrizzato con un generico `Database`: il compilatore non confronta
+  // questi campi con lo schema, quindi una riga di troppo qui non e' un errore,
+  // e' un invito a scrivere una `select` che il database rifiuta con `42703`.
   created_at: string;
   updated_at: string;
 }
@@ -899,10 +912,28 @@ export interface DoorScanEvent {
  * two, which is why that module states the one-commit rule.
  *
  * `role_before` / `role_after` / `status_before` / `status_after` are plain
- * `string`, deliberately, and NOT `UserRole` / `UserStatus`: they are evidence
- * of what was true then. Typing them to the current enumerations would make the
+ * `string`, deliberately, and NOT the current role union: they are evidence of
+ * what was true then. Typing them to the current enumerations would make the
  * history of a retired role unrepresentable, and the migration refuses the same
  * thing on the SQL side by giving them no CHECK.
+ *
+ * ── I DUE CAMPI DELLO STATO RESTANO, E NON SONO UN RESIDUO (fase 50) ─────────
+ *
+ * La fase 50 ha tolto dal prodotto l'asse dell'approvazione: la colonna, il
+ * tipo, i cancelli. **`status_before` e `status_after` non escono con loro**, e
+ * la migration che li ha creati dice perche', in una frase che vale la pena
+ * rileggere prima di cancellarli: *«una etichetta di stato memorizzata e' PROVA
+ * DI CIO' CHE ERA VERO ALLORA, non un puntatore a cio' che e' vero adesso»*
+ * (`20260808002000:224-243`).
+ *
+ * Le righe storiche che dicono `approved` o `rejected` **restano leggibili**, e
+ * devono restarlo: il registro e' `append-only`, e la sua ragione di esistere e'
+ * che una decisione presa su una persona si possa rileggere anni dopo. Dalle
+ * righe nuove i due campi arrivano nulli — `record_membership_act` accetta e
+ * ignora il parametro, per non cambiare firma durante la finestra di deploy.
+ *
+ * **Chi fra sei mesi cerchera' residui di quell'asse li trovera' qui: sono
+ * storia, non debito.**
  *
  * `subject_label` is a MEMBERSHIP CODE. Never an address, never a full name —
  * this repository is public and a register row reaches artefacts.
@@ -1281,12 +1312,19 @@ export interface Capability {
 export interface RoleCapability {
   role: UserRole;
   capability: CapabilityKey;
-  /**
-   * The inherited inconsistency, carried as data. `false` reproduces the 34
-   * policies that ignore status; `true` reproduces the four `artists`/`venues`
-   * policies that require `approved`. It is not a setting to tidy.
-   */
-  requires_approved: boolean;
+  // ── Il secondo asse di una concessione non esiste piu' (fase 50, D-50-01) ──
+  //
+  // Qui stava un booleano per concessione: l'incoerenza ereditata, portata come
+  // dato — falso riproduceva le 34 policy che ignoravano lo stato, vero le
+  // quattro di `artists`/`venues` che pretendevano l'approvazione. La colonna
+  // che lo teneva e' uscita da `private.role_capabilities` nella stessa
+  // migration che ha tolto `profiles.status`, e il ramo che la leggeva e'
+  // uscito da `has_capability`.
+  //
+  // **Una chiave adesso si tiene o non si tiene.** Le quattro policy che
+  // chiedevano l'approvazione sono state riscritte sul solo ruolo, e la portata
+  // non si e' mossa: il `CHECK` *role-implies-approved* rendeva ogni organizer e
+  // ogni master approvato per regola di database.
 }
 
 /**
@@ -1301,25 +1339,33 @@ export interface RoleCapability {
  * path — so a null here on a signed-in caller means the migration has not been
  * applied, and every consumer refuses on it rather than guessing.
  *
- * `role` and `status` are null when the subject has no profile row — which is
- * also the case in which `capabilities` is empty.
+ * `role` is null when the subject has no profile row — which is also the case
+ * in which `capabilities` is empty.
  *
- * **No new caller may branch on `role` or `status`.** They survive in this
- * payload for exactly two client components — `AppNav` and `StaffNav`. The
- * sentence that stood here said both *take `role` and `status` as props*, and
+ * **No new caller may branch on `role`.** It survives in this payload for
+ * exactly two client components — `AppNav` and `StaffNav`. The sentence that
+ * stood here said both *take `role` as a prop*, and
  * that has not been true of either for a while: `StaffNav` has taken
  * serialisable capability keys since plan 34-04, and `AppNav` takes them as
  * of plan 39-03 (D-39-06), where the Check-in entry started being drawn on
  * `door.operate`. Both are still `"use client"` and still cannot import the
  * data-access layer, so a Server Component parent still resolves and passes
- * down — that part was and remains the reason these fields exist here.
+ * down — that part was and remains the reason this field exists here.
  *
- * What keeps `role` and `status` in the payload today is narrower: four of
- * `AppNav`'s five entries are governed by no capability at all, so the nav
- * still needs to know who is signed in and whether they are approved. Removing
- * these two fields therefore waits on a capability that governs those entries,
- * not on a conversion that has already happened. Every new decision asks
- * `capabilities`.
+ * What keeps `role` in the payload today is narrower: four of `AppNav`'s five
+ * entries are governed by no capability at all, so the nav still needs to know
+ * who is signed in. Removing this field therefore waits on a capability that
+ * governs those entries, not on a conversion that has already happened. Every
+ * new decision asks `capabilities`.
+ *
+ * ── Il secondo campo e' uscito (fase 50, D-50-01) ────────────────────────────
+ *
+ * Accanto a `role` stava l'approvazione, e la funzione di database **non la
+ * mette piu' nel payload**: la fase 50 ha ridefinito entrambi i sovraccarichi
+ * di `my_access_context` nella stessa transazione del `DROP COLUMN`. Lasciarla
+ * dichiarata qui avrebbe descritto una chiave che non arriva, e il consumatore
+ * l'avrebbe mappata a `null` per tutti — un valore che si legge come «non
+ * approvato» invece che come «la domanda non esiste piu'».
  *
  * (The file count previously written here was wrong — it read 46: the measured count
  * of files reading the injected role/status headers is **44**, and phase 33 takes
@@ -1330,7 +1376,6 @@ export interface AccessContext {
   capabilities: CapabilityKey[];
   user_id: string | null;
   role: UserRole | null;
-  status: UserStatus | null;
 }
 
 // =============================================================================
