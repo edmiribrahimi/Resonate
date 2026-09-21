@@ -67,10 +67,18 @@ export const DEFAULT_NEXT = "/dashboard";
  *
  *   /dashboard          the default, and where every unrecognised value lands
  *   /set-password       what plan 43-04 built and what Reset Password now aims at
- *   /events/<slug>      produced by `?next=` on RsvpButton.tsx:35 and
- *                       TierSelection.tsx:224, forwarded through
- *                       register/page.tsx:45
- *   /events/<slug>/menu produced by GuestLoginBanner.tsx:42 and :138
+ *   /events/<slug>      **nobody writes this one any more** — re-measured
+ *                       2026-09-21, phase 50. The two surfaces this line used
+ *                       to name, and the sign-up page that forwarded their
+ *                       `?next=`, have all been deleted: a night's page no
+ *                       longer sends anyone away to make an account, whether
+ *                       they are buying or booking. The pattern **stays**:
+ *                       taking an entry off this list is as much an access
+ *                       decision as adding one, and it is not this plan's to
+ *                       take. What is gone is the traffic, not the permission.
+ *   /events/<slug>/menu produced by GuestLoginBanner.tsx:120 and :187 — one
+ *                       link, drawn twice. The second producer this line used
+ *                       to name was the sign-up link, deleted in phase 50.
  *
  * The slug charset is not a guess: `src/utils/slugify.ts:11-20` produces exactly
  * `[a-z0-9-]` and truncates at 80. Widening this pattern by hand would admit

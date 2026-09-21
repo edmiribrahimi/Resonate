@@ -59,7 +59,23 @@ export const EMAIL_CATEGORIES = [
   "ticket_confirmation",
   /** L'invito da guest list, con il QR allegato. Non ha un account dietro. */
   "guest_invitation",
-  /** La conferma di una prenotazione a una serata gratuita. */
+  /**
+   * La conferma di una prenotazione a una serata gratuita.
+   *
+   * **Nessun mittente dal 2026-09-21, fase 50: resta come vocabolario delle
+   * righe storiche.** Una prenotazione e' diventata un ordine a totale zero
+   * (`REG-06`) e la sua conferma e' `ticket_order_confirmation`; il template
+   * che spediva questa e' stato cancellato con l'azione che lo chiamava.
+   *
+   * **Toglierla da qui costerebbe piu' che lasciarla, e in un verso che non si
+   * annulla:** questo elenco e' specchiato dal `CHECK` di
+   * `20260905140000_email_category_ticket_order.sql`, e un
+   * `ALTER … ADD CONSTRAINT` che non ammettesse piu' questo valore fallirebbe
+   * con `23514` su qualunque riga storica lo portasse — facendo tornare
+   * indietro la migration intera. Una categoria che nessuno scrive piu' non e'
+   * debito: e' il vocabolario di un registro che si continua a leggere, come
+   * `membership_acts` conserva gli atti che non si compiono piu'.
+   */
   "rsvp_confirmation",
   /** L'approvazione di un membro. */
   "member_approved",

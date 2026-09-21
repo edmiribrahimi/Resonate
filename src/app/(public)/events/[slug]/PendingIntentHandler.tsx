@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { purchaseTicket } from "@/app/(admin)/admin/events/actions";
-import { rsvpToParty } from "./rsvp-actions";
 import SumUpCheckoutModal from "./SumUpCheckoutModal";
 
 /**
@@ -89,8 +88,27 @@ export default function PendingIntentHandler({ eventSlug }: PendingIntentHandler
             return;
           }
         } else if (intent.type === "rsvp") {
-          await rsvpToParty(intent.partyId, intent.eventId);
+          // ── UN'INTENZIONE CHE NESSUNO SCRIVE PIU', 2026-09-21 ──────────────
+          //
+          // Questo ramo chiamava l'azione che scriveva in `rsvps`, **cancellata** con
+          // il pulsante che la chiamava (piano 50-05, `REG-06`): una
+          // prenotazione e' un ordine a totale zero, e si fa dal modulo che sta
+          // su questa stessa pagina.
+          //
+          // L'intenzione, pero', puo' ancora **esistere**: sta nel browser di
+          // chi ha premuto quel pulsante prima di oggi ed e' stato mandato a
+          // iscriversi. Per lui questa pagina non deve ne' fingere di riprendere
+          // qualcosa ne' restare a filare all'infinito su «Completing your
+          // action…» — che e' cio' che accadrebbe se il ramo sparisse e basta,
+          // perche' nessuno toglierebbe piu' la riga dal browser.
+          //
+          // Quindi: si butta l'intenzione, e **lo si dice**. Il modulo per
+          // prenotare e' visibile sulla stessa schermata, a pochi centimetri da
+          // questa frase.
           localStorage.removeItem("resonate_intent");
+          setError(
+            "That booking was started on the old sign-up road, which no longer exists — nothing was booked. Use the booking form on this page: it takes a moment and your tickets arrive by email."
+          );
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong");
