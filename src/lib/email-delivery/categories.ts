@@ -77,11 +77,50 @@ export const EMAIL_CATEGORIES = [
    * `membership_acts` conserva gli atti che non si compiono piu'.
    */
   "rsvp_confirmation",
-  /** L'approvazione di un membro. */
+  /*
+   * ── LE TRE MAIL DELLA VITA DI UN SOCIO ──────────────────────────────────────
+   *
+   * **Nessun mittente dal 2026-09-21, fase 50, e i template sono cancellati**
+   * (`member-approved.tsx`, `member-reactivated.tsx`, `member-rejected.tsx`).
+   * Non esiste piu' un'approvazione da annunciare: chi compra o viene invitato
+   * da guest list ottiene un account e basta (`REG-02`, D-50-14). Le azioni che
+   * le spedivano — approva, rifiuta, riammetti — le ha tolte il piano 50-07.
+   *
+   * **Le tre voci RESTANO QUI, e toglierle costerebbe piu' che lasciarle.**
+   * Questo elenco e' specchiato dal `CHECK` di
+   * `20260905140000_email_category_ticket_order.sql`: un
+   * `ALTER … ADD CONSTRAINT` che non le ammettesse piu' fallirebbe con `23514`
+   * su qualunque riga storica le portasse, e farebbe tornare indietro la
+   * migration intera. Una categoria che nessuno scrive piu' non e' debito: e'
+   * il vocabolario di un registro che si continua a leggere.
+   *
+   * **Il conteggio misurato, cosi' che chi legge fra un anno sappia se e'
+   * ancora vero** (piano 50-01, `50-MEASURES.md`, 2026-09-21):
+   * `select category, count(*) from public.email_deliveries group by 1` non
+   * restituisce **nessuna riga** per nessuna delle tre, **su nessuno dei due
+   * database** — in produzione la tabella e' vuota (0 righe), sul laboratorio
+   * ne ha 7 e nessuna e' di queste categorie. La trappola del `23514` quindi
+   * **oggi non scatterebbe**; le voci restano lo stesso, perche' il costo di
+   * lasciarle e' tre righe di commento e il costo di sbagliare e' una migration
+   * che torna indietro.
+   *
+   * **Le righe storiche non si cancellano**, ed e' la terza strada che §7.4
+   * della ricerca esclude per nome: e' la scrittura in produzione piu' facile
+   * da fare e da rimpiangere. Il cron di riconciliazione delle consegne
+   * continua a leggerle.
+   *
+   * *(Una quarta mail e' uscita con loro — `registration-confirmation.tsx` e il
+   * suo `.html`, il modello che si incollava nel cruscotto Supabase — ma la
+   * categoria `registration_confirmation` **non e' mai esistita in questo
+   * elenco ne' nel `CHECK`**: nessun codice l'ha mai spedita, quindi non c'e'
+   * niente da togliere e niente da annotare oltre questa frase. Misurato il
+   * 2026-09-21 sul catalogo vivo, non dedotto.)*
+   */
+  /** L'approvazione di un membro. Nessun mittente dal 2026-09-21 — vedi sopra. */
   "member_approved",
-  /** La riammissione di un membro sospeso. */
+  /** La riammissione di un membro sospeso. Nessun mittente dal 2026-09-21. */
   "member_reactivated",
-  /** Il rifiuto di una richiesta di accesso. */
+  /** Il rifiuto di una richiesta di accesso. Nessun mittente dal 2026-09-21. */
   "member_rejected",
   /** L'invito a un account creato a mano, con il link per la password. */
   "account_invitation",
