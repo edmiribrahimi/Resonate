@@ -295,10 +295,17 @@ export const CAPABILITY_ROUTES = {
       // commit: an address bound here but served by nobody is a promise this
       // map cannot keep, and `staff-tabs.ts` asserts against exactly that.
       //
-      // `/admin/members/growth` stays. It is a members surface that happens to
-      // draw analytics components, not part of the Analytics section.
+      // **Un quinto e' uscito il 2026-09-21, per la stessa regola.**
+      // `/admin/members/growth` misurava la crescita spaccata fra referral e
+      // ingressi diretti; il referral e' uscito dal prodotto (D-50-08/D-50-10)
+      // e con lui la pagina, i due grafici e la query che li alimentava. La
+      // riga esce **nello stesso commit** dei file: il commento sopra dichiara
+      // la regola, e lasciarla qui l'avrebbe smentita sulla riga successiva.
+      //
+      // `/admin/newsletter` **resta** (D-50-17): una newsletter e' una mailing
+      // list, non un account, e non ha niente a che vedere con le iscrizioni
+      // che questa fase toglie.
       "/admin/newsletter",
-      "/admin/members/growth",
     ],
   },
 

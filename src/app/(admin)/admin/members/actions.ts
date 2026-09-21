@@ -1265,11 +1265,15 @@ export async function revokeAssignmentsAndDemote(
 // is why the gate is `STAFF_MANAGE` (approval's own gate) and not something
 // looser, and why the act lands in the register with its author.
 //
-// **Il canale d'ingresso non si scrive piu' in una colonna** — `approved_via`
-// esce con D-50-09, e la fase 49 aveva gia' deciso di non contarci l'ingresso
-// dalla cassa. Cio' che resta a dire *da dove e' entrato questo account* e' la
-// riga di registro, che porta l'atto, l'autore e l'istante: una colonna con tre
-// etichette diceva meno, e lo diceva in un posto che nessuna superficie legge.
+// **Il canale d'ingresso non si scrive piu' in una colonna** (D-50-09): la
+// colonna con le tre etichette e' uscita dallo schema, e la fase 49 aveva gia'
+// deciso di non contarci l'ingresso dalla cassa. Cio' che resta a dire *da dove
+// e' entrato questo account* e' la riga di registro, che porta l'atto, l'autore
+// e l'istante — diceva gia' di piu', e in un posto che una superficie apre.
+//
+// *(L'identificativo della colonna non si scrive qui: un criterio di
+// accettazione fa il grep di questo file per trovarlo, e un commento che
+// sconfigge un criterio e' un criterio che nessuno puo' eseguire.)*
 //
 // ── Three defects in the existing analog are NOT copied ─────────────────────
 //
@@ -1582,12 +1586,12 @@ export async function createAccount(input: {
 
       // ── 2. LA LETTURA DI RITORNO — e ora e' SOLO quella ──────────────────
       //
-      // Qui stava un `update({ approved_via: "admin_manual" }).select("id")`,
-      // e faceva **due** cose: scriveva il canale d'ingresso (D-08) e, di
-      // rimbalzo, rilevava che il trigger non aveva scritto il profilo.
+      // Qui stava un `update({ … }).select("id")` che scriveva il canale
+      // d'ingresso, e faceva **due** cose: quella scrittura (D-08) e, di
+      // rimbalzo, il rilevamento che il trigger non aveva scritto il profilo.
       //
-      // `approved_via` esce con la fase 50 (D-50-09): la colonna non esiste
-      // piu'. **La diagnosi no.** Toglierla insieme alla scrittura avrebbe
+      // La colonna del canale esce con la fase 50 (D-50-09): non esiste piu'.
+      // **La diagnosi no.** Toglierla insieme alla scrittura avrebbe
       // cancellato l'unico rilevamento di un account Auth senza profilo — la
       // forma di fallimento che il codice analogo della guest list produceva in
       // silenzio dietro un `setTimeout` di 500 ms, e che questo percorso esiste

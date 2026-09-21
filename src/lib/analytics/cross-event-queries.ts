@@ -20,13 +20,21 @@ export interface RepeatAttendeeData {
   repeatRate: number;
 }
 
-export interface ReferralChain {
-  referrerId: string;
-  referrerName: string;
-  referredCount: number;
-  referredMembers: { name: string; totalSpend: number }[];
-  totalChainSpend: number;
-}
+/*
+ * `ReferralChain` e `fetchReferralChains` stavano qui, e leggevano la colonna
+ * del referral su `profiles` per costruire referente -> invitati -> spesa.
+ *
+ * Il referral e' uscito dal prodotto (D-50-08/REG-03) e la colonna dallo schema
+ * (`20260921120000_drop_status_and_referral.sql`). **Questo modulo non e'
+ * importato da nessuna superficie** — le pagine di analytics sono state tolte
+ * dal proprietario il 2026-08-14 — quindi la lettura non si sarebbe rotta
+ * davanti a nessuno: si sarebbe rotta in silenzio, con un `42703`, il giorno in
+ * cui qualcuno avesse riaperto il modulo credendolo buono.
+ *
+ * Tolta qui e non differita perche' e' la sola parte di questo file che nomina
+ * una colonna che non esiste: il resto legge `tickets`, `drink_orders` e
+ * `attendances`, e resta.
+ */
 
 export interface GuestConversionData {
   totalConversions: number;
@@ -141,80 +149,6 @@ export async function fetchRepeatAttendeeRate(): Promise<RepeatAttendeeData> {
     totalMembers > 0 ? Math.round((repeatMembers / totalMembers) * 100) : 0;
 
   return { totalMembers, repeatMembers, repeatRate };
-}
-
-/**
- * Fetch referral chain effectiveness: referrer -> referred members -> total spend.
- */
-export async function fetchReferralChains(): Promise<ReferralChain[]> {
-  const supabase = getServiceClient();
-
-  const [profilesResult, ticketsResult, drinkOrdersResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, referred_by"),
-    supabase.from("tickets").select("user_id, amount_paid"),
-    supabase
-      .from("drink_orders")
-      .select("user_id, total_amount, refunded_amount")
-      .eq("status", "completed"),
-  ]);
-
-  const profiles = profilesResult.data ?? [];
-  const tickets = ticketsResult.data ?? [];
-  const drinkOrders = drinkOrdersResult.data ?? [];
-
-  // Build spend per user (tickets + net drinks)
-  const userSpend = new Map<string, number>();
-  for (const t of tickets) {
-    if (!t.user_id) continue;
-    userSpend.set(t.user_id, (userSpend.get(t.user_id) ?? 0) + t.amount_paid);
-  }
-  for (const d of drinkOrders) {
-    if (!d.user_id) continue;
-    userSpend.set(
-      d.user_id,
-      (userSpend.get(d.user_id) ?? 0) + (d.total_amount - d.refunded_amount)
-    );
-  }
-
-  // Group profiles by referred_by (skip nulls = organic signups)
-  const referrerMap = new Map<
-    string,
-    { name: string; totalSpend: number }[]
-  >();
-  for (const p of profiles) {
-    if (!p.referred_by) continue;
-    const referred = referrerMap.get(p.referred_by) ?? [];
-    referred.push({
-      name: p.full_name ?? "Unknown",
-      totalSpend: userSpend.get(p.id) ?? 0,
-    });
-    referrerMap.set(p.referred_by, referred);
-  }
-
-  // Build referral chains
-  const profileMap = new Map(profiles.map((p) => [p.id, p]));
-  const chains: ReferralChain[] = [];
-
-  for (const [referrerId, referredMembers] of referrerMap) {
-    const referrer = profileMap.get(referrerId);
-    const totalChainSpend = referredMembers.reduce(
-      (sum, m) => sum + m.totalSpend,
-      0
-    );
-    chains.push({
-      referrerId,
-      referrerName: referrer?.full_name ?? "Unknown",
-      referredCount: referredMembers.length,
-      referredMembers: referredMembers.sort(
-        (a, b) => b.totalSpend - a.totalSpend
-      ),
-      totalChainSpend,
-    });
-  }
-
-  // Sort by totalChainSpend desc, return top 20
-  chains.sort((a, b) => b.totalChainSpend - a.totalChainSpend);
-  return chains.slice(0, 20);
 }
 
 /**

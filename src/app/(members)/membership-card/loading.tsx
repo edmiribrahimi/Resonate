@@ -56,10 +56,11 @@ export default function MembershipCardLoading() {
         </div>
       </Card>
 
-      {/* The referral control, which renders for an approved member only. The
-          placeholder draws it unconditionally because it cannot know: no query
-          has run. */}
-      <SkeletonLine className="mt-6 h-12 w-full" />
+      {/* Qui stava lo scheletro del controllo del referral, disegnato
+          incondizionatamente perche' nessuna query aveva ancora girato. Il
+          controllo e' uscito con la fase 50 (D-50-08), e lo scheletro esce con
+          lui: un segnaposto per una cosa che non arrivera' mai e' uno scatto
+          di layout garantito, non una previsione. */}
 
       {/* The instructions card. */}
       <Card className="mt-6">
