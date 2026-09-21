@@ -10,7 +10,7 @@ progress:
   total_phases: 51
   completed_phases: 48
   total_plans: 371
-  completed_plans: 362
+  completed_plans: 365
   percent: 98
 ---
 

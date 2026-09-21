@@ -393,7 +393,7 @@ Plans:
 > **mai** sul biglietto: `holder_label` resta un progressivo e il biglietto resta
 > al portatore (`D-49-03`).
 
-**Plans:** 2/12 plans executed
+**Plans:** 5/12 plans executed
 
 Plans:
 **Wave 1**
@@ -403,9 +403,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 50-03-PLAN.md — la migration additiva dell'ordine a totale zero: checkout nullabile, `buyer_name`, il livello a prezzo 0
-- [ ] 50-06-PLAN.md — via `/register`, via la home, la barra e la frase del login
-- [ ] 50-07-PLAN.md — «cancella account» con i suoi rifiuti, via le sei azioni di stato e via il referral
+- [x] 50-03-PLAN.md — la migration additiva dell'ordine a totale zero: checkout nullabile, `buyer_name`, il livello a prezzo 0
+- [x] 50-06-PLAN.md — via `/register`, via la home, la barra e la frase del login
+- [x] 50-07-PLAN.md — «cancella account» con i suoi rifiuti, via le sei azioni di stato e via il referral
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
