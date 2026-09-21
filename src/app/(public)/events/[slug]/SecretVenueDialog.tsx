@@ -232,11 +232,24 @@ export default function SecretVenueDialog({
             </div>
           </div>
 
+          {/*
+            ── Un chip solo, dalla fase 50 (D-50-11) ─────────────────────────
+
+            Accanto a `Sign in` c'era `Sign up`, verso la pagina d'iscrizione.
+            Quella pagina non esiste piu': nessuno si iscrive da solo, entra chi
+            compra un biglietto o chi e' invitato da guest list. Un chip che
+            porta a un 404 e' peggio di un chip in meno, perche' promette una
+            strada e la interrompe.
+
+            **Qui non cambia nient'altro, ed e' deliberato.** Questa superficie
+            sta su `venue-secrecy.md`: non cambia la condizione che decide se
+            il dialogo si disegna, non cambia chi lo vede, non cambia cosa
+            dice del luogo. Si toglie un chip — non si tocca il predicato, che
+            vive in `src/lib/venue-reveal/venue-disclosure.ts` e si legge,
+            non si riscrive.
+          */}
           {!isAuthenticated && (
             <div className="mt-5 flex gap-3">
-              <Chip href="/register" className="flex-1">
-                Sign up
-              </Chip>
               <Chip href="/login" className="flex-1">
                 Sign in
               </Chip>
