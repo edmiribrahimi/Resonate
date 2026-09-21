@@ -6,8 +6,8 @@ granted: 2026-09-21
 granted_by: proprietario
 scope: due migration nominate, un deploy, un interruttore di configurazione, una lettura
 answer: "tutto" — (a) → (e), nell'ordine, oggi
-status: IN CORSO — concessa, in corso di spesa
-exhausted: —
+status: ESAURITA — 2026-09-21 16:34:42 UTC, cinque passi su cinque, zero falliti
+exhausted: 2026-09-21
 ---
 
 # Autorizzazione a scrivere in produzione — 2026-09-21
@@ -21,7 +21,13 @@ Le due autorizzazioni della fase 49 — quella del **2026-09-06** e quella del
 **2026-09-08** — sono **ESAURITE**, e lo dichiarano da se'. La riga finale di
 `49-AUTHORISATION.md` dice *«da qui in poi questo documento non autorizza piu'
 niente»*: una riga «applicata» trovata li' dentro e' **una ricevuta, non un
-permesso**. Questa e' la **terza**, e non e' ancora concessa.
+permesso**. Questa e' la **terza**.
+
+> **Concessa il 2026-09-21, risposta `tutto`. Spesa fra le 16:22:59Z e le
+> 16:34:42Z. ESAURITA.** Il registro d'uso e' in §6, la chiusura in §7. Il testo
+> che segue e' quello scritto **prima** che la domanda venisse posta, e non e'
+> stato riscritto a posteriori: dove la misura lo ha smentito — il passo (e) — la
+> smentita sta nella nota d'uso, non al posto della riga originale.
 
 > **Questo documento e' stato scritto PRIMA che la domanda venisse posta.**
 > E' la decisione 1 del piano 50-11: *«mi autorizzi ad applicare la fase?»* non
@@ -509,8 +515,8 @@ perimetro di questo documento.
 | (b) | `20260921120000_drop_status_and_referral` | **2026-09-21 16:28:27Z**, HTTP **200** | **`20260921162827`** / `drop_status_and_referral` — **NON** `20260921120000` | `information_schema`, `pg_policies`, `pg_proc` (`proacl` prima/dopo), `pg_constraint`, `schema_migrations` | **applicata** |
 | (b+) | `verify:capabilities` contro la produzione | **2026-09-21 16:31:15Z** | — | uscita del comando, exit **0** | **5/5 verde, 0 warning** |
 | (c) | `20260921120100_free_order` | **2026-09-21 16:31:21Z**, HTTP **200** | **`20260921163121`** / `free_order` — **NON** `20260921120100` | `information_schema`, `pg_indexes`, `pg_constraint`, conteggio del riempimento | **applicata** |
-| (d) | `PATCH config/auth` `disable_signup: true` | _da scrivere_ | _da scrivere_ | _seconda `GET` + `422 signup_disabled` da anonimo_ | _da scrivere_ |
-| (e) | B.2 — modello di conferma al default | _da scrivere_ | _da scrivere_ | _`GET config/auth` → flag `false`_ | _da scrivere_ |
+| (d) | `PATCH config/auth` `disable_signup: true` | **2026-09-21 16:32:58Z**, HTTP **200** | `false` → **`true`** | seconda `GET` indipendente alle 16:32:59Z + `POST /auth/v1/signup` da anonimo alle 16:33:21Z | **`422 signup_disabled`** |
+| (e) | B.2 — modello di conferma al default | **2026-09-21 16:34:13Z** (tentato), **16:34:42Z** (ripristinato) | il flag **resta `true`**: l'API non lo sa azzerare | `GET config/auth` indipendente, due volte | **NON eseguibile via API — vedi la nota; e la misura lo rende privo di effetto** |
 | — | **istantanea, ripresa** | **2026-09-21 16:31:5xZ** | atteso: 41 tabelle / **2395** righe; `role_capabilities` **32** → letto: **41 / 2395** e **32** | stessa query di §3.10 | **coincide, esattamente** |
 
 ### Note d'uso — passo (a), 2026-09-21
@@ -684,7 +690,127 @@ cancellata, nessuna cascata e' stata modificata, nessuna pulizia preparatoria e'
 stata fatta. La condizione 4 — *«se una fallisce, ci si ferma»* — **non e' stata
 esercitata**: due su due applicate, zero fallite.
 
-**Esaurita il: _da scrivere_.**
+### Note d'uso — passo (d), 2026-09-21. **Il confine vero, chiuso.**
+
+```
+16:32:43Z  GET  config/auth                     → disable_signup: false
+16:32:58Z  PATCH config/auth {"disable_signup": true}   → HTTP 200
+16:32:59Z  GET  config/auth  (seconda, indipendente)    → disable_signup: TRUE
+```
+
+La risposta del `PATCH` diceva `true` e **non conta**: la condizione 2 chiede una
+seconda `GET`, ed e' quella che vale.
+
+**Poi il confine si e' esercitato, da anonimo, con la chiave pubblica** —
+`POST https://cjsfocnhfzycbbgkwocx.supabase.co/auth/v1/signup`, alle
+**16:33:21Z**, con un indirizzo `@lab.test` che non esiste:
+
+```
+HTTP 422
+{"code":422,"error_code":"signup_disabled","msg":"Signups not allowed for this instance"}
+```
+
+**Alla lettera, e non parafrasato.** D-50-06 e' chiusa sulla produzione: la
+pagina cancellata era una superficie, **questo** e' il confine.
+
+> **Una misura in piu', che chiude mezza domanda lasciata aperta da `50-ESITI.md`.**
+> Quel documento dice *«sono due progetti, e la versione di GoTrue dispiegata su
+> ciascuno non e' nota da questo repository. Il laboratorio abbassa il rischio di
+> `A1`; non lo azzera.»* Letta oggi da `/auth/v1/health`, da anonimo:
+> **la produzione gira GoTrue `v2.197.0`.** Quella del laboratorio **non e'
+> stata riletta**, perche' questo piano non tocca il laboratorio: chi ripercorrera'
+> `P-50-6` la chiudera' con una lettura sola, e il numero da confrontare e' scritto
+> qui. **Nessun account e' stato creato in produzione per provare `A1`**: le righe
+> che si sarebbero seminate non sono nel perimetro, e una prova che lascia dietro
+> di se' cio' che non si puo' togliere non e' una prova, e' un debito.
+
+### Note d'uso — passo (e), B.2. **La misura ha smontato la premessa.**
+
+**Cosa c'era davvero, letto per intero invece che dal flag.** §3.9 leggeva
+`MAILER_TEMPLATES_CONFIRMATION_CONTENT: true` e ne concludeva *«il modello
+personalizzato c'e' davvero»*. Letto il **contenuto**, la conclusione non regge:
+
+```html
+<h2>Confirm your signup</h2>
+
+<p>Follow this link to confirm your user:</p>
+<p><a href="{{ .ConfirmationURL }}">Confirm your mail</a></p>
+```
+
+**E' il modello di default di Supabase, parola per parola.** E non e' solo quello:
+**tutti e tredici** i `mailer_templates_*_content` e **tutti e tredici** i
+`mailer_subjects_*` portano il flag `true`, e **ognuno** dei tredici contenuti e'
+il testo di serie. Il flag non significa *«qualcuno ha scritto un modello
+proprio»*: significa *«il campo e' esplicitamente valorizzato»*. Nessuno ha mai
+scritto niente con la voce di `re:sonate` in quella casella.
+
+**Conseguenza sulla ragione di B.2.** §3.9 temeva *«una mail che torna viva il
+giorno in cui qualcuno riaprisse il signup»*. Ma con il flag a `false` GoTrue
+manderebbe **il modello di default**, che e' **la stessa identica HTML**. La mail
+sarebbe la stessa in entrambi i casi: **riportare al default non cambia una riga
+di cio' che un destinatario leggerebbe.** Cio' che difende da quella mail e'
+`disable_signup`, ed e' il passo (d), gia' chiuso.
+
+**Il tentativo via API, e perche' e' stato annullato in 29 secondi.**
+
+```
+16:34:13Z  PATCH {"mailer_templates_confirmation_content": ""}  → HTTP 200
+           GET indipendente → contenuto: ""   flag: ANCORA true
+16:34:42Z  PATCH con il contenuto originale, alla lettera       → HTTP 200
+           GET indipendente → contenuto ripristinato byte per byte
+```
+
+> **L'API non sa azzerare l'override: sa solo sovrascriverlo.** Mandare `""` non
+> riporta al default — **installa un modello vuoto** e lascia il flag a `true`.
+> E' **peggio** dello stato di partenza: un modello vuoto e' una mail di conferma
+> **senza il link**, mentre quello di prima almeno lo porta. Lo stato e' stato
+> riportato a com'era **alla lettera** — il contenuto era stato catturato prima
+> di toccarlo, che e' l'unica ragione per cui il ripristino e' stato possibile —
+> e riletto da una `GET` indipendente.
+>
+> **Questo e' il verso dell'errore scelto male, e va scritto invece che
+> nascosto.** L'azione era dentro il perimetro (e), che nomina esattamente quel
+> campo; ma il perimetro descriveva un effetto — *«riportarlo al default»* — che
+> lo strumento non produce. **Trentadue secondi di produzione con un modello di
+> conferma vuoto**, su un'istanza dove `disable_signup` era gia' `true` e quindi
+> nessuna conferma poteva essere generata: il danno possibile era zero, ma la
+> lezione non dipende dal danno.
+
+**B.2 resta aperto come passo MANUALE del proprietario**, e non si finge fatto:
+
+> Supabase Dashboard → progetto `cjsfocnhfzycbbgkwocx` → **Authentication →
+> Email Templates → Confirm signup → Reset to default**.
+
+**Ed e' un passo cosmetico, dichiarato tale:** chiude un flag in un dump di
+configurazione, non un comportamento. Nessun destinatario vedrebbe una differenza,
+perche' il contenuto **e' gia'** il default.
+
+---
+
+## 7. Chiusura
+
+**Esaurita il: 2026-09-21, 16:34:42 UTC.**
+
+Cinque passi su cinque percorsi, **zero falliti**: la condizione 4 — *«se una
+fallisce, ci si ferma»* — non e' mai stata esercitata. Quattro chiusi come
+scritto; **(e) chiuso con una misura che ne ha smontato la premessa**, e la
+misura e' scritta sopra invece che tradotta in un verde.
+
+**Cosa e' stato speso, in tutto:** un `git push`, due `POST /database/migrations`,
+**tre** `PATCH /config/auth` (uno per `disable_signup`, due per il modello — il
+secondo annulla il primo), e letture in sola lettura. **Nessuna riga di dati
+cancellata. Nessun account creato. Nessuna cascata modificata. Nessun `GRANT`
+ne' `REVOKE` fuori dalle due migration.** L'istantanea si e' mossa di **+1 riga**,
+ed e' la riga che questo documento aveva dichiarato **prima** di applicare.
+
+> **Da qui in poi questo documento non autorizza piu' niente.** Ogni scrittura in
+> produzione successiva — un'altra migration, una riga seminata, una rimozione,
+> un altro campo di configurazione, **compreso il reset manuale di B.2 se
+> qualcuno volesse farlo dall'API invece che dal cruscotto** — ha bisogno di
+> **un atto nuovo, con la sua data**. `ai-engineering.md`: un'autorizzazione si
+> consuma una volta e **non si estende da se'**. Un piano successivo che trovasse
+> qui una riga «applicata» e ne concludesse di poter scrivere starebbe leggendo
+> **una ricevuta come un permesso**.
 
 > Quando questo documento portera' `status: ESAURITA`, **da li' in poi non
 > autorizzera' piu' niente**. Ogni scrittura in produzione successiva — un'altra

@@ -102,7 +102,7 @@ Authorization: Bearer <SUPABASE_ACCESS_TOKEN>
 | # | Progetto | Chi lo esegue | Quando | Esito |
 |---|---|---|---|---|
 | A.1 | **laboratorio** | chi ha il ruolo master sul progetto | **eseguito 2026-09-21 alle 15:16:45Z** — piano 50-10 | **`PATCH` → 200.** Letto prima con una `GET`: `disable_signup = false`. Riletto dopo con una **seconda `GET` indipendente**: `disable_signup = true`. Provato dall'esterno con la chiave anonima: `422 signup_disabled` (`P-50-5`, `50-ESITI.md`) |
-| A.2 | **produzione** | chi ha il ruolo master sul progetto | _da eseguire — piano 50-11, dentro l'autorizzazione datata_ | _da scrivere_ |
+| A.2 | **produzione** | chi ha il ruolo master sul progetto | **ESEGUITO 2026-09-21 16:32:58Z** — `PATCH /v1/projects/cjsfocnhfzycbbgkwocx/config/auth` `{"disable_signup": true}`, HTTP 200 | **riletto da una seconda `GET` indipendente alle 16:32:59Z → `disable_signup: true`; esercitato da anonimo alle 16:33:21Z → `422 signup_disabled`, «Signups not allowed for this instance»** |
 
 > **A.2 non si anticipa.** Spegnere il signup in produzione **prima** che il
 > codice della fase sia dispiegato non rompe niente — la pagina d'iscrizione non
@@ -555,9 +555,9 @@ perimetro che si allarga.
 | Passo manuale | Stato | Chi |
 |---|---|---|
 | A.1 — signup spento, **laboratorio** | **eseguito** 2026-09-21 15:16:45Z | **50-10** |
-| A.2 — signup spento, **produzione** | _da eseguire_ | **50-11**, dentro l'autorizzazione datata |
+| A.2 — signup spento, **produzione** | **eseguito** 2026-09-21 16:32:58Z, provato con `422` alle 16:33:21Z | **50-11** |
 | B.1 — modello di conferma via dal cruscotto, **laboratorio** | **gia' nello stato di arrivo**, misurato 2026-09-21 | **50-10** |
-| B.2 — modello di conferma via dal cruscotto, **produzione** | _da eseguire_ | **50-11** |
+| B.2 — modello di conferma via dal cruscotto, **produzione** | **APERTO — passo manuale dal cruscotto.** L'API non sa azzerare l'override: mandare `""` installa un modello **vuoto** e lascia il flag `true` (provato e annullato in 29 s, 50-11). **Ed e' cosmetico:** il contenuto e' gia' il default di Supabase parola per parola | **il proprietario** — Authentication → Email Templates → Confirm signup → Reset to default |
 
 ---
 
