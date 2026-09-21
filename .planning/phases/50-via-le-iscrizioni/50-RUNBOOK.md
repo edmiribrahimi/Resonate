@@ -587,3 +587,21 @@ perimetro che si allarga.
   migration non e' ancora applicata. **E' il costo dichiarato
   dell'inversione** (D-50-24), non un debito. Contro il **laboratorio** lo
   stesso gate e' **5/5 verde**.
+
+---
+
+## Il deploy in produzione — piano 50-11, passo (a)
+
+| Voce | Valore |
+|---|---|
+| Intervallo spinto | `ce3abd1..feec65c`, **67 commit** |
+| `git push origin main` | **2026-09-21 16:22:59Z** |
+| Deploy Vercel | `dpl_GY6kGtAdfru2qZdPbmMs8DT2nm7W`, `githubCommitSha = feec65c` |
+| Stato | **`READY`** alle **16:24:58Z**, letto dall'API Vercel (`/v6/deployments`) |
+| Controlli da anonimo, 16:25:06Z | `/register` **404** · `/registrati` **404** · `/` **307 → /events** · `/events` **200** · le due serate pubbliche **200** |
+| Il gancio dell'ospite | **1 occorrenza** di `Bought a ticket` nel chunk del client servito da produzione, **0** di `/register` — l'HTML di `/login` non porta quella stringa nemmeno in locale (`"use client"`) |
+
+**Nessuna migration applicata in questo passo.** Il verso invertito di D-50-24 e'
+rispettato: alle 16:25Z il codice non nomina piu' lo stato e la colonna e' ancora
+in produzione, popolata, con il suo `NOT NULL DEFAULT 'approved'` che si soddisfa
+da solo.

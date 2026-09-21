@@ -2,10 +2,11 @@
 phase: 50-via-le-iscrizioni
 document: autorizzazione a scrivere in produzione — la terza del progetto
 written: 2026-09-21
-granted: —
-granted_by: —
+granted: 2026-09-21
+granted_by: proprietario
 scope: due migration nominate, un deploy, un interruttore di configurazione, una lettura
-status: IN CORSO — scritta, non ancora concessa, non ancora spesa
+answer: "tutto" — (a) → (e), nell'ordine, oggi
+status: IN CORSO — concessa, in corso di spesa
 exhausted: —
 ---
 
@@ -504,13 +505,78 @@ perimetro di questo documento.
 
 | # | Passo | Eseguito (UTC) | Versione coniata / valore letto | Riletto da | Esito |
 |---|---|---|---|---|---|
-| (a) | `git push origin main` + deploy Vercel | _da scrivere_ | _da scrivere_ | _API Vercel + quattro controlli da anonimo_ | _da scrivere_ |
+| (a) | `git push origin main` + deploy Vercel | **2026-09-21 16:22:59Z** (push) → **16:24:58Z** (`READY`) | `ce3abd1..feec65c`, **67 commit**; deploy `dpl_GY6kGtAdfru2qZdPbmMs8DT2nm7W`, `githubCommitSha = feec65c` | API Vercel (`readyState`) + cinque controlli da anonimo su `www.resonatemotion.com` | **dispiegato** |
 | (b) | `20260921120000_drop_status_and_referral` | _da scrivere_ | _da scrivere — NON il nome del file_ | _`information_schema`, `pg_policies`, `pg_proc` (`proacl` prima/dopo), `pg_constraint`, `schema_migrations`_ | _da scrivere_ |
 | (b+) | `verify:capabilities` contro la produzione | _da scrivere_ | — | _uscita del comando_ | _da scrivere_ |
 | (c) | `20260921120100_free_order` | _da scrivere_ | _da scrivere — NON il nome del file_ | _`information_schema`, `pg_indexes`, `pg_constraint`, conteggio del riempimento_ | _da scrivere_ |
 | (d) | `PATCH config/auth` `disable_signup: true` | _da scrivere_ | _da scrivere_ | _seconda `GET` + `422 signup_disabled` da anonimo_ | _da scrivere_ |
 | (e) | B.2 — modello di conferma al default | _da scrivere_ | _da scrivere_ | _`GET config/auth` → flag `false`_ | _da scrivere_ |
 | — | **istantanea, ripresa** | _da scrivere_ | _atteso: 41 tabelle / **2395** righe in `public`; `private.role_capabilities` **32**_ | _stessa query di §3.10_ | _da scrivere_ |
+
+### Note d'uso — passo (a), 2026-09-21
+
+**La domanda di §5 e' stata posta e la risposta e' `tutto`** — (a) → (e),
+nell'ordine, oggi. Le altre due strade erano sul tavolo e non sono state prese.
+
+**I cancelli prima del push, uno per uno.**
+
+| Gate | Esito |
+|---|---|
+| `npm run build` (artefatto fresco, `.next` rimossa prima) | **verde** — e nel censimento delle rotte **`/register` non compare piu'** |
+| `npm run verify:routes` | **verde**, exit 0 |
+| `npm run verify:conversion` | **verde**, exit 0 |
+| `npm run verify:no-header-identity` | **verde**, exit 0 |
+| controllo **F** | **verde** — `docs/` e `.firecrawl/` ignorati **e** zero file tracciati al loro interno |
+| censimento dei file toccati | **118 file**, **nessuno** fuori dall'insieme dichiarato |
+| `npm run verify` (aggregato) | **rosso su 3**, e **tutti e tre preesistenti** — vedi sotto |
+
+**I tre rossi, con la loro provenienza — nessuno e' di questo piano.**
+
+1. **`verify:capabilities`** — le **quattro** concessioni di `membership.active`
+   a `master`, `member`, `organizer`, `staff` sono nel catalogo di produzione e
+   la dichiarazione le rifiuta. **E' esattamente il rosso che la migration (b)
+   chiude**, ed e' scritto in §5 di questo documento prima del push: *«un gate
+   rosso lasciato indietro e' un gate che nessuno rilancia»*. Va riletto **dopo**
+   (b), ed e' la riga `(b+)` di questo registro.
+2. **`verify:venue-surfaces`**, asserzione **G2** — `payment/callback/actions.ts`
+   seleziona `sumup_checkout_id`, fuori dall'elenco positivo. Registrato in
+   `deferred-items.md:93` e riconfermato identico dai piani **50-04, 50-05,
+   50-06, 50-07 e 50-08**. Il file risale alla fase 49.
+3. **`verify:touch-targets`** — 3 elementi. `STATE.md` lo porta come voce
+   differita **12**, *«gia' rosso prima»*, dalla fase 58.
+
+**Nessuno dei tre e' stato toccato per farlo passare**, e nessuna soglia e'
+stata allargata: sarebbe il *tampering* che quei gate nominano da se'.
+
+**I cinque controlli da anonimo, alle 16:25:06Z**, su `www.resonatemotion.com`:
+
+| Controllo | Atteso | Letto |
+|---|---|---|
+| `/register` | 404 | **404** |
+| `/registrati` | 404 | **404** |
+| `/` | 307 → `/events` | **307 → `https://www.resonatemotion.com/events`** |
+| `/events` | 200 | **200** |
+| le due serate pubbliche | si aprono | **200** entrambe |
+
+> **Un controllo ha cambiato strumento, e la ragione va scritta invece che
+> lasciata scoprire.** Il gancio dell'ospite — *«Bought a ticket? Use the link
+> in your email»* — era da cercare con `curl /login | grep`, e li' torna **zero**.
+> Non e' un'assenza: `login/page.tsx` e' `"use client"`, e **l'HTML servito non
+> contiene quella stringa nemmeno nell'artefatto costruito qui** — 12306 byte,
+> identici in locale e in produzione, zero occorrenze in entrambi. La stringa
+> vive nel **chunk del client**. Riletta li', da anonimo:
+> `/_next/static/chunks/app/(auth)/login/page-cacd8ba6f196bceb.js` → HTTP 200,
+> **1 occorrenza di `Bought a ticket`** e **0 occorrenze di `/register` o
+> `registrati`**. Lo stesso vale per i due campi del modulo d'acquisto.
+> **Una misura che cerca una stringa dove quella stringa non puo' essere
+> restituisce zero e sembra un difetto**: e' il gate *derivato non e' verificato*
+> applicato a un controllo, non a un dato.
+
+**Nessuna migration e' stata applicata in questo passo.** Il database di
+produzione, alle 16:25Z, ha ancora le tre colonne, le quattro concessioni, il
+`NOT NULL` su `sumup_checkout_id` e `disable_signup: false`. La finestra che il
+verso invertito produce apposta e' **aperta**, e da qui in poi niente si rompe:
+il codice dispiegato non guarda piu' lo stato.
 
 **Esaurita il: _da scrivere_.**
 
