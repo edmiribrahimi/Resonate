@@ -77,3 +77,22 @@ fino al piano che tocca il codice — ed e' precisamente cio' che D-50-28 vieta.
 e' gia' morto dal 2026-08-08 (interroga una tabella `attendance` che non esiste,
 `may-upload.ts:265-281`), e con le concessioni cancellate `has_capability`
 risponde comunque `false` a chiunque.
+
+---
+
+## Due gate rossi PRE-ESISTENTI, non toccati dal 50-02
+
+**Trovati:** piano 50-02, corsa di `npm run verify` (2026-09-21).
+**Fuori perimetro perche':** vivono in `src/`, e il piano 50-02 non tocca `src/`
+(`git diff --name-only` non porta un solo file sotto `src/`). Nessuno dei due e'
+stato reso rosso da questa onda.
+
+| Gate | Cosa dice |
+|---|---|
+| `verify:touch-targets` | tre elementi senza altezza minima dichiarata: `GuestTokenDisplay.tsx:689` e `:702` (due `<button>`), `src/emails/ticket-order.tsx:231` (un `<a>`) |
+| `verify:venue-surfaces` | G2 — `src/app/(public)/payment/callback/actions.ts` seleziona `{id, status, sumup_checkout_id, ticket_id}`; l'insieme autorizzato e' `{id, status, ticket_id}` |
+
+Il secondo e' su un percorso di rivelazione, quindi **non e' debito estetico**:
+l'elenco positivo esiste perche' una colonna che non si legge non si puo'
+stampare. Va guardato da chi possiede quella superficie, e il modo di chiuderlo
+e' correggere la `select`, mai allargare l'asserzione.
