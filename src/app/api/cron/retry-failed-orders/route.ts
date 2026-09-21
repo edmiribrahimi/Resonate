@@ -47,6 +47,13 @@ export async function GET(request: Request) {
     .from("ticket_orders")
     .select("id, error_message")
     .eq("status", "failed")
+    // Solo gli ordini che hanno un checkout. Dal 2026-09-21 `sumup_checkout_id`
+    // e' nullabile e un ordine a totale zero (REG-06) non ne ha uno: rigiocarlo
+    // significherebbe chiedere al fornitore lo stato di un checkout che non
+    // esiste, ogni mattina, per sempre. Il rigioco e' del percorso pagato, e il
+    // filtro lo dice qui invece di lasciarlo dire a una guardia a valle — che
+    // c'e' comunque (`replay-order-delivery.ts`, guardia 0).
+    .not("sumup_checkout_id", "is", null)
     .lt("updated_at", quietSince)
     .order("updated_at", { ascending: true })
     .limit(20);

@@ -179,6 +179,15 @@ async function checkTicketOrderStatus(
   // pagamento; dire «forse pagato» a chi non ha pagato costa un'occhiata
   // all'app della banca. Il default, nell'incertezza, e' il secondo.
   if (status === "FAILED") {
+    // Un ordine SENZA checkout non e' passato da nessun fornitore: e' a totale
+    // zero (REG-06). Non c'e' un incasso da verificare, quindi lo stato locale
+    // e' tutta la verita' che esiste e la domanda qui sotto sarebbe `null`.
+    // Questa pagina non e' sulla strada di un ordine gratuito — ci si arriva
+    // solo costruendo l'indirizzo a mano — ma il tipo non lo impedisce e
+    // `getCheckout(null)` non e' una domanda.
+    if (!order.sumup_checkout_id) {
+      return { status };
+    }
     try {
       const checkout = await getCheckout(order.sumup_checkout_id);
       if (checkout.status === "PAID") {

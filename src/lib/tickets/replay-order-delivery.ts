@@ -20,8 +20,16 @@ import type { getServiceClient } from "@/lib/supabase/service";
  * E' esattamente cio' che e' stato fatto a mano il 2026-09-08 (`49-ESITI.md`,
  * P-WH-3/P-WH-4): due `update` e un POST. Questo file toglie la mano.
  *
- * ── Le tre guardie, in ordine ────────────────────────────────────────────────
+ * ── Le quattro guardie, in ordine ───────────────────────────────────────────
  *
+ * 0. **L'ordine deve avere un checkout.** Dal 2026-09-21
+ *    `ticket_orders.sumup_checkout_id` e' nullabile: un ordine a totale zero
+ *    (REG-06) non passa da nessun fornitore e non ne ha uno. Rigiocarlo qui
+ *    significherebbe chiedere al fornitore lo stato di un checkout che non
+ *    esiste — e la funzione **non ha una rete di compilazione** che lo
+ *    impedisca, perche' i tipi di questo repository non sono generati e la
+ *    nullabilita' nuova non si propaga ai chiamanti (SUMMARY del piano 50-03).
+ *    Un ordine gratuito che fallisce si ripara dov'e' nato, non qui.
  * 1. L'ordine deve essere `failed`. Un `pending` lo gestisce SumUp o il cron
  *    dei sospesi; un `completed` non ha nulla da rigiocare.
  * 2. Il fornitore deve dire **PAID**, letto adesso — mai dedotto dallo stato
@@ -41,6 +49,8 @@ export type ReplayOutcome =
   | { ok: true; status: "completed"; tickets: number }
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "not_failed"; status: string }
+  /** L'ordine non ha checkout: e' a totale zero, e questo percorso e' del pagato. */
+  | { ok: false; reason: "no_checkout" }
   | { ok: false; reason: "has_tickets"; tickets: number }
   | { ok: false; reason: "checkout_not_paid"; checkoutStatus: string }
   | { ok: false; reason: "provider_unreachable"; detail: string }
@@ -63,6 +73,17 @@ export async function replayPaidOrderDelivery(args: {
   if (error || !order) return { ok: false, reason: "not_found" };
   if (order.status !== "failed") {
     return { ok: false, reason: "not_failed", status: order.status };
+  }
+
+  // Guardia 0. Un ordine senza checkout non e' un ordine pagato: e' un ordine a
+  // totale zero. Qui sotto si chiederebbe al fornitore lo stato di `null`, che
+  // non e' una domanda — e la risposta finirebbe nel ramo *fornitore
+  // irraggiungibile*, cioe' con il nome di un'altra causa addosso.
+  if (!order.sumup_checkout_id) {
+    console.error(
+      `[tickets.replay_refused_no_checkout] order=${orderId}: an order with no checkout is a free order — it is not replayed on the paid path`
+    );
+    return { ok: false, reason: "no_checkout" };
   }
 
   // Un ordine `failed` non ha biglietti, per costruzione: il webhook lo marca
