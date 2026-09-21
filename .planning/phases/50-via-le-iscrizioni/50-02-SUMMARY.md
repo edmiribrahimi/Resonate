@@ -365,16 +365,16 @@ mai un indirizzo**.
 ## I tre gate, nello stesso commit
 
 - **`scripts/verify-capabilities.mjs`** — la query perde la colonna
-  (`:1044-1047`), `ROLE_GRANTS` dichiara `'GRANTED'` / `'REFUSED'` invece di un
+  (`:1105-1109`), `ROLE_GRANTS` dichiara `'GRANTED'` / `'REFUSED'` invece di un
   booleano, e i marcatori sono **stringhe dentro il literal** perche'
-  `ROLE_GRANTS` e' valutato **sopra** le `const` che li nominano (`:672-687`):
+  `ROLE_GRANTS` e' valutato **sopra** le `const` che li nominano (`:705-719`):
   nominarli li' leggerebbe un binding nella sua zona morta temporale.
   I totali passano da **68/36/32 a 68/32/36**, ricamminando la tabella
-  (`:689-701`). Corsa contro il laboratorio migrato: **5/5 verde, 0 warning**.
+  (`:686-702`). Corsa contro il laboratorio migrato: **5/5 verde, 0 warning**.
 - **`scripts/rls-baseline.mjs`** — **la voce differita del 50-01 e' assorbita.**
   `PERSONA_STATUSES` rimossa, `PERSONA_LABELS` porta i quattro ruoli piu' `anon`
-  e `authenticated/no-profile` (`:665-670`), `PERSONA_SQL` non seleziona piu' la
-  colonna (`:727-732`) e `resolvePersonas` etichetta per ruolo (`:761`). Le
+  e `authenticated/no-profile` (`:669-674`), `PERSONA_SQL` non seleziona piu' la
+  colonna (`:738-743`) e `resolvePersonas` etichetta per ruolo (`:769`). Le
   personas passano da quattordici a sei, e cio' che si perde — la coppia
   `organizer/pending`, l'unica che distingueva P1 da P3 — e' **dichiarato nel
   docblock**: non e' una riga che la matrice smette di coprire, e' una riga che
@@ -568,3 +568,11 @@ legittimita' necessario) e non chiede configurazione esterna.
 ---
 *Phase: 50-via-le-iscrizioni*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+Sette file su sette presenti, quattro commit su quattro trovati in `git log`, e
+ogni `file:riga` citato qui sopra riletto dal file **dopo** la scrittura del
+SUMMARY — cinque riferimenti su `verify-capabilities.mjs` e `rls-baseline.mjs`
+erano sfalsati (le righe si erano mosse con le modifiche stesse) e sono stati
+corretti prima di questo blocco.
