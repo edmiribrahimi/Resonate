@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Piattaforma, non community
-status: planning
+status: executing
 stopped_at: Phase 51 context gathered
-last_updated: "2026-09-21T20:54:20.543Z"
+last_updated: "2026-09-21T22:04:27.166Z"
 last_activity: 2026-09-21
 progress:
   total_phases: 51
   completed_phases: 49
-  total_plans: 372
+  total_plans: 386
   completed_plans: 372
-  percent: 100
+  percent: 96
 ---
 
 # State: Resonate
@@ -282,7 +282,7 @@ SUMMARY su quindici: la fase e' eseguita.** Il piano 37-13 ha chiuso l'onda 7 il
 sostituite, e undici voci `human_needed` consolidate nel suo SUMMARY. Le onde 8 e
 9 (piani 37-14 e 37-15) hanno chiuso i reperti del code review: CR-01, WR-01,
 WR-03, WR-05, WR-06, WR-07, WR-08 e la voce 4 di `deferred-items.md`.
-Status: Ready to plan
+Status: Ready to execute
 scritto «riportato come avvenuto, non misurato da me» — ed era la cosa giusta da
 scrivere dalla sua posizione. La misura pero' esiste, ed e' dell'orchestratore
 che gliel'aveva riportato:

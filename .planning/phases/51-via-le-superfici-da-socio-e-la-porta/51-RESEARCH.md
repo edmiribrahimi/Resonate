@@ -700,7 +700,9 @@ Tutto il resto in questo documento e' `[VERIFIED]` per lettura diretta del file 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Chiuse il 2026-09-21 in `51-CONTEXT.md`: D-51-13 (Q1, `'membership'` resta storico), D-51-14 (Q2, `attendances` si svuota e si toglie), D-51-15 (Q3, `subject_label` = prime 8 cifre di `subject_id`).
 
 **Tre, e vanno chiuse prima di scrivere i piani — non durante.**
 
